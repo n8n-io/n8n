@@ -3,7 +3,7 @@ import type { AuthIdentity } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';

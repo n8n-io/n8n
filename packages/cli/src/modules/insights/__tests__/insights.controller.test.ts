@@ -5,8 +5,7 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';

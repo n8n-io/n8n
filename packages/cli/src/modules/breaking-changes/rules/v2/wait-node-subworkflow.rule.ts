@@ -71,7 +71,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-the-sub-workflow-resumes-from-waiting-waiting-for-webhook-forms-hitl-etc',
+				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-the-sub-workflow-resumes-from-waiting-waiting-for-webhook-for',
 		};
 	}
 

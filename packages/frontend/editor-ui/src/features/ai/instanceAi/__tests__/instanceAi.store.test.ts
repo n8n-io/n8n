@@ -14,10 +14,13 @@ import {
 	type InstanceAiThreadHistoryResponse,
 	type InstanceAiThreadSummary,
 } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
 		restApiContext: { baseUrl: 'http://localhost:5678/api' },
+		instanceId: 'instance-1',
 	}),
 }));
 
@@ -457,6 +460,41 @@ describe('useInstanceAiStore - credits', () => {
 			store.creditsQuota = 100;
 			store.creditsClaimed = 75;
 			expect(store.creditsPercentageRemaining).toBe(25);
+		});
+	});
+});
+
+describe('useInstanceAiStore - onboarding exit', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('leaveOnboarding keeps the exit in the thread metadata and tracks the end once', () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external' },
+			},
+		];
+
+		store.leaveOnboarding('thread-1', 'left', 'stop');
+		// A second exit (the failed run after the leave call) is a no-op.
+		store.leaveOnboarding('thread-1', 'run_failed');
+
+		expect(store.threads[0].metadata).toMatchObject({ onboardingLeft: true });
+		expect(store.isOnboardingChromeHidden('thread-1')).toBe(false);
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: 'thread-1',
+			instance_id: 'instance-1',
+			outcome: 'left',
+			leave_reason: 'stop',
 		});
 	});
 });

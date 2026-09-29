@@ -5,7 +5,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
@@ -227,4 +227,52 @@ it('leaves a checkpoint claimed by a later execution intact during cleanup', asy
 	expect(resumed.signal.aborted).toBe(false);
 	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
 	expect(checkpointStorage.delete).not.toHaveBeenCalled();
+});
+
+it('requires the production source before cancelling a suspended run', async () => {
+	const { service, executionService, checkpointStorage } = makeService();
+	checkpointStorage.getStatus.mockResolvedValue({
+		status: 'active',
+		checkpoint: {
+			...checkpoint,
+			persistence: {
+				threadId: context.threadId,
+				resourceId: 'n8n-chat-production:user-1',
+			},
+		},
+	});
+	executionService.canUseProductionChatThread.mockResolvedValue(false);
+	expect(
+		await service.cancelSuspended({
+			agentId: context.agentId,
+			runId: 'run-1',
+			resourceId: 'n8n-chat-production:user-1',
+		}),
+	).toBe(false);
+	expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+	executionService.canUseProductionChatThread.mockResolvedValue(true);
+	expect(
+		await service.cancelSuspended({
+			agentId: context.agentId,
+			runId: 'run-1',
+			resourceId: 'n8n-chat-production:user-1',
+		}),
+	).toBe(true);
+	expect(executionService.canUseProductionChatThread).toHaveBeenCalledWith(
+		context.threadId,
+		context.projectId,
+		context.agentId,
+		context.userId,
+		'existing',
+	);
+});
+
+it('rejects preview and foreign executions on the production cancel route', async () => {
+	const { service, repository } = makeService();
+	const production = { ...context, productionN8nChat: true };
+	await expect(service.requestCancel(production)).rejects.toBeInstanceOf(NotFoundError);
+	repository.findOneBy.mockResolvedValue({ ...running, source: 'n8n_chat_production' });
+	await expect(
+		service.requestCancel({ ...production, userId: 'other-user' }),
+	).rejects.toBeInstanceOf(NotFoundError);
 });

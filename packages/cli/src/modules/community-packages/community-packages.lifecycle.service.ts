@@ -10,10 +10,8 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';

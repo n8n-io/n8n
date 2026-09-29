@@ -74,27 +74,16 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(typeof response.body.exporterEndpoint).toBe('string');
 		});
 
-		it('returns 200 for env-managed values outside the write limits', async () => {
-			const config = Container.get(OtelConfig);
-			const originalName = config.exporterServiceName;
-			const originalRate = config.tracesSampleRate;
-			process.env[OTEL_ENV_VARS.exporterServiceName] = '';
-			process.env[OTEL_ENV_VARS.tracesSampleRate] = '1.5';
-			config.exporterServiceName = '';
-			config.tracesSampleRate = 1.5;
+		it('returns saved settings with masked exporter headers', async () => {
+			await testServer.publicApiAgentFor(owner).put('/settings/otel').send(validSettings);
 
-			try {
-				const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
-				expect(response.status).toBe(200);
-				expect(response.body.exporterServiceName).toBe('');
-				expect(response.body.tracesSampleRate).toBe(1.5);
-			} finally {
-				delete process.env[OTEL_ENV_VARS.exporterServiceName];
-				delete process.env[OTEL_ENV_VARS.tracesSampleRate];
-				config.exporterServiceName = originalName;
-				config.tracesSampleRate = originalRate;
-				await Container.get(OtelSettingsService).loadSettings();
-			}
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('exposes exactly the fields the UI configures, and nothing more', async () => {
@@ -132,6 +121,17 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/settings/otel');
 
 			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('rejects an unknown query parameter with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/otel')
+				.query({ unexpected: 'value' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpected');
 		});
 	});
 

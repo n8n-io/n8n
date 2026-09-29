@@ -4,9 +4,7 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
 

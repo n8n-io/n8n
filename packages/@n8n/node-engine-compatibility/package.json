@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-engine-compatibility",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Adapts v1 nodes and workflows to the Engine v2 execution model",
   "scripts": {
     "clean": "rimraf dist .turbo",

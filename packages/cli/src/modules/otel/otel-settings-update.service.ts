@@ -16,11 +16,6 @@ export class OtelSettingsUpdateService {
 		private readonly publisher: Publisher,
 	) {}
 
-	async getSettings(): Promise<OtelSettingsResponse> {
-		await this.settingsService.loadSettings();
-		return this.settingsService.getSettings();
-	}
-
 	async updateSettings(settings: OtelConfig): Promise<OtelSettingsResponse> {
 		await this.settingsService.saveSettings(settings);
 		await this.otelService.restart();
