@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
@@ -14,13 +13,6 @@ import {
 } from '@/services/token-purposes';
 
 /**
- * The session cookie is verified on every request, so an unthrottled notice
- * would fill the log for as long as one pre-upgrade token is in use. Whether
- * legacy tokens are still arriving is what matters, not how often.
- */
-const UNBOUND_WARNING_INTERVAL_MS = Time.hours.toMilliseconds;
-
-/**
  * `audience` is omitted on purpose: it is derived from the token's purpose, so
  * a caller cannot bind a token to the wrong audience or forget to bind it.
  */
@@ -31,9 +23,6 @@ export type PurposedVerifyOptions = Omit<jwt.VerifyOptions, 'audience'>;
 export class JwtService {
 	private jwtSecret: string = '';
 	private readonly jwtSecretFromEnv: boolean;
-
-	/** Last time an unbound token was reported, per purpose. At most one entry per legacy purpose. */
-	private readonly unboundWarnedAt = new Map<TokenPurpose, number>();
 
 	constructor(
 		{ encryptionKey }: InstanceSettings,
@@ -129,16 +118,15 @@ export class JwtService {
 	}
 
 	/**
-	 * Accepts a token minted before its purpose carried an `aud` claim. A
-	 * session lasts a week and an invite link three months, so those tokens are
-	 * still in flight after an upgrade.
+	 * Accepts a token minted before its purpose carried an `aud` claim, so that
+	 * invite links sent before an upgrade keep working.
 	 *
-	 * This only admits a token that carries no audience at all. A token bound to
-	 * a different audience still fails, so the allowance cannot be used to
-	 * present one kind of bound token as another.
+	 * This only admits a token that carries no audience at all and carries the
+	 * claims its purpose requires. A token bound to a different audience still
+	 * fails, so the allowance cannot be used to present one kind of bound token
+	 * as another.
 	 *
-	 * DEPRECATED: removed on the v3 line, by which point every token in flight
-	 * carries an audience.
+	 * DEPRECATED: see `LEGACY_UNBOUND_PURPOSES`.
 	 */
 	private verifyUnbound<T>(
 		purpose: TokenPurpose,
@@ -146,25 +134,17 @@ export class JwtService {
 		options: PurposedVerifyOptions,
 		verifyError: unknown,
 	): T {
-		if (!LEGACY_UNBOUND_PURPOSES.has(purpose)) throw verifyError;
+		const hasRequiredClaims = LEGACY_UNBOUND_PURPOSES[purpose];
+		if (!hasRequiredClaims) throw verifyError;
 
 		const claims = jwt.decode(token);
-		if (!isRecord(claims) || 'aud' in claims) throw verifyError;
+		if (!isRecord(claims) || 'aud' in claims || !hasRequiredClaims(claims)) throw verifyError;
 
 		const payload = jwt.verify(token, this.jwtSecret, options) as T;
-		this.reportUnbound(purpose);
-		return payload;
-	}
-
-	/** Reports at most one unbound token per purpose per interval. */
-	private reportUnbound(purpose: TokenPurpose): void {
-		const now = Date.now();
-		if (now - (this.unboundWarnedAt.get(purpose) ?? 0) < UNBOUND_WARNING_INTERVAL_MS) return;
-
-		this.unboundWarnedAt.set(purpose, now);
 		this.logger.warn('Accepted a token minted before its purpose carried an audience', {
 			purpose,
 		});
+		return payload;
 	}
 }
 

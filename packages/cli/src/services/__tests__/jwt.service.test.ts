@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -96,56 +95,54 @@ describe('JwtService', () => {
 		});
 
 		describe('tokens minted before audience binding', () => {
-			it('should accept one for a purpose that used to be minted unbound', () => {
-				const unbound = jwt.sign(payload, jwtSecret);
+			const invitePayload = { inviterId: 'inviter-id', inviteeId: 'invitee-id' };
 
-				expect(jwtService.verify('session', unbound)).toMatchObject({ sub: 1 });
-			});
-
-			it('should reject one for a purpose that always carried an audience', () => {
-				const unbound = jwt.sign(payload, jwtSecret);
-
-				expect(() => jwtService.verify('publicApiKey', unbound)).toThrow(jwt.JsonWebTokenError);
-			});
-
-			it.each(['oidcState', 'oidcNonce', 'oauthSession'] as const)(
-				'should reject one for %s, which is too short-lived to outlive an upgrade',
-				(purpose) => {
-					const unbound = jwt.sign(payload, jwtSecret);
-
-					expect(() => jwtService.verify(purpose, unbound)).toThrow(jwt.JsonWebTokenError);
-				},
-			);
-
-			it('should not let a bound token stand in for another purpose', () => {
-				const boundElsewhere = jwtService.sign('invite', payload);
-
-				expect(() => jwtService.verify('session', boundElsewhere)).toThrow(jwt.JsonWebTokenError);
-			});
-
-			it('should report a purpose at most once per interval, not once per request', () => {
+			it('should accept an invite that carries the invite claims, and report it', () => {
 				const logger = mock<Logger>();
 				const service = new JwtService(instanceSettings, globalConfig, logger);
-				const unbound = jwt.sign(payload, jwtSecret);
+				const unbound = jwt.sign(invitePayload, jwtSecret);
 
-				// A session cookie is verified on every request.
-				for (let i = 0; i < 20; i++) service.verify('session', unbound);
-				expect(logger.warn).toHaveBeenCalledTimes(1);
-
-				// A different purpose is reported on its own.
-				service.verify('invite', unbound);
-				expect(logger.warn).toHaveBeenCalledTimes(2);
-
-				// The signal comes back once the interval has passed.
-				vi.advanceTimersByTime(Time.hours.toMilliseconds + 1);
-				service.verify('session', unbound);
-				expect(logger.warn).toHaveBeenCalledTimes(3);
+				expect(service.verify('invite', unbound)).toMatchObject(invitePayload);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Accepted a token minted before its purpose carried an audience',
+					{ purpose: 'invite' },
+				);
 			});
 
-			it('should still reject an unbound token with a bad signature', () => {
-				const unbound = jwt.sign(payload, 'a-different-secret');
+			it.each([
+				['no invite claims', payload],
+				['only an inviter', { inviterId: 'inviter-id' }],
+				['an empty invitee', { inviterId: 'inviter-id', inviteeId: '' }],
+				['non-string ids', { inviterId: 1, inviteeId: 2 }],
+			])('should reject an invite with %s', (_, claims) => {
+				const unbound = jwt.sign(claims, jwtSecret);
 
-				expect(() => jwtService.verify('session', unbound)).toThrow(jwt.JsonWebTokenError);
+				expect(() => jwtService.verify('invite', unbound)).toThrow(jwt.JsonWebTokenError);
+			});
+
+			it.each([
+				'session',
+				'tokenExchange',
+				'publicApiKey',
+				'oidcState',
+				'oidcNonce',
+				'oauthSession',
+			] as const)('should reject one for %s', (purpose) => {
+				const unbound = jwt.sign(invitePayload, jwtSecret);
+
+				expect(() => jwtService.verify(purpose, unbound)).toThrow(jwt.JsonWebTokenError);
+			});
+
+			it('should not let a bound token stand in for an invite', () => {
+				const boundElsewhere = jwtService.sign('session', invitePayload);
+
+				expect(() => jwtService.verify('invite', boundElsewhere)).toThrow(jwt.JsonWebTokenError);
+			});
+
+			it('should still reject an unbound invite with a bad signature', () => {
+				const unbound = jwt.sign(invitePayload, 'a-different-secret');
+
+				expect(() => jwtService.verify('invite', unbound)).toThrow(jwt.JsonWebTokenError);
 			});
 		});
 	});

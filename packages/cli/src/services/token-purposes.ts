@@ -52,23 +52,26 @@ export const API_KEY_PURPOSES = {
 	'mcp-server-api': 'mcpApiKey',
 } as const satisfies Record<ApiKeyAudience, TokenPurpose>;
 
+const isNonEmptyString = (value: unknown): value is string =>
+	typeof value === 'string' && value.length > 0;
+
 /**
- * Purposes whose tokens used to be minted without an `aud` claim, and that
- * outlive an upgrade. `JwtService` still accepts an audience-less token for
- * these, so an upgrade does not log every user out or kill pending invites.
+ * Purposes whose tokens used to be minted without an `aud` claim, each with
+ * the claims an audience-less token must carry to be accepted for it.
  *
- * Every entry widens the window in which two purposes are told apart only by
- * the shape of their payload, so the list holds the long-lived purposes only.
- * The OIDC state and nonce (15 minutes) and the OAuth authorization session
- * (10 minutes) are left out: an upgrade lands mid-flow at most, and the user
- * retries. No new token is minted unbound, and each of these carries an `exp`,
- * so the window closes on its own.
+ * Only invites are listed. A pending invite link lasts three months, and a
+ * lost one needs an admin to send it again. Every other purpose is left out:
+ * a user whose session or token exchange is rejected after an upgrade signs in
+ * or exchanges again on their own.
  *
- * DEPRECATED: the v3 line drops this allowance. Do not add entries — a new
- * purpose has carried an audience from its first token.
+ * The claim check keeps any other audience-less token signed with the same
+ * secret from being presented as an invite.
+ *
+ * DEPRECATED: remove this allowance once pre-upgrade invite links have expired.
+ * Do not add entries — a new purpose has carried an audience from its first token.
  */
-export const LEGACY_UNBOUND_PURPOSES: ReadonlySet<TokenPurpose> = new Set([
-	'session',
-	'invite',
-	'tokenExchange',
-]);
+export const LEGACY_UNBOUND_PURPOSES: Partial<
+	Record<TokenPurpose, (claims: Record<string, unknown>) => boolean>
+> = {
+	invite: (claims) => isNonEmptyString(claims.inviterId) && isNonEmptyString(claims.inviteeId),
+};
