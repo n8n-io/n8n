@@ -149,7 +149,7 @@ describe('PrometheusQueueMetricsService', () => {
 			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
-			handler!({ executionId: 'exec-1', status: 'deleted' });
+			handler!({ status: 'deleted' });
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ status: 'deleted' }, 1);
 		});

@@ -166,7 +166,6 @@ describe('JobOutcomeTracker', () => {
 			await expect(wait).resolves.toBeUndefined();
 			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-1', {});
 			expect(eventService.emit).toHaveBeenCalledWith('job-completion-missed', {
-				executionId: 'exec-1',
 				status: 'success',
 			});
 		});
@@ -256,6 +255,23 @@ describe('JobOutcomeTracker', () => {
 
 			await expect(wait).resolves.toBeUndefined();
 			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('should join a recheck that is already reading the DB instead of starting another', async () => {
+			let releaseRead: (rows: Array<{ id: string; status: ExecutionStatus }>) => void = () => {};
+			executionRepository.findStatusesByIds.mockReturnValue(
+				new Promise((resolve) => (releaseRead = resolve)),
+			);
+
+			const wait = tracker.waitFor(job);
+			// A reconnect during a slow timer tick, or the other way round
+			const first = tracker.recheckAll();
+			const second = tracker.recheckAll();
+			releaseRead(statusRows({ 'exec-1': 'success' }));
+			await Promise.all([first, second]);
+
+			expect(executionRepository.findStatusesByIds).toHaveBeenCalledTimes(1);
+			await expect(wait).resolves.toBeUndefined();
 		});
 
 		it('should recheck at once on demand, e.g. when Redis reconnects', async () => {

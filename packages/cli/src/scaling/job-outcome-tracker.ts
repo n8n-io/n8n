@@ -50,10 +50,10 @@ const FAILED_RESPONSE: IExecuteResponsePromiseData = {
  */
 @Service()
 export class JobOutcomeTracker {
-	/** Results the worker reported for jobs this process enqueued. */
+	/** Results the worker reported for jobs this process enqueued, keyed by execution ID. */
 	private readonly results = new Map<string, JobFinishedProps>();
 
-	/** Failures the worker reported before this process started waiting for the job. */
+	/** Failures the worker reported before this process started waiting, keyed by execution ID. */
 	private readonly failures = new Map<string, Error>();
 
 	/** Waits for jobs to end, keyed by execution ID. */
@@ -64,6 +64,9 @@ export class JobOutcomeTracker {
 
 	/** One timer for all pending waits, running only while there are any. */
 	private recheckTimer?: NodeJS.Timeout;
+
+	/** The recheck currently reading the DB, so a timer tick and a reconnect do not overlap. */
+	private recheckInFlight?: Promise<void>;
 
 	constructor(
 		private readonly logger: Logger,
@@ -156,10 +159,19 @@ export class JobOutcomeTracker {
 	/**
 	 * Settle every wait whose completion event was missed, once the DB shows the
 	 * execution ended. Runs on the timer, and at once when Redis reconnects.
+	 * Only one recheck runs at a time; a call during a recheck joins it.
 	 */
 	async recheckAll() {
 		if (this.pendingWaits.size === 0) return;
 
+		this.recheckInFlight ??= this.recheckPendingWaits().finally(() => {
+			this.recheckInFlight = undefined;
+		});
+
+		await this.recheckInFlight;
+	}
+
+	private async recheckPendingWaits() {
 		const statusById = await this.readStatuses([...this.pendingWaits.keys()]);
 		if (!statusById) return;
 
@@ -172,7 +184,7 @@ export class JobOutcomeTracker {
 				`Execution ${executionId} ended without a completion event, resolving the wait from the DB`,
 				{ executionId, status },
 			);
-			this.eventService.emit('job-completion-missed', { executionId, status });
+			this.eventService.emit('job-completion-missed', { status });
 			this.settle(executionId, { succeeded: SUCCEEDED_STATUSES.has(status) });
 		}
 	}
