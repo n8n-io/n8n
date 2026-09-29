@@ -325,6 +325,7 @@ export class CredentialsPublicController {
 		const updatedCredential = await this.credentialsService.update(
 			credentialId,
 			updatePayload,
+			{ kind: 'user', user: req.user },
 			decryptedDataForDeps,
 		);
 

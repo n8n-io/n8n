@@ -492,10 +492,13 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
 
-			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith({
-				workflow,
-				targetProjectId: destinationProject.id,
-			});
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow,
+					targetProjectId: destinationProject.id,
+				},
+				{ kind: 'user', user },
+			);
 		});
 
 		it('proceeds with the transfer unchanged when the policy check clears', async () => {

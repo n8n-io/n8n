@@ -262,10 +262,13 @@ describe('ActiveWorkflowManager', () => {
 			// Registration fails here (no real node types); the check runs before it.
 			await activeWorkflowManager.add('wf-1', 'activate').catch(() => {});
 
-			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: 'wf-1', name: 'My workflow', nodes: VERSION_NODES },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: 'wf-1', name: 'My workflow', nodes: VERSION_NODES },
+					projectId: 'project-1',
+				},
+				{ kind: 'system', reason: 'activation' },
+			);
 		});
 
 		test('registers nothing and records an activation error when policy blocks', async () => {
