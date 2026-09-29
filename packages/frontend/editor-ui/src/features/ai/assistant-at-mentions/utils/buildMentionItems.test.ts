@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { projectWorkflowArtifact } from '../composables/useArtifactMentionIndex';
 import {
@@ -44,6 +44,7 @@ describe('buildMentionItems', () => {
 		);
 
 		expect(workflow.label).toBe('Order processing');
+		expect(workflow.nodeCount).toBe(3);
 		expect(workflow.children?.map(({ kind, label }) => [kind, label])).toEqual([
 			['group', 'Fulfilment'],
 			['node', 'Node 1'],
@@ -52,6 +53,7 @@ describe('buildMentionItems', () => {
 			'Node 2',
 			'Node 3',
 		]);
+		expect(workflow.children?.[0].nodeCount).toBe(2);
 	});
 
 	it('builds flat items with workflow and group breadcrumbs', () => {
@@ -70,24 +72,56 @@ describe('buildMentionItems', () => {
 			'Fulfilment',
 			'Node 2',
 		]);
+		expect(items.find(({ entityId }) => entityId === 'node-2')).toMatchObject({
+			nodeTypeName: 'n8n-nodes-base.noOp',
+			nodeTypeVersion: 1,
+		});
 		expect(items.filter(({ entityId }) => entityId === 'node-2')).toHaveLength(1);
 		expect(items.every(({ children, hasChildren }) => !children && !hasChildren)).toBe(true);
 	});
 
-	it('limits artifact roots and each visible child menu to ten rows', () => {
-		const index = makeIndex(26, 14);
+	it('limits artifact roots to ten rows', () => {
 		const artifacts = Array.from({ length: 15 }, (_, itemIndex) => ({
 			id: `workflow-${itemIndex + 1}`,
 			name: `Workflow ${itemIndex + 1}`,
 		}));
-		const items = buildArtifactBrowseItems(artifacts, (workflowId) =>
-			workflowId === 'workflow-1' ? index : undefined,
-		);
+		const getIndex = vi.fn(() => undefined);
+		const items = buildArtifactBrowseItems(artifacts, getIndex);
 
 		expect(items).toHaveLength(10);
-		expect(items[0].children).toHaveLength(10);
-		expect(items[0].children?.[0]).toMatchObject({ kind: 'group', label: 'Fulfilment' });
-		expect(items[0].children?.[0].children).toHaveLength(10);
+		expect(getIndex).toHaveBeenCalledTimes(10);
+	});
+
+	it('lists every child in workflow and group sub-menus', () => {
+		// 26 nodes: 14 in the group, 12 ungrouped. Both exceed the first-level cap.
+		const index = makeIndex(26, 14);
+		const [workflow] = buildArtifactBrowseItems(
+			[{ id: 'workflow-1', name: 'Order processing' }],
+			() => index,
+		);
+		const [group] = workflow.children ?? [];
+
+		expect(workflow.nodeCount).toBe(26);
+		expect(workflow.children).toHaveLength(13);
+		expect(group).toMatchObject({ kind: 'group', label: 'Fulfilment', nodeCount: 14 });
+		expect(group.children).toHaveLength(14);
+	});
+
+	it('removes the group expand affordance when all visible children are excluded', () => {
+		const index = makeIndex();
+		const excludedKeys = new Set([
+			buildMentionKey('node', 'workflow-1', 'node-2'),
+			buildMentionKey('node', 'workflow-1', 'node-3'),
+		]);
+
+		const [workflow] = buildArtifactBrowseItems(
+			[{ id: 'workflow-1', name: 'Order processing' }],
+			() => index,
+			excludedKeys,
+		);
+		const group = workflow.children?.find(({ kind }) => kind === 'group');
+
+		expect(group).toMatchObject({ hasChildren: false, children: [] });
 	});
 
 	it('keeps artifact roots browseable before their compact index loads', () => {

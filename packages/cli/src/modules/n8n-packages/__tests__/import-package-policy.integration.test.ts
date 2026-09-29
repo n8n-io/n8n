@@ -52,18 +52,20 @@ const seenTransports: string[] = [];
 class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
 	readonly id = CHECK_ID;
 
-	async onContentImport({ workflow, transport }: ContentImportContext): Promise<PolicyCheckResult> {
-		seenTransports.push(transport);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		seenTransports.push(context.transport);
 
-		if (!deniedWorkflowNames.has(workflow.name)) return { violations: [] };
+		if (!('workflow' in context) || !deniedWorkflowNames.has(context.workflow.name)) {
+			return { violations: [] };
+		}
 
 		return {
 			violations: [
 				{
 					kind: VIOLATION_KIND,
 					checkId: this.id,
-					message: deniedMessage(workflow.name),
-					subject: workflow.name,
+					message: deniedMessage(context.workflow.name),
+					subject: context.workflow.name,
 					subjectType: 'workflow',
 					scope: 'instance',
 				},

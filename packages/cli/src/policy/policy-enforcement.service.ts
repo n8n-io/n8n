@@ -132,7 +132,11 @@ export class PolicyEnforcementService {
 	async enforceContentImport(
 		context: ContentImportContext,
 	): Promise<PolicyCleared<'contentImport'>> {
-		return await this.enforce('contentImport', context, workflowSubject(context.workflow));
+		const subject =
+			'workflow' in context
+				? workflowSubject(context.workflow)
+				: credentialSubject(context.credential);
+		return await this.enforce('contentImport', context, subject);
 	}
 
 	async evaluateContentImport(context: ContentImportContext): Promise<PolicyDecision> {

@@ -10,9 +10,15 @@ import { EventService } from '@/events/event.service';
 import type { InstanceMonitoringReport } from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
-import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
+import {
+	InstanceReportAlreadyCreatedError,
+	InstanceReportingService,
+} from './instance-reporting.service';
 
 const MINUTES_PER_DAY = 24 * 60;
+
+/** How long to wait before re-attempting a delivery that failed. */
+const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
 /**
  * Fires the daily instance report at this instance's configured report time.
@@ -118,7 +124,7 @@ export class InstanceReportingScheduler {
 			// the slot collapses to zero, so this pass falls through to reportIfDue,
 			// which skips the stale row and sends a fresh report.
 			const waitMs = Math.min(
-				await this.reportingService.msUntilRetryAllowed(new Date()),
+				await this.msUntilRetryAllowed(new Date()),
 				await this.msUntilNextSlot(reportTime),
 			);
 			if (waitMs > 0) {
@@ -195,6 +201,18 @@ export class InstanceReportingScheduler {
 			await this.reportingService.sendReport();
 			return 'sent';
 		} catch (error) {
+			if (error instanceof InstanceReportAlreadyCreatedError) {
+				this.logger.info(
+					'Unexpected second instance report triggered for today, ignored because there is already a report for today',
+				);
+				// In this case, the report is not actually considered "failed" from a business perspective,
+				// but our code has a bug that led to a report being generated a second time for the same day.
+				// Returning 'failed' here, will lead to a retry of the report being scheduled after RETRY_DELAY_MS.
+				// The expectation is that after that single no-op retry, retrying stops
+				// as InstanceReportingService.sendReport will exit early.
+				return 'failed';
+			}
+
 			this.logger.warn('Failed to deliver the instance report', { error });
 			return 'failed';
 		}
@@ -204,6 +222,23 @@ export class InstanceReportingScheduler {
 		if (!this.isEnabled || this.isShuttingDown) return;
 
 		this.timeout = setTimeout(async () => await this.tick(), delayMs);
+	}
+
+	/**
+	 * How long the scheduler must wait before attempting today's report again, or
+	 * `0` when it may attempt now.
+	 *
+	 * Derived from the report row, so the wait survives a restart. Without it, a
+	 * crash loop would attempt at once every time and spend the whole budget in
+	 * seconds.
+	 */
+	private async msUntilRetryAllowed(now: Date): Promise<number> {
+		const pending = await this.reportRepository.findPending();
+		if (!pending?.lastAttemptAt) return 0;
+
+		const elapsed = now.getTime() - pending.lastAttemptAt.getTime();
+
+		return Math.max(0, RETRY_DELAY_MS - elapsed);
 	}
 }
 

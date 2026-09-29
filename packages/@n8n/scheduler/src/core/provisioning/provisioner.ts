@@ -13,8 +13,14 @@ import {
 	InvalidOwnerMemberIdError,
 	UnregisteredOwnerTypeError,
 } from '../errors';
+import {
+	DEFAULT_MATERIALIZER_OPTIONS,
+	type MaterializerHooks,
+	type MaterializerOptions,
+} from '../materializer';
 import type { ScheduledJobOwner } from '../materializer/owner-key';
 import type { ScheduledJobOwnerRegistry } from '../reconciliation/owner';
+import { withDefaults } from '../with-defaults';
 
 /** The one part of a scope the package reads itself: the owner its jobs carry. */
 export interface OwnedScope {
@@ -30,7 +36,8 @@ export interface OwnedScope {
  */
 export interface JobProvisioner<PScope extends OwnedScope, DScope = PScope> {
 	/**
-	 * Provision `scope`'s jobs so its stored set matches `desired`; see {@link provision}.
+	 * Provision `scope`'s jobs so its stored set matches `desired`, and seed the
+	 * first window of occurrences of inserted and redefined jobs; see {@link provision}.
 	 *
 	 * @throws {UnregisteredOwnerTypeError} when no resolver claimed the scope's
 	 * owner type, which would create jobs the sweep could never clean up.
@@ -54,6 +61,15 @@ export interface JobProvisionerDeps<PScope extends OwnedScope, DScope = PScope> 
 
 	/** Host tracer; defaults to a no-op. */
 	tracer?: Tracer;
+
+	/**
+	 * Options for the first window seeded at provision time. Pass the window and
+	 * timezone the running materializer uses, so both plan the same occurrences.
+	 */
+	materializer?: Partial<MaterializerOptions>;
+
+	/** Reporting for the provision-time seed. */
+	seedHooks?: MaterializerHooks;
 }
 
 /**
@@ -65,11 +81,18 @@ export function createJobProvisioner<PScope extends OwnedScope, DScope = PScope>
 	deps: JobProvisionerDeps<PScope, DScope>,
 ): JobProvisioner<PScope, DScope> {
 	const tracing = createProvisionerTracing(deps.tracer ?? noopTracer);
+	const materializerOptions = withDefaults(DEFAULT_MATERIALIZER_OPTIONS, deps.materializer);
 	return {
 		async provision(scope, desired) {
 			assertProvisionableOwner(deps.owners, scope.owner);
 			return await tracing.provision(
-				async () => await provision(deps.provisionTransaction(scope), desired),
+				async () =>
+					await provision(
+						deps.provisionTransaction(scope),
+						desired,
+						materializerOptions,
+						deps.seedHooks,
+					),
 			);
 		},
 		async deprovision(scope) {

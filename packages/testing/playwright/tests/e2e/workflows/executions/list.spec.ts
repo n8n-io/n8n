@@ -272,7 +272,9 @@ test.describe('Workflow Executions', () => {
 	});
 
 	test.describe('execution timing', () => {
-		test('should preserve execution start time for standard workflow', async ({ api }) => {
+		test('should preserve execution start time for standard workflow @engine:v2', async ({
+			api,
+		}) => {
 			const { webhookPath, workflowId, createdWorkflow } =
 				await api.workflows.importWorkflowFromFile('simple-webhook-test.json');
 

@@ -165,7 +165,7 @@ yesterday's UTC date, not today's.
 
 ```bash
 sqlite3 -header "$N8N_DB" \
-  "SELECT id, createdAt, deliveredAt, attempts, lastError, dataPoints
+  "SELECT id, reportDate, createdAt, deliveredAt, attempts, lastError, dataPoints
    FROM instance_monitoring_report ORDER BY createdAt DESC LIMIT 5;"
 ```
 
@@ -179,7 +179,7 @@ Run these after step 4. Each is short.
 
 | # | Scenario | Steps | Expected |
 |---|---|---|---|
-| 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasDeliveredToday` short-circuits the tick |
+| 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasSettledToday` short-circuits the tick |
 | 5.2 | Retry resends the same measurement | Make the receiver answer 500. Delete today's delivered row, then restart | Request arrives, `lastError` holds `rejected with status 500`, `deliveredAt` NULL, `attempts` grows. Retries land ~5 minutes apart, 3 attempts in total, then `Giving up on the instance report for today`. Every retry carries the **same** `batchId` and the same values — no re-measurement |
 | 5.3 | Recovery keeps the pending row | During 5.2, switch the receiver back to 201 before the third attempt | The next attempt reuses the pending row and marks it delivered. No second row for the day |
 | 5.4 | Untrusted certificate | Set `N8N_LICENSE_CERT` to a certificate the receiver does not trust (any well-formed one from another CA), clear today's row, restart | The receiver answers 401, delivery fails, `lastError` names the status. Nothing is marked delivered |

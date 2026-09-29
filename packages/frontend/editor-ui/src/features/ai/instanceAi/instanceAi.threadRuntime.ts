@@ -58,6 +58,10 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import type { InstanceAiMessageAuthorship } from './prefills';
+import {
+	EMPTY_ASSISTANT_MENTION_COUNTS,
+	type AssistantMentionCounts,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
@@ -68,6 +72,7 @@ import { buildThreadArtifactsContext } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
@@ -122,6 +127,14 @@ type SetupChatTelemetryContext = Pick<
 >;
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
+/** How an onboarding thread ended; the telemetry value of each exit. */
+export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
+/** Tool calls that end the onboarding flow, with the outcome each one reports. */
+const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
+	['leave-onboarding', 'left'],
+	['build-workflow', 'build'],
+]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
 
@@ -143,6 +156,10 @@ interface PendingResponseMetric {
 	isFirstUserMessage: boolean;
 	actionSource: InstanceAiThreadSourcePersisted;
 	generation: number;
+	// Context of the message that started the run, repeated on the response event
+	// so outcome cuts by context need no join back to the send event.
+	mentionCounts: AssistantMentionCounts;
+	attachmentCount: number;
 }
 
 /**
@@ -157,6 +174,12 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	onOnboardingLeft?: (
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
@@ -192,6 +215,22 @@ export function getAgentBuilderTargetFromThreadMetadata(
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
+}
+
+export function getAgentBuilderTargetsFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const registry = metadata?.[INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY];
+	if (!isRecord(registry)) return [];
+	return Object.values(registry).flatMap((value) => {
+		if (
+			!isRecord(value) ||
+			typeof value.agentId !== 'string' ||
+			typeof value.projectId !== 'string'
+		)
+			return [];
+		return [{ agentId: value.agentId, projectId: value.projectId }];
+	});
 }
 
 export function getPendingAgentTargetFromThreadMetadata(
@@ -576,7 +615,13 @@ export function createThreadRuntime(
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
 
-	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
+	const {
+		producedArtifacts,
+		resourceNameIndex,
+		linkableResourceNameIndex,
+		producedArtifactOrigins,
+		seedArtifactOrigins,
+	} = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
@@ -587,6 +632,7 @@ export function createThreadRuntime(
 		},
 		() => pendingWorkflowAttachment.value ?? undefined,
 		() => [...transientWorkflowReferences.values()],
+		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -715,6 +761,8 @@ export function createThreadRuntime(
 				response_kind: signal.responseKind,
 				action_source: metric.actionSource,
 				tab_visible: tabVisible,
+				mention_counts: metric.mentionCounts,
+				attachment_count: metric.attachmentCount,
 			});
 		});
 	}
@@ -877,6 +925,10 @@ export function createThreadRuntime(
 
 	function rearmRunState(runId: string | null | undefined): void {
 		if (!runId) return;
+		// A run the stream already finished (the host-seeded onboarding follow-up) must not
+		// come back as active: `run-finish` clears `activeRunId` only for the active run.
+		const groupId = groupIdByRunId.get(runId);
+		if (groupId && runStateByGroupId.get(groupId)?.status !== 'active') return;
 		activeRunId.value = runId;
 		markAssistantMessageStreaming(messages.value, runId);
 		triggerRef(messages);
@@ -1142,6 +1194,24 @@ export function createThreadRuntime(
 			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
+			}
+			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
+			// too, so the user gets the normal chrome back instead of a stuck flow.
+			if (parsed.data.type === 'tool-call') {
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const reason = parsed.data.payload.args.reason;
+				if (outcome) {
+					hooks.onOnboardingLeft?.(
+						threadId,
+						outcome,
+						typeof reason === 'string' ? reason : undefined,
+					);
+				}
+			} else if (
+				parsed.data.type === 'run-finish' &&
+				(parsed.data.payload.status === 'error' || parsed.data.payload.status === 'interrupted')
+			) {
+				hooks.onOnboardingLeft?.(threadId, 'run_failed');
 			}
 			if (parsed.data.type === 'preferences-applied') {
 				// Last write wins, like `latestTasks` and `latestSetupItems`: a thread runs one
@@ -1516,6 +1586,8 @@ export function createThreadRuntime(
 		isFirstMessage: boolean,
 		authorship: InstanceAiMessageAuthorship,
 		actionSource: InstanceAiThreadSourcePersisted,
+		mentionCounts: AssistantMentionCounts,
+		attachmentCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1533,6 +1605,8 @@ export function createThreadRuntime(
 			prefill_type: isPrefill ? authorship.prefillType : null,
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			mention_counts: mentionCounts,
+			attachment_count: attachmentCount,
 		});
 	}
 
@@ -1601,6 +1675,8 @@ export function createThreadRuntime(
 			pushRef?: string;
 			handoffContext?: InstanceAiHandoffContext;
 			responseStartedAtEpochMs?: number;
+			mentionCounts?: AssistantMentionCounts;
+			mentionedWorkflowIds?: readonly string[];
 		},
 	): Promise<boolean> {
 		const {
@@ -1609,6 +1685,8 @@ export function createThreadRuntime(
 			pushRef,
 			handoffContext,
 			responseStartedAtEpochMs = instanceAiResponseNow(),
+			mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+			mentionedWorkflowIds = [],
 		} = opts;
 		const metricGeneration = responseMetricGeneration;
 		amendContext.value = null;
@@ -1617,8 +1695,16 @@ export function createThreadRuntime(
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const actionSource = resolveActionSource();
+			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
-			trackUserMessageSent(isFirstMessage, authorship, actionSource);
+			const attachmentCount = attachments?.length ?? 0;
+			trackUserMessageSent(
+				isFirstMessage,
+				authorship,
+				actionSource,
+				mentionCounts,
+				attachmentCount,
+			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
 			if (!runId) {
@@ -1632,6 +1718,8 @@ export function createThreadRuntime(
 				isFirstUserMessage: isFirstMessage,
 				actionSource,
 				generation: metricGeneration,
+				mentionCounts,
+				attachmentCount,
 			});
 			return true;
 		} finally {
@@ -1838,6 +1926,7 @@ export function createThreadRuntime(
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
+		producedArtifactOrigins,
 		activeArtifactId,
 		setActiveArtifactId,
 		feedbackByResponseId,
@@ -1879,6 +1968,7 @@ export function createThreadRuntime(
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		resolveActionSource,
 		addAlwaysAllowKey,
 		canAlwaysAllow,
 		findToolCallByRequestId,

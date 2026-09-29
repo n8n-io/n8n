@@ -40,6 +40,7 @@ import type {
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type {
@@ -71,6 +72,7 @@ describe('TriggerExecutionContextFactory', () => {
 	const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
 	const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const nodeTypes = createNodeTypes();
 	// The real service over a mocked dispatcher: `engineV2Dispatcher.handlesWorkflow`
 	// is the only input, and the refusals under test stay the production ones.
@@ -98,6 +100,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
+		workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
 		scopedLogger = mock<Logger>();
 		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 		errorReporter = mock<ErrorReporter>();
@@ -118,6 +121,7 @@ describe('TriggerExecutionContextFactory', () => {
 			pollCursorService,
 			mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
 			engineV2ActiveTriggers,
+			workflowPublisherService,
 		);
 	});
 
@@ -151,7 +155,7 @@ describe('TriggerExecutionContextFactory', () => {
 					workflowData,
 					node,
 					triggerData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					undefined,
@@ -164,6 +168,103 @@ describe('TriggerExecutionContextFactory', () => {
 					projectName: 'Test Project',
 					source: 'trigger',
 				});
+			});
+
+			// A registration outlives republishes: `resolveWorkflowData` re-reads the
+			// published version at every emit, so the publisher has to be read on the
+			// same beat or the run is attributed to whoever published at registration.
+			test('attributes the run to the publisher of the version the emit resolves', async () => {
+				const registeredData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test Workflow',
+					versionId: 'version-at-registration',
+				});
+				const republishedData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test Workflow',
+					versionId: 'version-now-live',
+					// Publication updates the row before it swaps the published version,
+					// so the pointer can already name the next one. It is not the key.
+					activeVersionId: 'version-publishing',
+				});
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				workflowPublisherService.findPublisherUserId.mockResolvedValue('publisher-of-live-version');
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					registeredData,
+					additionalData,
+					'trigger',
+					'activate',
+					async () => republishedData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(
+					mock<Workflow>(),
+					mock<INode>({ name: 'Trigger Node' }),
+					additionalData,
+					'trigger',
+					'activate',
+				);
+
+				context.emit([[]]);
+				await sleep(0);
+
+				expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(
+					'wf-1',
+					'version-now-live',
+				);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					republishedData,
+					expect.anything(),
+					[[]],
+					expect.objectContaining({ userId: 'publisher-of-live-version' }),
+					'trigger',
+					undefined,
+					undefined,
+				);
+			});
+
+			// The FK nulls the column, and IAM-1384 requires the run to stay unattributed.
+			test('leaves the run unattributed when the publisher was deleted after registration', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', versionId: 'v1' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					userId: 'deleted-publisher',
+				});
+				workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					'trigger',
+					'activate',
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(
+					mock<Workflow>(),
+					mock<INode>({ name: 'Trigger Node' }),
+					additionalData,
+					'trigger',
+					'activate',
+				);
+
+				context.emit([[]]);
+				await sleep(0);
+
+				// Asserted as well as the empty attribution, so this still fails if the
+				// emit ever stops asking and hardcodes an unattributed run.
+				expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith('wf-1', 'v1');
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					[[]],
+					expect.objectContaining({ userId: undefined }),
+					'trigger',
+					undefined,
+					undefined,
+				);
 			});
 
 			test('forwards deduplicationKey to runWorkflow', async () => {
@@ -192,7 +293,7 @@ describe('TriggerExecutionContextFactory', () => {
 					workflowData,
 					node,
 					[[]],
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
@@ -616,8 +717,96 @@ describe('TriggerExecutionContextFactory', () => {
 					workflowData,
 					node,
 					pollData,
-					additionalData,
+					expect.objectContaining({ userId: undefined }),
 					mode,
+					undefined,
+				);
+			});
+
+			// The poll emit has its own run-dispatch branches, so the attribution the
+			// trigger emit is covered for has to be pinned here separately.
+			test('attributes a polled run to the publisher of the version the emit resolves', async () => {
+				const registeredData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					versionId: 'version-at-registration',
+				});
+				const republishedData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					versionId: 'version-now-live',
+					// Publication updates the row before it swaps the published version,
+					// so the pointer can already name the next one. It is not the key.
+					activeVersionId: 'version-publishing',
+				});
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				workflowPublisherService.findPublisherUserId.mockResolvedValue('publisher-of-live-version');
+
+				const getPollFunctions = factory.getExecutePollFunctions(
+					registeredData,
+					additionalData,
+					'trigger',
+					'activate',
+					async () => republishedData,
+				);
+				const context = getPollFunctions(
+					mock<Workflow>({ id: 'wf-1' }),
+					mock<INode>({ name: 'Poll Node' }),
+					additionalData,
+					'trigger',
+					'activate',
+				);
+
+				context.__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(
+					'wf-1',
+					'version-now-live',
+				);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					republishedData,
+					expect.anything(),
+					[[{ json: {} }]],
+					expect.objectContaining({ userId: 'publisher-of-live-version' }),
+					'trigger',
+					undefined,
+				);
+			});
+
+			// The FK nulls the column, and IAM-1384 requires the run to stay unattributed.
+			test('leaves a polled run unattributed when the publisher was deleted', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', versionId: 'v1' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					userId: 'deleted-publisher',
+				});
+				workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
+
+				const getPollFunctions = factory.getExecutePollFunctions(
+					workflowData,
+					additionalData,
+					'trigger',
+					'activate',
+					async () => workflowData,
+				);
+				const context = getPollFunctions(
+					mock<Workflow>({ id: 'wf-1' }),
+					mock<INode>({ name: 'Poll Node' }),
+					additionalData,
+					'trigger',
+					'activate',
+				);
+
+				context.__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				// Asserted as well as the empty attribution, so this still fails if the
+				// emit ever stops asking and hardcodes an unattributed run.
+				expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith('wf-1', 'v1');
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					[[{ json: {} }]],
+					expect.objectContaining({ userId: undefined }),
+					'trigger',
 					undefined,
 				);
 			});
@@ -938,7 +1127,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.objectContaining({ id: 'wf-1' }),
 				node,
 				pollData,
-				additionalData,
+				expect.objectContaining({ userId: undefined }),
 				mode,
 				{ lastItemId: 'a' },
 				responsePromise,
@@ -962,7 +1151,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.objectContaining({ id: 'wf-1' }),
 				node,
 				pollData,
-				additionalData,
+				expect.objectContaining({ userId: undefined }),
 				mode,
 				{ lastItemId: 'a' },
 				responsePromise,
@@ -1086,6 +1275,7 @@ describe('TriggerExecutionContextFactory', () => {
 					pollCursorService,
 					globalConfig,
 					engineV2ActiveTriggers,
+					mock(),
 				);
 				const getPollFunctions = budgetFactory.getExecutePollFunctions(
 					mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
@@ -1175,7 +1365,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.anything(),
 				firstNode,
 				pollData,
-				additionalData,
+				expect.objectContaining({ userId: undefined }),
 				mode,
 				{ lastItemId: 'first-only' },
 				undefined,
@@ -1406,7 +1596,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.anything(),
 				node,
 				pollData,
-				additionalData,
+				expect.objectContaining({ userId: undefined }),
 				mode,
 				{ lastItemId: 'a' },
 				undefined,

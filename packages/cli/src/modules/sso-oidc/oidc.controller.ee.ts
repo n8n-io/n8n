@@ -17,7 +17,7 @@ import {
 } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 

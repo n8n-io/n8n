@@ -4,10 +4,12 @@ import {
 } from '@n8n/api-types';
 import { onScopeDispose, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
-import type {
-	AssistantMentionArtifactReference,
-	AssistantMentionItem,
-	AssistantMentionSelection,
+import {
+	EMPTY_ASSISTANT_MENTION_COUNTS,
+	type AssistantMentionArtifactReference,
+	type AssistantMentionCounts,
+	type AssistantMentionItem,
+	type AssistantMentionSelection,
 } from '../assistantAtMentions.types';
 import { mergeNodeSets } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
 
@@ -37,6 +39,7 @@ export function useAssistantMentionAttachments(options: {
 	reservedAttachmentCount: MaybeRefOrGetter<number>;
 	onReferenceAdded: (reference: AssistantMentionArtifactReference) => void;
 	onReferenceRemoved: (referenceId: string) => void;
+	onMentionRemoved?: (kind: AssistantMentionItem['kind']) => void;
 	onCleared?: () => void;
 }) {
 	let referenceSequence = 0;
@@ -89,6 +92,7 @@ export function useAssistantMentionAttachments(options: {
 		for (const [mentionKey, record] of selectedRecords) {
 			if (attachmentContainsMention(record.item)) continue;
 			selectedRecords.delete(mentionKey);
+			options.onMentionRemoved?.(record.item.kind);
 			releaseReference(record);
 		}
 	}
@@ -210,6 +214,19 @@ export function useAssistantMentionAttachments(options: {
 		return [...selectedRecords.values()].map(({ referenceId }) => referenceId);
 	}
 
+	function snapshotCounts(): AssistantMentionCounts {
+		const counts: AssistantMentionCounts = { ...EMPTY_ASSISTANT_MENTION_COUNTS };
+		for (const { item } of selectedRecords.values()) {
+			counts[item.kind]++;
+			counts.total++;
+		}
+		return counts;
+	}
+
+	function snapshotMentionedWorkflowIds(): string[] {
+		return [...new Set([...selectedRecords.values()].map(({ item }) => item.workflowId))];
+	}
+
 	function detachSubmission(
 		referenceIds: AssistantMentionAttachmentSubmissionSnapshot = snapshotSubmission(),
 	): AssistantMentionAttachmentSubmission {
@@ -266,6 +283,8 @@ export function useAssistantMentionAttachments(options: {
 		removeResource,
 		clearForProjectChange,
 		snapshotSubmission,
+		snapshotCounts,
+		snapshotMentionedWorkflowIds,
 		detachSubmission,
 	};
 }

@@ -205,6 +205,28 @@ describe('createWorkflowMentionSourceProvider', () => {
 		expect(results.map(({ workflowId }) => workflowId)).toEqual(['artifact', 'result']);
 	});
 
+	it('overfetches enough workflow matches to replace excluded results', async () => {
+		const workflowsListStore = useWorkflowsListStore();
+		vi.spyOn(workflowsListStore, 'searchWorkflows').mockResolvedValue(
+			Array.from({ length: 11 }, (_, index) =>
+				makeWorkflow(`workflow-${index}`, `Order workflow ${index}`),
+			),
+		);
+		const source = createWorkflowMentionSourceProvider({
+			projectId: 'project-1',
+			artifactWorkflowIds: [],
+			excludedWorkflowIds: ['workflow-0'],
+		});
+
+		const results = await source.search('order');
+
+		expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith(
+			expect.objectContaining({ options: expect.objectContaining({ take: 11 }) }),
+		);
+		expect(results).toHaveLength(10);
+		expect(results.map(({ workflowId }) => workflowId)).not.toContain('workflow-0');
+	});
+
 	it('does not issue unscoped browse or search requests', async () => {
 		const recentWorkflowsStore = useRecentWorkflowsStore();
 		const workflowsListStore = useWorkflowsListStore();
@@ -261,6 +283,23 @@ describe('useAssistantMentionSources', () => {
 		expect(sources.searchResults.value).toHaveLength(10);
 		expect(sources.searchResults.value[0]).toBe(artifact);
 		expect(sources.searchResults.value.filter(({ key }) => key === artifact.key)).toHaveLength(1);
+		scope.stop();
+	});
+
+	it('filters excluded results before applying the combined search limit', async () => {
+		const items = Array.from({ length: 15 }, (_, index) =>
+			buildWorkflowMentionItem(makeWorkflow(`${index}`, `Orders ${index}`), 'workflows'),
+		);
+		const excludedKeys = ref(new Set(items.slice(0, 10).map(({ key }) => key)));
+		const scope = effectScope();
+		let sources!: ReturnType<typeof useAssistantMentionSources>;
+		scope.run(() => {
+			sources = useAssistantMentionSources([provider('workflows', items)], { excludedKeys });
+		});
+
+		await sources.search('orders');
+
+		expect(sources.searchResults.value).toEqual(items.slice(10));
 		scope.stop();
 	});
 
