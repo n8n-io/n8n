@@ -37,12 +37,14 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
   s_e5a64625bc5cd1::t_67048d46631f62 924-942,946-958
   s_e5a64625bc5cd1::t_265f2f4a8f0794 8,11,30,32,34-43,368-474,483-542,544-716,1439-1440
   s_e5a64625bc5cd1::t_ba6c5cc3a79621 33,543
+  s_89ffeedfd03265::t_02d5a32c798173 63,256,475-482
 packages/cli/src/modules/agents/agent-turn-execution.service.ts
   s_c5954c3047b5ed::t_bea982dc8bb0a4 19,23,52,119,142,162-167,305,322,391,393-394,422-423,445-454,459
   s_c5954c3047b5ed::t_c228808546dd98 488
   s_c5954c3047b5ed::t_e2bb743d4b423e 131,133-136,372-380,455-458
   s_c5954c3047b5ed::t_26cbe321d408de 53,487
   s_c5954c3047b5ed::t_06c86683fac197 17,334
+  s_89ffeedfd03265::t_f0a687a4b7a843 22,121,195
 docs/generated/sqlite-schema/agent_execution_threads.md
   s_c5954c3047b5ed::t_fcb5de2355c8ed 67,135-138,140,143-145
 packages/cli/src/modules/agents/agent-message-queue.service.ts
@@ -85,6 +87,7 @@ packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
   s_c5954c3047b5ed::t_e87921e3a97a34 2972-3001,8957-8959,9014-9016
   s_c5954c3047b5ed::t_00ea2db36650d2 8949,8974
   s_c5954c3047b5ed::t_e1ea113788a34f 9342,9344,9350-9364,9621-9622,9629-9643
+  s_89ffeedfd03265::t_f0a687a4b7a843 12,21-26,2828-2896
 packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
   s_c5954c3047b5ed::t_6f5379daf5841e 15
   s_c5954c3047b5ed::t_05f9c87d8c94c6 1-2,42-43,46-47
@@ -109,6 +112,7 @@ packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
   s_c5954c3047b5ed::t_f29f427d80a56f 70-75
   s_c5954c3047b5ed::t_7b3f42f5bcb705 4-10,351,359,412,464,1182,1184,1214
   s_c5954c3047b5ed::t_9a90c27a9a1787 60,793,937-942,946-947,950
+  s_89ffeedfd03265::t_f0a687a4b7a843 847
 packages/cli/src/modules/agents/types/agent-queued-message.ts
   s_c5954c3047b5ed::t_ff1a39afd0a8fc 1-2,5,10-20,22-29,31-32,35-38,52-55,57-65
   s_c5954c3047b5ed::t_c0f7a77d2c67b8 3,30
@@ -123,6 +127,7 @@ docs/generated/postgres-schema/public.agent_execution.md
   s_c5954c3047b5ed::t_571a1601d8fe51 63,99-102,104,107-109
 packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
   s_c5954c3047b5ed::t_52c9184c610c3c 18,127,157
+  s_89ffeedfd03265::t_f0a687a4b7a843 23,159
 docs/generated/sqlite-schema/agent_message_queue.md
   s_c5954c3047b5ed::t_2000fc910ca3dc 1-8,10-20,22,25-31,36-42,45-53,56-61,63,66-69,71-93,108-133
 packages/@n8n/agents/src/runtime/state/run-state.ts
@@ -149,9 +154,11 @@ docs/generated/postgres-schema/public.agent_message_queue.md
 packages/cli/src/modules/agents/agents.module.ts
   s_c5954c3047b5ed::t_a9321c49724831 245,289
   s_c5954c3047b5ed::t_cddf6b756e7875 125-128
+  s_89ffeedfd03265::t_f0a687a4b7a843 243,287
 packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
   s_c5954c3047b5ed::t_d20eba6f232a50 139
   s_c5954c3047b5ed::t_52c9184c610c3c 23,156
+  s_89ffeedfd03265::t_f0a687a4b7a843 26,41,158,163,723-724,731,749-756,776
 packages/@n8n/agents/src/types/sdk/memory.ts
   s_c5954c3047b5ed::t_23aecdc1369706 405-406
 packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
@@ -181,6 +188,7 @@ packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.t
   s_e5a64625bc5cd1::t_3b210830ec3866 30,32-33,52,61,191-192,202,272-273,278-279,304-306,374-528
   s_e5a64625bc5cd1::t_89cb7af94c9190 309-310,333
   s_e5a64625bc5cd1::t_6b7cddab515ea9 307-308,311-332,334-373,1570,1575-1607
+  s_89ffeedfd03265::t_f0a687a4b7a843 49,187,261,284,629-634,643-649
 packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
   s_c5954c3047b5ed::t_52c9184c610c3c 13
   s_c5954c3047b5ed::t_8197941594545f 60,74,184-204
@@ -195,6 +203,7 @@ packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integrati
   s_c5954c3047b5ed::t_d20eba6f232a50 225
   s_c5954c3047b5ed::t_52c9184c610c3c 40,290
   s_e5a64625bc5cd1::t_e70aaa33248c44 36-37,303-304
+  s_89ffeedfd03265::t_f0a687a4b7a843 51,292
 packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
   s_c5954c3047b5ed::t_bbdde0cd933efe 74-75
   s_c5954c3047b5ed::t_d20eba6f232a50 68-73
@@ -245,6 +254,7 @@ packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
   s_c5954c3047b5ed::t_cddf6b756e7875 2,7-9,11,36-59,61-80,82-90,111,114-118,121-125,134,336,484,518,564,617,711,786,850,884,912,966,1031,1062,1093,1121,1147,1174,1210,1272,1282-1285,1297-1300,1311,1343,1374,1420,1483,1542,1698,1793,2125,2166,2272,2307,2345,2385,2436,2486,2535,2592,2651,2710,2748,2795,2839,2871,2934,2981,3045,3097,3135,3156,3176,3215,3236,3256,3289,3292-3293,3295,3298,3303-3306,3308-3316,3318-3330,3332-3334,3354-3355,3367,3432,3478,3510,3546,3593,3636,3714,3759,3803
   s_c5954c3047b5ed::t_3a2626bcb4f182 3290
   s_e5a64625bc5cd1::t_9da4d32f71d0ac 32,1560-1566,1572,1579-1582,1584-1597,1603-1607
+  s_89ffeedfd03265::t_f0a687a4b7a843 1567-1571,1573-1578,1583,1598-1602
 packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
   s_c5954c3047b5ed::t_cddf6b756e7875 29
   s_c5954c3047b5ed::t_2df1efd1dc40ee 31
@@ -289,6 +299,7 @@ packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
   s_c5954c3047b5ed::t_cddf6b756e7875 25-29,150,160,188,230-232,322-323,344-345,754,795,822,835-836,842,846,848-867,873-910,912-913,916,922,927,934-957,1070
   s_e5a64625bc5cd1::t_4722ce25f39976 527-550,553-554,557,559-562
   s_e5a64625bc5cd1::t_e6e6dd90752457 563-564
+  s_89ffeedfd03265::t_f0a687a4b7a843 2-6,551-552,555-556,558
 packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
   s_c5954c3047b5ed::t_cddf6b756e7875 362
 packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
@@ -443,6 +454,7 @@ packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
   s_c5954c3047b5ed::t_f29f427d80a56f 8-12,14-17,19-20,26-34,369,425,449
   s_c5954c3047b5ed::t_6a74ae04e68e7d 13,18
   s_c5954c3047b5ed::t_a805cea35fd8b4 6-7,21,50,52-54,58,193,376,436,490-494
+  s_89ffeedfd03265::t_f0a687a4b7a843 203,470,526
 packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
   s_c5954c3047b5ed::t_56226ca3b4a728 165
   s_c5954c3047b5ed::t_3ae7a063cf9b9f 164
@@ -463,6 +475,7 @@ packages/@n8n/agents/src/runtime/loop/runtime-context.ts
 packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
   s_c5954c3047b5ed::t_9bc5606436fe17 135-141
   s_c5954c3047b5ed::t_56226ca3b4a728 120,124,127,142-162,174-191
+  s_89ffeedfd03265::t_f0a687a4b7a843 172
 packages/@n8n/agents/src/runtime/loop/generate-sink.ts
   s_c5954c3047b5ed::t_a08041e409bf95 94-95
   s_c5954c3047b5ed::t_f29f427d80a56f 17
@@ -483,6 +496,7 @@ packages/@n8n/agents/src/runtime/model/raw-error.ts
   s_c5954c3047b5ed::t_15707b0f9a2684 5
 packages/@n8n/agents/src/types/runtime/tool-execution.ts
   s_c5954c3047b5ed::t_f29f427d80a56f 1-14,16-106,108-124,126-147
+  s_89ffeedfd03265::t_f0a687a4b7a843 15,107,125
 packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
   s_c5954c3047b5ed::t_15707b0f9a2684 17
 packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
@@ -495,6 +509,7 @@ packages/@n8n/agents/src/types/runtime/delegation.ts
 packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
   s_c5954c3047b5ed::t_a805cea35fd8b4 1-228,230-263,265-352,354-373,375-415,417-445,457-466,470-484,486-505,506-523
   s_c5954c3047b5ed::t_6d856bdc8dbf0b 264,416,446-456,467-469,485
+  s_89ffeedfd03265::t_f0a687a4b7a843 229,353,374
 packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-runner.ts
   s_c5954c3047b5ed::t_a9e2493f8f1e4e 1-420,422-553
   s_c5954c3047b5ed::t_6d856bdc8dbf0b 421
@@ -561,6 +576,7 @@ packages/cli/src/modules/agents/background/sub-agent-background-state.ts
   s_e5a64625bc5cd1::t_b70abb3300f6d2 6-12,28-50
   s_e5a64625bc5cd1::t_0a405d2c804484 13,15-16,18,22-24,26-27
   s_e5a64625bc5cd1::t_4731d1ecacafc0 14
+  s_89ffeedfd03265::t_f0a687a4b7a843 1-5,17,19-21,25
 packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
   s_e5a64625bc5cd1::t_fcd7722f503b86 20-21,80
   s_e5a64625bc5cd1::t_273082114b0478 20
@@ -590,18 +606,56 @@ packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-ha
   s_e5a64625bc5cd1::t_0bd5c86955870d 249,260,385
   s_e5a64625bc5cd1::t_ba5b88852972f7 87-91,100,102,104,108-109,111,140-145,146-155
   s_e5a64625bc5cd1::t_fc2b7cf7b18a39 112
+  s_89ffeedfd03265::t_f0a687a4b7a843 50-59,69,78,85,92-99,103,132
 packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
   s_e5a64625bc5cd1::t_d78d061a082772 20,106-114,116-119,127-128,297,305,333
   s_e5a64625bc5cd1::t_ee3da683a5acfe 83,88,115,174
 packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
   s_e5a64625bc5cd1::t_f14a75855e9f76 13,32,40-41,103-107,120-131,138,168,272,332,338,485-511
   s_e5a64625bc5cd1::t_ee3da683a5acfe 317-322
+  s_89ffeedfd03265::t_f0a687a4b7a843 43,152,301
 packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
   s_e5a64625bc5cd1::t_7ff18cab0231c0 7,12,14-17,136-180
 packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
   s_e5a64625bc5cd1::t_f5eda2cea546e9 4,14,38-39,125-151,203
 packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
   s_e5a64625bc5cd1::t_930afa5b705a9d 132
+packages/cli/src/modules/agents/__tests__/agent-tool-approval.service.test.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 1-66
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 12,64-66
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 179-231,316,319-320,324-325
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 11,271-272
+packages/@n8n/agents/src/sdk/tool.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 15,23,124-125,127-132,143,159-165
+packages/cli/src/modules/agents/repositories/agent-thread-grant.repository.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 1-21
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 1,1615-1698
+packages/@n8n/telemetry/src/events/agents.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 163-174
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 36-39,198-201,220
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 5,9,27,185-195,238,246
+packages/cli/src/modules/agents/agent-tool-approval.service.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 1-51
+packages/@n8n/agents/src/index.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 22
+packages/cli/src/modules/agents/entities/agent-thread-grant.entity.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 1-21
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 330,352
+packages/@n8n/db/src/migrations/common/1790663602081-CreateAgentThreadGrantTable.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 1-24
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 6,12-17,51-52,84,115
+packages/@n8n/agents/src/types/index.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 75
+packages/cli/src/modules/agents/integrations/__tests__/component-mapper.test.ts
+  s_89ffeedfd03265::t_f0a687a4b7a843 325-329,331,341
 ---
 {
   "schema_version": "authorship/3.0.0",
