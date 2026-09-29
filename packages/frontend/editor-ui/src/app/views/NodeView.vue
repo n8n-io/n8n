@@ -71,6 +71,7 @@ import {
 	isNodeCreatorOpenFromConnection,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import {
@@ -149,7 +150,12 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nCanvasThinkingPill,
+	N8nCanvasCollaborationPill,
+	N8nLogo,
+} from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
@@ -203,6 +209,7 @@ const workflowExecutionState = computed(() =>
 );
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 const groupTelemetry = useCanvasNodeGroupTelemetry();
@@ -308,6 +315,7 @@ const hideCanvasControls = computed(() => {
 const stripedCanvasBackground = computed(() => route.query.canvasBackground !== 'dots');
 
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const isCanvasOnlyLogoVisible = computed(() => settingsStore.isCanvasOnly && !isDemoRoute.value);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -2208,9 +2216,18 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="onToggleChat"
 		>
-			<Suspense v-if="!isCanvasReadOnly">
-				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
-			</Suspense>
+			<div :class="$style.canvasTopLeft">
+				<N8nLogo
+					v-if="isCanvasOnlyLogoVisible"
+					size="small"
+					:collapsed="false"
+					:class="$style.canvasOnlyLogo"
+					aria-hidden="true"
+				/>
+				<Suspense v-if="!isCanvasReadOnly">
+					<LazySetupWorkflowCredentialsButton />
+				</Suspense>
+			</div>
 			<EvaluationsCanvasInfoCard
 				v-if="!isCanvasReadOnly"
 				:class="$style.evaluationsCanvasInfoCardWrapper"
@@ -2354,10 +2371,20 @@ onBeforeUnmount(() => {
 	}
 }
 
-.setupCredentialsButtonWrapper {
+.canvasTopLeft {
 	position: absolute;
 	left: var(--spacing--sm);
 	top: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+}
+
+.canvasOnlyLogo {
+	height: calc(var(--height--lg) + 2 * var(--spacing--5xs));
+	pointer-events: none;
+	user-select: none;
 }
 
 .evaluationsCanvasInfoCardWrapper {
