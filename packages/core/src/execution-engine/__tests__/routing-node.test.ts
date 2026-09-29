@@ -2750,7 +2750,7 @@ describe('RoutingNode', () => {
 			return await routingNode.runNode();
 		};
 		const getRequestOptions = (result: Awaited<ReturnType<typeof runWithCredential>>) =>
-			(result[0]![0]!.json as { requestOptions: IHttpRequestOptions }).requestOptions;
+			(result![0]![0]!.json as { requestOptions: IHttpRequestOptions }).requestOptions;
 
 		test("propagates credential allowedDomains when mode is 'domains'", async () => {
 			const result = await runWithCredential({
