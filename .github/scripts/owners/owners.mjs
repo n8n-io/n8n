@@ -30,6 +30,25 @@ export const GROUPS_FILE = join(REPO_ROOT, "GROUPS.json");
 // GitHub team handle, e.g. `@n8n-io/catalysts`.
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
 const GROUP_TOKEN = /^[\w.-]+$/;
+const KNOWN_TEAM_SLUGS = new Set([
+	"adore",
+	"ai",
+	"ai-assistant",
+	"ai-trust",
+	"agents",
+	"catalysts",
+	"community-engineering",
+	"design-engineering",
+	"frontend",
+	"governance-and-observability",
+	"iam",
+	"instance-ai",
+	"ligo",
+	"migrations-review",
+	"nodes",
+	"qa-dx",
+	"relay",
+]);
 
 /**
  * Parse the ordered group definitions in GROUPS.json.
@@ -62,13 +81,21 @@ export function parseGroupsContent(content) {
 		if (!Array.isArray(members) || members.length === 0 || !members.every((member) => typeof member === "string")) {
 			throw new Error(`GROUPS.json: group "${group}" must contain a non-empty array of handles`);
 		}
+		groups.set(group, members);
+	}
 
+	for (const [group, members] of groups) {
 		for (const member of members) {
 			if (!TEAM_TOKEN.test(member) && !GROUP_TOKEN.test(member)) {
 				throw new Error(`GROUPS.json: invalid handle "${member}" in group "${group}"`);
 			}
+			if (!groups.has(member)) {
+				const slug = member.replace(/^@[^/]+\//, "");
+				if (!KNOWN_TEAM_SLUGS.has(slug)) {
+					throw new Error(`GROUPS.json: unknown team "${member}" in group "${group}"`);
+				}
+			}
 		}
-		groups.set(group, members);
 	}
 
 	for (const [group, members] of groups) {
@@ -159,7 +186,7 @@ export function parseOwnersContent(content, groups = new Map()) {
 
 		entries.push({
 			pattern,
-			team,
+			team: groups.has(team) && !TEAM_TOKEN.test(team) ? `@n8n-io/${team}` : team,
 			required,
 			line: lineNumber,
 			...(groups.has(team) ? { teams: expandGroup(team, groups) } : {}),

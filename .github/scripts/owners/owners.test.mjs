@@ -106,7 +106,10 @@ describe('parseGroupsContent', () => {
 			'core-experience': ['adore', 'ai', 'nodes', 'relay', 'community-engineering'],
 		}));
 
-		assert.deepEqual(parseOwnersContent('pkg/ core-experience', groups)[0].teams, [
+		const entry = parseOwnersContent('pkg/ core-experience', groups)[0];
+
+		assert.equal(entry.team, '@n8n-io/core-experience');
+		assert.deepEqual(entry.teams, [
 			'@n8n-io/adore',
 			'@n8n-io/ai-trust',
 			'@n8n-io/agents',
@@ -115,6 +118,13 @@ describe('parseGroupsContent', () => {
 			'@n8n-io/relay',
 			'@n8n-io/community-engineering',
 		]);
+	});
+
+	it('rejects unknown team slugs', () => {
+		assert.throws(
+			() => parseGroupsContent(JSON.stringify({ platform: ['not-a-team'] })),
+			/GROUPS\.json: unknown team "not-a-team" in group "platform"/,
+		);
 	});
 
 	it('allows a group to include groups defined earlier', () => {
