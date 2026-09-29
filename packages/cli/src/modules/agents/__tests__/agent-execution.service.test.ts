@@ -253,6 +253,59 @@ describe('AgentExecutionService', () => {
 				}),
 			).resolves.toBeUndefined();
 		});
+
+		it('drains pending side-call usage recordings before the terminal write so a crash after finalization does not lose cost', async () => {
+			// `onSideCallUsage` dispatches `recordSideCallUsage` fire-and-forget
+			// (`void` in `agent-turn-execution.service.ts`). Without a drain at
+			// finalization, a side-call `incrementCost` still in flight when the
+			// process exits after the terminal UPDATE would be lost. The terminal
+			// write drains this execution's pending recordings first, so the
+			// side-call cost settles before the row is finalized.
+			const gate = createDeferredPromise();
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await gate.promise;
+			});
+
+			// Fire-and-forget a side call (do not await), simulating the SDK path.
+			void service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'drain-1',
+			});
+
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			// Start finalization (do not await): it blocks on the drain, so the
+			// terminal write must not have run yet.
+			const finalize = service
+				.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record,
+				})
+				.catch((error: unknown) => error);
+
+			// `recordSideCallUsage` invokes `incrementCost` synchronously (before
+			// its first await), so it has already been called. Finalization blocks
+			// on the drain, so the terminal write has not run yet.
+			await Promise.resolve();
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+
+			gate.resolve();
+			const result = await finalize;
+			expect(result).toBe('execution-1');
+
+			// The side-call cost settled before the terminal write committed.
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0],
+			);
+		});
 	});
 
 	describe('startExecutionRecording', () => {

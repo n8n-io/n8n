@@ -151,6 +151,12 @@ export class AgentExecutionService {
 	 */
 	private readonly sideCallReportInFlight = new Map<string, Promise<void>>();
 
+	/**
+	 * Per-execution in-flight side-call cost recordings, drained by
+	 * `writeTerminalExecution` before the terminal UPDATE.
+	 */
+	private readonly sideCallUsageInFlightByExecution = new Map<string, Set<Promise<void>>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -774,6 +780,13 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const { record, hitlStatus } = params;
 		await this.timelineSnapshotWrites.get(executionId);
+		// Drain in-flight side-call cost recordings before the terminal UPDATE
+		// so a process exit right after finalization cannot lose side-call cost.
+		const inFlight = this.sideCallUsageInFlightByExecution.get(executionId);
+		if (inFlight) {
+			this.sideCallUsageInFlightByExecution.delete(executionId);
+			await Promise.allSettled(inFlight);
+		}
 		// The terminal status write and the main-loop cost increment run as one
 		// atomic UPDATE (`status = ... , cost = COALESCE(cost, 0) + :costIncrement`),
 		// so they commit or roll back together. Cost is applied additively rather
@@ -952,6 +965,13 @@ export class AgentExecutionService {
 		if (attempt === undefined) {
 			attempt = this.applySideCallUsage(executionId, threadId, report);
 			this.sideCallReportInFlight.set(report.reportId, attempt);
+			let bucket = this.sideCallUsageInFlightByExecution.get(executionId);
+			if (!bucket) {
+				bucket = new Set();
+				this.sideCallUsageInFlightByExecution.set(executionId, bucket);
+			}
+			bucket.add(attempt);
+			void attempt.finally(() => bucket?.delete(attempt));
 		}
 		try {
 			await attempt;
