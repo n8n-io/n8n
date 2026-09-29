@@ -16,6 +16,7 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import type { ResumableExecution } from '@/interfaces';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
 
 type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
@@ -96,7 +97,7 @@ export class EngineV2Dispatcher {
 
 		const { workflowData } = data;
 
-		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes);
+		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
 
 		// Lazily imported: a top-level import would pull the v1 step executor and
 		// its dependencies into every n8n process, including ones with the module off.
@@ -104,7 +105,7 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = data.engineExecutionId ?? createExecutionIdV2();
+		const executionId = data.engineV2Response?.executionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
 		assert(isExecutionIdV2(executionId), 'Engine v2 was given an id it cannot run');
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
@@ -128,6 +129,7 @@ export class EngineV2Dispatcher {
 					userId: data.userId,
 					projectId: data.projectId,
 				},
+				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
 			});
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.

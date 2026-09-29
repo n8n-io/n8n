@@ -29,8 +29,7 @@ import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -87,9 +86,9 @@ export class AgentChatController {
 		return {
 			send: delivery.send,
 			abortSignal: requestController.signal,
-			onExecutionStarted: (id: string, sessionId: string) => {
+			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
 				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.send({ type: 'execution-started', executionId: id, sessionId });
+				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
 			},
 			onChunk: delivery.onChunk,
 			close: () => {
@@ -189,9 +188,9 @@ export class AgentChatController {
 		// `onExecutionRecorded` only fires once the turn finalizes. A disconnect or an
 		// error before that leaves the started id as the only way to name the execution.
 		let startedExecutionId: string | undefined;
-		const onExecutionStarted = (id: string, sessionId: string) => {
+		const onExecutionStarted = (id: string, sessionId: string, inputMessageIds: string[]) => {
 			startedExecutionId = id;
-			execution.onExecutionStarted(id, sessionId);
+			execution.onExecutionStarted(id, sessionId, inputMessageIds);
 		};
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
@@ -274,9 +273,9 @@ export class AgentChatController {
 		const execution = this.createChatExecution(res);
 		const { send, onChunk, abortSignal } = execution;
 		let startedExecutionId: string | undefined;
-		const onExecutionStarted = (id: string, sessionId: string) => {
+		const onExecutionStarted = (id: string, sessionId: string, inputMessageIds: string[]) => {
 			startedExecutionId = id;
-			execution.onExecutionStarted(id, sessionId);
+			execution.onExecutionStarted(id, sessionId, inputMessageIds);
 		};
 		try {
 			if (!(await this.agentsService.isN8nChatPublished(agentId, req.params.projectId))) {

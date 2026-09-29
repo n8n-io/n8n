@@ -227,7 +227,11 @@ function makeService(sandboxEnabled = false) {
 		accessScope: 'project',
 		ownerId: null,
 	} as never);
-	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+		executionId: 'execution-1',
+		startedAt,
+		inputMessageIds: ['message-1'],
+	}));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
@@ -385,7 +389,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect(sdkStart).not.toHaveBeenCalled();
 			});
 			await collect(stream);
-			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1');
+			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1', [
+				'message-1',
+			]);
 		});
 
 		it('rejects a competing preview without creating an execution or claiming a resume', async () => {
@@ -600,7 +606,11 @@ describe('AgentExecutionOrchestratorService', () => {
 				} else {
 					executionService.startExecutionRecording.mockImplementation(async () => {
 						controller.abort();
-						return 'execution-1';
+						return {
+							executionId: 'execution-1',
+							startedAt: new Date(),
+							inputMessageIds: ['message-1'],
+						};
 					});
 				}
 
@@ -825,7 +835,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
 			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
@@ -885,7 +899,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends the MCP registry attribution on its own line when a tool of that server returned', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -928,7 +946,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when the reply is reasoning only, with no text', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -962,7 +984,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when no tool of that server returned a result', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -1002,7 +1028,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('skips the attribution the model already echoed into its reply', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -1035,7 +1065,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('attributes an approval-gated tool on the resumed segment, not on the suspended one', async () => {
 		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const suspended = makeRuntime(
 			[
@@ -1134,7 +1168,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(chunks.at(-1)?.type).toBe('tool-call-suspended');
 		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({
 				persistence: {
 					threadId: 'thread-1',
@@ -1410,7 +1444,13 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		// The model sees the labelled text; the transcript keeps the plain text and the author.
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'[alice (platform-user-1)]: from slack',
+			[
+				{
+					id: 'message-1',
+					role: 'user',
+					content: [{ type: 'text', text: '[alice (platform-user-1)]: from slack' }],
+				},
+			],
 			expect.anything(),
 		);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
@@ -1683,7 +1723,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			);
 			expect(runtime.agent.stream).toHaveBeenCalledWith(
-				'hello',
+				[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 				expect.objectContaining({
 					persistence: {
 						...memory,
@@ -1951,7 +1991,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			await vi.waitFor(() =>
 				expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 					expect.objectContaining({
-						userMessage: null,
+						userMessage: expect.stringContaining('<background-jobs-settled>'),
+						hideUserMessageFromTranscript: true,
 						initialTimeline: [
 							{
 								type: 'background-task-signal',
@@ -2043,17 +2084,30 @@ describe('AgentExecutionOrchestratorService', () => {
 			sandboxPrincipalHash: userPrincipalHash,
 		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'<background-jobs-settled>[]</background-jobs-settled>',
+			[
+				{
+					id: 'message-1',
+					role: 'user',
+					content: [
+						{ type: 'text', text: '<background-jobs-settled>[]</background-jobs-settled>' },
+					],
+				},
+			],
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ userMessage: null, sessionMode: 'existing' }),
+			expect.objectContaining({
+				userMessage: expect.stringContaining('<background-jobs-settled>'),
+				hideUserMessageFromTranscript: true,
+				sessionMode: 'existing',
+			}),
 			expect.any(Date),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
-				userMessage: null,
+				userMessage: expect.stringContaining('<background-jobs-settled>'),
+				hideUserMessageFromTranscript: true,
 				record: expect.objectContaining({
 					assistantResponse: 'Handled the background result.',
 				}),
@@ -2097,7 +2151,10 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
-				expect.objectContaining({ userMessage: null }),
+				expect.objectContaining({
+					userMessage: expect.stringContaining('<background-jobs-settled>'),
+					hideUserMessageFromTranscript: true,
+				}),
 			);
 			expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
@@ -2977,7 +3034,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
 

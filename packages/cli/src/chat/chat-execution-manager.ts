@@ -17,7 +17,7 @@ import {
 	isHitlToolType,
 } from 'n8n-workflow';
 
-import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';

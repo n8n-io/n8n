@@ -6,7 +6,8 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
-import { createTestNode, createTestWorkflow, mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';

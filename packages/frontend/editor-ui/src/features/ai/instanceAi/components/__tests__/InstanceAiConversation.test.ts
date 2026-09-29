@@ -82,6 +82,7 @@ describe('InstanceAiConversation', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		localStorage.clear();
 	});
@@ -156,10 +157,10 @@ describe('InstanceAiConversation', () => {
 			Date.now(),
 			acceptDraft,
 			{
-				mentionCount: 1,
-				workflowMentionCount: 1,
-				nodeMentionCount: 0,
-				groupMentionCount: 0,
+				total: 1,
+				workflow: 1,
+				node: 0,
+				group: 0,
 			},
 		);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
@@ -167,10 +168,10 @@ describe('InstanceAiConversation', () => {
 			'Compare orders',
 			expect.objectContaining({
 				mentionCounts: {
-					mentionCount: 1,
-					workflowMentionCount: 1,
-					nodeMentionCount: 0,
-					groupMentionCount: 0,
+					total: 1,
+					workflow: 1,
+					node: 0,
+					group: 0,
 				},
 			}),
 		);
@@ -210,6 +211,29 @@ describe('InstanceAiConversation', () => {
 		const { getByTestId } = renderer();
 		expect(getByTestId('above-input-slot')).toBeInTheDocument();
 		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
+	});
+
+	it('keeps the chat input while the onboarding follow-up is held', async () => {
+		vi.useFakeTimers();
+		store.isOnboardingChromeHidden.mockReturnValue(true);
+		const createdAt = '2026-04-01T00:00:00.000Z';
+		thread.messages = [
+			{ id: 'greeting', role: 'assistant', content: 'Hi there', createdAt },
+		] as InstanceAiMessage[];
+		const wrapper = mountConversation();
+		// Past the greeting's lines and thinking beats.
+		await vi.advanceTimersByTimeAsync(5000);
+
+		thread.messages = [
+			...thread.messages,
+			{ id: 'follow-up', role: 'assistant', content: 'Got it.', createdAt },
+		] as InstanceAiMessage[];
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('Got it.');
+		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
 	});
 
 	it('emits thread-missing when the thread cannot be found', async () => {

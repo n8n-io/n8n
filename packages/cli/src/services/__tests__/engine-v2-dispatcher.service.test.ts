@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import type { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
@@ -194,6 +195,37 @@ describe('EngineV2Dispatcher', () => {
 			);
 		});
 
+		it.each([
+			['a manual run', runData()],
+			['an active trigger run', triggerRunData()],
+			['a webhook run that answers on receipt', webhookRunData()],
+		])('tells the data plane that nobody listens for %s', async (_name, data) => {
+			await dispatcher.start(data);
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ responseExpectation: { kind: 'none' } }),
+			);
+		});
+
+		it.each([
+			['lastNode', 'runEnd'],
+			['responseNode', 'stepResponse'],
+		] as const)(
+			'runs under the caller id and expects %s to answer with %s',
+			async (responseMode, kind) => {
+				const executionId = createExecutionIdV2();
+
+				const started = await dispatcher.start(
+					webhookRunData(undefined, { engineV2Response: { executionId, responseMode } }),
+				);
+
+				expect(started).toBe(executionId);
+				expect(proxy.startExecution).toHaveBeenCalledWith(
+					expect.objectContaining({ executionId, responseExpectation: { kind } }),
+				);
+			},
+		);
+
 		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {
 			const workflowData = workflow();
 
@@ -287,16 +319,30 @@ describe('EngineV2Dispatcher', () => {
 			]);
 		});
 
+		// The check asks the acting user for a credential the project does not carry,
+		// so the dispatcher has to hand it over. Asserting the `undefined` case below
+		// alone would pass even if `data.userId` were dropped.
+		it('forwards the acting user to the credential check', async () => {
+			await dispatcher.start(runData({ userId: 'user-1' }));
+
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'wf-1',
+				[MANUAL_TRIGGER, SET_NODE],
+				'user-1',
+			);
+		});
+
 		it('checks credential permissions before converting', async () => {
 			const failure = new UserError('Node "X" uses invalid credential');
 			credentialsPermissionChecker.check.mockRejectedValueOnce(failure);
 
 			await expect(dispatcher.start(runData())).rejects.toThrow(failure);
 
-			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith('wf-1', [
-				MANUAL_TRIGGER,
-				SET_NODE,
-			]);
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'wf-1',
+				[MANUAL_TRIGGER, SET_NODE],
+				undefined,
+			);
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 

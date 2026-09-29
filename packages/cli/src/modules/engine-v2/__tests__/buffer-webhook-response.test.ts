@@ -1,7 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
-import type { StepExecutionRequest } from '@n8n/engine';
+import {
+	createResponseEmitter,
+	type ResponseExpectation,
+	type StepExecutionRequest,
+} from '@n8n/engine';
 import { attachResponseHooks } from '@n8n/node-engine-compatibility';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -22,7 +26,7 @@ describe('a Buffer webhook response through the response channel', () => {
 	const bytes = Buffer.from([0x00, 0xff, 0x10, 0x80]);
 	const headers = { 'content-type': 'image/png', 'content-length': bytes.length };
 
-	const buildPath = async () => {
+	const buildPath = async (expectation: ResponseExpectation = { kind: 'stepResponse' }) => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
@@ -34,7 +38,7 @@ describe('a Buffer webhook response through the response channel', () => {
 		responder.useReceiver(receiver);
 
 		const executionId = createExecutionIdV2();
-		const pending = await responder.waitForResponse(executionId, true);
+		const pending = await responder.waitForResponse(executionId, expectation);
 
 		const additionalData = {} as IWorkflowExecuteAdditionalData;
 		attachResponseHooks(additionalData, {
@@ -46,10 +50,10 @@ describe('a Buffer webhook response through the response channel', () => {
 				iteration: 0,
 				callerContext: { hostMode: 'webhook' },
 			},
-			respond: sender.emitterFor(executionId),
+			respond: createResponseEmitter(sender, { id: executionId, responseExpectation: expectation }),
 		} as unknown as StepExecutionRequest);
 
-		return { additionalData, pending };
+		return { additionalData, pending, publish: vi.spyOn(channel, 'publish') };
 	};
 
 	it('delivers the original bytes, headers and status code to the control plane', async () => {
@@ -80,4 +84,18 @@ describe('a Buffer webhook response through the response channel', () => {
 			response: { body: { ok: true }, headers: {}, statusCode: 200 },
 		});
 	});
+
+	it.each(['none', 'runEnd'] as const)(
+		'sends nothing and does not fail the node when the caller expects %s',
+		async (kind) => {
+			const { additionalData, publish } = await buildPath({ kind });
+
+			await expect(
+				additionalData.hooks?.runHook('sendResponse', [
+					{ body: Buffer.from(bytes), headers, statusCode: 201 },
+				]),
+			).resolves.toBeUndefined();
+			expect(publish).not.toHaveBeenCalled();
+		},
+	);
 });
