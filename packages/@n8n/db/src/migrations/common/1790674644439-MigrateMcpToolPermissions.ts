@@ -13,7 +13,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Existing filters and the `executeMcpTool` setting are not converted.
  * Every connection gets the default permissions, and the settings fall back to the new defaults.
  */
-export class MigrateMcpToolPermissions1790584871982 implements ReversibleMigration {
+export class MigrateMcpToolPermissions1790674644439 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const { escape, runQuery, schemaBuilder } = ctx;
 
