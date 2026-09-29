@@ -13,6 +13,9 @@ const defaultScopes = [
 	'ChannelMessage.ReadWrite',
 	'TeamworkTag.Read',
 	'TeamsActivity.Send',
+	// The Microsoft Teams Trigger "New Team Member" event subscribes to /teams/{id}/members.
+	// A tenant admin must consent to this delegated permission.
+	'TeamMember.Read.All',
 ];
 
 export class MicrosoftTeamsOAuth2Api implements ICredentialType {
