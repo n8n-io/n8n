@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@n8n/errors';
 import type { PasswordUtility } from '@/services/password.utility';
 
 import { EmailAuthHandler } from '../email.auth-handler';

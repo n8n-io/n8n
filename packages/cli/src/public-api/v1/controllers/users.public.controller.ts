@@ -33,7 +33,7 @@ import {
 import type { Response } from 'express';
 import pick from 'lodash/pick';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

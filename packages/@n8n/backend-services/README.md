@@ -28,10 +28,10 @@ and infrastructure services that need the persistence layer or that only
 ## What lives here
 
 - `EventService`: the shared, typed event bus.
+- `UrlService`: instance and webhook URLs.
 
-The next PRs move the response errors, `UrlService`, `CacheService`,
-`RedisClientService`, `ProtectedResourceRegistry`, `RoleService`,
-the finder services and the scope checks here, one area at a time.
+The next PRs move `CacheService`, `RedisClientService`, `ProtectedResourceRegistry`,
+`RoleService`, the finder services and the scope checks here, one area at a time.
 
 ### Register event payloads
 

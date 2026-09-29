@@ -8,7 +8,7 @@ import type { INode, INodeParameterResourceLocator, Workflow } from 'n8n-workflo
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';

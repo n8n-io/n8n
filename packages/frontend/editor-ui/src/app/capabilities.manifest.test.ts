@@ -8,10 +8,20 @@ import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { mockedStore } from '@/__tests__/utils';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
-const { openDocumentStores } = vi.hoisted(() => ({
+const { openDocumentStores, offerToExposeAllWorkflows } = vi.hoisted(() => ({
 	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
+	offerToExposeAllWorkflows: vi.fn(),
 }));
+
+vi.mock(
+	'@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer',
+	() => ({
+		useExposeAllWorkflowsToMcpOffer: () => ({ offerToExposeAllWorkflows }),
+	}),
+);
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useExistingWorkflowDocumentStore: vi.fn((id: string) => openDocumentStores.get(id)),
@@ -125,6 +135,33 @@ describe('registerShellCapabilities', () => {
 			expect(openStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: false });
 			expect(otherOpenStore.mergeSettings).not.toHaveBeenCalled();
 			expect(useExistingWorkflowDocumentStore).toHaveBeenCalledWith('wf-2');
+		});
+	});
+
+	describe('mcpExposeAllOffer', () => {
+		beforeEach(() => {
+			registerShellCapabilities();
+		});
+
+		it('reads enrollment from the experiment store', () => {
+			const experimentStore = mockedStore(useExposeAllWorkflowsToMcpStore);
+			const offer = capabilityRegistry.use(capabilities.mcpExposeAllOffer);
+
+			experimentStore.isEnabled = false;
+			expect(offer.isEnabled()).toBe(false);
+
+			experimentStore.isEnabled = true;
+			expect(offer.isEnabled()).toBe(true);
+		});
+
+		it('forwards the offer and its result', async () => {
+			offerToExposeAllWorkflows.mockResolvedValue(true);
+			const onExposed = vi.fn();
+
+			const opened = await capabilityRegistry.use(capabilities.mcpExposeAllOffer).offer(onExposed);
+
+			expect(opened).toBe(true);
+			expect(offerToExposeAllWorkflows).toHaveBeenCalledWith(onExposed);
 		});
 	});
 });

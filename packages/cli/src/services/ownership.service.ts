@@ -19,7 +19,7 @@ import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { PasswordUtility } from './password.utility';

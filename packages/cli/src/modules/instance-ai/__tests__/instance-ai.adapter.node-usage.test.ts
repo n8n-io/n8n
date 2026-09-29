@@ -1,15 +1,8 @@
 // The barrel is mocked so this file exercises the adapter's own wiring rather than pulling the
 // whole instance-ai package in behind it, matching the other adapter tests.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
-	);
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
-	const { WorkflowEditorLockedError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
-	);
+	const { WorkflowSaveConflictError, WorkflowNotFoundError, WorkflowEditorLockedError } =
+		await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,

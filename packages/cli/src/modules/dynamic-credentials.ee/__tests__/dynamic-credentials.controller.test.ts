@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type AuthenticatedRequest, type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -19,7 +19,6 @@ import {
 	DynamicCredentialService,
 } from '@/modules/dynamic-credentials.ee/services';
 import { OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 

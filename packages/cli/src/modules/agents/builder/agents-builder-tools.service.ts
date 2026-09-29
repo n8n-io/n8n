@@ -28,6 +28,7 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
+	isCredentialAgentIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -43,8 +44,7 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { ConflictError, LockedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -456,7 +456,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			listChatIntegrationTypes: () =>
@@ -513,7 +516,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			track,

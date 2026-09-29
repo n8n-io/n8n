@@ -9,8 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { ChangeEmailController } from '@/controllers/change-email.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { AuthlessRequest } from '@/requests';
 import { EmailChangeService } from '@/services/email-change.service';

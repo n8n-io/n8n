@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.41.0",
+  "version": "2.42.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -117,7 +117,7 @@
     "stylelint": "catalog:",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.9.15",
+    "turbo": "2.11.4",
     "typescript": "6.0.2",
     "yaml": "catalog:",
     "zx": "^8.8.5"

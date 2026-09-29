@@ -8,7 +8,7 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';

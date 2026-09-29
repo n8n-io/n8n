@@ -11,7 +11,7 @@ import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } fro
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';

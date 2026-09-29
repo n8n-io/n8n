@@ -8,7 +8,7 @@ import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';

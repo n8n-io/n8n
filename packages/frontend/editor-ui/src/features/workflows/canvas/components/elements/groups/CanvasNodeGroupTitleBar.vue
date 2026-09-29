@@ -13,10 +13,13 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
+import CanvasHandleDot from '../handles/render-types/parts/CanvasHandleDot.vue';
 import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+	CanvasConnectionMode,
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
@@ -28,10 +31,8 @@ import {
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	GROUP_DESCRIPTION_MIN_ZOOM,
 } from '../../../stores/canvasNodeGroups.constants';
-import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
-
-import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { HOVER_DELAY } from '@/app/constants';
+import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
@@ -88,6 +89,16 @@ const isCollapsed = computed(() => props.data.isCollapsed);
 const isDescriptionEmpty = computed(() => !group.value.description?.trim());
 const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
+const isEmptyGroup = computed(() => props.data.isEmptyGroup === true);
+const isConnectable = computed(() => isEmptyGroup.value && isCollapsed.value && !props.readOnly);
+const { isValidConnection } = useNodeConnections({
+	inputs: [],
+	outputs: [],
+	connections: {
+		[CanvasConnectionMode.Input]: {},
+		[CanvasConnectionMode.Output]: {},
+	},
+});
 
 // Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
@@ -96,6 +107,7 @@ const markStatus = computed(() => MARK_STATUSES.find((status) => status === exec
 const wrapperClasses = computed(() => [
 	$style.wrapper,
 	{
+		[$style.emptyGroup]: isEmptyGroup.value,
 		[$style.collapsed]: isCollapsed.value,
 		[$style.selected]: props.selected,
 		[$style.deactivated]: allNodesDisabled.value,
@@ -423,19 +435,29 @@ function onWrapperPointerDown(event: PointerEvent) {
 	>
 		<div :class="$style.titleBar">
 			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
+				:id="CANVAS_NODE_GROUP_INPUT_HANDLE"
 				type="target"
 				:position="Position.Left"
-				:class="$style.handle"
-				:is-connectable="false"
-			/>
+				:class="[$style.handle, { [$style.connectableHandle]: isConnectable }]"
+				:connectable="isConnectable"
+				:connectable-start="isConnectable"
+				:connectable-end="isConnectable"
+				:is-valid-connection="isValidConnection"
+			>
+				<CanvasHandleDot v-if="isConnectable" handle-classes="target" />
+			</Handle>
 			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
+				:id="CANVAS_NODE_GROUP_OUTPUT_HANDLE"
 				type="source"
 				:position="Position.Right"
-				:class="$style.handle"
-				:is-connectable="false"
-			/>
+				:class="[$style.handle, { [$style.connectableHandle]: isConnectable }]"
+				:connectable="isConnectable"
+				:connectable-start="isConnectable"
+				:connectable-end="isConnectable"
+				:is-valid-connection="isValidConnection"
+			>
+				<CanvasHandleDot v-if="isConnectable" handle-classes="source" />
+			</Handle>
 
 			<div
 				v-if="!readOnly"
@@ -444,6 +466,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			>
 				<div :class="$style.toolbarItems">
 					<KeyboardShortcutTooltip
+						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 						:shortcut="UNGROUP_NODES_SHORTCUT"
 					>
@@ -458,7 +481,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</KeyboardShortcutTooltip>
 					<KeyboardShortcutTooltip
-						v-if="canExtract"
+						v-if="canExtract && !isEmptyGroup"
 						:label="extractLabel"
 						:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
 					>
@@ -730,6 +753,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/common/var';
+@use '../handles/_canvasHandleStyles.scss' as handleStyles;
 @use '../../../components/elements/nodes/render-types/_canvasNodeStyles.scss' as styles;
 
 .wrapper {
@@ -775,6 +799,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	.wrapper.collapsed.waiting & {
 		@include styles.status-waiting-border;
 	}
+}
+
+.wrapper.emptyGroup .titleBar {
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
 }
 
 /* stylelint-disable */
@@ -961,6 +990,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 	z-index: 0;
 }
 
+.wrapper.emptyGroup .frame {
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
+	border-top: none;
+}
+
 .selectionRing {
 	position: absolute;
 	top: 0;
@@ -974,6 +1009,16 @@ function onWrapperPointerDown(event: PointerEvent) {
 .handle {
 	opacity: 0;
 	pointer-events: none;
+}
+
+:global(.vue-flow__handle).connectableHandle {
+	opacity: 1;
+	pointer-events: all;
+	@include handleStyles.outer-handle;
+
+	> * {
+		pointer-events: none;
+	}
 }
 
 // Floating description shown below a collapsed group on hover or when pinned.
@@ -1043,5 +1088,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 .descriptionEmpty {
 	color: var(--text-color--disabled);
+}
+
+.wrapper.emptyGroup .descriptionEmpty {
+	color: var(--text-color--subtler);
 }
 </style>

@@ -1,5 +1,6 @@
 import {
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	PublicApiListDataTableQueryDto,
@@ -26,11 +27,9 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
@@ -81,6 +80,18 @@ const toDataTablePublicDto = (dataTable: DataTable, sizeBytes: number): DataTabl
 	createdAt: dataTable.createdAt.toISOString(),
 	updatedAt: dataTable.updatedAt.toISOString(),
 	sizeBytes,
+});
+
+const toDataTableColumnPublicDto = (
+	column: DataTableColumn,
+): DataTableColumnListPublicDto[number] => ({
+	id: column.id,
+	name: column.name,
+	dataTableId: column.dataTableId,
+	type: column.type,
+	index: column.index,
+	createdAt: column.createdAt.toISOString(),
+	updatedAt: column.updatedAt.toISOString(),
 });
 
 @PublicApiController('/data-tables')
@@ -230,6 +241,25 @@ export class DataTablesPublicController {
 		} catch (error) {
 			handleError(error);
 		}
+	}
+
+	@Get('/:dataTableId/columns')
+	@ApiKeyScope('dataTableColumn:read')
+	@ProjectScope('dataTable:readColumn')
+	@ApiSummary('List columns of a data table')
+	@ApiDescription('Retrieve all columns for a specific data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableColumnListPublicDto)
+	@ApiErrorResponse(404)
+	async listDataTableColumns(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+	): Promise<DataTableColumnListPublicDto> {
+		const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+		const columns = await this.dataTableService.getColumns(dataTableId, projectId);
+
+		return columns.map(toDataTableColumnPublicDto);
 	}
 
 	private async withSize(dataTable: DataTable): Promise<DataTablePublicDto> {
