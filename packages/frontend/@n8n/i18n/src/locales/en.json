@@ -8183,7 +8183,7 @@
 	"agents.toolConfig.mcpApproval.refresh.hint": "Refresh the list of tools from this MCP server.",
 	"agents.toolConfig.mcpApproval.tools.placeholder": "Select tools",
 	"agents.toolConfig.mcpApproval.loadError": "Could not load MCP tools. Check the server settings and try again.",
-	"agents.new.defaultName": "New Agent",
+	"agents.new.defaultName": "Untitled",
 	"agents.builder.sections.agent": "Agent",
 	"agents.builder.sections.advanced": "Advanced",
 	"agents.builder.sections.configJson": "Raw",
