@@ -63,12 +63,14 @@ const scopeKey = computed<BaseTextKey>(
 			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>
-				<N8nIcon
-					icon="lock"
-					size="small"
-					:title="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
-					data-test-id="node-restricted-icon"
-				/>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="node-restricted-icon" />
+				</span>
 			</template>
 			<template #content>
 				<div ref="contentRef" :class="$style.popover" data-test-id="node-restricted-popover">
@@ -99,6 +101,19 @@ const scopeKey = computed<BaseTextKey>(
 // Two teleported children and one visible trigger: the wrapper must not affect the slot's layout.
 .root {
 	display: contents;
+}
+
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
 }
 
 // The design system defaults popovers to --radius--xs (8px); the design uses the editor's 4px.

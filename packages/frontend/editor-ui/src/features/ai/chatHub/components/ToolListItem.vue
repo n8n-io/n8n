@@ -94,20 +94,12 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 		</div>
 
 		<div :class="$style.actions">
-			<span
+			<RestrictedNodePopover
 				v-if="restriction"
-				:class="$style.restrictedMarker"
-				tabindex="0"
-				role="img"
-				:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
-				data-test-id="chat-tool-restricted"
-			>
-				<RestrictedNodePopover
-					:node-type-name="nodeType.displayName"
-					:scope="restriction.scope"
-					:anchor="rowRef"
-				/>
-			</span>
+				:node-type-name="nodeType.displayName"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+			/>
 
 			<template v-if="mode === 'configured'">
 				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
@@ -208,19 +200,6 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 	.iconWrapper,
 	.content {
 		opacity: 0.45;
-	}
-}
-
-.restrictedMarker {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--3xs);
-	color: var(--color--text--tint-1);
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
 	}
 }
 

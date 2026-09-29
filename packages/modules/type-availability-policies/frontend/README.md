@@ -28,6 +28,8 @@ and on a cold tree turbo builds them first.
 for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes. The
 shell reads restriction through these and never through the store directly.
 
+Tests stub the store through `mockRestrictedNodeTypes` from the module's `__tests__/mocks`.
+
 `ContactInstanceAdminModal` lists the instance owners with a mail link. The surfaces below render it
 as a sibling of their own content, so a popover that closes never unmounts the open dialog.
 `RestrictedNodePopover` is the explanation for a row in a list: the lock trigger, the hover-opened

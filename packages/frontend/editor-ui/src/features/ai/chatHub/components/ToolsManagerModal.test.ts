@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -507,9 +507,9 @@ describe('ToolsManagerModal', () => {
 			// Tool A outranks Tool B by popularity, so only the restriction moves it last.
 			expect(availableItems[0].textContent).toContain('Tool B');
 			expect(availableItems[1].textContent).toContain('Tool A');
-			expect(availableItems[1].querySelector('[data-test-id="chat-tool-restricted"]')).toBeTruthy();
+			expect(availableItems[1].querySelector('[data-test-id="node-restricted-icon"]')).toBeTruthy();
 			expect(availableItems[1].querySelector('[data-test-id="chat-tool-add-button"]')).toBeNull();
-			expect(availableItems[0].querySelector('[data-test-id="chat-tool-restricted"]')).toBeNull();
+			expect(availableItems[0].querySelector('[data-test-id="node-restricted-icon"]')).toBeNull();
 		});
 
 		it('does not open the settings view for a restricted tool', async () => {
@@ -519,7 +519,7 @@ describe('ToolsManagerModal', () => {
 
 			const restrictedItem = getAvailableItems(container)[1];
 			await userEvent.click(restrictedItem);
-			await userEvent.click(restrictedItem.querySelector('[data-test-id="chat-tool-restricted"]')!);
+			await userEvent.click(restrictedItem.querySelector('[data-test-id="node-restricted-icon"]')!);
 
 			expect(queryByTestId('tool-settings-content')).toBeNull();
 			expect(chatStore.addConfiguredTool).not.toHaveBeenCalled();
@@ -554,7 +554,7 @@ describe('ToolsManagerModal', () => {
 			const { container } = renderComponent({ props: defaultProps() });
 
 			const [configured] = getConfiguredItems(container);
-			expect(configured.querySelector('[data-test-id="chat-tool-restricted"]')).toBeTruthy();
+			expect(configured.querySelector('[data-test-id="node-restricted-icon"]')).toBeTruthy();
 			expect(getActionButtons(configured)).toHaveLength(2);
 			expect(getToggle(configured)).toBeTruthy();
 		});
@@ -567,7 +567,7 @@ describe('ToolsManagerModal', () => {
 			const availableItems = getAvailableItems(container);
 			expect(availableItems[0].textContent).toContain('Tool A');
 			expect(availableItems[1].textContent).toContain('Tool B');
-			expect(container.querySelector('[data-test-id="chat-tool-restricted"]')).toBeNull();
+			expect(container.querySelector('[data-test-id="node-restricted-icon"]')).toBeNull();
 		});
 	});
 });
