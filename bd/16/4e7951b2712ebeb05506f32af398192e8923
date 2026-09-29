@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1790605116208-AddAgentQueueMessageReferences.ts
+  s_ffa0492de4d6b4::t_56146888fd6d41 1-2,84
+packages/cli/test/migration/1790605116208-add-agent-queue-message-references.test.ts
+  s_ffa0492de4d6b4::t_56146888fd6d41 10,94,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bd164e7951b2712ebeb05506f32af398192e8923",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
