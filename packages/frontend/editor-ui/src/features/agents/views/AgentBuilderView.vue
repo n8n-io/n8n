@@ -680,9 +680,19 @@ const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 const setupChecklistContext = computed(() => {
 	return {
+		config: {
+			loaded: initialized.value && localConfig.value !== null,
+			model: localConfig.value?.model ?? '',
+			instructions: localConfig.value?.instructions ?? '',
+			toolCount: localConfig.value?.tools.length ?? 0,
+		},
 		channels: {
 			loaded: initialized.value,
 			ids: connectedTriggers.value,
+		},
+		publication: {
+			loaded: initialized.value,
+			activeVersionId: agent.value?.activeVersionId ?? null,
 		},
 	};
 });
