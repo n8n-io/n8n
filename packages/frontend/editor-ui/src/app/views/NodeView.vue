@@ -2382,7 +2382,7 @@ onBeforeUnmount(() => {
 }
 
 .canvasOnlyLogo {
-	height: calc(var(--height--lg) + 2 * var(--spacing--5xs));
+	height: var(--height--xl);
 	pointer-events: none;
 	user-select: none;
 }
