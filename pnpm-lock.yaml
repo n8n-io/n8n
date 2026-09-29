@@ -3574,6 +3574,12 @@ importers:
         specifier: workspace:*
         version: link:../../workflow
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3589,6 +3595,12 @@ importers:
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
@@ -4206,6 +4218,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4224,6 +4239,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -5301,6 +5322,12 @@ importers:
         specifier: 'catalog:'
         version: 11.1.1
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
@@ -5349,6 +5376,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
