@@ -182,9 +182,11 @@ describe('V1StepExecutor', () => {
 		request.respond = respond;
 		const execution = testStepExecutor(graph).execute(request);
 		await expect(execution).rejects.toThrow('boom from node');
-		// Only a description goes to the caller, as in v1. A plain error has none.
+		// Only a description goes to the caller. A plain error has none, so the
+		// caller gets a generic text instead of its message.
 		expect(chunks).toContainEqual({
 			type: 'error',
+			content: 'Node execution failed',
 			metadata: {
 				nodeId: 'n',
 				nodeName: 'Subject',
