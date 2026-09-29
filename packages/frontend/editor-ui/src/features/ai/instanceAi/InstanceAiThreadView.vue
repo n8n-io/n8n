@@ -186,6 +186,22 @@ const activeTestAgentOffer = computed(() => {
 	return target;
 });
 
+// Latches the offer once it starts showing, so the panel's own generation
+// side effect (which populates the dataset cache activeTestAgentOffer checks)
+// can't reactively tear the panel down mid-flow. Cleared only by an explicit
+// dismiss/confirm/open-evals action below, never by activeTestAgentOffer
+// changing on its own.
+const latchedTestAgentOffer = ref<typeof activeTestAgentOffer.value>(null);
+watch(
+	activeTestAgentOffer,
+	(offer) => {
+		if (offer && !latchedTestAgentOffer.value) {
+			latchedTestAgentOffer.value = offer;
+		}
+	},
+	{ immediate: true },
+);
+
 const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
 
 // --- Header title ---
@@ -714,7 +730,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
  * would be a second call site for the same operation.
  */
 async function handleGenerateTestCasesFromOffer() {
-	const target = activeTestAgentOffer.value;
+	// Reads the latch, not activeTestAgentOffer: by the time this fires the
+	// generic offer flow doesn't trigger dataset generation itself, but the
+	// latch is still the authoritative "which target is this offer for" source.
+	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 
 	// Raise the request before revealing the artifact: the builder consumes it on
@@ -722,22 +741,26 @@ async function handleGenerateTestCasesFromOffer() {
 	agentEvalsStore.requestEvalsFocus(target.agentId, true);
 	preview.openAgentPreview(target.agentId, target.projectId);
 	await persistTestAgentOfferDismissal(target.agentId);
+	latchedTestAgentOffer.value = null;
 }
 
 async function dismissTestAgentOffer() {
-	const target = activeTestAgentOffer.value;
+	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 	await persistTestAgentOfferDismissal(target.agentId);
+	latchedTestAgentOffer.value = null;
 }
 
 /**
  * The preview panel confirms as soon as the user says "Looks good", before it
  * generates the rest of the suite — dismissal happens on that signal alone,
  * matching the generic offer's CTA, which also persists immediately rather
- * than waiting for generation to finish.
+ * than waiting for generation to finish. The latch stays set: the flow
+ * continues (the panel keeps generating and offers "Open evals" next), so the
+ * panel must not unmount yet.
  */
 async function handleConfirmTestAgentPreview() {
-	const target = activeTestAgentOffer.value;
+	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 	await persistTestAgentOfferDismissal(target.agentId);
 }
@@ -745,13 +768,15 @@ async function handleConfirmTestAgentPreview() {
 /**
  * The preview panel has already generated every case by the time this fires,
  * so — unlike `handleGenerateTestCasesFromOffer` — this does not request
- * generation on arrival.
+ * generation on arrival. This is the end of the preview flow, so the latch
+ * clears here.
  */
 function handleOpenEvalsFromPreview() {
-	const target = activeTestAgentOffer.value;
+	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 	agentEvalsStore.requestEvalsFocus(target.agentId, false);
 	preview.openAgentPreview(target.agentId, target.projectId);
+	latchedTestAgentOffer.value = null;
 }
 
 // Persisted for the CTA as well as "Maybe later": once the user has acted on the
@@ -928,15 +953,15 @@ function handleNewThreadClick() {
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPanel
-								v-if="activeTestAgentOffer && !isTestAgentPreviewVariant"
+								v-if="latchedTestAgentOffer && !isTestAgentPreviewVariant"
 								@generate="handleGenerateTestCasesFromOffer"
 								@dismiss="dismissTestAgentOffer"
 							/>
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPreviewPanel
-								v-if="activeTestAgentOffer && isTestAgentPreviewVariant"
-								:target="activeTestAgentOffer"
+								v-if="latchedTestAgentOffer && isTestAgentPreviewVariant"
+								:target="latchedTestAgentOffer"
 								@confirm="handleConfirmTestAgentPreview"
 								@dismiss="dismissTestAgentOffer"
 								@open-evals="handleOpenEvalsFromPreview"

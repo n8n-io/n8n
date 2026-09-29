@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
-import { defineComponent, h, inject, type PropType, type Ref, nextTick } from 'vue';
+import { defineComponent, h, inject, type PropType, type Ref, nextTick, ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -2526,6 +2526,47 @@ describe('InstanceAiThreadView', () => {
 			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals'));
 
 			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
+		});
+
+		it('keeps the preview panel visible through generation even though it populates the dataset cache', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+
+			// `isLoaded`/`getDatasets` are automocked vi.fn()s, so a plain
+			// `mockReturnValue` change is invisible to Vue's reactivity system —
+			// `activeTestAgentOffer` would never re-run and the bug this test
+			// targets could never reproduce. Backing the mocks with real refs makes
+			// reading them inside the computed register a dependency, so flipping
+			// the refs (as the real store's fetch does once it populates its
+			// reactive dataset cache) reactively re-triggers the computed, exactly
+			// like the production side effect this test is guarding against.
+			const isLoadedRef = ref(false);
+			const datasetsRef = ref<Array<{ id: string }>>([]);
+			evalsStore.isLoaded.mockImplementation(() => isLoadedRef.value);
+			evalsStore.getDatasets.mockImplementation(() => datasetsRef.value as never);
+
+			// Override generateDraftCases to mimic the real store's side effect: once
+			// it resolves, the dataset cache reflects the newly created dataset —
+			// this is exactly the condition that used to unmount the panel.
+			evalsStore.generateDraftCases.mockReset();
+			evalsStore.generateDraftCases.mockImplementation(async () => {
+				isLoadedRef.value = true;
+				datasetsRef.value = [{ id: 'dataset-1' }];
+				return {
+					datasetId: 'dataset-1',
+					dataTableId: 'table-1',
+					cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+				};
+			});
+
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			// The panel must still be there once generation (and its side effect) has
+			// resolved — it must not have unmounted itself.
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+			await flushPromises();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
 		it('suggests testing once the agent is set up', async () => {
