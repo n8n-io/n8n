@@ -226,6 +226,31 @@ describe('useArtifactTabSummaries', () => {
 		expect(getSummary(dataTableTab('dt-2'))).toBeNull();
 	});
 
+	it('drops the loaded name and loads again when a tab is renamed', async () => {
+		mocks.searchWorkflows.mockResolvedValue([workflowRow('wf-1', 'version-1')]);
+		const { tabs, getSummary } = setup([workflowTab('wf-1')]);
+		await flushPromises();
+		expect(getSummary(workflowTab('wf-1'))?.name).toBe('Workflow wf-1');
+		mocks.searchWorkflows.mockClear();
+
+		let resolveRefresh: (rows: unknown[]) => void = () => {};
+		mocks.searchWorkflows.mockReturnValue(
+			new Promise((resolve) => {
+				resolveRefresh = resolve;
+			}),
+		);
+		tabs.value = [{ ...workflowTab('wf-1'), name: 'Renamed' }];
+		await nextTick();
+
+		// Until the refresh ends, the tab shows its own new name.
+		expect(getSummary(workflowTab('wf-1'))?.name).toBeUndefined();
+		expect(mocks.searchWorkflows).toHaveBeenCalledWith(expect.objectContaining({ ids: ['wf-1'] }));
+
+		resolveRefresh([{ ...workflowRow('wf-1', 'version-1'), name: 'Renamed' }]);
+		await flushPromises();
+		expect(getSummary(workflowTab('wf-1'))?.name).toBe('Renamed');
+	});
+
 	it('does not load details for agent tabs', async () => {
 		const { getSummary } = setup([{ id: 'agent-1', type: 'agent', name: 'Agent', icon: 'robot' }]);
 		await flushPromises();

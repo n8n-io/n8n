@@ -381,6 +381,26 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(getHoverCard()).toBeNull();
 		});
 
+		it('shows a new tab name at once when the tab is renamed during the session', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+				},
+			]);
+			const { container, rerender } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalled());
+			mockSearchWorkflows.mockReturnValue(new Promise(() => {}));
+
+			await rerender({ tabs: [{ ...workflowTab, name: 'Renamed Workflow' }], activeTabId: 'wf-1' });
+
+			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
+		});
+
 		it('shows the current name from the tab details instead of a stale tab name', async () => {
 			mockSearchWorkflows.mockResolvedValue([
 				{
