@@ -12,9 +12,9 @@ import type {
  * A new step to persist. `id` and timestamps are assigned by the store.
  *
  * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
- * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`, or
- * `cancelPendingSteps`, so it cannot bypass the checks and locking those
- * transitions enforce.
+ * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`,
+ * `cancelStep`, or `cancelPendingSteps`, so it cannot bypass the checks and
+ * locking those transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
@@ -174,6 +174,13 @@ export interface StepStore {
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
+	 * Settle a claimed step that will not run, because its execution ended
+	 * between the claim and the run. As `completeStep`, a compare-and-set on
+	 * `running`, so a worker that lost the claim writes nothing.
+	 */
+	cancelStep(id: string): Promise<boolean>;
 
 	/**
 	 * Cancel every pending step of the execution (`-> cancelled`). A pending step

@@ -4,7 +4,6 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
-	ExecutionStatus,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -43,12 +42,12 @@ describe('workflow_step_execution table (integration)', () => {
 	}
 
 	/** Steps FK to an execution, so create a parent row first. */
-	async function createExecution(status: ExecutionStatus = 'running'): Promise<string> {
+	async function createExecution(): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
 			id: generateId(),
 			workflowId: 'wf-1',
-			status,
+			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
 			workflow: {},
@@ -291,30 +290,6 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(created).toEqual([]);
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
 		expect(await stepRepo.count({ where: { executionId } })).toBe(1);
-	});
-
-	it('TypeOrmStepStore.claimStep refuses once the execution has ended', async () => {
-		const executionId = await createExecution('cancelled');
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		// a step:ready announced before the cancel, whose row the sweep has not reached
-		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'queued' });
-
-		expect(await store.claimStep(id)).toBeNull();
-		expect((await store.loadStep(id)).status).toBe('queued');
-	});
-
-	it('TypeOrmStepStore.createSteps creates nothing once the execution has ended', async () => {
-		const executionId = await createExecution('cancelled');
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-
-		// a planner that read the execution as live just before the cancel
-		const created = await store.createSteps(executionId, [
-			{ nodeId: 'a', iteration: 0, status: 'queued' },
-		]);
-
-		expect(created).toEqual([]);
-		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
-		expect(await stepRepo.count({ where: { executionId } })).toBe(0);
 	});
 
 	it('TypeOrmStepStore.createSteps waits out a concurrently committing failure and creates nothing', async () => {
@@ -590,22 +565,6 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(later.resumeCause).toBeNull();
 	});
 
-	it('TypeOrmStepStore.resumeDueSteps cancels a due wait whose execution has ended instead of queuing it', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const due = new Date('2020-01-01T00:00:00.000Z');
-		// suspended after the cancellation sweep, so the sweep never saw it
-		const ended = await seedWaitingStep(await createExecution('cancelled'), 'a', due);
-		const failed = await seedWaitingStep(await createExecution('failed'), 'a', due);
-		const live = await seedWaitingStep(await createExecution(), 'a', due);
-
-		const resumed = await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10);
-
-		expect(resumed.map((step) => step.id)).toEqual([live.id]);
-		expect((await store.loadStep(ended.id)).status).toBe('cancelled');
-		expect((await store.loadStep(failed.id)).status).toBe('cancelled');
-		expect((await store.loadStep(live.id)).status).toBe('queued');
-	});
-
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
@@ -814,6 +773,23 @@ describe('workflow_step_execution table (integration)', () => {
 		const resumed = await store.resumeDueSteps(new Date('2019-06-01T00:00:00.000Z'), 10);
 		expect(resumed.map((step) => step.id)).not.toContain(id);
 		expect((await store.loadStep(id)).status).toBe('cancelled');
+	});
+
+	it('TypeOrmStepStore.cancelStep settles a running step and nothing else', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const running = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+		const queued = await createStep(store, executionId, {
+			nodeId: 'b',
+			iteration: 0,
+			status: 'queued',
+		});
+
+		expect(await store.cancelStep(running.id)).toBe(true);
+		expect(await store.cancelStep(queued.id)).toBe(false);
+
+		expect((await store.loadStep(running.id)).status).toBe('cancelled');
+		expect((await store.loadStep(queued.id)).status).toBe('queued');
 	});
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {

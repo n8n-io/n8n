@@ -103,6 +103,7 @@ function makeStepStore(
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
+		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
 		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {

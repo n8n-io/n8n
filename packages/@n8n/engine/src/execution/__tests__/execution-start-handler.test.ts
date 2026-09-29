@@ -50,6 +50,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
+		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
@@ -198,29 +199,6 @@ describe('ExecutionStartHandler', () => {
 		).rejects.toMatchObject({ name: 'UnexpectedError' });
 
 		expect(queue.publish).not.toHaveBeenCalled();
-	});
-
-	it('announces nothing when the execution ended between the claim and the trigger row', async () => {
-		const graph: WorkflowGraph = {
-			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
-			edges: [],
-		};
-		const lifecycleEventPublisher = makeLifecycleEventPublisher();
-		const executionStore = makeExecutionStore({
-			loadExecution: vi
-				.fn()
-				.mockResolvedValueOnce(record(graph))
-				.mockResolvedValueOnce(record(graph, { status: 'cancelled' })),
-		});
-		// The insert refuses once the execution has ended, so the batch is empty.
-		const stepStore = makeStepStore(vi.fn().mockResolvedValue([]));
-		const queue = makeOrchestrationQueue();
-		const handler = makeHandler(executionStore, stepStore, queue, lifecycleEventPublisher);
-
-		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
-
-		expect(queue.publish).not.toHaveBeenCalled();
-		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('throws when the graph has no trigger node', async () => {

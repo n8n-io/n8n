@@ -3,10 +3,7 @@ import { In, type Repository } from '@n8n/typeorm';
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
-import { ExecutionNotFoundError } from '../execution/execution-store';
 import {
-	isLiveExecutionStatus,
-	LIVE_EXECUTION_STATUSES,
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
 	type ResumeCause,
@@ -14,7 +11,6 @@ import {
 	type StepError,
 	type StepKey,
 	type StepKeyId,
-	type ExecutionStatus,
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
@@ -54,8 +50,7 @@ type ClaimedStepRow = {
 	wait_declaration: WaitDeclaration | null;
 	resume_cause: ResumeCause | null;
 };
-type DueStepRow = { id: string; execution_id: string; status: StepStatus };
-type ExecutionStatusRow = { id: string; status: ExecutionStatus };
+type DueStepRow = { id: string; execution_id: string };
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -91,18 +86,13 @@ export class TypeOrmStepStore implements StepStore {
 		// instances, and these are plain values.
 		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
 
-		// The execution-row lock serializes this insert with `failStep` and
-		// `cancelExecution`, so rows land before the execution ends (the sweep
-		// cancels them) or not at all. Otherwise rows inserted after the sweep
-		// would stay `queued` forever.
+		// The execution-row lock serializes this insert with `failStep`, so rows
+		// land before the failure (its sweep cancels them) or not at all.
+		// Otherwise rows inserted after the sweep would stay `queued` forever.
 		return await this.repo.manager.transaction(async (manager) => {
-			const [execution] = await manager.query<ExecutionStatusRow[]>(
-				'SELECT id, status FROM workflow_execution WHERE id = $1 FOR SHARE',
-				[executionId],
-			);
-			if (!execution) throw new ExecutionNotFoundError(executionId);
-			if (!isLiveExecutionStatus(execution.status)) return [];
-
+			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
+				executionId,
+			]);
 			const [failed] = await manager.query<Array<{ id: string }>>(
 				`SELECT id FROM workflow_step_execution
 				 WHERE execution_id = $1 AND status = 'failed'
@@ -150,17 +140,17 @@ export class TypeOrmStepStore implements StepStore {
 		// out of `queued` and carries both. A deadline resume reads its captured
 		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
-		// The execution-row lock serializes the claim with `failStep` and
-		// `cancelExecution`, so no step starts running once its execution has a
-		// failed step or has ended. Claims don't block each other (shared lock).
+		// The execution-row lock serializes the claim with `failStep`, so no
+		// step starts running once its execution has a failed step. Claims
+		// don't block each other (shared lock).
 		return await this.repo.manager.transaction(async (manager) => {
-			const [execution] = await manager.query<ExecutionStatusRow[]>(
-				`SELECT id, status FROM workflow_execution
+			const [execution] = await manager.query<Array<{ id: string }>>(
+				`SELECT id FROM workflow_execution
 				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
 				 FOR SHARE`,
 				[id],
 			);
-			if (!execution || !isLiveExecutionStatus(execution.status)) return null;
+			if (!execution) return null;
 
 			const result = await manager
 				.createQueryBuilder()
@@ -218,34 +208,30 @@ export class TypeOrmStepStore implements StepStore {
 		// the other's batch. The subquery carries the `wait_till` test, so the row
 		// that is updated is the row that was found due.
 		//
-		// The execution's status decides the row's next status in the same
-		// statement: a wait that outlived its execution (suspended after the
-		// cancellation sweep) is cancelled here rather than queued, and is not
-		// returned, since there is nothing to dispatch.
-		//
-		// A raw UPDATE resolves to `[rows, rowCount]`, unlike the query builder's
-		// `result.raw`. Raw, because the builder cannot join the execution row.
-		const [rows] = (await this.repo.query(
-			`UPDATE workflow_step_execution step
-			 SET status = CASE WHEN execution.status = ANY($3) THEN 'queued' ELSE 'cancelled' END,
-			     resume_cause = CASE WHEN execution.status = ANY($3) THEN $4::jsonb ELSE step.resume_cause END,
-			     updated_at = now()
-			 FROM workflow_execution execution
-			 WHERE execution.id = step.execution_id
-			   AND step.id IN (
-			     SELECT id FROM workflow_step_execution
-			     WHERE status = 'waiting' AND wait_till <= $1
-			     ORDER BY wait_till
-			     LIMIT $2
-			     FOR UPDATE SKIP LOCKED
-			   )
-			 RETURNING step.id, step.execution_id, step.status`,
-			[due, limit, [...LIVE_EXECUTION_STATUSES], JSON.stringify({ kind: 'deadline' })],
-		)) as [DueStepRow[], number];
+		// Through the query builder, not `manager.query`: a raw UPDATE resolves to
+		// `[rows, rowCount]`, whereas `.execute()` puts the RETURNING rows in
+		// `result.raw` — as `claimStep` and `createSteps` also rely on.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({ status: 'queued', resumeCause: { kind: 'deadline' } })
+			.where(
+				`id IN (
+					SELECT id FROM workflow_step_execution
+					WHERE status = 'waiting' AND wait_till <= :due
+					ORDER BY wait_till
+					LIMIT :limit
+					FOR UPDATE SKIP LOCKED
+				)`,
+				{ due, limit },
+			)
+			.returning(['id', 'executionId'])
+			.execute();
 
-		return rows
-			.filter((row) => row.status === 'queued')
-			.map(({ id, execution_id: executionId }) => ({ id, executionId }));
+		return (result.raw as DueStepRow[]).map(({ id, execution_id: executionId }) => ({
+			id,
+			executionId,
+		}));
 	}
 
 	async nextWaitDeadline(): Promise<Date | null> {
@@ -266,6 +252,10 @@ export class TypeOrmStepStore implements StepStore {
 			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
 			{ status: 'cancelled' },
 		);
+	}
+
+	async cancelStep(id: string): Promise<boolean> {
+		return await this.transition(id, 'running', 'cancelled');
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
