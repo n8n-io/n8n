@@ -11,8 +11,7 @@ import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from 
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 

@@ -7,7 +7,7 @@ import { UserError } from 'n8n-workflow';
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 @RestController('/consent')
 export class OAuthConsentController {

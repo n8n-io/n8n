@@ -23,8 +23,7 @@ import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';

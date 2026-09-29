@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';

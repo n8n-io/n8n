@@ -1,8 +1,6 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
+	const { WorkflowNotFoundError } = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowNotFoundError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {

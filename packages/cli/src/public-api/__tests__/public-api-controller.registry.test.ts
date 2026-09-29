@@ -21,7 +21,7 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import {

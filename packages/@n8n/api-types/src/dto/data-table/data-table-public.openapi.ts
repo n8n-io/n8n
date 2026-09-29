@@ -24,6 +24,7 @@ export const dataTableColumnFieldDocs = {
 	index: { type: 'integer', description: 'Column position' },
 	createdAt: { description: 'Timestamp when the column was created' },
 	updatedAt: { description: 'Timestamp when the column was last updated' },
+	dataTableId: { description: 'ID of the data table this column belongs to' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const dataTableListFieldDocs = {

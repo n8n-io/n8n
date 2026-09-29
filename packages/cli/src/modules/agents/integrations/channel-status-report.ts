@@ -1,4 +1,5 @@
 import {
+	isCredentialAgentIntegration,
 	isDraftIntegration,
 	type AgentChannelRuntimeStatus,
 	type AgentIntegrationConfig,
@@ -36,7 +37,8 @@ export function buildChannelStatusReport(
 	activeVersionId: string | null,
 	statuses: AgentChannelStatus[],
 	isLive: IsLiveRow,
-): AgentIntegrationStatusResponse {
+	publishedIntegrations: AgentIntegrationConfig[] = [],
+): Omit<AgentIntegrationStatusResponse, 'n8nChat'> {
 	const liveByChannel = new Map<string, AgentChannelStatus[]>();
 	for (const row of statuses) {
 		if (!isLive(row)) continue;
@@ -49,6 +51,7 @@ export function buildChannelStatusReport(
 	// keeps channel-setup UIs from rendering a configured state and hiding their
 	// own setup form.
 	const entries: AgentIntegrationStatusEntry[] = (integrations ?? [])
+		.filter(isCredentialAgentIntegration)
 		.filter((integration) => !isDraftIntegration(integration))
 		.map((integration) => {
 			const rows = liveByChannel.get(channelKey(integration.type, integration.credentialId)) ?? [];
@@ -64,6 +67,13 @@ export function buildChannelStatusReport(
 				...(failure?.errorMessage ? { errorMessage: failure.errorMessage } : {}),
 			};
 		});
+	const draftChat = integrations?.some((integration) => integration.type === 'n8n_chat') ?? false;
+	const publishedChat =
+		activeVersionId !== null &&
+		publishedIntegrations.some((integration) => integration.type === 'n8n_chat');
+	if (draftChat || publishedChat) {
+		entries.push({ type: 'n8n_chat', status: publishedChat ? 'connected' : 'configured' });
+	}
 
 	return { status: rollUp(entries), integrations: entries };
 }

@@ -10,7 +10,8 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 
 	extends = ['oAuth2Api'];
 
-	documentationUrl = 'azureentracognitiveservicesoauth2api';
+	documentationUrl =
+		'https://docs.n8n.io/integrations/builtin/credentials/azureopenai/#using-azure-entra-id-oauth2';
 
 	properties: INodeProperties[] = [
 		{

@@ -4,9 +4,7 @@ import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
+import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';

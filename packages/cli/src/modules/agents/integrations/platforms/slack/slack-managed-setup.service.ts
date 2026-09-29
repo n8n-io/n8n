@@ -19,8 +19,7 @@ import { join } from 'node:path';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { SlackMethodsService } from './slack-methods.service';

@@ -6,7 +6,7 @@ import merge from 'lodash/merge';
 import path from 'path';
 
 import { ALPHABET } from './constants';
-import { UserError } from './errors/base/user.error';
+import { UserError } from '@n8n/errors';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 

@@ -16,8 +16,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';

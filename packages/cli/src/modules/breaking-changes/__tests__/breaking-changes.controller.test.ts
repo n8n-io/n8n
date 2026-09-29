@@ -29,7 +29,7 @@ const workflowRule = (ruleId: string, workflowIds: string[]): BreakingChangeWork
 	ruleId,
 	ruleTitle: ruleId,
 	ruleDescription: ruleId,
-	ruleSeverity: 'critical',
+	ruleImpact: 'executionsFail',
 	recommendations: [],
 	migratable: false,
 	affectedWorkflows: workflowIds.map(affectedWorkflow),

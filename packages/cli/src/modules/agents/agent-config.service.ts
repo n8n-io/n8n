@@ -15,7 +15,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 
 import {
@@ -323,7 +323,13 @@ export class AgentConfigService {
 			previousIntegrations,
 			nextIntegrations,
 		);
-		return { nextSchema, nextIntegrations, previousSchema, previousIntegrations, changedParts };
+		return {
+			nextSchema,
+			nextIntegrations,
+			previousSchema,
+			previousIntegrations,
+			changedParts,
+		};
 	}
 
 	private mergeConfigSchema(
