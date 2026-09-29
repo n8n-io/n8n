@@ -24,9 +24,10 @@ first `insights` data are not reported at all.
 The first report works the same way: it carries a `daily` point for every day
 from the first `insights` data to yesterday. It carries no past `cumulative`
 values, since those are unknown. Days before the first `insights` data are not
-sent. `insights` folds days older than 180 days (by default) into weekly
-totals, so a report never carries a day older than 179 days. Inside the sent
-range, a day without data is `0`.
+sent. A report reads only hourly `insights` data, because only hourly rows
+split exactly into UTC days. `insights` folds hours older than 90 days (by
+default) into daily rows, so a report never carries a day older than 89 days.
+Inside the sent range, a day without data is `0`.
 [RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
 
 Known limits:
@@ -40,6 +41,14 @@ Known limits:
   restore looks the same as a day when nothing ran. If `insights` stored an
   explicit `0` for each day it ran, the lost days could be left out, and only
   the backup day would be sent again.
+- On Postgres, `insights` compacts in the session's time zone. When that time
+  zone is not UTC, two cases put executions on the wrong UTC day:
+  - Daily rows inside the sent range. They occur only if
+    `N8N_INSIGHTS_COMPACTION_HOURLY_TO_DAILY_THRESHOLD_DAYS` was lower before.
+    Each daily row holds a local day, and the report puts it on one UTC day.
+  - A time zone with a half-hour offset, such as `Asia/Kolkata`. Hourly rows
+    then start at 30 minutes past the UTC hour, so the row that holds UTC
+    midnight counts on one day only.
 
 **A day is reported once, and 201 is what decides it.** The receiver answers 201
 only once it has saved the report, so anything else means nothing was saved and

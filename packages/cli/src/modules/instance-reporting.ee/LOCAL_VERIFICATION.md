@@ -163,8 +163,8 @@ yesterday's UTC date, not today's.
 "Exactly two entries" holds when `insights_by_period` has no rows older than
 yesterday, as on a fresh `~/.n8n`. The first report backfills the `insights`
 history. With an older database, it gives one `daily` point for every day from
-the oldest row to yesterday, oldest first, but for at most 179 days (the
-day-to-week compaction threshold minus one). Days without rows inside that
+the oldest row to yesterday, oldest first, but for at most 89 days (the
+hour-to-day compaction threshold minus one). Days without rows inside that
 range carry `0`.
 
 **n8n side.**

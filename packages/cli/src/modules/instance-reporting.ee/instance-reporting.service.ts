@@ -237,12 +237,12 @@ export class InstanceReportingService {
 		if (lastCoveredDay && lastCoveredDay >= yesterday) return [];
 
 		const firstDay = minDay(await this.firstOwedDay(lastCoveredDay, yesterday), yesterday);
-		// Compaction folds days older than this threshold into weekly totals, which
-		// have no per-day value. One day of margin, since Postgres dates that
-		// threshold in the session's time zone rather than in UTC.
+		// Only hourly rows split exactly into UTC days: Postgres compacts older hours
+		// into days of the session's time zone, which need not be UTC. One day of
+		// margin, since Postgres also dates this threshold in that time zone.
 		const oldestAllowedDay = utcDayBefore(
 			now,
-			Math.max(1, this.insightsConfig.compactionDailyToWeeklyThresholdDays - 1),
+			Math.max(1, this.insightsConfig.compactionHourlyToDailyThresholdDays - 1),
 		);
 
 		const days: string[] = [];

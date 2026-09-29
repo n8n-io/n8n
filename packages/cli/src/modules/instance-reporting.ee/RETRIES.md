@@ -84,10 +84,11 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
   before the first `insights` data (`InsightsService.getEarliestDataDate()`).
   Before the first delivered report, it is that first day.
   - A report never carries a day older than
-    `N8N_INSIGHTS_COMPACTION_DAILY_TO_WEEKLY_THRESHOLD_DAYS` minus one: 179
-    days with the default settings. Compaction folds older days into one row
-    per week, so those days have no exact value. The day of margin covers
-    Postgres, which dates the threshold in the session's time zone.
+    `N8N_INSIGHTS_COMPACTION_HOURLY_TO_DAILY_THRESHOLD_DAYS` minus one: 89
+    days with the default settings. Compaction folds older hours into daily
+    rows. On Postgres, a daily row holds a day in the session's time zone, so
+    it has no exact value for a UTC day. The day of margin covers Postgres,
+    which also dates the threshold in the session's time zone.
   - Days before the first data are not reported, not even as `0`. Inside the
     window, a day without data is reported as `0`. `insights` writes rows only
     for executions and never stores a `0`, so a day without executions and a
@@ -96,7 +97,7 @@ Scope: no `pending` row is the newest, but one or more calendar days have no
     still shows up on the receiver.
 - The first report is no special case. It backfills the history that `insights`
   holds instead of sending yesterday alone.
-- With the default settings, a full report of 179 daily points comes to less
+- With the default settings, a full report of 89 daily points comes to less
   than 20 KB, far below the receiver's size limit. If the receiver
   still rejects a report with `413`, the row is skipped. The next report
   carries the same days, so the receiver can reject it again.

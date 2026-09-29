@@ -588,13 +588,13 @@ describe('InstanceReportingService', () => {
 			test('carries every day of insights history, oldest first, and one cumulative point', async () => {
 				const { service, reportRepository, insightsService, http } = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
-				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-11-26T00:00:00.000Z'));
+				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
 
 				await service.sendReport();
 
 				const daily = dailyPoints(http);
-				expect(daily).toHaveLength(120);
-				expect(daily.at(0)?.date).toBe('2025-11-26');
+				expect(daily).toHaveLength(84);
+				expect(daily.at(0)?.date).toBe('2026-01-01');
 				expect(daily.at(-1)).toEqual({ value: 42, date: REPORT_DATE });
 				expect(daily.map(({ date }) => date)).toEqual(daily.map(({ date }) => date).sort());
 				expect(points(http).filter((point) => point.kind === 'cumulative')).toEqual([
@@ -699,32 +699,32 @@ describe('InstanceReportingService', () => {
 
 		test('starts a gap no earlier than the first insights data', async () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
-			reportRepository.findLastCoveredDay.mockResolvedValue('2025-06-01');
-			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-10-08T00:00:00.000Z'));
+			reportRepository.findLastCoveredDay.mockResolvedValue('2025-12-30');
+			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-01-10T00:00:00.000Z'));
 
 			await service.sendReport();
 
-			expect(dailyPoints(http).at(0)).toEqual({ value: 0, date: '2025-10-08' });
+			expect(dailyPoints(http).at(0)).toEqual({ value: 0, date: '2026-01-10' });
 		});
 
 		test('reads the whole window in one day-bucketed read', async () => {
 			const { service, reportRepository, insightsService, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
-			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-12-21T00:00:00.000Z'));
+			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
 
 			await service.sendReport();
 
 			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledTimes(1);
 			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
-				startDate: new Date('2025-12-21T00:00:00.000Z'),
+				startDate: new Date('2026-01-01T00:00:00.000Z'),
 				endDate: new Date('2026-03-25T00:00:00.000Z'),
 			});
-			expect(dailyPoints(http)).toHaveLength(95);
+			expect(dailyPoints(http)).toHaveLength(84);
 		});
 
-		test('carries no day older than the compaction threshold, minus one day of margin', async () => {
+		test('carries no day older than the hourly compaction threshold, minus one day of margin', async () => {
 			const { service, reportRepository, insightsService, insightsConfig, http } = makeHarness();
-			insightsConfig.compactionDailyToWeeklyThresholdDays = 30;
+			insightsConfig.compactionHourlyToDailyThresholdDays = 30;
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
 			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2023-01-01T00:00:00.000Z'));
 

@@ -439,25 +439,21 @@ describe('instance reporting retries', () => {
 		expect(points.filter((point) => point.value !== 0)).toHaveLength(3);
 	});
 
-	test('carries the insights history on the first report, but no day older than the compaction threshold', async () => {
-		// With a threshold of 62 days, compaction folded everything before 01-23
-		// into weekly rows: the week of 01-19 up to Thursday.
+	test('carries the insights history on the first report, but no day older than the hourly compaction threshold', async () => {
+		// With a threshold of 30 days, compaction folded every hour before 02-24
+		// into daily rows, and older days into weekly rows.
 		const insightsConfig = Container.get(InsightsConfig);
-		const { compactionDailyToWeeklyThresholdDays } = insightsConfig;
-		insightsConfig.compactionDailyToWeeklyThresholdDays = 62;
+		const { compactionHourlyToDailyThresholdDays } = insightsConfig;
+		insightsConfig.compactionHourlyToDailyThresholdDays = 30;
 		onTestFinished(() => {
-			insightsConfig.compactionDailyToWeeklyThresholdDays = compactionDailyToWeeklyThresholdDays;
+			insightsConfig.compactionHourlyToDailyThresholdDays = compactionHourlyToDailyThresholdDays;
 		});
 
 		await seedCompactedExecutions('week', { '2026-01-19': 700 });
-		await seedCompactedExecutions('day', {
-			'2026-01-23': 5,
-			'2026-01-24': 6,
-			'2026-01-26': 7,
-			'2026-02-24': 8,
-			'2026-02-25': 9,
-		});
+		await seedCompactedExecutions('day', { '2026-02-20': 5, '2026-02-23': 6 });
 		await seedCompactedExecutions('hour', {
+			'2026-02-24T10:00:00': 7,
+			'2026-02-25T00:00:00': 8,
 			'2026-03-10T08:00:00': 2,
 			'2026-03-10T15:00:00': 3,
 			'2026-03-25T23:00:00': 4,
@@ -468,14 +464,11 @@ describe('instance reporting retries', () => {
 		await armed(harness, 1);
 
 		const points = dailyPoints(sentPayload(harness, 0));
-		// From 61 days back to yesterday. 01-23 falls in the one day of margin.
-		expect(points).toHaveLength(61);
-		expect(points.at(0)).toEqual({ date: '2026-01-24', value: 6 });
+		// From 29 days back to yesterday. 02-24 falls in the one day of margin.
+		expect(points).toHaveLength(29);
+		expect(points.at(0)).toEqual({ date: '2026-02-25', value: 8 });
 		expect(points.filter((point) => point.value !== 0)).toEqual([
-			{ date: '2026-01-24', value: 6 },
-			{ date: '2026-01-26', value: 7 },
-			{ date: '2026-02-24', value: 8 },
-			{ date: '2026-02-25', value: 9 },
+			{ date: '2026-02-25', value: 8 },
 			{ date: '2026-03-10', value: 5 },
 			{ date: '2026-03-25', value: 4 },
 		]);
