@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import request from 'supertest';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -799,8 +800,12 @@ describe('Full authorization-code flow (PKCE)', () => {
 		});
 		const clientId = registerResponse.body.client_id;
 
+		// One browser, so one cookie jar for both authorization requests. Its own
+		// agent, because the flow cookies outlive each request and the shared
+		// agents are reused by every other test in this file.
+		const browser = request.agent(testServer.app);
 		const authorize = async (codeChallenge: string, state: string) => {
-			const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			const response = await browser.get('/mcp-oauth/authorize').query({
 				client_id: clientId,
 				redirect_uri: 'https://example.com/callback',
 				response_type: 'code',
@@ -809,7 +814,9 @@ describe('Full authorization-code flow (PKCE)', () => {
 				state,
 			});
 			expect(response.statusCode).toBe(302);
-			return pendingFlowFrom(response);
+			const flow = pendingFlowFrom(response);
+			expect(flow.cookie).toBeDefined();
+			return flow;
 		};
 
 		// Both requests are pending at once, each with its own flow id and cookie.
@@ -817,15 +824,19 @@ describe('Full authorization-code flow (PKCE)', () => {
 		const secondFlow = await authorize(second.challenge, 'state-second');
 		expect(firstFlow.flowId).not.toBe(secondFlow.flowId);
 
-		// The browser carries both cookies. The user approves the first request.
-		const grantedScopes = supportedScopes.filter((scope) => scope !== 'communityPackage:install');
-		const authAgent = testServer.authAgentFor(owner);
-		authAgent.jar.setCookie(firstFlow.cookie ?? '');
-		authAgent.jar.setCookie(secondFlow.cookie ?? '');
-		const consentResponse = await authAgent
+		// The consent screen carries both cookies and asks for one flow by id.
+		const consentAgent = testServer.authAgentFor(owner);
+		consentAgent.jar.setCookie(firstFlow.cookie ?? '');
+		consentAgent.jar.setCookie(secondFlow.cookie ?? '');
+
+		const details = await consentAgent.get(`/consent/details?flow=${firstFlow.flowId}`);
+		expect(details.body).toMatchObject({ data: { clientId } });
+
+		// Approve the first request, granting exactly what its screen offered.
+		const consentResponse = await consentAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: grantedScopes, flow: firstFlow.flowId });
-		expect(consentResponse.statusCode).toBe(200);
+			.send({ approved: true, scopes: details.body.data.scopes, flow: firstFlow.flowId });
+		expect(consentResponse.body).toMatchObject({ data: { status: 'success' } });
 
 		// The code carries the first request's state, and only the first request's
 		// verifier redeems it.
@@ -847,14 +858,13 @@ describe('Full authorization-code flow (PKCE)', () => {
 		expect(wrongVerifier.body.error).toBe('invalid_grant');
 
 		const rightVerifier = await exchange(first.verifier);
-		expect(rightVerifier.statusCode).toBe(200);
-		expect(rightVerifier.body.access_token).toEqual(expect.any(String));
+		expect(rightVerifier.body).toMatchObject({ access_token: expect.any(String) });
 
 		// The second request survived the first one's approval and is still decidable.
-		const secondConsent = await authAgent
+		const secondConsent = await consentAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: grantedScopes, flow: secondFlow.flowId });
-		expect(secondConsent.statusCode).toBe(200);
+			.send({ approved: true, scopes: details.body.data.scopes, flow: secondFlow.flowId });
+		expect(secondConsent.body).toMatchObject({ data: { status: 'success' } });
 		expect(new URL(secondConsent.body.data.redirectUrl).searchParams.get('state')).toBe(
 			'state-second',
 		);
