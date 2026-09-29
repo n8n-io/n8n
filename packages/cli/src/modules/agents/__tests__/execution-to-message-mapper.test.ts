@@ -18,11 +18,17 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 
 describe('execution-to-message-mapper', () => {
 	it('splits assistant output around stable additional user messages', () => {
-		const input = {
-			id: 'steered-message',
+		const inputD = {
+			id: 'steer-d',
 			role: 'user' as const,
-			content: [{ type: 'text' as const, text: 'C' }],
+			content: [{ type: 'text' as const, text: 'D' }],
 			createdAt: new Date(150).toISOString(),
+		};
+		const inputB = {
+			id: 'steer-b',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'B' }],
+			createdAt: new Date(250).toISOString(),
 		};
 		const result = executionToMessagesDto(
 			execution({
@@ -30,25 +36,41 @@ describe('execution-to-message-mapper', () => {
 				error: 'Failed after input',
 				inputMessages: [
 					{ id: 'initial-message', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
-					input,
+					inputD,
+					inputB,
 				],
 				timeline: [
 					{ type: 'text', content: 'before', timestamp: 100, endTime: 120 },
-					{ type: 'input', messageId: input.id, timestamp: 150 },
-					{ type: 'text', content: 'after', timestamp: 200, endTime: 220 },
+					{ type: 'input', messageId: inputD.id, timestamp: 150 },
+					{ type: 'text', content: 'between', timestamp: 200, endTime: 220 },
+					{ type: 'input', messageId: inputB.id, timestamp: 250 },
+					{ type: 'text', content: 'after', timestamp: 300, endTime: 320 },
 				],
 			}),
 		);
 		expect(result.map(({ role, content }) => ({ role, content }))).toEqual([
 			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
 			{ role: 'assistant', content: [{ type: 'text', text: 'before' }] },
-			{ role: 'user', content: input.content },
+			{ role: 'user', content: inputD.content },
+			{ role: 'assistant', content: [{ type: 'text', text: 'between' }] },
+			{ role: 'user', content: inputB.content },
 			{ role: 'assistant', content: [{ type: 'text', text: 'after' }] },
 		]);
-		expect(result[2]).toMatchObject({ ...input, executionId: 'execution-1' });
-		expect(new Set(result.map(({ id }) => id)).size).toBe(4);
+		expect(result[2]).toMatchObject({ ...inputD, executionId: 'execution-1' });
+		expect(result[4]).toMatchObject({ ...inputB, executionId: 'execution-1' });
+		expect(result.map(({ id }) => id)).toEqual([
+			'initial-message',
+			'execution-1:assistant',
+			'steer-d',
+			'execution-1:assistant:steer-d',
+			'steer-b',
+			'execution-1:assistant:steer-b',
+		]);
 		expect(result[1].executionStatus).toBe('success');
-		expect(result[3]).toMatchObject({
+		expect(result[3].executionStatus).toBe('success');
+		expect(result[1].executionError).toBeUndefined();
+		expect(result[3].executionError).toBeUndefined();
+		expect(result[5]).toMatchObject({
 			executionStatus: 'error',
 			executionError: 'Failed after input',
 		});
