@@ -27,6 +27,7 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
+import type { TriggerTime } from './cron';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -1150,6 +1151,7 @@ export type Cron = {
 	expression: CronExpression;
 	recurrence?: CronRecurrenceRule;
 	source?: CronSource;
+	triggerTime?: TriggerTime;
 };
 
 export interface SchedulingFunctions {
