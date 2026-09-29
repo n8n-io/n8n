@@ -23,6 +23,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { redactTelemetryProperties } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -1802,12 +1803,18 @@ export class McpAgentToolsService {
 		try {
 			const data = await action();
 			telemetryPayload.results = { success: data.ok !== false };
-			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			this.telemetry.track(
+				USER_CALLED_MCP_TOOL_EVENT,
+				redactTelemetryProperties({ ...telemetryPayload }),
+			);
 			return toolResult(data, data.ok === false);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = { success: false, error: message };
-			this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			this.telemetry.track(
+				USER_CALLED_MCP_TOOL_EVENT,
+				redactTelemetryProperties({ ...telemetryPayload }),
+			);
 			return toolResult({ ok: false, code: 'agent_tool_error', error: message }, true);
 		}
 	}
