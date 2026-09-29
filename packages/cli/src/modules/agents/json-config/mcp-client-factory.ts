@@ -8,11 +8,7 @@ import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import {
-	getMcpAuthHeaders,
-	isMcpOAuth2Authentication,
-	OperationalError,
-} from 'n8n-workflow';
+import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import {

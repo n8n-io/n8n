@@ -146,8 +146,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'mcp:discover': {
 		displayName: 'Discover MCP tools',
-		description:
-			'Allows connecting to an MCP server temporarily to discover its available tools.',
+		description: 'Allows connecting to an MCP server temporarily to discover its available tools.',
 	},
 	'insights:read': {
 		displayName: 'Read Insights',
