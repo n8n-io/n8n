@@ -70,6 +70,13 @@ export interface GenerateCodeOptions extends ExecutionContextOptions {
 	includeNodeIds?: boolean;
 	/** Emit saved node positions. On by default; see `GenerateWorkflowCodeOptions`. */
 	includePositions?: boolean;
+	/**
+	 * Verification fixtures to emit verbatim as each node's `output`, keyed by node
+	 * name. Takes precedence over the sample derived from `executionSchema`. The
+	 * saved workflow does not carry these (they live in source only), so a caller
+	 * that regenerates source for editing passes the ones it kept.
+	 */
+	nodeOutputs?: Map<string, unknown[]>;
 }
 
 /**
@@ -90,6 +97,8 @@ interface GenerationContext {
 	workflowStatusJSDoc?: string;
 	valuesExcluded?: boolean;
 	pinnedNodes?: Set<string>;
+	/** Declared verification outputs to re-emit, keyed by node name. */
+	nodeOutputs?: Map<string, unknown[]>;
 	/** Graph node names allowed to emit their id; absent when id emission is off */
 	nodesWithEmittableId?: ReadonlySet<string>;
 	/** Leave `position` out of every node, subnode, and sticky note. */
@@ -549,9 +558,14 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		parts.push(`${innerIndent}config: {}`);
 	}
 
-	// Add output from execution schema if available (for data flow awareness)
 	const nodeName = node.json.name;
-	if (nodeName && ctx.nodeSchemas?.has(nodeName)) {
+	// Declared verification output wins: it is what the source said, not a sample.
+	const declaredOutput = nodeName ? ctx.nodeOutputs?.get(nodeName) : undefined;
+	if (declaredOutput && declaredOutput.length > 0) {
+		const items = declaredOutput.map((item) => formatValue(item, ctx)).join(', ');
+		parts.push(`${innerIndent}output: [${items}]`);
+	} else if (nodeName && ctx.nodeSchemas?.has(nodeName)) {
+		// Add output from execution schema if available (for data flow awareness)
 		const schema = ctx.nodeSchemas.get(nodeName)!;
 		const outputSample = schemaToOutputSample(schema, ctx.valuesExcluded);
 		if (outputSample && Object.keys(outputSample).length > 0) {
@@ -1419,6 +1433,7 @@ export function generateCode(
 		workflowStatusJSDoc: executionContext?.workflowStatusJSDoc,
 		valuesExcluded: executionContext?.valuesExcluded,
 		pinnedNodes: executionContext?.pinnedNodes,
+		nodeOutputs: executionContext?.nodeOutputs,
 		nodesWithEmittableId: executionContext?.includeNodeIds
 			? collectNodesWithEmittableId(graph)
 			: undefined,

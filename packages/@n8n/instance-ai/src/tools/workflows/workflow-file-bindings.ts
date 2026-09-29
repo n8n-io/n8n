@@ -8,12 +8,22 @@ import { normalizeWorkspaceRelativePath } from '../../workspace/workspace-paths'
 
 const METADATA_KEY = 'instanceAiWorkflowSourceFiles';
 
+const declaredOutputFixturesSchema = z.record(
+	z.string(),
+	z.object({
+		nodeType: z.string(),
+		items: z.array(z.record(z.string(), z.unknown())),
+	}),
+);
+
 const workflowSourceFileBindingSchema = z.object({
 	filePath: z.string(),
 	workflowId: z.string().optional(),
 	workflowVersionId: z.string().optional(),
 	workflowChecksum: z.string().optional(),
 	sourceHash: z.string().optional(),
+	/** Node `output` fixtures the last built source declared; see workflow-declared-outputs.ts. */
+	declaredOutputFixtures: declaredOutputFixturesSchema.optional(),
 });
 
 const workflowSourceFileBindingsSchema = z.record(z.string(), workflowSourceFileBindingSchema);

@@ -60,6 +60,12 @@ export interface GenerateWorkflowCodeOptions {
 	 * in the file invites a layout edit.
 	 */
 	includePositions?: boolean;
+	/**
+	 * Verification fixtures to emit as each node's `output`, keyed by node name and
+	 * copied verbatim. Saved workflows do not store them, so a caller that regenerates
+	 * source for editing passes the ones it kept from the last build.
+	 */
+	nodeOutputs?: Record<string, unknown[]>;
 }
 
 // Re-export individual functions for testing and extension
@@ -122,6 +128,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		pinnedNodes,
 		includeNodeIds,
 		includePositions,
+		nodeOutputs,
 	} = isOptionsObject(input)
 		? input
 		: {
@@ -133,6 +140,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 				pinnedNodes: undefined,
 				includeNodeIds: undefined,
 				includePositions: undefined,
+				nodeOutputs: undefined,
 			};
 
 	// Phase 1: Build semantic graph
@@ -169,5 +177,6 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		pinnedNodes: pinnedNodes ? new Set(pinnedNodes) : undefined,
 		includeNodeIds,
 		includePositions,
+		nodeOutputs: nodeOutputs ? new Map(Object.entries(nodeOutputs)) : undefined,
 	});
 }

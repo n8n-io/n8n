@@ -16,10 +16,12 @@ import type {
 	CapturedToolCall,
 	ConversationMetrics,
 	EventOutcome,
+	ExternalEditFact,
 	InstanceAiMetrics,
 	TranscriptTurn,
 	TurnCounter,
 } from '../types';
+import { EXTERNAL_EDIT_EVENT } from '../types';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
@@ -366,6 +368,9 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 	const seenRequestIds = new Set<string>();
 	const aggregateByKind: Record<string, number> = {};
 	let aggregateTotal = 0;
+	const externalEdits: ExternalEditFact[] = [];
+	// tool-result events may omit toolName; resolve it from the matching tool-call.
+	const toolNamesByCallId = new Map<string, string>();
 
 	for (let i = 0; i < turns.length; i++) {
 		const turnEvents = turns[i];
@@ -377,6 +382,7 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 			confirmationAskedByKind: {},
 			replanAfterErrorCount: 0,
 			repeatQuestionCount: 0,
+			staleStateConflictCount: 0,
 		};
 
 		const errorPositions: number[] = [];
@@ -390,14 +396,30 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 				case 'tool-call': {
 					counter.toolCallCount++;
 					const toolName = getString(payload, 'toolName');
+					const toolCallId = getString(payload, 'toolCallId');
+					if (toolName && toolCallId) toolNamesByCallId.set(toolCallId, toolName);
 					if (toolName && PLAN_RECOVERY_TOOL_NAMES.has(toolName)) {
 						planRecoveryPositions.push(j);
 					}
 					break;
 				}
+				case 'tool-result': {
+					const toolCallId = getString(payload, 'toolCallId');
+					const toolName =
+						getString(payload, 'toolName') ??
+						(toolCallId ? toolNamesByCallId.get(toolCallId) : undefined);
+					if (isStaleStateConflict(toolName, payload.result)) counter.staleStateConflictCount++;
+					break;
+				}
 				case 'tool-error': {
 					counter.toolErrorCount++;
 					errorPositions.push(j);
+					if (mentionsStaleState(getString(payload, 'error'))) counter.staleStateConflictCount++;
+					break;
+				}
+				case EXTERNAL_EDIT_EVENT: {
+					const fact = parseExternalEditFact(payload);
+					if (fact) externalEdits.push({ ...fact, turn: i + 1 });
 					break;
 				}
 				case 'tasks-update': {
@@ -449,6 +471,51 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 		confirmationAskedTotal: aggregateTotal,
 		confirmationAskedByKind: aggregateByKind,
 		reachedRunFinishCleanly,
+		staleStateConflictTotal: perTurn.reduce((sum, c) => sum + c.staleStateConflictCount, 0),
+		externalEdits,
+	};
+}
+
+const STALE_STATE_REMEDIATION_REASON = 'workflow_modified_externally';
+const STALE_STATE_ERROR_TEXT = 'modified outside this conversation';
+
+function mentionsStaleState(text: string | undefined): boolean {
+	return text?.includes(STALE_STATE_ERROR_TEXT) ?? false;
+}
+
+/**
+ * True when a `build-workflow` result is the instance refusing the save because
+ * the workflow changed outside the conversation. Matches the tool's remediation
+ * reason first; the error text is the fallback for older captures.
+ */
+export function isStaleStateConflict(toolName: string | undefined, result: unknown): boolean {
+	if (toolName !== undefined && !WORKFLOW_TOOLS.has(toolName)) return false;
+	const record = toResultRecord(result);
+	if (record?.success !== false) return false;
+	const remediation = getRecord(record, 'remediation') ?? {};
+	if (getString(remediation, 'reason') === STALE_STATE_REMEDIATION_REASON) return true;
+	const errors = record.errors;
+	if (Array.isArray(errors)) {
+		return errors.some((e) => typeof e === 'string' && mentionsStaleState(e));
+	}
+	return typeof errors === 'string' && mentionsStaleState(errors);
+}
+
+function parseExternalEditFact(
+	payload: Record<string, unknown>,
+): Omit<ExternalEditFact, 'turn'> | undefined {
+	const to = getString(payload, 'to');
+	if (getString(payload, 'kind') !== 'rename' || to === undefined) return undefined;
+	const workflowId = getString(payload, 'workflowId');
+	const from = getString(payload, 'from');
+	const reason = getString(payload, 'reason');
+	return {
+		kind: 'rename',
+		to,
+		applied: payload.applied === true,
+		...(workflowId !== undefined ? { workflowId } : {}),
+		...(from !== undefined ? { from } : {}),
+		...(reason !== undefined ? { reason } : {}),
 	};
 }
 
@@ -465,6 +532,7 @@ export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[]
 			confirmationAskedByKind: {},
 			replanAfterErrorCount: 0,
 			repeatQuestionCount: 0,
+			staleStateConflictCount: 0,
 		};
 		for (const step of turn.steps) {
 			// Every non-narration step is a tool call (+1); in a live run the HITL
@@ -474,6 +542,7 @@ export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[]
 			switch (step.kind) {
 				case 'tool-call':
 					if (step.error !== undefined) counter.toolErrorCount++;
+					if (isStaleStateConflict(step.toolName, step.result)) counter.staleStateConflictCount++;
 					break;
 				case 'ask-user':
 					counter.confirmationAskedTotal++;
@@ -525,6 +594,12 @@ export function mergeSeededConversationMetrics(
 		confirmationAskedTotal,
 		confirmationAskedByKind,
 		reachedRunFinishCleanly: liveMetrics.reachedRunFinishCleanly,
+		staleStateConflictTotal: perTurn.reduce((sum, c) => sum + c.staleStateConflictCount, 0),
+		// Turn numbers shift by the seeded prefix, like the counters above.
+		externalEdits: liveMetrics.externalEdits.map((edit) => ({
+			...edit,
+			turn: edit.turn + seededPerTurn.length,
+		})),
 	};
 }
 
