@@ -11,8 +11,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
