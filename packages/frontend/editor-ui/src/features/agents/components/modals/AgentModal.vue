@@ -240,7 +240,6 @@ function onOpenAutoFocus(event: Event) {
 	flex-direction: column;
 	margin: calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1) 0;
 	padding: var(--spacing--md) var(--spacing--lg);
-	border-bottom: var(--border);
 }
 
 .titleError {
@@ -342,6 +341,12 @@ function onOpenAutoFocus(event: Event) {
 	padding: 0;
 }
 
+.footer {
+	margin: var(--spacing--md) calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1);
+	padding: var(--spacing--md) var(--spacing--lg);
+	border-top: var(--border);
+}
+
 .footerLayout {
 	display: flex;
 	align-items: center;
@@ -362,7 +367,8 @@ function onOpenAutoFocus(event: Event) {
 }
 
 @media (max-width: 480px) {
-	.header {
+	.header,
+	.footer {
 		padding-inline: var(--spacing--md);
 	}
 

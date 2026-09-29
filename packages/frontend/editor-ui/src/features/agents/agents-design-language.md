@@ -33,10 +33,10 @@ design work.
 | Area       | Rule                                                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
+| Header     | Do not add a bottom divider. Put Back on the left and Close on the right.                                                     |
 | Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.    |
 | Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
+| Footer     | Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.               |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new

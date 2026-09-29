@@ -133,6 +133,13 @@ function migrateConfig(value: unknown): MigrationResult {
 		: { status: 'unchanged' };
 }
 
+/**
+ * Replaces legacy MCP tool filters and approval settings with tool permissions.
+ *
+ * The migration processes current and historical agent configs in batches. It
+ * validates every MCP server before it updates a row, preserves unrelated
+ * fields, and skips malformed rows instead of applying a partial conversion.
+ */
 export class MigrateAgentMcpToolPermissions1790585122744 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		for (const table of tables) {
