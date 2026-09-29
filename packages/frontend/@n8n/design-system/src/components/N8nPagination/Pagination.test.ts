@@ -2,6 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
 import Pagination from './Pagination.vue';
+import { PAGINATION_ALL_ITEMS_PER_PAGE } from './Pagination.types';
 
 describe('components/N8nPagination', () => {
 	describe('rendering', () => {
@@ -273,6 +274,29 @@ describe('components/N8nPagination', () => {
 			await waitFor(() => {
 				expect(wrapper.getByRole('option', { name: '10/page' })).toBeInTheDocument();
 				expect(wrapper.getByRole('option', { name: '50/page' })).toBeInTheDocument();
+			});
+		});
+
+		it('should offer All when showAll is set', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 1,
+					itemsPerPage: 10,
+					total: 100,
+					showAll: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('combobox'));
+
+			await waitFor(async () => {
+				await userEvent.click(wrapper.getByRole('option', { name: 'All' }));
+			});
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:itemsPerPage')?.[0]).toEqual([
+					PAGINATION_ALL_ITEMS_PER_PAGE,
+				]);
 			});
 		});
 

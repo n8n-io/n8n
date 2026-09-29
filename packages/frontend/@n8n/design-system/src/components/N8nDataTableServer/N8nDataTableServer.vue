@@ -39,7 +39,8 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import { ElSkeletonItem } from 'element-plus';
+
 // `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
 // `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
 // subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
@@ -47,7 +48,7 @@ import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, watch } from 'vue';
 
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
-import N8nPagination from '../N8nPagination';
+import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
 
@@ -69,12 +70,19 @@ const props = withDefaults(
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
 		pageSizes?: number[];
+		/**
+		 * Show an All option in the page size selector.
+		 * Selecting it sets items per page to `PAGINATION_ALL_ITEMS_PER_PAGE`.
+		 * @default false
+		 */
+		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
 	}>(),
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
+		showAll: false,
 		rowProps: undefined,
 	},
 );
@@ -225,7 +233,19 @@ const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => table.setPageSize(itemsPerPage.value));
+watch(itemsPerPage, (value) => {
+	// TanStack clamps page size to at least 1, so All must skip setPageSize.
+	if (value === PAGINATION_ALL_ITEMS_PER_PAGE) {
+		void emitUpdateOptions({
+			page: page.value,
+			itemsPerPage: value,
+			sortBy: sortBy.value,
+		});
+		return;
+	}
+
+	table.setPageSize(value);
+});
 
 const pagination = computed<PaginationState>({
 	get() {
@@ -325,15 +345,6 @@ const emitUpdateOptions = useThrottleFn(
 	(payload: TableOptions) => emit('update:options', payload),
 	100,
 );
-
-function handlePageSizeChange(newPageSize: number) {
-	// Calculate the maximum available page (0-indexed)
-	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
-	const newPage = Math.min(page.value, maxPage);
-
-	page.value = newPage;
-	itemsPerPage.value = newPageSize;
-}
 
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
@@ -502,22 +513,12 @@ const table = useVueTable({
 				:page="page + 1"
 				:items-per-page="itemsPerPage"
 				:total="itemsLength"
+				:page-sizes="pageSizes"
+				:show-all="showAll"
 				:show-total="false"
-				:show-sizes="false"
 				@update:page="page = $event - 1"
+				@update:items-per-page="itemsPerPage = $event"
 			/>
-			<div class="table-pagination__sizes">
-				<div class="table-pagination__sizes__label">Page size</div>
-				<ElSelect
-					v-model.number="itemsPerPage"
-					class="table-pagination__sizes__select"
-					size="small"
-					:teleported="false"
-					@update:model-value="handlePageSizeChange"
-				>
-					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
-				</ElSelect>
-			</div>
 		</div>
 	</div>
 </template>
@@ -659,33 +660,10 @@ th.loading-row {
 }
 
 .table-pagination {
-	margin-top: 10px;
+	margin-top: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-
-	&__sizes {
-		display: flex;
-
-		&__label {
-			color: var(--color--text);
-			background-color: var(--color--background--light-2);
-			border: 1px solid var(--color--foreground);
-			border-right: 0;
-			font-size: 12px;
-			display: flex;
-			align-items: center;
-			padding: 0 8px;
-			border-top-left-radius: var(--radius);
-			border-bottom-left-radius: var(--radius);
-		}
-
-		&__select {
-			--input--radius--top-left: 0;
-			--input--radius--bottom-left: 0;
-			width: 70px;
-		}
-	}
 }
 
 .resizer {

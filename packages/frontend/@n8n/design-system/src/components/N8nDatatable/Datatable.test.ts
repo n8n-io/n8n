@@ -1,16 +1,15 @@
 import { render } from '@testing-library/vue';
 
+import { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 import { removeDynamicAttributes } from '../../utils';
 import { rows, columns } from './__tests__/data';
 import N8nDatatable from './Datatable.vue';
 
 const stubs = [
-	'N8nOption',
 	'N8nButton',
-	// Ideally we'd like to stub N8nSelect & N8nPagination, but it doesn't work
+	// Ideally we'd like to stub N8nPagination, but it doesn't work
 	// after migrating to setup script:
 	// https://github.com/vuejs/vue-test-utils/issues/2048
-	// 'n8n-select',
 	// 'n8n-pagination',
 ];
 
@@ -77,25 +76,35 @@ describe('components', () => {
 			expect(wrapper.container.querySelector('tbody td')?.textContent).toEqual('Row slot');
 		});
 
-		it('should render all rows when rowsPerPage is set to -1', () => {
+		it('should use the default pagination control', () => {
 			const wrapper = render(N8nDatatable, {
-				props: { columns, rows, rowsPerPage: -1 },
+				props: { columns, rows, rowsPerPage },
 				global: { stubs },
 			});
 
-			const pagination = wrapper.container.querySelector('.pagination');
-			expect(pagination?.querySelector('[data-test-id="pagination-list"]')).toBeNull();
+			expect(wrapper.getByTestId('pagination')).toBeInTheDocument();
+			expect(wrapper.getByTestId('pagination-sizes')).toBeInTheDocument();
+			expect(wrapper.container.querySelector('.pageSizeSelector')).toBeNull();
+		});
 
-			const pageSizeSelector = wrapper.container.querySelector('.pageSizeSelector');
-			expect(pageSizeSelector?.textContent).toContain('Page size');
+		it('should render every row when rowsPerPage is All', () => {
+			const wrapper = render(N8nDatatable, {
+				props: { columns, rows, rowsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE },
+				global: { stubs },
+			});
 
-			const allOption = wrapper.getByText('All');
-			expect(allOption).not.toBeNull();
-
+			expect(wrapper.getByRole('combobox')).toHaveTextContent('All');
 			expect(wrapper.container.querySelectorAll('tbody tr').length).toEqual(rows.length);
-			expect(wrapper.container.querySelectorAll('tbody tr td').length).toEqual(
-				columns.length * rows.length,
-			);
+		});
+
+		it('should render every row and hide pagination when pagination is disabled', () => {
+			const wrapper = render(N8nDatatable, {
+				props: { columns, rows, pagination: false },
+				global: { stubs },
+			});
+
+			expect(wrapper.queryByTestId('pagination')).not.toBeInTheDocument();
+			expect(wrapper.container.querySelectorAll('tbody tr').length).toEqual(rows.length);
 		});
 	});
 });

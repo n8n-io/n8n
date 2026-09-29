@@ -9,7 +9,7 @@ const renderComponent = createComponentRenderer(N8nDataTableServer);
 const getRenderedOptions = async () => {
 	const dropdown = await waitFor(() => screen.getByRole('listbox'));
 	expect(dropdown).toBeInTheDocument();
-	return dropdown.querySelectorAll('.el-select-dropdown__item');
+	return dropdown.querySelectorAll('[data-test-id="select-item"]');
 };
 
 const itemFactory = () => ({
@@ -119,12 +119,12 @@ describe('N8nDataTableServer', () => {
 		// account for the debounce
 		await new Promise((r) => setTimeout(r, 100));
 
-		const option50 = Array.from(options).find((option) => option.textContent === '50');
+		const option50 = Array.from(options).find((option) => option.textContent === '50/page');
 		await userEvent.click(option50!);
 
 		expect(emitted('update:options').length).toBe(4);
 		expect(emitted('update:options').at(-1)).toStrictEqual([
-			expect.objectContaining({ page: 1, itemsPerPage: 50 }),
+			expect.objectContaining({ page: 0, itemsPerPage: 50 }),
 		]);
 	});
 
@@ -184,26 +184,23 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
-	it('should adjust page to highest available when page size changes and current page exceeds maximum', async () => {
+	it('should return to the first page when the page size changes', async () => {
 		const { emitted, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 106, itemsPerPage: 50, page: 2 },
 		});
 
-		// change the page size select option
-		const selectInput = await findAllByRole('combobox'); // Find the select input
+		const selectInput = await findAllByRole('combobox');
 		await userEvent.click(selectInput[0]);
 
 		const options = await getRenderedOptions();
 		expect(options.length).toBe(4);
 
-		const option100 = Array.from(options).find((option) => option.textContent === '100');
+		const option100 = Array.from(options).find((option) => option.textContent === '100/page');
 		await userEvent.click(option100!);
 
-		// With 106 items and 50 per page, max page should be 2 (0-based index 1)
-		// Since we were on page 2, we should be adjusted to page 1
 		expect(emitted('update:options')).toEqual(
 			expect.arrayContaining([
-				expect.arrayContaining([expect.objectContaining({ page: 1, itemsPerPage: 100 })]),
+				expect.arrayContaining([expect.objectContaining({ page: 0, itemsPerPage: 100 })]),
 			]),
 		);
 	});

@@ -98,41 +98,22 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
       </table>
     </div>
   </div>
-  <div data-v-c73ff18f="" class="pagination">
-    <div data-v-c73ff18f="" class="n8n-pagination paginationContainer medium" data-test-id="pagination">
-      <!--v-if-->
-      <nav>
-        <div class="paginationList" data-test-id="pagination-list"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-left" variant="ghost" size="medium" loading="false" icononly="true" disabled="true" class="" aria-label="Previous page" type="button" data-test-id="pagination-prev"></n8n-button-stub></span>
-          <!--v-if--><button data-type="page" aria-label="Page 1" aria-current="page" data-selected="true" type="button" class="paginationItem" data-test-id="pagination-item" value="1">1</button><button data-type="page" aria-label="Page 2" type="button" class="paginationItem" data-test-id="pagination-item" value="2">2</button><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-right" variant="ghost" size="medium" loading="false" icononly="true" disabled="false" class="" aria-label="Next page" type="button" data-test-id="pagination-next"></n8n-button-stub></span>
-          <!--v-if-->
-        </div>
-      </nav>
-      <!--v-if-->
-      <!--v-if-->
-    </div>
-    <div data-v-c73ff18f="" class="pageSizeSelector">
-      <div data-v-c73ff18f="" class="n8n-select container withPrepend">
-        <div class="prepend">Page size</div>
-        <div class="el-select el-select--small" popperappendtobody="false" limitpopperwidth="false">
-          <div class="select-trigger el-tooltip__trigger el-tooltip__trigger">
-            <!--v-if-->
-            <!--v-if-->
-            <div class="el-input el-input--small el-input--suffix">
-              <!-- input -->
-              <!-- prepend slot -->
-              <!--v-if-->
-              <div class="el-input__wrapper">
-                <!-- prefix slot -->
-                <!--v-if--><input class="el-input__inner" role="combobox" aria-activedescendant="" aria-expanded="false" aria-autocomplete="none" aria-haspopup="listbox" type="text" readonly="" autocomplete="off" tabindex="0" placeholder="Select"><!-- suffix slot --><span class="el-input__suffix"><span class="el-input__suffix-inner"><i class="el-icon el-select__caret el-select__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"></path></svg></i><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--></span></span>
-              </div><!-- append slot -->
-              <!--v-if-->
-            </div>
-          </div>
-          <!--teleport start-->
-          <!--teleport end-->
-        </div>
+  <div data-v-c73ff18f="" class="n8n-pagination paginationContainer medium pagination" data-test-id="pagination">
+    <div class="total" data-test-id="pagination-total">Total 15</div>
+    <nav>
+      <div class="paginationList" data-test-id="pagination-list"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-left" variant="ghost" size="medium" loading="false" icononly="true" disabled="true" class="" aria-label="Previous page" type="button" data-test-id="pagination-prev"></n8n-button-stub></span>
+        <!--v-if--><button data-type="page" aria-label="Page 1" aria-current="page" data-selected="true" type="button" class="paginationItem" data-test-id="pagination-item" value="1">1</button><button data-type="page" aria-label="Page 2" type="button" class="paginationItem" data-test-id="pagination-item" value="2">2</button><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-right" variant="ghost" size="medium" loading="false" icononly="true" disabled="false" class="" aria-label="Next page" type="button" data-test-id="pagination-next"></n8n-button-stub></span>
+        <!--v-if-->
       </div>
+    </nav>
+    <div data-test-id="pagination-sizes" aria-label="Page size" tabindex="0" class="selectTrigger medium pageSizes" role="combobox" aria-expanded="false" aria-required="false" aria-autocomplete="none" disabled="false" dir="ltr" data-state="closed">
+      <!--v-if--><span style="pointer-events: none;" data-placeholder="Select an option" class="selectValue">10/page</span>
+      <!--v-if--><svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon trailingIcon" aria-hidden="true" focusable="false" role="img" data-icon="chevron-down">
+        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"></path>
+      </svg>
     </div>
+    <!--v-if--><select aria-hidden="true" tabindex="-1" style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); white-space: nowrap; word-wrap: normal;" value="10"></select>
+    <!--v-if-->
   </div>
 </div>"
 `;
