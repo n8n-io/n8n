@@ -2304,6 +2304,56 @@ describe('AgentExecutionRepository', () => {
 		return await repository.save(execution);
 	};
 
+	it('paginates sessions with whole-second and millisecond timestamps', async () => {
+		const newest = await createThread();
+		const middle = await createThread();
+		const oldest = await createThread();
+		for (const [id, timestamp] of [
+			[newest.id, '2026-01-03 00:00:01'],
+			[middle.id, '2026-01-03 00:00:00.500'],
+			[oldest.id, '2026-01-03 00:00:00'],
+		]) {
+			await threadRepo
+				.createQueryBuilder()
+				.update()
+				.set({ updatedAt: () => `'${timestamp}'` })
+				.where('id = :id', { id })
+				.execute();
+		}
+
+		const first = await threadRepo.findByProjectIdPaginated(projectId, agentId, viewerId, 1);
+		const second = await threadRepo.findByProjectIdPaginated(
+			projectId,
+			agentId,
+			viewerId,
+			1,
+			first.nextCursor ?? undefined,
+		);
+		const third = await threadRepo.findByProjectIdPaginated(
+			projectId,
+			agentId,
+			viewerId,
+			1,
+			second.nextCursor ?? undefined,
+		);
+		const after = await threadRepo.findByProjectIdPaginated(
+			projectId,
+			agentId,
+			viewerId,
+			10,
+			undefined,
+			{
+				updatedAfter: new Date('2026-01-03T00:00:00Z'),
+			},
+		);
+
+		expect(first.threads.map(({ id }) => id)).toEqual([newest.id]);
+		expect(second.threads.map(({ id }) => id)).toEqual([middle.id]);
+		expect(third.threads.map(({ id }) => id)).toEqual([oldest.id]);
+		expect(third.nextCursor).toBeNull();
+		expect(after.threads.map(({ id }) => id)).toEqual([newest.id, middle.id, oldest.id]);
+	});
+
 	it('filters private sessions before pagination and preserves their owner on reuse', async () => {
 		const owner = await createMember();
 		const other = await createAdmin();
