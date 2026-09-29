@@ -24,6 +24,9 @@ export interface MigrationFindingDiff {
 	toReopen: number[];
 }
 
+// The null character separates the two ids. It cannot appear in either id, so
+// two different pairs can never produce the same key. A visible separator such
+// as `:` would collide if a rule id ever contained it.
 const hitKey = (ruleId: string, workflowId: string) => `${ruleId}\u0000${workflowId}`;
 
 /**
