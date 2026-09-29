@@ -22,6 +22,7 @@ on:
       - 'security/**'
       - '.code-health-baseline.json'
       - 'OWNERS'
+      - 'GROUPS.json'
 
 permissions:
   contents: read

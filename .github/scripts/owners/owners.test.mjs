@@ -4,6 +4,7 @@ import {
 	assignOwnership,
 	findOwningEntry,
 	ownershipsToAllocations,
+	parseGroupsContent,
 	parseOwnersContent,
 	parseOwnersFile,
 	resolveRequiredTeams,
@@ -23,6 +24,21 @@ function entry(entry) {
 }
 
 describe('parseOwnersContent', () => {
+	it('expands a group to all of its member teams', () => {
+		const groups = parseGroupsContent(JSON.stringify({
+			'@n8n-io/platform': ['@n8n-io/catalysts', '@n8n-io/qa-dx'],
+		}));
+
+		assert.deepEqual(parseOwnersContent('pkg/ @n8n-io/platform', groups), [
+			{
+				pattern: 'pkg/',
+				team: '@n8n-io/platform',
+				required: false,
+				line: 1,
+				teams: ['@n8n-io/catalysts', '@n8n-io/qa-dx'],
+			},
+		]);
+	});
 	it('parses well-formed OWNERS lines into entries', () => {
 		const content = [
 			'# header comment',
@@ -80,6 +96,47 @@ describe('parseOwnersContent', () => {
 
 	it('returns an empty array for comment-only content', () => {
 		assert.deepEqual(parseOwnersContent('# nothing here\n\n'), []);
+	});
+});
+
+describe('parseGroupsContent', () => {
+	it('supports bare group and team slugs', () => {
+		const groups = parseGroupsContent(JSON.stringify({
+			ai: ['ai-trust', 'agents', 'instance-ai'],
+			'core-experience': ['adore', 'ai', 'nodes', 'relay', 'community-engineering'],
+		}));
+
+		assert.deepEqual(parseOwnersContent('pkg/ core-experience', groups)[0].teams, [
+			'@n8n-io/adore',
+			'@n8n-io/ai-trust',
+			'@n8n-io/agents',
+			'@n8n-io/instance-ai',
+			'@n8n-io/nodes',
+			'@n8n-io/relay',
+			'@n8n-io/community-engineering',
+		]);
+	});
+
+	it('allows a group to include groups defined earlier', () => {
+		const groups = parseGroupsContent(JSON.stringify({
+			'@n8n-io/first': ['@n8n-io/catalysts'],
+			'@n8n-io/second': ['@n8n-io/first', '@n8n-io/qa-dx'],
+		}));
+
+		assert.deepEqual(parseOwnersContent('pkg/ @n8n-io/second', groups)[0].teams, [
+			'@n8n-io/catalysts',
+			'@n8n-io/qa-dx',
+		]);
+	});
+
+	it('rejects a reference to a group defined later', () => {
+		assert.throws(
+			() => parseGroupsContent(JSON.stringify({
+				'@n8n-io/second': ['@n8n-io/first'],
+				'@n8n-io/first': ['@n8n-io/catalysts'],
+			})),
+			/GROUPS\.json: group "@n8n-io\/second" can only include groups defined earlier/,
+		);
 	});
 });
 
@@ -181,6 +238,18 @@ describe('findOwningEntry', () => {
 });
 
 describe('assignOwnership', () => {
+	it('assigns a changed file to every team in its group', () => {
+		const result = assignOwnership(new Set(['pkg/file.ts']), [
+			entry({
+				pattern: 'pkg/',
+				team: '@n8n-io/platform',
+				teams: ['@n8n-io/catalysts', '@n8n-io/qa-dx'],
+			}),
+		]);
+
+		assert.deepEqual(result.get('@n8n-io/catalysts'), ['pkg/file.ts']);
+		assert.deepEqual(result.get('@n8n-io/qa-dx'), ['pkg/file.ts']);
+	});
 	it('assigns every file to the catch-all team when only `*` is defined', () => {
 		const files = new Set(['a.ts', 'packages/cli/src/index.ts', 'docs/readme.md']);
 		const owners = [entry({ pattern: '*', team: '@n8n-io/catalysts' })];
@@ -312,6 +381,19 @@ describe('resolveRequiredTeams', () => {
 			'.github/workflows/a.yml',
 			'.github/workflows/z.yml',
 		]);
+	});
+
+	it('requires every team in a required group', () => {
+		const result = resolveRequiredTeams(new Set(['pkg/file.ts']), [
+			entry({
+				pattern: 'pkg/',
+				team: '@n8n-io/platform',
+				required: true,
+				teams: ['@n8n-io/catalysts', '@n8n-io/qa-dx'],
+			}),
+		]);
+
+		assert.deepEqual([...result.keys()], ['@n8n-io/catalysts', '@n8n-io/qa-dx']);
 	});
 });
 

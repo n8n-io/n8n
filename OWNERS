@@ -1,6 +1,8 @@
 # n8n OWNERS
 #
 # Format: <pattern> <@org/team> [required]
+# A handle defined in GROUPS.json can be used in place of a team handle. It
+# assigns the matching files to every team in that group.
 #
 # Examples:
 #   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation

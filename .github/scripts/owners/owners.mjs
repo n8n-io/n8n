@@ -5,6 +5,7 @@ import { join } from "node:path";
  * @typedef OwnersEntry
  * @property { string } pattern
  * @property { string } team
+ * @property { string[] } [teams] Expanded team handles when `team` is a group.
  * @property { boolean } required A member of the team must approve before merge.
  * @property { number } line 1-based line number in the OWNERS file.
  * */
@@ -24,9 +25,75 @@ const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 // Resolve relative to this file so the path works regardless of cwd
 // (workflow runs from repo root; `npm test` runs from .github/scripts).
 export const OWNERS_FILE = join(REPO_ROOT, "OWNERS");
+export const GROUPS_FILE = join(REPO_ROOT, "GROUPS.json");
 
 // GitHub team handle, e.g. `@n8n-io/catalysts`.
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
+const GROUP_TOKEN = /^[\w.-]+$/;
+
+/**
+ * Parse the ordered group definitions in GROUPS.json.
+ *
+ * A group is an object key and its value is an array of team or group
+ * handles. Group references must point to a group defined earlier in the
+ * object. This makes the file easy to read and prevents forward references.
+ *
+ * @param { string } content
+ * @returns { Map<string, string[]> }
+ */
+export function parseGroupsContent(content) {
+	let parsed;
+	try {
+		parsed = JSON.parse(content);
+	} catch (error) {
+		throw new Error(`GROUPS.json is not valid JSON: ${error.message}`);
+	}
+
+	const definitions = parsed?.groups ?? parsed;
+	if (!definitions || typeof definitions !== "object" || Array.isArray(definitions)) {
+		throw new Error('GROUPS.json must contain an object of group handles');
+	}
+
+	const groups = new Map();
+	for (const [group, members] of Object.entries(definitions)) {
+		if (!TEAM_TOKEN.test(group) && !GROUP_TOKEN.test(group)) {
+			throw new Error(`GROUPS.json: invalid group handle "${group}"`);
+		}
+		if (!Array.isArray(members) || members.length === 0 || !members.every((member) => typeof member === "string")) {
+			throw new Error(`GROUPS.json: group "${group}" must contain a non-empty array of handles`);
+		}
+
+		for (const member of members) {
+			if (!TEAM_TOKEN.test(member) && !GROUP_TOKEN.test(member)) {
+				throw new Error(`GROUPS.json: invalid handle "${member}" in group "${group}"`);
+			}
+		}
+		groups.set(group, members);
+	}
+
+	for (const [group, members] of groups) {
+		const groupIndex = [...groups.keys()].indexOf(group);
+		for (const member of members) {
+			const memberIndex = [...groups.keys()].indexOf(member);
+			if (memberIndex >= groupIndex) {
+				throw new Error(`GROUPS.json: group "${group}" can only include groups defined earlier`);
+			}
+		}
+	}
+
+	return groups;
+}
+
+/**
+ * @param { string } group
+ * @param { Map<string, string[]> } groups
+ * @returns { string[] }
+ */
+function expandGroup(group, groups) {
+	const members = groups.get(group);
+	if (!members) return [TEAM_TOKEN.test(group) ? group : `@n8n-io/${group}`];
+	return [...new Set(members.flatMap((member) => expandGroup(member, groups)))];
+}
 
 /**
  * Line grammar: `<pattern> <@org/team> [required]`
@@ -52,7 +119,7 @@ function stripComment(line) {
  * @param { string } content
  * @returns { OwnersEntry[] }
  * */
-export function parseOwnersContent(content) {
+export function parseOwnersContent(content, groups = new Map()) {
 	/** @type { OwnersEntry[] } */
 	const entries = [];
 
@@ -68,7 +135,7 @@ export function parseOwnersContent(content) {
 		let sawOption = false;
 
 		for (const token of tokens) {
-			if (TEAM_TOKEN.test(token)) {
+			if (TEAM_TOKEN.test(token) || groups.has(token)) {
 				if (sawOption) {
 					throw new Error(`OWNERS line ${lineNumber}: team "${token}" must come before options`);
 				}
@@ -90,7 +157,13 @@ export function parseOwnersContent(content) {
 			throw new Error(`OWNERS line ${lineNumber}: no team for pattern "${pattern}"`);
 		}
 
-		entries.push({ pattern, team, required, line: lineNumber });
+		entries.push({
+			pattern,
+			team,
+			required,
+			line: lineNumber,
+			...(groups.has(team) ? { teams: expandGroup(team, groups) } : {}),
+		});
 	});
 
 	return entries;
@@ -104,7 +177,10 @@ export function parseOwnersContent(content) {
  * */
 export function parseOwnersFile(path = OWNERS_FILE) {
 	const content = readFileSync(path, "utf8");
-	return parseOwnersContent(content);
+	const groups = statSync(GROUPS_FILE, { throwIfNoEntry: false })
+		? parseGroupsContent(readFileSync(GROUPS_FILE, "utf8"))
+		: new Map();
+	return parseOwnersContent(content, groups);
 }
 
 /**
@@ -222,12 +298,13 @@ export function assignOwnership(files, entries) {
 		const entry = findOwningEntry(file, entries);
 		if (!entry) continue;
 
-		const bucket = teamToFiles.get(entry.team);
-
-		if (bucket) {
-			bucket.push(file);
-		} else {
-			teamToFiles.set(entry.team, [file]);
+		for (const team of entry.teams ?? [entry.team]) {
+			const bucket = teamToFiles.get(team);
+			if (bucket) {
+				bucket.push(file);
+			} else {
+				teamToFiles.set(team, [file]);
+			}
 		}
 	}
 
@@ -250,12 +327,13 @@ export function resolveRequiredTeams(files, entries) {
 		const entry = findOwningEntry(file, entries);
 		if (!entry?.required) continue;
 
-		const bucket = teamToFiles.get(entry.team);
-
-		if (bucket) {
-			bucket.push(file);
-		} else {
-			teamToFiles.set(entry.team, [file]);
+		for (const team of entry.teams ?? [entry.team]) {
+			const bucket = teamToFiles.get(team);
+			if (bucket) {
+				bucket.push(file);
+			} else {
+				teamToFiles.set(team, [file]);
+			}
 		}
 	}
 
