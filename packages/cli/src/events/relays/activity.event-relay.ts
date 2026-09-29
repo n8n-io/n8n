@@ -1,5 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+} from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -89,7 +92,7 @@ export class ActivityEventRelay extends EventRelay {
 	private overrideEnablesFlag(): boolean {
 		const override = this.globalConfig.featureFlags.override[INSTANCE_ACTIVITY_CONTEXT_FLAG];
 		const value = typeof override === 'object' ? override.value : override;
-		return value === true;
+		return value === INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT;
 	}
 
 	/** The active instance gate check. All events in a burst share it. */
@@ -110,7 +113,7 @@ export class ActivityEventRelay extends EventRelay {
 		try {
 			return (
 				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
-				true
+				INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT
 			);
 		} catch {
 			return false;

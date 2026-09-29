@@ -1,5 +1,6 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
@@ -92,7 +93,7 @@ export class McpProtectedResource implements ProtectedResource {
 		try {
 			instanceContextEnabled =
 				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
-				true;
+				INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT;
 		} catch {
 			// Keep context tools hidden when the gate cannot be read.
 		}

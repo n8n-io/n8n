@@ -1,4 +1,7 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
@@ -52,12 +55,16 @@ describe('ActivityEventRelay', () => {
 		repository = Container.get(ActivityEventRepository);
 		eventService = Container.get(EventService);
 		postHogClient = Container.get(PostHogClient);
-		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
+		Container.get(GlobalConfig).featureFlags.override = {
+			[INSTANCE_ACTIVITY_CONTEXT_FLAG]: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+		};
 		Container.get(ActivityEventRelay).init();
 	});
 
 	beforeEach(async () => {
-		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
+		Container.get(GlobalConfig).featureFlags.override = {
+			[INSTANCE_ACTIVITY_CONTEXT_FLAG]: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+		};
 		owner = await createOwner();
 		project = await createTeamProject();
 		workflow = await createWorkflow({ name: 'Lead enrichment' }, project);
@@ -119,23 +126,28 @@ describe('ActivityEventRelay', () => {
 		});
 	});
 
-	it('stops recording when the override is off', async () => {
-		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false };
-		const readFlag = vi.spyOn(postHogClient, 'getFeatureFlagForInstance');
-		const record = vi.spyOn(repository, 'record');
+	it.each(['control', { value: 'control' }, true, { value: true }])(
+		'stops recording when the override is %j',
+		async (override) => {
+			Container.get(GlobalConfig).featureFlags.override = {
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG]: override,
+			};
+			const readFlag = vi.spyOn(postHogClient, 'getFeatureFlagForInstance');
+			const record = vi.spyOn(repository, 'record');
 
-		eventService.emit('workflow-saved', {
-			user: actor(),
-			workflow: { ...workflow, nodes: [] },
-			publicApi: false,
-			source: 'ui',
-		});
-		await new Promise((resolve) => setImmediate(resolve));
+			eventService.emit('workflow-saved', {
+				user: actor(),
+				workflow: { ...workflow, nodes: [] },
+				publicApi: false,
+				source: 'ui',
+			});
+			await new Promise((resolve) => setImmediate(resolve));
 
-		expect(readFlag).toHaveBeenCalledWith(INSTANCE_ACTIVITY_CONTEXT_FLAG);
-		expect(record).not.toHaveBeenCalled();
-		expect(await repository.count()).toBe(0);
-	});
+			expect(readFlag).toHaveBeenCalledWith(INSTANCE_ACTIVITY_CONTEXT_FLAG);
+			expect(record).not.toHaveBeenCalled();
+			expect(await repository.count()).toBe(0);
+		},
+	);
 
 	it('holds the table to its caps on an instance busy enough to need more than one batch', async () => {
 		// Past the repository's 500-row batch, so the sweep has to walk the backlog rather than

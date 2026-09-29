@@ -1,4 +1,8 @@
-import { CREDENTIAL_DESCRIPTIONS_FLAG, INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+} from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
@@ -70,13 +74,15 @@ describe('PostHog', () => {
 
 		it('evaluates the flag with the instance group and no user properties', async () => {
 			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-				mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true }),
+				mockEvaluatedFlags({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+				}),
 			);
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
 			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
-				true,
+				INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 			);
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
 				flagKeys: [INSTANCE_ACTIVITY_CONTEXT_FLAG],
@@ -94,36 +100,80 @@ describe('PostHog', () => {
 			).resolves.toBeUndefined();
 		});
 
-		it.each([true, false])(
-			'lets a feature flag override set the instance flag to %s',
-			async (enabled) => {
-				globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled };
+		const overrideCases = [
+			{ override: 'variant', value: 'variant', remoteValue: 'control' },
+			{ override: { value: 'variant' }, value: 'variant', remoteValue: 'control' },
+			{ override: 'control', value: 'control', remoteValue: 'variant' },
+			{ override: { value: 'control' }, value: 'control', remoteValue: 'variant' },
+		];
+
+		it.each(overrideCases)(
+			'uses override $override instead of the remote assignment',
+			async ({ override, value, remoteValue }) => {
+				globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: override };
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-					mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: !enabled }),
+					mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: remoteValue }),
 				);
 				const ph = new PostHogClient(instanceSettings, globalConfig);
 				await ph.init();
 
 				await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
-					enabled,
+					value,
 				);
 			},
 		);
 
-		it('applies local overrides when diagnostics are disabled', async () => {
-			globalConfig.diagnostics.enabled = false;
-			globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
+		it.each(overrideCases)(
+			'applies override $override when diagnostics are disabled',
+			async ({ override, value }) => {
+				globalConfig.diagnostics.enabled = false;
+				globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: override };
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+					value,
+				);
+				expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(overrideCases)(
+			'applies override $override when the remote evaluation fails',
+			async ({ override, value }) => {
+				globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: override };
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('PostHog failed'));
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+					value,
+				);
+			},
+		);
+
+		it('refreshes the instance variant after the cached assignment expires', async () => {
+			const now = Date.now();
+			const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+			(PostHog.prototype.evaluateFlags as Mock)
+				.mockResolvedValueOnce(mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: 'variant' }))
+				.mockResolvedValueOnce(mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: 'control' }));
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
 			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
-				true,
+				'variant',
 			);
-			globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false };
 			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
-				false,
+				'variant',
 			);
-			expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+
+			clock.mockReturnValue(now + 10 * 60 * 1000 + 1);
+			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+				'control',
+			);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
 	});
 
