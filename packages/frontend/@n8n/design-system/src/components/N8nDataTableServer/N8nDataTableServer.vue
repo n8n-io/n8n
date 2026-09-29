@@ -263,18 +263,11 @@ watch(itemsPerPage, (value) => {
 	table.setPageSize(value);
 });
 
-const pagination = computed<PaginationState>({
-	get() {
-		return {
-			pageIndex: page.value,
-			pageSize: itemsPerPage.value,
-		};
-	},
-	set(newValue) {
-		page.value = newValue.pageIndex;
-		itemsPerPage.value = newValue.pageSize;
-	},
-});
+// Named apart from the `pagination` prop, which only toggles the pager.
+const paginationState = computed<PaginationState>(() => ({
+	pageIndex: page.value,
+	pageSize: itemsPerPage.value,
+}));
 
 const showPagination = computed(
 	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
@@ -380,7 +373,7 @@ const table = useVueTable({
 			return sortBy.value;
 		},
 		get pagination() {
-			return pagination.value;
+			return paginationState.value;
 		},
 		get rowSelection() {
 			return rowSelection.value;
@@ -390,7 +383,7 @@ const table = useVueTable({
 	onSortingChange: handleSortingChange,
 	onPaginationChange(updaterOrValue) {
 		const newValue =
-			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
+			typeof updaterOrValue === 'function' ? updaterOrValue(paginationState.value) : updaterOrValue;
 
 		// prevent duplicate events from being fired
 		void emitUpdateOptions({
