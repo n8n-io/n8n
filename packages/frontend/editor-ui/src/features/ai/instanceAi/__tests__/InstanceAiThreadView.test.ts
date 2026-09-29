@@ -14,7 +14,10 @@ import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import {
@@ -2446,6 +2449,84 @@ describe('InstanceAiThreadView', () => {
 				instanceAiAgentBuilderTarget: AGENT_TARGET,
 			});
 		}
+
+		function seedPreviewVariant() {
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => flag === INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name,
+			);
+			const evalsStore = mockedStore(useAgentEvalsStore);
+			evalsStore.generateDraftCases.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+			});
+			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
+			evalsStore.openRun.mockResolvedValue(undefined);
+			evalsStore.isRunInFlight.mockReturnValue(false);
+			evalsStore.getReview.mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{ input: { input: 'Summarize the thread' }, output: { finalText: 'Done.' } } as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			return evalsStore;
+		}
+
+		it('renders the preview panel instead of the generic offer when the experiment is on', async () => {
+			seedReadyAgent();
+			seedPreviewVariant();
+
+			const { queryByTestId, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+		});
+
+		it('persists the dismissal on "Looks good" without requesting the evals focus yet', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+			evalsStore.generateDraftCases.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				cases: [{ input: 'a', whatToCheck: 'b' }],
+			});
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await user.click(await findByTestId('instance-ai-test-agent-preview-looks-good'));
+
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+				dismissedContextKeys: ['test-agent:agent-1'],
+			});
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
+		});
+
+		it('requests the evals focus without regenerating when opening the suite from "View in Evals tab"', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+			evalsStore.generateDraftCases.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				cases: [
+					{ input: 'a', whatToCheck: 'b' },
+					{ input: 'c', whatToCheck: 'd' },
+				],
+			});
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await user.click(await findByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals'));
+
+			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
+		});
 
 		it('suggests testing once the agent is set up', async () => {
 			seedReadyAgent();

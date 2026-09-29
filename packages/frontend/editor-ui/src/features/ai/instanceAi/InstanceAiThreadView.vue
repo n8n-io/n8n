@@ -49,6 +49,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
+import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
@@ -69,6 +70,7 @@ import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
+import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
 
 const props = defineProps<{ threadId: string }>();
 
@@ -183,6 +185,8 @@ const activeTestAgentOffer = computed(() => {
 
 	return target;
 });
+
+const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
 
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
@@ -726,6 +730,30 @@ async function dismissTestAgentOffer() {
 	await persistTestAgentOfferDismissal(target.agentId);
 }
 
+/**
+ * The preview panel confirms as soon as the user says "Looks good", before it
+ * generates the rest of the suite — dismissal happens on that signal alone,
+ * matching the generic offer's CTA, which also persists immediately rather
+ * than waiting for generation to finish.
+ */
+async function handleConfirmTestAgentPreview() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+/**
+ * The preview panel has already generated every case by the time this fires,
+ * so — unlike `handleGenerateTestCasesFromOffer` — this does not request
+ * generation on arrival.
+ */
+function handleOpenEvalsFromPreview() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+	agentEvalsStore.requestEvalsFocus(target.agentId, false);
+	preview.openAgentPreview(target.agentId, target.projectId);
+}
+
 // Persisted for the CTA as well as "Maybe later": once the user has acted on the
 // suggestion, re-offering it on the next visit is noise.
 async function persistTestAgentOfferDismissal(agentId: string) {
@@ -900,9 +928,18 @@ function handleNewThreadClick() {
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPanel
-								v-if="activeTestAgentOffer"
+								v-if="activeTestAgentOffer && !isTestAgentPreviewVariant"
 								@generate="handleGenerateTestCasesFromOffer"
 								@dismiss="dismissTestAgentOffer"
+							/>
+						</Transition>
+						<Transition name="confirmation-slide">
+							<InstanceAiTestAgentPreviewPanel
+								v-if="activeTestAgentOffer && isTestAgentPreviewVariant"
+								:target="activeTestAgentOffer"
+								@confirm="handleConfirmTestAgentPreview"
+								@dismiss="dismissTestAgentOffer"
+								@open-evals="handleOpenEvalsFromPreview"
 							/>
 						</Transition>
 					</template>
