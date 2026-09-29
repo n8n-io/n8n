@@ -1,4 +1,8 @@
-import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
+import {
+	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	MAX_ITEMS_PER_PAGE,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
@@ -24,6 +28,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PostHogClient } from '@/posthog';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -1905,6 +1910,104 @@ describe('PATCH /credentials/:id', () => {
 		const response = await authOwnerAgent.patch(`/credentials/${savedCredential.id}`);
 
 		expect(response.statusCode).toBe(415);
+	});
+});
+
+describe('credential description', () => {
+	const description = 'Read-only key for the reporting database';
+
+	const setDescriptionsFlag = (enabled: boolean) =>
+		vi
+			.mocked(Container.get(PostHogClient).getFeatureFlagForInstance)
+			.mockImplementation(async (flag) =>
+				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined,
+			);
+
+	const getStoredDescription = async (id: string) =>
+		(await Container.get(CredentialsRepository).findOneByOrFail({ id })).description;
+
+	const createWithDescription = async () => {
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...credentialPayload(), description });
+		expect(response.statusCode).toBe(200);
+		return response.body.id as string;
+	};
+
+	beforeEach(() => setDescriptionsFlag(true));
+	afterEach(() => {
+		vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockResolvedValue(undefined);
+	});
+
+	test('should save the description of a credential created with a supplied ID', async () => {
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...credentialPayload(), id: 'sourceCred123', description });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({ id: 'sourceCred123', description });
+		expect(await getStoredDescription('sourceCred123')).toBe(description);
+	});
+
+	test('should save the description and the data in one update', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const data = { accessToken: 'newAccessToken123456', user: 'newUser', server: 'newServer' };
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ data, description });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		expect(await getStoredDescription(savedCredential.id)).toBe(description);
+		expect(await getDecryptedCredentialData(savedCredential.id)).toEqual(data);
+	});
+
+	test('should keep the description when an update omits it, and clear it on null', async () => {
+		const id = await createWithDescription();
+
+		const renamed = await authOwnerAgent.patch(`/credentials/${id}`).send({ name: 'Renamed' });
+		expect(renamed.statusCode).toBe(200);
+		expect(await getStoredDescription(id)).toBe(description);
+
+		const cleared = await authOwnerAgent.patch(`/credentials/${id}`).send({ description: null });
+		expect(cleared.statusCode).toBe(200);
+		expect(await getStoredDescription(id)).toBeNull();
+	});
+
+	// Update has no service-level check, so the public DTO is the only guard.
+	test('should reject an update with a description over the maximum length', async () => {
+		const id = await createWithDescription();
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${id}`)
+			.send({ description: 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1) });
+
+		expect(response.statusCode).toBe(400);
+		expect(await getStoredDescription(id)).toBe(description);
+	});
+
+	test('should return the description when getting a credential by ID', async () => {
+		const id = await createWithDescription();
+
+		const fetched = await authOwnerAgent.get(`/credentials/${id}`);
+		expect(fetched.body.description).toBe(description);
+	});
+
+	test('should ignore the description when credential descriptions are disabled', async () => {
+		setDescriptionsFlag(false);
+
+		const created = await authOwnerAgent.post('/credentials').send({
+			...credentialPayload(),
+			description: 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1),
+		});
+
+		expect(created.statusCode).toBe(200);
+		expect(created.body).not.toHaveProperty('description');
+		expect(await getStoredDescription(created.body.id)).toBeNull();
+
+		const fetched = await authOwnerAgent.get(`/credentials/${created.body.id}`);
+		expect(fetched.body).not.toHaveProperty('description');
 	});
 });
 

@@ -1186,6 +1186,20 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts optional parent workflow display metadata', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'Orders' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects parent workflow display metadata over 255 characters', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'a'.repeat(256) }),
+		);
+		expect(result.success).toBe(false);
+	});
+
 	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
 		const result = instanceAiAttachmentSchema.safeParse(
 			nodesAttachment({

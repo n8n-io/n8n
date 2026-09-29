@@ -1,5 +1,7 @@
 export {
 	SystemTask,
+	intervalFromMilliseconds,
+	intervalFromSeconds,
 	resolveSystemTaskRunOptions,
 	resolveSystemTaskSchedule,
 	validateSystemTask,

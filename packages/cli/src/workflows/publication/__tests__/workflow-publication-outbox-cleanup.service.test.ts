@@ -73,12 +73,12 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			expect(outboxRepository.deleteTerminalOlderThan).toHaveBeenCalledTimes(1);
 		});
 
-		it('should catch and log errors without throwing', async () => {
+		it('should reject when a batch fails and leave the logging to the caller', async () => {
 			outboxRepository.deleteTerminalOlderThan.mockRejectedValue(new Error('DB error'));
 
-			await service.cleanup(new AbortController().signal);
+			await expect(service.cleanup(new AbortController().signal)).rejects.toThrow('DB error');
 
-			expect(logger.error).toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 
 		it('should emit a success metrics event with the total deleted count', async () => {
@@ -95,7 +95,7 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 		it('should emit a failure metrics event when cleanup throws', async () => {
 			outboxRepository.deleteTerminalOlderThan.mockRejectedValue(new Error('DB error'));
 
-			await service.cleanup(new AbortController().signal);
+			await expect(service.cleanup(new AbortController().signal)).rejects.toThrow('DB error');
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'workflow-publication-outbox-cleanup',

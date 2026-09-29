@@ -57,6 +57,15 @@ vi.mock('@/app/composables/useMessage', () => {
 });
 
 const showMessageSpy = vi.hoisted(() => vi.fn());
+const showPolicyViolationToastSpy = vi.hoisted(() => vi.fn());
+const closePolicyViolationToastSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/usePolicyViolationToast', () => ({
+	usePolicyViolationToast: () => ({
+		showPolicyViolationToast: showPolicyViolationToastSpy,
+		closePolicyViolationToast: closePolicyViolationToastSpy,
+	}),
+}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
@@ -67,7 +76,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: () => ({
 		workflow: { update: true },
 	}),
@@ -441,6 +451,34 @@ describe('useWorkflowSaving', () => {
 	});
 
 	describe('saveAsNewWorkflow', () => {
+		it('strips empty groups when creating a duplicate with the feature disabled', async () => {
+			const workflow = getDuplicateTestWorkflow();
+			workflow.nodes = [
+				createTestNode({
+					id: 'anchor',
+					name: 'Empty group anchor',
+					type: 'n8n-nodes-base.noOp',
+					parameters: { emptyGroupAnchor: true },
+				}),
+			];
+			workflow.nodeGroups = [{ id: 'group', name: 'Group 2', nodeIds: ['anchor'] }];
+			const created = createTestWorkflow({ id: 'new-wf-id' });
+			const createNewWorkflowSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(created);
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				data: workflow,
+				stripEmptyCanvasGroups: true,
+			});
+
+			expect(createNewWorkflowSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ nodes: [], nodeGroups: undefined }),
+			);
+		});
+
 		it('syncs backend-seeded settings (e.g. availableInMCP) into the document after create', async () => {
 			const workflow = getDuplicateTestWorkflow();
 			const created = createTestWorkflow({
@@ -917,6 +955,65 @@ describe('useWorkflowSaving', () => {
 			);
 			expect(documentStore.allGroups).toHaveLength(1);
 			expect(showMessageSpy).not.toHaveBeenCalled();
+		});
+
+		it('leaves a save refused by policy to the policy violation toast', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-policy-refused');
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			setDocumentStoreActive(workflow.id);
+
+			const violations = [{ kind: 'node-type-unavailable', checkId: 'c', message: 'Blocked' }];
+			const refusal = new ResponseError('Blocked by an instance policy', {
+				httpStatusCode: 403,
+				meta: { violations },
+			});
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(refusal);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(false);
+			expect(showPolicyViolationToastSpy).toHaveBeenCalledWith(
+				violations,
+				'Problem saving workflow',
+				'save',
+				createWorkflowDocumentId(workflow.id),
+			);
+			expect(showMessageSpy).not.toHaveBeenCalled();
+		});
+
+		it('closes the policy violation toast once a save succeeds', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-policy-settled');
+			setDocumentStoreActive(workflow.id);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(true);
+			expect(closePolicyViolationToastSpy).toHaveBeenCalledWith('save');
+		});
+
+		it('shows the generic error toast when a refused save carries no violations', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-refused-without-violations');
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			setDocumentStoreActive(workflow.id);
+
+			const refusal = new ResponseError('Forbidden', { httpStatusCode: 403 });
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(refusal);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id })).toBe(false);
+			expect(showPolicyViolationToastSpy).not.toHaveBeenCalled();
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Problem saving workflow',
+					message: 'Forbidden',
+					type: 'error',
+				}),
+			);
 		});
 	});
 

@@ -51,7 +51,7 @@ next slot has passed, the retry stops: the row is marked
 - The row is created once, as `pending`, with its data points already
   measured. A retry changes only `attempts`, `lastAttemptAt`, `lastError` and,
   in the end, `status`. The data points and the `batchId` stay the same.
-- `InstanceReportingService.msUntilRetryAllowed()` reads `lastAttemptAt` from
+- `InstanceReportingScheduler.msUntilRetryAllowed()` reads `lastAttemptAt` from
   the row. The scheduler waits `RETRY_DELAY_MS` (5 minutes) between attempts.
 - The budget is `MAX_ATTEMPTS` (3). The attempt that spends the last one flips
   the row to `skipped_after_max_retries` at once. There is no fourth attempt,
@@ -117,3 +117,13 @@ flowchart TD
 
     I --> K
 ```
+
+## Known limitations
+
+- **A lost response on the last attempt.** The receiver stores the report, but
+  n8n does not get the response. Possible causes: a locked database on the
+  receiver, an update, or a proxy that drops the response. n8n marks the row
+  as skipped. The next report sends the same days again under a new
+  `batchId`, so the receiver holds those days two times. On attempts 1 and 2
+  this does not occur: the retry uses the same `batchId`, and the receiver
+  answers `409`.

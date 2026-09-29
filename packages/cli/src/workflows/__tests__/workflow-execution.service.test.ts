@@ -517,7 +517,7 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		test('never commits the cursor when the run fails to start', async () => {
-			const runError = new Error('engine 2.0 rejected the run');
+			const runError = new Error('engine v2 rejected the run');
 			workflowRunner.run.mockRejectedValue(runError);
 
 			await expect(runPolledWorkflowV2()).rejects.toBe(runError);

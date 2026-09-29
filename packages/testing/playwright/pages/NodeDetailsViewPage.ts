@@ -111,6 +111,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('ndv');
 	}
 
+	getRestrictedNodePanel(): Locator {
+		return this.container.getByTestId('node-restricted-panel');
+	}
+
 	getInputPanel() {
 		return this.container.getByTestId('ndv-input-panel');
 	}

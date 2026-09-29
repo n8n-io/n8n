@@ -24,7 +24,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import {
 	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,

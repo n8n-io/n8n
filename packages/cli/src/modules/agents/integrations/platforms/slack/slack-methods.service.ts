@@ -14,7 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { getAgentOrThrow } from '../../../utils/get-agent-or-throw';
 import {

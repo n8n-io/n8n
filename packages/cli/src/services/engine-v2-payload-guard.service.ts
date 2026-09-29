@@ -8,7 +8,7 @@ import { UserError } from 'n8n-workflow';
 type PayloadSlots = Array<INodeExecutionData[] | null | undefined>;
 
 /**
- * Guards the files a trigger payload carries on the engine 2.0 path.
+ * Guards the files a trigger payload carries on the engine v2 path.
  *
  * The engine takes its payload as JSON, so an item's binary data cannot travel
  * with it. Worse, the control plane may already have written the file to
@@ -65,7 +65,7 @@ export class EngineV2PayloadGuard {
 		try {
 			await this.binaryDataService.deleteManyByBinaryDataId(storedIds);
 		} catch (error) {
-			this.logger.error('Failed to delete the files of a rejected engine 2.0 payload', { error });
+			this.logger.error('Failed to delete the files of a rejected engine v2 payload', { error });
 		}
 	}
 }

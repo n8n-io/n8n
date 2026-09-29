@@ -105,10 +105,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		vi
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'compactHistories')
-			.mockImplementation((() => {}) as never);
+		vi.spyOn(compactingService, 'compactHistories').mockImplementation((() => {}) as never);
 
 		const trimLongRunningHistoriesSpy = vi.spyOn(compactingService, 'trimLongRunningHistories');
 

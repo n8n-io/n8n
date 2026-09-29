@@ -24,7 +24,7 @@ export type WorkerServerEndpointsConfig = {
 	/** Whether the health check endpoint is enabled. */
 	health: boolean;
 
-	/** Whether the [credentials overwrites endpoint](https://docs.n8n.io/embed/configuration/#credential-overwrites) is enabled. */
+	/** Whether the [credentials overwrites endpoint](https://docs.n8n.io/administer/manage-credentials/credential-overwrites#using-the-rest-api) is enabled. */
 	overwrites: boolean;
 
 	/** Whether the `/metrics` endpoint is enabled. */

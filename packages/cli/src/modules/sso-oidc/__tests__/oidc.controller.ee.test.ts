@@ -11,7 +11,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 

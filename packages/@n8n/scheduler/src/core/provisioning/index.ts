@@ -18,4 +18,5 @@ export type {
 	ExistingJob,
 	ProvisionedJob,
 	ProvisionSummary,
+	StoredJobs,
 } from './types';
