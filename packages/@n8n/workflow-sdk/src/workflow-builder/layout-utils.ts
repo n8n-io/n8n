@@ -37,6 +37,7 @@ import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './constants';
+import { memberOriginFor, type BoundingBox, type CollapsedGroup } from './group-layout-utils';
 import { parseVersion } from './string-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
@@ -117,17 +118,6 @@ export function calculateNodePositions(
 // ===========================================================================
 // Dagre Layout (tidyUp)
 // ===========================================================================
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface BoundingBox {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
 
 // ---------------------------------------------------------------------------
 // Helpers: AI node detection
@@ -627,36 +617,6 @@ const GROUP_GRAPH_ID_PREFIX = '__nodeGroup__:';
 /** Vertical drop from a group's title bar to the top of its members. */
 const GROUP_HEADER_TO_MEMBERS_Y = GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
 
-interface CollapsedGroup {
-	/** Id this group occupies in the parent graph while its members are folded away. */
-	graphId: string;
-	/** Internal left-to-right layout of the members, so expanding the group looks tidy. */
-	graph: dagre.graphlib.Graph;
-}
-
-/**
- * The canvas derives a group's title bar from its members' bounding rect and snaps
- * it to the grid (titleBarFromNodesRect), so placing the bar takes working backwards
- * from the members. Neither GROUP_PADDING_X nor GROUP_HEADER_TO_MEMBERS_Y is a
- * multiple of GRID_SIZE, so pick whichever grid-aligned member origin round-trips
- * closest to where the layout put the group.
- */
-function memberOriginFor(headerCoordinate: number, padding: number): number {
-	const base = snapToGrid(headerCoordinate + padding);
-	let best = base;
-	let bestError = Infinity;
-
-	for (const candidate of [base - GRID_SIZE, base, base + GRID_SIZE]) {
-		const error = Math.abs(snapToGrid(candidate - padding) - headerCoordinate);
-		if (error < bestError) {
-			bestError = error;
-			best = candidate;
-		}
-	}
-
-	return best;
-}
-
 /**
  * Fold each group's members into a single parent-graph node the size of the
  * collapsed chip, so the layout reserves the space the canvas actually draws.
@@ -740,8 +700,8 @@ function placeGroupMembers(
 	boundingBoxByNodeId: Record<string, BoundingBox>,
 ): void {
 	const memberBox = boundingBoxFromGraph(group.graph);
-	const offsetX = memberOriginFor(headerBox.x, GROUP_PADDING_X) - memberBox.x;
-	const offsetY = memberOriginFor(headerBox.y, GROUP_HEADER_TO_MEMBERS_Y) - memberBox.y;
+	const offsetX = memberOriginFor(headerBox.x, GROUP_PADDING_X, snapToGrid) - memberBox.x;
+	const offsetY = memberOriginFor(headerBox.y, GROUP_HEADER_TO_MEMBERS_Y, snapToGrid) - memberBox.y;
 
 	for (const key of group.graph.nodes()) {
 		const member = group.graph.node(key);
