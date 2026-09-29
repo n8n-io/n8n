@@ -3,6 +3,8 @@ packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
   s_6df29c531634b9::t_82793919152dcd 44
   s_6df29c531634b9::t_5260d4751675a4 50-52
   s_270aabb0735a56::t_b7bcb728e846a6 70
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c5954c3047b5ed::t_fec3e15031d85f 275,280-303,307
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -33,6 +35,14 @@ packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
         "model": "gpt-5.6-sol"
       },
       "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   }
 }
