@@ -1,7 +1,7 @@
 import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThan, LessThanOrEqual, Not } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -38,52 +38,6 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC', id: 'ASC' } });
-	}
-
-	/**
-	 * One page of a thread's executions, newest first, without the `timeline`
-	 * column — summary reads must not load timeline payloads from the database.
-	 * `before` narrows the page to executions created strictly earlier, which is
-	 * how the caller paginates.
-	 */
-	async findSummaryPageByThreadId(
-		threadId: string,
-		limit: number,
-		before?: Date,
-	): Promise<AgentExecution[]> {
-		return await this.find({
-			select: [
-				'id',
-				'threadId',
-				'status',
-				'startedAt',
-				'stoppedAt',
-				'duration',
-				'userMessage',
-				'author',
-				'attachments',
-				'model',
-				'promptTokens',
-				'completionTokens',
-				'totalTokens',
-				'cost',
-				'error',
-				'failureSummary',
-				'hitlStatus',
-				'source',
-				'storedAt',
-				'createdAt',
-				'updatedAt',
-			],
-			where: { threadId, ...(before ? { createdAt: LessThan(before) } : {}) },
-			order: { createdAt: 'DESC', id: 'DESC' },
-			take: limit,
-		});
-	}
-
-	/** One execution, scoped to its thread so a caller cannot reach across sessions. */
-	async findByIdInThread(executionId: string, threadId: string): Promise<AgentExecution | null> {
-		return await this.findOne({ where: { id: executionId, threadId } });
 	}
 
 	async findRunning(): Promise<RunningAgentExecution[]> {

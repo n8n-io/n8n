@@ -1683,7 +1683,7 @@ describe('McpAgentToolsService', () => {
 			totalCost: 0.1,
 			totalDuration: 1200,
 		};
-		const execution = {
+		const execution = (overrides: Record<string, unknown> = {}) => ({
 			id: 'exec-1',
 			status: 'error',
 			startedAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -1699,30 +1699,31 @@ describe('McpAgentToolsService', () => {
 			hitlStatus: null,
 			source: 'mcp',
 			userMessage: 'Hi',
-		};
+			storedAt: 'db',
+			timeline: [{ type: 'text', content: 'Done', timestamp: 1 }],
+			...overrides,
+		});
 
 		it('returns execution summaries without timelines', async () => {
-			agentExecutionService.getSessionExecutionsPage.mockResolvedValue({
+			agentExecutionService.getThreadDetail.mockResolvedValue({
 				thread,
-				executions: [execution],
-				nextCursor: null,
+				executions: [execution()],
 			} as never);
 
 			const result = await callTool('get_agent_session', {
 				agentId: 'agent-1',
 				sessionId: 'thread-1',
 				limit: 20,
+				offset: 0,
 			});
 
-			expect(agentExecutionService.getSessionExecutionsPage).toHaveBeenCalledWith(
+			expect(agentExecutionService.getThreadDetail).toHaveBeenCalledWith(
 				'thread-1',
 				'project-1',
 				'agent-1',
 				'user-1',
-				20,
-				undefined,
 			);
-			expect(result.structuredContent).toEqual({
+			expect(result.structuredContent).toStrictEqual({
 				ok: true,
 				session: {
 					sessionId: 'thread-1',
@@ -1752,17 +1753,66 @@ describe('McpAgentToolsService', () => {
 					},
 				],
 				count: 1,
-				nextCursor: null,
+				total: 1,
+				nextOffset: null,
 			});
 		});
 
+		it('pages newest first with offset and reports nextOffset', async () => {
+			agentExecutionService.getThreadDetail.mockResolvedValue({
+				thread,
+				// getThreadDetail returns oldest first.
+				executions: [
+					execution({ id: 'exec-1' }),
+					execution({ id: 'exec-2' }),
+					execution({ id: 'exec-3' }),
+				],
+			} as never);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				limit: 1,
+				offset: 1,
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				executions: [expect.objectContaining({ executionId: 'exec-2' })],
+				count: 1,
+				total: 3,
+				nextOffset: 2,
+			});
+		});
+
+		it('caps oversized userMessage and error fields in summaries', async () => {
+			agentExecutionService.getThreadDetail.mockResolvedValue({
+				thread,
+				executions: [execution({ userMessage: 'u'.repeat(5000), error: 'e'.repeat(5000) })],
+			} as never);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				limit: 20,
+				offset: 0,
+			});
+
+			const { executions } = result.structuredContent as {
+				executions: Array<{ userMessage: string; error: string }>;
+			};
+			expect(executions[0].userMessage).toHaveLength(1000 + '… [truncated 4000 chars]'.length);
+			expect(executions[0].error.endsWith('… [truncated 4000 chars]')).toBe(true);
+		});
+
 		it('reports an out-of-scope session as not found', async () => {
-			agentExecutionService.getSessionExecutionsPage.mockResolvedValue(null);
+			agentExecutionService.getThreadDetail.mockResolvedValue(null);
 
 			const result = await callTool('get_agent_session', {
 				agentId: 'agent-1',
 				sessionId: 'other-thread',
 				limit: 20,
+				offset: 0,
 			});
 
 			expect(result.isError).toBe(true);
@@ -1786,29 +1836,35 @@ describe('McpAgentToolsService', () => {
 			success: true,
 			...overrides,
 		});
-		const executionRow = (timeline: unknown[]) =>
+		const executionRow = (timeline: unknown[] | null, overrides: Record<string, unknown> = {}) => ({
+			id: 'exec-1',
+			status: 'success',
+			startedAt: new Date('2026-01-01T00:00:00.000Z'),
+			stoppedAt: new Date('2026-01-01T00:00:05.000Z'),
+			duration: 5000,
+			model: 'anthropic/claude',
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.1,
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: 'mcp',
+			userMessage: 'Hi',
+			storedAt: 'db',
+			timeline,
+			...overrides,
+		});
+		const threadDetail = (timeline: unknown[] | null, overrides: Record<string, unknown> = {}) =>
 			({
-				id: 'exec-1',
-				status: 'success',
-				startedAt: new Date('2026-01-01T00:00:00.000Z'),
-				stoppedAt: new Date('2026-01-01T00:00:05.000Z'),
-				duration: 5000,
-				model: 'anthropic/claude',
-				promptTokens: 10,
-				completionTokens: 5,
-				totalTokens: 15,
-				cost: 0.1,
-				error: null,
-				failureSummary: null,
-				hitlStatus: null,
-				source: 'mcp',
-				userMessage: 'Hi',
-				timeline,
+				thread: { id: 'thread-1' },
+				executions: [executionRow(timeline, overrides)],
 			}) as never;
 
-		it('returns metadata only by default', async () => {
-			agentExecutionService.getExecutionDetail.mockResolvedValue(
-				executionRow([toolCall(), { type: 'text', content: 'Done', timestamp: 3 }]),
+		it('returns metadata only by default, with no timeline anywhere', async () => {
+			agentExecutionService.getThreadDetail.mockResolvedValue(
+				threadDetail([toolCall(), { type: 'text', content: 'Done', timestamp: 3 }]),
 			);
 
 			const result = await callTool('get_agent_execution', {
@@ -1819,17 +1875,54 @@ describe('McpAgentToolsService', () => {
 				failedToolsOnly: false,
 			});
 
-			expect(agentExecutionService.getExecutionDetail).toHaveBeenCalledWith(
+			expect(agentExecutionService.getThreadDetail).toHaveBeenCalledWith(
 				'thread-1',
 				'project-1',
 				'agent-1',
 				'user-1',
-				'exec-1',
 			);
-			expect(result.structuredContent).toEqual({
+			expect(result.structuredContent).toStrictEqual({
 				ok: true,
-				execution: expect.objectContaining({ executionId: 'exec-1', status: 'success' }),
+				execution: {
+					executionId: 'exec-1',
+					status: 'success',
+					startedAt: '2026-01-01T00:00:00.000Z',
+					stoppedAt: '2026-01-01T00:00:05.000Z',
+					duration: 5000,
+					model: 'anthropic/claude',
+					promptTokens: 10,
+					completionTokens: 5,
+					totalTokens: 15,
+					cost: 0.1,
+					error: null,
+					failureSummary: null,
+					hitlStatus: null,
+					source: 'mcp',
+					userMessage: 'Hi',
+				},
 			});
+			expect(result.structuredContent).not.toHaveProperty('timeline');
+			expect(result.structuredContent.execution).not.toHaveProperty('timeline');
+		});
+
+		it('reports an unreadable blob timeline instead of a clean empty run', async () => {
+			agentExecutionService.getThreadDetail.mockResolvedValue(
+				threadDetail(null, { storedAt: 's3' }),
+			);
+
+			const result = await callTool('get_agent_execution', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				executionId: 'exec-1',
+				includeTimeline: true,
+				failedToolsOnly: false,
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				timelineUnavailable: true,
+			});
+			expect(result.structuredContent).not.toHaveProperty('timeline');
 		});
 
 		it('filters the timeline to hard and soft failures with failedToolsOnly', async () => {
@@ -1849,8 +1942,8 @@ describe('McpAgentToolsService', () => {
 				success: false,
 				output: { declined: true },
 			});
-			agentExecutionService.getExecutionDetail.mockResolvedValue(
-				executionRow([
+			agentExecutionService.getThreadDetail.mockResolvedValue(
+				threadDetail([
 					{ type: 'text', content: 'Working', timestamp: 1 },
 					toolCall(),
 					hardFailure,
@@ -1879,8 +1972,8 @@ describe('McpAgentToolsService', () => {
 
 		it('truncates oversized event payloads and says so', async () => {
 			const longText = 'a'.repeat(3000);
-			agentExecutionService.getExecutionDetail.mockResolvedValue(
-				executionRow([{ type: 'text', content: longText, timestamp: 1 }]),
+			agentExecutionService.getThreadDetail.mockResolvedValue(
+				threadDetail([{ type: 'text', content: longText, timestamp: 1 }]),
 			);
 
 			const result = await callTool('get_agent_execution', {
@@ -1903,8 +1996,8 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('honours a caller-supplied truncate budget', async () => {
-			agentExecutionService.getExecutionDetail.mockResolvedValue(
-				executionRow([toolCall({ output: { blob: 'b'.repeat(500) } })]),
+			agentExecutionService.getThreadDetail.mockResolvedValue(
+				threadDetail([toolCall({ output: { blob: 'b'.repeat(500) } })]),
 			);
 
 			const result = await callTool('get_agent_execution', {
@@ -1924,7 +2017,9 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('reports a missing execution as not found', async () => {
-			agentExecutionService.getExecutionDetail.mockResolvedValue(null);
+			agentExecutionService.getThreadDetail.mockResolvedValue(
+				threadDetail([{ type: 'text', content: 'Done', timestamp: 1 }]),
+			);
 
 			const result = await callTool('get_agent_execution', {
 				agentId: 'agent-1',

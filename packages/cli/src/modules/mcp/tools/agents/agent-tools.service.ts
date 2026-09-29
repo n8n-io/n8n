@@ -59,7 +59,6 @@ import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
-import { isFailedToolCallEvent } from '@/modules/agents/utils/execution-failure-summary';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -77,6 +76,8 @@ import {
 } from './agent-reference';
 import {
 	DEFAULT_TIMELINE_EVENT_CHAR_BUDGET,
+	isFailedToolCallEvent,
+	isTimelineUnavailable,
 	toExecutionSummary,
 	toSessionSummary,
 	truncateTimeline,
@@ -237,7 +238,13 @@ const getAgentSessionInput = {
 		.optional()
 		.default(20)
 		.describe('Executions per page, newest first'),
-	cursor: z.string().optional().describe('nextCursor from the previous page; treat it as opaque'),
+	offset: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.default(0)
+		.describe('Executions to skip; pass nextOffset from the previous page'),
 } satisfies z.ZodRawShape;
 
 const getAgentExecutionInput = {
@@ -1064,25 +1071,29 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ agentId, sessionId, limit, cursor }: GetAgentSessionInput) =>
+			handler: async ({ agentId, sessionId, limit, offset }: GetAgentSessionInput) =>
 				await this.run(user, 'get_agent_session', { agentId, sessionId }, async () => {
 					const agent = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, agent.projectId, 'agent:read');
-					const page = await this.agentExecutionService.getSessionExecutionsPage(
+					const detail = await this.agentExecutionService.getThreadDetail(
 						sessionId,
 						agent.projectId,
 						agentId,
 						user.id,
-						limit,
-						cursor,
 					);
-					if (!page) throw new UserError(`Session "${sessionId}" not found`);
+					if (!detail) throw new UserError(`Session "${sessionId}" not found`);
+					// getThreadDetail returns executions oldest first; this view pages
+					// newest first, so reverse before slicing.
+					const newestFirst = [...detail.executions].reverse();
+					const page = newestFirst.slice(offset, offset + limit);
+					const nextOffset = offset + limit < newestFirst.length ? offset + limit : null;
 					return {
 						ok: true,
-						session: toSessionSummary(page.thread),
-						executions: page.executions.map(toExecutionSummary),
-						count: page.executions.length,
-						nextCursor: page.nextCursor,
+						session: toSessionSummary(detail.thread),
+						executions: page.map(toExecutionSummary),
+						count: page.length,
+						total: newestFirst.length,
+						nextOffset,
 					};
 				}),
 		};
@@ -1116,13 +1127,14 @@ export class McpAgentToolsService {
 					async () => {
 						const agent = await this.resolveAgent(user, input.agentId);
 						await this.assertScope(user, agent.projectId, 'agent:read');
-						const execution = await this.agentExecutionService.getExecutionDetail(
+						const detail = await this.agentExecutionService.getThreadDetail(
 							input.sessionId,
 							agent.projectId,
 							input.agentId,
 							user.id,
-							input.executionId,
 						);
+						if (!detail) throw new UserError(`Session "${input.sessionId}" not found`);
+						const execution = detail.executions.find(({ id }) => id === input.executionId);
 						if (!execution) {
 							throw new UserError(
 								`Execution "${input.executionId}" not found in session "${input.sessionId}"`,
@@ -1130,6 +1142,18 @@ export class McpAgentToolsService {
 						}
 						const summary = toExecutionSummary(execution);
 						if (!input.includeTimeline) return { ok: true, execution: summary };
+
+						// A blob-stored timeline can be unreadable (missing, corrupted, or
+						// an unconfigured location); the detail read degrades to null. Say
+						// so instead of presenting a clean empty run.
+						if (isTimelineUnavailable(execution)) {
+							return {
+								ok: true,
+								execution: summary,
+								timelineUnavailable: true,
+								hint: 'The timeline blob could not be read from storage.',
+							};
+						}
 
 						const allEvents = execution.timeline ?? [];
 						const events = input.failedToolsOnly
