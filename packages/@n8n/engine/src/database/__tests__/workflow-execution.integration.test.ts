@@ -361,6 +361,7 @@ async function saveExecution(
 			workflowId: 'wf-7',
 			mode: 'production',
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 			graph: { nodes: [], edges: [] },
 			workflow: {},
 			triggerOutputs: null,

@@ -19,6 +19,7 @@ const execution: ExecutionRecord = {
 	workflow: {},
 	triggerOutputs: null,
 	callerContext: { hostMode: 'trigger' },
+	responseExpectation: { kind: 'none' },
 };
 
 function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
