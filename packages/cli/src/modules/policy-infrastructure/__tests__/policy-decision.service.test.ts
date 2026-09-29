@@ -15,8 +15,8 @@ import { Container, Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { classifyHttpError } from '@/errors/http-error-classifier';
-import { serializeInternalRestError } from '@/errors/http-error-serializers';
+import { classifyHttpError } from '@n8n/backend-common';
+import { serializeInternalRestError } from '@n8n/backend-common';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 

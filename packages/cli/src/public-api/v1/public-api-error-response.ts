@@ -1,8 +1,10 @@
 import type { Response } from 'express';
 
-import type { HttpErrorClassifierContext } from '@/errors/http-error-classifier';
-import { classifyHttpError } from '@/errors/http-error-classifier';
-import { serializePublicApiError } from '@/errors/http-error-serializers';
+import {
+	classifyHttpError,
+	serializePublicApiError,
+	type HttpErrorClassifierContext,
+} from '@n8n/backend-common';
 
 /**
  * Maps errors from the public API stack to HTTP responses. Used by the

@@ -18,6 +18,18 @@ export { assertDir, exists } from './utils/fs';
 export { parseFlatted } from './utils/parse-flatted';
 export { CliParser } from './cli-parser';
 export { TypedEmitter } from './typed-emitter';
+export {
+	classifyHttpError,
+	isResponseError,
+	type HttpErrorClassifierContext,
+	type HttpErrorDescriptor,
+	HttpErrorKind,
+} from './errors/http-error-classifier';
+export {
+	serializeInternalRestError,
+	serializePublicApiError,
+	type InternalRestErrorBody,
+} from './errors/http-error-serializers';
 
 export { LockService } from './locking/lock.service';
 export {

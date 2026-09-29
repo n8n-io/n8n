@@ -1,4 +1,10 @@
-import { inDevelopment, Logger } from '@n8n/backend-common';
+import {
+	classifyHttpError,
+	inDevelopment,
+	isResponseError,
+	Logger,
+	serializeInternalRestError,
+} from '@n8n/backend-common';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type ReportingOptions } from '@n8n/errors';
@@ -9,9 +15,7 @@ import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
-import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
 import { applyFormSandboxCSP } from './webhooks/webhook-response-headers';
-import { serializeInternalRestError } from './errors/http-error-serializers';
 
 export function sendSuccessResponse(
 	res: Response,

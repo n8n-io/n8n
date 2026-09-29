@@ -1,10 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 
-import { classifyHttpError } from '@/errors/http-error-classifier';
-import {
-	serializeInternalRestError,
-	serializePublicApiError,
-} from '@/errors/http-error-serializers';
+import { classifyHttpError } from '@n8n/backend-common';
+import { serializeInternalRestError, serializePublicApiError } from '@n8n/backend-common';
 import { ConflictError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';

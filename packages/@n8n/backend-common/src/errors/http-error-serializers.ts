@@ -1,6 +1,6 @@
 import { isWorkflowPublishBlockedDetails } from '@n8n/api-types';
 
-import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
+import { HttpErrorKind, type HttpErrorDescriptor } from './http-error-classifier';
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 

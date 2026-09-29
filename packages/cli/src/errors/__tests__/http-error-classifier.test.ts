@@ -9,7 +9,7 @@ import {
 } from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 
-import { classifyHttpError, HttpErrorKind, isResponseError } from '../http-error-classifier';
+import { classifyHttpError, HttpErrorKind, isResponseError } from '@n8n/backend-common';
 
 describe('classifyHttpError', () => {
 	it('tags ResponseError with kind responseError and http fields', () => {

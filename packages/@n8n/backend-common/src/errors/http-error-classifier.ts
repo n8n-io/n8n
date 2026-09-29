@@ -89,11 +89,23 @@ export function classifyHttpError(
 
 	// Replacing express-openapi-validator's 'api key header required' error message
 	// for requests that contained a session cookie.
-	if (error instanceof Unauthorized && context?.hasSessionCookie) {
+	if (isHttpErrorInstance(error, Unauthorized, ['Unauthorized']) && context?.hasSessionCookie) {
 		return { kind: HttpErrorKind.httpError, status: 401, message: 'Unauthorized' };
 	}
 
-	if (error instanceof HttpError) {
+	if (
+		isHttpErrorInstance(error, HttpError, [
+			'HttpError',
+			'BadRequest',
+			'Unauthorized',
+			'Forbidden',
+			'NotFound',
+			'NotAcceptable',
+			'NotAllowed',
+			'UnsupportedMediaType',
+			'UnprocessableEntity',
+		])
+	) {
 		return {
 			kind: HttpErrorKind.httpError,
 			status: error.status || 400,
@@ -102,4 +114,12 @@ export function classifyHttpError(
 	}
 
 	return { kind: HttpErrorKind.serverError, message: error.message ?? 'Unknown error' };
+}
+
+function isHttpErrorInstance<T extends Error>(
+	error: Error,
+	errorClass: new (...args: never[]) => T,
+	classNames: string[],
+): error is T {
+	return error instanceof errorClass || classNames.includes(error.constructor.name);
 }
