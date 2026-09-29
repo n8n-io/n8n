@@ -307,7 +307,7 @@ function goToUpgrade() {
 				>
 					<ProjectSharingInfo :project="entry.project" :subtitle="entry.subtitle">
 						<div :class="$style.onlyYou">
-							<N8nText color="text-light" :title="usedInAccessText">
+							<N8nText :class="$style.accessText" color="text-light" :title="usedInAccessText">
 								{{ usedInAccessText }}
 							</N8nText>
 							<N8nButton
@@ -359,6 +359,12 @@ function goToUpgrade() {
 	align-items: center;
 	flex-shrink: 0;
 	gap: var(--spacing--2xs);
+}
+
+.accessText {
+	max-width: 12rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 </style>
