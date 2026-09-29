@@ -472,7 +472,7 @@ describe('GoogleCalendarTrigger', () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(new Date('2026-09-29T12:00:00Z'));
 			const now = moment.utc();
-			const webhookData = { lastTimeChecked: now.clone().subtract(1, 'day').format() };
+			const webhookData = { lastTimeChecked: now.clone().startOf('day').format() };
 			mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
 
 			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -503,6 +503,13 @@ describe('GoogleCalendarTrigger', () => {
 
 			const result = await trigger.poll.call(mockPollFunctions);
 
+			expect(googleApiRequestAllItemsSpy).toHaveBeenCalledWith(
+				'items',
+				'GET',
+				'/calendar/v3/calendars/test%40example.com/events',
+				{},
+				expect.objectContaining({ timeMin: '2026-09-28T23:59:59Z' }),
+			);
 			expect(result?.[0]).toHaveLength(1);
 			expect(result?.[0][0].json.id).toBe('1');
 		});
@@ -541,8 +548,9 @@ describe('GoogleCalendarTrigger', () => {
 			expect(result?.[0][0].json.id).toBe('1');
 
 			webhookData.lastTimeChecked = '2026-09-29T03:30:00Z';
-			await trigger.poll.call(mockPollFunctions);
+			const cachedResult = await trigger.poll.call(mockPollFunctions);
 			expect(googleApiRequestSpy).toHaveBeenCalledTimes(1);
+			expect(cachedResult?.[0][0].json.id).toBe('1');
 		});
 	});
 

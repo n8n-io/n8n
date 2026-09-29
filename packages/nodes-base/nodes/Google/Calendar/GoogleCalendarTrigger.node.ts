@@ -197,8 +197,8 @@ export class GoogleCalendarTrigger implements INodeType {
 		} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
 			Object.assign(qs, {
 				singleEvents: true,
-				timeMin: moment(startDate).startOf('second').utc().format(),
-				timeMax: moment(endDate).endOf('second').utc().format(),
+				timeMin: moment(startDate).startOf('second').subtract(1, 'second').utc().format(),
+				timeMax: moment(endDate).endOf('second').add(1, 'second').utc().format(),
 				orderBy: 'startTime',
 			});
 		}
