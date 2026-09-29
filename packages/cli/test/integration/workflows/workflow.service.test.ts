@@ -40,6 +40,7 @@ import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-p
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
+import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -129,6 +130,7 @@ beforeAll(async () => {
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
+		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
 	);
 });
 

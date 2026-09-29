@@ -145,6 +145,21 @@ const UNCONFIGURED_PROJECT: Omit<EffectivePolicy, 'kind'> = {
 	attachments: [],
 };
 
+function toEffectivePolicy(
+	scope: TypeAvailabilityPolicyScope,
+	attachments: readonly PolicyAttachment[],
+): EffectivePolicy {
+	return {
+		scopeId: scope.id,
+		kind: scope.kind,
+		projectId: scope.projectId,
+		defaultAction: scope.defaultAction,
+		version: scope.version,
+		rules: flattenRules(attachments),
+		attachments,
+	};
+}
+
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
 
@@ -321,15 +336,7 @@ export class TypeAvailabilityPolicyService {
 
 		const attachments = await this.attachmentRepository.listAttachmentsForScope(scope.id, ctx);
 
-		return {
-			scopeId: scope.id,
-			kind,
-			projectId,
-			defaultAction: scope.defaultAction,
-			version: scope.version,
-			rules: flattenRules(attachments),
-			attachments,
-		};
+		return toEffectivePolicy(scope, attachments);
 	}
 
 	/**
@@ -973,19 +980,53 @@ export class TypeAvailabilityPolicyService {
 		typeNames: readonly string[],
 	): Promise<ComposedTypeEvaluation> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
-		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
-		const policedType = policedTypeFor(kind, this.nodeTypes);
 
 		return {
-			verdicts: typeNames.map((name) => ({
-				name,
-				...evaluateComposedType(instance, project, policedType(name), resolvePackage),
-			})),
+			verdicts: this.verdictComposer(kind, typeNames)(instance, project),
 			versions: [
 				{ scope: 'instance', version: instance.version },
 				...(projectId === null ? [] : [{ scope: 'project' as const, version: project.version }]),
 			],
 		};
+	}
+
+	async evaluateComposedTypesForAllProjects(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<{
+		withoutProjectPolicy: ComposedTypeVerdict[];
+		byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
+	}> {
+		const [instance, scopes] = await Promise.all([
+			this.readEffectivePolicyCached(kind, null),
+			this.scopeRepository.findProjectScopes(kind, {}),
+		]);
+		const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
+			scopes.map((scope) => scope.id),
+			{},
+		);
+		const composeVerdicts = this.verdictComposer(kind, typeNames);
+
+		return {
+			withoutProjectPolicy: composeVerdicts(instance, { ...UNCONFIGURED_PROJECT, kind }),
+			byProject: scopes.flatMap((scope) => {
+				if (scope.projectId === null) return [];
+				const project = toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []);
+
+				return [{ projectId: scope.projectId, verdicts: composeVerdicts(instance, project) }];
+			}),
+		};
+	}
+
+	private verdictComposer(kind: string, typeNames: readonly string[]) {
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+
+		return (instance: EffectivePolicy, project: EffectivePolicy): ComposedTypeVerdict[] =>
+			types.map((type) => ({
+				name: type.name,
+				...evaluateComposedType(instance, project, type, resolvePackage),
+			}));
 	}
 
 	/**

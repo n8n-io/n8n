@@ -145,6 +145,16 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return keys;
 	}
 
+	async findProjectScopes(
+		kind: string,
+		ctx: OperationContext,
+	): Promise<TypeAvailabilityPolicyScope[]> {
+		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicyScope, {
+			kind,
+			projectId: Not(IsNull()),
+		});
+	}
+
 	/**
 	 * Whether any of the named scopes is a project scope (`projectId IS NOT NULL`). A policy
 	 * edit uses this to learn whether its document is attached to a project, where `delegate`
