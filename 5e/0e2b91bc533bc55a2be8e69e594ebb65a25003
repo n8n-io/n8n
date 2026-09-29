@@ -1,0 +1,37 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_5f32eec70dc0ee 48,75-76,918-954,960-985,989-992,994-998
+  s_13d2093edecceb::t_f6c6d2393acfb6 986-988,993
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_782619aac31c26::t_26a2f59cded095 66,68-72,79,81-82
+  s_782619aac31c26::t_b9b10486a6f52c 15
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_782619aac31c26::t_c34cd4f8b0f713 49
+  s_782619aac31c26::t_26a2f59cded095 326-329,331-334,336-344,741,755-762,793-804,815-816
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_782619aac31c26::t_b49acb85db9c6c 189,314,403,442-485,595,667,760,1155,1216
+  s_782619aac31c26::t_c34cd4f8b0f713 110-112,332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e0e2b91bc533bc55a2be8e69e594ebb65a25003",
+  "prompts": {},
+  "sessions": {
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

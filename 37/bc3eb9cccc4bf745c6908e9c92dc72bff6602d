@@ -1,0 +1,193 @@
+packages/modules/mcp/frontend/src/components/McpAccessTokenTab.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-201
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  s_bc92c7e8a354c5::t_729757c225d872 21
+packages/modules/mcp/frontend/src/components/tabs/AgentsTable.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-312
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.vue
+  s_bc92c7e8a354c5::t_729757c225d872 7
+  s_bc92c7e8a354c5::t_ce1da1626fe1b1 8-11
+packages/modules/mcp/frontend/src/mcp.test.utils.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-57
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue
+  s_bc92c7e8a354c5::t_729757c225d872 7
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState.test.ts
+  s_bc92c7e8a354c5::t_7160fc2e949372 13-14
+packages/frontend/editor-ui/src/app/components/WorkflowCardMcpToggle.vue
+  s_bc92c7e8a354c5::t_729757c225d872 7
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_bc92c7e8a354c5::t_7160fc2e949372 66-68
+packages/modules/mcp/frontend/src/components/MCPEmptyState.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-75
+packages/modules/mcp/frontend/src/components/ConnectionParameter.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-207
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_bc92c7e8a354c5::t_59561a1d398cc6 3
+packages/modules/mcp/frontend/src/SettingsMCPClientsView.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-207
+packages/modules/mcp/frontend/package.json
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-6,9-26,28-32,37-50,52,54,56-63,65-68
+  s_bc92c7e8a354c5::t_016ae1a2740d43 27,33-36,51,53,55,64
+  s_bc92c7e8a354c5::t_59561a1d398cc6 7-8
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_bc92c7e8a354c5::t_729757c225d872 19
+packages/modules/mcp/frontend/src/components/McpEmptyStateCard.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-83
+packages/modules/mcp/frontend/src/components/McpConnectClientDialog.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-119
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.test.ts
+  s_bc92c7e8a354c5::t_729757c225d872 5
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState.ts
+  s_bc92c7e8a354c5::t_729757c225d872 1
+packages/modules/mcp/frontend/src/modals/MCPConnectWorkflowsModal.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-292
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.vue
+  s_bc92c7e8a354c5::t_729757c225d872 22
+packages/modules/mcp/frontend/src/mcp.clients.catalog.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-53
+packages/frontend/editor-ui/eslint.config.mjs
+  s_bc92c7e8a354c5::t_59561a1d398cc6 47-51
+packages/modules/mcp/frontend/src/SettingsMCPClientsView.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-179
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.test.ts
+  s_bc92c7e8a354c5::t_729757c225d872 7
+OWNERS
+  s_bc92c7e8a354c5::t_3e6706af0b3b83 122
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_bc92c7e8a354c5::t_1c548b1b202d36 47
+packages/modules/mcp/frontend/src/components/McpConnectClientDialog.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-432
+packages/frontend/editor-ui/package.json
+  s_bc92c7e8a354c5::t_1c548b1b202d36 59
+packages/modules/mcp/frontend/src/SettingsMCPAgentsView.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-256
+packages/modules/mcp/frontend/src/SettingsMCPAgentsView.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-223
+packages/frontend/editor-ui/src/experiments/mcpJsonNudge/components/McpJsonNudgeModal.vue
+  s_bc92c7e8a354c5::t_729757c225d872 5
+packages/modules/mcp/frontend/src/SettingsMCPWorkflowsView.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-245
+packages/modules/mcp/frontend/src/__tests__/design-system-icons.test.ts
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-24
+packages/frontend/editor-ui/src/experiments/mcpJsonNudge/components/McpJsonNudgeModal.test.ts
+  s_bc92c7e8a354c5::t_729757c225d872 4
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.test.ts
+  s_bc92c7e8a354c5::t_729757c225d872 34
+packages/frontend/editor-ui/tsconfig.json
+  s_bc92c7e8a354c5::t_1c548b1b202d36 28-29
+packages/modules/mcp/frontend/src/components/MCPAgentsSelect.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-176
+packages/modules/mcp/frontend/src/modals/MCPConnectAgentsModal.vue
+  s_bc92c7e8a354c5::t_ea7f7d4030787a 20-21
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-19,22-122
+packages/frontend/editor-ui/src/app/extractionRatchet.test.ts
+  s_bc92c7e8a354c5::t_59561a1d398cc6 24
+packages/modules/mcp/frontend/eslint.config.mjs
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-4
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.ts
+  s_bc92c7e8a354c5::t_729757c225d872 5
+packages/modules/mcp/frontend/src/components/tabs/WorkflowsTable.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-398
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_bc92c7e8a354c5::t_729757c225d872 58
+packages/modules/mcp/frontend/src/components/MCPWorkflowsSelect.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-384
+packages/modules/mcp/frontend/src/components/tabs/OAuthClientsTable.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-394
+packages/frontend/editor-ui/src/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility.ts
+  s_bc92c7e8a354c5::t_729757c225d872 6
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bc92c7e8a354c5::t_729757c225d872 131
+packages/modules/mcp/frontend/src/components/tabs/OAuthClientsTable.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-475
+packages/modules/mcp/frontend/src/SettingsMCPView.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-679
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_bc92c7e8a354c5::t_729757c225d872 54
+packages/frontend/editor-ui/src/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility.test.ts
+  s_bc92c7e8a354c5::t_7160fc2e949372 11-12
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_bc92c7e8a354c5::t_729757c225d872 2289,3550,3583,3627,3702
+packages/modules/mcp/frontend/src/mcp.store.test.ts
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-13
+packages/modules/mcp/frontend/src/components/WorkflowLocation.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-329
+packages/modules/mcp/frontend/src/components/MCPWorkflowsSelect.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-159
+packages/modules/mcp/frontend/src/components/tabs/OAuthClientsFilters.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-86
+packages/modules/mcp/frontend/src/mcp.module.test.ts
+  s_bc92c7e8a354c5::t_b1e22b597d3dc5 12
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-11,13-106
+packages/modules/mcp/frontend/README.md
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-52
+packages/modules/mcp/frontend/stylelint.config.mjs
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-9
+packages/modules/mcp/frontend/src/SettingsMCPWorkflowsView.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-274
+packages/modules/mcp/frontend/vite.config.ts
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-52
+packages/modules/mcp/frontend/src/components/McpAllowedCallbackUrlsDialog.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-122
+packages/modules/mcp/frontend/src/components/tabs/WorkflowsTable.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-661
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_bc92c7e8a354c5::t_729757c225d872 20
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  s_bc92c7e8a354c5::t_729757c225d872 7
+packages/modules/mcp/frontend/src/mcp.module.ts
+  s_bc92c7e8a354c5::t_1c548b1b202d36 2,10,18
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1,3-9,11-17,19-90
+packages/modules/mcp/frontend/src/SettingsMCPView.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-430
+packages/modules/mcp/frontend/src/mcp.store.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 2-38,40-42,44-381,384-425
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1,39,43,382-383
+packages/modules/mcp/frontend/src/__tests__/setup.ts
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-4
+packages/modules/mcp/frontend/src/components/McpAccessTokenTab.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-220
+packages/modules/mcp/frontend/src/components/McpStatusControl.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-33
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.test.ts
+  s_bc92c7e8a354c5::t_7160fc2e949372 54-55
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts
+  s_bc92c7e8a354c5::t_7160fc2e949372 15-16
+  s_bc92c7e8a354c5::t_729757c225d872 5
+packages/modules/mcp/frontend/src/index.ts
+  s_bc92c7e8a354c5::t_59561a1d398cc6 1-10
+packages/modules/mcp/frontend/src/components/McpConfigSnippet.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-92
+packages/modules/mcp/frontend/src/composables/useMcp.test.ts
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-59
+packages/modules/mcp/frontend/src/modals/MCPConnectWorkflowsModal.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-18,21-101
+  s_bc92c7e8a354c5::t_ea7f7d4030787a 19-20
+packages/modules/mcp/frontend/tsconfig.json
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-21
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_bc92c7e8a354c5::t_729757c225d872 83
+  s_bc92c7e8a354c5::t_05e08e281237e9 84-87
+packages/modules/mcp/frontend/src/components/McpAllowedCallbackUrlsDialog.vue
+  s_bc92c7e8a354c5::t_9a296d87deaba4 1-218
+packages/modules/mcp/frontend/biome.jsonc
+  s_bc92c7e8a354c5::t_1c548b1b202d36 1-4
+pnpm-lock.yaml
+  s_bc92c7e8a354c5::t_d6750976061919 6280-6282,6877-7000,29435,41957,41961-41965,41990,41997-42007
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "37bc3eb9cccc4bf745c6908e9c92dc72bff6602d",
+  "prompts": {},
+  "sessions": {
+    "s_bc92c7e8a354c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc1157de-8f47-4713-bdfb-a52867a41957",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

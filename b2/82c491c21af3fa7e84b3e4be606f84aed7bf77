@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_e119f4a041ed36::t_2d447f30d8e8fb 222,225,272,278,282,286,291,295,365
+  s_e119f4a041ed36::t_a3fba4fbe90f36 189-193,198,204-205,207,212,367,369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b282c491c21af3fa7e84b3e4be606f84aed7bf77",
+  "prompts": {},
+  "sessions": {
+    "s_e119f4a041ed36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c960-8f83-7942-9390-94d55512f1a1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

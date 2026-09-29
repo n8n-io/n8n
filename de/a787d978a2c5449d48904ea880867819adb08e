@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/common/1790073725529-AddConcurrencyLimitToScheduledJob.ts
+  s_771c95b7ec8f33::t_b418b01e7be1ec 1-68
+packages/cli/test/migration/1790073725529-add-concurrency-limit-to-scheduled-job.test.ts
+  s_771c95b7ec8f33::t_b418b01e7be1ec 1-162
+packages/@n8n/db/src/migrations/sqlite/1790073725529-AddConcurrencyLimitToScheduledJob.ts
+  s_771c95b7ec8f33::t_b418b01e7be1ec 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dea787d978a2c5449d48904ea880867819adb08e",
+  "prompts": {},
+  "sessions": {
+    "s_771c95b7ec8f33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcafe344-db61-466f-85a7-982e3eb74599",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

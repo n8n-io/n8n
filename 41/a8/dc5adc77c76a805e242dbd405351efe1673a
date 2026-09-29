@@ -1,0 +1,87 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_057bc2f46da92a::t_90cc1cbb14b731 239,244-246,250-254,264-265,273
+  s_057bc2f46da92a::t_420907614c16f0 1,221-238,240-243,247-249,255-263,266-272,274-336
+  s_057bc2f46da92a::t_4b340deb346a3b 337
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_c9833d278172b6::t_e3a8cc92bb5ecb 13
+  s_c9833d278172b6::t_d84390f7bb9b4b 320,332-336,339-341,343-355,357-359,450,464
+  s_c9833d278172b6::t_80efaef8256fa9 419-422,505-517
+  s_c9833d278172b6::t_66a35440612eaf 27,34,57-59,63,89,171,275-278
+  s_c9833d278172b6::t_74a38c9c7f1b32 279,485,500-504,518-519,619,623,629
+  s_c9833d278172b6::t_70f140495737c5 558,612-618
+  s_c9833d278172b6::t_7f5af3570e3735 393-394,411-412
+  s_c9833d278172b6::t_a194d9dc84abc5 281-284,356
+  s_c9833d278172b6::t_b2e868e1228089 60-62
+  s_c9833d278172b6::t_a02dd80fa8ac52 417-418,423-434,436-449
+  s_fb0d030297c369::t_3d41a460ad5593 360,435
+  s_c9833d278172b6::t_54ebb9ad0456e5 396,414
+  s_c9833d278172b6::t_387e29ea99860f 280
+  s_c9833d278172b6::t_74a3339450f6f8 337-338
+  s_c9833d278172b6::t_410150c39a519d 482-484
+  s_c9833d278172b6::t_341ddb12eb1cd3 486
+  s_c9833d278172b6::t_b39126625eccce 620-622
+  s_c9833d278172b6::t_3faa34f3ab1d09 624-628
+  s_c9833d278172b6::t_2e4d294df35347 630
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.stories.ts
+  s_c9833d278172b6::t_10bb38bf5715e1 85-87,156,262-276
+  s_c9833d278172b6::t_de6887058a8e82 277-278
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorToolbar.vue
+  s_c9833d278172b6::t_a4ccd0fac42b0d 658,661-662
+  s_c9833d278172b6::t_89049b483e236c 505
+  s_c9833d278172b6::t_7d4238f9442968 515,517-518,527-529
+  s_c9833d278172b6::t_79dcf6dfb786e4 565,660
+  s_c9833d278172b6::t_fe36b5e07056bc 35-36
+  s_fb0d030297c369::t_df8cb49d2778d1 516
+  s_c9833d278172b6::t_7a957249f40d7b 41,506-514,519-526
+  s_c9833d278172b6::t_aebb6f4b690e56 659
+  s_fb0d030297c369::t_d7178e4b36fa77 645
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.types.ts
+  s_c9833d278172b6::t_191a12cd610c55 16-17
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_c9833d278172b6::t_7234dfd20cb93c 253
+  s_5236afb109c1bd::t_47514026b55670 251-252
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/component-markdown-editor.md
+  s_c9833d278172b6::t_b5ed891acec7a5 38-39
+packages/frontend/@n8n/design-system/src/components/N8nDialog/DialogContent.vue
+  s_c9833d278172b6::t_7feedc120dc04d 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41a8dc5adc77c76a805e242dbd405351efe1673a",
+  "prompts": {},
+  "sessions": {
+    "s_057bc2f46da92a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c93e-6f94-77a8-b9dd-17593ea5a657",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_5236afb109c1bd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c94b-af9c-77a8-b9dd-175d96d2a4b5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c9833d278172b6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c91d-fc15-77a8-b9dd-1757655db08a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fb0d030297c369": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c949-fd97-77a8-b9dd-175a4ec687a6",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

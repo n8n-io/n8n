@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+  h_435b1d7d3e52c0 2951-2953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7dc7d2e90c9e043a921f65389485c02e7bb9eabc",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

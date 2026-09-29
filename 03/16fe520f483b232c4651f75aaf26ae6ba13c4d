@@ -1,0 +1,34 @@
+packages/cli/src/modules/instance-reporting.ee/database/repositories/instance-monitoring-report.repository.ts
+  s_d2bb3ab4fe4d41::t_9fe943929f273c 23
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_d2bb3ab4fe4d41::t_ccadc8f6edf1cf 40
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_d2bb3ab4fe4d41::t_dc4d24ef6ecdcf 186
+  s_d2bb3ab4fe4d41::t_afc2ed18e7d342 107,167,178
+  s_d2bb3ab4fe4d41::t_4f0da48bafda3d 180
+  s_d2bb3ab4fe4d41::t_37acdea93a443f 181-185
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts
+  s_d2bb3ab4fe4d41::t_afc2ed18e7d342 155
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_d2bb3ab4fe4d41::t_69b18f832d9341 7-9
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_d2bb3ab4fe4d41::t_6b680f9db380a4 630-666
+  s_d2bb3ab4fe4d41::t_2c22b997a961a3 532
+  s_d2bb3ab4fe4d41::t_cf5fa5c5b4e0ae 585-629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0316fe520f483b232c4651f75aaf26ae6ba13c4d",
+  "prompts": {},
+  "sessions": {
+    "s_d2bb3ab4fe4d41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9a1abb9-591c-4586-879e-ef773e0dd6da",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

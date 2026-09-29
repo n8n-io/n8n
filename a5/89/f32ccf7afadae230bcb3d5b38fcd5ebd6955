@@ -1,0 +1,24 @@
+packages/@n8n/db/src/migrations/common/1790014447117-AddAgentThreadOwnership.ts
+  s_a52facf53351c5::t_06c2b5bdb5e678 3-5,7-91,93-101,103-115
+  s_a52facf53351c5::t_9fe42bdb648cb2 1-2,6,92,102,116-117
+packages/@n8n/db/src/migrations/sqlite/1790014447117-AddAgentThreadOwnership.ts
+  s_a52facf53351c5::t_06c2b5bdb5e678 1-5
+packages/cli/test/migration/1790014447117-add-agent-thread-ownership.test.ts
+  s_a52facf53351c5::t_06c2b5bdb5e678 1-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a589f32ccf7afadae230bcb3d5b38fcd5ebd6955",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

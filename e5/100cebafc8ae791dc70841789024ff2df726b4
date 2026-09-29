@@ -1,0 +1,30 @@
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 19,35,382-417
+  s_2ed659fa6b1ae7::t_995d635d43069b 418-419
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 1-251
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 78,103,576-587,874-887
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 130,243-282
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 93,149,2401
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 194,204,3963-3967,3971-3973,4060-4062
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e5100cebafc8ae791dc70841789024ff2df726b4",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

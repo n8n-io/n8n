@@ -1,0 +1,30 @@
+packages/workflow/test/n8n-browser-oauth2-flow.test.ts
+  s_c0774ee5e7f69b::t_7ec682830dbdb7 216-218
+  s_c0774ee5e7f69b::t_656c66666823cf 219-238
+  s_c0774ee5e7f69b::t_d56b53471b03f4 22,41,43,48,51-52,55,108-123,213-215,239,300-302,311-321
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_c0774ee5e7f69b::t_f15ec064ac3bb4 168-176
+packages/workflow/src/n8n-browser-oauth2-flow.ts
+  s_c0774ee5e7f69b::t_f15ec064ac3bb4 66-79,166-173,213
+  s_c0774ee5e7f69b::t_6d4f1444a7abae 65
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_c0774ee5e7f69b::t_27c2a0ea6c4e02 188,198,231-232
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_c0774ee5e7f69b::t_ba6d4fbce176be 267-268,288-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08175c6269d6259a81e1bfc883056c1b5314d633",
+  "prompts": {},
+  "sessions": {
+    "s_c0774ee5e7f69b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61d81be0-7d0d-4f5d-88aa-941ff9613c6a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

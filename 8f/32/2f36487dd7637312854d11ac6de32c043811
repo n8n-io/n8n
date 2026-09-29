@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_1e70957d1bf574::t_b0c2643b72c819 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8f322f36487dd7637312854d11ac6de32c043811",
+  "prompts": {},
+  "sessions": {
+    "s_1e70957d1bf574": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb7-709c-7422-b951-1aa57d997a3e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

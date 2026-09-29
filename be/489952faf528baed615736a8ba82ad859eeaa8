@@ -1,0 +1,38 @@
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/useProgressiveRender.ts
+  s_275f4ac1517071::t_fc5c314cd55088 1-68
+  s_36db3cde313367::t_2f68e2afc66655 69-70
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.vue
+  s_275f4ac1517071::t_c9e36f78add3c0 596,652
+  s_275f4ac1517071::t_d656cabb2f4379 632-637,687-692
+  s_275f4ac1517071::t_944275c0088bef 30,202-209,292
+  s_275f4ac1517071::t_92cb578fdfbe1f 823-824
+  s_275f4ac1517071::t_7b7e826889e1c4 825-826
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/useProgressiveRender.test.ts
+  s_275f4ac1517071::t_d4b5cc7ff6bda6 43-44,48
+  s_275f4ac1517071::t_b408f28ad66b46 1-42,45-47,49-97
+  s_36db3cde313367::t_395a7eff2d236a 98-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be489952faf528baed615736a8ba82ad859eeaa8",
+  "prompts": {},
+  "sessions": {
+    "s_275f4ac1517071": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0e8c8-bdf9-77df-a601-748847998195",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_36db3cde313367": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ec3b-7118-7690-acaf-ec8354570c1b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

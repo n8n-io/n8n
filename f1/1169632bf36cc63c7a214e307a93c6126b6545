@@ -1,0 +1,26 @@
+packages/@n8n/inbound-auth/package.json
+  s_df734454c8aa58::t_ddf18de32d9f69 33,37
+pnpm-lock.yaml
+  s_df734454c8aa58::t_7da488041192ea 2933-2935,2944-2947,2956
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f11169632bf36cc63c7a214e307a93c6126b6545",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_df734454c8aa58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a636c1bb-1d96-438e-a39d-d3a8fcc91870",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 750-766,810,1601,1619
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 23-26,61-70,73,97,112,141-147,556
+packages/@n8n/api-types/src/index.ts
+  s_2ed659fa6b1ae7::t_5408a1a19bf2c2 360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bee0cf094749ed66111e6f3048ff128fee0bc1e7",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

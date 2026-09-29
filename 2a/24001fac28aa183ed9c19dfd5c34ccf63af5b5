@@ -14,7 +14,7 @@ packages/@n8n/db/src/repositories/scheduled-job.repository.ts
   s_0e720ce3e9500c::t_477e8d4ab839ad 344,351,353-355,362,370-371
 packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
   s_0e720ce3e9500c::t_b5ccbbe672ff8a 325,329,338
-  s_0e720ce3e9500c::t_21116b4a5038aa 385-387,390-410,38,284,287-289
+  s_0e720ce3e9500c::t_21116b4a5038aa 38,284,287-289,385-387,390-410
   s_0e720ce3e9500c::t_d4f641334fb414 388-389
   s_0e720ce3e9500c::t_3c86658dfe6ab3 428,436
 packages/cli/src/workflows/publication/workflow-publication-applier.ts

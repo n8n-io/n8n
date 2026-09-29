@@ -1,0 +1,46 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_31f2a0669c68ce::t_489c0ddb9b21a9 632
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_31f2a0669c68ce::t_b0556add394c93 250-254,257-262
+  s_31f2a0669c68ce::t_9f0b3a143bb921 405,409-410
+  s_31f2a0669c68ce::t_b7324b17f09aa1 255-256
+  s_31f2a0669c68ce::t_d2c37b4d0db502 403-404
+  s_31f2a0669c68ce::t_09a689ada389c5 249
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_31f2a0669c68ce::t_31244b273cb2ec 654
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_31f2a0669c68ce::t_163748d8cc20c6 939-940,942,970-972,994-995,1017,1029,1032-1035,1045-1048
+  s_31f2a0669c68ce::t_a2c95b69becebb 963,986
+  s_31f2a0669c68ce::t_b3596a8790710e 945-953
+  s_31f2a0669c68ce::t_8e6f08908230ce 1009,1021
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_31f2a0669c68ce::t_e81395dbd21548 124-125,128
+  s_31f2a0669c68ce::t_7d9f05860b3bdc 97
+  s_31f2a0669c68ce::t_0fc621dcceb9aa 123
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_31f2a0669c68ce::t_f11e8b3a24c9e6 8
+  s_31f2a0669c68ce::t_603a7a9178f7de 20
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_31f2a0669c68ce::t_5a0d3979b3cce2 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db3b6ee095852aa7080aa97ad8d8363ddaa50072",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_31f2a0669c68ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d073e02e-010b-46ec-8693-75a6eb586b54",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

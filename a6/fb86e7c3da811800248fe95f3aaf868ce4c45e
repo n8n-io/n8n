@@ -1,0 +1,23 @@
+packages/@n8n/scheduler/src/core/factory.ts
+  s_483decd949a52a::t_03a75c62074e12 127-129
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_483decd949a52a::t_03a75c62074e12 1389,1408,1425-1448,1473
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_483decd949a52a::t_03a75c62074e12 33,40,42,45-47,90-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6fb86e7c3da811800248fe95f3aaf868ce4c45e",
+  "prompts": {},
+  "sessions": {
+    "s_483decd949a52a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "552de0c1-672f-49c8-95d8-388c2153c52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

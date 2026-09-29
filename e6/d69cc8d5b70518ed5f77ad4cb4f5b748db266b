@@ -1,0 +1,131 @@
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-format.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 564-579
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 2,34-40,59-60,71-85
+  s_3810ccee1c4b6c::t_7d5c89ee9d2220 86-87
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 22-28,87-190,470,473,475-480,483-488
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 122-144
+packages/@n8n/api-types/src/dto/index.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 139-140,612
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 33
+packages/@n8n/api-types/src/index.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 155
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 3,33,59-60,78,101,110-113,367,791,875,995
+packages/@n8n/instance-ai/evaluations/run/case-pipeline.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 18-22,324-349
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 23,54,81-96,98-104
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 864-880
+packages/@n8n/instance-ai/evaluations/comparison/format.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 711-716,728-729,1207-1208
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 2,536,550,552-556
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 3,7-8,43,51,438-484
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 20-24,42-49,53-55,57,60-67,97-98,100,102-104,181,183-184,186-190,193-197,201-202,204-210,212-215,218,222-239,242-247,252-253,255,258,260,348-349,353-354,356-366,369,371-382,384-386,388
+  s_3aaa503f47ada7::t_2c3c44ec435ffd 99,367-368,370
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 98,101,132-135,141-142,154-160,163-169,172-200,203-206,208-209,211-213,215,218-225
+  s_3aaa503f47ada7::t_01f8bb1c8d165d 51-56,96,110,117-118,120,126,136-140,143-153,161-162,170-171,201-202,207,210,214,216-217
+  s_3810ccee1c4b6c::t_92ed6151c08882 226
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 2,366-371,385
+packages/@n8n/permissions/src/roles/__tests__/credential-type-policy-scope.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 1-58
+packages/core/src/execution-engine/routing-node.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 889,906,947,952-953,971,1041,1125,1150,1199
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 71,113,298
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 291-295,299-303
+packages/@n8n/instance-ai/evaluations/harness/agent-execution.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 14,31,34-62
+  s_3810ccee1c4b6c::t_578bc154a99e5f 63
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 25
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 819-842
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 19,117
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 40-42
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 6,20-22,37,49,105-119,123,132,222,235,253
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 68
+packages/@n8n/instance-ai/evaluations/__tests__/case-pipeline.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 403,427-506
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_3aaa503f47ada7::t_2c3c44ec435ffd 30
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 452-503
+  s_3810ccee1c4b6c::t_d30ef2b8713dab 32,504-505
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 5,397-404
+packages/@n8n/permissions/src/constants.ee.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 25,129
+packages/@n8n/api-types/src/dto/credentials/__tests__/credential-schema-public.dto.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 1-83
+packages/cli/src/public-api/types.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 161
+packages/@n8n/permissions/src/scope-information.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 70-74
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_3aaa503f47ada7::t_ee8a08227b5351 483
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 2,16,21,24,37,39-45,77-80,91,96,100-103,327-353,355,357,370,376,379,382-385,387,394-395,397,399,405-408,411,413-419,423,425,427-429,432-460,462,464-466,468-477,479-480,484-488,491-492,630-657,659
+  s_3810ccee1c4b6c::t_1649825d383acf 658
+  s_3810ccee1c4b6c::t_ed5a4c2c7d73ed 660-661
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 32,124,134,157,159-175,188-189,191,205,207-224,227-228,230
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 16,40-48,50,55-66,129,144-145,204,212,215-216,218-219,226-227,235-236,239-240,243-244,250,254-255,258,265,268
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 815-845,919
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 87-101,103
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 57
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_3810ccee1c4b6c::t_795d9c7bacdaff 2849-2863
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_3810ccee1c4b6c::t_826a0036e247fd 50
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentialType.generated.yml
+  s_3810ccee1c4b6c::t_6522c8325f244d 1-62
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/testCredential.generated.yml
+  s_3810ccee1c4b6c::t_187357ac8dd839 1-42
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_3810ccee1c4b6c::t_968e7aadc68c64 5,17-41,59-60
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_3810ccee1c4b6c::t_e5669b4acda759 36
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_3810ccee1c4b6c::t_67d1990da4e7ab 21-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e6d69cc8d5b70518ed5f77ad4cb4f5b748db266b",
+  "prompts": {},
+  "sessions": {
+    "s_3810ccee1c4b6c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43b-3931-7362-9463-fedc5b3a6dd3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

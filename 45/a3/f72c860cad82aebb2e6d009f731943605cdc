@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/insights.test.ts
+  s_47da1741f2a499::t_ccdb65679591a5 224-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45a3f72c860cad82aebb2e6d009f731943605cdc",
+  "prompts": {},
+  "sessions": {
+    "s_47da1741f2a499": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a92ceed2-8c1d-4d09-a606-485a4cb0de0a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

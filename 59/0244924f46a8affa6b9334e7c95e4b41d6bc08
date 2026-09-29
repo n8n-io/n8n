@@ -1,0 +1,29 @@
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/connection.utils.test.ts
+  s_cbca99e813d342::t_f17d601576d852 990-1059
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  s_cbca99e813d342::t_00ba8356b2c0b1 9,72,145-202
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/workflow-sanitization.test.ts
+  s_cbca99e813d342::t_f17d601576d852 1,3-13,15-99,101-191,193,195-215
+  s_cbca99e813d342::t_be10efdd2c961e 2,14,100,192,194
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/operations-processor.test.ts
+  s_cbca99e813d342::t_e3c4f294ae85d9 2,715-716,750,752,758-759,767,769,838,840,847
+  s_cbca99e813d342::t_f17d601576d852 660-714,717-749,751,753-757,760-766,768,770-837,839,841-846,848-851
+packages/@n8n/ai-workflow-builder.ee/src/utils/workflow-sanitization.ts
+  s_cbca99e813d342::t_f17d601576d852 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "590244924f46a8affa6b9334e7c95e4b41d6bc08",
+  "prompts": {},
+  "sessions": {
+    "s_cbca99e813d342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cec8820-d80d-4be5-9033-79cc45e25e4f",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

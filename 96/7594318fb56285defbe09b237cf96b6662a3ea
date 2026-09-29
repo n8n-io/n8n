@@ -1,0 +1,44 @@
+packages/cli/test/migration/1789736885838-add-agent-thread-ownership.test.ts
+  s_a52facf53351c5::t_d97e818ade413d 9,21-35,68-69,71,75,80-84,86-88,94,104,116-117,141
+  s_a52facf53351c5::t_28dbabd7e894f8 144-145
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a52facf53351c5::t_46b3bd1385d19e 1070-1076,1078,1080-1085,1093-1116,1118-1149
+  s_a52facf53351c5::t_56e6f397048c5a 74-90,116-127,130-132,355
+  s_a52facf53351c5::t_6c5ecf40a0b241 490-496,499-502,519,522-529,535,538-555,558-561,563-564,569
+  s_a52facf53351c5::t_36fdfff727adb5 763-780,786,792-811,813-818,829-842,844-853,855,857-864
+  s_a52facf53351c5::t_dae075b17a17b2 128-129,532,565,672,819-828,875,877-900,905-943
+  s_a52facf53351c5::t_63b1090626f692 320-321,332-354,437-465,471,480,485,487
+  s_a52facf53351c5::t_7b82d3cd14b953 91-98
+  s_a52facf53351c5::t_2067f63a7c88bc 953-957,959-984,988-1009,1017,1020-1043,1047-1066
+  s_a52facf53351c5::t_b7960a6d4533f8 488,757,944,1067,1218,1231-1235,1238-1253,1275,1278,1317-1324,1402
+  s_a52facf53351c5::t_c39c2a8592f6a0 1236-1237,1254-1269,1277,1279-1316
+  s_a52facf53351c5::t_b2b0c0f5d1ddae 578-579,588-593,595-652,656,658-666,668-670,690,719-738,742-746,749-753,755-756
+  s_a52facf53351c5::t_0fa09502d3b567 1353,1361,1365-1401
+  s_a52facf53351c5::t_18c23ddcfebada 405-419
+  s_a52facf53351c5::t_3a08d01ae2c36b 99-100
+  s_a52facf53351c5::t_f6599b9c97c2ea 653-654,657,671,673-689,691-718,747-748,754
+  s_a52facf53351c5::t_a77ff818b17b64 420-431
+  s_a52facf53351c5::t_0df26176664f2c 101-115
+  s_a52facf53351c5::t_5ee38a51ae1e74 356
+  s_a52facf53351c5::t_dc231ed70bd350 758
+  s_a52facf53351c5::t_e0391002fa8165 945
+  s_a52facf53351c5::t_782f63e12eec96 1068
+packages/@n8n/db/src/migrations/common/1789736885838-AddAgentThreadOwnership.ts
+  s_a52facf53351c5::t_db736af30bab30 3-4,50,53-77,80-83,86-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "967594318fb56285defbe09b237cf96b6662a3ea",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

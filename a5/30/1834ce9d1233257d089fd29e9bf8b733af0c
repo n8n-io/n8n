@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_d493865c519918 161-162,211-215,221-223,264-269,278
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_d493865c519918 24-33
+  s_2ed659fa6b1ae7::t_ddcbad0f9c1896 34-37,77-79,97-99
+packages/@n8n/instance-ai/src/tools/shared/leave-onboarding.tool.ts
+  s_2ed659fa6b1ae7::t_ec79e27056839c 8-10,21,24-29
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_2ed659fa6b1ae7::t_d493865c519918 265-267,275-279,284,287
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_2ed659fa6b1ae7::t_d493865c519918 578,580-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a5301834ce9d1233257d089fd29e9bf8b733af0c",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_4d59be7c782a79::t_e7051c240c283f 122-123,125
+packages/@n8n/cli/src/commands/promotion-connection/promote-selection.ts
+  s_4d59be7c782a79::t_1bb07b157eaa74 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b89275b889155e3950af45a427af6720051b299f",
+  "prompts": {},
+  "sessions": {
+    "s_4d59be7c782a79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e037a89-559f-40a0-9773-06f541266ca7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

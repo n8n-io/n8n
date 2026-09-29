@@ -1,0 +1,24 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_b4f6939bb2de80::t_5f32fd32637cc1 540,544,546,551-552
+packages/cli/test/integration/database/repositories/workflow.repository.test.ts
+  s_b4f6939bb2de80::t_dbc73f33ed9dcf 1485
+  s_b4f6939bb2de80::t_d1101ce7462d2c 1505
+  s_b4f6939bb2de80::t_0e5e63ef32e88b 1442-1448,1450-1484,1486-1504,1506-1514
+  s_b4f6939bb2de80::t_12cc088c59e831 1449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfa59acc0a72b1b2e3ebcabd8071b1eda5aa79f8",
+  "prompts": {},
+  "sessions": {
+    "s_b4f6939bb2de80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ddddbf9-a72f-400d-a643-f7bd324172e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

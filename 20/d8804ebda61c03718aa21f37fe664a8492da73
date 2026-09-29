@@ -1,0 +1,80 @@
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_4f1e96349c8817::t_3284f0cf1090a0 94-100
+  s_4f1e96349c8817::t_26918562f9165b 117
+packages/@n8n/db/src/repositories/index.ts
+  s_4f1e96349c8817::t_3284f0cf1090a0 58-62
+packages/cli/test/integration/public-api/projects.test.ts
+  s_4f1e96349c8817::t_d6b0136d4cd5c4 10,239-246,251,257-260,265-269,275-277,281-293,299-308,314-317,323,327-336,342,353-358,364-365,458,463,467
+  s_4f1e96349c8817::t_3284f0cf1090a0 11-16,247-250,252-256,261-264,270-274,278-280,294-298,309-313,318-322,324-326,337-341,343-352,359-363
+  s_4f1e96349c8817::t_845da841ed5db6 238
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_4f1e96349c8817::t_fcdd812ff5a3b0 117-127
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project-importer.test.ts
+  s_4f1e96349c8817::t_fcdd812ff5a3b0 45,60,78
+packages/@n8n/api-types/src/dto/project/update-project.dto.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 4,16
+packages/@n8n/api-types/src/dto/project/__tests__/project-public.dto.test.ts
+  s_4f1e96349c8817::t_3284f0cf1090a0 109-117,132-140
+  s_4f1e96349c8817::t_909aa62621dad1 108,118-131,141-144,147,155
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_4f1e96349c8817::t_909aa62621dad1 873
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_4f1e96349c8817::t_5cce374baeff80 12
+  s_4f1e96349c8817::t_bdccfc91ef722f 145-150
+  s_4f1e96349c8817::t_ab511a81af4c39 5,13-17
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_4f1e96349c8817::t_909aa62621dad1 294,332,398,470
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 29,136
+  s_4f1e96349c8817::t_3284f0cf1090a0 14-17
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4f1e96349c8817::t_3284f0cf1090a0 296-301,303,735-743,747-749,751-756,802-806,841-845
+  s_4f1e96349c8817::t_1749844f5d41f7 302,695-696,698-699,702,734
+  s_4f1e96349c8817::t_d6b0136d4cd5c4 744-746,750,757-758,801,807-809,837-838
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_4f1e96349c8817::t_909aa62621dad1 168-171,176,184-189,283,514,811
+  s_4f1e96349c8817::t_3284f0cf1090a0 126-132,163-165,172-175,177-183
+  s_4f1e96349c8817::t_263a8fb2cfd586 166-167
+packages/cli/src/services/project.service.ee.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 10,33,489-507
+  s_4f1e96349c8817::t_fcdd812ff5a3b0 522,524-528,532
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 1,4-5,7-9,11-17,20,25-27,29,32-34,49
+  s_4f1e96349c8817::t_3284f0cf1090a0 21-24,30-31,36-41,46-48,50-65
+  s_4f1e96349c8817::t_ba6983f3e62e68 35,42-45
+  s_4f1e96349c8817::t_cb04f87aa8b9e0 28
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 81,83-92
+packages/cli/src/public-api/v1/controllers/projects.public.controller.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 29,103,107,110-113,120-124
+packages/@n8n/api-types/src/schemas/project.schema.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 23-28
+  s_4f1e96349c8817::t_3284f0cf1090a0 29-35
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_4f1e96349c8817::t_87de871514ef8b 333
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_4f1e96349c8817::t_909aa62621dad1 1008,1087,1149,1188,1212
+  s_4f1e96349c8817::t_3284f0cf1090a0 1135-1138
+  s_4f1e96349c8817::t_d6b0136d4cd5c4 1131-1134,1139-1143
+packages/@n8n/api-types/src/dto/project/project-public.dto.ts
+  s_4f1e96349c8817::t_ab511a81af4c39 12,16-18,67-72,77
+  s_4f1e96349c8817::t_3284f0cf1090a0 73-76
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_4f1e96349c8817::t_909aa62621dad1 91-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20d8804ebda61c03718aa21f37fe664a8492da73",
+  "prompts": {},
+  "sessions": {
+    "s_4f1e96349c8817": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c5ca-af0f-7170-83bd-9c53a08df798",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

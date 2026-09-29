@@ -1,0 +1,24 @@
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_101038ccbc858a::t_53bc7330835282 35-37
+  s_101038ccbc858a::t_cd8d2dd38c5198 40-45,48-50,257
+  s_101038ccbc858a::t_d3f3852b90d348 32-34
+  s_101038ccbc858a::t_c4a72447b1d3e5 38-39
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_101038ccbc858a::t_53bc7330835282 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6861996689ada9ee93259c3ffa18412dbfa628ca",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
