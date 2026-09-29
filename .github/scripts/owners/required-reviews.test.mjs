@@ -469,6 +469,30 @@ describe('run', () => {
 		assert.equal(status.state, 'success');
 	});
 
+	it('sets a success status when a member of any required group team approved', async () => {
+		const requiredTeams = new Map([
+			['@n8n-io/ai-trust', ['a.ts']],
+			['@n8n-io/agents', ['a.ts']],
+		]);
+		requiredTeams.requiredGroups = [
+			{
+				group: '@n8n-io/ai',
+				teams: ['@n8n-io/ai-trust', '@n8n-io/agents'],
+				files: ['a.ts'],
+			},
+		];
+		resolveRequiredTeamsImpl = () => requiredTeams;
+		getPrReviewsImpl = async () => [
+			{ user: { login: 'agent-reviewer' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
+		];
+		isTeamMemberImpl = async (slug, username) => slug === 'agents' && username === 'agent-reviewer';
+
+		await run();
+
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'success');
+	});
+
 	it('checks membership per approver and required team', async () => {
 		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
 		getPrReviewsImpl = async () => [

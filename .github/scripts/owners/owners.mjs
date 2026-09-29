@@ -314,8 +314,9 @@ export function assignOwnership(files, entries) {
 }
 
 /**
- * Determine which teams must approve the changeset: a team is required when
- * its `required` entry wins (last-match) for a changed file.
+ * Determine which ownership requirements apply to the changeset. Separate
+ * required team entries use AND semantics. Teams expanded from one required
+ * group use OR semantics.
  *
  * @param { Set<string> } files
  * @param { OwnersEntry[] } entries
@@ -324,6 +325,9 @@ export function assignOwnership(files, entries) {
 export function resolveRequiredTeams(files, entries) {
 	/** @type { Ownerships } */
 	const teamToFiles = new Map();
+	/** @type { Array<{ group: string, teams: string[], files: string[] }> } */
+	const requiredGroups = [];
+	const directTeams = new Set();
 
 	for (const file of [...files].sort()) {
 		const entry = findOwningEntry(file, entries);
@@ -337,8 +341,20 @@ export function resolveRequiredTeams(files, entries) {
 				teamToFiles.set(team, [file]);
 			}
 		}
+		if (entry.teams && entry.teams.length > 1) {
+			const group = requiredGroups.find(
+				(candidate) =>
+					candidate.group === entry.team &&
+					candidate.teams.length === entry.teams.length &&
+					candidate.teams.every((team) => entry.teams.includes(team)),
+			);
+			if (group) group.files.push(file);
+			else requiredGroups.push({ group: entry.team, teams: entry.teams, files: [file] });
+		} else directTeams.add(entry.team);
 	}
 
+	teamToFiles.requiredGroups = requiredGroups;
+	teamToFiles.directTeams = directTeams;
 	return teamToFiles;
 }
 

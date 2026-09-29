@@ -203,16 +203,24 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
 export function buildRequiredReviewsSection(requiredTeamFiles) {
 	if (requiredTeamFiles.size === 0) return null;
 
-	const plural = requiredTeamFiles.size > 1;
+	const requiredGroups = requiredTeamFiles.requiredGroups ?? [];
+	const groupedTeams = new Set(requiredGroups.flatMap((group) => group.teams));
+	const directTeams = [...requiredTeamFiles].filter(([team]) => !groupedTeams.has(team));
+	const requiredCount = directTeams.length + requiredGroups.length;
+	const plural = requiredCount > 1;
+	const requirementText = requiredGroups.length > 0
+		? 'A member of each required team and a member of one team from each required group must approve this PR before it can merge:'
+		: 'A member of each of these teams must approve this PR before it can merge:';
 
 	return [
 		'### Required reviews',
 		'',
-		'Some changed files have a `required` owner in `OWNERS`. A member of each of these teams must approve this PR before it can merge:',
+		`Some changed files have a \`required\` owner in \`OWNERS\`. ${requirementText}`,
 		'',
 		'| Team | Files |',
 		'| --- | ---: |',
-		...[...requiredTeamFiles].map(([team, files]) => `| ${team} | ${files.length} |`),
+		...directTeams.map(([team, files]) => `| ${team} | ${files.length} |`),
+		...requiredGroups.map(({ group, teams, files }) => `| ${group} (one of: ${teams.join(', ')}) | ${files.length} |`),
 		'',
 		`Request a review from the team${plural ? 's' : ''} — GitHub assigns reviewers according to the team's review settings. The \`Auto-assign reviewers\` label does this for all owning teams.`,
 	].join('\n');

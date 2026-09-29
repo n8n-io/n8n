@@ -229,6 +229,9 @@ function statusTargetUrl() {
 async function evaluateRequiredReviews(pullRequestNumber) {
 	const changedFiles = await getChangedFiles(pullRequestNumber);
 	const requiredTeams = resolveRequiredTeams(changedFiles, parseOwnersFile());
+	const requiredGroups = requiredTeams.requiredGroups ?? [];
+	const groupTeams = new Set(requiredGroups.flatMap((group) => group.teams));
+	const directTeams = requiredTeams.directTeams ?? new Set();
 
 	/** @type { string[] } */
 	const missingTeams = [];
@@ -238,6 +241,7 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 		console.log(`Current approvals: ${[...approvers].join(', ') || '(none)'}`);
 
 		for (const [team, files] of requiredTeams) {
+			if (groupTeams.has(team) && !directTeams.has(team)) continue;
 			const slug = teamHandleToSlug(team);
 			// Per-approver membership checks instead of fetching the roster:
 			// approvers are few, teams can be large.
@@ -252,11 +256,28 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 
 			if (teamApprovers.length === 0) missingTeams.push(team);
 		}
+
+		for (const { group, teams, files } of requiredGroups) {
+			const groupApprovers = [];
+			for (const login of approvers) {
+				for (const team of teams) {
+					if (await isTeamMember(teamHandleToSlug(team), login)) {
+						groupApprovers.push(login);
+						break;
+					}
+				}
+			}
+			const verdict = groupApprovers.length > 0 ? `approved by ${groupApprovers.join(', ')}` : 'approval missing';
+			console.log(`${group}: ${verdict} — owns ${files.length} changed file(s):`);
+			for (const file of files) console.log(`  - ${file}`);
+			if (groupApprovers.length === 0) missingTeams.push(group);
+		}
 	} else {
 		console.log('No changed file matches a `required` OWNERS entry.');
 	}
 
-	return buildStatus(missingTeams, requiredTeams.size);
+	const requiredCount = requiredTeams.size - [...groupTeams].filter((team) => !directTeams.has(team)).length + requiredGroups.length;
+	return buildStatus(missingTeams, requiredCount);
 }
 
 export async function run() {
