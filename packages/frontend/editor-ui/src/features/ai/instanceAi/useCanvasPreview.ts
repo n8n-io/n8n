@@ -75,7 +75,11 @@ export function useCanvasPreview({
 	function setPreviewOpen(open: boolean, persist = true) {
 		if (isPreviewOpen.value === open) return;
 		isPreviewOpen.value = open;
-		if (persist) onPreviewOpenChange?.(open);
+		if (!persist) return;
+		onPreviewOpenChange?.(open);
+		// Keep a stored preview state in step, so a reload does not undo this change,
+		// for example when the agent opens the preview.
+		tabs.saveTabs(activeTabId.value, { onlyWhenStored: true });
 	}
 
 	watch(

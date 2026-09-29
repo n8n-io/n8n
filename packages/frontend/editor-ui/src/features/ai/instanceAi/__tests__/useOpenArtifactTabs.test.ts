@@ -156,6 +156,21 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.reopenTab('wf-1')).toBe(false);
 	});
 
+	it('saves only a stored state when asked to save only when stored', async () => {
+		const { storage, save, finishLoad } = createStorage();
+		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')], storage);
+		await finishLoad(null);
+
+		tabs.saveTabs('wf-1', { onlyWhenStored: true });
+		await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+		expect(save).not.toHaveBeenCalled();
+
+		tabs.closeTab('wf-2');
+		tabs.saveTabs('wf-1', { onlyWhenStored: true });
+		await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+		expect(save).toHaveBeenCalledTimes(1);
+	});
+
 	it('waits for the save delay and sends one save for many changes', async () => {
 		const { storage, save, finishLoad } = createStorage();
 		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')], storage);

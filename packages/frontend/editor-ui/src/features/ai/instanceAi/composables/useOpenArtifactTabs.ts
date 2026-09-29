@@ -174,8 +174,14 @@ export function useOpenArtifactTabs({
 	 * Save the tabs after a short delay. Saving starts to store a layout for the
 	 * thread, so call it only for changes the user makes.
 	 */
-	function saveTabs(activeTabId: string | undefined) {
+	function saveTabs(
+		activeTabId: string | undefined,
+		{ onlyWhenStored = false }: { onlyWhenStored?: boolean } = {},
+	) {
 		if (!storage) return;
+		// A change the user did not make keeps an existing stored state current,
+		// but does not start one for a thread whose tabs the user never changed.
+		if (onlyWhenStored && !layout.value) return;
 		layout.value ??= currentLayout();
 		pendingActiveTabId = activeTabId;
 		if (saveTimer !== undefined) clearTimeout(saveTimer);

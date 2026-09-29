@@ -1482,6 +1482,56 @@ describe('useCanvasPreview', () => {
 				expect(onPreviewOpenChange).not.toHaveBeenCalled();
 			});
 
+			test('saves the preview as open when the agent opens it over a stored closed preview', async () => {
+				vi.useFakeTimers();
+				try {
+					const tabsStorage = storageWith({
+						tabs: storedTabs,
+						closedTabs: [],
+						activeTab: { type: 'workflow', id: 'wf-1' },
+						previewOpen: false,
+					});
+					const ctx = setup({ tabsStorage });
+					registerWorkflow(ctx.thread, 'wf-1');
+					registerWorkflow(ctx.thread, 'wf-2');
+					await flushPromises();
+					expect(ctx.isPreviewVisible.value).toBe(false);
+
+					// The agent changes a workflow whose tab is open, so no tab reopens.
+					ctx.thread.isStreaming = true;
+					ctx.thread.messages = [buildMessage('wf-2', 'tc-update')];
+					await nextTick();
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+					expect(ctx.isPreviewVisible.value).toBe(true);
+					expect(tabsStorage.save).toHaveBeenCalledWith(
+						expect.objectContaining({ previewOpen: true }),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			test('does not store the tabs when the agent opens the preview in an untouched thread', async () => {
+				vi.useFakeTimers();
+				try {
+					const tabsStorage = storageWith(null);
+					const ctx = setup({ tabsStorage });
+					registerWorkflow(ctx.thread, 'wf-1');
+					await flushPromises();
+
+					ctx.thread.isStreaming = true;
+					ctx.thread.messages = [buildMessage('wf-1', 'tc-build')];
+					await nextTick();
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+					expect(ctx.isPreviewVisible.value).toBe(true);
+					expect(tabsStorage.save).not.toHaveBeenCalled();
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
 			test('saves the closed preview when the user closes it', async () => {
 				vi.useFakeTimers();
 				try {
