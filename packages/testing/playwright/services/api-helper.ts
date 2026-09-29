@@ -8,7 +8,6 @@ import type {
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
 import {
@@ -26,6 +25,7 @@ import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
+import { NodeParameterApiHelper } from './node-parameter-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -33,6 +33,7 @@ import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
 import { TokenExchangeApiHelper } from './token-exchange-api-helper';
+import { TypePolicyApiHelper } from './type-policy-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
@@ -98,6 +99,9 @@ export class ApiHelpers {
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
 	instanceAi: InstanceAiApiHelper;
+	nodeTypePolicies: TypePolicyApiHelper<'node'>;
+	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
+	nodeParameters: NodeParameterApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -124,6 +128,9 @@ export class ApiHelpers {
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
 		this.instanceAi = new InstanceAiApiHelper(this);
+		this.nodeTypePolicies = new TypePolicyApiHelper(this, 'node');
+		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');
+		this.nodeParameters = new NodeParameterApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -212,12 +219,12 @@ export class ApiHelpers {
 			},
 		});
 
+		// The endpoint responds only after the reset and the user seeding complete,
+		// so no extra wait is necessary.
 		if (!response.ok()) {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
-		// Adding small delay to ensure database is reset
-		await wait(1000);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {

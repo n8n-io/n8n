@@ -13,7 +13,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { carriesN8nIdentity } from './credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';

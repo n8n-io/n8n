@@ -1,6 +1,7 @@
 import type {
 	AgentChatMessageDto,
 	AgentChatMessagesResponse,
+	AgentChatQueueResponse,
 	AgentJsonConfig,
 	AgentSseEvent,
 } from '@n8n/api-types';
@@ -62,6 +63,32 @@ export class AgentApiHelper {
 		);
 		if (!response.ok()) throw new TestError(`Failed to read chat: ${await response.text()}`);
 		return (await response.json()).data;
+	}
+
+	async queuedMessages(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentChatQueueResponse> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to read queued messages: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async removeQueuedMessage(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		queueId: string,
+	): Promise<void> {
+		const response = await this.api.request.delete(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to remove queued message: ${await response.text()}`);
 	}
 
 	async executions(

@@ -326,12 +326,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.execute();
 	}
 
-	/** Delete a thread, validating project ownership. Returns true if deleted. */
-	async deleteByIdAndProjectId(threadId: string, projectId: string): Promise<boolean> {
-		const result = await this.delete({ id: threadId, projectId });
-		return (result.affected ?? 0) > 0;
-	}
-
 	async deleteSession(
 		projectId: string,
 		agentId: string,

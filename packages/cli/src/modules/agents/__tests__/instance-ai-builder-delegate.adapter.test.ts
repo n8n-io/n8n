@@ -652,9 +652,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-2');
-			expect(impls[0].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
 			expect(impls[0].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
-			expect(impls[1].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
 			expect(impls[1].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
 		});
 

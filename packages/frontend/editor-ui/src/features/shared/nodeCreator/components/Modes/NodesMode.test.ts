@@ -5,6 +5,7 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import {
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_CATEGORY_MCP_NODES,
 	AI_MCP_TOOL_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -15,14 +16,17 @@ import {
 	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
-import type { NodeCreateElement } from '@/Interface';
+import type { CommandCreateElement, NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesMode from './NodesMode.vue';
+
+const mockIsFeatureEnabled = vi.hoisted(() => vi.fn(() => true));
 
 const mockDocumentStoreState = {
 	allNodes: [],
@@ -42,7 +46,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		isFeatureEnabled: () => false,
+		isFeatureEnabled: mockIsFeatureEnabled,
 		getFeatureFlagPayload: (key: string) =>
 			key === SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY
 				? 'https://example.com/suggest-service'
@@ -84,11 +88,24 @@ function mcpClientElement(): NodeCreateElement {
 	};
 }
 
+function groupCommandElement(): CommandCreateElement {
+	return {
+		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+		type: 'command',
+		properties: {
+			title: 'Group',
+			description: 'Add an organisational container to your workflow',
+			icon: 'group',
+		},
+	};
+}
+
 describe('NodesMode', () => {
 	let pinia: Pinia;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockIsFeatureEnabled.mockReturnValue(true);
 		pinia = createPinia();
 		setActivePinia(pinia);
 	});
@@ -239,6 +256,115 @@ describe('NodesMode', () => {
 			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
 		});
 	});
+
+	it('emits an empty-group selection for the Group item', async () => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Group'));
+
+		expect(emitted('emptyGroupSelected')).toEqual([[]]);
+		expect(emitted('nodeTypeSelected')).toBeUndefined();
+	});
+
+	it.each(['Enter', 'ArrowRight'])('activates the Group command with %s', async (key) => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		const keyboardNavigation = useKeyboardNavigation();
+		keyboardNavigation.attachKeydownEvent();
+		await keyboardNavigation.setActiveItemIndex(0);
+		document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+		await waitAllPromises();
+		await nextTick();
+
+		expect(emitted('emptyGroupSelected')).toEqual([[]]);
+		expect(emitted('nodeTypeSelected')).toBeUndefined();
+	});
+
+	it.each([TRIGGER_NODE_CREATOR_VIEW, REGULAR_NODE_CREATOR_VIEW] as const)(
+		'does not render the Group item when empty groups are disabled in the %s view',
+		async (rootView) => {
+			mockIsFeatureEnabled.mockReturnValue(false);
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView,
+				hasSearch: true,
+				items: [groupCommandElement()],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+		},
+	);
+
+	it('does not render the Group item during node replacement', async () => {
+		useNodeCreatorStore().openingContext = 'replacement';
+		useViewStacks().pushViewStack({
+			title: 'Replace node',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [groupCommandElement()],
+		});
+
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.queryByText('Group')).not.toBeInTheDocument();
+	});
+
+	it.each(['group', 'organisational', 'container'])(
+		'shows the Group item when searching for %s',
+		async (search) => {
+			const groupItem = groupCommandElement();
+
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				search,
+				items: [groupItem],
+				searchItems: [
+					{
+						key: 'n8n-nodes-base.set',
+						type: 'node',
+						subcategory: '*',
+						properties: mockSimplifiedNodeType({
+							name: 'n8n-nodes-base.set',
+							displayName: 'Edit Fields',
+						}),
+					},
+					groupItem,
+				],
+			});
+
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
+		},
+	);
 
 	it('keeps the MCP client pinned once and shows the MCP empty state for no results', async () => {
 		const mcpClient = mcpClientElement();

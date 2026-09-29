@@ -62,6 +62,7 @@ export class EngineCredentialsService {
 		const { inaccessibleIds } = await this.permissionChecker.findInaccessible(
 			execution.workflowId,
 			[credential.id],
+			context.userId,
 		);
 		if (inaccessibleIds.length > 0) {
 			this.logger.warn(

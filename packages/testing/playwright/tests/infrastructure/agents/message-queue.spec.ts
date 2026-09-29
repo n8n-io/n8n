@@ -171,6 +171,29 @@ test.describe(
 				const third = await open(0, threadId, 'third');
 				await expect.poll(async () => await queued(threadId)).toBe(2);
 				third.disconnect();
+				// A fresh reader restores accepted input from another main without resubmission.
+				const removable = await open(0, threadId, 'remove before processing');
+				await expect
+					.poll(() => removable.events.find((event) => event.type === 'message-queued'))
+					.toBeTruthy();
+				const restored = await consumer.agents.queuedMessages(project.id, agent.id, threadId);
+				expect(restored.items.map(({ message }) => message)).toEqual([
+					'fifo-remote',
+					'third',
+					'remove before processing',
+				]);
+				await consumer.agents.removeQueuedMessage(
+					project.id,
+					agent.id,
+					threadId,
+					restored.items[2].id,
+				);
+				expect(
+					(await ingress.agents.queuedMessages(project.id, agent.id, threadId)).items.map(
+						({ message }) => message,
+					),
+				).toEqual(['fifo-remote', 'third']);
+				removable.disconnect();
 				const independent = await open(1, randomUUID(), 'independent', true);
 				expect(await independent.done).toBeUndefined();
 				expect(independent.events).toContainEqual(expect.objectContaining({ type: 'done' }));

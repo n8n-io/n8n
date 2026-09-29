@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { ElSwitch } from 'element-plus';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
@@ -20,8 +21,6 @@ import {
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
-import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
-import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
@@ -51,8 +50,8 @@ const router = useRouter();
 
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
-const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
-const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
+const exposeAllOffer = capabilityRegistry.tryUse(capabilities.mcpExposeAllOffer);
+const isExposeAllOfferEnabled = computed(() => exposeAllOffer?.isEnabled() ?? false);
 
 const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
 
@@ -161,7 +160,7 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 		if (enabled && updated) {
 			// Best-effort expose-all offer for enrolled users; enabling MCP no longer
 			// auto-opens the connect dialog (the user connects a client when ready).
-			void offerToExposeAllWorkflows(async () => {
+			void exposeAllOffer?.offer(async () => {
 				await Promise.all([fetchExposedWorkflowsCount(), fetchExposedAgentsCount()]);
 			});
 		}
@@ -363,7 +362,7 @@ onBeforeUnmount(() => {
 						</template>
 					</N8nSettingsRow>
 					<N8nSettingsRow
-						v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled"
+						v-if="canManageMcpInstance && isExposeAllOfferEnabled"
 						:title="i18n.baseText('settings.mcp.autoExpose.title')"
 						:description="i18n.baseText('settings.mcp.autoExpose.description')"
 					>
