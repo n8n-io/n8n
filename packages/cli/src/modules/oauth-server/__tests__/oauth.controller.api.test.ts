@@ -12,6 +12,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
+import { pendingFlowFrom } from './oauth-flow-test-utils';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
@@ -712,13 +713,11 @@ describe('Full authorization-code flow (PKCE)', () => {
 			state: 'flow-state',
 		});
 		expect(authorizeResponse.statusCode).toBe(302);
-		expect(authorizeResponse.headers.location).toBe('/oauth/consent');
 
-		const rawSetCookie: string | string[] = authorizeResponse.headers['set-cookie'] ?? [];
-		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
-		const sessionCookie = setCookies
-			.map((cookie) => cookie.split(';')[0])
-			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
+		// The redirect names this authorization request, so the consent screen can
+		// ask for the one it was opened for.
+		const { flowId, cookie: sessionCookie } = pendingFlowFrom(authorizeResponse);
+		expect(authorizeResponse.headers.location).toBe(`/oauth/consent?flow=${flowId}`);
 		expect(sessionCookie).toBeDefined();
 
 		// 3. Consent approval as an authenticated user.
@@ -733,7 +732,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: grantedScopes });
+			.send({ approved: true, scopes: grantedScopes, flow: flowId });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -776,6 +775,89 @@ describe('Full authorization-code flow (PKCE)', () => {
 		expect(refreshResponse.statusCode).toBe(200);
 		expect(refreshResponse.body.access_token).toEqual(expect.any(String));
 		expect(refreshResponse.body.access_token).not.toBe(tokenResponse.body.access_token);
+	});
+
+	// A client that starts two authorization requests from one browser (a desktop
+	// app that launches its bridge twice, or a user who retries) used to lose the
+	// first one: both requests shared a single session cookie, so the approval
+	// minted a code bound to the second request's PKCE challenge while the process
+	// waiting on the callback held the first request's verifier.
+	test('should keep two authorization requests from one browser independent', async () => {
+		const { createHash, randomBytes } = await import('node:crypto');
+		const pkcePair = () => {
+			const verifier = randomBytes(32).toString('base64url');
+			return { verifier, challenge: createHash('sha256').update(verifier).digest('base64url') };
+		};
+		const first = pkcePair();
+		const second = pkcePair();
+
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Concurrent Flow Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		});
+		const clientId = registerResponse.body.client_id;
+
+		const authorize = async (codeChallenge: string, state: string) => {
+			const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+				client_id: clientId,
+				redirect_uri: 'https://example.com/callback',
+				response_type: 'code',
+				code_challenge: codeChallenge,
+				code_challenge_method: 'S256',
+				state,
+			});
+			expect(response.statusCode).toBe(302);
+			return pendingFlowFrom(response);
+		};
+
+		// Both requests are pending at once, each with its own flow id and cookie.
+		const firstFlow = await authorize(first.challenge, 'state-first');
+		const secondFlow = await authorize(second.challenge, 'state-second');
+		expect(firstFlow.flowId).not.toBe(secondFlow.flowId);
+
+		// The browser carries both cookies. The user approves the first request.
+		const grantedScopes = supportedScopes.filter((scope) => scope !== 'communityPackage:install');
+		const authAgent = testServer.authAgentFor(owner);
+		authAgent.jar.setCookie(firstFlow.cookie ?? '');
+		authAgent.jar.setCookie(secondFlow.cookie ?? '');
+		const consentResponse = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: grantedScopes, flow: firstFlow.flowId });
+		expect(consentResponse.statusCode).toBe(200);
+
+		// The code carries the first request's state, and only the first request's
+		// verifier redeems it.
+		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
+		expect(redirectUrl.searchParams.get('state')).toBe('state-first');
+		const code = redirectUrl.searchParams.get('code');
+
+		const exchange = async (codeVerifier: string) =>
+			await testServer.restlessAgent.post('/mcp-oauth/token').type('form').send({
+				grant_type: 'authorization_code',
+				code: code!,
+				client_id: clientId,
+				code_verifier: codeVerifier,
+				redirect_uri: 'https://example.com/callback',
+			});
+
+		const wrongVerifier = await exchange(second.verifier);
+		expect(wrongVerifier.statusCode).toBe(400);
+		expect(wrongVerifier.body.error).toBe('invalid_grant');
+
+		const rightVerifier = await exchange(first.verifier);
+		expect(rightVerifier.statusCode).toBe(200);
+		expect(rightVerifier.body.access_token).toEqual(expect.any(String));
+
+		// The second request survived the first one's approval and is still decidable.
+		const secondConsent = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: grantedScopes, flow: secondFlow.flowId });
+		expect(secondConsent.statusCode).toBe(200);
+		expect(new URL(secondConsent.body.data.redirectUrl).searchParams.get('state')).toBe(
+			'state-second',
+		);
 	});
 });
 

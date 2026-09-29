@@ -16,6 +16,8 @@ import request from 'supertest';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { pendingFlowFrom } from './oauth-flow-test-utils';
+
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
@@ -452,13 +454,9 @@ describe('consent reuse on a second visit', () => {
 			.get('/oauth/authorize')
 			.query(authorizeQuery(resourceUrl, cc1, 'state-1'));
 		expect(first.statusCode).toBe(302);
-		expect(first.headers.location).toBe('/oauth/consent');
+		expect(first.headers.location).toContain('/oauth/consent');
 
-		const rawSetCookie: string | string[] = first.headers['set-cookie'] ?? [];
-		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
-		const sessionCookie = setCookies
-			.map((cookie) => cookie.split(';')[0])
-			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
+		const { flowId, cookie: sessionCookie } = pendingFlowFrom(first);
 		expect(sessionCookie).toBeDefined();
 
 		// `/consent/approve` lives under the `/rest` prefix, unlike the root-level
@@ -469,7 +467,7 @@ describe('consent reuse on a second visit', () => {
 
 		const approve = await consentAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: [] });
+			.send({ approved: true, scopes: [], flow: flowId });
 		expect(approve.statusCode).toBe(200);
 
 		const { codeChallenge: cc2 } = await pkce();
@@ -478,7 +476,7 @@ describe('consent reuse on a second visit', () => {
 			.query(authorizeQuery(resourceUrl, cc2, 'state-2'));
 
 		expect(second.statusCode).toBe(302);
-		expect(second.headers.location).not.toBe('/oauth/consent');
+		expect(second.headers.location).not.toContain('/oauth/consent');
 		expect(second.headers.location).toContain(resourceUrl);
 	});
 
@@ -516,13 +514,9 @@ describe('consent reuse on a second visit', () => {
 			.get('/oauth/authorize')
 			.query(authorizeQuery(resourceUrl, codeChallenge, 'state-1'));
 		expect(first.statusCode).toBe(302);
-		expect(first.headers.location).toBe('/oauth/consent');
+		expect(first.headers.location).toContain('/oauth/consent');
 
-		const rawSetCookie: string | string[] = first.headers['set-cookie'] ?? [];
-		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
-		const sessionCookie = setCookies
-			.map((cookie) => cookie.split(';')[0])
-			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
+		const { flowId, cookie: sessionCookie } = pendingFlowFrom(first);
 		expect(sessionCookie).toBeDefined();
 
 		// The visitor now logs in (this is the "just logged in" step from the ticket),
@@ -530,7 +524,7 @@ describe('consent reuse on a second visit', () => {
 		const consentAgent = testServer.authAgentFor(owner);
 		consentAgent.jar.setCookie(sessionCookie ?? '');
 
-		const details = await consentAgent.get('/consent/details');
+		const details = await consentAgent.get(`/consent/details?flow=${flowId}`);
 
 		// Desired: already consented, so this should signal auto-approval instead of
 		// requiring another manual click.

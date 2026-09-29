@@ -9,7 +9,7 @@ import {
 	OIDC_NONCE_COOKIE_NAME,
 	OIDC_STATE_COOKIE_NAME,
 } from '@/constants';
-import { OAUTH_SESSION_COOKIE_NAME } from '@/modules/oauth-server/oauth-session.service';
+import { OAUTH_SESSION_COOKIE_PREFIX } from '@/modules/oauth-server/oauth-session.service';
 import { OIDC_ID_TOKEN_COOKIE_NAME } from '@/modules/sso-oidc/constants';
 import { OAUTH_BINDING_COOKIE_NAME } from '@/oauth/oauth-browser-binding.service';
 
@@ -31,7 +31,6 @@ const BROWSER_ID_COOKIE_NAME = 'n8n-browserId';
 const DISALLOWED_COOKIES = new Set([
 	AUTH_COOKIE_NAME,
 	BROWSER_ID_COOKIE_NAME,
-	OAUTH_SESSION_COOKIE_NAME,
 	OAUTH_BINDING_COOKIE_NAME,
 	OIDC_ID_TOKEN_COOKIE_NAME,
 	OIDC_STATE_COOKIE_NAME,
@@ -44,9 +43,13 @@ const DISALLOWED_COOKIES = new Set([
 // The form auth cookie's name appends the workflow or execution it was minted
 // for (`<prefix>-…`), so it is matched by prefix rather than listed above. The
 // separator is required so an unrelated cookie that merely begins with the
-// prefix (e.g. `n8n-form-authentic`) passes through untouched.
+// prefix (e.g. `n8n-form-authentic`) passes through untouched. The OAuth
+// authorization session appends its flow id the same way, and its prefix
+// already ends in the separator.
 const isDisallowedCookie = (name: string) =>
-	DISALLOWED_COOKIES.has(name) || name.startsWith(`${FORM_AUTH_COOKIE_PREFIX}-`);
+	DISALLOWED_COOKIES.has(name) ||
+	name.startsWith(`${FORM_AUTH_COOKIE_PREFIX}-`) ||
+	name.startsWith(OAUTH_SESSION_COOKIE_PREFIX);
 
 /**
  * Removes a cookie with the given name from the request header

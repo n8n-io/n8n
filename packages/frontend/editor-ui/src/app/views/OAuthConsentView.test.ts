@@ -9,6 +9,14 @@ import { nextTick } from 'vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
 
+/** The /authorize redirect puts the pending request's flow id in the page URL. */
+const FLOW_ID = 'ktest00-0123456789abcdef01234567';
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => ({ query: { flow: FLOW_ID } }),
+}));
+
 const renderComponent = createComponentRenderer(OAuthConsentView);
 
 let locationHrefSpy: ReturnType<typeof vi.spyOn>;
@@ -191,7 +199,7 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(denyButton);
 		await waitAllPromises();
 
-		expect(consentStore.approveConsent).toHaveBeenCalledWith(false);
+		expect(consentStore.approveConsent).toHaveBeenCalledWith(FLOW_ID, false);
 		expect(window.location.href).toBe(window.BASE_PATH ?? '/');
 	});
 
@@ -211,7 +219,7 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(allowButton);
 		await waitAllPromises();
 
-		expect(consentStore.approveConsent).toHaveBeenCalledWith(true, undefined);
+		expect(consentStore.approveConsent).toHaveBeenCalledWith(FLOW_ID, true, undefined);
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
@@ -352,7 +360,7 @@ describe('OAuthConsentView', () => {
 			await userEvent.click(getByTestId('consent-allow-button'));
 			await waitAllPromises();
 
-			expect(consentStore.approveConsent).toHaveBeenCalledWith(true, [
+			expect(consentStore.approveConsent).toHaveBeenCalledWith(FLOW_ID, true, [
 				'workflow:read',
 				'workflow:write',
 				'execution:read',

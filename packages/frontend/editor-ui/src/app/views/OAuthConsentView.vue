@@ -4,6 +4,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import type { ConsentDetailsPicker } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
@@ -23,6 +24,11 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 
 const consentStore = useConsentStore();
+
+const route = useRoute();
+// Id of the authorization request this screen was opened for, put in the URL by
+// the /authorize redirect. Without it the server has no session to show.
+const flowId = computed(() => (typeof route.query.flow === 'string' ? route.query.flow : ''));
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -118,6 +124,7 @@ watch(
 const handleAllow = async () => {
 	try {
 		const response = await consentStore.approveConsent(
+			flowId.value,
 			true,
 			hasScopes.value ? selectedScopes.value : undefined,
 		);
@@ -136,7 +143,7 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		await consentStore.approveConsent(false);
+		await consentStore.approveConsent(flowId.value, false);
 		telemetry.track('User denied MCP consent', {
 			client_name: clientDetails.value?.clientName,
 		});
@@ -155,7 +162,7 @@ const handleClose = () => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
-		const details = await consentStore.fetchConsentDetails();
+		const details = await consentStore.fetchConsentDetails(flowId.value);
 		if (!isActive) return;
 		detailsResolved.value = true;
 		if (details?.autoApproved && details.redirectUrl) {

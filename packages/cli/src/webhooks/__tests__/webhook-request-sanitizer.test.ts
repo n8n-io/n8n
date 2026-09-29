@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { OAUTH_SESSION_COOKIE_NAME } from '@/modules/oauth-server/oauth-session.service';
+import { OAUTH_SESSION_COOKIE_PREFIX } from '@/modules/oauth-server/oauth-session.service';
 import { OIDC_ID_TOKEN_COOKIE_NAME } from '@/modules/sso-oidc/constants';
 import { OAUTH_BINDING_COOKIE_NAME } from '@/oauth/oauth-browser-binding.service';
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
@@ -342,7 +342,8 @@ describe('webhookRequestSanitizer', () => {
 
 	describe('cookies n8n issues for its own flows', () => {
 		const N8N_ISSUED_COOKIES = [
-			OAUTH_SESSION_COOKIE_NAME,
+			// One authorization flow's session cookie, named by its flow id.
+			`${OAUTH_SESSION_COOKIE_PREFIX}ktest00-0123456789abcdef01234567`,
 			OAUTH_BINDING_COOKIE_NAME,
 			OIDC_ID_TOKEN_COOKIE_NAME,
 			OIDC_STATE_COOKIE_NAME,

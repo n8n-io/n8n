@@ -471,9 +471,11 @@ export class OAuthServerService implements OAuthServerProvider {
 				return;
 			}
 
-			this.oauthSessionService.createSession(res, sessionPayload);
+			const flowId = this.oauthSessionService.createSession(res, sessionPayload);
 
-			res.redirect('/oauth/consent');
+			// The flow id names this request's session, so the consent screen asks
+			// for the parameters it will show, not for whatever the browser holds.
+			res.redirect(`/oauth/consent?flow=${flowId}`);
 		} catch (error) {
 			if (error instanceof InvalidResourceIndicatorError) {
 				this.logger.warn('Rejecting OAuth authorization request with invalid resource', {
@@ -481,7 +483,6 @@ export class OAuthServerService implements OAuthServerProvider {
 					resource: error.resource,
 					expectedResource: error.expectedResource,
 				});
-				this.oauthSessionService.clearSession(res);
 				res.status(400).json({
 					error: 'invalid_target',
 					error_description: 'Invalid resource indicator',
@@ -490,7 +491,6 @@ export class OAuthServerService implements OAuthServerProvider {
 			}
 
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
-			this.oauthSessionService.clearSession(res);
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
 		}
 	}
@@ -576,6 +576,11 @@ export class OAuthServerService implements OAuthServerProvider {
 				clientName: client.client_name,
 			});
 		}
+
+		this.logger.debug('OAuth token exchange succeeded', {
+			clientId: client.client_id,
+			userId: authRecord.userId,
+		});
 
 		return {
 			access_token: accessToken,
