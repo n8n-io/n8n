@@ -1,0 +1,42 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_4c46dcfe1ba789::t_db4bafbbb46980 63
+  s_4c46dcfe1ba789::t_b486633a6977bd 71
+  s_4c46dcfe1ba789::t_d973a62943d7dd 490
+  s_794845deccc20b::t_9bbbf1f363a95f 983,993-994,1008,1094
+  s_4c46dcfe1ba789::t_3d863c978088db 984-985,987,992,1001,1006
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 989,991,1003,1005
+  s_4c46dcfe1ba789::t_eeeb14c5513318 1038-1039,1043-1046,1050,1060-1061,1063,1066-1068,1070-1073,1076,1078,1081,1083,1093
+  s_4c46dcfe1ba789::t_36c3453a753a08 1079
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ee1864fb435ef4c6cb7c526d801aa8cc44bc17b",
+  "prompts": {},
+  "sessions": {
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_794845deccc20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43d-9fd7-7372-ae87-3043b41ce227",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

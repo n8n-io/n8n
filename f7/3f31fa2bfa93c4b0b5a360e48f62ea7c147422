@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_6e5e6dade5599e::t_ba20f667a84d06 109-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f73f31fa2bfa93c4b0b5a360e48f62ea7c147422",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
