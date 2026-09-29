@@ -518,6 +518,7 @@ describe('GlobalConfig', () => {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
+			forceAgentWorthTesting: false,
 			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
