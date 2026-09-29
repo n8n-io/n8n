@@ -18,6 +18,7 @@ import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssista
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -111,6 +112,27 @@ const attachments = computed(() =>
 	}),
 );
 
+/**
+ * Answered questions that end the timeline, like the onboarding card that the host answers with
+ * no model turn. They render below the actions, so copy and read aloud stay under the assistant
+ * text and not under the user's answer.
+ */
+const trailingAnswer = computed(() => {
+	const tree = props.message.agentTree;
+	const last = tree?.timeline.at(-1);
+	if (last?.type !== 'tool-call') return undefined;
+	const toolCall = tree?.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
+	return toolCall?.confirmation?.inputType === 'questions' && !toolCall.isLoading
+		? toolCall
+		: undefined;
+});
+
+const activityTree = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || !trailingAnswer.value) return tree;
+	return { ...tree, timeline: tree.timeline.slice(0, -1) };
+});
+
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {
 	if (!isStreaming.value || !props.message.agentTree) return '';
@@ -180,7 +202,16 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
+<<<<<<< HEAD
 			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
+=======
+			<AgentActivityTree
+				v-if="activityTree"
+				:agent-node="activityTree"
+				:message-id="props.message.id"
+				:run-id="props.message.runId"
+			/>
+>>>>>>> df3945af (fix(editor): Correct the n8n Assistant onboarding greeting animations and actions (no-changelog) (#39829))
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
@@ -268,6 +299,10 @@ function formatJson(value: unknown): string {
 					/>
 				</N8nTooltip>
 			</N8nChatActions>
+		</template>
+
+		<template v-if="trailingAnswer" #after-actions>
+			<AnsweredQuestions :tool-call="trailingAnswer" />
 		</template>
 	</N8nChatMessage>
 </template>
