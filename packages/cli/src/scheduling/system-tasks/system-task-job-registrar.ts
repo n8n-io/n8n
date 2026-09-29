@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob } from '@n8n/db';
 import { ScheduledJobRepository } from '@n8n/db';
@@ -7,8 +8,6 @@ import { resolveSystemTaskRunOptions, resolveSystemTaskSchedule } from '@n8n/dec
 import { Service } from '@n8n/di';
 import { computeFirstRunAt, scheduleFromDefinition } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-
-import { EventService } from '@/events/event.service';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { ProvisionRequest } from '../durable-job-provisioner';

@@ -35,15 +35,20 @@ export type {
 } from './lifecycle-events';
 
 export {
+	createResponseEmitter,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,
+	RESPONSE_EXPECTATION_KINDS,
+	responseExpectationSchema,
 } from './response-channel';
 export type {
 	EndedMessage,
 	ExecutionResponse,
 	ExecutionResponseSender,
 	ResponseEmitter,
+	ResponseExpectation,
+	ResponseExpectationKind,
 	ResponseMessage,
 	UndeliverableMessage,
 } from './response-channel';

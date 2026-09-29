@@ -5,7 +5,7 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 

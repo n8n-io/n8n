@@ -103,7 +103,8 @@ ceil.doc = {
 	description: 'Rounds the number up to the next whole number',
 	examples: [{ example: '(1.234).ceil()', evaluated: '2' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-ceil',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberceil',
 };
 
 floor.doc = {
@@ -111,7 +112,8 @@ floor.doc = {
 	description: 'Rounds the number down to the nearest whole number',
 	examples: [{ example: '(1.234).floor()', evaluated: '1' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-floor',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberfloor',
 };
 
 isEven.doc = {
@@ -123,7 +125,8 @@ isEven.doc = {
 		{ example: '(42).isEven()', evaluated: 'true' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-isEven',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberiseven',
 };
 
 isOdd.doc = {
@@ -135,7 +138,8 @@ isOdd.doc = {
 		{ example: '(42).isOdd()', evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-isOdd',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberisodd',
 };
 
 format.doc = {
@@ -167,7 +171,8 @@ format.doc = {
 			type: 'object',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-format',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberformat',
 };
 
 round.doc = {
@@ -188,7 +193,8 @@ round.doc = {
 			type: 'number',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-round',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberround',
 };
 
 toBoolean.doc = {
@@ -203,7 +209,7 @@ toBoolean.doc = {
 	section: 'cast',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toBoolean',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numbertoboolean',
 };
 
 toDateTime.doc = {
@@ -229,7 +235,7 @@ toDateTime.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toDateTime',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numbertodatetime',
 };
 
 abs.doc = {
@@ -240,7 +246,8 @@ abs.doc = {
 		{ example: '(1.7).abs()', evaluated: '1.7' },
 	],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-abs',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberabs',
 };
 
 isInteger.doc = {
@@ -253,7 +260,7 @@ isInteger.doc = {
 	],
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-isInteger',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberisinteger',
 };
 
 export const numberExtensions: ExtensionMap = {

@@ -293,7 +293,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 				await bridge.consumeQueuedMessage(
 					item.payload,
 					item.threadId,
-					{ executionId: 'execution-1', startedAt: new Date() },
+					{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
 					new AbortController().signal,
 					params.integration,
 				);

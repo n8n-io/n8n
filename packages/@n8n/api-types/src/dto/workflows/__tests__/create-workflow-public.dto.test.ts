@@ -17,6 +17,22 @@ const validPayload = {
 };
 
 describe('CreateWorkflowPublicDto', () => {
+	test('accepts an optional workflow description', () => {
+		const payload = { ...validPayload, description: 'What this workflow does' };
+
+		expect(CreateWorkflowPublicDto.safeParse(payload)).toMatchObject({
+			success: true,
+			data: { description: payload.description },
+		});
+		expect(CreateWorkflowPublicDto.safeParse(validPayload).success).toBe(true);
+	});
+
+	test('rejects a non-string workflow description', () => {
+		expect(CreateWorkflowPublicDto.safeParse({ ...validPayload, description: 42 }).success).toBe(
+			false,
+		);
+	});
+
 	test('rejects an unknown key through both the DTO and its schema', () => {
 		const payload = { ...validPayload, notAWorkflowField: 'x' };
 

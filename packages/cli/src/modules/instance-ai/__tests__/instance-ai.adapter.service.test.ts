@@ -1817,12 +1817,14 @@ import {
 } from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	LockedError,
+	NotFoundError,
+} from '@n8n/errors';
 import type { License } from '@/license';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { RoleService } from '@/services/role.service';
@@ -7530,6 +7532,23 @@ describe('createContext — builder delegate wiring', () => {
 		// The third argument is a provider factory, not a pre-built provider: it
 		// is called per turn with the concrete target agent id so Gateway spend
 		// carries the right id even when the agent is created mid-build.
+		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
+		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
+			agentId: string,
+		) => AgentsCredentialProvider;
+		const provider = providerFor('agent-42');
+		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
+		expect(provider).toEqual(
+			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		);
+	});
+
+	it('hands production threads the raw provider, built per target agent id', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
+
+		service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
 		) => AgentsCredentialProvider;

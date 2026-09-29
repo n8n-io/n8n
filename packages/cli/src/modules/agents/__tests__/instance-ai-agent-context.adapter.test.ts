@@ -6,8 +6,7 @@ import { UserError } from 'n8n-workflow';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentExecutionService, ThreadListItem } from '../agent-execution.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';

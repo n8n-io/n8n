@@ -300,7 +300,8 @@ endOfMonth.doc = {
 	hidden: true,
 	description: 'Transforms a date to the last possible moment that lies within the month.',
 	section: 'edit',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-endOfMonth',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeendof',
 };
 
 isDst.doc = {
@@ -309,7 +310,8 @@ isDst.doc = {
 	hidden: true,
 	description: 'Checks if a Date is within Daylight Savings Time.',
 	section: 'query',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isDst',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeisindst',
 };
 
 isWeekend.doc = {
@@ -318,7 +320,7 @@ isWeekend.doc = {
 	hidden: true,
 	description: 'Checks if the Date falls on a Saturday or Sunday.',
 	section: 'query',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isWeekend',
+	docURL: 'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime',
 };
 
 beginningOf.doc = {
@@ -328,7 +330,8 @@ beginningOf.doc = {
 	hidden: true,
 	returnType: 'DateTime',
 	args: [{ name: 'unit?', type: 'DurationUnit' }],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-beginningOf',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimestartof',
 };
 
 extract.doc = {
@@ -351,7 +354,8 @@ extract.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-extract',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeextract',
 };
 
 format.doc = {
@@ -387,7 +391,8 @@ format.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeformat',
 };
 
 isBetween.doc = {
@@ -419,7 +424,8 @@ isBetween.doc = {
 			type: 'string | DateTime',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isBetween',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeisbetween',
 };
 
 isInLast.doc = {
@@ -432,7 +438,7 @@ isInLast.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isInLast',
+	docURL: 'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime',
 };
 
 toDateTime.doc = {
@@ -447,7 +453,8 @@ toDateTime.doc = {
 	],
 	returnType: 'DateTime',
 	hidden: true,
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/date#datetodatetime',
 };
 
 minus.doc = {
@@ -481,7 +488,8 @@ minus.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-minus',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeminus',
 };
 
 plus.doc = {
@@ -515,7 +523,8 @@ plus.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-plus',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeplus',
 };
 
 diffTo.doc = {
@@ -550,7 +559,8 @@ diffTo.doc = {
 			type: 'string | string[]',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffTo',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimediffto',
 };
 
 diffToNow.doc = {
@@ -578,7 +588,8 @@ diffToNow.doc = {
 			type: 'string | string[]',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffToNow',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimedifftonow',
 };
 
 isEmpty.doc = {
@@ -590,7 +601,8 @@ isEmpty.doc = {
 		{ example: 'dt = null\ndt.isEmpty()', evaluated: 'true' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeisempty',
 };
 
 isNotEmpty.doc = {
@@ -602,7 +614,8 @@ isNotEmpty.doc = {
 		{ example: 'dt = null\ndt.isNotEmpty()', evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isNotEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/datetime#datetimeisnotempty',
 };
 
 export const dateExtensions: ExtensionMap = {

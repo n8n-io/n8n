@@ -8,7 +8,8 @@ import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -169,6 +170,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		projectsStore = mockedStore(useProjectsStore);
 
@@ -262,7 +264,9 @@ describe('WorkflowSettingsVue', () => {
 
 	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		vi.spyOn(settingsStore, 'isExecuteWorkflowNodeExcluded', 'get').mockReturnValue(true);
+		vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
+			(type) => type === EXECUTE_WORKFLOW_NODE_TYPE,
+		);
 		workflowDocumentStore.setSettings({
 			callerPolicy: 'workflowsFromAList',
 			callerIds: 'abc',

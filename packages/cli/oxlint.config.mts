@@ -108,17 +108,6 @@ export default defineConfig({
 	},
 	overrides: [
 		{
-			// Shrink-only ratchet: the two import paths that upsert a whole credential row,
-			// including `type`. There is no sealed credential import method yet.
-			// NEVER add to this list — the override is per file, so a second write here
-			// goes unreported.
-			files: [
-				'./src/commands/import/credentials.ts',
-				'./src/modules/source-control.ee/source-control-import.service.ee.ts',
-			],
-			rules: { 'n8n-local-rules/no-unsealed-credentials-entity-write': 'off' },
-		},
-		{
 			// Public API guardrail: handlers/controllers must go through a service, never a repository.
 			files: ['./src/public-api/v1/handlers/**/*.ts', './src/public-api/v1/controllers/**/*.ts'],
 			excludeFiles: ['./src/public-api/**/__tests__/**/*.ts'],
@@ -148,7 +137,6 @@ export default defineConfig({
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
 				'./src/public-api/v1/handlers/otel/otel.handler.ts',
-				'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 				'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
 				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],

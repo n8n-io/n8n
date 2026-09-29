@@ -5,7 +5,7 @@ import {
 import type { GlobalConfig } from '@n8n/config';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 /**
  * Allowed keys on `req.body` after multipart parsing. Includes `package` because
