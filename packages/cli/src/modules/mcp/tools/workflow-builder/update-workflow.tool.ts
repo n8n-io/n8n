@@ -370,7 +370,8 @@ type UpdateWorkflowOutput = z.infer<z.ZodObject<typeof outputSchema>>;
  * Trigger node, or cannot be called by this workflow due to its sub-workflow
  * caller policy — each of which would otherwise silently prevent the error
  * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
- * A target that is not available in MCP is rejected like in the by-id MCP tools.
+ * An archived target, or one that is not available in MCP, is rejected like in
+ * the by-id MCP tools.
  */
 async function assertErrorWorkflowIsUsable({
 	errorWorkflowId,
@@ -416,6 +417,12 @@ async function assertErrorWorkflowIsUsable({
 	if (!errorWorkflow) {
 		throw new Error(
 			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
+		);
+	}
+
+	if (errorWorkflow.isArchived) {
+		throw new Error(
+			`Error workflow '${errorWorkflowId}' is archived, so n8n cannot run it when this workflow fails. Pick a different error workflow, or create a new error-handler workflow.`,
 		);
 	}
 

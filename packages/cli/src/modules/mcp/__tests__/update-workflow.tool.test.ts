@@ -2095,6 +2095,23 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
+			test('rejects an archived error workflow', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { isArchived: true })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain("Error workflow 'err-wf' is archived");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('rejects when the error workflow is not found or inaccessible', async () => {
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1' ? buildExistingWorkflow() : null,
