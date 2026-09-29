@@ -11,7 +11,7 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import type { OperationContext, User } from '@n8n/db';
+import { UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -54,7 +54,11 @@ import { AgentThreadRepository } from '@/modules/agents/repositories/agent-threa
 import { AgentExecutionMessageLink } from '@/modules/agents/entities/agent-execution-message-link.entity';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
-import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
+import {
+	EXECUTION_METADATA_KEY,
+	type AgentExecutionAdmission,
+	type QueuedIntegrationMessage,
+} from '@/modules/agents/types/agent-queued-message';
 import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
@@ -70,6 +74,7 @@ import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/age
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
 
@@ -193,6 +198,7 @@ describe('AgentExecutionRepository', () => {
 			connection ? new AgentRepository(connection) : agentRepo,
 			attachmentService,
 			mock<AgentExecutionUpdateBroadcaster>(),
+			messageRepository,
 		);
 		return {
 			txRunner,
@@ -1064,9 +1070,15 @@ describe('AgentExecutionRepository', () => {
 		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Unsaved final output' });
 		recorder.record({ type: 'finish', finishReason: 'stop' });
 		const record = recorder.getMessageRecord();
+		// `writeTerminalExecution` retries a transient `updateIfRunning` failure
+		// (3 attempts, linear backoff) before rethrowing, so a single blip is
+		// recovered. To exercise the reject-and-sweeper-recovery path, every
+		// retry attempt must fail: mock a persistent rejection for the duration of
+		// this phase (the `finally` restores the real method before the sweeper
+		// runs).
 		const update = vi
 			.spyOn(repository, 'updateIfRunning')
-			.mockRejectedValueOnce(new Error('database unavailable'));
+			.mockRejectedValue(new Error('database unavailable'));
 		try {
 			await expect(
 				turns.finalizeExecution({
@@ -1152,7 +1164,7 @@ describe('AgentExecutionRepository', () => {
 		}
 
 		it('lists only pending Preview input and removes its attachments without affecting the active run', async () => {
-			const services = recordingServices();
+			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
 			const target = { projectId, agentId, threadId, userId: owner.id };
 			await services.queue.enqueue(input(threadId, 'active', 'new'));
@@ -1162,6 +1174,7 @@ describe('AgentExecutionRepository', () => {
 				{ id: 'pending-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
 			];
 			const pending = await services.queue.enqueue(pendingInput);
+			const original = await services.messageRepository.findOneByOrFail({ id: pending.messageId });
 			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
 				pending.id,
 			]);
@@ -1178,10 +1191,26 @@ describe('AgentExecutionRepository', () => {
 			await services.queue.removePending({ ...target, queueId: pending.id });
 			expect(await services.queue.listPending(target)).toEqual({ items: [] });
 			expect(services.attachmentService.deleteByIds).toHaveBeenCalledWith(['pending-file']);
+			expect(
+				await services.messageRepository.findOneByOrFail({ id: pending.messageId }),
+			).toMatchObject({
+				id: original.id,
+				threadId,
+				resourceId: original.resourceId,
+				createdAt: original.createdAt,
+				origin: original.origin,
+				content: { role: 'user', content: [] },
+				author: null,
+				modelContent: null,
+				modelContextAt: null,
+			});
+			expect(await services.messageRepository.findRuntimeMessages({ threadId })).toEqual([]);
 			expect((await repository.findOneByOrFail({ id: active.admission.executionId })).status).toBe(
 				'running',
 			);
 			await finish(services, active);
+			await services.executionService.deleteThread(projectId, agentId, threadId, owner.id);
+			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
 		});
 
 		it('edits pending text without changing identity, attachments, or queue position', async () => {
@@ -1192,6 +1221,7 @@ describe('AgentExecutionRepository', () => {
 				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
 			];
 			const first = await services.queue.enqueue(data);
+			const original = await services.messageRepository.findOneByOrFail({ id: first.messageId });
 			const second = await services.queue.enqueue(input(threadId, 'second'));
 			const target = {
 				projectId,
@@ -1220,16 +1250,31 @@ describe('AgentExecutionRepository', () => {
 			expect(stored).toMatchObject({
 				id: first.id,
 				createdAt: first.createdAt,
-				source: first.source,
-				payload: { ...first.payload, message: 'updated' },
+				payload: { kind: 'preview' },
+				messageId: first.messageId,
 			});
+			expect(stored.payload).toEqual({ kind: 'preview' });
 			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
 				first.id,
 				second.id,
 			]);
 			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
 			const claimed = await claim(services, threadId);
-			expect(claimed.item.payload.message).toBe('updated');
+			expect(claimed.payload).toEqual({
+				kind: 'preview',
+				message: 'updated',
+				resourceId: data.payload.resourceId,
+				attachments: data.payload.attachments,
+			});
+			expect(claimed.thread.ownerId).toBe(owner.id);
+			expect(claimed.admission.inputMessageIds).toEqual([first.messageId]);
+			expect(
+				await services.messageRepository.findOneByOrFail({ id: first.messageId }),
+			).toMatchObject({
+				createdAt: original.createdAt,
+				content: buildInboundUserMessage('updated', data.payload.attachments)[0],
+				modelContextAt: null,
+			});
 			await finish(services, claimed);
 			await expect(services.queue.updatePending(target)).rejects.toThrow(
 				'Queued message not found',
@@ -1292,7 +1337,7 @@ describe('AgentExecutionRepository', () => {
 				} else if (operation === 'edit') {
 					const claimed = await second;
 					if (!claimed) throw new Error('Expected a claim');
-					expect(claimed.item.payload.message).toBe('edited');
+					expect(claimed.payload.message).toBe('edited');
 					await finish(remote, claimed);
 				} else {
 					expect(settled[1]).toEqual({ status: 'fulfilled', value: null });
@@ -1346,7 +1391,7 @@ describe('AgentExecutionRepository', () => {
 			expect(claims.filter(({ item }) => item !== null)).toHaveLength(1);
 			expect(winner.item.item.id).toBe(first.id);
 			expect(await repository.countBy({ threadId, status: 'running' })).toBe(1);
-			expect(await local.messageRepository.countBy({ threadId })).toBe(1);
+			expect(await local.messageRepository.countBy({ threadId })).toBe(3);
 			await expect(
 				local.executionService.startExecutionRecording(winner.item.recording, new Date()),
 			).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
@@ -1357,7 +1402,7 @@ describe('AgentExecutionRepository', () => {
 			await finish(winner.services, winner.item);
 			for (const message of ['second', 'third']) {
 				const next = await claim(local, threadId);
-				expect(next.item.payload.message).toBe(message);
+				expect(next.payload.message).toBe(message);
 				await finish(local, next);
 			}
 			expect(await local.queueRepository.count()).toBe(0);
@@ -1380,6 +1425,8 @@ describe('AgentExecutionRepository', () => {
 			);
 			failedInsert.mockRestore();
 			expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
+			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
+			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).toBeNull();
 			expect(await services.queueRepository.count()).toBe(0);
 			const accepted = await services.queue.enqueue(input(threadId, 'first', 'new'));
 			const failedLink = vi
@@ -1387,14 +1434,39 @@ describe('AgentExecutionRepository', () => {
 				.mockResolvedValueOnce(false);
 			await expect(claim(services, threadId)).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
 			failedLink.mockRestore();
-			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
-			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).toBeNull();
+			expect(await services.messageRepository.countBy({ threadId })).toBe(1);
+			expect(await Container.get(AgentThreadRepository).findOneBy({ id: threadId })).not.toBeNull();
 			expect(await repository.manager.count(AgentExecutionMessageLink)).toBe(0);
 			expect(await repository.countBy({ threadId })).toBe(0);
 			expect(await services.queueRepository.findDeliveryState(accepted.id)).toMatchObject({
 				executionId: null,
+				messageId: accepted.messageId,
 			});
 			await finish(services, await claim(services, threadId));
+		});
+
+		it('settles accepted Preview input after its session owner is deleted', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const queued = await services.queue.enqueue(input(threadId, 'pending', 'new'));
+			await Container.get(UserRepository).delete(owner.id);
+
+			const active = await claim(services, threadId);
+			expect(active.thread.ownerId).toBeNull();
+			await services.queue.recordFailure(active, new Error('Owner deleted'));
+			await services.queue.settle(threadId, active.admission.executionId);
+
+			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
+			expect(await repository.findOneByOrFail({ id: active.admission.executionId })).toMatchObject({
+				status: 'error',
+				error: 'Owner deleted',
+			});
+			expect(
+				await services.messageRepository.findOneByOrFail({ id: queued.messageId }),
+			).toMatchObject({
+				content: buildInboundUserMessage('pending', [])[0],
+				modelContextAt: null,
+			});
 		});
 
 		it('enforces active-slot uniqueness and prevents execution deletion from requeuing a message', async () => {
@@ -1430,7 +1502,7 @@ describe('AgentExecutionRepository', () => {
 			await repository.update(stale.id, { updatedAt: new Date(cutoff.getTime() - 1) });
 			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(true);
 			const next = await claim(local, threadId);
-			expect(next.item.payload.message).toBe('next');
+			expect(next.payload.message).toBe('next');
 			await expect(finish(remote, active)).rejects.toThrow('no longer running');
 			await finish(local, next);
 			expect(
@@ -1551,7 +1623,7 @@ describe('AgentExecutionRepository', () => {
 		});
 
 		it('removes pending input and attachments on session deletion and never recreates it', async () => {
-			const services = recordingServices();
+			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
 			const attachment = await attachmentRepo.save(buildAttachment(threadId));
 			const accepted = input(threadId, 'pending', 'new');
@@ -1569,6 +1641,7 @@ describe('AgentExecutionRepository', () => {
 			).toBe(true);
 			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
 			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toBeNull();
+			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
 			expect(services.attachmentService.deleteStoredData).toHaveBeenCalledWith(
 				[attachment.binaryDataId],
 				{ threadId },
@@ -1594,9 +1667,8 @@ describe('AgentExecutionRepository', () => {
 		const expected = new Map<string, string>();
 		for (let position = 0; position < 2; position++) {
 			const execution = await createExecution({ threadId: thread.id });
-			const messageId = await messageRepository.createExecutionInput(
+			const message = await messageRepository.createInput(
 				{
-					executionId: execution.id,
 					threadId: thread.id,
 					resourceId: 'user-1',
 					content: { role: 'user', content: [{ type: 'text', text: 'Input' }] },
@@ -1605,7 +1677,13 @@ describe('AgentExecutionRepository', () => {
 				{},
 			);
 			executionIds.push(execution.id);
-			expected.set(execution.id, messageId);
+			await messageRepository.linkExecutionInput(
+				execution.id,
+				message.id,
+				{ threadId: thread.id, resourceId: 'user-1' },
+				{},
+			);
+			expected.set(execution.id, message.id);
 		}
 		executionIds.splice(1, 0, ...Array.from({ length: 33_000 }, () => uuid()));
 
@@ -1617,7 +1695,11 @@ describe('AgentExecutionRepository', () => {
 		}
 	});
 
-	it('keeps canonical input through enrichment, runtime persistence, mixed history, and session deletion', async () => {
+	it.each([
+		['direct', 'message-42'],
+		['queued', 'message-42'],
+		['queued', undefined],
+	] as const)('preserves %s canonical input (%s)', async (path, platformMessageId) => {
 		const thread = await createThread();
 		const threadId = thread.id;
 		const resourceId = 'user-1';
@@ -1664,17 +1746,96 @@ describe('AgentExecutionRepository', () => {
 			source: 'slack',
 			messageOrigin: {
 				integrationConnectionId: 'slack:credential',
-				platformMessageId: 'message-42',
+				...(platformMessageId !== undefined ? { platformMessageId } : {}),
 			},
 		};
-		const admission = await services.executionService.startExecutionRecording(params, new Date());
+		let admission: AgentExecutionAdmission;
+		if (path === 'direct') {
+			admission = await services.executionService.startExecutionRecording(params, new Date());
+		} else {
+			const payload: QueuedIntegrationMessage = {
+				kind: 'integration',
+				message: params.userMessage,
+				resourceId,
+				attachments,
+				modelMessage: '[Ada]: Original input',
+				author: params.author,
+				credentialId: 'credential',
+				platformThreadId: 'slack:channel:thread',
+				sender: {
+					userId: 'author-1',
+					userName: 'ada',
+					fullName: 'Ada',
+					isBot: false,
+					isMe: false,
+				},
+				messageContext: {
+					integrationConnectionId: 'slack:credential',
+					...(platformMessageId !== undefined ? { messageId: platformMessageId } : {}),
+					platform: 'slack',
+					target: { type: 'thread', threadId: 'slack:channel:thread' },
+					replyTarget: { type: 'thread', threadId: 'slack:channel:reply' },
+					replyMessageId: 'reply-41',
+					updatedAt: '2026-06-01T12:00:00.000Z',
+				},
+				contextConversation: { threadId: 'integration-context', resourceId: 'integration-user' },
+				forceBuffered: true,
+			};
+			const queued = await services.queue.enqueue({
+				agentId,
+				projectId,
+				threadId,
+				sessionMode: 'existing',
+				source: 'slack',
+				payload,
+			});
+			for (const field of [
+				'message',
+				'resourceId',
+				'attachments',
+				'author',
+				'modelMessage',
+				'platformThreadId',
+				'messageContext.platform',
+				'messageContext.integrationConnectionId',
+				'messageContext.messageId',
+			]) {
+				expect(queued.payload).not.toHaveProperty(field);
+			}
+			expect((await memory.getMessages(threadId)).map(({ id }) => id)).not.toContain(
+				queued.messageId,
+			);
+			const origin = {
+				source: 'slack',
+				...params.messageOrigin,
+				platformThreadId: payload.platformThreadId,
+			};
+			for (const invalidOrigin of [
+				null,
+				{ ...origin, source: null },
+				{ ...origin, integrationConnectionId: undefined },
+				{ ...origin, platformThreadId: undefined },
+			]) {
+				await services.messageRepository.update(queued.messageId, { origin: invalidOrigin });
+				await expect(services.queue.claimNext(threadId, async () => true)).rejects.toThrow(
+					'Queued integration input has incomplete origin',
+				);
+			}
+			await services.messageRepository.update(queued.messageId, { origin });
+			const claimed = await services.queue.claimNext(threadId, async () => true);
+			expect(claimed?.payload).toStrictEqual(payload);
+			expect(claimed?.recording.source).toBe('slack');
+			admission = claimed!.admission;
+			expect(admission.inputMessageIds).toEqual([queued.messageId]);
+		}
 		const [id] = admission.inputMessageIds;
 		const canonical = await services.messageRepository.findOneByOrFail({ id });
 		expect(canonical).toMatchObject({
 			content: buildInboundUserMessage(params.userMessage, attachments)[0],
 			author: params.author,
 			modelContextAt: null,
-			modelContent: null,
+			modelContent:
+				path === 'queued' ? buildInboundUserMessage('[Ada]: Original input', attachments)[0] : null,
 			origin: { source: 'slack', ...params.messageOrigin },
 		});
 		expect(
@@ -2519,6 +2680,11 @@ describe('AgentExecutionRepository', () => {
 				{ sessionNumber: 5, source: null, expected: 'preview' },
 				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
 				{ sessionNumber: 7, source: 'slack', laterSource: 'workflow', expected: 'slack' },
+				{
+					sessionNumber: 8,
+					source: N8N_CHAT_PRODUCTION_SOURCE,
+					expected: N8N_CHAT_PRODUCTION_SOURCE,
+				},
 			];
 			const expectedIds = new Map<AgentSessionOrigin, string[]>();
 
@@ -2554,6 +2720,33 @@ describe('AgentExecutionRepository', () => {
 				);
 				expect(new Set(result.threads.map(({ id }) => id))).toEqual(new Set(ids));
 			}
+		});
+
+		it('keeps only the sessions owned by the requesting user with scope=mine', async () => {
+			const owner = await createMember();
+			const other = await createMember();
+			const mine = await createThread({ sessionNumber: 1, ownerId: owner.id });
+			const theirs = await createThread({ sessionNumber: 2, ownerId: other.id });
+			const unowned = await createThread({ sessionNumber: 3 });
+			for (const thread of [mine, theirs, unowned]) {
+				await createExecution({ threadId: thread.id, source: N8N_CHAT_PRODUCTION_SOURCE });
+			}
+			const list = async (filters: AgentSessionQueryFilters) =>
+				(
+					await threadRepo.findByProjectIdPaginated(
+						projectId,
+						agentId,
+						owner.id,
+						20,
+						undefined,
+						filters,
+					)
+				).threads.map(({ id }) => id);
+
+			expect(await list({ origin: N8N_CHAT_PRODUCTION_SOURCE, scope: 'mine' })).toEqual([mine.id]);
+			expect(new Set(await list({ origin: N8N_CHAT_PRODUCTION_SOURCE }))).toEqual(
+				new Set([mine.id, theirs.id, unowned.id]),
+			);
 		});
 
 		it('applies inclusive date and status filters before cursor pagination', async () => {

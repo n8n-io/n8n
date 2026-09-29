@@ -1,28 +1,37 @@
-import type { AgentChatQueueResponse } from '@n8n/api-types';
+import type { Message } from '@n8n/agents';
+import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
+import type { AgentMessageOrigin } from './entities/agent-message.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { AgentMessageRepository } from './repositories/agent-message.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import type { AgentExecutionAdmission, AgentQueuedMessage } from './types/agent-queued-message';
+import type {
+	AgentExecutionAdmission,
+	AgentQueuedMessage,
+	AgentQueueDispatch,
+	QueuedIntegrationMessage,
+	QueuedPreviewMessage,
+} from './types/agent-queued-message';
 import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent-thread-access';
+import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
 
 export interface ClaimedAgentMessage {
 	item: AgentMessageQueue;
+	payload: Omit<QueuedPreviewMessage, 'userId'> | QueuedIntegrationMessage;
 	thread: AgentExecutionThread;
 	/** Admission identifies the committed execution that the turn pipeline must reuse. */
 	admission: AgentExecutionAdmission;
@@ -44,6 +53,7 @@ export class AgentMessageQueueService {
 		private readonly agentRepository: AgentRepository,
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly updates: AgentExecutionUpdateBroadcaster,
+		private readonly messages: AgentMessageRepository,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -75,7 +85,7 @@ export class AgentMessageQueueService {
 				},
 				ctx,
 			);
-			const inserted = await this.repository.enqueue(input.threadId, input.source, payload, ctx);
+			const inserted = await this.enqueueMessage(input.threadId, input.source, payload, ctx);
 			// Register delivery before another main can see the committed item.
 			onInserted?.(inserted.id);
 			return inserted;
@@ -83,6 +93,49 @@ export class AgentMessageQueueService {
 		if (payload.kind === 'preview') this.updates.notifyQueueUpdated(item.threadId);
 		this.onAvailable?.(item.threadId);
 		return item;
+	}
+
+	private async enqueueMessage(
+		threadId: string,
+		source: string,
+		payload: AgentQueuedMessage,
+		ctx: OperationContext,
+	): Promise<AgentMessageQueue> {
+		const { message, resourceId, attachments = [], ...dispatch } = payload;
+		const [content] = buildInboundUserMessage(message, attachments);
+		let queueDispatch: AgentQueueDispatch = { kind: 'preview' };
+		let modelContent: Message | undefined;
+		let author: AgentMessageAuthor | undefined;
+		let origin: AgentMessageOrigin = { source };
+		if (dispatch.kind === 'integration') {
+			const {
+				modelMessage,
+				author: inputAuthor,
+				platformThreadId,
+				messageContext: fullContext,
+				...integrationDispatch
+			} = dispatch;
+			const {
+				platform: _platform,
+				integrationConnectionId,
+				messageId,
+				...messageContext
+			} = fullContext;
+			queueDispatch = { ...integrationDispatch, messageContext };
+			[modelContent] = buildInboundUserMessage(modelMessage, attachments);
+			author = inputAuthor;
+			origin = {
+				source,
+				integrationConnectionId,
+				platformMessageId: messageId,
+				platformThreadId,
+			};
+		}
+		const input = await this.messages.createInput(
+			{ threadId, resourceId, content, modelContent, author, origin },
+			ctx,
+		);
+		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
 	}
 
 	async listPending(input: {
@@ -101,8 +154,7 @@ export class AgentMessageQueueService {
 				.filter((item) => item.payload.kind === 'preview')
 				.map((item) => ({
 					id: item.id,
-					message: item.payload.message,
-					attachments: item.payload.attachments,
+					...readInboundUserMessage(item.message.content),
 					createdAt: item.createdAt.toISOString(),
 				})),
 		};
@@ -115,7 +167,7 @@ export class AgentMessageQueueService {
 		userId: string;
 		queueId: string;
 	}): Promise<void> {
-		const item = await this.txRunner.run({}, async (ctx) => {
+		const removed = await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(input.threadId, ctx);
 			if (!thread) throw new NotFoundError('Session not found');
 			await this.assertPreviewAccess(thread, input, ctx);
@@ -128,10 +180,14 @@ export class AgentMessageQueueService {
 			) {
 				throw new ConflictError('This message has already started');
 			}
-			return item;
+			const attachmentIds = readInboundUserMessage(item.message.content).attachments.map(
+				({ id }) => id,
+			);
+			await this.messages.clearPendingInput(item.messageId, ctx);
+			return { threadId: item.threadId, attachmentIds };
 		});
-		this.updates.notifyQueueUpdated(item.threadId);
-		await this.attachments.deleteByIds(item.payload.attachments?.map(({ id }) => id) ?? []);
+		this.updates.notifyQueueUpdated(removed.threadId);
+		await this.attachments.deleteByIds(removed.attachmentIds);
 	}
 
 	async updatePending(input: {
@@ -151,15 +207,11 @@ export class AgentMessageQueueService {
 				throw new NotFoundError('Queued message not found');
 			if (item.executionId !== null) throw new ConflictError('This message has already started');
 			const message = input.message.trim();
-			if (!message && !item.payload.attachments?.length)
+			const { attachments } = readInboundUserMessage(item.message.content);
+			if (!message && !attachments.length)
 				throw new BadRequestError('A message or attachment is required');
-			const updated = await this.repository.updatePendingPayload(
-				thread.id,
-				item.id,
-				{ ...item.payload, message },
-				ctx,
-			);
-			if (!updated) throw new ConflictError('This message has already started');
+			const [content] = buildInboundUserMessage(message, attachments);
+			await this.messages.updatePendingInput(item.messageId, content, ctx);
 		});
 		this.updates.notifyQueueUpdated(input.threadId);
 	}
@@ -199,11 +251,18 @@ export class AgentMessageQueueService {
 				await this.repository.removeActive(threadId, active.executionId, ctx);
 			const item = await this.repository.findHead(threadId, ctx);
 			if (!item || !(await canConsume(item, thread, ctx))) return null;
-			const recording = this.recordingFor(item, thread);
+			const payload = this.restoreInput(item);
+			const recording = this.recordingFor(item, thread, payload);
+			await this.threadRepository.bumpUpdatedAt(threadId, ctx);
 			// Reservation creates the running execution and links it to this item in one transaction.
 			// Runtime work starts only after the transaction commits.
-			const reservation = await this.executionService.reserveExecution(recording, new Date(), ctx);
-			return { item, thread, recording, reservation };
+			const reservation = await this.executionService.reserveExecution(
+				recording,
+				new Date(),
+				ctx,
+				thread,
+			);
+			return { item, thread, payload, recording, reservation };
 		});
 		if (!claimed) return null;
 		this.executionService.activateExecution(claimed.reservation, claimed.recording);
@@ -211,6 +270,7 @@ export class AgentMessageQueueService {
 		if (!execution.startedAt) throw new OperationalError('Queued execution has no start time');
 		return {
 			item: claimed.item,
+			payload: claimed.payload,
 			thread: claimed.thread,
 			recording: claimed.recording,
 			admission: {
@@ -264,6 +324,7 @@ export class AgentMessageQueueService {
 	private recordingFor(
 		item: AgentMessageQueue,
 		thread: AgentExecutionThread,
+		payload: ClaimedAgentMessage['payload'],
 	): StartExecutionParams {
 		return {
 			threadId: thread.id,
@@ -273,18 +334,37 @@ export class AgentMessageQueueService {
 			access: { accessScope: thread.accessScope, ownerId: thread.ownerId },
 			sessionMode: 'existing',
 			queueItemId: item.id,
-			userMessage: item.payload.message,
-			resourceId: item.payload.resourceId,
-			...(item.payload.kind === 'integration' && {
-				messageOrigin: {
-					integrationConnectionId: item.payload.messageContext.integrationConnectionId,
-					platformMessageId: item.payload.messageContext.messageId,
-					platformThreadId: item.payload.platformThreadId,
-				},
-			}),
-			source: item.source,
-			attachments: item.payload.attachments,
-			author: item.payload.kind === 'integration' ? item.payload.author : undefined,
+			userMessage: payload.message,
+			resourceId: payload.resourceId,
+			source: item.message.origin?.source ?? undefined,
+			attachments: payload.attachments,
+			author: payload.kind === 'integration' ? payload.author : undefined,
+		};
+	}
+
+	private restoreInput(item: AgentMessageQueue): ClaimedAgentMessage['payload'] {
+		const input = {
+			...readInboundUserMessage(item.message.content),
+			resourceId: item.message.resourceId,
+		};
+		if (item.payload.kind === 'preview') return { ...item.payload, ...input };
+		if (!item.message.author) throw new UnexpectedError('Queued integration input has no author');
+		const { origin } = item.message;
+		if (!origin?.source || !origin.integrationConnectionId || !origin.platformThreadId)
+			throw new UnexpectedError('Queued integration input has incomplete origin');
+		return {
+			...item.payload,
+			...input,
+			platformThreadId: origin.platformThreadId,
+			messageContext: {
+				...item.payload.messageContext,
+				platform: origin.source,
+				integrationConnectionId: origin.integrationConnectionId,
+				...(origin.platformMessageId !== undefined ? { messageId: origin.platformMessageId } : {}),
+			},
+			author: item.message.author,
+			modelMessage: readInboundUserMessage(item.message.modelContent ?? item.message.content)
+				.message,
 		};
 	}
 }

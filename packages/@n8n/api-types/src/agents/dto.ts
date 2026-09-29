@@ -97,13 +97,15 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	previewOnly: booleanFromString.optional(),
 	status: z.enum(AGENT_SESSION_STATUSES).optional(),
 	origin: z.enum(AGENT_SESSION_ORIGINS).optional(),
+	/** `mine` keeps only the sessions the requesting user owns. */
+	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
 export class AgentProviderModelsQueryDto extends Z.class({

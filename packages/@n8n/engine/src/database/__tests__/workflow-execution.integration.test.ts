@@ -43,6 +43,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: {},
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'stepResponse' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -58,6 +59,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(found.mode).toBe('production');
 		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
 		expect(found.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(found.responseExpectation).toEqual({ kind: 'stepResponse' });
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);
@@ -75,6 +77,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
 			finishedAt,
 		});
 		await repo.save(created);
@@ -110,6 +113,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -125,6 +129,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
 		});
 	});
 
@@ -155,6 +160,7 @@ describe('workflow_execution table (integration)', () => {
 				workflow: {},
 				triggerOutputs: null,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 				finishedAt: null,
 			}),
 		);
@@ -168,6 +174,7 @@ describe('workflow_execution table (integration)', () => {
 				workflow: {},
 				triggerOutputs: null,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 				finishedAt: new Date(),
 			}),
 		);
@@ -191,6 +198,7 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				responseExpectation: { kind: 'none' },
 				finishedAt: null,
 			}),
 		);
@@ -218,6 +226,7 @@ describe('workflow_execution table (integration)', () => {
 					graph: { nodes: [], edges: [] },
 					workflow: {},
 					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
 					finishedAt,
 				}),
 			);
@@ -245,6 +254,7 @@ describe('workflow_execution table (integration)', () => {
 					graph: { nodes: [], edges: [] },
 					workflow: {},
 					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
 					finishedAt: null,
 				}),
 			);

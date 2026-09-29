@@ -86,7 +86,7 @@ describe('AgentExecutionService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		messageRepository.createExecutionInput.mockResolvedValue('message-1');
+		messageRepository.createInput.mockResolvedValue(mock<AgentMessageEntity>({ id: 'message-1' }));
 		messageRepository.findExecutionInputs.mockResolvedValue(new Map());
 		messageRepository.copyExecutionInputs.mockResolvedValue([]);
 
@@ -141,6 +141,180 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	describe('recordSideCallUsage', () => {
+		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.00125,
+				reportId: 'report-1',
+			});
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			// Both increments run inside the same transaction context.
+			const txCtx = txRunner.run.mock.calls[0][0];
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith(
+				'execution-1',
+				0.00125,
+				txCtx,
+			);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
+				'thread-1',
+				0,
+				0,
+				0.00125,
+				0,
+				txCtx,
+			);
+		});
+
+		it('claims the reportId only after the transaction commits', async () => {
+			// A failed transaction must not claim the reportId, so a later
+			// replay can reapply both totals atomically instead of being
+			// suppressed while one total already diverged.
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+			const report = { task: 'title', model: 'openai/gpt-4o', cost: 0.001, reportId: 'retry-1' };
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', report),
+			).resolves.toBeUndefined();
+
+			// Not claimed: the failed transaction is replayable. The replay runs
+			// both increments again — `incrementCost` is retried (2 calls); the
+			// first attempt threw before reaching `incrementUsage`, so it runs
+			// only on the successful replay (1 call).
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('re-applies a sequentially replayed reportId (no process-local dedup)', async () => {
+			// The SDK calls `onSideCallUsage` once per model call with a fresh
+			// `reportId`, so a sequential replay is not expected. The in-flight
+			// map only coalesces concurrent deliveries; once it clears, a later
+			// delivery with the same id re-applies.
+			const report = { task: 'observer', model: 'openai/gpt-4o', cost: 0.0007, reportId: 'dup-1' };
+
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
+		});
+
+		it('coalesces concurrent deliveries of the same reportId onto one transaction', async () => {
+			// Two deliveries of the same reportId racing past the duplicate
+			// check must not double-count: the second delivery awaits the
+			// in-flight attempt instead of starting its own transaction.
+			let resolveIncrement!: () => void;
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => {
+					resolveIncrement = resolve;
+				});
+			});
+			const report = {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.0007,
+				reportId: 'race-1',
+			};
+
+			const a = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			const b = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			// The first transaction is in flight; release it so both settle.
+			resolveIncrement();
+			await Promise.all([a, b]);
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('applies two different reportIds separately', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'report-a',
+			});
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.002,
+				reportId: 'report-b',
+			});
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
+		});
+
+		it('swallows repository errors so a side-call cost failure never breaks the run', async () => {
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', {
+					task: 'title',
+					model: 'openai/gpt-4o',
+					cost: 0.001,
+					reportId: 'report-err',
+				}),
+			).resolves.toBeUndefined();
+		});
+
+		it('drains pending side-call usage recordings before the terminal write so a crash after finalization does not lose cost', async () => {
+			// `onSideCallUsage` dispatches `recordSideCallUsage` fire-and-forget
+			// (`void` in `agent-turn-execution.service.ts`). Without a drain at
+			// finalization, a side-call `incrementCost` still in flight when the
+			// process exits after the terminal UPDATE would be lost. The terminal
+			// write drains this execution's pending recordings first, so the
+			// side-call cost settles before the row is finalized.
+			const gate = createDeferredPromise();
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await gate.promise;
+			});
+
+			// Fire-and-forget a side call (do not await), simulating the SDK path.
+			void service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'drain-1',
+			});
+
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			// Start finalization (do not await): it blocks on the drain, so the
+			// terminal write must not have run yet.
+			const finalize = service
+				.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record,
+				})
+				.catch((error: unknown) => error);
+
+			// `recordSideCallUsage` invokes `incrementCost` synchronously (before
+			// its first await), so it has already been called. Finalization blocks
+			// on the drain, so the terminal write has not run yet.
+			await Promise.resolve();
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+
+			gate.resolve();
+			const result = await finalize;
+			expect(result).toBe('execution-1');
+
+			// The side-call cost settled before the terminal write committed.
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0],
+			);
+		});
+	});
+
 	describe('startExecutionRecording', () => {
 		it('stores the signal before publishing the execution update', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
@@ -188,6 +362,9 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				id,
 				expect.objectContaining({ timeline: initialTimeline }),
+				undefined,
+				expect.any(Object),
+				undefined,
 			);
 		});
 
@@ -462,7 +639,10 @@ describe('AgentExecutionService', () => {
 					.catch((error: unknown) => error);
 				expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
 				if (snapshotState === 'in flight') snapshot.reject(new Error('snapshot unavailable'));
-				await vi.advanceTimersByTimeAsync(1_000);
+				// The snapshot retry timer fires at 1s; `writeTerminalExecution`
+				// then runs its bounded retry (100ms + 200ms backoff) before
+				// rethrowing `cause`, so advance past all of it.
+				await vi.advanceTimersByTimeAsync(2_000);
 				expect(await finished).toBe(cause);
 				service.recordTimelineSnapshot(update);
 				await vi.advanceTimersByTimeAsync(180_000);
@@ -506,6 +686,9 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
+			undefined,
+			expect.any(Object),
+			undefined,
 		);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
@@ -578,6 +761,9 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				undefined,
+				expect.any(Object),
+				undefined,
 			);
 			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
@@ -671,6 +857,9 @@ describe('AgentExecutionService', () => {
 						storedAt: 'db',
 						failureSummary: null,
 					}),
+					undefined,
+					expect.any(Object),
+					undefined,
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 				if (shouldDeleteBlob) {
@@ -1065,10 +1254,111 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 					failureSummary: null,
 				}),
+				undefined,
+				expect.any(Object),
+				undefined,
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
 			);
+		});
+
+		it('applies the terminal main-loop cost additively so in-flight side-call increments survive', async () => {
+			// A side-call `incrementCost` that lands before the terminal write must
+			// not be overwritten by `cost = record.totalCost`. The terminal write
+			// therefore folds the main-loop cost into `updateIfRunning` as an
+			// additive `costIncrement` (`COALESCE(cost, 0) + :costIncrement`) on the
+			// same column the side calls increment, so the two never race and a
+			// failure leaves nothing half-applied.
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			const lastCall = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const [, terminalPayload, , , costIncrement] = lastCall;
+			expect(terminalPayload).not.toHaveProperty('cost');
+			expect(costIncrement).toBe(0.05);
+			// The cost is folded into the terminal UPDATE, so no separate
+			// `incrementCost` call is issued for the main loop.
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+		});
+
+		it('does not issue a cost increment when the terminal run has no priced usage', async () => {
+			const record = makeMessageRecord({ totalCost: null });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			const lastCall = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const [, , , , costIncrement] = lastCall;
+			expect(costIncrement).toBeUndefined();
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+		});
+
+		it('retries the terminal write when it fails transiently so the row is finalized with cost', async () => {
+			// The terminal status write and the main-loop cost increment run as one
+			// atomic UPDATE. A transient failure (DB blip, deadlock) leaves the row
+			// `running` because nothing committed. The heartbeat is already stopped,
+			// so without a retry the row would stay `running` until the sweeper
+			// marks it `interrupted` and the main-loop cost would be lost.
+			// `writeTerminalExecution` retries a bounded number of times with linear
+			// backoff; the row is only terminal once a retry succeeds.
+			vi.useFakeTimers();
+			try {
+				const rows = new Map<string, { status: string; cost: number }>([
+					['execution-1', { status: 'running', cost: 0 }],
+				]);
+				agentExecutionRepository.updateIfRunning.mockImplementation(
+					async (id, values, _staleBefore, _ctx, costIncrement) => {
+						const row = rows.get(id);
+						if (row?.status !== 'running') return false;
+						row.status = values.status;
+						if (typeof costIncrement === 'number' && costIncrement > 0) {
+							row.cost += costIncrement;
+						}
+						return true;
+					},
+				);
+				// First attempt fails before mutating any state; the retry succeeds.
+				agentExecutionRepository.updateIfRunning.mockRejectedValueOnce(new Error('db down'));
+
+				const record = makeMessageRecord({ totalCost: 0.05 });
+				const finalize = service.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record,
+				});
+				await vi.advanceTimersByTimeAsync(1000);
+				await finalize;
+
+				// After the failed attempt the row is still `running` with no cost
+				// (the throw happened before any state mutation). After the retry
+				// the row is `success` with the main-loop cost applied.
+				expect(rows.get('execution-1')).toEqual({ status: 'success', cost: 0.05 });
+				expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(2);
+				expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
