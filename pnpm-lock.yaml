@@ -22936,6 +22936,10 @@ packages:
     resolution: {integrity: sha512-op4nsTR47R6p0vMUUoYl/a+ljLFVtlfaXkLQmqfLR1qHma1h/ysYk4hEXZ880bf2CYgTskvTa/e196Vd5dDQXw==}
     engines: {node: '>=14.0.0'}
 
+  tinyrainbow@3.1.0:
+    resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
+    engines: {node: '>=14.0.0'}
+
   tinyrainbow@3.1.1:
     resolution: {integrity: sha512-yau8yJdTt989Mm0Bd/236QnzEiPf2xLLTqUZRUJOo/3CB078LSwzei343DgtJVmfJKJE3TMINY1u42SQsP6mXw==}
     engines: {node: '>=14.0.0'}
@@ -32931,7 +32935,7 @@ snapshots:
 
   '@vitest/pretty-format@4.1.9':
     dependencies:
-      tinyrainbow: 3.1.1
+      tinyrainbow: 3.1.0
     optional: true
 
   '@vitest/pretty-format@5.0.1':
@@ -32970,7 +32974,7 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.1.9
       convert-source-map: 2.0.0
-      tinyrainbow: 3.1.1
+      tinyrainbow: 3.1.0
     optional: true
 
   '@vitest/utils@5.0.1':
@@ -42931,6 +42935,9 @@ snapshots:
       picomatch: 4.0.4
 
   tinyrainbow@2.0.0: {}
+
+  tinyrainbow@3.1.0:
+    optional: true
 
   tinyrainbow@3.1.1: {}
 

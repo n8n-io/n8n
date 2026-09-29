@@ -173,7 +173,6 @@ describe('Community packages (Public API)', () => {
 				expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
 			);
 		});
-<<<<<<< HEAD
 
 		it('should not run npm outdated when unverified packages are disabled', async () => {
 			Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
@@ -187,41 +186,6 @@ describe('Community packages (Public API)', () => {
 			expect(response.body).toHaveLength(1);
 			expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 		});
-
-		it('should return packages with updateAvailable when outdated', async () => {
-			const pkg = mockPackage();
-			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
-
-			mockedExecuteNpmCommand.mockImplementation(() => {
-				const error = new Error('npm outdated');
-				Object.assign(error, {
-					code: 1,
-					stdout: JSON.stringify({
-						[pkg.packageName]: {
-							current: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							wanted: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							latest: COMMUNITY_PACKAGE_VERSION.UPDATED,
-							location: path.join('node_modules', pkg.packageName),
-						},
-					}),
-				});
-				throw error;
-			});
-
-			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
-				{
-					...pkg,
-					updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED,
-				},
-			]);
-
-			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
-
-			expect(response.status).toBe(200);
-			expect(response.body[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
-		});
-=======
->>>>>>> 8f29a36f16f55142505787e5a6e524f0f05f8d90
 	});
 
 	describe('POST /community-packages', () => {
