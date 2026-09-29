@@ -25,8 +25,7 @@ import {
 	CredentialDependencyService,
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 } from '@/credentials/credential-dependency.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';

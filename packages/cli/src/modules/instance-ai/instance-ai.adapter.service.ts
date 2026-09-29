@@ -20,6 +20,8 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -151,9 +153,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
@@ -161,6 +161,11 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+
+import {
+	scopeCredentialProvider,
+	type AgentCredentialProvider,
+} from './eval/scoped-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -494,6 +499,8 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
@@ -518,6 +525,7 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
@@ -538,6 +546,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
+			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
@@ -590,11 +599,11 @@ export class InstanceAiAdapterService {
 							// flow creates it after this context is built), so tag Gateway
 							// spend with the concrete id the delegate hands us each turn.
 							(targetAgentId) =>
-								new AgentsCredentialProvider(
-									this.credentialsService,
-									projectId,
+								this.createAgentCredentialProvider(
 									user,
+									projectId,
 									targetAgentId,
+									getCredentialIdAllowlist,
 								),
 							credentialService,
 							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
@@ -602,6 +611,26 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 		};
+	}
+
+	/** The builder's credential list, narrowed to the eval thread's allowlist when one is set.
+	 *  The allowlist is read per list call, like the workflow builder's, so a credential the
+	 *  harness creates mid-run shows on the next card. */
+	private createAgentCredentialProvider(
+		user: User,
+		projectId: string,
+		agentId: string,
+		getCredentialIdAllowlist?: () => string[] | undefined,
+	): AgentCredentialProvider {
+		const provider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+			agentId,
+		);
+		return getCredentialIdAllowlist
+			? scopeCredentialProvider(provider, getCredentialIdAllowlist)
+			: provider;
 	}
 
 	/**
@@ -648,6 +677,8 @@ export class InstanceAiAdapterService {
 		conversationHistoryEnabled: boolean;
 		/** Progressive workflow policy and planning-tool selection. */
 		progressiveBuildingEnabled: boolean;
+		/** Concise reply style. Applies only when the default build mode is selected. */
+		conciseStyleEnabled: boolean;
 		setupPanelEnabled: boolean;
 		setupPanelVariant?: 'control' | 'variant';
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
@@ -687,6 +718,8 @@ export class InstanceAiAdapterService {
 			progressiveBuildingEnabled:
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			conciseStyleEnabled:
+				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
 				? { setupPanelVariant }

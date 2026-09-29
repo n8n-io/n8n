@@ -34,6 +34,8 @@
 			"**/*.vue",
 			// Generated DB schema docs
 			"docs/generated/**",
+			// Recorded model responses
+			"**/cassettes/n8n-chat-production/**",
 			// Generated / vendored test-impact data
 			".github/test-metrics/**",
 			// Vendored SPDX license data and overrides

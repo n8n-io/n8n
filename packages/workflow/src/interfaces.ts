@@ -27,6 +27,7 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
+import type { TriggerTime } from './cron';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -1150,6 +1151,7 @@ export type Cron = {
 	expression: CronExpression;
 	recurrence?: CronRecurrenceRule;
 	source?: CronSource;
+	triggerTime?: TriggerTime;
 };
 
 export interface SchedulingFunctions {
@@ -3476,6 +3478,8 @@ export interface RelatedAgentRun {
 	 * resume on the runtime they started on.
 	 */
 	previewChat?: boolean;
+	/** The published n8n Chat channel owns this run. */
+	publishedN8nChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.

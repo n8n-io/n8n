@@ -18,9 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import {
 	isSupportedMcpRegistryCredentialType,

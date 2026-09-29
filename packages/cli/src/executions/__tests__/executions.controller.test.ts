@@ -2,9 +2,7 @@ import { DeleteExecutionsDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
+import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type { ExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionService } from '@/executions/execution.service';

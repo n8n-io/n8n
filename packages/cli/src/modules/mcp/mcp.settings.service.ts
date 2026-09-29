@@ -17,7 +17,7 @@ import {
 } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { CacheService } from '@/services/cache/cache.service';
 import { removeDefaultValues } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

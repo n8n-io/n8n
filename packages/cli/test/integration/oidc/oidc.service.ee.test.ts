@@ -23,8 +23,7 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';

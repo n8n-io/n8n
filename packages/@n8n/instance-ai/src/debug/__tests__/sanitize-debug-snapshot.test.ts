@@ -32,4 +32,18 @@ describe('sanitizeDebugSnapshotValue', () => {
 
 		expect(sanitizeDebugSnapshotValue(value)).toEqual({ self: '[Circular]' });
 	});
+
+	it('serializes a shared reference in each place it appears', () => {
+		const shared = { anthropic: { eagerInputStreaming: false } };
+
+		expect(
+			sanitizeDebugSnapshotValue({
+				first: { providerOptions: shared },
+				second: [{ providerOptions: shared }],
+			}),
+		).toEqual({
+			first: { providerOptions: shared },
+			second: [{ providerOptions: shared }],
+		});
+	});
 });

@@ -1,0 +1,42 @@
+operationId: installPackage
+tags:
+  - CommunityPackage
+summary: Install a community package
+description: Install a community package by npm name and optional version.
+x-required-scope: communityPackage:install
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            description: npm package name. Unscoped names start with n8n-nodes-. Scoped names use the @[author]/n8n-nodes- form.
+          version:
+            type: string
+            description: Semver version or npm dist-tag, such as latest or beta
+          verify:
+            type: boolean
+            description: Whether to verify the package against the n8n-vetted package list. Required when the instance has N8N_UNVERIFIED_PACKAGES_ENABLED=false.
+        required:
+          - name
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/communityPackagePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

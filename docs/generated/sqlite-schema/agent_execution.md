@@ -24,7 +24,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | error | TEXT |  | true |  |  |  |
 | failureSummary | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [agent_message_queue](agent_message_queue.md) |  |  |
+| id | varchar(36) |  | false | [agent_execution_message_links](agent_execution_message_links.md) [agent_message_queue](agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | INTEGER |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
@@ -62,6 +62,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 ```mermaid
 erDiagram
 
+"agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -88,6 +89,13 @@ erDiagram
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage
+}
+"agent_execution_message_links" {
+  datetime_3_ createdAt
+  varchar_6_ direction
+  varchar_36_ executionId PK
+  varchar_36_ messageId PK
+  INTEGER position
 }
 "agent_message_queue" {
   datetime_3_ createdAt

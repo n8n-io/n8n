@@ -142,6 +142,13 @@ export class AgentMessageQueueConsumer {
 					},
 					controller,
 				);
+				sender.send({
+					type: 'execution-started',
+					executionId: admission.executionId,
+					sessionId: thread.id,
+					inputMessageIds: admission.inputMessageIds,
+					message: item.payload.message,
+				});
 				await this.chatExecutionService.settle(
 					admission.executionId,
 					async () => await this.consumePreview(claim, signal, sender.send),
@@ -224,8 +231,6 @@ export class AgentMessageQueueConsumer {
 			admittedExecution: admission,
 			abortSignal: signal,
 			errorMode: 'forward',
-			onExecutionStarted: (executionId, sessionId) =>
-				send({ type: 'execution-started', executionId, sessionId }),
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
 		});
 		if (result.status === 'completed')

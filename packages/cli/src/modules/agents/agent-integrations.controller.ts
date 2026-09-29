@@ -19,7 +19,7 @@ import { AgentChannelStatusRepository } from './repositories/agent-channel-statu
 import { AgentRepository } from './repositories/agent.repository';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentIntegrationsController {
@@ -107,9 +107,25 @@ export class AgentIntegrationsController {
 		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
 		const now = new Date();
 
-		return buildChannelStatusReport(agent.integrations, agent.activeVersionId, statuses, (row) =>
-			this.statusReporter.isLive(row, now),
-		);
+		return {
+			...buildChannelStatusReport(
+				agent.integrations,
+				agent.activeVersionId,
+				statuses,
+				(row) => this.statusReporter.isLive(row, now),
+				agent.activeVersion?.schema?.integrations ?? [],
+			),
+			n8nChat: {
+				draftEnabled:
+					agent.integrations?.some((integration) => integration.type === 'n8n_chat') ?? false,
+				publishedEnabled:
+					agent.activeVersionId !== null &&
+					(agent.activeVersion?.schema?.integrations?.some(
+						(integration) => integration.type === 'n8n_chat',
+					) ??
+						false),
+			},
+		};
 	}
 
 	// Third-party webhook callback: do not add @ProjectScope. Auth happens
