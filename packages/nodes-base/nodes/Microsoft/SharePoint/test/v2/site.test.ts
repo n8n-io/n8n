@@ -6,7 +6,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
-import { getSites, resolveSiteId, SITE_ID_REGEX, siteRLC } from '../../v2/site';
+import { getSites, resolveSiteId, SITE_ID_REGEX, siteRLC } from '../../site';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
 

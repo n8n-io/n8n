@@ -1,7 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { type GraphSearchReply } from './utils';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest } from '../transport';
 
 // Caps how many pages a single dropdown request walks looking for matches.
 export const SEARCH_PAGE_LIMIT = 10;
