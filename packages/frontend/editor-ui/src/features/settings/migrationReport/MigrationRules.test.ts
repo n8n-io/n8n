@@ -483,6 +483,35 @@ describe('MigrationRules', () => {
 		});
 	});
 
+	describe('migration progress', () => {
+		it('should render the progress bar with the compatible share', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				const progressBar = screen.getByTestId('migration-report-progress');
+				expect(progressBar).toHaveAttribute('aria-valuenow', '50');
+				expect(progressBar).toHaveAttribute('aria-label', '5 of 10 compatible');
+			});
+			expect(screen.getByText('5 of 10 compatible')).toBeInTheDocument();
+		});
+
+		it('should show 0% when there are no workflows', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ totalWorkflows: 0 }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-progress')).toHaveAttribute(
+					'aria-valuenow',
+					'0',
+				);
+			});
+			expect(screen.getByText('0 of 0 compatible')).toBeInTheDocument();
+		});
+	});
+
 	describe('tooltips', () => {
 		it.each([
 			{

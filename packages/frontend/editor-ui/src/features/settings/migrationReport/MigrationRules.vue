@@ -108,6 +108,21 @@ const compatibleWorkflowsCount = computed(() => {
 	);
 });
 
+const compatiblePercentage = computed(() => {
+	const total = state.value?.totalWorkflows ?? 0;
+	if (total === 0) return 0;
+	return Math.round((compatibleWorkflowsCount.value / total) * 100);
+});
+
+const progressLabel = computed(() =>
+	i18n.baseText('settings.migrationReport.progress.label', {
+		interpolate: {
+			compatibleCount: compatibleWorkflowsCount.value.toLocaleString(),
+			totalCount: (state.value?.totalWorkflows ?? 0).toLocaleString(),
+		},
+	}),
+);
+
 // Severity order: critical (highest) -> medium -> low (lowest)
 const severityOrder = { critical: 0, medium: 1, low: 2 };
 
@@ -137,8 +152,8 @@ const sortedInstanceResults = computed(() => {
 			:description="
 				i18n.baseText('settings.migrationReport.description', {
 					interpolate: {
-						compatibleCount: String(compatibleWorkflowsCount),
-						totalCount: String(state?.totalWorkflows ?? 0),
+						compatibleCount: compatibleWorkflowsCount.toLocaleString(),
+						totalCount: (state?.totalWorkflows ?? 0).toLocaleString(),
 						version: targetVersionDisplay,
 					},
 				})
@@ -148,6 +163,22 @@ const sortedInstanceResults = computed(() => {
 			docs-leading-text=""
 		/>
 		<div>
+			<div v-if="state" :class="$style.Progress">
+				<div
+					:class="$style.ProgressTrack"
+					role="progressbar"
+					:aria-valuenow="compatiblePercentage"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					:aria-label="progressLabel"
+					data-test-id="migration-report-progress"
+				>
+					<div :class="$style.ProgressFill" :style="{ width: `${compatiblePercentage}%` }" />
+				</div>
+				<N8nText size="medium" color="text-base" :class="$style.NoLineBreak">
+					{{ progressLabel }}
+				</N8nText>
+			</div>
 			<div :class="$style.ActionBar">
 				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
 				<N8nButton
@@ -299,6 +330,27 @@ const sortedInstanceResults = computed(() => {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.Progress {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+}
+
+.ProgressTrack {
+	flex: 1;
+	height: var(--height--5xs);
+	border-radius: var(--radius--3xs);
+	background-color: var(--color--foreground--tint-1);
+	overflow: hidden;
+}
+
+.ProgressFill {
+	height: 100%;
+	border-radius: inherit;
+	background-color: var(--color--primary);
 }
 
 .ActionBar {
