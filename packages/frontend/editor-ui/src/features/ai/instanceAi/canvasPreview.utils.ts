@@ -266,6 +266,15 @@ export function isAgentEditingWorkflow(
 		(getLatestBuildResult(node)?.workflowId === workflowId ||
 			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
 			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
+			node.toolCalls.some(
+				(call) =>
+					call.toolName === 'credentials' &&
+					call.args?.action === 'setup' &&
+					isRecord(call.result) &&
+					call.result.announced === true &&
+					call.result.preBuild === true &&
+					call.result.workflowId === workflowId,
+			) ||
 			announcedBuild)
 	) {
 		return true;
