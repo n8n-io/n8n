@@ -11,7 +11,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import {
-	dismissWorkflowErrorNudge,
 	resetSurfaceAssistantOnWorkflowError,
 	useSurfaceAssistantOnWorkflowError,
 	WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS,
@@ -131,24 +130,6 @@ describe('WorkflowErrorNudge', () => {
 		);
 		expect(toastAbove?.style.bottom).toBe(`${16 + TOAST_HEIGHT_PX + BUTTON_HEIGHT_PX + 16}px`);
 		offsetHeight.mockRestore();
-	});
-
-	it('hides the canvas hint when the nudge is dismissed while the button is hovered', async () => {
-		const canvasButton = document.createElement('button');
-		canvasButton.dataset.testId = 'instance-ai-canvas-action-button';
-		document.body.append(canvasButton);
-		const button = await showCtaButton();
-
-		await userEvent.hover(button);
-		expect(
-			document.querySelector('[data-test-id="workflow-error-nudge-canvas-hint"]'),
-		).not.toBeNull();
-
-		dismissWorkflowErrorNudge();
-		await nextTick();
-
-		expect(document.querySelector('[data-test-id="workflow-error-nudge-canvas-hint"]')).toBeNull();
-		canvasButton.remove();
 	});
 
 	it('does not inject the button when the error belongs to another workflow', async () => {

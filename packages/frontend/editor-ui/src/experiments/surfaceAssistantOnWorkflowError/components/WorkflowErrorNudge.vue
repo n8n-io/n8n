@@ -1,7 +1,7 @@
 <!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
 <!-- Injects the "Fix with n8n Assistant" button inside error toasts on workflow error + defines CTA logic (on click, animations) -->
 <script setup lang="ts">
-import { N8nButton } from '@n8n/design-system';
+import { N8nAssistantIcon, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
@@ -23,21 +23,6 @@ import {
 	trackErrorToastFixWithAssistantClick,
 	trackFixWithAssistantNudgeViewed,
 } from '../workflowErrorNudge.telemetry';
-import AssistantCanvasHint from './AssistantCanvasHint.vue';
-
-const previewHovered = ref(false);
-
-function showHoverPreview() {
-	previewHovered.value = true;
-}
-
-function hideHoverPreview(event: MouseEvent | FocusEvent) {
-	const next = event.relatedTarget;
-	const current = event.currentTarget;
-	if (next instanceof Node && current instanceof Node && current.contains(next)) return;
-
-	previewHovered.value = false;
-}
 
 const i18n = useI18n();
 const router = useRouter();
@@ -178,7 +163,6 @@ function stopTracking() {
 	mutationObserver = undefined;
 	stopCardOutline();
 	removeEmbedHost();
-	previewHovered.value = false;
 }
 
 function isAssistantEnabled(): boolean {
@@ -234,10 +218,6 @@ onBeforeUnmount(stopTracking);
 				ref="actionRef"
 				:class="$style.embed"
 				:style="{ '--nudge-border-pass-duration': `${WORKFLOW_ERROR_NUDGE_BORDER_PASS_MS}ms` }"
-				@mouseenter="showHoverPreview"
-				@mouseleave="hideHoverPreview"
-				@focusin="showHoverPreview"
-				@focusout="hideHoverPreview"
 			>
 				<svg
 					v-if="outline"
@@ -259,16 +239,18 @@ onBeforeUnmount(stopTracking);
 				<N8nButton
 					variant="outline"
 					size="small"
-					icon="sparkles"
 					:class="$style.action"
 					:loading="opening"
 					:label="i18n.baseText('experiments.surfaceAssistantOnWorkflowError.nudge.action')"
 					data-test-id="workflow-error-nudge-action"
 					@click="onFixWithAssistant"
-				/>
+				>
+					<template #icon>
+						<N8nAssistantIcon size="medium" />
+					</template>
+				</N8nButton>
 			</div>
 		</Teleport>
-		<AssistantCanvasHint v-if="previewHovered" />
 	</div>
 </template>
 
@@ -277,16 +259,34 @@ onBeforeUnmount(stopTracking);
 	display: contents;
 }
 
-.action {
-	position: relative;
-	z-index: 1;
-	width: 100%;
-}
-
 .embed {
 	position: relative;
 	overflow: visible;
 	margin-top: var(--spacing--sm);
+}
+
+.embed .action.action {
+	position: relative;
+	z-index: 1;
+	--button--color: light-dark(var(--color--purple-700), var(--color--purple-300));
+	--button--color--background: light-dark(var(--color--purple-50), var(--color--purple-alpha-100));
+	--button--color--background-hover: light-dark(
+		var(--color--purple-100),
+		var(--color--purple-alpha-200)
+	);
+	--button--color--background-active: light-dark(
+		var(--color--purple-200),
+		var(--color--purple-alpha-300)
+	);
+	--button--border-color: light-dark(var(--color--purple-200), var(--color--purple-alpha-300));
+	--button--border-color--hover: light-dark(
+		var(--color--purple-300),
+		var(--color--purple-alpha-400)
+	);
+	--button--border-color--active: light-dark(
+		var(--color--purple-300),
+		var(--color--purple-alpha-400)
+	);
 }
 
 .outline {
@@ -299,7 +299,7 @@ onBeforeUnmount(stopTracking);
 
 .stroke {
 	fill: none;
-	stroke: var(--color--primary);
+	stroke: light-dark(var(--color--purple-500), var(--color--purple-400));
 	stroke-linejoin: round;
 	stroke-linecap: round;
 	opacity: 0;
