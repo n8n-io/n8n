@@ -1578,7 +1578,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.manager
 			.createQueryBuilder(WorkflowDependency, 'restrictedDep')
 			.select('restrictedDep.workflowId')
-			.distinct(true)
 			.innerJoin(
 				WorkflowEntity,
 				'restrictedWorkflow',

@@ -1,5 +1,5 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
-import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus, WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -298,7 +298,11 @@ export class WorkflowService {
 		options?: ListQuery.Options,
 	): Promise<RestrictedNodeTypes | undefined> {
 		const executionBlockedBy = options?.filter?.executionBlockedBy;
-		if (!isStringArray(executionBlockedBy) || !executionBlockedBy.includes('restrictedNode')) return undefined;
+		if (
+			!isStringArray(executionBlockedBy) ||
+			!executionBlockedBy.includes('restrictedNode' satisfies WorkflowExecutionBlockCause)
+		)
+			return undefined;
 
 		return await this.restrictedNodeTypesProvider.findRestrictedNodeTypesInUse();
 	}
