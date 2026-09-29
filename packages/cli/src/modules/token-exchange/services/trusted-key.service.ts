@@ -331,7 +331,7 @@ export class TrustedKeyService {
 	 */
 	async refreshDueSources(signal: AbortSignal): Promise<void> {
 		this.logger.debug('Refreshing due sources');
-		// A source whose key fetch failed has the newest `updatedAt`, so the next run tries it last.
+		// A source that failed has the newest `updatedAt`, so the next run tries it last.
 		const sources = await this.trustedKeySourceRepository.find({ order: { updatedAt: 'ASC' } });
 		const now = Date.now();
 		for (const source of sources) {
@@ -366,31 +366,28 @@ export class TrustedKeyService {
 	 *
 	 * On success: old keys deleted, new keys inserted, source marked healthy.
 	 *
-	 * If key resolution fails, marks the source as error in the transaction.
-	 * Keeps the existing keys and `lastRefreshedAt`.
-	 * Commits the error status before throwing the failure.
-	 * @throws When the keys cannot be resolved or written.
+	 * On failure: the transaction rolls back and keeps the existing keys and
+	 * `lastRefreshedAt`. The source is then marked as error, which bumps its
+	 * `updatedAt`, and the failure is thrown.
+	 * @throws {Error} when the lock cannot be taken, or the keys cannot be resolved or written.
 	 */
 	private async refreshSourceInternal(source: TrustedKeySourceEntity): Promise<void> {
-		const failure = await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
-			const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
-			if (!freshSource) return undefined;
-
-			let result: ResolvedSourceKeys | undefined;
-			try {
-				result = await this.resolveKeysForSource(freshSource);
-			} catch (error) {
-				const failure = ensureError(error);
-				await tx.update(TrustedKeySourceEntity, source.id, {
-					status: 'error',
-					lastError: failure.message,
-				});
-				return failure;
-			}
-			await this.storeResolvedKeys(freshSource, result, tx);
-			return undefined;
-		});
-		if (failure) throw failure;
+		try {
+			await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
+				const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
+				if (!freshSource) return;
+				const result = await this.resolveKeysForSource(freshSource);
+				await this.storeResolvedKeys(freshSource, result, tx);
+			});
+		} catch (error) {
+			const failure = ensureError(error);
+			// Written after the rollback: an aborted Postgres transaction rejects every later statement.
+			await this.trustedKeySourceRepository.update(source.id, {
+				status: 'error',
+				lastError: failure.message,
+			});
+			throw failure;
+		}
 	}
 
 	private async storeResolvedKeys(

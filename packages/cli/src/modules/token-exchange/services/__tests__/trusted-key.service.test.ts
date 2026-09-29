@@ -324,18 +324,33 @@ describe('TrustedKeyService', () => {
 			expect(mocks.sourceRepo.find).toHaveBeenCalledWith({ order: { updatedAt: 'ASC' } });
 		});
 
-		it('should mark a failed source inside the lock without a refresh time', async () => {
-			const mocks = createMocks();
-			seedFailingAndDueSources(mocks);
+		it.each(['fetch', 'write'] as const)(
+			'should mark the source as error after a %s failure, without a refresh time',
+			async (failureType) => {
+				const mocks = createMocks();
+				const { failing } = seedFailingAndDueSources(mocks);
+				const error = new Error(`${failureType} failed`);
+				if (failureType === 'fetch') {
+					mocks.jwksResolverService.resolveKeys.mockRejectedValue(error);
+				} else {
+					mocks.jwksResolverService.resolveKeys.mockResolvedValue({
+						keys: [],
+						skipped: [],
+						ttlSeconds: 60,
+					});
+					mocks.tx.delete.mockRejectedValueOnce(error);
+				}
 
-			await mocks.service.refreshDueSources(new AbortController().signal).catch(() => undefined);
+				await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toBe(
+					error,
+				);
 
-			expect(mocks.tx.update).toHaveBeenCalledWith(TrustedKeySourceEntity, 'jwks-1', {
-				status: 'error',
-				lastError: 'jwks down',
-			});
-			expect(mocks.sourceRepo.update).not.toHaveBeenCalled();
-		});
+				expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+					status: 'error',
+					lastError: `${failureType} failed`,
+				});
+			},
+		);
 
 		it('should reject when the sources cannot be loaded', async () => {
 			const { service, sourceRepo } = createMocks();

@@ -1,5 +1,6 @@
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { EntityManager } from '@n8n/typeorm';
 import type { KeyObject } from 'node:crypto';
 
 import type { TrustedKeySourceEntity } from '@/modules/token-exchange/database/entities/trusted-key-source.entity';
@@ -362,25 +363,53 @@ describe('TrustedKeyService (integration)', () => {
 	});
 
 	describe('refreshDueSources', () => {
-		it('should stop at a failed source and try it last on the next run', async () => {
-			const signal = new AbortController().signal;
-			await insertSource({
-				id: 'broken',
-				config: 'invalid-json',
-				updatedAt: new Date('2020-01-01T00:00:00.000Z'),
-			});
-			await insertSource({ id: 'static', updatedAt: new Date('2020-01-02T00:00:00.000Z') });
-
-			await expect(service.refreshDueSources(signal)).rejects.toThrow();
-
-			expect((await sourceRepo.findOneBy({ id: 'broken' }))!.status).toBe('error');
-			expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('pending');
-
-			await expect(service.refreshDueSources(signal)).rejects.toThrow();
-
-			expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('healthy');
-			expect(await keyRepo.findBy({ sourceId: 'static' })).toHaveLength(1);
+		afterEach(() => {
+			vi.restoreAllMocks();
 		});
+
+		/** Rejects every key delete for `sourceId`, so its refresh fails after the fetch. */
+		function failKeyWritesFor(sourceId: string) {
+			const del = EntityManager.prototype.delete;
+			vi.spyOn(EntityManager.prototype, 'delete').mockImplementation(async function (
+				this: EntityManager,
+				target,
+				criteria,
+			) {
+				if (
+					target === TrustedKeyEntity &&
+					(criteria as { sourceId?: string }).sourceId === sourceId
+				) {
+					throw new Error('write failed');
+				}
+				return await del.call(this, target, criteria);
+			});
+		}
+
+		it.each(['fetch', 'write'] as const)(
+			'should stop at a source whose key %s failed and try it last on the next run',
+			async (failureType) => {
+				const signal = new AbortController().signal;
+				await insertSource({
+					id: 'broken',
+					updatedAt: new Date('2020-01-01T00:00:00.000Z'),
+					...(failureType === 'fetch' ? { config: 'invalid-json' } : {}),
+				});
+				await insertSource({ id: 'static', updatedAt: new Date('2020-01-02T00:00:00.000Z') });
+				if (failureType === 'write') {
+					failKeyWritesFor('broken');
+				}
+
+				await expect(service.refreshDueSources(signal)).rejects.toThrow();
+
+				expect((await sourceRepo.findOneBy({ id: 'broken' }))!.status).toBe('error');
+				expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('pending');
+
+				await expect(service.refreshDueSources(signal)).rejects.toThrow();
+
+				expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('healthy');
+				expect(await keyRepo.findBy({ sourceId: 'static' })).toHaveLength(1);
+			},
+		);
 	});
 
 	describe('algorithm validation and key compatibility', () => {
