@@ -264,8 +264,7 @@ const isPreviewActive = computed(function isPreviewActive() {
 // Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
 // Default open for a pending agent so a new agent lands with the assistant
 // already showing; closed otherwise. Persisted per agent, like the preview dock.
-// null = no preference yet, so the default is derived instead of stored — see
-// `InstanceAiThreadView`'s `persistedArtifactPreviewOpen` for the same pattern.
+// null = no preference yet, so the default is derived instead of stored.
 const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
 	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
 });

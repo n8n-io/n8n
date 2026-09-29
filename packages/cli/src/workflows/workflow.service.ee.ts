@@ -520,10 +520,10 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 6. validate against the destination project's policy
-		await this.policyEnforcementService.enforceWorkflowTransfer({
-			workflow,
-			targetProjectId: destinationProject.id,
-		});
+		await this.policyEnforcementService.enforceWorkflowTransfer(
+			{ workflow, targetProjectId: destinationProject.id },
+			{ kind: 'user', user },
+		);
 
 		const wasActive = this.isActiveWorkflow(workflow);
 
@@ -679,7 +679,9 @@ export class EnterpriseWorkflowService {
 
 	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
 		try {
-			await this.activeWorkflowManager.add(workflowId, 'update');
+			await this.activeWorkflowManager.add(workflowId, 'update', undefined, {
+				actor: { kind: 'user', user: { id: userId } },
+			});
 
 			return;
 		} catch (error) {

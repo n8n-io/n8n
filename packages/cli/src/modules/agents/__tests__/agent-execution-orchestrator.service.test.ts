@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -41,6 +42,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -187,6 +189,7 @@ function makeService(sandboxEnabled = false) {
 		mock<Publisher>(),
 		mock<InstanceSettings>(),
 		mock<AgentExecutionUpdateBroadcaster>(),
+		mock<AgentMessageSteeringService>(),
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -244,6 +247,7 @@ function makeService(sandboxEnabled = false) {
 			executionService,
 			chatExecutionService,
 			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
 		),
 		telemetry,
 		runtimeCacheService,
@@ -275,8 +279,8 @@ function makeService(sandboxEnabled = false) {
 	};
 }
 
-async function collect(generator: AsyncGenerator<StreamChunk>) {
-	const chunks: StreamChunk[] = [];
+async function collect(generator: AsyncGenerator<AgentExecutionStreamChunk>) {
+	const chunks: AgentExecutionStreamChunk[] = [];
 	for await (const chunk of generator) chunks.push(chunk);
 	return chunks;
 }
@@ -1490,7 +1494,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(true);
 		executionService.canUseProductionChatThread.mockResolvedValue(true);
-		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
 			service.executeForN8nChatPublished({
@@ -1510,6 +1515,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				attributionUserId: user.id,
 			}),
 		);
+		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeUndefined();
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
 			'n8n-chat-production:user-1',

@@ -1883,7 +1883,7 @@ describe('WorkflowService', () => {
 				arrangeSuccessfulActivation(workflow);
 				workflowHistoryServiceMock.getVersion.mockResolvedValue(versionToActivate);
 
-				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
 					versionId: TARGET_VERSION_ID,
 				});
 
@@ -1896,6 +1896,7 @@ describe('WorkflowService', () => {
 						},
 						projectId: 'project-1',
 					},
+					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);
 			});
 
@@ -1913,7 +1914,7 @@ describe('WorkflowService', () => {
 					candidate.nodes.push({ name: 'Injected by hook' } as INode);
 				});
 
-				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
 					versionId: TARGET_VERSION_ID,
 				});
 
@@ -1921,6 +1922,7 @@ describe('WorkflowService', () => {
 					expect.objectContaining({
 						workflow: expect.objectContaining({ nodes: originalNodes }),
 					}),
+					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);
 			});
 
@@ -1937,7 +1939,7 @@ describe('WorkflowService', () => {
 					candidate.nodes = [{ name: 'Rewritten by hook' } as INode];
 				});
 
-				await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
 					versionId: TARGET_VERSION_ID,
 				});
 
@@ -1945,6 +1947,7 @@ describe('WorkflowService', () => {
 					expect.objectContaining({
 						workflow: expect.objectContaining({ nodes: versionToActivate.nodes }),
 					}),
+					{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 				);
 			});
 
@@ -2740,11 +2743,14 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: WORKFLOW_ID, name: 'New name', nodes: submittedNodes },
-				storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: WORKFLOW_ID, name: 'New name', nodes: submittedNodes },
+					storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			);
 		});
 
 		// A partial update (e.g. renaming only) omits `nodes` entirely. The check still needs
@@ -2756,11 +2762,14 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 			);
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					storedWorkflow: { id: WORKFLOW_ID, name: 'Stored name', nodes: storedNodes },
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+			);
 		});
 
 		it('updates the workflow unchanged when the check clears', async () => {

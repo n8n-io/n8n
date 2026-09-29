@@ -493,12 +493,6 @@ const allTriggerNodesDisabled = computed(() => {
 const selectableTriggerNodes = computed(() =>
 	triggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
 );
-const isRunButtonSplit = computed(() => {
-	return (
-		selectableTriggerNodes.value.length > 1 &&
-		workflowExecutionState.value.selectedTriggerNodeName !== undefined
-	);
-});
 
 function onTidyUp(
 	event: CanvasLayoutEvent,
@@ -2282,12 +2276,10 @@ onBeforeUnmount(() => {
 					<CanvasStopCurrentExecutionButton
 						v-if="isStopExecutionButtonVisible"
 						:stopping="isStoppingExecution"
-						:size="isRunButtonSplit ? 'xlarge' : 'large'"
 						@click="onStopExecution"
 					/>
 					<CanvasStopWaitingForWebhookButton
 						v-if="isStopWaitingForWebhookButtonVisible"
-						:size="isRunButtonSplit ? 'xlarge' : 'large'"
 						@click="onStopWaitingForWebhook"
 					/>
 				</div>

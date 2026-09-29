@@ -131,9 +131,16 @@ function selectTurnExecutions(
 
 function continuesExecution(previous: AgentExecution, current: AgentExecution): boolean {
 	if (current.inputMessageIds !== undefined) {
+		const firstInputId = current.inputMessageIds[0];
+		if (!firstInputId) return false;
+		if (previous.inputMessageIds !== undefined) {
+			return firstInputId === previous.inputMessageIds[0];
+		}
+		// A legacy continuation gets its first input link when it consumes steering.
 		return (
-			current.inputMessageIds.length > 0 &&
-			current.inputMessageIds[0] === previous.inputMessageIds?.[0]
+			current.timeline?.some(
+				(event) => event.type === 'input' && event.messageId === firstInputId,
+			) ?? false
 		);
 	}
 	return current.userMessage === null;
