@@ -94,6 +94,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { toResponseExpectation } from './engine-v2-response-expectation';
 import { EngineV2Webhooks } from './engine-v2-webhooks';
 import {
 	applySandboxCSP,
@@ -1213,13 +1214,13 @@ export async function executeWebhook(
 		// Before the run, because a short workflow answers before `startExecution`
 		// returns and nothing replays a missed response. The id is minted here, so
 		// the run and the listener agree on it.
-		if (routesToEngineV2 && responseMode !== 'onReceived') {
+		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
 			const engineExecutionId = createExecutionIdV2();
 			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
-				responseMode === 'responseNode',
+				toResponseExpectation(responseMode),
 			);
-			runData.engineExecutionId = engineExecutionId;
+			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
