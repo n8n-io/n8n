@@ -467,6 +467,7 @@ export class ToolCallExecutor {
 			persistence: ctx.persistence,
 			telemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
+			guardrails: ctx.guardrails,
 			abortSignal: ctx.abortSignal,
 			isAborted: ctx.isAborted,
 		});
