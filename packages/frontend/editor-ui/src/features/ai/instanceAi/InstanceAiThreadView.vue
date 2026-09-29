@@ -20,6 +20,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	DEBOUNCE_TIME,
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
@@ -73,6 +74,7 @@ const props = defineProps<{ threadId: string }>();
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -125,6 +127,12 @@ const activeFixWithAiOffer = computed(() => {
 const isAgentEvalsEnabled = useAgentEvalsFlag();
 const agentEvalsStore = useAgentEvalsStore();
 
+// Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that bypasses the
+// capability check below, e.g. for demos or support debugging.
+const forceAgentWorthTesting = computed(
+	() => appSettingsStore.settings.evaluation?.forceAgentWorthTesting === true,
+);
+
 // Passed the local runtime because this component provides the thread rather
 // than inheriting it, so the composable's own `useThread()` inject would fail.
 const isAgentWorking = useIsAgentWorking(thread);
@@ -171,7 +179,7 @@ const activeTestAgentOffer = computed(() => {
 		agentEvalsStore.getDatasets(target.agentId).length
 	)
 		return null;
-	if (!isAgentWorthTesting(offerAgentSummary.value)) return null;
+	if (!isAgentWorthTesting(offerAgentSummary.value, forceAgentWorthTesting.value)) return null;
 
 	return target;
 });

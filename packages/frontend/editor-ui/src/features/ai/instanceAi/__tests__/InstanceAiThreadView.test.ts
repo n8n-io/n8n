@@ -2518,6 +2518,23 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
+		it('offers the suggestion when forced, even for an agent with no tools or skills', async () => {
+			seedReadyAgent();
+			testAgentOfferState.capabilitySummary = {
+				...(testAgentOfferState.capabilitySummary as Record<string, unknown>),
+				tools: [],
+				skills: [],
+			};
+			useSettingsStore().settings.evaluation = {
+				...useSettingsStore().settings.evaluation,
+				forceAgentWorthTesting: true,
+			};
+
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+		});
+
 		it('stays hidden once dismissed for this agent', () => {
 			seedReadyAgent();
 			store.getThreadMetadata.mockReturnValue({
