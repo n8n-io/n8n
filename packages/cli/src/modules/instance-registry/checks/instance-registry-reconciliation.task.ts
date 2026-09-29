@@ -19,6 +19,8 @@ export class InstanceRegistryReconciliationTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
+	readonly maxAttempts = 1;
+
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
 		durable: true,
