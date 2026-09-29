@@ -83,6 +83,8 @@ paths:
     $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:
     $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
+  /settings/otel:
+    $ref: './handlers/otel/spec/paths/settings.otel.yml'
   /settings/otel/test-trace:
     $ref: './handlers/otel/spec/paths/settings.otel.test-trace.yml'
   /settings/sso/saml:
