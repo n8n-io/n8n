@@ -355,11 +355,14 @@ export class DatabricksVectorStore extends VectorStore {
 				`Column ${vectorColumn} holds the embedding vector of ${name}. Select another Content Column`,
 			);
 		}
-		const columns = new Set(schemaColumns ?? []);
-		if (columns.size > 0 && !columns.has(this.contentColumn)) {
-			const selectable = [...columns].filter((column) => !this.reserved.has(column));
+		// An index that declares an empty schema is known, not unknown: letting it
+		// through trades this message for a raw Databricks schema error.
+		if (schemaColumns !== undefined && !schemaColumns.includes(this.contentColumn)) {
+			const selectable = schemaColumns.filter((column) => !this.reserved.has(column));
 			throw new UserError(
-				`Index ${name} has no column ${this.contentColumn}. Select a Content Column from: ${selectable.join(', ')}`,
+				selectable.length > 0
+					? `Index ${name} has no column ${this.contentColumn}. Select a Content Column from: ${selectable.join(', ')}`
+					: `Index ${name} has no column ${this.contentColumn}, and declares no other column to select`,
 			);
 		}
 		return vectorColumn;

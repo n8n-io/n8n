@@ -477,6 +477,23 @@ describe('DatabricksVectorStore', () => {
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
+		it('rejects an index that declares an empty schema, rather than letting Databricks reject it', async () => {
+			const emptySchema = {
+				...directDescribe,
+				direct_access_index_spec: {
+					...directDescribe.direct_access_index_spec,
+					schema_json: '{}',
+				},
+			};
+			const store = await createStore(emptySchema, { contentColumn: 'text' });
+
+			await expect(store.addDocuments([{ pageContent: 'hello', metadata: {} }])).rejects.toThrow(
+				'Index cat.sch.idx has no column text, and declares no other column to select',
+			);
+			expect(embeddings.embedDocuments).not.toHaveBeenCalled();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
 		it('rejects a managed Delta Sync index without a request', async () => {
 			const store = await managedStore();
 
