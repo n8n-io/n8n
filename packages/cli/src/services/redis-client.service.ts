@@ -4,6 +4,7 @@ import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
+import { UserError } from 'n8n-workflow';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
 
@@ -69,7 +70,9 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const client =
 			this.clusterNodes().length > 0
 				? this.createClusterClient(options, retryStrategy)
-				: this.createRegularClient(options, retryStrategy);
+				: this.sentinelNodes().length > 0
+					? this.createSentinelClient(options, retryStrategy)
+					: this.createRegularClient(options, retryStrategy);
 
 		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
@@ -140,6 +143,48 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
 
 		return clusterClient;
+	}
+
+	private createSentinelClient(
+		{ type, extraOptions }: RedisClientCreateOptions,
+		retryStrategy: RetryStrategy,
+	) {
+		const options = this.getOptions({ extraOptions, retryStrategy });
+
+		const { sentinelMasterName, sentinelPassword, sentinelTls, tlsConfig } =
+			this.globalConfig.queue.bull.redis;
+
+		if (sentinelMasterName.length === 0) {
+			throw new UserError(
+				'Redis Sentinel requires the name of the master group to connect to. Please set `QUEUE_BULL_REDIS_SENTINEL_MASTER_NAME`.',
+			);
+		}
+
+		const sentinels = this.sentinelNodes();
+
+		options.sentinels = sentinels;
+		options.name = sentinelMasterName;
+		if (sentinelPassword.length > 0) options.sentinelPassword = sentinelPassword;
+
+		// `tls` above only secures the data-node connection. Connecting to the
+		// Sentinel nodes over TLS needs `enableTLSForSentinelMode` + `sentinelTLS`.
+		if (sentinelTls) {
+			options.enableTLSForSentinelMode = true;
+			options.sentinelTLS = {
+				servername: tlsConfig.serverName || undefined,
+				rejectUnauthorized: tlsConfig.rejectUnauthorized,
+			};
+		}
+
+		const client = new ioRedis(options);
+
+		this.logger.debug(`Started Redis Sentinel client ${type}`, {
+			type,
+			sentinels,
+			name: sentinelMasterName,
+		});
+
+		return client;
 	}
 
 	private getOptions({
@@ -275,12 +320,22 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private clusterNodes() {
-		return this.globalConfig.queue.bull.redis.clusterNodes
+		return this.parseNodes(this.globalConfig.queue.bull.redis.clusterNodes);
+	}
+
+	private sentinelNodes() {
+		return this.parseNodes(this.globalConfig.queue.bull.redis.sentinelNodes);
+	}
+
+	/** Parse a comma-separated list of `{host}:{port}` pairs into host-port objects. */
+	private parseNodes(nodes: string) {
+		return nodes
 			.split(',')
-			.filter((pair) => pair.trim().length > 0)
+			.map((pair) => pair.trim())
+			.filter((pair) => pair.length > 0)
 			.map((pair) => {
 				const [host, port] = pair.split(':');
-				return { host, port: parseInt(port) };
+				return { host, port: parseInt(port, 10) };
 			});
 	}
 
