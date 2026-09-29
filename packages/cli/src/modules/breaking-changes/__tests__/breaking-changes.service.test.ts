@@ -187,6 +187,16 @@ describe('BreakingChangeService', () => {
 			expect(result2).toEqual(result3);
 		});
 
+		it('should share one scan between a report request and a direct detect call', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			// `count` runs once per scan, so it tells how many scans really ran.
+			await Promise.all([service.getDetectionResults('v2'), service.detect('v2')]);
+
+			expect(workflowRepository.count).toHaveBeenCalledTimes(1);
+		});
+
 		it('should skip a rule that throws for a workflow and keep the other results', async () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),

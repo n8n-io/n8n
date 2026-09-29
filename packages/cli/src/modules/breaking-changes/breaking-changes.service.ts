@@ -44,6 +44,14 @@ export class BreakingChangeService {
 		BreakingChangeVersion,
 		Promise<BreakingChangeReportResult>
 	>();
+	/**
+	 * In-flight scans per version. Batch rules keep state between `reset()` and
+	 * `produceReport()`, so two scans of one version must never overlap.
+	 */
+	private readonly ongoingScans = new Map<
+		BreakingChangeVersion,
+		Promise<BreakingChangeReportResult>
+	>();
 
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
@@ -278,20 +286,31 @@ export class BreakingChangeService {
 	async getDetectionResults(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		// Check if there's already an ongoing detection for this version
-		const existingDetection = this.ongoingDetections.get(targetVersion);
-		if (existingDetection) {
+		return await this.shareInFlight(
+			this.ongoingDetections,
+			targetVersion,
+			async () => await this.detectWithCache(targetVersion),
+		);
+	}
+
+	/** Joins the promise already in `inFlight` for the version, or starts and registers a new one. */
+	private async shareInFlight<T>(
+		inFlight: Map<BreakingChangeVersion, Promise<T>>,
+		targetVersion: BreakingChangeVersion,
+		start: () => Promise<T>,
+	): Promise<T> {
+		const existing = inFlight.get(targetVersion);
+		if (existing) {
 			this.logger.debug('Reusing ongoing detection', { targetVersion });
-			return await existingDetection;
+			return await existing;
 		}
 
-		const detectionPromise = this.detectWithCache(targetVersion);
-		this.ongoingDetections.set(targetVersion, detectionPromise);
-
+		const promise = start();
+		inFlight.set(targetVersion, promise);
 		try {
-			return await detectionPromise;
+			return await promise;
 		} finally {
-			this.ongoingDetections.delete(targetVersion);
+			inFlight.delete(targetVersion);
 		}
 	}
 
@@ -328,7 +347,16 @@ export class BreakingChangeService {
 		return durationMs > BreakingChangeService.REPORT_DURATION_CACHE_THRESHOLD;
 	}
 
+	/** Runs a full, uncached scan. Concurrent calls for one version share a single scan. */
 	async detect(targetVersion: BreakingChangeVersion): Promise<BreakingChangeReportResult> {
+		return await this.shareInFlight(
+			this.ongoingScans,
+			targetVersion,
+			async () => await this.runScan(targetVersion),
+		);
+	}
+
+	private async runScan(targetVersion: BreakingChangeVersion): Promise<BreakingChangeReportResult> {
 		const startTime = Date.now();
 		this.logger.debug('Starting breaking change detection', { targetVersion });
 
