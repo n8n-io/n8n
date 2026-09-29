@@ -202,16 +202,7 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-<<<<<<< HEAD
-			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
-=======
-			<AgentActivityTree
-				v-if="activityTree"
-				:agent-node="activityTree"
-				:message-id="props.message.id"
-				:run-id="props.message.runId"
-			/>
->>>>>>> df3945af (fix(editor): Correct the n8n Assistant onboarding greeting animations and actions (no-changelog) (#39829))
+			<AgentActivityTree v-if="activityTree" :agent-node="activityTree" />
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
