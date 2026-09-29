@@ -240,7 +240,6 @@ watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
 
-// The All page size is -1. v-for needs a positive count for the loading placeholder.
 const ALL_PAGE_SKELETON_ROWS = 10;
 
 const skeletonRowCount = computed(() =>
@@ -250,7 +249,6 @@ const skeletonRowCount = computed(() =>
 );
 
 watch(itemsPerPage, (value) => {
-	// TanStack clamps page size to at least 1, so All must skip setPageSize.
 	if (value === PAGINATION_ALL_ITEMS_PER_PAGE) {
 		void emitUpdateOptions({
 			page: page.value,
@@ -263,7 +261,6 @@ watch(itemsPerPage, (value) => {
 	table.setPageSize(value);
 });
 
-// Named apart from the `pagination` prop, which only toggles the pager.
 const paginationState = computed<PaginationState>(() => ({
 	pageIndex: page.value,
 	pageSize: itemsPerPage.value,
