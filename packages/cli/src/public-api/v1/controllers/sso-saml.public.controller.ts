@@ -17,7 +17,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 
 import { toSamlConfigurationResponse, toSamlPreferencesUpdate } from './sso-saml.mapper';
