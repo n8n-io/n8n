@@ -92,12 +92,18 @@ const logTokenFailures: RequestHandler = (req, res, next) => {
 			// The SDK's handler parses the form body before it responds, so the
 			// request body is populated by the time this runs.
 			const requestBody = isRecord(req.body) ? req.body : {};
+			// A `client_secret_basic` request has no `client_id` field; its id is the
+			// Basic username.
+			const clientId =
+				typeof requestBody.client_id === 'string'
+					? requestBody.client_id
+					: OAuthHelpers.basicAuthClientId(req.headers.authorization);
 			logger.warn('OAuth token request failed', {
 				statusCode: res.statusCode,
 				error: errorBody.error,
 				errorDescription: errorBody.error_description,
 				grantType: requestBody.grant_type,
-				clientId: requestBody.client_id,
+				clientId,
 			});
 		}
 		return originalJson(body);

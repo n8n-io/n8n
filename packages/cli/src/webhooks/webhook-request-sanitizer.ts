@@ -31,6 +31,9 @@ const BROWSER_ID_COOKIE_NAME = 'n8n-browserId';
 const DISALLOWED_COOKIES = new Set([
 	AUTH_COOKIE_NAME,
 	BROWSER_ID_COOKIE_NAME,
+	// The OAuth authorization session used to be one cookie with this exact
+	// name. A browser can still hold one for the 10 minutes after an upgrade.
+	'n8n-oauth-session',
 	OAUTH_BINDING_COOKIE_NAME,
 	OIDC_ID_TOKEN_COOKIE_NAME,
 	OIDC_STATE_COOKIE_NAME,

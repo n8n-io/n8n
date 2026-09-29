@@ -16,6 +16,7 @@ describe('OAuthSessionService', () => {
 	const globalConfig = mock<GlobalConfig>({
 		userManagement: { jwtSecret: 'random-secret' },
 		auth: { cookie: { secure: true, samesite: 'lax' } },
+		endpoints: { rest: 'rest' },
 	});
 	const jwtService = new JwtService(mock(), globalConfig);
 	const oauthSessionService = new OAuthSessionService(jwtService, globalConfig);
@@ -41,7 +42,50 @@ describe('OAuthSessionService', () => {
 			expect(res.cookie).toHaveBeenCalledWith(
 				`${OAUTH_SESSION_COOKIE_PREFIX}${flowId}`,
 				expect.any(String),
-				expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'lax' }),
+				expect.objectContaining({
+					httpOnly: true,
+					secure: true,
+					sameSite: 'lax',
+					// The consent endpoints are the only readers, so a pending
+					// authorization never rides along on an unrelated request.
+					path: '/rest/consent',
+				}),
+			);
+		});
+
+		// `strict` would drop the cookie when another site hands the browser to
+		// /authorize, which is how every flow starts.
+		it('should relax a strict sameSite setting to lax', () => {
+			globalConfig.auth.cookie.samesite = 'strict';
+			const res = responseWith();
+
+			try {
+				oauthSessionService.createSession(res, sessionPayload);
+			} finally {
+				globalConfig.auth.cookie.samesite = 'lax';
+			}
+
+			expect(res.cookie).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(String),
+				expect.objectContaining({ sameSite: 'lax' }),
+			);
+		});
+
+		it('should pass a none sameSite setting through', () => {
+			globalConfig.auth.cookie.samesite = 'none';
+			const res = responseWith();
+
+			try {
+				oauthSessionService.createSession(res, sessionPayload);
+			} finally {
+				globalConfig.auth.cookie.samesite = 'lax';
+			}
+
+			expect(res.cookie).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(String),
+				expect.objectContaining({ sameSite: 'none' }),
 			);
 		});
 
@@ -106,10 +150,14 @@ describe('OAuthSessionService', () => {
 			).toBeUndefined();
 		});
 
+		// Keyed by the malformed id, so only the guard can make these pass: an
+		// implementation that looked the name up regardless would return the token.
 		it.each(['', 'not-a-flow-id', '../n8n-auth', '__proto__'])(
 			'should reject the malformed flow id %s',
 			(flowId) => {
-				expect(oauthSessionService.getSessionToken({}, flowId)).toBeUndefined();
+				const cookies = { [`${OAUTH_SESSION_COOKIE_PREFIX}${flowId}`]: 'stale-token' };
+
+				expect(oauthSessionService.getSessionToken(cookies, flowId)).toBeUndefined();
 			},
 		);
 	});

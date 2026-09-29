@@ -344,6 +344,8 @@ describe('webhookRequestSanitizer', () => {
 		const N8N_ISSUED_COOKIES = [
 			// One authorization flow's session cookie, named by its flow id.
 			`${OAUTH_SESSION_COOKIE_PREFIX}ktest00-0123456789abcdef01234567`,
+			// The name the authorization session used before it was keyed per flow.
+			'n8n-oauth-session',
 			OAUTH_BINDING_COOKIE_NAME,
 			OIDC_ID_TOKEN_COOKIE_NAME,
 			OIDC_STATE_COOKIE_NAME,
@@ -364,6 +366,33 @@ describe('webhookRequestSanitizer', () => {
 			sanitizeWebhookRequest(mockRequest);
 
 			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+
+		// A browser holds one authorization-session cookie for each pending flow, so
+		// matching the prefix has to take all of them, not one known name.
+		it('should remove every pending authorization flow cookie', () => {
+			const first = `${OAUTH_SESSION_COOKIE_PREFIX}ktest00-0123456789abcdef01234567`;
+			const second = `${OAUTH_SESSION_COOKIE_PREFIX}ktest01-89abcdef0123456789abcdef`;
+			mockRequest.headers = { cookie: `${first}=a; ${second}=b; other-cookie=value` };
+			mockRequest.cookies = { [first]: 'a', [second]: 'b', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+
+		it('should leave a cookie that begins with the session name but not the separator', () => {
+			mockRequest.headers = { cookie: 'n8n-oauth-sessions=abc123; other-cookie=value' };
+			mockRequest.cookies = { 'n8n-oauth-sessions': 'abc123', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('n8n-oauth-sessions=abc123; other-cookie=value');
+			expect(mockRequest.cookies).toEqual({
+				'n8n-oauth-sessions': 'abc123',
+				'other-cookie': 'value',
+			});
 		});
 	});
 

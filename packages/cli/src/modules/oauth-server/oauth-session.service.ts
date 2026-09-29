@@ -24,9 +24,11 @@ export const OAUTH_SESSION_COOKIE_PREFIX = 'n8n-oauth-session-';
 const SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds; // 10 minutes
 
 /**
- * Pending flows one browser may hold at once. The cap bounds what the browser
- * sends on every request, and keeps these cookies well inside the per-domain
- * cookie budget so they can never push the auth cookie out of it.
+ * Pending flows one browser may hold at once. Two /authorize calls that overlap
+ * each read the same cookie snapshot, so this bounds the common case rather
+ * than every case. What keeps the bound from mattering is the cookie path: the
+ * consent endpoints are the only readers, so these cookies never ride along on
+ * another request no matter how many of them a browser holds.
  */
 const MAX_PENDING_FLOWS = 3;
 
@@ -122,6 +124,9 @@ export class OAuthSessionService {
 	 * Attributes come from the instance's cookie config, the same source as the
 	 * auth cookie — `sameSite` clamped to a `lax` minimum, because `strict`
 	 * would drop the cookie on a hand-off into /authorize from another site.
+	 *
+	 * The path covers the consent endpoints and nothing else, so a pending
+	 * authorization never travels with an unrelated request.
 	 */
 	private cookieOptions(): CookieOptions {
 		const { secure, samesite } = this.globalConfig.auth.cookie;
@@ -129,7 +134,7 @@ export class OAuthSessionService {
 			httpOnly: true,
 			secure,
 			sameSite: samesite === 'strict' ? 'lax' : samesite,
-			path: '/',
+			path: `/${this.globalConfig.endpoints.rest}/consent`,
 		};
 	}
 

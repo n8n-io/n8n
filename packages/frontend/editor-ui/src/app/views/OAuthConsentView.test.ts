@@ -57,6 +57,15 @@ describe('OAuthConsentView', () => {
 		locationHrefSpy?.mockRestore();
 	});
 
+	// The URL is the only place the flow id comes from, so the screen has to read
+	// and show the request the /authorize redirect named.
+	it('should load the flow named in the URL', async () => {
+		renderComponent();
+		await waitAllPromises();
+
+		expect(consentStore.fetchConsentDetails).toHaveBeenCalledWith(FLOW_ID);
+	});
+
 	it('should show the workflow name and hide the permission list when a resource is named', async () => {
 		consentStore.consentDetails = {
 			clientName: 'Test MCP Client',
