@@ -565,9 +565,9 @@ describe('AgentChatPanel', () => {
 		};
 
 		it.each([
-			{ action: 'approve', decision: { approved: true } },
-			{ action: 'reject', decision: { approved: false } },
-			{ action: 'session', decision: { approved: true, scope: 'session' } },
+			{ action: 'allow-once', decision: { approved: true } },
+			{ action: 'deny', decision: { approved: false } },
+			{ action: 'always-allow', decision: { approved: true, scope: 'session' } },
 		])(
 			'sends $action to the selected child while the parent streams',
 			async ({ action, decision }) => {
@@ -586,7 +586,7 @@ describe('AgentChatPanel', () => {
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 				expect(wrapper.text()).toContain('Approval for Check escalations');
 				expect(wrapper.text()).toContain('Other child');
-				const button = wrapper.get(`[data-test-id="agent-approval-${action}"]`);
+				const button = wrapper.get(`[data-test-id="approval-card-${action}"]`);
 				await button.trigger('click');
 				expect(button.attributes('disabled')).toBeDefined();
 				expect(respondToApprovalMock).toHaveBeenCalledExactlyOnceWith({
@@ -612,7 +612,7 @@ describe('AgentChatPanel', () => {
 				respondToApprovalMock.mockReturnValueOnce(response.promise);
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
-				const button = wrapper.get('[data-test-id="agent-approval-approve"]');
+				const button = wrapper.get('[data-test-id="approval-card-allow-once"]');
 				await button.trigger('click');
 				if (state === 'hidden') await wrapper.setProps({ visible: false });
 				if (state === 'switched') await wrapper.setProps({ continueSessionId: 't2' });

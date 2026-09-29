@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import N8nIcon, { type IconName } from '../N8nIcon';
 import N8nText from '../N8nText';
 
@@ -30,8 +31,14 @@ interface ApprovalCardProps {
 	description?: string;
 	/** Accessible name for the details region. Defaults to the title. */
 	descriptionLabel?: string;
-	/** Available decisions, in display and keyboard order. */
-	options: readonly ApprovalOption[];
+	/** Custom decisions. Defaults to the standard allow and deny choices. */
+	options?: readonly ApprovalOption[];
+	/** Add the session choice to the standard decisions. */
+	supportsSessionApproval?: boolean;
+	/** Mark the standard single-use choice as destructive. */
+	destructive?: boolean;
+	/** Show a saved decision instead of the available choices. */
+	decision?: 'allowed' | 'denied';
 	/** Prevent mouse and keyboard decisions while the card is inactive. */
 	disabled?: boolean;
 	/** Focus the decisions on mount. Disable this in a chat timeline. */
@@ -44,6 +51,30 @@ const props = withDefaults(defineProps<ApprovalCardProps>(), {
 	autofocus: true,
 });
 const emit = defineEmits<{ select: [key: string] }>();
+const { t } = useI18n();
+
+const options = computed<readonly ApprovalOption[]>(() => {
+	if (props.options) return props.options;
+	const choices: ApprovalOption[] = [];
+	if (props.supportsSessionApproval) {
+		choices.push({
+			key: 'always-allow',
+			icon: 'check-check',
+			label: t('approvalCard.alwaysAllow'),
+			suffix: t('approvalCard.alwaysAllowSuffix'),
+		});
+	}
+	choices.push(
+		{
+			key: 'allow-once',
+			icon: 'check',
+			label: t('approvalCard.allowOnce'),
+			destructive: props.destructive,
+		},
+		{ key: 'deny', icon: 'ban', label: t('approvalCard.deny') },
+	);
+	return choices;
+});
 
 // Chat timelines can show more than one approval at a time.
 const id = useId();
@@ -51,7 +82,7 @@ const containerRef = useTemplateRef<HTMLElement>('container');
 const highlightedIndex = ref(0);
 
 watch(
-	() => props.options.length,
+	() => options.value.length,
 	(length) => {
 		if (highlightedIndex.value >= length) highlightedIndex.value = Math.max(0, length - 1);
 	},
@@ -67,10 +98,10 @@ function selectOption(key: string) {
 }
 
 function onKeydown(event: KeyboardEvent) {
-	if (props.disabled || props.options.length === 0) return;
+	if (props.disabled || options.value.length === 0) return;
 	if (event.key === 'ArrowDown') {
 		event.preventDefault();
-		highlightedIndex.value = Math.min(props.options.length - 1, highlightedIndex.value + 1);
+		highlightedIndex.value = Math.min(options.value.length - 1, highlightedIndex.value + 1);
 		return;
 	}
 	if (event.key === 'ArrowUp') {
@@ -80,7 +111,7 @@ function onKeydown(event: KeyboardEvent) {
 	}
 	if (event.key === 'Enter') {
 		event.preventDefault();
-		const option = props.options[highlightedIndex.value];
+		const option = options.value[highlightedIndex.value];
 		if (option) selectOption(option.key);
 	}
 }
@@ -104,53 +135,62 @@ function onKeydown(event: KeyboardEvent) {
 			<slot />
 		</div>
 		<div :class="$style.footer">
-			<slot name="footer">
-				<div
-					ref="container"
-					:class="$style.list"
-					role="listbox"
-					:tabindex="disabled ? -1 : 0"
-					:aria-disabled="disabled"
-					:aria-labelledby="`${id}-title`"
-					:aria-activedescendant="
-						options[highlightedIndex] ? `${id}-${options[highlightedIndex].key}` : undefined
-					"
-					@keydown="onKeydown"
+			<div v-if="decision" :class="$style.resolved">
+				<N8nIcon
+					:icon="decision === 'allowed' ? 'circle-check' : 'circle-x'"
+					size="small"
+					:color="decision === 'allowed' ? 'success' : 'danger'"
+				/>
+				<N8nText size="small">
+					{{ t(decision === 'allowed' ? 'approvalCard.allowed' : 'approvalCard.denied') }}
+				</N8nText>
+			</div>
+			<div
+				v-else
+				ref="container"
+				:class="$style.list"
+				role="listbox"
+				:tabindex="disabled ? -1 : 0"
+				:aria-disabled="disabled"
+				:aria-labelledby="`${id}-title`"
+				:aria-activedescendant="
+					options[highlightedIndex] ? `${id}-${options[highlightedIndex].key}` : undefined
+				"
+				@keydown="onKeydown"
+			>
+				<button
+					v-for="(option, idx) in options"
+					:id="`${id}-${option.key}`"
+					:key="option.key"
+					type="button"
+					role="option"
+					:disabled="disabled"
+					:aria-selected="highlightedIndex === idx"
+					:class="[
+						$style.row,
+						highlightedIndex === idx && $style.highlighted,
+						option.destructive && $style.rowDestructive,
+					]"
+					:data-test-id="option.testId ?? `approval-card-${option.key}`"
+					tabindex="-1"
+					@click="selectOption(option.key)"
+					@mouseenter="highlightedIndex = idx"
 				>
-					<button
-						v-for="(option, idx) in options"
-						:id="`${id}-${option.key}`"
-						:key="option.key"
-						type="button"
-						role="option"
-						:disabled="disabled"
-						:aria-selected="highlightedIndex === idx"
-						:class="[
-							$style.row,
-							highlightedIndex === idx && $style.highlighted,
-							option.destructive && $style.rowDestructive,
-						]"
-						:data-test-id="option.testId"
-						tabindex="-1"
-						@click="selectOption(option.key)"
-						@mouseenter="highlightedIndex = idx"
-					>
-						<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
-						<span :class="$style.label">
-							<span :class="$style.labelStrong">{{ option.label }}</span>
-							<span v-if="option.suffix" :class="$style.labelMuted">{{ option.suffix }}</span>
-						</span>
-						<span v-if="option.withArrow !== false" :class="$style.trailingIndicator">
-							<N8nIcon
-								:class="$style.trailingIcon"
-								icon="arrow-right"
-								size="large"
-								:stroke-width="2.5"
-							/>
-						</span>
-					</button>
-				</div>
-			</slot>
+					<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
+					<span :class="$style.label">
+						<span :class="$style.labelStrong">{{ option.label }}</span>
+						<span v-if="option.suffix" :class="$style.labelMuted">{{ option.suffix }}</span>
+					</span>
+					<span v-if="option.withArrow !== false" :class="$style.trailingIndicator">
+						<N8nIcon
+							:class="$style.trailingIcon"
+							icon="arrow-right"
+							size="large"
+							:stroke-width="2.5"
+						/>
+					</span>
+				</button>
+			</div>
 		</div>
 	</div>
 </template>
@@ -167,6 +207,12 @@ function onKeydown(event: KeyboardEvent) {
 
 .disabled {
 	opacity: 0.75;
+}
+
+.resolved {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .body {

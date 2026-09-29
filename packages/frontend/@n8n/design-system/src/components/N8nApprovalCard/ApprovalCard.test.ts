@@ -10,12 +10,21 @@ const OPTIONS: ApprovalOption[] = [
 ];
 
 describe('N8nApprovalCard', () => {
-	it('pre-selects the first option on mount', () => {
-		const { getByTestId } = render(N8nApprovalCard, {
-			props: { title: 'Approval required', options: OPTIONS },
+	it('offers the standard session choice only when supported', async () => {
+		const { getByRole, queryByRole, getAllByRole, rerender } = render(N8nApprovalCard, {
+			props: { title: 'Approval required', supportsSessionApproval: true },
 		});
-		expect(getByTestId('opt-always-allow').getAttribute('aria-selected')).toBe('true');
-		expect(getByTestId('opt-allow-once').getAttribute('aria-selected')).toBe('false');
+		expect(
+			getByRole('option', { name: 'Always allow during this session' }).getAttribute(
+				'aria-selected',
+			),
+		).toBe('true');
+		expect(getByRole('option', { name: 'Allow once' }).getAttribute('aria-selected')).toBe('false');
+		expect(getByRole('option', { name: 'Deny' })).toBeVisible();
+		await rerender({ supportsSessionApproval: false });
+		expect(queryByRole('option', { name: /Always allow/ })).toBeNull();
+		expect(getAllByRole('option')).toHaveLength(2);
+		expect(getByRole('option', { name: 'Allow once' }).getAttribute('aria-selected')).toBe('true');
 	});
 
 	it('moves highlight on ArrowDown and stops at the last option', async () => {

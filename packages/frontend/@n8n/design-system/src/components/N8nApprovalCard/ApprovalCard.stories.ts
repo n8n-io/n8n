@@ -8,11 +8,7 @@ const meta = {
 	args: {
 		title: 'Approval required',
 		description: 'The agent wants to run the Calculator tool.',
-		options: [
-			{ key: 'session', icon: 'check-check', label: 'Allow for this session' },
-			{ key: 'once', icon: 'check', label: 'Approve' },
-			{ key: 'reject', icon: 'ban', label: 'Reject' },
-		],
+		supportsSessionApproval: true,
 	},
 } satisfies Meta<typeof N8nApprovalCard>;
 
@@ -29,19 +25,11 @@ export const Destructive: Story = {
 	args: {
 		title: 'Delete workflow?',
 		description: 'This will permanently delete the workflow and its execution history.',
-		options: [
-			{ key: 'once', icon: 'check', label: 'Delete workflow', destructive: true },
-			{ key: 'reject', icon: 'ban', label: 'Cancel' },
-		],
+		supportsSessionApproval: false,
+		destructive: true,
 	},
 };
 
 export const Resolved: Story = {
-	args: { disabled: true },
-	render: (args) => ({
-		components: { N8nApprovalCard },
-		setup: () => ({ args }),
-		template:
-			'<N8nApprovalCard v-bind="args"><template #footer>Approved</template></N8nApprovalCard>',
-	}),
+	args: { disabled: true, decision: 'allowed' },
 };

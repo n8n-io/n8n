@@ -255,60 +255,32 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 	return details ? formatApprovalDetails(details) : (item.toolCall.confirmation.message ?? '');
 }
 
-/**
- * Build the floating-approval option list. Destructive confirmations hide
- * "Always allow" — by design, irreversible actions must be opted into one
- * at a time.
- */
-function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
-	const destructive = isDestructive(item);
+function canAlwaysAllow(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
-	if (conf.credentialDestination) {
-		return [
-			{
-				key: 'allow-once',
-				icon: 'check',
-				label: i18n.baseText('instanceAi.confirmation.credentialDestination.approve'),
-				testId: 'instance-ai-panel-confirm-approve',
-			},
-			{
-				key: 'deny',
-				icon: 'ban',
-				label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
-				testId: 'instance-ai-panel-confirm-deny',
-			},
-		];
-	}
 	// Workflow edits must be scoped to a workflow ID — never offer a session grant
 	// that would collapse to a blanket tool key.
-	const alwaysAllowAvailable =
-		!destructive &&
+	return (
+		!isDestructive(item) &&
 		!conf.targetApproval &&
-		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
-	const options: ApprovalOption[] = [];
-	if (alwaysAllowAvailable) {
-		options.push({
-			key: 'always-allow',
-			icon: 'check-check',
-			label: i18n.baseText('instanceAi.confirmation.alwaysAllow'),
-			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
-			testId: 'instance-ai-panel-confirm-always-allow',
-		});
-	}
-	options.push({
-		key: 'allow-once',
-		icon: 'check',
-		label: i18n.baseText('instanceAi.confirmation.approve'),
-		destructive,
-		testId: 'instance-ai-panel-confirm-approve',
-	});
-	options.push({
-		key: 'deny',
-		icon: 'ban',
-		label: i18n.baseText('instanceAi.confirmation.deny'),
-		testId: 'instance-ai-panel-confirm-deny',
-	});
-	return options;
+		!conf.credentialDestination &&
+		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId)
+	);
+}
+
+function credentialDestinationOptions(item: PendingConfirmationItem): ApprovalOption[] | undefined {
+	if (!item.toolCall.confirmation.credentialDestination) return undefined;
+	return [
+		{
+			key: 'allow-once',
+			icon: 'check',
+			label: i18n.baseText('instanceAi.confirmation.credentialDestination.approve'),
+		},
+		{
+			key: 'deny',
+			icon: 'ban',
+			label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
+		},
+	];
 }
 
 function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
@@ -362,12 +334,7 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 			: { kind: 'approval', approved };
 		const ok = await thread.confirmAction(conf.requestId, payload);
 		if (!ok) return;
-		// Match the options actually shown in `buildApprovalOptions`.
-		const alwaysAllowAvailable =
-			!isDestructive(item) &&
-			!conf.targetApproval &&
-			!conf.credentialDestination &&
-			thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
+		const alwaysAllowAvailable = canAlwaysAllow(item);
 		trackInputCompleted(
 			conf,
 			[
@@ -654,7 +621,9 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:title="buildApprovalTitle(chunk.item)"
 				:description="buildApprovalSubtitle(chunk.item)"
 				:description-label="i18n.baseText('instanceAi.confirmation.details')"
-				:options="buildApprovalOptions(chunk.item)"
+				:options="credentialDestinationOptions(chunk.item)"
+				:supports-session-approval="canAlwaysAllow(chunk.item)"
+				:destructive="isDestructive(chunk.item)"
 				@select="(key) => handleApprovalSelect(chunk.item, key)"
 			>
 				<template
