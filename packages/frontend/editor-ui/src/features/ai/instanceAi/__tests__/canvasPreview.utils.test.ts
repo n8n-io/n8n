@@ -1185,6 +1185,23 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('keeps early setup active between tool calls until the agent finishes', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'credentials',
+					args: { action: 'setup' },
+					result: { announced: true, preBuild: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(node, 'wf-2')).toBe(false);
+		node.status = 'completed';
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks an announced workflow while its first build has no result yet', () => {
 		const call = makeToolCall({
 			toolName: 'build-workflow',
