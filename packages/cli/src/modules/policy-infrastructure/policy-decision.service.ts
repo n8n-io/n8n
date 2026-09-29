@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type {
 	EnforcementPoint,
 	PolicyCheckFailure,
@@ -11,7 +12,6 @@ import { Container, Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { EventService } from '@/events/event.service';
 import type {
 	PolicyActor,
 	PolicyContext,

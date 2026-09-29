@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	type CredentialDecryptContext,
@@ -16,7 +17,6 @@ import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { classifyHttpError } from '@/errors/http-error-classifier';
-import type { EventService } from '@/events/event.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { serializeInternalRestError } from '@/errors/http-error-serializers';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
