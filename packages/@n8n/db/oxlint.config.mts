@@ -33,13 +33,6 @@ export default defineConfig({
 			rules: { 'typescript/no-unsafe-return': 'warn' },
 		},
 		{
-			files: [
-				'src/repositories/__tests__/agent-eval-result.repository.test.ts',
-				'src/repositories/__tests__/agent-eval-run.repository.test.ts',
-			],
-			rules: { 'no-unsafe-optional-chaining': 'warn' },
-		},
-		{
 			files: ['./src/migrations/**/*.ts'],
 			rules: { 'unicorn/filename-case': 'off' },
 		},
