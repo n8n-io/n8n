@@ -124,6 +124,8 @@ requestBody:
                           - value
                         additionalProperties: false
                   additionalProperties: false
+                extendsCredential:
+                  type: string
                 createdAt:
                   type: string
                   format: date-time
@@ -551,6 +553,10 @@ requestBody:
                 type: string
                 format: date-time
                 readOnly: true
+          description:
+            type: string
+            description: Description of the workflow
+            example: My workflow description
         required:
           - name
           - nodes

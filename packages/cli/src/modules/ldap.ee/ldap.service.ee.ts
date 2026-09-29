@@ -13,7 +13,7 @@ import { Cipher } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import {
 	assertAuthenticationMethodCanBeEnabled,

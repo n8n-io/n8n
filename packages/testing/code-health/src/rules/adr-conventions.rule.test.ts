@@ -612,6 +612,30 @@ describe('AdrConventionsRule', () => {
 		await expect(rule.analyze(context())).resolves.toEqual([]);
 	});
 
+	it('flags a date-only ADR reference in prose and suggests its full ID', async () => {
+		addTestFile(
+			tmpDir,
+			'docs/adr/ADR-20260922-adopt-a-stable-interface.md',
+			validAdr({ context: 'The retention note in ADR-20260904 stays open.' }),
+		);
+		addTestFile(
+			tmpDir,
+			'docs/adr/ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution.md',
+			validAdr({
+				title: 'Store the workflow revision that ran with the execution',
+				date: '2026-09-04',
+			}),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0]).toMatchObject({
+			message: 'ADR-20260904 must use the full ADR ID.',
+			suggestion: 'Use ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution.',
+		});
+	});
+
 	it('flags a missing local ADR reference and an n8n repository URL', async () => {
 		addTestFile(
 			tmpDir,

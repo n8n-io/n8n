@@ -5,7 +5,7 @@ import { isDraftIntegration } from '@n8n/api-types';
 
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import { Agent } from '../entities/agent.entity';
-import type { AgentQueuedMessage } from '../types/agent-queued-message';
+import type { AgentQueueDispatch } from '../types/agent-queued-message';
 
 @Service()
 export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueue> {
@@ -15,19 +15,44 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 
 	async enqueue(
 		threadId: string,
-		source: string,
-		payload: AgentQueuedMessage,
+		messageId: string,
+		payload: AgentQueueDispatch,
 		ctx: OperationContext,
 	) {
 		const repository = this.managerFor(ctx).getRepository(AgentMessageQueue);
 		return await repository.save(
-			repository.create({ threadId, source, payload, executionId: null }),
+			repository.create({ threadId, messageId, payload, executionId: null }),
 		);
+	}
+
+	async listPending(threadId: string) {
+		return await this.find({
+			where: { threadId, executionId: IsNull() },
+			relations: { message: true },
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findItem(threadId: string, id: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
+			where: { threadId, id },
+			relations: { message: true },
+		});
+	}
+
+	async removePending(threadId: string, id: string, ctx: OperationContext) {
+		const result = await this.managerFor(ctx).delete(AgentMessageQueue, {
+			threadId,
+			id,
+			executionId: IsNull(),
+		});
+		return result.affected === 1;
 	}
 
 	async findHead(threadId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId },
+			relations: { message: true },
 			order: { id: 'ASC' },
 		});
 	}

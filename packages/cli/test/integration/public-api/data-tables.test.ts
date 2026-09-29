@@ -963,6 +963,22 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		expect(response.body.message).toBe('Invalid sort direction');
 	});
 
+	test('should reject an unknown sort column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/data-tables/${dataTable.id}/rows`)
+			.query({ sortBy: 'bogusCol:asc' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"Validation error with data table request: unknown column name 'bogusCol'",
+		);
+	});
+
 	test('should sort by system column (id)', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'name', type: 'string' }],
@@ -2063,6 +2079,25 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 		testWithAPIKey('get', '/data-tables/123/columns', 'abcXYZ'),
 	);
 
+	test('should reject listing without dataTableColumn:read', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-columns-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.get(`/data-tables/${dataTable.id}/columns`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a malformed data table id', async () => {
+		const response = await authOwnerAgent.get('/data-tables/not-a-nanoid/columns');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
 	test('should list columns for a data table', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			name: 'columns-test',
@@ -2070,19 +2105,54 @@ describe('GET /data-tables/:dataTableId/columns', () => {
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
 				{ name: 'active', type: 'boolean' },
+				{ name: 'signedUpAt', type: 'date' },
 			],
 		});
 
 		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
 
 		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body).toHaveLength(3);
-		expect(response.body[0]).toHaveProperty('id');
-		expect(response.body[0]).toHaveProperty('name');
-		expect(response.body[0]).toHaveProperty('type');
-		expect(response.body[0]).toHaveProperty('index');
-		expect(response.body[0]).toHaveProperty('dataTableId', dataTable.id);
+
+		// Columns aren't guaranteed to come back in index order, so sort before comparing.
+		const columns = [...response.body].sort((a, b) => a.index - b.index);
+		expect(columns).toStrictEqual([
+			{
+				id: expect.any(String),
+				name: 'name',
+				type: 'string',
+				index: 0,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(String),
+				name: 'age',
+				type: 'number',
+				index: 1,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(String),
+				name: 'active',
+				type: 'boolean',
+				index: 2,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(String),
+				name: 'signedUpAt',
+				type: 'date',
+				index: 3,
+				dataTableId: dataTable.id,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 
 	test('should return 404 for non-existing data table', async () => {

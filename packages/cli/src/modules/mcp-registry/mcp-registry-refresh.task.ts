@@ -22,9 +22,7 @@ export class McpRegistryRefreshTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
-		// Only the leader polls the remote registry, so a new leader may be
-		// running on outdated data until this runs.
+		durable: true,
 		runOnTakeover: true,
 	};
 

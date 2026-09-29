@@ -6,6 +6,7 @@ import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	CredentialsEntity,
+	type Project,
 	type Role,
 	type User,
 } from '@n8n/db';
@@ -1071,6 +1072,144 @@ describe('CredentialsFinderService', () => {
 			);
 
 			expect(result).toEqual(new Set());
+		});
+	});
+
+	describe('findUnusableCredentialsForUser', () => {
+		const owner = mock<User>({ id: 'owner', role: GLOBAL_OWNER_ROLE });
+		const member = mock<User>({ id: 'member', role: GLOBAL_MEMBER_ROLE });
+
+		// A see-only instance role holds list and read but not use, so it must not
+		// short-circuit the per-credential question the way an Owner does.
+		const viewOnlyRole = {
+			slug: 'global:cred-viewer',
+			displayName: 'Credential viewer',
+			description: null,
+			systemRole: false,
+			roleType: 'global',
+			scopes: ['credential:list', 'credential:read'].map((scope) => ({
+				slug: scope,
+				displayName: scope,
+				description: null,
+			})),
+		} as Role;
+
+		it('reads nothing for an empty list', async () => {
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(member, []),
+			).resolves.toEqual([]);
+			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		// `exists` drives the publish gate's "no longer exists, update the node"
+		// wording, so a user we could not resolve must not make live credentials
+		// look deleted.
+		it('describes the credentials as they are when the user cannot be resolved', async () => {
+			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Team Gmail' },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+				new Map([['cred-1', ownerProject]]),
+			);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(null, ['cred-1']),
+			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject }]);
+		});
+
+		it('names what the user cannot use, with the project to ask', async () => {
+			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: "Alice's Gmail" },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
+				new Map([['cred-1', ownerProject]]),
+			);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(member, ['cred-1']),
+			).resolves.toEqual([{ id: 'cred-1', name: "Alice's Gmail", exists: true, ownerProject }]);
+		});
+
+		it('returns nothing when the user can use every credential', async () => {
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(member, ['cred-1']),
+			).resolves.toEqual([]);
+			expect(credentialsRepository.findNamesByIds).not.toHaveBeenCalled();
+		});
+
+		it('asks nothing of a user who may use any credential', async () => {
+			credentialsRepository.findExistingIds.mockResolvedValueOnce(['cred-1']);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1']),
+			).resolves.toEqual([]);
+			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		// Redaction asks this way: an Owner must not see execution data through a
+		// grant nobody else has, so the instance-wide scope is set aside.
+		it('does not let an instance-wide scope answer when ignoreGlobalUseScope is set', async () => {
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Team Gmail' },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1'], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject: null }]);
+			// The per-credential query is asked for this user's own access only.
+			expect(credentialsRepository.findExistingIds).not.toHaveBeenCalled();
+		});
+
+		it('still clears an owner who is personally granted the credential, with the scope set aside', async () => {
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1'], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([]);
+		});
+
+		it('still reports a deleted credential to a user who may use any credential', async () => {
+			credentialsRepository.findExistingIds.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(owner, ['gone']),
+			).resolves.toEqual([{ id: 'gone', name: 'gone', exists: false, ownerProject: null }]);
+		});
+
+		it('does not short-circuit for a role that can see but not use', async () => {
+			const viewer = mock<User>({ id: 'viewer', role: viewOnlyRole });
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Team Gmail' },
+			]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+
+			await expect(
+				credentialsFinderService.findUnusableCredentialsForUser(viewer, ['cred-1']),
+			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject: null }]);
+			expect(sharedCredentialsRepository.find).toHaveBeenCalled();
 		});
 	});
 

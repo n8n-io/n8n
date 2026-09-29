@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
 
-type McpRegistryServerUpsertRow = Pick<
+export type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
 	'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
 >;

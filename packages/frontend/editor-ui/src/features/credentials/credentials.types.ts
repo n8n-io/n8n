@@ -21,6 +21,13 @@ export interface ICredentialsResponse
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	usageScope?: 'project' | 'instance';
+	/**
+	 * How this credential reaches the workflow being edited: `project` when the
+	 * project itself carries it (shared with it, or global), `personal` when it
+	 * is the requesting user's own and travels with them. Only sent for the
+	 * scoped picker fetch, and only meaningful under granular credential sharing.
+	 */
+	sharedRoute?: 'project' | 'personal';
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
 	/**

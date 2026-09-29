@@ -35,10 +35,24 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 
 export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage;
 
+/** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
+export type AgentQueueDispatch =
+	| { kind: 'preview' }
+	| (Omit<
+			QueuedIntegrationMessage,
+			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'
+	  > & {
+			messageContext: Omit<
+				IntegrationMessageContext,
+				'platform' | 'integrationConnectionId' | 'messageId'
+			>;
+	  });
+
 /** A committed execution reservation. Runtime preparation must reuse it. */
 export interface AgentExecutionAdmission {
 	executionId: string;
 	startedAt: Date;
+	inputMessageIds: string[];
 }
 
 export const EXECUTION_METADATA_KEY = 'n8nExecutionId';
