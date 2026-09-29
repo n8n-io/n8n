@@ -1,5 +1,7 @@
 import type { McpRegistryDiscoveryResponse } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,10 +18,23 @@ describe('McpRegistryController', () => {
 	const service = mock<McpRegistryService>();
 	const discoveryService = mock<McpConnectionDiscoveryService>();
 	const controller = new McpRegistryController(service, discoveryService);
+	const routes = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+		McpRegistryController as never,
+	).routes;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each(['listServers', 'discover'])(
+		'%s requires the existing MCP OAuth scope',
+		(handlerName) => {
+			expect(routes.get(handlerName)?.accessScope).toEqual({
+				scope: 'mcp:oauth',
+				globalOnly: true,
+			});
+		},
+	);
 
 	describe('listServers', () => {
 		it('returns active servers projected to the public response shape', async () => {

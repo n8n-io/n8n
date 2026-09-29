@@ -19,7 +19,7 @@ export class McpRegistryController {
 	) {}
 
 	@Get('/servers')
-	@GlobalScope('mcp:discover')
+	@GlobalScope('mcp:oauth')
 	async listServers(): Promise<McpRegistryServerResponse[]> {
 		const servers = await this.service.getAll({ includeDeprecated: false });
 		return servers.flatMap((server) => {
@@ -29,7 +29,7 @@ export class McpRegistryController {
 	}
 
 	@Post('/discover')
-	@GlobalScope('mcp:discover')
+	@GlobalScope('mcp:oauth')
 	async discover(req: AuthenticatedRequest): Promise<McpRegistryDiscoveryResponse> {
 		const payload = mcpRegistryDiscoveryRequestSchema.safeParse(req.body);
 		if (!payload.success) throw new BadRequestError('Invalid MCP discovery request');
