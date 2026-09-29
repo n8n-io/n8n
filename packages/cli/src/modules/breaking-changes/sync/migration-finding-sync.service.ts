@@ -77,12 +77,14 @@ export class MigrationFindingSyncService {
 		// Page over every workflow, not only the affected ones, so findings
 		// for workflows the scan no longer flags are marked fixed.
 		const take = MigrationFindingSyncService.BATCH_SIZE;
-		for (let skip = 0; ; skip += take) {
-			const workflowIds = await this.workflowRepository.getIdsPage({ skip, take });
+		let afterId: string | undefined;
+		for (;;) {
+			const workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			if (workflowIds.length === 0) break;
 
 			await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow);
 			if (workflowIds.length < take) break;
+			afterId = workflowIds[workflowIds.length - 1];
 		}
 
 		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);

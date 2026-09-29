@@ -76,13 +76,14 @@ describe('MigrationFindingSyncService', () => {
 	let instanceSettings: MockProxy<InstanceSettings>;
 	let service: MigrationFindingSyncService;
 
+	/** Feeds `getIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
 	function givenWorkflows(count: number) {
 		const allIds = Array.from(
 			{ length: count },
 			(_, index) => `wf-${String(index).padStart(4, '0')}`,
 		);
-		workflowRepository.getIdsPage.mockImplementation(async ({ skip, take }) =>
-			allIds.slice(skip, skip + take),
+		workflowRepository.getIdsAfter.mockImplementation(async (afterId, take) =>
+			allIds.filter((id) => afterId === undefined || id > afterId).slice(0, take),
 		);
 		return allIds;
 	}
@@ -198,6 +199,21 @@ describe('MigrationFindingSyncService', () => {
 		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
 	});
 
+	it('still visits every remaining workflow when one is deleted between pages', async () => {
+		const allIds = givenWorkflows(150);
+		txRunner.run.mockImplementationOnce(async (ctx, fn) => {
+			const result = await fn(ctx);
+			allIds.splice(allIds.indexOf('wf-0000'), 1);
+			return result;
+		});
+
+		await service.sync(TARGET_VERSION);
+
+		const visited = findingRepository.listForWorkflows.mock.calls.flatMap(([, ids]) => ids);
+		expect(visited).toHaveLength(150);
+		expect(new Set(visited).size).toBe(150);
+	});
+
 	it('does not write the sync record before every batch is done', async () => {
 		givenWorkflows(150);
 		const order: string[] = [];
@@ -261,7 +277,7 @@ describe('MigrationFindingSyncService', () => {
 		await service.sync(TARGET_VERSION);
 
 		expect(breakingChangeService.detect).not.toHaveBeenCalled();
-		expect(workflowRepository.getIdsPage).not.toHaveBeenCalled();
+		expect(workflowRepository.getIdsAfter).not.toHaveBeenCalled();
 		expect(txRunner.run).not.toHaveBeenCalled();
 		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
 	});

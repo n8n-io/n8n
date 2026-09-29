@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { In, IsNull, MoreThan, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -605,21 +605,37 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	describe('getIdsPage', () => {
-		it('should return only the ids of one page, ordered by id', async () => {
+	describe('getIdsAfter', () => {
+		it('should return the first ids when no cursor is given', async () => {
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValue([Object.assign(new WorkflowEntity(), { id: 'a' })]);
+
+			const result = await workflowRepository.getIdsAfter(undefined, 100);
+
+			expect(result).toEqual(['a']);
+			expect(findSpy).toHaveBeenCalledWith({
+				select: { id: true },
+				where: {},
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+
+		it('should return only ids greater than the cursor', async () => {
 			const findSpy = vi
 				.spyOn(workflowRepository, 'find')
 				.mockResolvedValue([
-					Object.assign(new WorkflowEntity(), { id: 'a' }),
 					Object.assign(new WorkflowEntity(), { id: 'b' }),
+					Object.assign(new WorkflowEntity(), { id: 'c' }),
 				]);
 
-			const result = await workflowRepository.getIdsPage({ skip: 100, take: 100 });
+			const result = await workflowRepository.getIdsAfter('a', 100);
 
-			expect(result).toEqual(['a', 'b']);
+			expect(result).toEqual(['b', 'c']);
 			expect(findSpy).toHaveBeenCalledWith({
 				select: { id: true },
-				skip: 100,
+				where: { id: MoreThan('a') },
 				take: 100,
 				order: { id: 'ASC' },
 			});

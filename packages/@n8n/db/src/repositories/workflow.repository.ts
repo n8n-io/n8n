@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
+import { DataSource, In, Like, MoreThan, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -510,13 +510,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * One page of workflow ids, ordered by id so a caller can page through every
-	 * workflow with a stable order. Used by scans that need the ids only.
+	 * Up to `take` workflow ids greater than `afterId`, in ascending order. Keyset paging:
+	 * a workflow deleted between two pages does not shift the next page, so no id is skipped.
 	 */
-	async getIdsPage({ skip, take }: { skip: number; take: number }): Promise<string[]> {
+	async getIdsAfter(afterId: string | undefined, take: number): Promise<string[]> {
 		const workflows = await this.find({
 			select: { id: true },
-			skip,
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
 			take,
 			order: { id: 'ASC' },
 		});
