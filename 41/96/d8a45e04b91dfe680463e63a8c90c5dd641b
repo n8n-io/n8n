@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_06bedb84545e25::t_38c98cfee5eec0 21
+  s_06bedb84545e25::t_724d5e0265f386 925-953
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_06bedb84545e25::t_ad9f7d50680db7 74,153-158,212,318,2219-2230,2374,2378,2381-2387
+  s_06bedb84545e25::t_ae1d8bf873afa2 2379-2380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4196d8a45e04b91dfe680463e63a8c90c5dd641b",
+  "prompts": {},
+  "sessions": {
+    "s_06bedb84545e25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7839f00-e777-4830-82f0-6165b5301839",
+        "model": "unknown"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
