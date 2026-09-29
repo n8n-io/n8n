@@ -78,7 +78,7 @@ function seedFailingAndDueSources(mocks: ReturnType<typeof createMocks>) {
 	});
 	const due = makeSource({ id: 'static' });
 	mocks.sourceRepo.find.mockResolvedValue([failing, due]);
-	mocks.sourceRepo.refreshSource.mockResolvedValueOnce(new Error('jwks down'));
+	mocks.sourceRepo.refreshSource.mockRejectedValueOnce(new Error('jwks down'));
 	return { failing, due };
 }
 
@@ -202,7 +202,7 @@ describe('TrustedKeyService', () => {
 				if (failureType === 'lock') {
 					dbLockService.withLockContext.mockRejectedValueOnce(error);
 				} else {
-					sourceRepo.refreshSource.mockResolvedValueOnce(error);
+					sourceRepo.refreshSource.mockRejectedValueOnce(error);
 				}
 
 				await expect(service.onLeaderTakeover()).resolves.toBeUndefined();
@@ -312,20 +312,23 @@ describe('TrustedKeyService', () => {
 			expect(mocks.sourceRepo.find).toHaveBeenCalledWith({ order: { updatedAt: 'ASC' } });
 		});
 
-		it('should propagate a recorded refresh failure without writing outside the lock', async () => {
+		it('should record a refresh failure after rollback and propagate the error', async () => {
 			const mocks = createMocks();
-			seedFailingAndDueSources(mocks);
+			const { failing } = seedFailingAndDueSources(mocks);
 
 			await expect(mocks.service.refreshDueSources(new AbortController().signal)).rejects.toThrow(
 				'jwks down',
 			);
 
-			expect(mocks.sourceRepo.update).not.toHaveBeenCalled();
+			expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+				status: 'error',
+				lastError: 'jwks down',
+			});
 		});
 
-		it('should propagate a lock failure without changing the source status', async () => {
+		it('should record a lock failure and propagate the error', async () => {
 			const mocks = createMocks();
-			seedFailingAndDueSources(mocks);
+			const { failing } = seedFailingAndDueSources(mocks);
 			const error = new Error('lock failed');
 			mocks.dbLockService.withLockContext.mockRejectedValueOnce(error);
 
@@ -334,7 +337,10 @@ describe('TrustedKeyService', () => {
 			);
 
 			expect(mocks.sourceRepo.refreshSource).not.toHaveBeenCalled();
-			expect(mocks.sourceRepo.update).not.toHaveBeenCalled();
+			expect(mocks.sourceRepo.update).toHaveBeenCalledWith(failing.id, {
+				status: 'error',
+				lastError: 'lock failed',
+			});
 		});
 
 		it('should reject when the sources cannot be loaded', async () => {

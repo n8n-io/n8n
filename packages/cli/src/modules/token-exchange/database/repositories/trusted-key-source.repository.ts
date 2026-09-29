@@ -1,7 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
 
 import type { ResolvedSourceKeys } from '../../token-exchange.schemas';
@@ -16,39 +15,26 @@ export class TrustedKeySourceRepository extends BaseRepository<TrustedKeySourceE
 
 	/**
 	 * Replaces the keys of a source inside the transaction of `ctx`.
-	 * On failure, keeps the old keys, marks the source as error, and returns the error.
+	 * Does nothing when the source no longer exists.
 	 * @throws {UnexpectedError} when `ctx` carries no transaction.
+	 * @throws {Error} when the keys cannot be resolved or written.
 	 */
 	async refreshSource(
 		sourceId: string,
 		resolveKeys: (source: TrustedKeySourceEntity) => Promise<ResolvedSourceKeys | undefined>,
 		ctx: OperationContext,
-	): Promise<Error | undefined> {
+	): Promise<void> {
 		if (!ctx.trx) {
 			throw new UnexpectedError('Trusted key refresh requires a transaction');
 		}
 		const tx = this.managerFor(ctx);
 		const source = await tx.findOneBy(TrustedKeySourceEntity, { id: sourceId });
 		if (!source) {
-			return undefined;
+			return;
 		}
 
-		// The caller takes the refresh lock before this savepoint, so a rollback keeps the lock.
-		await tx.query('SAVEPOINT trusted_key_refresh');
-		let failure: Error | undefined;
-		try {
-			const result = await resolveKeys(source);
-			await this.storeResolvedKeys(source, result, tx);
-		} catch (error) {
-			failure = ensureError(error);
-			await tx.query('ROLLBACK TO SAVEPOINT trusted_key_refresh');
-			await tx.update(TrustedKeySourceEntity, sourceId, {
-				status: 'error',
-				lastError: failure.message,
-			});
-		}
-		await tx.query('RELEASE SAVEPOINT trusted_key_refresh');
-		return failure;
+		const result = await resolveKeys(source);
+		await this.storeResolvedKeys(source, result, tx);
 	}
 
 	private async storeResolvedKeys(

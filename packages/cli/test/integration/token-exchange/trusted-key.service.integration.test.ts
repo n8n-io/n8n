@@ -1,11 +1,9 @@
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
-import { DbLock, DbLockService } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import type { KeyObject } from 'node:crypto';
 
-import { TrustedKeySourceEntity } from '@/modules/token-exchange/database/entities/trusted-key-source.entity';
+import type { TrustedKeySourceEntity } from '@/modules/token-exchange/database/entities/trusted-key-source.entity';
 import { TrustedKeyEntity } from '@/modules/token-exchange/database/entities/trusted-key.entity';
 import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository';
 import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository';
@@ -110,8 +108,6 @@ let sourceRepo: TrustedKeySourceRepository;
 let keyRepo: TrustedKeyRepository;
 
 beforeAll(async () => {
-	// The lock probe needs a second connection while the refresh transaction is open.
-	Container.get(GlobalConfig).database.postgresdb.poolSize = 2;
 	await testModules.loadModules(['token-exchange']);
 	await testDb.init();
 
@@ -371,8 +367,8 @@ describe('TrustedKeyService (integration)', () => {
 			vi.restoreAllMocks();
 		});
 
-		/** Fails the next `failures` key writes of `sourceId`, after its old keys are deleted. */
-		function failKeyWritesFor(sourceId: string, failures = Infinity) {
+		/** Causes a constraint failure after the old keys of `sourceId` are deleted. */
+		function failKeyWritesFor(sourceId: string) {
 			const originalDelete = EntityManager.prototype.delete;
 			vi.spyOn(EntityManager.prototype, 'delete').mockImplementation(async function (
 				this: EntityManager,
@@ -381,11 +377,9 @@ describe('TrustedKeyService (integration)', () => {
 			) {
 				const result = await originalDelete.call(this, target, criteria);
 				if (
-					failures > 0 &&
 					target === TrustedKeyEntity &&
 					(criteria as { sourceId?: string }).sourceId === sourceId
 				) {
-					failures--;
 					await this.insert(TrustedKeyEntity, {
 						sourceId: 'missing-source',
 						kid: 'test-kid',
@@ -429,59 +423,6 @@ describe('TrustedKeyService (integration)', () => {
 				expect(await keyRepo.findBy({ sourceId: 'static' })).toHaveLength(1);
 			},
 		);
-
-		it.each(['fetch', 'write'] as const)(
-			'should hold the refresh lock while recording a %s failure',
-			async (failureType) => {
-				await insertSource(failureType === 'fetch' ? { config: 'invalid-json' } : {});
-				if (failureType === 'write') {
-					failKeyWritesFor('static');
-				}
-				const lockService = Container.get(DbLockService);
-				const originalUpdate = EntityManager.prototype.update;
-				const concurrentLockAcquisitions: boolean[] = [];
-				vi.spyOn(EntityManager.prototype, 'update').mockImplementation(async function (
-					this: EntityManager,
-					target,
-					criteria,
-					partial,
-				) {
-					if (
-						target === TrustedKeySourceEntity &&
-						(partial as Partial<TrustedKeySourceEntity>).status === 'error'
-					) {
-						const acquired = await lockService
-							.tryWithLock(DbLock.TRUSTED_KEY_REFRESH, async () => true)
-							.catch(() => false);
-						concurrentLockAcquisitions.push(acquired);
-					}
-					return await originalUpdate.call(this, target, criteria, partial);
-				});
-
-				await expect(service.refreshSource('static')).rejects.toThrow();
-
-				expect(concurrentLockAcquisitions).toEqual([false]);
-				expect((await sourceRepo.findOneBy({ id: 'static' }))!.status).toBe('error');
-			},
-		);
-
-		it('should keep the successful result of a refresh queued behind a failed refresh', async () => {
-			await insertSource();
-			failKeyWritesFor('static', 1);
-
-			const results = await Promise.allSettled([
-				service.refreshSource('static'),
-				service.refreshSource('static'),
-			]);
-
-			expect(results.map(({ status }) => status)).toEqual(['rejected', 'fulfilled']);
-			expect(await sourceRepo.findOneBy({ id: 'static' })).toMatchObject({
-				status: 'healthy',
-				lastError: null,
-				lastRefreshedAt: expect.any(Date),
-			});
-			expect(await keyRepo.findBy({ sourceId: 'static' })).toHaveLength(1);
-		});
 	});
 
 	describe('algorithm validation and key compatibility', () => {

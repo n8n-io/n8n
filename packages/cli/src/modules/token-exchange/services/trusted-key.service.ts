@@ -4,6 +4,7 @@ import { DbLock, DbLockService } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In, Not } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
@@ -359,21 +360,28 @@ export class TrustedKeyService {
 	 *
 	 * On success: old keys deleted, new keys inserted, source marked healthy.
 	 *
-	 * On failure: keeps the existing keys, marks the source as error under the lock,
-	 * and throws once that status is committed.
+	 * On failure: rolls back, which keeps the existing keys and `lastRefreshedAt`.
+	 * Then marks the source as error and throws.
 	 * @throws {Error} when the lock cannot be taken, or the keys cannot be resolved or written.
 	 */
 	private async refreshSourceInternal(source: TrustedKeySourceEntity): Promise<void> {
-		const failure = await this.dbLockService.withLockContext(
-			DbLock.TRUSTED_KEY_REFRESH,
-			async (ctx) =>
-				await this.trustedKeySourceRepository.refreshSource(
-					source.id,
-					async (freshSource) => await this.resolveKeysForSource(freshSource),
-					ctx,
-				),
-		);
-		if (failure) {
+		try {
+			await this.dbLockService.withLockContext(
+				DbLock.TRUSTED_KEY_REFRESH,
+				async (ctx) =>
+					await this.trustedKeySourceRepository.refreshSource(
+						source.id,
+						async (freshSource) => await this.resolveKeysForSource(freshSource),
+						ctx,
+					),
+			);
+		} catch (error) {
+			const failure = ensureError(error);
+			// Written after the rollback: an aborted Postgres transaction rejects every later statement.
+			await this.trustedKeySourceRepository.update(source.id, {
+				status: 'error',
+				lastError: failure.message,
+			});
 			throw failure;
 		}
 	}
