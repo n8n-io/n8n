@@ -11,7 +11,7 @@ type VaultResult = ServiceResult<{ apiUrl: string; rootToken: string }>;
 
 export const vault: Service<VaultResult> = {
 	description: 'HashiCorp Vault',
-	async start(network, projectName) {
+	async start(network, projectName, _options, ctx) {
 		const rootToken = randomUUID();
 		const container = await new GenericContainer(TEST_CONTAINER_IMAGES.vault)
 			.withNetwork(network)
@@ -28,11 +28,20 @@ export const vault: Service<VaultResult> = {
 			})
 			.withName(`${projectName}-${HOSTNAME}`)
 			.start();
+		ctx?.registerContainer?.(container);
+
+		const apiUrl = `http://${container.getHost()}:${container.getMappedPort(PORT)}/v1/`;
+		const response = await fetch(`${apiUrl}sys/auth/approle`, {
+			method: 'POST',
+			headers: { 'X-Vault-Token': rootToken, 'Content-Type': 'application/json' },
+			body: JSON.stringify({ type: 'approle' }),
+		});
+		if (!response.ok) throw new Error(`Vault AppRole setup failed: ${response.status}`);
 
 		return {
 			container,
 			meta: {
-				apiUrl: `http://${container.getHost()}:${container.getMappedPort(PORT)}/v1/`,
+				apiUrl,
 				rootToken,
 			},
 		};
@@ -48,7 +57,6 @@ export class VaultHelper {
 	) {}
 
 	async createBatchAppRole(roleName: string) {
-		await this.request('sys/auth/approle', { type: 'approle' });
 		await this.request(`sys/policies/acl/${roleName}`, {
 			policy: 'path "secret/*" { capabilities = ["read", "list"] }',
 		});

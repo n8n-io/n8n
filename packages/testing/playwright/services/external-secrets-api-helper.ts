@@ -72,6 +72,17 @@ export class ExternalSecretsApiHelper {
 		}
 	}
 
+	async disconnectProvider(providerName: string): Promise<void> {
+		const response = await this.api.request.post(
+			`/rest/external-secrets/providers/${providerName}/connect`,
+			{ data: { connected: false } },
+		);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to disconnect provider: ${await response.text()}`);
+		}
+	}
+
 	async updateProvider(providerName: string): Promise<void> {
 		const response = await this.api.request.post(
 			`/rest/external-secrets/providers/${providerName}/update`,

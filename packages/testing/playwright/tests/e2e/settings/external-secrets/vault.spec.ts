@@ -9,17 +9,17 @@ test.describe(
 	'HashiCorp Vault @licensed',
 	{ annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }] },
 	() => {
-		test.beforeEach(async ({ api }) => {
-			await api.enableFeature('externalSecrets');
-		});
+		let roleName: string;
+		let roleId: string;
+		let secretId: string;
 
-		test('syncs secrets after batch token expiry and recovers from a failed AppRole login', async ({
-			api,
-			services,
-		}) => {
+		test.beforeEach(async ({ api, services }) => {
+			await api.enableFeature('externalSecrets');
 			const { vault } = services;
-			const roleName = `n8n-${nanoid()}`;
+			roleName = `n8n-${nanoid()}`;
 			const settings = await vault.createBatchAppRole(roleName);
+			roleId = settings.roleId;
+			secretId = settings.secretId;
 			await vault.writeSecret(roleName, { initial: 'initial-value' });
 			await api.externalSecrets.saveProviderSettings('vault', settings);
 			await api.externalSecrets.connectProvider('vault');
@@ -28,8 +28,15 @@ test.describe(
 				.toBe('connected');
 			await api.externalSecrets.updateProvider('vault');
 			expect(await api.externalSecrets.getSecrets('vault')).toContain(`secret.${roleName}.initial`);
+		});
 
-			const tokenIssuedAfterConnect = await vault.login(settings.roleId, settings.secretId);
+		test.afterEach(async ({ api }) => {
+			await api.externalSecrets.disconnectProvider('vault');
+		});
+
+		test('syncs secrets after batch token expiry', async ({ api, services }) => {
+			const { vault } = services;
+			const tokenIssuedAfterConnect = await vault.login(roleId, secretId);
 			expect(tokenIssuedAfterConnect.token_type).toBe('batch');
 			expect(tokenIssuedAfterConnect.renewable).toBe(false);
 			await expect
@@ -43,22 +50,26 @@ test.describe(
 			expect(await api.externalSecrets.getSecrets('vault')).toContain(
 				`secret.${roleName}.afterExpiry`,
 			);
+		});
 
-			const tokenIssuedBeforeLoginFailure = await vault.login(settings.roleId, settings.secretId);
+		test('recovers from a failed AppRole login without losing cached secrets', async ({
+			api,
+			services,
+		}) => {
+			const { vault } = services;
+			const tokenIssuedBeforeLoginFailure = await vault.login(roleId, secretId);
 			await vault.setRoleId(roleName, nanoid());
 			await expect
 				.poll(async () => await api.externalSecrets.getProviderState('vault'), { timeout: 15_000 })
 				.toBe('error');
-			expect(await api.externalSecrets.getSecrets('vault')).toContain(
-				`secret.${roleName}.afterExpiry`,
-			);
+			expect(await api.externalSecrets.getSecrets('vault')).toContain(`secret.${roleName}.initial`);
 			await expect
 				.poll(async () => await vault.getTokenStatus(tokenIssuedBeforeLoginFailure.client_token), {
 					timeout: 15_000,
 				})
 				.toBe(403);
 
-			await vault.setRoleId(roleName, settings.roleId);
+			await vault.setRoleId(roleName, roleId);
 			await expect
 				.poll(async () => await api.externalSecrets.getProviderState('vault'), { timeout: 35_000 })
 				.toBe('connected');
