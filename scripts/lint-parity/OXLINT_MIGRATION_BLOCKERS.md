@@ -26,7 +26,7 @@ These rules come from the shared base or backend layers. Resolve these first bec
 | P2 | `import/export` | A native rule exists, but it is still in the nursery category. | Run parity samples and enable it after it becomes stable. |
 | P3 | `no-octal` | Oxlint has no rule. The parser already rejects relevant octal syntax in module and strict-mode code. | Confirm parser coverage and retire the explicit rule if no supported source form remains. |
 
-## Package-level typed blocker
+## Package-level blockers
 
 ### `@typescript-eslint/naming-convention`
 
@@ -40,6 +40,12 @@ Possible approaches:
 4. Keep a narrow ESLint pass only in packages whose convention protects an API contract.
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
+
+### `n8n-node-dev` type analysis
+
+`n8n-node-dev` inherits `moduleResolution=node10`. `oxlint-tsgolint` rejects this removed option, so type-aware Oxlint cannot start.
+
+Keep ESLint until the package moves to a supported module resolution mode. Validate its build and published CLI behavior as part of that change.
 
 ## Frontend package blockers
 
