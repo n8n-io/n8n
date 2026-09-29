@@ -90,6 +90,69 @@ const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.names.concat($json.item.names) }}',
 	'={{ $json.item.names.flat() }}',
 	'={{ $json.item.names.flat(2) }}',
+	// Binary operators beyond the exercised ===, !==, > and +, including
+	// the coercion-sensitive loose equality.
+	'={{ $json.item.count == "2" }}',
+	'={{ $json.item.count != "2" }}',
+	'={{ $json.item.count < 3 }}',
+	'={{ $json.item.count <= 2 }}',
+	'={{ $json.item.count >= 2 }}',
+	'={{ $json.item.count - 1 }}',
+	'={{ $json.item.count * 2 }}',
+	'={{ $json.item.count / 2 }}',
+	'={{ $json.item.count % 2 }}',
+	// Unary + (the coercion counterpart of the exercised unary -).
+	'={{ +$json.item.count }}',
+	'={{ +true }}',
+	// Allowlisted methods no other entry exercises.
+	'={{ $json.item.name.trimStart() }}',
+	'={{ $json.item.name.trimEnd() }}',
+	'={{ $json.item.name.charAt(1) }}',
+	'={{ $json.item.name.charAt() }}',
+	'={{ $json.item.names.lastIndexOf("baz") }}',
+	// Argument-count variants: default separators and replacements, radixes,
+	// fromIndex positions, and an extra argument the method ignores.
+	'={{ $json.item.names.join() }}',
+	'={{ $json.item.names.concat() }}',
+	"={{ $json.item.name.replace('o') }}",
+	'={{ $json.item.count.toFixed() }}',
+	'={{ $json.item.count.toPrecision() }}',
+	'={{ $json.item.count.toString(2) }}',
+	"={{ $json.item.name.includes('o', 1) }}",
+	"={{ $json.item.name.indexOf('o', 1) }}",
+	"={{ $json.item.name.startsWith('o', 1) }}",
+	"={{ $json.item.name.endsWith('o', 2) }}",
+	'={{ $json.item.name.toUpperCase($json.item.count) }}',
+	// Optional-call form (`?.()` marks the call, not the member).
+	'={{ $json.item.name.toUpperCase?.() }}',
+	// Optional computed members (`?.[...]`).
+	"={{ $json.item?.['name'] }}",
+	'={{ $json.item.names?.[0] }}',
+	// Numeric literal forms beyond plain integers.
+	'={{ 0x10 }}',
+	'={{ 0o17 }}',
+	'={{ 0b101 }}',
+	'={{ 1e3 }}',
+	'={{ 0.5 }}',
+	'={{ 1_000 }}',
+	// A string literal with an escape sequence. One case by design: it
+	// exercises esprima's decoding more than this module.
+	'={{ $json.item["\\u006eame"] }}',
+	// A parenthesized subexpression in a compound position.
+	'={{ ($json.item.count + 1) * 2 }}',
+	// Adjacent code chunks with no text between them.
+	'={{ $json.item.name }}{{ $json.item.count }}',
+	// Compound shapes: logical and ternary over call results, call arguments
+	// that are themselves compound, cross-type chains, member on a call.
+	"={{ $json.item.name.includes('o') && $json.item.count }}",
+	"={{ $json.item.name.startsWith('f') ? 'yes' : 'no' }}",
+	'={{ $json.item.name.slice($json.item.count + 1) }}',
+	'={{ $json.item.name.slice($json.item.count > 1 ? 1 : 2) }}',
+	'={{ $json.item.name.slice($json.item.name.trim().length) }}',
+	'={{ $json.item.name.slice(0, 2).toUpperCase() }}',
+	"={{ $json.item.names.slice(0, 1).join(',') }}",
+	'={{ $json.item.name.toUpperCase().length }}',
+	'={{ $json.item.nothing ?? $json.item.name }}',
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:
