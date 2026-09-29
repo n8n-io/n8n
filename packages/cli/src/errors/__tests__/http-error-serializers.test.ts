@@ -6,6 +6,7 @@ import {
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
 import { ConflictError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
+import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
@@ -27,6 +28,20 @@ describe('http-error-serializers', () => {
 			body: {
 				code: 404,
 				message: 'x',
+			},
+		});
+	});
+
+	it('does not expose assistant-only response error meta', () => {
+		const error = new AiPreferenceScopeFullError('user', { limit: 50, actual: 50 });
+		const descriptor = classifyHttpError(error);
+
+		expect(error.meta).toEqual({ limit: 50, actual: 50 });
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 400,
+			body: {
+				code: 400,
+				message: 'A user cannot hold more than 50 preferences',
 			},
 		});
 	});
