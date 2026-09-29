@@ -10,6 +10,7 @@ import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import { WorkflowIndexService } from '../workflow-index.service';
 
@@ -739,12 +740,31 @@ describe('WorkflowIndexService', () => {
 		it('should register event listeners for workflow events', () => {
 			service.init();
 
-			expect(mockEventService.on).toHaveBeenCalledTimes(5);
+			expect(mockEventService.on).toHaveBeenCalledTimes(6);
 			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith(
+				'workflow-deactivated',
+				expect.any(Function),
+			);
+		});
+
+		it('removes published dependencies when a workflow is unpublished', async () => {
+			service.init();
+			const listener = mockEventService.on.mock.calls.find(
+				([event]) => event === 'workflow-deactivated',
+			)?.[1];
+			expect(listener).toBeDefined();
+			await Promise.resolve(
+				listener?.(mock<RelayEventMap['workflow-deactivated']>({ workflowId: 'workflow-123' })),
+			);
+
+			expect(
+				mockWorkflowDependencyRepository.removePublishedDependenciesForWorkflow,
+			).toHaveBeenCalledWith('workflow-123');
 		});
 	});
 
@@ -790,6 +810,9 @@ describe('WorkflowIndexService', () => {
 
 			await service.buildIndex();
 
+			expect(
+				mockWorkflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflows,
+			).toHaveBeenCalledOnce();
 			// Verify findWorkflowsNeedingIndexing was called with correct pagination
 			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith(10); // default batch size
 
