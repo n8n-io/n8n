@@ -1,6 +1,9 @@
+import '../../openapi-extend';
+
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { listDataTablesQueryDocs } from './data-table-public.openapi';
 import { Z } from '../../zod-class';
 import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
@@ -70,7 +73,8 @@ export class ListDataTableQueryDto extends Z.class({
 }) {}
 
 export class PublicApiListDataTableQueryDto extends Z.class({
-	...publicApiPaginationSchema,
-	filter: publicApiFilterValidator,
-	sortBy: sortByValidator,
+	limit: publicApiPaginationSchema.limit,
+	cursor: z.string().optional(),
+	filter: publicApiFilterValidator.openapi(listDataTablesQueryDocs.filter),
+	sortBy: sortByValidator.openapi(listDataTablesQueryDocs.sortBy),
 }) {}

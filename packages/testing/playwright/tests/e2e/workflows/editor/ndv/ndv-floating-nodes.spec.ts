@@ -6,10 +6,6 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-		});
-
 		test('should traverse floating nodes with mouse', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
 			await n8n.canvas.getCanvasNodes().first().dblclick();
@@ -86,6 +82,7 @@ test.describe(
 		});
 
 		test('should connect floating sub-nodes', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('AI Agent', { closeNDV: false });
 			await expect(n8n.ndv.container).toBeVisible();
 

@@ -4,13 +4,13 @@ import axios from 'axios';
 export class N8nApiClient {
 	constructor(
 		readonly apiBaseUrl: string,
-		private readonly healthEndpoint: string = '/healthz',
+		private readonly healthEndpoint: string = '/healthz/readiness',
 	) {}
 
 	async waitForInstanceToBecomeOnline(): Promise<void> {
 		const START_TIME = Date.now();
 		const INTERVAL_MS = 1000;
-		const TIMEOUT_MS = 60_000;
+		const TIMEOUT_MS = 180_000;
 
 		while (Date.now() - START_TIME < TIMEOUT_MS) {
 			try {

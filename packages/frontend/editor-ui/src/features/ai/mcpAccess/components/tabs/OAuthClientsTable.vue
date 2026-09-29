@@ -22,12 +22,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import type { TableHeader } from '@n8n/design-system';
-import {
-	EMPTY_OAUTH_CLIENT_FILTERS,
-	getClientBrand,
-	isFullAccessGrant,
-	scopeLabel,
-} from '../../clients.utils';
+import { EMPTY_OAUTH_CLIENT_FILTERS, getAccessSummary, getClientBrand } from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
 import McpEmptyStateCard from '../McpEmptyStateCard.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
@@ -208,19 +203,13 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 ]);
 
 function accessSummary(client: OAuthClientResponseDto): string {
-	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
-	if (isFullAccessGrant(client.scopes, offeredScopes.value)) {
-		return i18n.baseText('settings.mcp.oAuthClients.access.full');
-	}
-	const visible = client.scopes
-		.slice(0, 2)
-		.map((scope) => scopeLabel(i18n, scope))
-		.join(', ');
-	const remaining = client.scopes.length - 2;
-	if (remaining <= 0) return visible;
-	return `${visible} ${i18n.baseText('settings.mcp.oAuthClients.scope.more', {
-		interpolate: { count: remaining },
-	})}`;
+	return getAccessSummary(i18n, client, offeredScopes.value);
+}
+
+function revokeLabel(client: OAuthClientResponseDto): string {
+	return i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccessFor', {
+		interpolate: { name: client.name },
+	});
 }
 
 function clientTypeLabel(client: OAuthClientResponseDto): string | null {
@@ -349,15 +338,18 @@ function onRevoke(item: OAuthClientResponseDto) {
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nButton
-						:class="$style['revoke-action']"
-						variant="outline"
-						size="small"
-						data-test-id="mcp-oauth-client-revoke-button"
-						@click.stop="onRevoke(item)"
-					>
-						{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
-					</N8nButton>
+					<div :class="$style['row-actions']">
+						<N8nButton
+							:class="$style['revoke-action']"
+							variant="outline"
+							size="small"
+							:aria-label="revokeLabel(item)"
+							data-test-id="mcp-oauth-client-revoke-button"
+							@click.stop="onRevoke(item)"
+						>
+							{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
+						</N8nButton>
+					</div>
 				</template>
 			</N8nDataTableServer>
 		</div>
@@ -449,6 +441,13 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
+}
+
+/* The button is block-level, so the column's `align: end` (text-align) can't push it
+   to the table's trailing edge; the flex wrapper does. Same as the API keys table. */
+.row-actions {
+	display: flex;
+	justify-content: flex-end;
 }
 
 /* The whole row opens the details modal, so hint it with a pointer... */

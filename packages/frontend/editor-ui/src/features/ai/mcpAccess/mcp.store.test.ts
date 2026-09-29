@@ -120,6 +120,142 @@ describe('mcp.store', () => {
 		});
 	});
 
+	describe('fetchOAuthClientsPreview', () => {
+		it("fetches the user's own first clients regardless of the list's ownership and filters", async () => {
+			const client = createOAuthClient();
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [client],
+				count: 1,
+				totals: { mine: 1, all: 3 },
+				scopeTools: { 'workflow:read': ['list_workflows'] },
+			});
+			store.oauthClientsOwnership = 'all';
+			store.oauthClientsPage = 2;
+			store.oauthClientsFilters = {
+				search: 'claude',
+				type: 'cli',
+				ownerId: 'user-1',
+				connected: 'last7',
+			};
+
+			await store.fetchOAuthClientsPreview();
+
+			expect(fetchSpy).toHaveBeenCalledWith({}, { ownership: 'mine', skip: 0, take: 3 });
+			expect(store.oauthClientsPreview).toEqual([client]);
+			expect(store.oauthClientTotals).toEqual({ mine: 1, all: 3 });
+			expect(store.oauthClientScopeTools).toEqual({ 'workflow:read': ['list_workflows'] });
+		});
+
+		it('discards a stale preview response superseded by a newer one', async () => {
+			let resolveStale!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			const stale = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>((resolve) => {
+				resolveStale = resolve;
+			});
+			vi.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockReturnValueOnce(stale)
+				.mockResolvedValueOnce({
+					data: [createOAuthClient({ id: 'new' })],
+					count: 1,
+					totals: { mine: 1 },
+				});
+
+			const staleCall = store.fetchOAuthClientsPreview(); // in flight
+			await store.fetchOAuthClientsPreview(); // newer request commits 'new'
+			resolveStale({
+				data: [createOAuthClient({ id: 'stale' })],
+				count: 1,
+				totals: { mine: 99 },
+			});
+			await staleCall;
+
+			expect(store.oauthClientsPreview.map((client) => client.id)).toEqual(['new']);
+			expect(store.oauthClientTotals).toEqual({ mine: 1 });
+		});
+
+		it("does not let a slow preview overwrite the list's newer totals and scope tools", async () => {
+			let resolvePreview!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			const preview = new Promise<Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>>(
+				(resolve) => {
+					resolvePreview = resolve;
+				},
+			);
+			vi.spyOn(mcpApi, 'fetchOAuthClients')
+				.mockReturnValueOnce(preview)
+				.mockResolvedValueOnce({
+					data: [],
+					count: 0,
+					totals: { mine: 2, all: 5 },
+					scopeTools: { 'workflow:read': ['search_workflows'] },
+				});
+
+			const previewCall = store.fetchOAuthClientsPreview(); // in flight
+			await store.getAllOAuthClients(); // newer list fetch commits its metadata
+			resolvePreview({
+				data: [createOAuthClient()],
+				count: 1,
+				totals: { mine: 1, all: 4 },
+				scopeTools: { 'workflow:read': ['stale'] },
+			});
+			await previewCall;
+
+			// The preview rows are still applied (no newer preview exists)...
+			expect(store.oauthClientsPreview).toHaveLength(1);
+			// ...but the instance-wide metadata keeps the newer list response.
+			expect(store.oauthClientTotals).toEqual({ mine: 2, all: 5 });
+			expect(store.oauthClientScopeTools).toEqual({ 'workflow:read': ['search_workflows'] });
+		});
+
+		it('clears the cached preview', async () => {
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient()],
+				count: 1,
+				totals: { mine: 1 },
+			});
+			await store.fetchOAuthClientsPreview();
+			expect(store.oauthClientsPreview).toHaveLength(1);
+
+			store.clearOAuthClientsPreview();
+
+			expect(store.oauthClientsPreview).toEqual([]);
+		});
+
+		it('keeps a fetch that was in flight when the preview was cleared from repopulating it', async () => {
+			let resolveInFlight!: (value: Awaited<ReturnType<typeof mcpApi.fetchOAuthClients>>) => void;
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockReturnValue(
+				new Promise((resolve) => {
+					resolveInFlight = resolve;
+				}),
+			);
+
+			const inFlight = store.fetchOAuthClientsPreview();
+			store.clearOAuthClientsPreview(); // e.g. the overview unmounted
+			resolveInFlight({ data: [createOAuthClient()], count: 1, totals: { mine: 1 } });
+			await inFlight;
+
+			expect(store.oauthClientsPreview).toEqual([]);
+		});
+
+		it("leaves the clients page's list state untouched", async () => {
+			const listed = createOAuthClient({ id: 'listed' });
+			vi.spyOn(mcpApi, 'fetchOAuthClients').mockResolvedValue({
+				data: [createOAuthClient({ id: 'previewed' })],
+				count: 1,
+				totals: { mine: 1 },
+			});
+			store.oauthClients = [listed];
+			store.oauthClientsOwnership = 'all';
+			store.oauthClientsPage = 2;
+			store.oauthClientsCount = 40;
+
+			await store.fetchOAuthClientsPreview();
+
+			expect(store.oauthClients).toEqual([listed]);
+			expect(store.oauthClientsOwnership).toBe('all');
+			expect(store.oauthClientsPage).toBe(2);
+			expect(store.oauthClientsCount).toBe(40);
+		});
+	});
+
 	describe('OAuth clients ownership', () => {
 		it('fetches the current page with ownership, pagination and filters', async () => {
 			const client = createOAuthClient();
@@ -265,6 +401,15 @@ describe('mcp.store', () => {
 				success: true,
 				message: 'ok',
 			});
+		});
+
+		it("skips the list refetch when the caller doesn't show the list", async () => {
+			vi.spyOn(mcpApi, 'deleteOAuthClient').mockResolvedValue({ success: true, message: 'ok' });
+			const fetchSpy = vi.spyOn(mcpApi, 'fetchOAuthClients');
+
+			await store.removeOAuthClient('client-1', undefined, { refreshList: false });
+
+			expect(fetchSpy).not.toHaveBeenCalled();
 		});
 
 		it('ignores a stale in-flight list response superseded by a newer request', async () => {

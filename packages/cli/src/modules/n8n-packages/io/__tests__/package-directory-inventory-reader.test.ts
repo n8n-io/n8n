@@ -88,6 +88,31 @@ describe('PackageDirectoryInventoryReader', () => {
 		]);
 	});
 
+	it("accepts a workflow nested two folders deep in the export's flat layout", async () => {
+		// The export nests deeper folders as bare slugs (`folders/<a>/<b>/...`), so
+		// the reader must not require a repeated `folders/` segment per level.
+		const inventory = await reader.read(
+			sourceOf({
+				'projects/alpha-p1/project.json': project('p1', 'Alpha'),
+				'projects/alpha-p1/folders/ops-f1/folder.json': { id: 'f1', name: 'Ops' },
+				'projects/alpha-p1/folders/ops-f1/orders-f2/folder.json': { id: 'f2', name: 'Orders' },
+				'projects/alpha-p1/folders/ops-f1/orders-f2/workflows/deep-w1/workflow.json': workflow(
+					'w1',
+					'Deep',
+				),
+			}),
+		);
+
+		expect(inventory.workflows.map(({ content, ...rest }) => rest)).toEqual([
+			{
+				path: 'projects/alpha-p1/folders/ops-f1/orders-f2/workflows/deep-w1/workflow.json',
+				projectId: 'p1',
+				id: 'w1',
+				name: 'Deep',
+			},
+		]);
+	});
+
 	it('retains project metadata from the package', async () => {
 		const metadata = {
 			...project('p1'),
@@ -126,6 +151,8 @@ describe('PackageDirectoryInventoryReader', () => {
 		['projects/p1/project.json', 'projects/p1/nested/project.json', project('p2')],
 		['projects/p1/project.json', 'projects/p1/workflow.json', workflow('w1')],
 		['projects/p1/project.json', 'projects/p1/folders/f1/workflow.json', workflow('w1')],
+		// `folders/` with no folder entry before `workflows/` is malformed.
+		['projects/p1/project.json', 'projects/p1/folders/workflows/w1/workflow.json', workflow('w1')],
 		['projects/p1/project.json', 'projects/p1/credentials/credential.json', credential('c1')],
 		['projects/p1/project.json', 'variables/a/b/variable.json', variable('A')],
 	])(

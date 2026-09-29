@@ -37,6 +37,9 @@ export const MCP_STORE = 'mcp';
 export const LOADING_INDICATOR_TIMEOUT = 200;
 export const MCP_TOOLTIP_DELAY = 100;
 
+/** How many of the user's own connected clients the settings overview previews inline. */
+export const MCP_CLIENTS_PREVIEW_LIMIT = 3;
+
 export const MCP_CONNECT_POPOVER_WIDTH = 460;
 
 export const UNKNOWN_COUNT_VALUE = '—';

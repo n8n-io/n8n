@@ -6,7 +6,7 @@ import type { TEntitlement } from '@n8n_io/license-sdk';
 import { AxiosError } from 'axios';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { LicenseErrors, LicenseService } from '@/license/license.service';

@@ -25,12 +25,17 @@ const COMMON_BAILOUT = [
 // Frontend packages use vite.config.* for the vitest config too (vitest reads
 // vite.config). Setup files live at src/__tests__/setup.ts per the shared
 // @n8n/vitest-config convention.
+// Backend packages keep setup and globalSetup files in test/ (e.g. cli's
+// test/global-setup.ts, test/setup-sqlite-template.ts). No test imports a
+// globalSetup file, so `vitest related` would select zero tests for it.
 const VITEST_BAILOUT = [
 	...COMMON_BAILOUT,
 	/^vite\.config\.[cm]?[jt]s$/,
 	/^vitest\.config\.[cm]?[jt]s$/,
 	/(?:^|\/)vitest\.setup\.[cm]?[jt]s$/,
 	/(?:^|\/)__tests__\/setup\.[cm]?[jt]s$/,
+	/^test\/(?:global-?setup|setup)(?:-[\w-]+)?\.[cm]?[jt]s$/i,
+	/(?:^|\/)vitest[.-][^/]*setup[^/]*\.[cm]?[jt]s$/,
 ];
 
 export interface ComputeScopeOptions {

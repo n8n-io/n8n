@@ -95,6 +95,14 @@ describe('registerExperimentModals', () => {
 		expect(modalRegistry.has(modalKey)).toBe(true);
 	});
 
+	it('gives every experiment modal a lazy component, so registering one loads nothing', () => {
+		registerExperimentModals();
+
+		for (const modalKey of EXPERIMENT_MODAL_KEYS) {
+			expect(typeof modalRegistry.get(modalKey)?.component).toBe('function');
+		}
+	});
+
 	// It runs on every login, so the second call must reuse the same definitions.
 	it('stays silent when it is called again', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -1,0 +1,46 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "3a1d5f0e-6b8c-4b2a-9f1e-0c7d2e4a5b61",
+			"name": "Manual"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"limitWaitTime": true,
+				"limitType": "afterTimeInterval",
+				"resumeAmount": 5,
+				"resumeUnit": "seconds",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "8e2f6c1b-4d3a-4f7e-b5c9-1a2b3c4d5e6f",
+			"name": "Wait",
+			"webhookId": "c4b1f2e3-9d8a-4c7b-a6e5-f0d1c2b3a495"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "5d6e7f80-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+			"name": "After"
+		}
+	],
+	"connections": {
+		"Manual": {
+			"main": [[{ "node": "Wait", "type": "main", "index": 0 }]]
+		},
+		"Wait": {
+			"main": [[{ "node": "After", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {},
+	"settings": { "executionOrder": "v1" }
+}

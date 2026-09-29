@@ -62,6 +62,17 @@ describe('MCPConnectWorkflowsModal', () => {
 	});
 
 	describe('Initial rendering', () => {
+		it('should not load eligible workflows while closed', async () => {
+			const { queryByTestId } = renderModal({
+				pinia,
+				props: { ...createProps(), open: false },
+			});
+			await nextTick();
+
+			expect(queryByTestId('mcp-workflows-select')).not.toBeInTheDocument();
+			expect(mcpStore.getMcpEligibleWorkflows).not.toHaveBeenCalled();
+		});
+
 		it('should render workflow select component', async () => {
 			const { getByTestId } = renderModal({
 				pinia,
