@@ -200,61 +200,6 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
-export interface ToolCallDetails {
-	toolName: string;
-	displayName?: string;
-	kind: ToolRegistryEntry['kind'];
-	input: unknown;
-	node?: {
-		type: string;
-		typeVersion?: number;
-		parameters?: Record<string, unknown>;
-	};
-	workflow?: {
-		id?: string;
-		name?: string;
-		triggerType?: string;
-	};
-}
-
-/** Build the sanitized, resolved tool configuration shown in preview approvals. */
-export function buildToolCallDetails(
-	registry: ToolRegistry,
-	toolName: string,
-	input: unknown,
-): ToolCallDetails {
-	const entry = registry.get(toolName);
-	const kind = entry?.kind ?? 'tool';
-	const details: ToolCallDetails = {
-		toolName,
-		kind,
-		input: sanitizeExecutionLogValue(input),
-	};
-
-	if (entry?.nodeDisplayName) details.displayName = entry.nodeDisplayName;
-
-	if (kind === 'node' && entry?.nodeType) {
-		details.node = {
-			type: entry.nodeType,
-			...(entry.nodeTypeVersion !== undefined && { typeVersion: entry.nodeTypeVersion }),
-			...(entry.nodeParameters !== undefined && {
-				parameters: sanitizeExecutionLogRecord(
-					resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
-				),
-			}),
-		};
-	} else if (kind === 'workflow') {
-		details.workflow = {
-			...(entry?.workflowId !== undefined && { id: entry.workflowId }),
-			...(entry?.workflowName !== undefined && { name: entry.workflowName }),
-			...(entry?.triggerType !== undefined && { triggerType: entry.triggerType }),
-		};
-		if (entry?.workflowName) details.displayName = entry.workflowName;
-	}
-
-	return details;
-}
-
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;

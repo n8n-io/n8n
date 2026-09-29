@@ -756,7 +756,8 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 
 			expect(getByText('The agent wants to run the Delete record tool.')).toBeVisible();
-			expect(getByTestId('instance-ai-target-approval-args')).toHaveTextContent('"id": "record-1"');
+			expect(getByTestId('approval-card-args')).toBeVisible();
+			expect(getByTestId('approval-card-args')).toHaveTextContent('"id": "record-1"');
 			expect(queryByTestId('approval-card-always-allow')).toBeNull();
 
 			await userEvent.click(getByTestId('approval-card-allow-once'));

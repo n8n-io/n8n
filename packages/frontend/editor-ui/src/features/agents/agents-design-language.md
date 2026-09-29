@@ -184,10 +184,18 @@ Use `N8nApprovalCard` for Preview tool approvals, including background child
 approvals. It owns the shared layout, keyboard controls, and standard choices
 for the Assistant and Agent Preview. Pass the app catalog labels through
 `useApprovalCardLabels`.
+Pass the tool call arguments to the shared card. It formats and shows them
+inline for both surfaces. Leave space for the card's outline and shadow inside
+scrollable containers.
 Keep approval policy and response payloads in the caller. Show the session
-option only when the backend supports it. Do not autofocus cards in the chat
-timeline. If a surface keeps a resolved card, show the decision without active
-actions.
+option only when the backend supports it. Replace the Preview composer with
+pending tool approvals, including background child approvals. Restore the
+composer and its draft after the approvals are resolved. Show one approval
+at a time, as the Assistant does. Advance to the next pending approval after
+each response. Use the existing child task order for background approvals.
+Focus each approval as it appears. Return focus to the composer after the last
+decision. Keep tool steps, questions, and display cards in the conversation.
+If a surface keeps a resolved card, show the decision without active actions.
 
 ## Preview composer queue
 

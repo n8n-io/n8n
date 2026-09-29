@@ -8078,7 +8078,6 @@
 	"agents.chat.toolNames.flagMemory": "Memory noted",
 	"agents.chat.approval.title": "Approval required",
 	"agents.chat.approval.description": "The agent wants to run the {toolName} tool.",
-	"agents.chat.approval.viewToolDetails": "View tool details",
 	"agents.chat.delegate.label": "Sub-agent · {name}",
 	"agents.chat.delegate.labelFallback": "Sub-agent",
 	"agents.chat.delegate.childSuspendUnsupported": "Sub-agent requested user input, which is not supported for delegated runs yet.",

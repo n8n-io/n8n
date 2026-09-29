@@ -26,7 +26,6 @@ import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
 
 interface Props {
 	/**
@@ -283,16 +282,6 @@ function credentialDestinationOptions(item: PendingConfirmationItem): ApprovalOp
 			label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
 		},
 	];
-}
-
-function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
-	const args = conf.targetApproval?.args;
-	if (args === undefined) return '';
-	try {
-		return JSON.stringify(args, null, 2) ?? String(args);
-	} catch {
-		return String(args);
-	}
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -623,6 +612,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:title="buildApprovalTitle(chunk.item)"
 				:labels="approvalLabels"
 				:description="buildApprovalSubtitle(chunk.item)"
+				:args="chunk.item.toolCall.confirmation.targetApproval?.args"
 				:description-label="i18n.baseText('instanceAi.confirmation.details')"
 				:options="credentialDestinationOptions(chunk.item)"
 				:supports-session-approval="canAlwaysAllow(chunk.item)"
@@ -640,24 +630,12 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 						{{ buildApprovalSubtitle(chunk.item) }}
 					</N8nText>
 				</template>
-				<ConfirmationPreview
-					v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
-					:class="$style.targetApprovalArgs"
-					data-test-id="instance-ai-target-approval-args"
-				>
-					{{ formatTargetApprovalArgs(chunk.item.toolCall.confirmation) }}
-				</ConfirmationPreview>
 			</N8nApprovalCard>
 		</template>
 	</TransitionGroup>
 </template>
 
 <style lang="scss" module>
-.targetApprovalArgs {
-	white-space: pre-wrap;
-	word-break: break-word;
-}
-
 .credentialDescription {
 	margin: 0;
 	overflow-wrap: anywhere;

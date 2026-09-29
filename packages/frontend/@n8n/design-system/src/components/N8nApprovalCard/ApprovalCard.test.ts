@@ -74,10 +74,11 @@ describe('N8nApprovalCard', () => {
 	});
 
 	it('emits select on click', async () => {
-		const { getByTestId, emitted } = render(N8nApprovalCard, {
+		const { getByTestId, getByRole, emitted } = render(N8nApprovalCard, {
 			props: { title: 'Approval required', options: OPTIONS },
 		});
 		await userEvent.click(getByTestId('opt-deny'));
 		expect(emitted('select')).toEqual([['deny']]);
+		expect(getByRole('listbox')).toHaveFocus();
 	});
 });

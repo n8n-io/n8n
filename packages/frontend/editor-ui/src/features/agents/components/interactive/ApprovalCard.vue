@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nApprovalCard, N8nText } from '@n8n/design-system';
+import { N8nApprovalCard } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
@@ -8,7 +8,6 @@ import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsC
 const props = defineProps<{
 	input: ApprovalInput;
 	disabled?: boolean;
-	resolvedValue?: ApprovalResume;
 }>();
 
 const emit = defineEmits<{
@@ -19,21 +18,6 @@ const i18n = useI18n();
 const approvalLabels = useApprovalCardLabels();
 
 const toolLabel = computed(() => props.input.displayName ?? props.input.toolName);
-
-const decision = computed(() => {
-	if (!props.disabled || !props.resolvedValue) return undefined;
-	return props.resolvedValue.approved ? 'allowed' : 'denied';
-});
-
-const detailsText = computed(() => {
-	const details = props.input.details ?? props.input.args;
-	if (details === undefined) return '';
-	try {
-		return JSON.stringify(details, null, 2) ?? '';
-	} catch {
-		return String(details);
-	}
-});
 
 function submit(key: string) {
 	if (props.disabled) return;
@@ -56,39 +40,10 @@ function submit(key: string) {
 				interpolate: { toolName: toolLabel },
 			})
 		"
+		:args="input.args"
 		:supports-session-approval="input.supportsSessionApproval"
-		:decision="decision"
 		:disabled="disabled"
-		:autofocus="false"
 		data-testid="agent-approval-card"
 		@select="submit"
-	>
-		<details v-if="detailsText" data-testid="agent-approval-tool-details">
-			<summary :class="$style.detailsSummary">
-				<N8nText size="small">
-					{{ i18n.baseText('agents.chat.approval.viewToolDetails') }}
-				</N8nText>
-			</summary>
-			<pre :class="$style.args">{{ detailsText }}</pre>
-		</details>
-	</N8nApprovalCard>
+	/>
 </template>
-
-<style lang="scss" module>
-.args {
-	margin: var(--spacing--2xs) 0 0;
-	padding: var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--background--surface);
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
-	white-space: pre-wrap;
-	word-break: break-word;
-}
-
-.detailsSummary {
-	cursor: pointer;
-}
-</style>

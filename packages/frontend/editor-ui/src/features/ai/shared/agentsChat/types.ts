@@ -76,8 +76,6 @@ export interface ApprovalInput {
 	displayName?: string;
 	supportsSessionApproval?: boolean;
 	args: unknown;
-	/** Sanitized full tool configuration, included only by preview chat. */
-	details?: unknown;
 }
 
 export interface ApprovalResume {

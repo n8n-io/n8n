@@ -9,7 +9,6 @@ import type {
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentSessionMode } from './utils/agent-thread-access';
@@ -26,7 +25,7 @@ import {
 	type RecordMessageParams,
 	type StartExecutionParams,
 } from './agent-execution.service';
-import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
+import { ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from './utils/fatal-session-outcome';
@@ -56,7 +55,6 @@ interface ExecuteTurnConfig {
 	mcpServerAttributions: Map<string, string>;
 	context: RecordingContext;
 	prepare: () => Promise<AgentTurnRequest>;
-	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
 	productionN8nChat?: boolean;
@@ -79,22 +77,6 @@ interface PreviewExecutionControl {
 	controller: AbortController;
 	detachRequest: () => void;
 	userId: string;
-}
-
-function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
-	if (chunk.type !== 'tool-call-suspended' || !isRecord(chunk.suspendPayload)) return chunk;
-	if (chunk.suspendPayload.type !== 'approval') return chunk;
-
-	const toolName = chunk.suspendPayload.toolName;
-	if (typeof toolName !== 'string' || toolName.length === 0) return chunk;
-
-	return {
-		...chunk,
-		suspendPayload: {
-			...chunk.suspendPayload,
-			details: buildToolCallDetails(toolRegistry, toolName, chunk.suspendPayload.args),
-		},
-	};
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -221,22 +203,19 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (const value of streamAgentChunks(stream)) {
-			if (value.type === 'input-boundary') {
-				value.acknowledge();
+		for await (const chunk of streamAgentChunks(stream)) {
+			if (chunk.type === 'input-boundary') {
+				chunk.acknowledge();
 				continue;
 			}
-			if (value.type === 'input') {
-				const event = state.steeredMessages.get(value.message.id);
+			if (chunk.type === 'input') {
+				const event = state.steeredMessages.get(chunk.message.id);
 				if (event) {
-					state.steeredMessages.delete(value.message.id);
+					state.steeredMessages.delete(chunk.message.id);
 					yield event;
 				}
 				continue;
 			}
-			const chunk = config.includeHitlToolDetails
-				? withApprovalToolDetails(value, config.toolRegistry)
-				: value;
 			recorder.record(chunk);
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;

@@ -44,6 +44,8 @@ interface ApprovalCardProps {
 	titleSize?: 'medium' | 'large';
 	/** Action details shown in a scrollable text region. */
 	description?: string;
+	/** Tool arguments shown below the description. */
+	args?: unknown;
 	/** Accessible name for the details region. Defaults to the title. */
 	descriptionLabel?: string;
 	/** Custom decisions. Defaults to the standard allow and deny choices. */
@@ -58,17 +60,22 @@ interface ApprovalCardProps {
 	decision?: 'allowed' | 'denied';
 	/** Prevent mouse and keyboard decisions while the card is inactive. */
 	disabled?: boolean;
-	/** Focus the decisions on mount. Disable this in a chat timeline. */
-	autofocus?: boolean;
 }
 
 defineOptions({ name: 'N8nApprovalCard' });
 const props = withDefaults(defineProps<ApprovalCardProps>(), {
 	titleSize: 'large',
-	autofocus: true,
 });
 const emit = defineEmits<{ select: [key: string] }>();
 const { t } = useI18n();
+
+const formattedArgs = computed(() => {
+	try {
+		return JSON.stringify(props.args, null, 2);
+	} catch {
+		return undefined;
+	}
+});
 
 const labels = computed<ApprovalCardLabels>(
 	() =>
@@ -105,7 +112,7 @@ const options = computed<readonly ApprovalOption[]>(() => {
 	return choices;
 });
 
-// Chat timelines can show more than one approval at a time.
+// Multiple approvals can be shown at once.
 const id = useId();
 const containerRef = useTemplateRef<HTMLElement>('container');
 const highlightedIndex = ref(0);
@@ -118,11 +125,12 @@ watch(
 );
 
 onMounted(() => {
-	if (props.autofocus && !props.disabled) containerRef.value?.focus();
+	if (!props.disabled) containerRef.value?.focus();
 });
 
 function selectOption(key: string) {
 	if (props.disabled) return;
+	containerRef.value?.focus({ preventScroll: true });
 	emit('select', key);
 }
 
@@ -161,7 +169,14 @@ function onKeydown(event: KeyboardEvent) {
 					{{ description }}
 				</div>
 			</slot>
-			<slot />
+			<div
+				v-if="formattedArgs"
+				:class="$style.description"
+				tabindex="0"
+				data-test-id="approval-card-args"
+			>
+				{{ formattedArgs }}
+			</div>
 		</div>
 		<div :class="$style.footer">
 			<div v-if="decision" :class="$style.resolved">
