@@ -81,7 +81,10 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			{ projectId: 'another-project' },
 		])('does not publish when the guarded baseline changed: %s', async (change) => {
 			const { workflow, input } = await seed();
+			const workflows = Container.get(WorkflowRepository);
+			const original = await workflows.findOneByOrFail({ id: workflow.id });
 			expect(await repository.enqueuePublishIfCurrent({ ...input, ...change })).toBe(false);
+			expect(await workflows.findOneByOrFail({ id: workflow.id })).toEqual(original);
 			expect(await repository.findInFlightByWorkflowId(workflow.id)).toBeNull();
 			expect(
 				await Container.get(WorkflowPublishHistoryRepository).countBy({ workflowId: workflow.id }),

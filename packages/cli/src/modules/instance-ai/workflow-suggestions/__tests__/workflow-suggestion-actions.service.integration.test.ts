@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -418,30 +419,54 @@ it('resolves concurrent apply and discard actions to one terminal state', async 
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
 });
 
-it('does not overwrite a concurrent editor save', async () => {
+it('rejects Apply when an editor saves after suggestion preparation', async () => {
 	const { user, original, graph, suggestion, act } = await fixture();
 	const editorNodes = original.nodes.map((node) => ({
 		...node,
 		position: [300, 300] as [number, number],
 	}));
-	const update = Object.assign(new WorkflowEntity(), {
-		nodes: editorNodes,
-		connections: original.connections,
+	const prepared = createDeferredPromise();
+	const resume = createDeferredPromise();
+	vi.spyOn(Container.get(ExternalHooks), 'run').mockImplementation(async (name, parameters) => {
+		if (name !== 'workflow.update') return;
+		const update = parameters?.[0] as WorkflowEntity;
+		if (update.nodes[0].position[0] !== graph.nodes[0].position[0]) return;
+		prepared.resolve();
+		await resume.promise;
 	});
-	const expectedChecksum = await calculateWorkflowChecksum(original);
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const apply = act('open-in-editor');
+	const rejected = expect(apply).rejects.toThrow('no longer matches');
+	await prepared.promise;
+	try {
+		const editorSave = await workflowService.update(
+			user,
+			Object.assign(new WorkflowEntity(), {
+				nodes: editorNodes,
+				connections: original.connections,
+			}),
+			original.id,
+			{ expectedChecksum: await calculateWorkflowChecksum(original) },
+		);
+		resume.resolve();
+		await rejected;
 
-	const outcomes = await Promise.allSettled([
-		workflowService.update(user, update, original.id, { expectedChecksum }),
-		act('open-in-editor'),
-	]);
-
-	expect(outcomes.some((outcome) => outcome.status === 'fulfilled')).toBe(true);
-	const stored = await suggestions.findOneByOrFail({ id: suggestion.id });
-	const saved = await workflows.findOneByOrFail({ id: original.id });
-	expect(saved.nodes).toEqual(stored.closedReason === 'applied' ? graph.nodes : editorNodes);
-	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
-	expect(saved.activeVersionId).toBe(original.activeVersionId);
+		const saved = await workflows.findOneByOrFail({ id: original.id });
+		expect(saved.nodes).toEqual(editorNodes);
+		expect(saved.versionId).toBe(editorSave.versionId);
+		expect(saved.activeVersionId).toBe(original.activeVersionId);
+		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
+		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+			state: 'closed',
+			closedReason: 'outdated',
+			appliedVersion: null,
+		});
+		expect(
+			(await suggestions.getActivity(suggestion.id)).map(({ action }) => action).sort(),
+		).toEqual(['outdated', 'submitted']);
+	} finally {
+		resume.resolve();
+	}
 });
 
 it('retries publication of the applied version without saving the graph again', async () => {

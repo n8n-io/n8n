@@ -77,7 +77,7 @@ export class WorkflowSuggestionActionsService {
 						expectedChecksum: suggestion.expectedBaseline.checksum,
 						source: 'n8n-ai',
 						guardedUpdate: {
-							beforeSave: async (ctx, _original, prepared) => {
+							beforeSave: async (ctx, prepared) => {
 								const target = await this.suggestions.readWorkflowTarget(workflowId, ctx);
 								const current = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 								if (

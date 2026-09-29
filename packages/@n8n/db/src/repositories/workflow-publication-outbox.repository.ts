@@ -74,6 +74,57 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		});
 	}
 
+	/** Commit the workflow version, publication history, and queued work together. */
+	async recordPublish(
+		input: {
+			workflowId: string;
+			versionId: string;
+			previousActiveVersionId: string | null;
+			updatedAt: Date;
+			userId: string | null;
+			expectedActiveVersionId?: string;
+		},
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		return await this.runInTransaction(ctx, async (manager) => {
+			const result = await manager.update(
+				WorkflowEntity,
+				input.expectedActiveVersionId === undefined
+					? { id: input.workflowId }
+					: { id: input.workflowId, activeVersionId: input.expectedActiveVersionId },
+				{
+					active: true,
+					activeVersionId: input.versionId,
+					updatedAt: input.updatedAt,
+				},
+			);
+			if (input.expectedActiveVersionId !== undefined && (result.affected ?? 0) === 0) {
+				return false;
+			}
+			if (input.previousActiveVersionId) {
+				await manager.insert(WorkflowPublishHistory, {
+					workflowId: input.workflowId,
+					versionId: input.previousActiveVersionId,
+					event: 'deactivated',
+					userId: input.userId,
+				});
+			}
+			await manager.insert(WorkflowPublishHistory, {
+				workflowId: input.workflowId,
+				versionId: input.versionId,
+				event: 'activated',
+				userId: input.userId,
+			});
+			await this.enqueue(
+				input.workflowId,
+				input.versionId,
+				WorkflowPublicationReason.Publish,
+				manager,
+			);
+			return true;
+		});
+	}
+
 	/** Commit an exact-version publication only while its saved baseline still matches. */
 	async enqueuePublishIfCurrent(input: {
 		workflowId: string;
@@ -129,32 +180,19 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			) {
 				return false;
 			}
-			await manager.update(WorkflowEntity, input.workflowId, {
-				active: true,
-				activeVersionId: input.versionId,
-				updatedAt: workflow.updatedAt,
-			});
-			if (input.previousActiveVersionId && input.previousActiveVersionId !== input.versionId) {
-				await manager.insert(WorkflowPublishHistory, {
+			return await this.recordPublish(
+				{
 					workflowId: input.workflowId,
-					versionId: input.previousActiveVersionId,
-					event: 'deactivated',
+					versionId: input.versionId,
+					previousActiveVersionId:
+						input.previousActiveVersionId === input.versionId
+							? null
+							: input.previousActiveVersionId,
+					updatedAt: workflow.updatedAt,
 					userId: input.userId,
-				});
-			}
-			await manager.insert(WorkflowPublishHistory, {
-				workflowId: input.workflowId,
-				versionId: input.versionId,
-				event: 'activated',
-				userId: input.userId,
-			});
-			await this.enqueue(
-				input.workflowId,
-				input.versionId,
-				WorkflowPublicationReason.Publish,
-				manager,
+				},
+				ctx,
 			);
-			return true;
 		});
 	}
 

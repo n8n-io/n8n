@@ -453,7 +453,6 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
-			findOne: Mock;
 			findSavedWorkflow: Mock;
 		}>;
 
@@ -462,7 +461,6 @@ describe('WorkflowService', () => {
 			transactionRunner = mock<TransactionRunner>();
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
-			workflowRepositoryMock.updateContent.mockResolvedValue(true);
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			redactionEnforcementServiceMock = mock<RedactionEnforcementService>();
@@ -538,7 +536,6 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
-			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
 			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(existingWorkflow);
 			return existingWorkflow;
 		}
@@ -556,13 +553,10 @@ describe('WorkflowService', () => {
 				committed = true;
 				return result;
 			});
-			const beforeSave = vi.fn(
-				async (_ctx: OperationContext, stored: WorkflowEntity, prepared: WorkflowEntity) => {
-					expect(stored).toBe(original);
-					expect(prepared.nodes[0].name).toBe('Prepared node');
-					expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
-				},
-			);
+			const beforeSave = vi.fn(async (_ctx: OperationContext, prepared: WorkflowEntity) => {
+				expect(prepared.nodes[0].name).toBe('Prepared node');
+				expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
+			});
 			const afterSave = vi.fn(async () => {
 				expect(committed).toBe(false);
 				expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalled();
@@ -635,22 +629,6 @@ describe('WorkflowService', () => {
 			);
 		});
 
-		test('rejects an ordinary save when a concurrent writer changes the workflow', async () => {
-			const original = setupExistingWorkflow();
-			workflowRepositoryMock.updateContent.mockResolvedValueOnce(false);
-			await expect(
-				workflowService.update(
-					mock<User>(),
-					Object.assign(new WorkflowEntity(), { settings: {} }),
-					original.id,
-				),
-			).rejects.toThrow('changed before the save completed');
-			expect(externalHooksMock.run).not.toHaveBeenCalledWith(
-				'workflow.afterUpdate',
-				expect.anything(),
-			);
-		});
-
 		test('forwards the workflow hook context to workflow.update and workflow.afterUpdate', async () => {
 			setupExistingWorkflow();
 
@@ -693,7 +671,6 @@ describe('WorkflowService', () => {
 					versionId: expect.not.stringMatching('v1'),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -711,7 +688,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			} as unknown as WorkflowEntity;
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
-			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(existingWorkflow);
 
 			const user = mock<User>();
 			await workflowService.update(
@@ -731,7 +708,6 @@ describe('WorkflowService', () => {
 					versionId: 'v1',
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -926,7 +902,6 @@ describe('WorkflowService', () => {
 					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -951,7 +926,6 @@ describe('WorkflowService', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -998,7 +972,6 @@ describe('WorkflowService', () => {
 					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -1021,7 +994,6 @@ describe('WorkflowService', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -1091,7 +1063,6 @@ describe('WorkflowService', () => {
 					}),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -1118,7 +1089,6 @@ describe('WorkflowService', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'none' }),
 				}),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 
@@ -1273,7 +1243,6 @@ describe('WorkflowService', () => {
 						settings: expect.not.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
 					expect.anything(),
-					expect.any(String),
 				);
 			});
 
@@ -1295,7 +1264,6 @@ describe('WorkflowService', () => {
 						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
 					expect.anything(),
-					expect.any(String),
 				);
 			});
 
@@ -1322,7 +1290,6 @@ describe('WorkflowService', () => {
 						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
 					}),
 					expect.anything(),
-					expect.any(String),
 				);
 			});
 
@@ -1349,7 +1316,6 @@ describe('WorkflowService', () => {
 						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
 					}),
 					expect.anything(),
-					expect.any(String),
 				);
 			});
 		});
@@ -1875,16 +1841,7 @@ describe('WorkflowService', () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			const trx = mock<EntityManager>();
-			const managerMock = mock<EntityManager>();
-			(managerMock.transaction as unknown as Mock).mockImplementation(
-				async (runInTransaction: (entityManager: EntityManager) => Promise<unknown>) =>
-					await runInTransaction(trx),
-			);
-			Object.defineProperty(workflowRepositoryMock, 'manager', {
-				value: managerMock,
-				configurable: true,
-			});
+			outboxRepositoryMock.recordPublish.mockResolvedValue(true);
 
 			const addToActiveWorkflowManagerSpy = vi.spyOn(
 				workflowService as never,
@@ -1897,29 +1854,13 @@ describe('WorkflowService', () => {
 				versionId: TARGET_VERSION_ID,
 			});
 
-			// activeVersionId + active are updated inside the transaction
-			expect(trx.update).toHaveBeenCalledWith(
-				WorkflowEntity,
-				{ id: WORKFLOW_ID },
-				expect.objectContaining({ active: true, activeVersionId: TARGET_VERSION_ID }),
-			);
-			// the outbox record is enqueued in the same transaction
-			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				TARGET_VERSION_ID,
-				'publish',
-				trx,
-			);
-			// publish-history records (deactivated for the previous version, activated for the
-			// target) are written in the same transaction
-			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(
-				expect.objectContaining({ event: 'deactivated', versionId: PREVIOUS_VERSION_ID }),
-				trx,
-			);
-			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(
-				expect.objectContaining({ event: 'activated', versionId: TARGET_VERSION_ID }),
-				trx,
-			);
+			expect(outboxRepositoryMock.recordPublish).toHaveBeenCalledExactlyOnceWith({
+				workflowId: WORKFLOW_ID,
+				versionId: TARGET_VERSION_ID,
+				previousActiveVersionId: PREVIOUS_VERSION_ID,
+				updatedAt: workflow.updatedAt,
+				userId: user.id,
+			});
 			expect(eventServiceMock.emit).toHaveBeenNthCalledWith(1, 'workflow-deactivated', {
 				user,
 				workflowId: WORKFLOW_ID,
@@ -2730,7 +2671,11 @@ describe('WorkflowService', () => {
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let ownershipServiceMock: MockProxy<OwnershipService>;
 		let licenseStateMock: MockProxy<LicenseState>;
-		let workflowRepositoryMock: MockProxy<{ update: Mock; updateContent: Mock; findOne: Mock }>;
+		let workflowRepositoryMock: MockProxy<{
+			update: Mock;
+			updateContent: Mock;
+			findSavedWorkflow: Mock;
+		}>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -2744,7 +2689,6 @@ describe('WorkflowService', () => {
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			workflowRepositoryMock = mock();
-			workflowRepositoryMock.updateContent.mockResolvedValue(true);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -2801,7 +2745,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(workflow);
 
 			const user = mock<User>({
 				id: 'user-1',
@@ -2849,7 +2793,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(workflow);
 
 			const user = mock<User>({
 				id: 'user-1',
@@ -2866,7 +2810,6 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expect.not.objectContaining({ isArchived: expect.anything() }),
 				expect.anything(),
-				expect.any(String),
 			);
 		});
 	});
@@ -2878,7 +2821,11 @@ describe('WorkflowService', () => {
 		let ownershipServiceMock: MockProxy<OwnershipService>;
 		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 		let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
-		let workflowRepositoryMock: MockProxy<{ update: Mock; updateContent: Mock; findOne: Mock }>;
+		let workflowRepositoryMock: MockProxy<{
+			update: Mock;
+			updateContent: Mock;
+			findSavedWorkflow: Mock;
+		}>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const storedNodes = [{ name: 'Start' }] as unknown as INode[];
@@ -2905,7 +2852,6 @@ describe('WorkflowService', () => {
 			);
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
-			workflowRepositoryMock.updateContent.mockResolvedValue(true);
 
 			const licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
@@ -2917,7 +2863,7 @@ describe('WorkflowService', () => {
 
 			const storedWorkflow = makeStoredWorkflow();
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(storedWorkflow);
-			workflowRepositoryMock.findOne.mockResolvedValue(storedWorkflow);
+			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(storedWorkflow);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -3020,7 +2966,6 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expect.anything(),
 				{ policyCleared: cleared },
-				expect.any(String),
 			);
 		});
 

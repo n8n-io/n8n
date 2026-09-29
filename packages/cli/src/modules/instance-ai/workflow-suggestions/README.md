@@ -50,7 +50,9 @@ Each POST route uses the proposal detail path plus an action suffix:
 
 Use **Approve and publish** as the action label. All actions require an enabled user with current edit access. Approval and publication retry also require publish access. Save and publication respect editor write locks. Publication keeps the existing credential checks and enterprise review guards.
 
-Apply commits workflow content, required history, the applied-version record, and activity together. Ordinary workflow saves recheck their loaded checksum at the database write. A failed transaction cannot leave a saved fix with a pending suggestion. History records the human editor and Assistant authorship. Activity keeps the background user separate from the human actor.
+Apply locks the workflow and rechecks the suggestion baseline after normal save preparation. It commits workflow content, required history, the applied-version record, and activity together. A failed transaction cannot leave a saved fix with a pending suggestion. History records the human editor and Assistant authorship. Activity keeps the background user separate from the human actor.
+
+Ordinary saves keep their existing conflict checks. An ordinary save that started before Apply can still finish after Apply commits. This feature does not add a new conflict check to every workflow save.
 
 The detail exposes `appliedVersion` and the recorded publication outcome. Publication uses the existing outbox and trigger status. It distinguishes unpublished, pending, partial, successful, failed, and unknown outcomes. A lost response or active-version pointer alone does not prove success or failure. Retries reject later saved content, ownership changes, and intervening publication. Confirmed publication outcomes remain recorded after outbox cleanup.
 

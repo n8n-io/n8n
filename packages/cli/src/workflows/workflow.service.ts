@@ -423,11 +423,7 @@ export class WorkflowService {
 			allowArchivedUpdate?: boolean;
 			/** Commit a related state change with the prepared workflow and its history. */
 			guardedUpdate?: {
-				beforeSave: (
-					ctx: OperationContext,
-					original: WorkflowEntity,
-					prepared: WorkflowEntity,
-				) => Promise<void>;
+				beforeSave: (ctx: OperationContext, prepared: WorkflowEntity) => Promise<void>;
 				afterSave: (ctx: OperationContext, saved: WorkflowEntity) => Promise<void>;
 			};
 		} = {},
@@ -462,7 +458,6 @@ export class WorkflowService {
 			);
 		}
 
-		const storedChecksum = await calculateWorkflowChecksum(workflow);
 		if (guardedUpdate && tagIds) {
 			throw new BadRequestError('A guarded workflow save cannot change tags.');
 		}
@@ -688,7 +683,6 @@ export class WorkflowService {
 			if (guardedUpdate) {
 				await guardedUpdate.beforeSave(
 					ctx,
-					workflow,
 					Object.assign(new WorkflowEntity(), workflow, updatePayload),
 				);
 			}
@@ -706,24 +700,18 @@ export class WorkflowService {
 					guardedUpdate ? ctx : undefined,
 				);
 			}
-			const saved = await this.workflowRepository.updateContent(
-				workflowId,
-				updatePayload,
-				{ ...ctx, policyCleared: cleared },
-				storedChecksum,
-			);
-			if (!saved) {
-				throw new ConflictError('The workflow changed before the save completed.');
-			}
+			await this.workflowRepository.updateContent(workflowId, updatePayload, {
+				...ctx,
+				policyCleared: cleared,
+			});
 			if (tagIds && !tagsDisabled) {
 				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 			}
-			const savedWorkflow = guardedUpdate
-				? await this.workflowRepository.findSavedWorkflow(workflowId, !tagsDisabled, ctx)
-				: await this.workflowRepository.findOne({
-						where: { id: workflowId },
-						relations: tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'],
-					});
+			const savedWorkflow = await this.workflowRepository.findSavedWorkflow(
+				workflowId,
+				!tagsDisabled,
+				ctx,
+			);
 			if (!savedWorkflow) {
 				throw new BadRequestError(
 					`Workflow with ID "${workflowId}" could not be found to be updated.`,
@@ -1428,32 +1416,33 @@ export class WorkflowService {
 
 		const versionId = uuid();
 		try {
-			await this.workflowRepository.manager.transaction(async (trx) => {
-				// The version row must precede the guarded update: `activeVersionId`'s
-				// foreign key requires it. `saveVersion` swallows insert errors; a
-				// missing row surfaces as a foreign-key violation on the update, which
-				// rolls the transaction back.
+			await this.transactionRunner.run({}, async (ctx) => {
+				// The pointer requires a history row. Both writes must use this transaction.
 				await this.workflowHistoryService.saveVersion(
 					'n8n',
 					{ versionId, ...versionData },
 					workflowId,
 					false,
 					undefined,
-					trx,
+					undefined,
+					undefined,
+					ctx,
 				);
 
 				// Re-publication of the same version id in the gap (unpublish +
 				// publish of the version read above) passes the guard; same id means
 				// same content, so the heal is still a valid heal of the current
 				// active version.
-				const recorded = await this._recordPublishInTransaction(
-					trx,
-					null,
-					workflowId,
-					versionId,
-					expectedActiveVersionId,
-					workflow.updatedAt,
-					{ onlyIfActiveVersionIs: expectedActiveVersionId },
+				const recorded = await this.outboxRepository.recordPublish(
+					{
+						workflowId,
+						versionId,
+						previousActiveVersionId: expectedActiveVersionId,
+						updatedAt: workflow.updatedAt,
+						userId: null,
+						expectedActiveVersionId,
+					},
+					ctx,
 				);
 				// Roll back the version row too — a lost race must leave no trace.
 				if (!recorded) throw new SystemPublishSupersededError();
@@ -1994,88 +1983,17 @@ export class WorkflowService {
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
 	): Promise<void> {
-		await this.workflowRepository.manager.transaction(async (trx) => {
-			await this._recordPublishInTransaction(
-				trx,
-				userId,
-				workflowId,
-				versionIdToActivate,
-				previousActiveVersionId,
-				updatedAt,
-			);
+		await this.outboxRepository.recordPublish({
+			userId,
+			workflowId,
+			versionId: versionIdToActivate,
+			previousActiveVersionId,
+			updatedAt,
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
 		this.workflowPublicationNotifier.requestDrain();
-	}
-
-	/**
-	 * Writes one publish into an open transaction: the workflow-row update, the
-	 * publish-history records, and the outbox record. With
-	 * `onlyIfActiveVersionIs`, the row update — this method's first write — is
-	 * guarded on the active version still being that value; a miss returns
-	 * `false` without writing anything further, and the caller owns rolling
-	 * back whatever it wrote earlier in the same transaction.
-	 */
-	private async _recordPublishInTransaction(
-		trx: EntityManager,
-		userId: string | null,
-		workflowId: string,
-		versionIdToActivate: string,
-		previousActiveVersionId: string | null,
-		updatedAt: Date,
-		options?: { onlyIfActiveVersionIs: string },
-	): Promise<boolean> {
-		const result = await trx.update(
-			WorkflowEntity,
-			options === undefined
-				? { id: workflowId }
-				: { id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
-			{
-				activeVersionId: versionIdToActivate,
-				active: true,
-				// workflow content did not change, so we keep updatedAt as is
-				updatedAt,
-			},
-		);
-
-		// A miss means a concurrent publish or unpublish moved the active version
-		// since the caller's read.
-		if (options !== undefined && (result.affected ?? 0) === 0) {
-			return false;
-		}
-
-		if (previousActiveVersionId) {
-			await this.workflowPublishHistoryRepository.addRecord(
-				{
-					workflowId,
-					versionId: previousActiveVersionId,
-					event: 'deactivated',
-					userId,
-				},
-				trx,
-			);
-		}
-
-		await this.workflowPublishHistoryRepository.addRecord(
-			{
-				workflowId,
-				versionId: versionIdToActivate,
-				event: 'activated',
-				userId,
-			},
-			trx,
-		);
-
-		await this.outboxRepository.enqueue(
-			workflowId,
-			versionIdToActivate,
-			WorkflowPublicationReason.Publish,
-			trx,
-		);
-
-		return true;
 	}
 
 	/**
