@@ -7,6 +7,7 @@ import type {
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
+	SharedWorkflowRepository,
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -68,6 +69,7 @@ export class WorkflowDependencyQueryService {
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -174,7 +176,7 @@ export class WorkflowDependencyQueryService {
 		// Load all referenced resources (not just accessible ones) so that ids whose
 		// resource has been deleted — the index may still reference them — can be
 		// dropped instead of being reported as inaccessible.
-		const [credentials, workflows, dataTables, agents] = await Promise.all([
+		const [credentials, workflows, dataTables, agents, workflowOwnerProjects] = await Promise.all([
 			maps.allCredIds.size > 0
 				? this.credentialsRepository.find({
 						where: { id: In([...maps.allCredIds]), usageScope: 'project' },
@@ -196,6 +198,7 @@ export class WorkflowDependencyQueryService {
 			maps.allAgentIds.size > 0
 				? this.agentUsageProvider.findAgentSummaries([...maps.allAgentIds])
 				: [],
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([...maps.allWfIds]),
 		]);
 
 		const accessibleWfIdSet = new Set(accessibleWfIds);
@@ -203,7 +206,7 @@ export class WorkflowDependencyQueryService {
 		const accessibleDtIdSet = new Set(accessibleDtIds);
 
 		const agentNames = new Map<string, { name: string; projectId: string }>();
-		const wfNames = new Map<string, string>();
+		const wfNames = new Map<string, { name: string; projectId?: string }>();
 		const credNames = new Map<string, string>();
 		const dtNames = new Map<string, { name: string; projectId: string }>();
 		const existingAgentIds = new Set<string>();
@@ -227,7 +230,12 @@ export class WorkflowDependencyQueryService {
 		}
 		for (const w of workflows) {
 			existingWfIds.add(w.id);
-			if (accessibleWfIdSet.has(w.id)) wfNames.set(w.id, w.name ?? w.id);
+			if (accessibleWfIdSet.has(w.id)) {
+				wfNames.set(w.id, {
+					name: w.name ?? w.id,
+					projectId: workflowOwnerProjects.get(w.id)?.id,
+				});
+			}
 		}
 		for (const dt of dataTables) {
 			existingDtIds.add(dt.id);
@@ -354,7 +362,7 @@ export class WorkflowDependencyQueryService {
 		maps: RawDepMaps,
 		accessMaps: {
 			agentNames: Map<string, { name: string; projectId: string }>;
-			wfNames: Map<string, string>;
+			wfNames: Map<string, { name: string; projectId?: string }>;
 			credNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
 		},
@@ -403,30 +411,30 @@ export class WorkflowDependencyQueryService {
 				}
 			};
 
-			resolve(
-				maps.subMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'workflowCall',
-			);
-			resolve(
-				maps.parentMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'workflowParent',
-			);
-			resolve(
-				maps.errorWfMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'errorWorkflow',
-			);
-			resolve(
-				maps.errorWfParentMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'errorWorkflowParent',
-			);
+			const resolveWorkflowDep = (
+				ids: Set<string> | undefined,
+				type: ResolvedDependency['type'],
+			) => {
+				for (const id of ids ?? []) {
+					if (!existing.existingWfIds.has(id)) continue;
+					const workflow = accessMaps.wfNames.get(id);
+					if (workflow) {
+						dependencies.push({
+							id,
+							name: workflow.name,
+							type,
+							projectId: workflow.projectId,
+						});
+					} else {
+						inaccessibleCount++;
+					}
+				}
+			};
+
+			resolveWorkflowDep(maps.subMap.get(resourceId), 'workflowCall');
+			resolveWorkflowDep(maps.parentMap.get(resourceId), 'workflowParent');
+			resolveWorkflowDep(maps.errorWfMap.get(resourceId), 'errorWorkflow');
+			resolveWorkflowDep(maps.errorWfParentMap.get(resourceId), 'errorWorkflowParent');
 			resolve(
 				maps.credMap.get(resourceId),
 				accessMaps.credNames,
