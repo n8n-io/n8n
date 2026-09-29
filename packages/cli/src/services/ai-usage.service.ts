@@ -2,7 +2,7 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import config from '@/config';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 const KEY = 'ai.allowSendingParameterValues';
 
