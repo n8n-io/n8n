@@ -102,6 +102,14 @@ const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
+	/**
+	 * Ciphertext each decrypted credential object was read from. An OAuth token written back
+	 * later was minted with the client fields in that object, so the write is dropped when the
+	 * row changed in between (e.g. a save that replaced the OAuth client). Keyed by identity:
+	 * the object `getDecrypted` returns is the one core hands back to the write.
+	 */
+	private readonly storedDataByDecrypted = new WeakMap<ICredentialDataDecryptedObject, string>();
+
 	constructor(
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
@@ -653,7 +661,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (raw === true) {
-			return decryptedDataOriginal;
+			return this.trackStoredData(decryptedDataOriginal, credentialsEntity);
 		}
 
 		if (
@@ -669,7 +677,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			);
 		}
 
-		return await this.applyDefaultsAndOverwrites(
+		const decryptedData = await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
 			type,
@@ -677,6 +685,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 			executeData,
 			expressionResolveValues,
 		);
+		return this.trackStoredData(decryptedData, credentialsEntity);
+	}
+
+	private trackStoredData<T extends ICredentialDataDecryptedObject>(
+		decryptedData: T,
+		credentialsEntity: CredentialsEntity,
+	): T {
+		if (credentialsEntity.data) {
+			this.storedDataByDecrypted.set(decryptedData, credentialsEntity.data);
+		}
+		return decryptedData;
 	}
 
 	/**
@@ -866,21 +885,43 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
+		// The token was minted with the client fields in `data`. When the row was rewritten since
+		// `data` was read, the token may belong to a client that is no longer stored, so it is not
+		// persisted: the next execution finds no token and mints one from the current row.
+		const storedData = this.storedDataByDecrypted.get(data);
+		if (storedData !== undefined && storedData !== credentials.data) {
+			return;
+		}
+
 		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
+		const { data: newData } = credentials.getDataToSave();
+		if (newData === undefined) {
+			throw new UnexpectedError('Credential data is missing after re-encryption');
+		}
 		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
 		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
 		const newCredentialsData: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
-			data: credentials.getDataToSave().data,
+			data: newData,
 			updatedAt: new Date(),
 		};
 
-		// Save the credentials in DB
-		const findQuery = {
-			id: credentials.id,
-			type,
-		};
+		if (storedData === undefined) {
+			await this.credentialsRepository.update({ id: credentials.id, type }, newCredentialsData);
+			return;
+		}
 
-		await this.credentialsRepository.update(findQuery, newCredentialsData);
+		// The check above and this write are two statements, so the row itself is the guard: the
+		// update matches only while the row still holds the ciphertext that `data` was read from.
+		const written = await this.credentialsRepository.updateDataIfUnchanged(
+			credentialsEntity.id,
+			type,
+			storedData,
+			newData,
+		);
+		if (written) {
+			// A later refresh in the same execution must compare against what is stored now.
+			this.storedDataByDecrypted.set(data, newData);
+		}
 	}
 }
 
