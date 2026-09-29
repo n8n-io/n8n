@@ -67,13 +67,13 @@ describe('InteractiveCard', () => {
 		const input = parseApprovalInput({ ...approvalPayload.input, supportsSessionApproval: true });
 		const wrapper = mountCard({ ...approvalPayload, input: input! });
 		expect(wrapper.text()).toContain('Allow for this session');
-		await wrapper.get('[data-testid="agent-approval-session"]').trigger('click');
+		await wrapper.get('[data-test-id="agent-approval-session"]').trigger('click');
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true, scope: 'session' }]]);
 	});
 
 	it('renders approval details and emits approved resume data', async () => {
 		const wrapper = mountCard(approvalPayload);
-		expect(wrapper.find('[data-testid="agent-approval-session"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-approval-session"]').exists()).toBe(false);
 
 		expect(wrapper.text()).toContain('Approval required');
 		expect(wrapper.text()).toContain('The agent wants to run the Calculator tool.');
@@ -84,7 +84,7 @@ describe('InteractiveCard', () => {
 		expect(details.exists()).toBe(true);
 		expect(details.attributes('open')).toBeUndefined();
 
-		await wrapper.find('[data-testid="agent-approval-approve"]').trigger('click');
+		await wrapper.find('[data-test-id="agent-approval-approve"]').trigger('click');
 
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true }]]);
 	});
@@ -116,7 +116,7 @@ describe('InteractiveCard', () => {
 	it('emits rejected resume data from the reject action', async () => {
 		const wrapper = mountCard(approvalPayload);
 
-		await wrapper.find('[data-testid="agent-approval-reject"]').trigger('click');
+		await wrapper.find('[data-test-id="agent-approval-reject"]').trigger('click');
 
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: false }]]);
 	});
@@ -129,8 +129,8 @@ describe('InteractiveCard', () => {
 		});
 
 		expect(wrapper.text()).toContain('Rejected');
-		expect(wrapper.find('[data-testid="agent-approval-approve"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-approval-reject"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-approval-approve"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-approval-reject"]').exists()).toBe(false);
 	});
 	// A workflow tool parked on a Wait node reuses the chat card renderer, and its
 	// buttons resume the parked run with the value the backend declared.

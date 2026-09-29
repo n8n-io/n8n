@@ -49,6 +49,7 @@ export type {
 	DropdownMenuPlacement,
 } from './N8nDropdownMenu/DropdownMenu.types';
 export { default as N8nAlert } from './N8nAlert';
+export { default as N8nApprovalCard, type ApprovalOption } from './N8nApprovalCard';
 export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { BADGE_SIZE, BADGE_VARIANT } from './N8nBadge/Badge.type';

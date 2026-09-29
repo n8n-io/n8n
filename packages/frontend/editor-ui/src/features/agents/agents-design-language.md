@@ -178,6 +178,15 @@ Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
 
+## Tool approvals
+
+Use `N8nApprovalCard` for Preview tool approvals, including background child
+approvals. It shares the Assistant card layout and keyboard controls.
+Keep approval policy and response payloads in the caller. Show the session
+option only when the backend supports it. Do not autofocus cards in the chat
+timeline. If a surface keeps a resolved card, show the decision without active
+actions.
+
 ## Preview composer queue
 
 Use one action on the right. Show Stop when a turn can be stopped and the

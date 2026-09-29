@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nApprovalCard, N8nIcon, N8nText, type ApprovalOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 
@@ -18,6 +18,33 @@ const i18n = useI18n();
 
 const toolLabel = computed(() => props.input.displayName ?? props.input.toolName);
 
+const options = computed<ApprovalOption[]>(() => {
+	const result: ApprovalOption[] = [];
+	if (props.input.supportsSessionApproval) {
+		result.push({
+			key: 'session',
+			icon: 'check-check',
+			label: i18n.baseText('agents.chat.approval.allowForSession'),
+			testId: 'agent-approval-session',
+		});
+	}
+	result.push(
+		{
+			key: 'approve',
+			icon: 'check',
+			label: i18n.baseText('agents.chat.approval.approve'),
+			testId: 'agent-approval-approve',
+		},
+		{
+			key: 'reject',
+			icon: 'ban',
+			label: i18n.baseText('agents.chat.approval.reject'),
+			testId: 'agent-approval-reject',
+		},
+	);
+	return result;
+});
+
 const detailsText = computed(() => {
 	const details = props.input.details ?? props.input.args;
 	if (details === undefined) return '';
@@ -28,37 +55,43 @@ const detailsText = computed(() => {
 	}
 });
 
-function submit(approved: boolean, scope?: ApprovalResume['scope']) {
+function submit(key: string) {
 	if (props.disabled) return;
-	emit('submit', { approved, ...(scope ? { scope } : {}) });
+	if (key === 'session') {
+		emit('submit', { approved: true, scope: 'session' });
+		return;
+	}
+	if (key === 'approve' || key === 'reject') {
+		emit('submit', { approved: key === 'approve' });
+	}
 }
 </script>
 
 <template>
-	<N8nCard :class="[$style.card, disabled && $style.disabled]" data-testid="agent-approval-card">
-		<div :class="$style.cardBody">
-			<N8nText tag="p" bold :class="$style.title">
-				{{ i18n.baseText('agents.chat.approval.title') }}
-			</N8nText>
+	<N8nApprovalCard
+		:title="i18n.baseText('agents.chat.approval.title')"
+		:description="
+			i18n.baseText('agents.chat.approval.description', {
+				interpolate: { toolName: toolLabel },
+			})
+		"
+		:options="options"
+		:disabled="disabled"
+		:autofocus="false"
+		data-testid="agent-approval-card"
+		@select="submit"
+	>
+		<details v-if="detailsText" data-testid="agent-approval-tool-details">
+			<summary :class="$style.detailsSummary">
+				<N8nText size="small">
+					{{ i18n.baseText('agents.chat.approval.viewToolDetails') }}
+				</N8nText>
+			</summary>
+			<pre :class="$style.args">{{ detailsText }}</pre>
+		</details>
 
-			<N8nText tag="p" size="small" :class="$style.description">
-				{{
-					i18n.baseText('agents.chat.approval.description', {
-						interpolate: { toolName: toolLabel },
-					})
-				}}
-			</N8nText>
-
-			<details v-if="detailsText" data-testid="agent-approval-tool-details">
-				<summary :class="$style.detailsSummary">
-					<N8nText size="small">
-						{{ i18n.baseText('agents.chat.approval.viewToolDetails') }}
-					</N8nText>
-				</summary>
-				<pre :class="$style.args">{{ detailsText }}</pre>
-			</details>
-
-			<div v-if="disabled && resolvedValue" :class="$style.resolved">
+		<template v-if="disabled && resolvedValue" #footer>
+			<div :class="$style.resolved">
 				<N8nIcon
 					:icon="resolvedValue.approved ? 'circle-check' : 'circle-x'"
 					size="small"
@@ -74,72 +107,15 @@ function submit(approved: boolean, scope?: ApprovalResume['scope']) {
 					}}
 				</N8nText>
 			</div>
-
-			<div v-else :class="$style.actions">
-				<N8nButton
-					size="medium"
-					:disabled="disabled"
-					data-testid="agent-approval-approve"
-					@click="submit(true)"
-				>
-					{{ i18n.baseText('agents.chat.approval.approve') }}
-				</N8nButton>
-				<N8nButton
-					v-if="input.supportsSessionApproval"
-					size="medium"
-					variant="outline"
-					:disabled="disabled"
-					data-testid="agent-approval-session"
-					@click="submit(true, 'session')"
-				>
-					{{ i18n.baseText('agents.chat.approval.allowForSession') }}
-				</N8nButton>
-				<N8nButton
-					size="medium"
-					variant="outline"
-					:disabled="disabled"
-					data-testid="agent-approval-reject"
-					@click="submit(false)"
-				>
-					{{ i18n.baseText('agents.chat.approval.reject') }}
-				</N8nButton>
-			</div>
-		</div>
-	</N8nCard>
+		</template>
+	</N8nApprovalCard>
 </template>
 
 <style lang="scss" module>
-.card {
-	--card--padding: var(--spacing--sm);
-
-	width: 90%;
-	max-width: 90%;
-}
-
-.disabled {
-	opacity: 0.75;
-}
-
-.cardBody {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.resolved,
-.actions {
+.resolved {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.title,
-.description {
-	margin: 0;
-}
-
-.title {
-	font-size: var(--font-size--sm);
 }
 
 .args {
@@ -157,11 +133,5 @@ function submit(approved: boolean, scope?: ApprovalResume['scope']) {
 
 .detailsSummary {
 	cursor: pointer;
-}
-
-.actions {
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	padding-top: var(--spacing--2xs);
 }
 </style>

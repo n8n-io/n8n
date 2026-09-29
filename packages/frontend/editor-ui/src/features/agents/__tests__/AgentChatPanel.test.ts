@@ -94,6 +94,7 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nApprovalCard: (await importOriginal<typeof import('@n8n/design-system')>()).N8nApprovalCard,
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
 	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
@@ -585,7 +586,7 @@ describe('AgentChatPanel', () => {
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 				expect(wrapper.text()).toContain('Approval for Check escalations');
 				expect(wrapper.text()).toContain('Other child');
-				const button = wrapper.get(`[data-testid="agent-approval-${action}"]`);
+				const button = wrapper.get(`[data-test-id="agent-approval-${action}"]`);
 				await button.trigger('click');
 				expect(button.attributes('disabled')).toBeDefined();
 				expect(respondToApprovalMock).toHaveBeenCalledExactlyOnceWith({
@@ -611,7 +612,7 @@ describe('AgentChatPanel', () => {
 				respondToApprovalMock.mockReturnValueOnce(response.promise);
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
-				const button = wrapper.get('[data-testid="agent-approval-approve"]');
+				const button = wrapper.get('[data-test-id="agent-approval-approve"]');
 				await button.trigger('click');
 				if (state === 'hidden') await wrapper.setProps({ visible: false });
 				if (state === 'switched') await wrapper.setProps({ continueSessionId: 't2' });
