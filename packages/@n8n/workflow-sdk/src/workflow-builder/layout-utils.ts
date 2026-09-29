@@ -890,7 +890,7 @@ export function calculateNodePositionsDagre(
 	}
 
 	const collapsedGroups = nodeGroups?.length
-		? collapseNodeGroups(parentGraph, nodeGroups, keyByNodeId, ungroupableKeys, {
+		? collapseNodeGroups(parentGraph, nodeGroups, nodes, keyByNodeId, ungroupableKeys, {
 				createSubGraph,
 			})
 		: [];

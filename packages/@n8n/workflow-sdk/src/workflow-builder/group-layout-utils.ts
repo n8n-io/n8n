@@ -7,6 +7,7 @@ import {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from './constants';
+import type { GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
 
 export interface BoundingBox {
@@ -21,6 +22,10 @@ export interface CollapsedGroup {
 	graphId: string;
 	/** Internal left-to-right layout of the members, so expanding the group looks tidy. */
 	graph: dagre.graphlib.Graph;
+	/** The regular member keys removed from the parent graph. */
+	regularMemberKeys: string[];
+	/** Sticky member keys kept on their normal placement path. */
+	stickyMemberKeys: string[];
 }
 
 interface FoldNodeGroupsDependencies {
@@ -30,6 +35,13 @@ interface FoldNodeGroupsDependencies {
 interface PlaceGroupMembersDependencies {
 	boundingBoxFromGraph: (graph: dagre.graphlib.Graph) => BoundingBox;
 	snapToGrid: (value: number) => number;
+}
+
+interface ResolvedGroup {
+	index: number;
+	memberKeys: string[];
+	regularMemberKeys: string[];
+	stickyMemberKeys: string[];
 }
 
 /**
@@ -59,6 +71,77 @@ export function memberOriginFor(
 	return best;
 }
 
+function isStickyNode(graphNode: GraphNode | undefined): boolean {
+	return graphNode?.instance.type === 'n8n-nodes-base.stickyNote';
+}
+
+function resolveGroup(
+	group: ResolvedNodeGroup,
+	index: number,
+	keyByNodeId: ReadonlyMap<string, string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): ResolvedGroup | undefined {
+	const memberKeys: string[] = [];
+	for (const memberId of group.memberIds) {
+		const memberKey = keyByNodeId.get(memberId);
+		// A partial chip would make the visible group frame disagree with its
+		// persisted membership, so an unresolved member invalidates the group.
+		if (memberKey === undefined || !nodes.has(memberKey)) return undefined;
+		if (!memberKeys.includes(memberKey)) memberKeys.push(memberKey);
+	}
+
+	if (memberKeys.length === 0) return undefined;
+
+	return {
+		index,
+		memberKeys,
+		regularMemberKeys: memberKeys.filter((key) => !isStickyNode(nodes.get(key))),
+		stickyMemberKeys: memberKeys.filter((key) => isStickyNode(nodes.get(key))),
+	};
+}
+
+function findConflictingGroupIndexes(groups: readonly ResolvedGroup[]): ReadonlySet<number> {
+	const indexesByMemberKey = new Map<string, number[]>();
+
+	for (const group of groups) {
+		for (const memberKey of group.memberKeys) {
+			const indexes = indexesByMemberKey.get(memberKey) ?? [];
+			indexes.push(group.index);
+			indexesByMemberKey.set(memberKey, indexes);
+		}
+	}
+
+	const conflictingIndexes = new Set<number>();
+	for (const indexes of indexesByMemberKey.values()) {
+		if (indexes.length < 2) continue;
+		for (const index of indexes) conflictingIndexes.add(index);
+	}
+
+	return conflictingIndexes;
+}
+
+function isEligibleGroup(
+	group: ResolvedGroup,
+	conflictingIndexes: ReadonlySet<number>,
+	parentGraph: dagre.graphlib.Graph,
+	ungroupableKeys: ReadonlySet<string>,
+): boolean {
+	if (conflictingIndexes.has(group.index)) return false;
+	// Sticky members remain on the existing sticky-placement path until the
+	// derived anchored-sticky policy is enabled in a separate change.
+	if (group.regularMemberKeys.length === 0 || group.stickyMemberKeys.length > 0) return false;
+
+	return group.regularMemberKeys.every(
+		(memberKey) => parentGraph.hasNode(memberKey) && !ungroupableKeys.has(memberKey),
+	);
+}
+
+function createSyntheticGroupId(index: number, takenKeys: Set<string>): string {
+	let graphId = `${GROUP_GRAPH_ID_PREFIX}${index}`;
+	while (takenKeys.has(graphId)) graphId += ':';
+	return graphId;
+}
+
 /**
  * Fold each group's members into a single parent-graph node the size of the
  * collapsed chip, so the layout reserves the space the canvas actually draws.
@@ -71,48 +154,38 @@ export function memberOriginFor(
 export function collapseNodeGroups(
 	parentGraph: dagre.graphlib.Graph,
 	nodeGroups: readonly ResolvedNodeGroup[],
+	nodes: ReadonlyMap<string, GraphNode>,
 	keyByNodeId: ReadonlyMap<string, string>,
 	excludedKeys: ReadonlySet<string>,
 	{ createSubGraph }: FoldNodeGroupsDependencies,
 ): CollapsedGroup[] {
 	const collapsed: CollapsedGroup[] = [];
-	const claimed = new Set<string>();
+	const resolvedGroups = nodeGroups
+		.map((group, index) => resolveGroup(group, index, keyByNodeId, nodes))
+		.filter((group): group is ResolvedGroup => group !== undefined);
+	const conflictingIndexes = findConflictingGroupIndexes(resolvedGroups);
 	// Node keys come from node names, so a node could already be called
 	// `__nodeGroup__:0`. Snapshot them before any folding and step around a clash,
 	// otherwise the synthetic node would overwrite the real one.
 	const takenKeys = new Set(parentGraph.nodes());
 
-	nodeGroups.forEach((group, index) => {
-		const memberKeys: string[] = [];
-		for (const memberId of group.memberIds) {
-			const key = keyByNodeId.get(memberId);
-			// An unresolvable member is dropped by the serializer too, so the group
-			// the canvas receives will not contain it either.
-			if (key === undefined) continue;
-			// One member the layout must not move means the whole group has to stay
-			// where it is, since the canvas derives the chip from every member.
-			if (excludedKeys.has(key) || claimed.has(key)) return;
-			if (!parentGraph.hasNode(key)) continue;
-			if (!memberKeys.includes(key)) memberKeys.push(key);
-		}
+	for (const group of resolvedGroups) {
+		if (!isEligibleGroup(group, conflictingIndexes, parentGraph, excludedKeys)) continue;
 
-		if (memberKeys.length === 0) return;
-
-		const memberKeySet = new Set(memberKeys);
-		let graphId = `${GROUP_GRAPH_ID_PREFIX}${index}`;
-		while (takenKeys.has(graphId)) graphId += ':';
-		takenKeys.add(graphId);
+		const memberKeySet = new Set(group.regularMemberKeys);
 
 		// Capture the edges crossing the group boundary before the members go away.
 		const crossingEdges = parentGraph
 			.edges()
 			.filter((edge) => memberKeySet.has(edge.v) !== memberKeySet.has(edge.w));
 
-		const graph = createSubGraph(memberKeys, parentGraph);
+		const graph = createSubGraph(group.regularMemberKeys, parentGraph);
 		dagre.layout(graph, { disableOptimalOrderHeuristic: true });
 
-		memberKeys.forEach((key) => parentGraph.removeNode(key));
-		memberKeys.forEach((key) => claimed.add(key));
+		group.regularMemberKeys.forEach((key) => parentGraph.removeNode(key));
+
+		const graphId = createSyntheticGroupId(group.index, takenKeys);
+		takenKeys.add(graphId);
 
 		parentGraph.setNode(graphId, {
 			width: GROUP_HEADER_WIDTH_COLLAPSED,
@@ -127,8 +200,13 @@ export function collapseNodeGroups(
 			if (source !== target) parentGraph.setEdge(source, target);
 		}
 
-		collapsed.push({ graphId, graph });
-	});
+		collapsed.push({
+			graphId,
+			graph,
+			regularMemberKeys: group.regularMemberKeys,
+			stickyMemberKeys: group.stickyMemberKeys,
+		});
+	}
 
 	return collapsed;
 }
