@@ -358,7 +358,7 @@ describe('SupplyDataContext', () => {
 		it('should record input in a run-data map without a prototype', async () => {
 			const runData: IRunData = {};
 			Object.setPrototypeOf(runData, null);
-			const testRunExecutionData = mock<IRunExecutionData>({ resultData: { runData } });
+			const testRunExecutionData = createRunExecutionData({ resultData: { runData } });
 			const testAdditionalData = { ...additionalData, hooks: undefined };
 			const context = new SupplyDataContext(
 				workflow,

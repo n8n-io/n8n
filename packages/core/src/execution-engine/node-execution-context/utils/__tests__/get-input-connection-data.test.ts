@@ -18,7 +18,7 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, createRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -231,6 +231,25 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
+
+			supplyData.mockRejectedValueOnce(new Error('supplyData error'));
+
+			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
+				`Error in sub-node ${node.name}`,
+			);
+			expect(supplyData).toHaveBeenCalled();
+		});
+
+		it('should record the sub-node error in a run-data map without a prototype', async () => {
+			agentNodeType.description.inputs = [
+				{
+					type: connectionType,
+					required: true,
+				},
+			];
 			const runData: IRunData = {};
 			Object.setPrototypeOf(runData, null);
 			const context = new ExecuteContext(
@@ -238,7 +257,7 @@ describe('getInputConnectionData', () => {
 				agentNode,
 				additionalData,
 				'internal',
-				mock<IRunExecutionData>({ resultData: { runData } }),
+				createRunExecutionData({ resultData: { runData } }),
 				0,
 				connectionInputData,
 				inputData,
@@ -255,7 +274,7 @@ describe('getInputConnectionData', () => {
 			await expect(context.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Error in sub-node ${node.name}`,
 			);
-			expect(supplyData).toHaveBeenCalled();
+			expect(runData[node.name]).toHaveLength(1);
 		});
 
 		it('should propagate configuration errors', async () => {
