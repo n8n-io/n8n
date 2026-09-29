@@ -1069,9 +1069,15 @@ describe('AgentExecutionRepository', () => {
 		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Unsaved final output' });
 		recorder.record({ type: 'finish', finishReason: 'stop' });
 		const record = recorder.getMessageRecord();
+		// `writeTerminalExecution` retries a transient `updateIfRunning` failure
+		// (3 attempts, linear backoff) before rethrowing, so a single blip is
+		// recovered. To exercise the reject-and-sweeper-recovery path, every
+		// retry attempt must fail: mock a persistent rejection for the duration of
+		// this phase (the `finally` restores the real method before the sweeper
+		// runs).
 		const update = vi
 			.spyOn(repository, 'updateIfRunning')
-			.mockRejectedValueOnce(new Error('database unavailable'));
+			.mockRejectedValue(new Error('database unavailable'));
 		try {
 			await expect(
 				turns.finalizeExecution({
