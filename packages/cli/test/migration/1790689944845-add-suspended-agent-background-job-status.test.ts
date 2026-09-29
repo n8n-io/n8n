@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddSuspendedAgentBackgroundJobStatus1790277419519';
+const MIGRATION_NAME = 'AddSuspendedAgentBackgroundJobStatus1790689944845';
 
 describe('AddSuspendedAgentBackgroundJobStatus migration', () => {
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {

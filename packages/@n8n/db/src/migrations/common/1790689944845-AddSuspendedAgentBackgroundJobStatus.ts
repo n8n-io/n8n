@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSuspendedAgentBackgroundJobStatus1790277419519 implements ReversibleMigration {
+export class AddSuspendedAgentBackgroundJobStatus1790689944845 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { dropEnumCheck, addEnumCheck, dropIndex, createIndex },
 	}: MigrationContext) {
