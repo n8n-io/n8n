@@ -64,6 +64,8 @@ export interface BuiltMemory {
 		threadId: string;
 		resourceId: string;
 		messages: AgentDbMessage[];
+		/** Host context for linking persisted messages to the current run. */
+		hostMetadata?: JSONObject;
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
@@ -381,6 +383,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

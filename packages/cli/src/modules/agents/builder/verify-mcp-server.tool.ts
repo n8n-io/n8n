@@ -20,7 +20,7 @@ export interface VerifyMcpServerDeps {
 	proxyFetch: CustomFetch;
 	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
-	 *  mcpServers entry so the builder can skip read_config → patch_config. */
+	 *  mcpServers entry so the builder can skip agent-context → patch_config. */
 	applyCredentialToMcpServer?: (
 		serverName: string,
 		credentialId: string,
@@ -123,7 +123,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Tool names are the original MCP names without the model-facing server prefix. ' +
 				'When a credential is provided and a matching mcpServers entry already exists, ' +
 				'a successful verify also writes the credential into that entry ' +
-				'({ credentialApplied: true, configMutated: true, agentId }) — no read_config/patch_config follow-up. ' +
+				'({ credentialApplied: true, configMutated: true, agentId }) — no agent-context/patch_config follow-up. ' +
 				'Call this after ask_credential when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)

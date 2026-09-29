@@ -117,6 +117,7 @@ export interface AgentBuilderTarget {
 	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
 	agentId: string;
 	targetAgentId: string;
+	activity?: InstanceAiAgentNode['activity'];
 }
 
 /**
@@ -138,7 +139,11 @@ export function getLatestAgentBuilderTarget(
 			child.targetResource?.type === 'agent' &&
 			typeof child.targetResource.id === 'string'
 		) {
-			return { agentId: child.agentId, targetAgentId: child.targetResource.id };
+			return {
+				agentId: child.agentId,
+				targetAgentId: child.targetResource.id,
+				activity: child.activity,
+			};
 		}
 	}
 	return undefined;
@@ -498,12 +503,18 @@ function matchAgentArtifactToolCall(
 	if (tc.toolName !== 'build-agent') return undefined;
 
 	const result = tc.result as Record<string, unknown>;
-	const args = tc.args as Record<string, unknown> | undefined;
-
-	if (result.ok === true && typeof args?.name === 'string') {
+	if (result.agentChange === 'created') {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
 	}
-	if (result.configUpdated === true) {
+	if (result.agentChange === 'updated') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	}
+	// Keep old stored threads working until all results include agentChange.
+	const args = tc.args as Record<string, unknown> | undefined;
+	if (result.agentChange === undefined && result.ok === true && typeof args?.name === 'string') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
+	}
+	if (result.agentChange === undefined && result.configUpdated === true) {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
 	}
 	return undefined;

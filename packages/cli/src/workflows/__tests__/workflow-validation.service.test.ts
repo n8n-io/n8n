@@ -1,4 +1,4 @@
-import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
+import type { CredentialsRepository, User, WorkflowRepository } from '@n8n/db';
 import type {
 	INode,
 	IConnections,
@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { NodeTypes } from '@/node-types';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
@@ -18,11 +19,13 @@ describe('WorkflowValidationService', () => {
 	let mockWorkflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
 	let mockCredentialsRepository: ReturnType<typeof mock<CredentialsRepository>>;
 	let mockDynamicCredentialsProxy: ReturnType<typeof mock<DynamicCredentialsProxy>>;
+	let mockCredentialsPermissionChecker: ReturnType<typeof mock<CredentialsPermissionChecker>>;
 
 	beforeEach(() => {
 		mockWorkflowRepository = mock<WorkflowRepository>();
 		mockCredentialsRepository = mock<CredentialsRepository>();
 		mockDynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+		mockCredentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 		// Default to the real semantics with no system resolver seeded:
 		// pass through the workflow override if any, otherwise null.
 		mockDynamicCredentialsProxy.getEffectiveResolverId.mockImplementation(
@@ -33,6 +36,7 @@ describe('WorkflowValidationService', () => {
 			mockCredentialsRepository,
 			mockDynamicCredentialsProxy,
 			mock<CredentialTypes>(),
+			mockCredentialsPermissionChecker,
 		);
 	});
 
@@ -1392,6 +1396,91 @@ describe('WorkflowValidationService', () => {
 		});
 	});
 
+	describe('validatePublisherCredentialAccess', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const nodes: INode[] = [
+			{
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'node-1',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { httpBasicAuth: { id: 'cred-1', name: 'Cred One' } },
+			},
+		];
+
+		it('is valid when the publisher can use every referenced credential', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({ isValid: true });
+			expect(mockCredentialsPermissionChecker.findInaccessibleForUser).toHaveBeenCalledWith(
+				user.id,
+				nodes,
+			);
+		});
+
+		it('names the credential the publisher cannot use', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you.',
+			});
+		});
+
+		it('gives a different message for a credential that no longer exists', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: Credential "Cred One" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('combines both messages when some credentials are unshared and others no longer exist', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you. Credential "Cred Two" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('pluralizes the message when the publisher cannot use several credentials', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: true },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credentials "Cred One", "Cred Two". Ask their owners to share them with you.',
+			});
+		});
+	});
+
 	describe('validateCredentialNodeRestrictions', () => {
 		const buildService = (credentialTypes: CredentialTypes) =>
 			new WorkflowValidationService(
@@ -1399,6 +1488,7 @@ describe('WorkflowValidationService', () => {
 				mock<CredentialsRepository>(),
 				mock<DynamicCredentialsProxy>(),
 				credentialTypes,
+				mock<CredentialsPermissionChecker>(),
 			);
 
 		// The loader sets `supportedNodes` on the credential class to *short* names

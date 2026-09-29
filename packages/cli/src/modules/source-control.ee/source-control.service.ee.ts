@@ -9,8 +9,7 @@ import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
 
@@ -584,10 +583,32 @@ export class SourceControlService {
 		// validates against the freshly imported credential state (e.g. a credential's
 		// resolvable/private status), instead of the stale local state.
 		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
+		const credentialImportResults =
+			await this.sourceControlImportService.importCredentialsFromWorkFolder(
+				credentialsToBeImported,
+				user.id,
+			);
+
+		// Add content-import policy violations to status result
+		const statusByCredentialId = new Map(
+			statusResult.filter((item) => item.type === 'credential').map((item) => [item.id, item]),
 		);
+
+		for (const { id, contentImportPolicy } of credentialImportResults) {
+			if (!contentImportPolicy) continue;
+
+			if (contentImportPolicy.violations.length) {
+				this.logger.warn(
+					`Skipped credential ${id}: ${contentImportPolicy.violations.length} policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+
+			const statusItem = statusByCredentialId.get(id);
+			if (statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
+			}
+		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		const workflowImportResults =

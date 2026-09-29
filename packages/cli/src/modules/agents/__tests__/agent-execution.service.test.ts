@@ -15,12 +15,15 @@ import type {
 	AgentThreadAccess,
 } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentMessageRepository } from '../repositories/agent-message.repository';
+import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -78,14 +81,25 @@ describe('AgentExecutionService', () => {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
 	const txRunner = mock<TransactionRunner>();
+	const queueRepository = mock<AgentMessageQueueRepository>();
+	const messageRepository = mock<AgentMessageRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		messageRepository.createExecutionInput.mockResolvedValue('message-1');
+		messageRepository.findExecutionInputs.mockResolvedValue(new Map());
+		messageRepository.copyExecutionInputs.mockResolvedValue([]);
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
+		agentExecutionRepository.findRunningByThread.mockResolvedValue([]);
+		agentExecutionRepository.touchRunning.mockResolvedValue(true);
+		queueRepository.findActive.mockResolvedValue(null);
+		queueRepository.findHead.mockResolvedValue(null);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 		agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 		agentExecutionRepository.updateTimelineIfRunning.mockResolvedValue(true);
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
+		agentExecutionThreadRepository.lockById.mockResolvedValue(makeThread());
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
@@ -110,6 +124,8 @@ describe('AgentExecutionService', () => {
 			executionUpdateBroadcaster,
 			checkpointStorage,
 			txRunner,
+			queueRepository,
+			messageRepository,
 		);
 	});
 
@@ -118,8 +134,8 @@ describe('AgentExecutionService', () => {
 		access: AgentThreadAccess = previewAccess,
 	): Promise<string> {
 		const { record, ...startParams } = params;
-		const executionId = await service.startExecutionRecording(
-			{ ...startParams, access },
+		const { executionId } = await service.startExecutionRecording(
+			{ ...startParams, access, resourceId: 'user-1' },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
@@ -145,6 +161,7 @@ describe('AgentExecutionService', () => {
 			];
 			const params = {
 				access: previewAccess,
+				resourceId: 'user-1',
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -162,7 +179,7 @@ describe('AgentExecutionService', () => {
 					}),
 				);
 			});
-			const id = await service.startExecutionRecording(params, new Date(100));
+			const { executionId: id } = await service.startExecutionRecording(params, new Date(100));
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 			await service.finalizeExecution(id, {
 				...params,
@@ -174,7 +191,7 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('keeps a running execution alive during title lookup and until finalization', async () => {
+		it('keeps an execution alive until finalization and then synchronizes its title', async () => {
 			vi.useFakeTimers();
 			const titleLookupStarted = createDeferredPromise();
 			const titleLookup =
@@ -192,12 +209,13 @@ describe('AgentExecutionService', () => {
 				agentExecutionRepository.saveInContext.mockResolvedValue({
 					id: 'execution-1',
 				} as AgentExecution);
-				agentExecutionRepository.touchRunning.mockResolvedValue();
+				agentExecutionRepository.touchRunning.mockResolvedValue(true);
 				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
 				const recording = service.startExecutionRecording(
 					{
 						access: previewAccess,
+						resourceId: 'user-1',
 						threadId: 'thread-1',
 						agentId: 'agent-1',
 						agentName: 'Agent',
@@ -206,11 +224,10 @@ describe('AgentExecutionService', () => {
 					},
 					new Date(),
 				);
-				await titleLookupStarted.promise;
+				const { executionId } = await recording;
+				expect(memoryBackend.getThread).not.toHaveBeenCalled();
 				await vi.advanceTimersByTimeAsync(30_000);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
-				titleLookup.resolve(null);
-				const executionId = await recording;
 
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
 					projectId: 'project-1',
@@ -223,7 +240,7 @@ describe('AgentExecutionService', () => {
 				);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId);
 
-				await service.finalizeExecution(executionId, {
+				const finalization = service.finalizeExecution(executionId, {
 					threadId: 'thread-1',
 					agentId: 'agent-1',
 					agentName: 'Agent',
@@ -231,9 +248,11 @@ describe('AgentExecutionService', () => {
 					userMessage: 'Run',
 					record: makeMessageRecord(),
 				});
+				await titleLookupStarted.promise;
 				await vi.advanceTimersByTimeAsync(30_000);
-
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledOnce();
+				titleLookup.resolve(null);
+				await finalization;
 			} finally {
 				titleLookup.resolve(null);
 				vi.useRealTimers();
@@ -251,6 +270,7 @@ describe('AgentExecutionService', () => {
 		);
 		const params = {
 			access: previewAccess,
+			resourceId: 'user-1',
 			threadId: 'thread-1',
 			agentId: 'agent-1',
 			agentName: 'Agent',
@@ -261,6 +281,44 @@ describe('AgentExecutionService', () => {
 		executionUpdateBroadcaster.notify.mockClear();
 		return params;
 	}
+
+	it('retries failed heartbeats and aborts only after confirmed ownership loss', async () => {
+		vi.useFakeTimers();
+		try {
+			await startSnapshotExecution();
+			const signal = service.getAbortSignal('execution-1');
+			agentExecutionRepository.touchRunning
+				.mockRejectedValueOnce(new Error('temporarily unavailable'))
+				.mockResolvedValueOnce(true)
+				.mockResolvedValue(false);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(signal.aborted).toBe(false);
+
+			const timeline: TimelineEvent[] = [{ type: 'text', content: 'Working', timestamp: 1 }];
+			service.recordTimelineSnapshot({
+				executionId: 'execution-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				timeline,
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				timeline,
+			);
+
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(2);
+			expect(signal.aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(signal.aborted).toBe(true);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 
 	it('serializes timeline snapshot updates', async () => {
 		const params = await startSnapshotExecution();
@@ -468,6 +526,8 @@ describe('AgentExecutionService', () => {
 				executionUpdateBroadcaster,
 				checkpointStorage,
 				txRunner,
+				queueRepository,
+				messageRepository,
 			);
 
 			const record = makeMessageRecord({
@@ -559,6 +619,8 @@ describe('AgentExecutionService', () => {
 					executionUpdateBroadcaster,
 					checkpointStorage,
 					txRunner,
+					queueRepository,
+					messageRepository,
 				);
 
 				const record = makeMessageRecord({
@@ -1024,18 +1086,23 @@ describe('AgentExecutionService', () => {
 				executionUpdateBroadcaster,
 				checkpointStorage,
 				txRunner,
+				queueRepository,
+				messageRepository,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
 
-			await service.finalizeInterruptedExecution({
-				id: 'execution-1',
-				threadId: 'thread-1',
-				startedAt: new Date(Date.now() - 100),
-				timeline: [...partial],
-				thread: makeThread(),
-			} as AgentExecution);
+			await service.finalizeInterruptedExecution(
+				{
+					id: 'execution-1',
+					threadId: 'thread-1',
+					startedAt: new Date(Date.now() - 100),
+					timeline: [...partial],
+					thread: makeThread(),
+				} as AgentExecution,
+				new Date(Date.now() - 120_000),
+			);
 
 			await vi.waitFor(() =>
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
@@ -1062,6 +1129,8 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				expect.any(Date),
+				{},
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
 		});
@@ -1184,7 +1253,97 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('canUseProductionChatThread', () => {
+		it.each([
+			{ source: 'n8n_chat_production', allowed: true },
+			{ source: 'n8n_chat', allowed: false },
+			{ source: 'chat', allowed: false },
+		])('checks the first source: $source', async ({ source, allowed }) => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([['thread-1', source]]),
+			);
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(allowed);
+		});
+
+		it('rejects another owner and an unknown existing session', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+				makeThread({ ownerId: 'other-user' }),
+			);
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(false);
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(false);
+		});
+	});
+
 	describe('getThreadDetail', () => {
+		it('omits blank input text from history and keeps the attachment and original content', async () => {
+			const message = Object.assign(new AgentMessageEntity(), {
+				id: 'message-1',
+				createdAt: new Date('2026-05-07T10:00:00Z'),
+				content: {
+					role: 'user',
+					content: [
+						{ type: 'text', text: ' \n\t ' },
+						{
+							type: 'file',
+							mediaType: 'image/png',
+							fileRef: { id: 'attachment-1', fileName: 'image.png', sizeBytes: 3 },
+						},
+					],
+				},
+			});
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([
+				mock<AgentExecution>({ id: 'execution-1', storedAt: 'db' }),
+			]);
+			messageRepository.findExecutionInputs.mockResolvedValue(
+				new Map([['execution-1', [message]]]),
+			);
+
+			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1', 'user-1');
+
+			expect(result?.executions[0].inputMessages?.[0].content).toEqual([
+				{
+					type: 'file',
+					fileId: 'attachment-1',
+					fileName: 'image.png',
+					mimeType: 'image/png',
+					sizeBytes: 3,
+				},
+			]);
+			expect(message.content).toMatchObject({
+				content: [
+					{ type: 'text', text: ' \n\t ' },
+					{ type: 'file', fileRef: { id: 'attachment-1' } },
+				],
+			});
+		});
+
 		it.each(['user', 'project'] as const)(
 			'returns readable %s thread executions',
 			async (accessScope) => {

@@ -9,7 +9,7 @@ import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
@@ -79,6 +79,8 @@ describe('SourceControlService', () => {
 		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
+		// The pull iterates this result, so an unmocked `undefined` would throw.
+		sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([]);
 	});
 
 	describe('pushWorkfolder', () => {
@@ -714,6 +716,50 @@ describe('SourceControlService', () => {
 				contentImportPolicy: {
 					violations: [
 						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+					],
+					checkErrors: [],
+				},
+			});
+		});
+
+		it('adds the reason a skipped credential was blocked to the pull result, while the rest of the pull lands', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const credentialStatus = mock<SourceControlledFile>({
+				id: 'cred-1',
+				type: 'credential',
+				status: 'modified',
+				location: 'remote',
+				conflict: false,
+			});
+			mockStatusService.getStatus.mockResolvedValueOnce([credentialStatus]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([
+				{
+					id: 'cred-1',
+					name: 'cred-1.json',
+					type: 'slackApi',
+					contentImportPolicy: {
+						violations: [
+							{
+								kind: 'credential-type-unavailable',
+								checkId: 'test.check',
+								message: 'not allowed',
+							},
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(result.statusResult[0]).toMatchObject({
+				contentImportPolicy: {
+					violations: [
+						{ kind: 'credential-type-unavailable', checkId: 'test.check', message: 'not allowed' },
 					],
 					checkErrors: [],
 				},

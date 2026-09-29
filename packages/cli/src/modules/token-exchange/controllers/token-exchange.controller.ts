@@ -5,8 +5,7 @@ import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { z, ZodError } from 'zod';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError, BadRequestError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
 

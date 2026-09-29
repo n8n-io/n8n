@@ -18,6 +18,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import {
@@ -54,6 +55,7 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
@@ -165,6 +167,10 @@ export class WaitTracker {
 			projectId: project.id,
 			pushRef: fullExecutionData.data.pushRef,
 			startedAt: fullExecutionData.startedAt,
+			// Not a stored field, so a resume has to derive it again — otherwise the
+			// run comes back without an identity and a credential only its publisher
+			// may use is refused halfway through.
+			userId: await this.workflowPublisherService.findActingUserIdForRestart(fullExecutionData),
 		};
 
 		// Start the execution again

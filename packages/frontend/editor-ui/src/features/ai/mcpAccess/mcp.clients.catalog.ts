@@ -147,7 +147,11 @@ url = "${serverUrl}"`;
 					name: 'Mistral Vibe',
 					category: 'web',
 					icon: MistralIcon,
-					addUrl: 'https://chat.mistral.ai/connections/marketplace?search=n8n&template=n8n',
+					// Opens Vibe's built-in n8n connector template with the server URL prefilled,
+					// so the user only has to click Connect.
+					addUrl: `https://chat.mistral.ai/connections/marketplace?search=n8n&template=n8n&server_url=${encodeURIComponent(
+						serverUrl,
+					)}`,
 				},
 			],
 		},

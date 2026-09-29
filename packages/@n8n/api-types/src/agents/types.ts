@@ -164,6 +164,7 @@ export interface AgentIntegrationStatusResponse {
 	 */
 	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
+	n8nChat: { draftEnabled: boolean; publishedEnabled: boolean };
 }
 
 export interface AgentDisconnectIntegrationResponse {
@@ -380,6 +381,17 @@ export interface AgentBuilderOpenSuspension {
 	suspendPayload?: unknown;
 }
 
+export interface AgentChatQueueItem {
+	id: string;
+	message: string;
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	createdAt: string;
+}
+
+export interface AgentChatQueueResponse {
+	items: AgentChatQueueItem[];
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
@@ -397,8 +409,8 @@ export interface AgentSessionLangSmithExportResponse {
 }
 
 /**
- * Internal integration type for the in-app chat channel. Injected per-run for
- * `/chat` executions — never persisted in an agent's `integrations` array.
+ * Integration type for n8n Chat. Preview injects its tools per run. A configured
+ * channel entry enables production chat after publish.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */

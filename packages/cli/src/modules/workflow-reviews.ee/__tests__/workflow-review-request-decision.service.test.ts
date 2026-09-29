@@ -30,10 +30,7 @@ import { WorkflowReviewRequestMutationGuard } from '../workflow-review-request-m
 import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';

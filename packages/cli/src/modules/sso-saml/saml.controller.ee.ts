@@ -9,14 +9,13 @@ import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { AuthError, ForbiddenError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 

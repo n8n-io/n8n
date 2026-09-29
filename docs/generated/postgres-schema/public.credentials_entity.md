@@ -12,6 +12,7 @@
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
+| pendingAuthorizationExpiresAt | timestamp(3) with time zone |  | true |  |  | Set on a credential created for an OAuth authorization the user has not completed yet. Cleared when a token is written; rows past this time are deleted by the pending-authorization cleanup task |
 | resolvableAllowFallback | boolean | false | false |  |  |  |
 | resolverId | varchar(16) |  | true |  | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) |  |
 | type | varchar(128) |  | false |  |  |  |
@@ -71,6 +72,7 @@ erDiagram
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  timestamp_3__with_time_zone pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_128_ type
