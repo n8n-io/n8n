@@ -161,6 +161,9 @@ paths:
       $ref: ./handlers/settings/spec/paths/getOtelSettings.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateOtelSettings.generated.yml
+  /settings/otel/test-trace:
+    post:
+      $ref: ./handlers/settings/spec/paths/testOtelTrace.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml

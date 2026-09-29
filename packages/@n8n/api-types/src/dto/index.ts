@@ -593,6 +593,10 @@ export {
 	OtelSettingsQueryPublicDto,
 	UpdateOtelSettingsPublicDto,
 } from './otel/otel-settings-public.dto';
+export {
+	OtelTestTraceRequestPublicDto,
+	OtelTestTraceResultPublicDto,
+} from './otel/otel-test-trace-public.dto';
 
 export {
 	PromotionChangesDto,
