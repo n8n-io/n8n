@@ -21,6 +21,7 @@ packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConn
   s_9b9696034972ce::t_ad906562365468 526
   s_9b9696034972ce::t_61feadba496009 535
   s_9b9696034972ce::t_bb2979d64528c7 590-591
+  s_7396ec8a4dae48::t_51e6b3bb0df83f 3,100,336,391,515-518
 packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/index.ts
   s_9b9696034972ce::t_04af644d4ba331 1-10
 packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolRow.vue
@@ -36,6 +37,7 @@ packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolDetai
   s_9b9696034972ce::t_9c09080413ff7f 105-106
 packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiInputMenuItems.ts
   s_9b9696034972ce::t_4805d93b78ca7f 9
+  s_7396ec8a4dae48::t_51e6b3bb0df83f 4-8
 packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/McpToolSettingsContent.vue
   s_9b9696034972ce::t_14e9077f4ee737 3-7
   s_9b9696034972ce::t_b960cc009eadc4 1-2,8-252
@@ -108,6 +110,10 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/toolIcons.ts
   s_9b9696034972ce::t_355e2884412701 2
 pnpm-lock.yaml
   s_9b9696034972ce::t_edd8f97481f675 5459-5461,5583-5585
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_7396ec8a4dae48::t_51e6b3bb0df83f 11-13
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_7396ec8a4dae48::t_51e6b3bb0df83f 50-51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -127,6 +133,14 @@ pnpm-lock.yaml
       "agent_id": {
         "tool": "pi",
         "id": "01a0cdb5-8c5d-7647-8a5f-e1d02cfb6a39",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7396ec8a4dae48": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ec4a-a5a2-7699-9a7d-9e91eb66f4ad",
         "model": "gpt-6-astra"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
