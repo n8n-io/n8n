@@ -94,6 +94,18 @@ interface RunBudget {
 	deadlineAt: number;
 }
 
+/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
+function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
+	const locator = node.parameters?.dataTableId as
+		| { mode?: unknown; value?: unknown }
+		| string
+		| undefined;
+	const value = typeof locator === 'string' ? locator : locator?.value;
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	const byName = typeof locator !== 'string' && locator?.mode === 'name';
+	return { mode: byName ? 'name' : 'id', value };
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -101,15 +113,6 @@ interface RunBudget {
 // Executes workflows with LLM-based HTTP mocking. Phase 1 generates per-node
 // mock hints (one LLM call); Phase 2 runs the workflow with a per-execution
 // mock handler — additionalData is fresh, no global state mutated.
-/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
-function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
-	const locator = node.parameters?.dataTableId as { mode?: unknown; value?: unknown } | string | undefined;
-	const value = typeof locator === 'string' ? locator : locator?.value;
-	if (typeof value !== 'string' || value.length === 0) return undefined;
-	const byName = typeof locator !== 'string' && locator?.mode === 'name';
-	return { mode: byName ? 'name' : 'id', value };
-}
-
 @Service()
 export class EvalExecutionService {
 	constructor(
@@ -465,7 +468,9 @@ export class EvalExecutionService {
 			const locator = dataTableLocator(node);
 			if (!locator) continue;
 			const tableId =
-				locator.mode === 'name' ? seededByLowerName.get(locator.value.toLowerCase()) : locator.value;
+				locator.mode === 'name'
+					? seededByLowerName.get(locator.value.toLowerCase())
+					: locator.value;
 			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
 		}
 		return live;
