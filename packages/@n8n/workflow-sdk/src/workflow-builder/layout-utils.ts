@@ -542,6 +542,8 @@ function boxesFromSubgraphs(
 	subgraphs: readonly LayoutSubgraph[],
 	compositeGraph: dagre.graphlib.Graph | undefined,
 	groupByGraphId: ReadonlyMap<string, CollapsedGroup>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
 ): Record<string, BoundingBox> {
 	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
 
@@ -569,7 +571,11 @@ function boxesFromSubgraphs(
 			if (group) {
 				placeGroupMembers(group, box, boundingBoxByNodeId, {
 					boundingBoxFromGraph,
+					compositeBoundingBox,
+					keyByNodeId,
+					nodes,
 					snapToGrid,
+					wrappingBoxFor,
 				});
 				continue;
 			}
@@ -900,7 +906,13 @@ export function calculateNodePositionsDagre(
 
 	const compositeGraph = arrangeSubgraphs(subgraphs);
 
-	const boundingBoxByNodeId = boxesFromSubgraphs(subgraphs, compositeGraph, groupByGraphId);
+	const boundingBoxByNodeId = boxesFromSubgraphs(
+		subgraphs,
+		compositeGraph,
+		groupByGraphId,
+		nodes,
+		keyByNodeId,
+	);
 
 	alignAiSubgraphs(subgraphs, boundingBoxByNodeId);
 

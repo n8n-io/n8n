@@ -6,8 +6,9 @@ import {
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
+	STICKY_NODE_TYPE,
 } from './constants';
-import type { GraphNode } from '../types/base';
+import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
 
 export interface BoundingBox {
@@ -34,7 +35,11 @@ interface FoldNodeGroupsDependencies {
 
 interface PlaceGroupMembersDependencies {
 	boundingBoxFromGraph: (graph: dagre.graphlib.Graph) => BoundingBox;
+	compositeBoundingBox: (boxes: BoundingBox[]) => BoundingBox;
+	keyByNodeId: ReadonlyMap<string, string>;
+	nodes: ReadonlyMap<string, GraphNode>;
 	snapToGrid: (value: number) => number;
+	wrappingBoxFor: (anchorBoxes: BoundingBox[]) => BoundingBox | undefined;
 }
 
 interface ResolvedGroup {
@@ -72,7 +77,7 @@ export function memberOriginFor(
 }
 
 function isStickyNode(graphNode: GraphNode | undefined): boolean {
-	return graphNode?.instance.type === 'n8n-nodes-base.stickyNote';
+	return graphNode?.instance.type === STICKY_NODE_TYPE;
 }
 
 function resolveGroup(
@@ -100,6 +105,39 @@ function resolveGroup(
 	};
 }
 
+function hasExplicitPosition(graphNode: GraphNode | undefined): boolean {
+	return graphNode?.instance.config?.position !== undefined;
+}
+
+function hasExplicitStickySize(graphNode: GraphNode): boolean {
+	const parameters = graphNode.instance.config?.parameters;
+	return typeof parameters?.width === 'number' || typeof parameters?.height === 'number';
+}
+
+function hasDeterministicStickyGeometry(
+	stickyKey: string,
+	group: ResolvedGroup,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
+): boolean {
+	const graphNode = nodes.get(stickyKey);
+	if (!graphNode || hasExplicitPosition(graphNode) || hasExplicitStickySize(graphNode)) {
+		return false;
+	}
+	if (
+		!isAnchoredStickyNote(graphNode.instance) ||
+		graphNode.instance.stickyAnchorIds.length === 0
+	) {
+		return false;
+	}
+
+	const regularMemberKeys = new Set(group.regularMemberKeys);
+	return graphNode.instance.stickyAnchorIds.every((anchorId) => {
+		const anchorKey = keyByNodeId.get(anchorId);
+		return anchorKey !== undefined && regularMemberKeys.has(anchorKey);
+	});
+}
+
 function findConflictingGroupIndexes(groups: readonly ResolvedGroup[]): ReadonlySet<number> {
 	const indexesByMemberKey = new Map<string, number[]>();
 
@@ -125,14 +163,22 @@ function isEligibleGroup(
 	conflictingIndexes: ReadonlySet<number>,
 	parentGraph: dagre.graphlib.Graph,
 	ungroupableKeys: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
 ): boolean {
 	if (conflictingIndexes.has(group.index)) return false;
-	// Sticky members remain on the existing sticky-placement path until the
-	// derived anchored-sticky policy is enabled in a separate change.
-	if (group.regularMemberKeys.length === 0 || group.stickyMemberKeys.length > 0) return false;
+	if (group.regularMemberKeys.length === 0) return false;
 
-	return group.regularMemberKeys.every(
-		(memberKey) => parentGraph.hasNode(memberKey) && !ungroupableKeys.has(memberKey),
+	if (
+		!group.regularMemberKeys.every(
+			(memberKey) => parentGraph.hasNode(memberKey) && !ungroupableKeys.has(memberKey),
+		)
+	) {
+		return false;
+	}
+
+	return group.stickyMemberKeys.every((stickyKey) =>
+		hasDeterministicStickyGeometry(stickyKey, group, nodes, keyByNodeId),
 	);
 }
 
@@ -142,14 +188,59 @@ function createSyntheticGroupId(index: number, takenKeys: Set<string>): string {
 	return graphId;
 }
 
+function graphBoxesAtOrigin(
+	group: CollapsedGroup,
+	memberOrigin: { x: number; y: number },
+	boundingBoxFromGraph: (graph: dagre.graphlib.Graph) => BoundingBox,
+): Map<string, BoundingBox> {
+	const memberBox = boundingBoxFromGraph(group.graph);
+
+	return new Map(
+		group.graph.nodes().map((nodeId) => {
+			const node = group.graph.node(nodeId);
+			return [
+				nodeId,
+				{
+					x: node.x - node.width / 2 + memberOrigin.x - memberBox.x,
+					y: node.y - node.height / 2 + memberOrigin.y - memberBox.y,
+					width: node.width,
+					height: node.height,
+				},
+			] as const;
+		}),
+	);
+}
+
+function derivedStickyBoxesAtOrigin(
+	group: CollapsedGroup,
+	memberBoxes: ReadonlyMap<string, BoundingBox>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
+	wrappingBoxFor: (anchorBoxes: BoundingBox[]) => BoundingBox | undefined,
+): BoundingBox[] {
+	return group.stickyMemberKeys.flatMap((stickyKey) => {
+		const sticky = nodes.get(stickyKey);
+		if (!sticky || !isAnchoredStickyNote(sticky.instance)) return [];
+
+		const anchorBoxes = sticky.instance.stickyAnchorIds
+			.map((anchorId) => keyByNodeId.get(anchorId))
+			.filter((anchorKey): anchorKey is string => anchorKey !== undefined)
+			.map((anchorKey) => memberBoxes.get(anchorKey))
+			.filter((box): box is BoundingBox => box !== undefined);
+		const wrappingBox = wrappingBoxFor(anchorBoxes);
+		return wrappingBox ? [wrappingBox] : [];
+	});
+}
+
 /**
  * Fold each group's members into a single parent-graph node the size of the
  * collapsed chip, so the layout reserves the space the canvas actually draws.
  * Mutates `parentGraph`; returns one entry per folded group.
  *
- * Groups that overlap the AI cluster machinery, hold a sticky, or share a member
- * with an earlier group are left alone, since those members are already laid out
- * by a mechanism of their own.
+ * Groups that overlap the AI cluster machinery, hold a protected sticky, or share
+ * a member with another group are left alone, since those members are already
+ * laid out by a mechanism of their own. Deterministic anchored auto-sized
+ * stickies are represented while the group is expanded.
  */
 export function collapseNodeGroups(
 	parentGraph: dagre.graphlib.Graph,
@@ -170,7 +261,11 @@ export function collapseNodeGroups(
 	const takenKeys = new Set(parentGraph.nodes());
 
 	for (const group of resolvedGroups) {
-		if (!isEligibleGroup(group, conflictingIndexes, parentGraph, excludedKeys)) continue;
+		if (
+			!isEligibleGroup(group, conflictingIndexes, parentGraph, excludedKeys, nodes, keyByNodeId)
+		) {
+			continue;
+		}
 
 		const memberKeySet = new Set(group.regularMemberKeys);
 
@@ -224,19 +319,56 @@ export function placeGroupMembers(
 	group: CollapsedGroup,
 	headerBox: BoundingBox,
 	boundingBoxByNodeId: Record<string, BoundingBox>,
-	{ boundingBoxFromGraph, snapToGrid }: PlaceGroupMembersDependencies,
+	{
+		boundingBoxFromGraph,
+		compositeBoundingBox,
+		keyByNodeId,
+		nodes,
+		snapToGrid,
+		wrappingBoxFor,
+	}: PlaceGroupMembersDependencies,
 ): void {
-	const memberBox = boundingBoxFromGraph(group.graph);
-	const offsetX = memberOriginFor(headerBox.x, GROUP_PADDING_X, snapToGrid) - memberBox.x;
-	const offsetY = memberOriginFor(headerBox.y, GROUP_HEADER_TO_MEMBERS_Y, snapToGrid) - memberBox.y;
+	const memberOrigin = {
+		x: memberOriginFor(headerBox.x, GROUP_PADDING_X, snapToGrid),
+		y: memberOriginFor(headerBox.y, GROUP_HEADER_TO_MEMBERS_Y, snapToGrid),
+	};
 
-	for (const key of group.graph.nodes()) {
-		const member = group.graph.node(key);
-		boundingBoxByNodeId[key] = {
-			x: member.x - member.width / 2 + offsetX,
-			y: member.y - member.height / 2 + offsetY,
-			width: member.width,
-			height: member.height,
+	if (group.stickyMemberKeys.length === 0) {
+		const memberBox = boundingBoxFromGraph(group.graph);
+		const offsetX = memberOrigin.x - memberBox.x;
+		const offsetY = memberOrigin.y - memberBox.y;
+
+		for (const key of group.graph.nodes()) {
+			const member = group.graph.node(key);
+			boundingBoxByNodeId[key] = {
+				x: member.x - member.width / 2 + offsetX,
+				y: member.y - member.height / 2 + offsetY,
+				width: member.width,
+				height: member.height,
+			};
+		}
+		return;
+	}
+
+	const memberBoxes = graphBoxesAtOrigin(group, memberOrigin, boundingBoxFromGraph);
+	const stickyBoxes = derivedStickyBoxesAtOrigin(
+		group,
+		memberBoxes,
+		nodes,
+		keyByNodeId,
+		wrappingBoxFor,
+	);
+	const inclusiveBox = compositeBoundingBox([...memberBoxes.values(), ...stickyBoxes]);
+	const offset = {
+		x: memberOrigin.x - inclusiveBox.x,
+		y: memberOrigin.y - inclusiveBox.y,
+	};
+
+	for (const [memberKey, box] of memberBoxes) {
+		boundingBoxByNodeId[memberKey] = {
+			...box,
+			x: box.x + offset.x,
+			y: box.y + offset.y,
 		};
 	}
 }

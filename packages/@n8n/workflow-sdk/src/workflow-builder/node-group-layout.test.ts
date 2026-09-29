@@ -17,7 +17,7 @@ import {
 	GROUP_PADDING_X as SDK_GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP as SDK_GROUP_PADDING_Y_TOP,
 } from './constants';
-import { node, trigger } from './node-builders/node-builder';
+import { node, sticky, trigger } from './node-builders/node-builder';
 import { languageModel } from './node-builders/subnode-builders';
 
 // Written out rather than imported on purpose: these are the canvas's numbers, from
@@ -42,6 +42,26 @@ function positionOf(json: WorkflowJSON, name: string): [number, number] {
 	const found = json.nodes.find((n) => n.name === name);
 	if (!found) throw new Error(`Node "${name}" not found in workflow JSON`);
 	return found.position;
+}
+
+function serializedBox(json: WorkflowJSON, name: string): Box {
+	const found = json.nodes.find((n) => n.name === name);
+	if (!found) throw new Error(`Node "${name}" not found in workflow JSON`);
+	return {
+		x: found.position[0],
+		y: found.position[1],
+		width: typeof found.parameters?.width === 'number' ? found.parameters.width : NODE_W,
+		height: typeof found.parameters?.height === 'number' ? found.parameters.height : NODE_H,
+	};
+}
+
+function contains(outer: Box, inner: Box): boolean {
+	return (
+		inner.x >= outer.x &&
+		inner.y >= outer.y &&
+		inner.x + inner.width <= outer.x + outer.width &&
+		inner.y + inner.height <= outer.y + outer.height
+	);
 }
 
 /** What the canvas draws for a node the user can see. */
@@ -207,6 +227,114 @@ describe('collapsed node group layout after tidyUp', () => {
 		expect(centerY(visible.get('Finish')!)).toBe(row);
 		expect(visible.get('Bridge')!.x).toBeGreaterThan(right(visible.get('Nightly')!));
 		expect(visible.get('Finish')!.x).toBeGreaterThan(right(visible.get('Bridge')!));
+	});
+
+	it('includes an auto-sized anchored sticky in an eligible group', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		const fetch = node({
+			type: 'n8n-nodes-base.postgres',
+			version: 2.5,
+			config: { name: 'Fetch' },
+		});
+		const transform = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Transform' },
+		});
+		const save = node({
+			type: 'n8n-nodes-base.postgres',
+			version: 2.5,
+			config: { name: 'Save' },
+		});
+		const note = sticky('## Processing', [fetch, transform], { name: 'Processing note' });
+
+		const json = workflow('wf', 'Group with sticky')
+			.add(start.to(fetch).to(transform).to(save))
+			.add(note)
+			.group('Processing', [fetch, transform, note])
+			.toJSON({ tidyUp: true });
+
+		const group = json.nodeGroups?.find((candidate) => candidate.name === 'Processing');
+		expect(group?.nodeIds).toContain(note.id);
+		expect(contains(serializedBox(json, 'Processing note'), serializedBox(json, 'Fetch'))).toBe(
+			true,
+		);
+		expect(contains(serializedBox(json, 'Processing note'), serializedBox(json, 'Transform'))).toBe(
+			true,
+		);
+		const visible = visibleBoxes(json);
+		expect(right(visible.get('Processing')!)).toBeLessThan(visible.get('Save')!.x);
+	});
+
+	it('keeps an editor-created sticky on the normal path when it has persisted geometry', () => {
+		const build = (withGroup: boolean) => {
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Nightly' },
+			});
+			const fetch = node({
+				type: 'n8n-nodes-base.postgres',
+				version: 2.5,
+				config: { name: 'Fetch' },
+			});
+			const note = sticky('## Existing', [fetch], {
+				name: 'Existing note',
+				position: [640, 320],
+				width: 400,
+				height: 300,
+			});
+
+			const builder = workflow('wf', 'Persisted sticky').add(start.to(fetch)).add(note);
+			if (withGroup) builder.group('Stage', [fetch, note]);
+			return builder.toJSON({ tidyUp: true });
+		};
+
+		const withoutGroup = build(false);
+		const withGroup = build(true);
+		expect(serializedBox(withGroup, 'Existing note')).toEqual({
+			x: 640,
+			y: 320,
+			width: 400,
+			height: 300,
+		});
+		expect(positionOf(withGroup, 'Fetch')).toEqual(positionOf(withoutGroup, 'Fetch'));
+	});
+
+	it('does not let group input order choose a winner for overlapping groups', () => {
+		const build = (reverse: boolean) => {
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Nightly' },
+			});
+			const first = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'First' } });
+			const second = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Second' },
+			});
+			const third = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Third' } });
+			const builder = workflow('wf', 'Overlapping groups').add(
+				start.to(first).to(second).to(third),
+			);
+			if (reverse) {
+				builder.group('Second stage', [second, third]).group('First stage', [first, second]);
+			} else {
+				builder.group('First stage', [first, second]).group('Second stage', [second, third]);
+			}
+			return builder.toJSON({ tidyUp: true });
+		};
+
+		const forward = build(false);
+		const reverse = build(true);
+		for (const name of ['First', 'Second', 'Third']) {
+			expect(positionOf(forward, name)).toEqual(positionOf(reverse, name));
+		}
 	});
 	it('leaves a group holding an AI sub-node alone, so its own sub-layout still runs', () => {
 		const model = languageModel({
