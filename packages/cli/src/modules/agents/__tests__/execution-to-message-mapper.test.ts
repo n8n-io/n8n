@@ -1,8 +1,10 @@
 import type { AgentExecution } from '../entities/agent-execution.entity';
+import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import {
 	executionToMessagesDto,
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
+import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
 
 const FIXED_CREATED_AT = new Date('2024-01-15T10:00:00.000Z');
 
@@ -84,6 +86,74 @@ describe('execution-to-message-mapper', () => {
 		const assistant = result.find((m) => m.role === 'assistant');
 		expect(assistant).toMatchObject({ executionStatus: 'error', executionError: 'fetch failed' });
 		expect(assistant?.content).toEqual([]);
+	});
+
+	it('does not attach the max-iterations stop as a run error', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: MAX_ITERATIONS_STOPPED_MESSAGE,
+				timeline: [
+					{
+						type: 'text',
+						content: MAX_ITERATIONS_STOPPED_MESSAGE,
+						timestamp: 100,
+						endTime: 110,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({ role: 'assistant', executionStatus: 'error' });
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
+	it('does not attach a mark_session_failed reason as a run error', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'Could not recover',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: MARK_SESSION_FAILED_TOOL_NAME,
+						toolCallId: 'tc-fail',
+						input: { reason: 'Could not recover' },
+						output: { marked: true },
+						startTime: 100,
+						endTime: 110,
+						success: true,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBeUndefined();
+	});
+
+	it('keeps a real run error when the turn also marked the session failed', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				error: 'fetch failed',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: MARK_SESSION_FAILED_TOOL_NAME,
+						toolCallId: 'tc-fail',
+						input: { reason: 'Could not recover' },
+						output: { marked: true },
+						startTime: 100,
+						endTime: 110,
+						success: true,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.executionError).toBe('fetch failed');
 	});
 
 	it('does not attach the recorded error to successful turns', () => {

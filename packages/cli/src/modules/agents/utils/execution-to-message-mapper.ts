@@ -3,6 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
+import { isFatalSessionOutcomeError } from './fatal-session-outcome';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
@@ -190,7 +191,9 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	// It stays a separate field, not a text part, so the client does not show it
 	// as model output.
 	const executionError =
-		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
+		(execution.status === 'error' || execution.status === 'interrupted') &&
+		execution.error &&
+		!isFatalSessionOutcomeError(execution.error, execution.timeline)
 			? execution.error
 			: undefined;
 	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
