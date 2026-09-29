@@ -405,6 +405,7 @@
 	"aiAssistant.builder.settings.getMoreCredits": "Get more credits",
 	"aiAssistant.builder.settings.creditsTooltip": "Credits are based on token usage. Credits renew on {renewalDate}. Unused credits expire on {expiryDate}.",
 	"aiAssistant.builder.creditBanner.text": "{remaining}/{total} monthly credits left",
+	"aiAssistant.builder.creditBanner.textUbb": "{remaining} credits left",
 	"aiAssistant.builder.creditBanner.trialText": "{remaining}/{total} credits left in your free trial",
 	"aiAssistant.builder.creditBanner.getMore": "Get more",
 	"aiAssistant.builder.creditBanner.limitReachedText": "Your free trial included credits to build and run your first workflow in production. Upgrade to continue using the AI Assistant.",
