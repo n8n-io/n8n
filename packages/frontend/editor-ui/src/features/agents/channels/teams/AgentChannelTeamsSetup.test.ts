@@ -333,6 +333,31 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-package-blocked')).toBeVisible();
 		});
 
+		it('shows a failed connect next to the button that started it', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }),
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('teams-connect-error')).toHaveTextContent('Bot rejected'),
+			);
+		});
+
+		it('offers the package on a connected channel even when the check does not pass', async () => {
+			withBot();
+			vi.mocked(checkTeamsCredential).mockResolvedValue({
+				status: 'failed',
+				reason: 'unreachable',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', connected: true }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+		});
+
 		it('does not connect again when the channel is already connected', async () => {
 			withBot();
 			const { getByTestId, emitted } = renderComponent({
@@ -621,6 +646,28 @@ describe('AgentChannelTeamsSetup', () => {
 				expect.any(Error),
 				'agents.channels.modal.saveChannelError',
 			);
+		});
+
+		it('offers a retry that saves the agent again', async () => {
+			withBot();
+			const ensureAgentPersisted = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue(undefined);
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', ensureAgentPersisted }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-setup-load-failed')).toBeVisible());
+			// The credential is verified, so a hint pointing back at it would be wrong.
+			expect(queryByTestId('teams-package-blocked')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-setup-retry'));
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			expect(ensureAgentPersisted).toHaveBeenCalledTimes(2);
+			expect(queryByTestId('teams-setup-load-failed')).toBeNull();
 		});
 
 		it('does not report a save failure when only the setup state fails to load', async () => {

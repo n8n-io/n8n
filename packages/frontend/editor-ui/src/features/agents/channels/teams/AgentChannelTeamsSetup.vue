@@ -81,6 +81,8 @@ const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 
 const setupState = ref<TeamsAgentSetupState | null>(null);
+// Only a picked credential makes the setup state worth retrying.
+const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
 const availability = ref<TeamsAvailability>({
@@ -168,8 +170,12 @@ const credentialProblem = computed(() =>
 	credentialCheck.value?.status === 'failed' ? credentialCheck.value.reason : null,
 );
 
-/** Scope and install need a verified credential with a bot ID that no other agent uses. */
-const ready = computed(() => credentialVerified.value && canDownloadPackage.value);
+// The manifest needs the bot ID, and a package for a credential that fails
+// its check would install a bot that cannot answer. A connected channel passed
+// that check when it connected, and setup no longer shows the check.
+const ready = computed(
+	() => canDownloadPackage.value && (props.connected || credentialVerified.value),
+);
 
 async function runCredentialCheck(trigger: 'auto' | 'recheck') {
 	const request = ++latestCheck;
@@ -249,6 +255,7 @@ async function downloadAndConnect() {
 
 async function loadSetupState() {
 	const request = ++latestSetupState;
+	setupLoadFailed.value = false;
 	if (!props.projectId || !props.agentId) return;
 	// A new agent has no row yet, and every agent-scoped Teams request needs
 	// one. Picking a credential is the first step that asks for that data.
@@ -258,7 +265,8 @@ async function loadSetupState() {
 		} catch (error) {
 			if (request !== latestSetupState) return;
 			setupState.value = null;
-			// Nothing inline explains a failed save, so it gets the modal's toast.
+			setupLoadFailed.value = true;
+			// The inline retry says the setup failed; the toast says why.
 			toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 			return;
 		}
@@ -272,7 +280,9 @@ async function loadSetupState() {
 		);
 		if (request === latestSetupState) setupState.value = state;
 	} catch {
-		if (request === latestSetupState) setupState.value = null;
+		if (request !== latestSetupState) return;
+		setupState.value = null;
+		setupLoadFailed.value = Boolean(credentialId.value);
 	}
 }
 
@@ -481,8 +491,25 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 								{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
 							</N8nButton>
 						</div>
+						<div
+							v-if="setupLoadFailed"
+							:class="$style.actions"
+							data-testid="teams-setup-load-failed"
+						>
+							<N8nText size="small" :class="$style.error">
+								{{ i18n.baseText('agents.channels.teams.setup.createBot.loadFailed') }}
+							</N8nText>
+							<N8nButton
+								variant="ghost"
+								size="small"
+								data-testid="teams-setup-retry"
+								@click="loadSetupState"
+							>
+								{{ i18n.baseText('generic.retry') }}
+							</N8nButton>
+						</div>
 						<N8nText
-							v-if="!setupState?.deployToAzureUrl"
+							v-else-if="!setupState?.deployToAzureUrl"
 							:class="$style.hint"
 							size="small"
 							data-testid="teams-deploy-blocked"
@@ -565,13 +592,27 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							</N8nButton>
 						</div>
 
+						<!-- A failed load and a claimed credential already say so in steps 2 and 3. -->
 						<N8nText
-							v-if="!ready"
+							v-if="!ready && !credentialVerified && !setupLoadFailed"
 							:class="$style.hint"
 							size="small"
 							data-testid="teams-package-blocked"
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.install.needsReady') }}
+						</N8nText>
+						<!-- Connect errors otherwise land in step 2, far from this button. -->
+						<N8nText
+							v-if="errorMessage && !connected"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-connect-error"
+						>
+							{{
+								i18n.baseText('agents.channels.teams.setup.install.connectFailed', {
+									interpolate: { error: errorMessage },
+								})
+							}}
 						</N8nText>
 						<N8nText
 							v-if="downloadError"
