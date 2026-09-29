@@ -16,26 +16,17 @@ import type { WorkflowPublicationStatusService } from '@/workflows/publication/w
 
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import type { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
-import type { WorkflowSuggestionCandidateService } from '../workflow-suggestion-candidate.service';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const suggestions = mock<WorkflowSuggestionRepository>();
-const candidates = mock<WorkflowSuggestionCandidateService>();
 const users = mock<UserRepository>();
 const publication = mock<WorkflowPublicationStatusService>();
 const modules = mock<ModuleRegistry>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
-const service = new WorkflowSuggestionService(
-	suggestions,
-	candidates,
-	users,
-	publication,
-	tx,
-	modules,
-);
+const service = new WorkflowSuggestionService(suggestions, users, publication, tx, modules);
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
 const graph: WorkflowSuggestionGraph = {
@@ -104,20 +95,12 @@ beforeEach(async () => {
 			candidate: structuredClone(graph),
 			explanation: 'Fix',
 			errorContext: null,
-			validation: {
-				requiredChecks: 'passed',
-				configuration: { status: 'not_run' },
-				execution: { status: 'not_run' },
-			},
 		},
 	});
 	suggestions.getSuggestion.mockResolvedValue(suggestion);
 	suggestions.createPending.mockResolvedValue(suggestion);
 	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'project' });
 	suggestions.getActivity.mockResolvedValue([]);
-	candidates.prepare.mockImplementation(async (_user, _workflow, _project, _original, candidate) =>
-		structuredClone(candidate),
-	);
 	publication.getStatus.mockResolvedValue({
 		status: 'published',
 		liveVersionId: versionId,
@@ -132,7 +115,6 @@ it('captures a detached baseline without creating a suggestion', async () => {
 	captured.original.settings!.executionTimeout = 60;
 	expect(workflow.settings?.executionTimeout).toBe(30);
 	expect(suggestions.createPending).not.toHaveBeenCalled();
-	expect(candidates.prepare).not.toHaveBeenCalled();
 	expect(tx.run).toHaveBeenCalledWith({}, expect.any(Function));
 	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, ctx);
 });
@@ -155,13 +137,8 @@ it.each(['unpublished', 'saved changes', 'archived', 'publishing'] as const)(
 	},
 );
 
-it('stores the prepared final graph and activity in the caller transaction', async () => {
-	const preparedGraph = {
-		...graph,
-		nodes: graph.nodes.map((node) => ({ ...node, id: 'prepared' })),
-	};
+it('stores the exact final graph and activity in the caller transaction', async () => {
 	const errorContext = { summary: 'A node failed', evidenceReference: 'evidence-1' };
-	candidates.prepare.mockResolvedValue(preparedGraph);
 	const prepared = await service.prepareSuggestion(baseline, {
 		graph,
 		explanation: '  Prepared fix  ',
@@ -171,25 +148,13 @@ it('stores the prepared final graph and activity in the caller transaction', asy
 	expect(tx.run).not.toHaveBeenCalled();
 	const result = await service.createSuggestion(prepared, ctx);
 	expect(result).toBe(suggestion);
-	expect(candidates.prepare).toHaveBeenCalledWith(
-		user,
-		workflow.id,
-		'project',
-		baseline.original,
-		graph,
-	);
 	expect(suggestions.createPending).toHaveBeenCalledWith(
 		baseline,
 		{
 			original: baseline.original,
-			candidate: preparedGraph,
+			candidate: graph,
 			explanation: 'Prepared fix',
 			errorContext,
-			validation: {
-				requiredChecks: 'passed',
-				configuration: { status: 'not_run' },
-				execution: { status: 'not_run' },
-			},
 		},
 		ctx,
 	);
@@ -201,10 +166,13 @@ it('stores the prepared final graph and activity in the caller transaction', asy
 
 it('keeps prepared content separate from later changes to the input', async () => {
 	const candidate = structuredClone(graph);
+	const original = structuredClone(baseline.original);
 	const prepared = await service.prepareSuggestion(baseline, {
 		graph: candidate,
 		explanation: 'Fix',
 	});
+	expect(baseline.original).toEqual(original);
+	expect(candidate).toEqual(graph);
 	baseline.original.name = 'Changed';
 	candidate.nodes[0].name = 'Changed';
 	expect(prepared.payload.original.name).toBe('Example');
@@ -212,17 +180,92 @@ it('keeps prepared content separate from later changes to the input', async () =
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
-it.each(['credential access', 'workflow policy'])(
-	'saves nothing when %s validation fails',
-	async (reason) => {
-		candidates.prepare.mockRejectedValue(new Error(reason));
-		await expect(
-			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
-		).rejects.toThrow(reason);
-		expect(suggestions.createPending).not.toHaveBeenCalled();
-		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
+it.each<{ problem: string; candidate: WorkflowSuggestionGraph }>([
+	{
+		problem: 'malformed node',
+		candidate: { ...graph, nodes: [{ ...graph.nodes[0], name: '' }] },
 	},
-);
+	{
+		problem: 'duplicate node name',
+		candidate: { ...graph, nodes: [...graph.nodes, { ...graph.nodes[0], id: 'other' }] },
+	},
+	{
+		problem: 'duplicate node ID',
+		candidate: { ...graph, nodes: [...graph.nodes, { ...graph.nodes[0], name: 'Other' }] },
+	},
+	{
+		problem: 'malformed connection',
+		candidate: {
+			...graph,
+			connections: {
+				Node: { main: [[{ node: 'Node', type: 'main', index: -1 }]] },
+			},
+		},
+	},
+	{
+		problem: 'unknown connection source',
+		candidate: {
+			...graph,
+			connections: {
+				Missing: { main: [[{ node: 'Node', type: 'main', index: 0 }]] },
+			},
+		},
+	},
+	{
+		problem: 'unknown connection target',
+		candidate: {
+			...graph,
+			connections: {
+				Node: { main: [[{ node: 'Missing', type: 'main', index: 0 }]] },
+			},
+		},
+	},
+])('rejects a $problem', async ({ candidate }) => {
+	await expect(
+		service.prepareSuggestion(baseline, { graph: candidate, explanation: 'Fix' }),
+	).rejects.toThrow('structure');
+	expect(suggestions.createPending).not.toHaveBeenCalled();
+});
+
+it('does not assign node IDs or webhook IDs during preparation', async () => {
+	const candidate = {
+		...graph,
+		nodes: [{ ...graph.nodes[0], id: '', type: 'n8n-nodes-base.webhook' }],
+	};
+	const prepared = await service.prepareSuggestion(baseline, {
+		graph: candidate,
+		explanation: 'Fix',
+	});
+	expect(prepared.payload.candidate).toEqual(candidate);
+});
+
+it.each([
+	{ state: 'missing', credentials: undefined },
+	{ state: 'unresolved', credentials: { httpBasicAuth: { id: 'unavailable', name: 'Service' } } },
+])('stores $state credentials for review without a readiness result', async ({ credentials }) => {
+	const candidate = {
+		...graph,
+		nodes: [
+			{
+				...graph.nodes[0],
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { authentication: 'genericCredentialType', genericAuthType: 'httpBasicAuth' },
+				credentials,
+			},
+		],
+	};
+	const prepared = await service.prepareSuggestion(baseline, {
+		graph: candidate,
+		explanation: 'Fix',
+	});
+	await service.createSuggestion(prepared);
+	expect(suggestions.createPending).toHaveBeenCalledWith(
+		baseline,
+		expect.objectContaining({ candidate }),
+		ctx,
+	);
+	expect(prepared.payload).not.toHaveProperty('validation');
+});
 
 it('rejects unsupported graph fields', async () => {
 	await expect(
@@ -231,7 +274,6 @@ it('rejects unsupported graph fields', async () => {
 			explanation: 'Fix',
 		}),
 	).rejects.toThrow();
-	expect(candidates.prepare).not.toHaveBeenCalled();
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
@@ -240,10 +282,12 @@ it.each([' ', 'x'.repeat(20_001)])('rejects an invalid explanation', async (expl
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
-it('rejects a prepared graph with no changes', async () => {
-	candidates.prepare.mockResolvedValue({ nodes: [], connections: {} });
+it('rejects a graph with no changes', async () => {
 	await expect(
-		service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+		service.prepareSuggestion(baseline, {
+			graph: { nodes: [], connections: {} },
+			explanation: 'Fix',
+		}),
 	).rejects.toThrow();
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
@@ -253,7 +297,6 @@ it('rejects changes to the captured original snapshot', async () => {
 	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
 		'captured workflow baseline',
 	);
-	expect(candidates.prepare).not.toHaveBeenCalled();
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 

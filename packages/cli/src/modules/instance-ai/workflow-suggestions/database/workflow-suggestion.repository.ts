@@ -9,7 +9,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { DataSource, In, LessThan } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
@@ -89,23 +89,6 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		return await this.managerFor({}).find(WorkflowSuggestionActivityEntity, {
 			where: { suggestionId },
 			order: { createdAt: 'ASC', id: 'ASC' },
-		});
-	}
-
-	async cleanup(now: Date, limit = 100) {
-		const manager = this.managerFor({});
-		const closedBefore = new Date(now.getTime() - 30 * 86400_000);
-		const candidates = await manager.find(WorkflowSuggestion, {
-			where: { state: 'closed', closedAt: LessThan(closedBefore) },
-			select: ['id'],
-			take: limit,
-			order: { closedAt: 'ASC', id: 'ASC' },
-		});
-		if (candidates.length === 0) return;
-		await manager.delete(WorkflowSuggestion, {
-			id: In(candidates.map(({ id }) => id)),
-			state: 'closed',
-			closedAt: LessThan(closedBefore),
 		});
 	}
 }

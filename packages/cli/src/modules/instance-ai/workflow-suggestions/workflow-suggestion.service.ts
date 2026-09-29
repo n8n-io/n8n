@@ -15,10 +15,10 @@ import { calculateWorkflowChecksum, WORKFLOW_CHECKSUM_FIELDS } from 'n8n-workflo
 import { z } from 'zod';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
-import { WorkflowSuggestionCandidateService } from './workflow-suggestion-candidate.service';
 
 const suggestionInputSchema = z
 	.object({
@@ -44,7 +44,6 @@ export type PreparedWorkflowSuggestion = {
 export class WorkflowSuggestionService {
 	constructor(
 		private readonly suggestions: WorkflowSuggestionRepository,
-		private readonly candidates: WorkflowSuggestionCandidateService,
 		private readonly users: UserRepository,
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
@@ -115,12 +114,13 @@ export class WorkflowSuggestionService {
 		this.requireEnabled();
 		const { explanation, errorContext } = suggestionInputSchema.parse(input);
 		baseline = structuredClone(baseline);
-		const { workflowId, projectId, backgroundUserId, expectedBaseline, original } = baseline;
-		const user = await this.requireEditor(backgroundUserId, workflowId);
+		const { workflowId, backgroundUserId, expectedBaseline, original } = baseline;
+		await this.requireEditor(backgroundUserId, workflowId);
 		if ((await calculateWorkflowChecksum(original)) !== expectedBaseline.checksum) {
 			throw new ConflictError('The captured workflow baseline has changed.');
 		}
-		const graph = await this.candidates.prepare(user, workflowId, projectId, original, input.graph);
+		validateWorkflowStructure(input.graph);
+		const graph = structuredClone(input.graph);
 		if (isEqual(original.nodes, graph.nodes) && isEqual(original.connections, graph.connections)) {
 			throw new ConflictError('The suggestion has no workflow changes.');
 		}
@@ -130,11 +130,6 @@ export class WorkflowSuggestionService {
 				original,
 				candidate: graph,
 				explanation,
-				validation: {
-					requiredChecks: 'passed',
-					configuration: { status: 'not_run' },
-					execution: { status: 'not_run' },
-				},
 				errorContext,
 			},
 		};

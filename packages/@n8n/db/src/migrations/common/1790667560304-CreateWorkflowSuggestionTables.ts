@@ -25,7 +25,7 @@ export class CreateWorkflowSuggestionTables1790667560304 implements ReversibleMi
 					.comment('Reason the suggestion closed'),
 				column('closedAt').timestampTimezone(),
 				column('payload').json.notNull.comment(
-					'Independent baseline, graph, explanation, validation, and error context',
+					'Independent baseline, graph, explanation, and error context',
 				),
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),
@@ -33,7 +33,6 @@ export class CreateWorkflowSuggestionTables1790667560304 implements ReversibleMi
 			.withIndexOn('workflowId')
 			.withIndexOn('projectId')
 			.withIndexOn('backgroundUserId')
-			.withIndexOn(['state', 'closedAt'])
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',

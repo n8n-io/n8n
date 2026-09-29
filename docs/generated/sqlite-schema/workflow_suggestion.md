@@ -43,7 +43,6 @@ CREATE TABLE "workflow_suggestion" ("id" varchar PRIMARY KEY NOT NULL, "workflow
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_0494cd7ecbc83cd7935d88b129 | CREATE INDEX "IDX_0494cd7ecbc83cd7935d88b129" ON "workflow_suggestion" ("state", "closedAt")  |
 | IDX_0f273c2cd9e1a097a8ba044fe9 | CREATE INDEX "IDX_0f273c2cd9e1a097a8ba044fe9" ON "workflow_suggestion" ("projectId")  |
 | IDX_b415d749769e092f51575def2d | CREATE INDEX "IDX_b415d749769e092f51575def2d" ON "workflow_suggestion" ("backgroundUserId")  |
 | IDX_f6289858234727cdff168626dc | CREATE INDEX "IDX_f6289858234727cdff168626dc" ON "workflow_suggestion" ("workflowId")  |

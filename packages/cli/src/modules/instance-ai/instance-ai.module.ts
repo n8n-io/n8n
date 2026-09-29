@@ -56,15 +56,12 @@ export class InstanceAiModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { InstanceAiConfig } = await import('@n8n/config');
-		const { WorkflowSuggestionCleanupTask } = await import(
-			'./workflow-suggestions/workflow-suggestion-cleanup.task.js'
-		);
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [WorkflowSuggestionCleanupTask];
+		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [];
 
 		const { InstanceAiCheckpointPruningTask } = await import(
 			'./instance-ai-checkpoint-pruning.task.js'
 		);
-		return [WorkflowSuggestionCleanupTask, InstanceAiCheckpointPruningTask];
+		return [InstanceAiCheckpointPruningTask];
 	}
 
 	async settings() {

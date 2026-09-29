@@ -10,7 +10,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expectedBaseline | json |  | false |  |  | Original saved and published version IDs and checksum |
 | id | varchar |  | false | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
-| payload | json |  | false |  |  | Independent baseline, graph, explanation, validation, and error context |
+| payload | json |  | false |  |  | Independent baseline, graph, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -40,7 +40,6 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_0494cd7ecbc83cd7935d88b129 | CREATE INDEX "IDX_0494cd7ecbc83cd7935d88b129" ON public.workflow_suggestion USING btree (state, "closedAt") |
 | IDX_0f273c2cd9e1a097a8ba044fe9 | CREATE INDEX "IDX_0f273c2cd9e1a097a8ba044fe9" ON public.workflow_suggestion USING btree ("projectId") |
 | IDX_b415d749769e092f51575def2d | CREATE INDEX "IDX_b415d749769e092f51575def2d" ON public.workflow_suggestion USING btree ("backgroundUserId") |
 | IDX_f6289858234727cdff168626dc | CREATE INDEX "IDX_f6289858234727cdff168626dc" ON public.workflow_suggestion USING btree ("workflowId") |

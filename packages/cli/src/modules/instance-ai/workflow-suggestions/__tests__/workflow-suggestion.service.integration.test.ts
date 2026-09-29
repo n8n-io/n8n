@@ -1,4 +1,3 @@
-import { ModuleRegistry } from '@n8n/backend-common';
 import { createWorkflowWithHistory, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
 import {
 	TransactionRunner,
@@ -12,15 +11,12 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
 
-import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
-import type { WorkflowSuggestionCandidateService } from '../workflow-suggestion-candidate.service';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 const testServer = setupTestServer({
@@ -28,26 +24,12 @@ const testServer = setupTestServer({
 	modules: ['instance-ai'],
 	setupTimeout: 30_000,
 });
-const candidates = mock<WorkflowSuggestionCandidateService>();
 let service: WorkflowSuggestionService;
 let suggestions: WorkflowSuggestionRepository;
 
 beforeAll(async () => {
 	suggestions = Container.get(WorkflowSuggestionRepository);
-	service = new WorkflowSuggestionService(
-		suggestions,
-		candidates,
-		Container.get(UserRepository),
-		Container.get(WorkflowPublicationStatusService),
-		Container.get(TransactionRunner),
-		Container.get(ModuleRegistry),
-	);
-});
-beforeEach(() => {
-	vi.resetAllMocks();
-	candidates.prepare.mockImplementation(async (_user, _workflow, _project, _baseline, graph) =>
-		structuredClone(graph),
-	);
+	service = Container.get(WorkflowSuggestionService);
 });
 afterEach(async () => {
 	await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).clear();
@@ -110,6 +92,32 @@ it('rejects changed settings even when version IDs do not change', async () => {
 	await workflows.update(saved.id, { settings: { executionTimeout: 60 } });
 	await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 	expect(await suggestions.count()).toBe(0);
+});
+
+it('stores proposed changes that still need credential configuration', async () => {
+	const { user, saved, workflows, project, baseline, graph } = await fixture();
+	graph.nodes.push({
+		id: 'request',
+		name: 'Request',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 4,
+		position: [300, 100],
+		parameters: {
+			url: 'https://example.com/orders',
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpBasicAuth',
+		},
+		credentials: { httpBasicAuth: { id: null, name: 'Configure authentication' } },
+	});
+	const prepared = await service.prepareSuggestion(baseline, {
+		graph,
+		explanation: 'Configure authentication to test the proposed request.',
+	});
+	const suggestion = await service.createSuggestion(prepared);
+	const detail = await service.getProposal(user, project.id, baseline.workflowId, suggestion.id);
+	expect(detail.payload.candidate).toEqual(graph);
+	expect(detail.payload).not.toHaveProperty('validation');
+	expect(await workflows.findOneByOrFail({ id: saved.id })).toEqual(saved);
 });
 
 it('rolls back the suggestion and activity when the caller transaction fails', async () => {

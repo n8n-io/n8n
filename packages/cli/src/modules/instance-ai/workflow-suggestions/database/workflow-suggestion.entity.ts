@@ -11,7 +11,6 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
 
 @Entity('workflow_suggestion')
 @Index(['workflowId'], { unique: true, where: "state = 'pending'" })
-@Index(['state', 'closedAt'])
 export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	@Index()
 	@Column({ type: 'varchar', length: 36 })

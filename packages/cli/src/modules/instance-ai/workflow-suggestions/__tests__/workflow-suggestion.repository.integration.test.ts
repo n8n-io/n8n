@@ -43,11 +43,6 @@ const payload = (): WorkflowSuggestionContent => ({
 	original: baseline().original,
 	candidate: { nodes: [], connections: {} },
 	explanation: 'Fix the workflow.',
-	validation: {
-		requiredChecks: 'passed',
-		configuration: { status: 'not_run' },
-		execution: { status: 'not_run' },
-	},
 	errorContext: null,
 });
 const saveProposal = async () =>
@@ -125,49 +120,6 @@ it('joins the caller transaction and rolls back both rows if finalization fails'
 	expect(
 		await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).count(),
 	).toBe(0);
-});
-
-it('deletes closed proposals and their activity in bounded batches and keeps pending proposals', async () => {
-	const old = new Date('2026-01-01T00:00:00Z');
-	const now = new Date('2026-03-01T00:00:00Z');
-	const first = await saveProposal();
-	await suggestions.update(first.id, {
-		state: 'closed',
-		closedReason: 'discarded',
-		closedAt: old,
-	});
-	const second = await saveProposal();
-	await suggestions.update(second.id, {
-		state: 'closed',
-		closedReason: 'applied',
-		closedAt: new Date('2026-01-02T00:00:00Z'),
-	});
-	const pending = await saveProposal();
-	await suggestions.update(pending.id, { updatedAt: old });
-
-	await suggestions.cleanup(now, 1);
-	expect(await suggestions.findOneBy({ id: first.id })).toBeNull();
-	expect(await suggestions.getActivity(first.id)).toHaveLength(0);
-	expect(await suggestions.count()).toBe(2);
-	await suggestions.cleanup(now);
-	expect(await suggestions.findOneBy({ id: second.id })).toBeNull();
-	expect(await suggestions.getActivity(second.id)).toHaveLength(0);
-	expect((await suggestions.getSuggestion(pending.id, pending)).payload).toEqual(payload());
-	expect(await suggestions.getActivity(pending.id)).toHaveLength(1);
-	expect(await suggestions.count()).toBe(1);
-});
-
-it('keeps proposals and activity through the full closed retention period', async () => {
-	const now = new Date('2026-03-01T00:00:00Z');
-	const closed = await saveProposal();
-	await suggestions.update(closed.id, {
-		state: 'closed',
-		closedReason: 'outdated',
-		closedAt: new Date(now.getTime() - 30 * 86400_000),
-	});
-	await suggestions.cleanup(now);
-	expect((await suggestions.getSuggestion(closed.id, closed)).payload).toEqual(payload());
-	expect(await suggestions.getActivity(closed.id)).toHaveLength(1);
 });
 
 it.each([

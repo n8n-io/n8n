@@ -12,17 +12,10 @@ export type WorkflowSuggestionBaseline = {
 	original: WorkflowSuggestionSnapshot;
 };
 
-export type WorkflowSuggestionValidation = {
-	requiredChecks: 'passed';
-	configuration: { status: 'not_run' };
-	execution: { status: 'not_run' };
-};
-
 export type WorkflowSuggestionContent = {
 	original: WorkflowSuggestionSnapshot;
 	candidate: WorkflowSuggestionGraph;
 	explanation: string;
-	validation: WorkflowSuggestionValidation;
 	errorContext: { summary: string; evidenceReference: string | null } | null;
 };
 
