@@ -7100,9 +7100,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../../../@n8n/typescript-config
-      '@n8n/utils':
-        specifier: workspace:*
-        version: link:../../../@n8n/utils
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
