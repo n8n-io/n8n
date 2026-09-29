@@ -1,13 +1,17 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
 import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import type {
+	DropdownMenuItemProps,
+	IconName,
+	ToolConnectionStatus,
+	ToolIconSource,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useContextStore } from '@/features/settings/context/context.store';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
-import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import N8nOption from '../N8nOption';
+import N8nSelect from '../N8nSelect';
+import N8nText from '../N8nText';
 import { useI18n } from '@n8n/i18n';
 import type { McpServerConnectionItem, McpToolInclusionMode, McpToolSettings } from './types';
 

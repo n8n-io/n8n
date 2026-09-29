@@ -1,17 +1,19 @@
 <script lang="ts" setup>
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nToolConnectionCredentialPicker as ToolCredentialPicker,
+	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type McpServerConnectionItem,
+	type ToolCredentialRef,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMcpConnectServer, McpRegistryServerResponse } from '@n8n/api-types';
 import { computed, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
-import {
-	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
-	type McpServerConnectionItem,
-	type ToolCredentialRef,
-} from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useMcpServerConnect } from '../composables/useMcpServerConnect';
@@ -208,7 +210,6 @@ function openSettings(row: CardRow) {
 				<template #action>
 					<ToolCredentialPicker
 						v-if="showsCredentialPicker(row)"
-						teleported
 						:item="row.item"
 						:credentials="row.item.credentials"
 						@select-credential="

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nText } from '@n8n/design-system';
+import N8nText from '../N8nText';
 import { useI18n } from '@n8n/i18n';
 import type { ToolConnectionItem } from './types';
 
@@ -15,11 +15,11 @@ const hasContent = computed(() => Boolean(props.item.longDescription));
 
 <template>
 	<div :class="$style.container" data-test-id="tools-connection-default-detail-body">
-		<p v-if="hasContent" :class="$style.description">
+		<N8nText v-if="hasContent" step="sm">
 			{{ item.longDescription }}
-		</p>
+		</N8nText>
 		<div v-else :class="$style.placeholder" data-test-id="tools-connection-detail-placeholder">
-			<N8nText color="text-light">
+			<N8nText color="text-light" step="sm">
 				{{ i18n.baseText('tools.connection.detail.noAdditionalDetails') }}
 			</N8nText>
 		</div>
@@ -30,13 +30,6 @@ const hasContent = computed(() => Boolean(props.item.longDescription));
 .container {
 	display: flex;
 	flex-direction: column;
-}
-
-.description {
-	margin: 0;
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
 }
 
 .placeholder {

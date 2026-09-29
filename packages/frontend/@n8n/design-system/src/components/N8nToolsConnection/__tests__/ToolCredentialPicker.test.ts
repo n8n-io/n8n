@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 import ToolCredentialPicker from '../ToolCredentialPicker.vue';
@@ -47,8 +47,8 @@ function render(
 ) {
 	return renderPicker({
 		props: { item, credentials },
-		pinia: createTestingPinia(),
 		global: {
+			plugins: [createTestingPinia()],
 			provide: {
 				[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: makeAdapter(storeCredentials),
 			},
@@ -168,8 +168,8 @@ describe('ToolCredentialPicker', () => {
 		];
 		const { getByTestId, findAllByTestId } = renderPicker({
 			props: { item: baseMcpItem, credentials },
-			pinia: createTestingPinia(),
 			global: {
+				plugins: [createTestingPinia()],
 				provide: {
 					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: {
 						...makeAdapter([]),

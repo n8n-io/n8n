@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
+import N8nNodeIcon from '../N8nNodeIcon';
+import N8nTabs from '../N8nTabs';
+import N8nText from '../N8nText';
+import type { TabOptions } from '../N8nTabs';
 import { useI18n } from '@n8n/i18n';
 import DefaultDetailBody from './DefaultDetailBody.vue';
 import McpDetailBody from './McpDetailBody.vue';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import { resolveToolItemIcon } from './toolItemIcon';
-import type { ToolConnectionItem } from './types';
+import type { ToolConnectionItem, ToolConnectionSettings } from './types';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
@@ -16,6 +21,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	back: [];
 	close: [];
+	disconnect: [item: ToolConnectionItem];
+	save: [item: ToolConnectionItem, settings?: ToolConnectionSettings];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -24,37 +31,44 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const placeholderIcon = computed(() => {
-	switch (props.item.kind) {
-		case 'service':
-		case 'mcp-server':
-			return 'plug';
-		case 'workflow':
-			return 'workflow';
-		case 'agent':
-			return 'bot';
-		case 'data-store':
-			return 'database';
-		case 'node':
-		default:
-			return 'toolbox';
-	}
-});
-
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
+
+type InternalTab = 'settings' | 'details';
+const activeTab = ref<InternalTab>('settings');
+const tabOptions = computed<Array<TabOptions<InternalTab>>>(() => [
+	{
+		value: 'settings',
+		label: i18n.baseText('tools.connection.tabs.settings'),
+	},
+	{
+		value: 'details',
+		label: i18n.baseText('tools.connection.tabs.details'),
+	},
+]);
+
+function onSave(settings?: ToolConnectionSettings) {
+	emit('save', props.item, settings);
+}
+function onDisconnect() {
+	emit('disconnect', props.item);
+}
+function onClose() {
+	emit('close');
+}
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="tools-connection-detail">
+	<div :class="$style.container" data-test-id="tools-connection-settings">
 		<header :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nIconButton
 					v-if="!hideBackButton"
 					icon="arrow-left"
 					variant="ghost"
-					size="medium"
+					size="large"
+					:class="$style.backButton"
 					:aria-label="i18n.baseText('tools.connection.detail.back')"
-					data-test-id="tools-connection-detail-back"
+					data-test-id="tools-connection-settings-back"
 					@click="emit('back')"
 				/>
 				<div :class="$style.iconWrapper" aria-hidden="true">
@@ -66,7 +80,7 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 						:color="resolvedIcon.type === 'icon' ? resolvedIcon.color : undefined"
 						:size="20"
 					/>
-					<N8nIcon v-else :icon="placeholderIcon" :size="20" :class="$style.iconFallback" />
+					<N8nIcon v-else icon="plug" :size="20" :class="$style.iconFallback" />
 				</div>
 				<N8nText :class="$style.title" tag="h2" bold>{{ item.title }}</N8nText>
 			</div>
@@ -86,18 +100,38 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
-					size="medium"
+					size="large"
 					:aria-label="i18n.baseText('tools.connection.action.close')"
-					data-test-id="tools-connection-detail-close"
-					@click="emit('close')"
+					data-test-id="tools-connection-settings-close"
+					@click="onClose"
 				/>
 			</div>
 		</header>
 
-		<slot name="body" :item="item">
-			<McpDetailBody v-if="item.kind === 'mcp-server'" :item="item" />
-			<DefaultDetailBody v-else :item="item" />
-		</slot>
+		<N8nTabs
+			v-model="activeTab"
+			:options="tabOptions"
+			size="small"
+			variant="modern"
+			justified
+			:class="$style.tabs"
+			data-test-id="tools-connection-settings-tabs"
+		/>
+
+		<div :class="$style.bodyWrapper">
+			<slot
+				v-if="activeTab === 'settings'"
+				name="body"
+				:item="item"
+				:on-save="onSave"
+				:on-disconnect="onDisconnect"
+				:on-close="onClose"
+			/>
+			<template v-else>
+				<McpDetailBody v-if="item.kind === 'mcp-server'" :item="item" />
+				<DefaultDetailBody v-else :item="item" />
+			</template>
+		</div>
 	</div>
 </template>
 
@@ -105,7 +139,11 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	min-height: 100%;
+}
+
+.backButton {
+	margin-inline-start: calc(var(--spacing--2xs) * -1);
 }
 
 .header {
@@ -113,12 +151,20 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	padding: var(--spacing--md);
+	padding-block-start: calc(var(--spacing--md) - var(--spacing--4xs));
+	padding-block-end: var(--spacing--lg);
+
+	button:last-child {
+		flex-shrink: 0;
+		margin-inline-end: calc(var(--spacing--2xs) * -1);
+	}
 }
 
 .headerLeft {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	min-width: 0;
 	flex: 1 1 auto;
 }
@@ -151,5 +197,24 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.tabs {
+	border-bottom: 1px solid var(--border-color);
+	flex-shrink: 0;
+}
+
+.bodyWrapper {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--spacing--md);
+
+	& footer {
+		margin-inline: calc(var(--spacing--md) * -1);
+		padding-inline: var(--spacing--md);
+	}
 }
 </style>
