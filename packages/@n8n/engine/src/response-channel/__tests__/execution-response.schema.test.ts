@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { executionResponseSchema } from '../execution-response.schema';
+import { executionResponseSchema, responseExpectationSchema } from '../execution-response.schema';
 
 const ended = (overrides: Record<string, unknown> = {}) => ({
 	type: 'ended',
@@ -99,4 +99,17 @@ describe('executionResponseSchema', () => {
 
 		expect(parsed).not.toHaveProperty('extra');
 	});
+});
+
+describe('responseExpectationSchema', () => {
+	it.each(['none', 'runEnd', 'stepResponse'])('accepts the kind %s', (kind) => {
+		expect(responseExpectationSchema.parse({ kind })).toEqual({ kind });
+	});
+
+	it.each([{ kind: 'stream' }, { kind: 'none', extra: true }, {}, 'none'])(
+		'rejects %j',
+		(value) => {
+			expect(responseExpectationSchema.safeParse(value).success).toBe(false);
+		},
+	);
 });

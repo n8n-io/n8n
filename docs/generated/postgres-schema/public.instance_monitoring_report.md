@@ -11,6 +11,7 @@
 | id | uuid |  | false |  |  | UUID; travels with the payload as its `batchId`. |
 | lastAttemptAt | timestamp(3) with time zone |  | true |  |  | When the last attempt finished; NULL before the first. Paces retries across a restart. |
 | lastError | text |  | true |  |  | Message of the most recent delivery failure. |
+| reportDate | varchar(10) |  | true |  |  | UTC day the report was created on, as YYYY-MM-DD. Unique, so one report is created a day. Not the days the report covers. NULL only on a legacy row that shared its day with an earlier one. |
 | status | varchar(64) | 'pending'::character varying | false |  |  | Skipped means the instance stopped trying that day, not that the numbers were lost: only a delivered report crosses a day off, so a skipped day is covered by the next report. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -31,6 +32,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_instance_monitoring_report_reportDate | CREATE UNIQUE INDEX "IDX_instance_monitoring_report_reportDate" ON public.instance_monitoring_report USING btree ("reportDate") WHERE ("reportDate" IS NOT NULL) |
 | PK_4a5cb8aa51c67e4f5a7eb0f9509 | CREATE UNIQUE INDEX "PK_4a5cb8aa51c67e4f5a7eb0f9509" ON public.instance_monitoring_report USING btree (id) |
 
 ## Relations
@@ -47,6 +49,7 @@ erDiagram
   uuid id
   timestamp_3__with_time_zone lastAttemptAt
   text lastError
+  varchar_10_ reportDate
   varchar_64_ status
   timestamp_3__with_time_zone updatedAt
 }

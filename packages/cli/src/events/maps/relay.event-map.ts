@@ -30,6 +30,7 @@ import type {
 	PolicyAttachment,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { AiEventMap } from './ai.event-map';
@@ -658,7 +659,7 @@ export type RelayEventMap = {
 		stoppedAt: Date;
 		detector: CrashDetector;
 		hostId: string;
-		tracingContext?: { traceparent: string; tracestate?: string };
+		tracingContext?: TracingContext;
 		workflowVersionId?: string;
 		retryOf?: string;
 		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];

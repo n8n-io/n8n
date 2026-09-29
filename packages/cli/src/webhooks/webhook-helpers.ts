@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -62,12 +63,13 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
-import { EventService } from '@/events/event.service';
+import {
+	ResponseError,
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnsupportedMediaTypeError,
+} from '@n8n/errors';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -87,21 +89,23 @@ import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
 import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
-import {
-	createStaticResponse,
-	createStreamResponse,
-	type WebhookResponse,
-} from '@/webhooks/webhook-response';
+import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { toResponseExpectation } from './engine-v2-response-expectation';
 import { EngineV2Webhooks } from './engine-v2-webhooks';
 import {
 	applySandboxCSP,
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
+import {
+	WebhookResponder,
+	type WebhookResponseCallback,
+	type WebhookCallbackResponseData,
+} from './webhook-responder';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
@@ -116,7 +120,6 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 
 interface WebhookInvocationResult {
 	webhookResultData: IWebhookResponseData;
-	didSendResponse: boolean;
 	runExecutionDataChanges: WebhookExecutionDataChanges;
 }
 
@@ -245,22 +248,18 @@ async function prepareMcpQueueExecution(
 export function handleHostedChatResponse(
 	res: express.Response,
 	responseMode: WebhookResponseMode,
-	didSendResponse: boolean,
 	executionId: string,
-	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
+	responder: WebhookResponder,
 	resumeToken?: string,
-): boolean {
-	if (responseMode === 'hostedChat' && !didSendResponse) {
-		res.send({ executionStarted: true, executionId, resumeToken });
-		process.nextTick(() => res.end());
-		// The response is written here, but callers treat the callback as the
-		// "response is done" signal — it is what settles their promise and
-		// releases the expression isolate in their `finally`.
-		responseCallback(null, { noWebhookResponse: true });
-		return true;
-	}
+): void {
+	if (responseMode !== 'hostedChat' || responder.hasResponded) return;
 
-	return didSendResponse;
+	res.send({ executionStarted: true, executionId, resumeToken });
+	process.nextTick(() => res.end());
+	// The response is written here, but callers treat the callback as the
+	// "response is done" signal — it is what settles their promise and
+	// releases the expression isolate in their `finally`.
+	responder.respondWithNoResponse();
 }
 
 /**
@@ -338,17 +337,13 @@ export function autoDetectResponseMode(
 	workflow: Workflow,
 	method: string,
 ): WebhookResponseMode | undefined {
-	if (workflowStartNode.type === FORM_TRIGGER_NODE_TYPE && method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
+	const hasChildMatching = (predicate: (node: INode) => boolean) =>
+		workflow
+			.getChildNodes(workflowStartNode.name)
+			.some((nodeName) => predicate(workflow.nodes[nodeName]));
 
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-
-			if (isEnabledFormPageNode(node)) {
-				return 'formPage';
-			}
-		}
-	}
+	const isFormTriggerPost = workflowStartNode.type === FORM_TRIGGER_NODE_TYPE && method === 'POST';
+	if (isFormTriggerPost && hasChildMatching(isEnabledFormPageNode)) return 'formPage';
 
 	const chatResponseMode = getChatResponseMode(workflowStartNode, method);
 	if (chatResponseMode) return chatResponseMode;
@@ -356,17 +351,9 @@ export function autoDetectResponseMode(
 	// If there are form nodes connected to a current form node we're dealing with a multipage form
 	// and we need to return the formPage response mode when a second page of the form gets submitted
 	// to be able to show potential form errors correctly.
-	if (workflowStartNode.type === FORM_NODE_TYPE && method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
-
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-
-			if (node.type === FORM_NODE_TYPE && !node.disabled) {
-				return 'formPage';
-			}
-		}
-	}
+	const isFormPost = workflowStartNode.type === FORM_NODE_TYPE && method === 'POST';
+	if (isFormPost && hasChildMatching((node) => node.type === FORM_NODE_TYPE && !node.disabled))
+		return 'formPage';
 
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return undefined;
@@ -378,17 +365,9 @@ export function autoDetectResponseMode(
 	) {
 		return 'onReceived';
 	}
-	if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) && method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
-
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-
-			if (isEnabledFormPageNode(node)) {
-				return 'responseNode';
-			}
-		}
-	}
+	const isFormOrWaitPost =
+		[FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) && method === 'POST';
+	if (isFormOrWaitPost && hasChildMatching(isEnabledFormPageNode)) return 'responseNode';
 
 	return undefined;
 }
@@ -396,10 +375,10 @@ export function autoDetectResponseMode(
 /**
  * for formTrigger and form nodes redirection has to be handled by sending redirectURL in response body
  */
-export const handleFormRedirectionCase = (
-	data: IWebhookResponseCallbackData,
+export const handleFormRedirectionCase = <T extends IWebhookResponseCallbackData>(
+	data: T,
 	workflowStartNode: INode,
-) => {
+): T => {
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return data;
 	}
@@ -442,7 +421,7 @@ function isHttpFullResponse(response: unknown): response is IN8nHttpFullResponse
 async function sendResponseNodeResponse(
 	response: IN8nHttpFullResponse,
 	res: express.Response,
-	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
+	responder: WebhookResponder,
 	workflowStartNode: INode,
 	executionId: string | undefined,
 	workflow: Workflow,
@@ -466,7 +445,7 @@ async function sendResponseNodeResponse(
 					executionId,
 				});
 			}
-			responseCallback(null, { noWebhookResponse: true });
+			responder.respondWithNoResponse();
 		} else if (Buffer.isBuffer(response.body)) {
 			if (response.statusCode) {
 				res.status(response.statusCode);
@@ -474,12 +453,12 @@ async function sendResponseNodeResponse(
 			WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 			applySandboxCSP(res);
 			res.end(response.body);
-			responseCallback(null, { noWebhookResponse: true });
+			responder.respondWithNoResponse();
 		} else {
 			// TODO: This probably needs some more changes depending on the options on the
 			//       Webhook Response node
 
-			let data: IWebhookResponseCallbackData = {
+			let data: WebhookCallbackResponseData = {
 				data: response.body as IDataObject,
 				headers: response.headers,
 				responseCode: response.statusCode,
@@ -487,7 +466,7 @@ async function sendResponseNodeResponse(
 
 			data = handleFormRedirectionCase(data, workflowStartNode);
 
-			responseCallback(null, data);
+			responder.respondWith(data);
 		}
 
 		process.nextTick(() => res.end());
@@ -498,14 +477,14 @@ async function sendResponseNodeResponse(
 			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 			{ executionId, workflowId: workflow.id },
 		);
-		responseCallback(error, {});
+		responder.respondWithError(error);
 	}
 }
 
 export function setupResponseNodePromise(
 	responsePromise: IDeferredPromise<IN8nHttpFullResponse>,
 	res: express.Response,
-	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
+	responder: WebhookResponder,
 	workflowStartNode: INode,
 	executionId: string | undefined,
 	workflow: Workflow,
@@ -522,7 +501,7 @@ export function setupResponseNodePromise(
 			await sendResponseNodeResponse(
 				response,
 				res,
-				responseCallback,
+				responder,
 				workflowStartNode,
 				executionId,
 				workflow,
@@ -535,7 +514,7 @@ export function setupResponseNodePromise(
 				`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 				{ executionId, workflowId: workflow.id },
 			);
-			responseCallback(error, {});
+			responder.respondWithError(error);
 		});
 }
 
@@ -565,7 +544,7 @@ export async function invokeWebhook({
 	executionMode,
 	runExecutionData,
 	webhookType,
-	responseCallback,
+	responder,
 }: {
 	workflow: Workflow;
 	webhookData: IWebhookData;
@@ -574,10 +553,7 @@ export async function invokeWebhook({
 	executionMode: WorkflowExecuteMode;
 	runExecutionData: IRunExecutionData | undefined;
 	webhookType: 'Form' | 'Webhook';
-	responseCallback: (
-		error: Error | null,
-		data: IWebhookResponseCallbackData | WebhookResponse,
-	) => void;
+	responder: WebhookResponder;
 }): Promise<WebhookInvocationResult> {
 	try {
 		const webhookResultData = await Container.get(WebhookService).runWebhook(
@@ -593,7 +569,7 @@ export async function invokeWebhook({
 			node: workflowStartNode,
 		});
 
-		return { webhookResultData, didSendResponse: false, runExecutionDataChanges: {} };
+		return { webhookResultData, runExecutionDataChanges: {} };
 	} catch (e: unknown) {
 		const error = ensureError(e);
 		const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
@@ -607,10 +583,9 @@ export async function invokeWebhook({
 			},
 		});
 
-		responseCallback(new UnexpectedError(errorMessage), {});
+		responder.respondWithError(new UnexpectedError(errorMessage));
 
 		return {
-			didSendResponse: true,
 			runExecutionDataChanges: {
 				resultData: {
 					runData: {},
@@ -628,6 +603,76 @@ export async function invokeWebhook({
 			},
 		};
 	}
+}
+
+/** Stops OAuth webhook execution when required trigger credentials are not ready. */
+export async function checkTriggerCredentialGate({
+	workflowStartNode,
+	additionalData,
+	res,
+	responder,
+}: {
+	workflowStartNode: INode;
+	additionalData: IWorkflowExecuteAdditionalData;
+	res: express.Response;
+	responder: WebhookResponder;
+}): Promise<boolean> {
+	if (
+		responder.hasResponded ||
+		res.headersSent ||
+		!shouldEstablishTriggerIdentity(workflowStartNode)
+	) {
+		return true;
+	}
+
+	const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
+	if (!credentialGate || credentialGate.readyToExecute) {
+		return true;
+	}
+
+	responder.respondWith({
+		data: credentialGate,
+		responseCode: 428,
+	});
+
+	return false;
+}
+
+/**
+ * Sends the immediate webhook response unless a response was already sent. When the
+ * node answered the request itself (`noWebhookResponse`), it only reports that to the
+ * responder.
+ *
+ * @returns Whether the workflow must run.
+ */
+export function handleImmediateWebhookResponse({
+	webhookResultData,
+	responseCode,
+	responder,
+}: {
+	webhookResultData: IWebhookResponseData;
+	responseCode: number;
+	responder: WebhookResponder;
+}): boolean {
+	if (webhookResultData.noWebhookResponse === true && !responder.hasResponded) {
+		responder.respondWithNoResponse();
+	}
+
+	if (webhookResultData.workflowData !== undefined) return true;
+
+	if (!responder.hasResponded) {
+		// Only `undefined` selects the default message. A node can respond with `null`,
+		// which `??` would wrongly replace.
+		responder.respondWith({
+			data:
+				webhookResultData.webhookResponse !== undefined
+					? (webhookResultData.webhookResponse as IDataObject | IDataObject[])
+					: { message: 'Webhook call received' },
+			responseCode,
+		});
+	}
+
+	return false;
 }
 
 /**
@@ -748,92 +793,36 @@ function toWebhookUser(user: IUser): IUser {
 	};
 }
 
-/**
- * Executes a webhook
- */
-// eslint-disable-next-line complexity
-export async function executeWebhook(
-	workflow: Workflow,
-	webhookData: IWebhookData,
-	workflowData: IWorkflowBase,
-	workflowStartNode: INode,
-	executionMode: WorkflowExecuteMode,
-	pushRef: string | undefined,
-	runExecutionData: IRunExecutionData | undefined,
-	executionId: string | undefined,
-	req: WebhookRequest,
-	res: express.Response,
-	responseCallback: (
-		error: Error | null,
-		data: IWebhookResponseCallbackData | WebhookResponse,
-	) => void,
-	destinationNode?: IDestinationNode,
-	options?: {
-		/**
-		 * Identity of the builder who registered this test webhook, for a manual run that
-		 * had to wait for a webhook and so never reached the point where a manual
-		 * execution normally picks its identity up from the auth cookie. Only a fallback:
-		 * a node that establishes its own carrier below still wins.
-		 */
-		encryptedRunnerIdentity?: string;
-	},
-): Promise<string | undefined> {
-	// Get the nodeType to know which responseMode is set
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(
-		workflowStartNode.type,
-		workflowStartNode.typeVersion,
-	);
-
-	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$executionId: executionId,
-	};
-
-	const context = new WebhookExecutionContext(
-		workflow,
-		workflowStartNode,
-		webhookData,
-		executionMode,
-		additionalKeys,
-	);
-
-	let project: Project;
-	try {
-		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-	} catch {
-		throw new NotFoundError('Cannot find workflow');
-	}
-
-	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.getBase({
-		projectId: project?.id,
-	});
+async function prepareWebhookAdditionalData({
+	workflow,
+	workflowStartNode,
+	executionMode,
+	executionId,
+	projectId,
+	req,
+	res,
+	encryptedRunnerIdentity,
+	getRunExecutionData,
+}: {
+	workflow: Workflow;
+	workflowStartNode: INode;
+	executionMode: WorkflowExecuteMode;
+	executionId: string | undefined;
+	projectId: string;
+	req: WebhookRequest;
+	res: express.Response;
+	encryptedRunnerIdentity?: string;
+	getRunExecutionData: () => IRunExecutionData | undefined;
+}): Promise<IWorkflowExecuteAdditionalData> {
+	const additionalData = await WorkflowExecuteAdditionalData.getBase({ projectId });
 
 	// Guarded: an absent carrier must not clobber one set elsewhere.
-	if (options?.encryptedRunnerIdentity) {
-		additionalData.encryptedRunnerIdentity = options.encryptedRunnerIdentity;
+	if (encryptedRunnerIdentity) {
+		additionalData.encryptedRunnerIdentity = encryptedRunnerIdentity;
 	}
 
 	if (executionId) {
 		additionalData.executionId = executionId;
-	}
-
-	const {
-		responseMode,
-		responseCode,
-		responseData,
-		checkAllMainOutputs,
-		responsePropertyName,
-		responseContentType,
-		responseBinaryPropertyName,
-	} = evaluateResponseOptions(context, req);
-
-	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
-		// If the mode is not known we error. Is probably best like that instead of using
-		// the default that people know as early as possible (probably already testing phase)
-		// that something does not resolve properly.
-		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new UnexpectedError(errorMessage), {});
-		throw new InternalServerError(errorMessage);
 	}
 
 	// Add the Response and Request so that this data can be accessed in the node
@@ -852,16 +841,11 @@ export async function executeWebhook(
 		return toWebhookUser(user);
 	};
 
-	additionalData.beginN8nOAuth2Flow = async (
-		resourceUrl: string,
-		metadata?: Record<string, string>,
-	) => await Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
-
-	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
-		await Container.get(OAuth2FlowProxy).complete(code, state);
-
-	additionalData.refreshN8nOAuth2Flow = async (refreshToken: string, resourceUrl: string) =>
-		await Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
+	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
+	additionalData.beginN8nOAuth2Flow = oauth2FlowProxy.begin.bind(oauth2FlowProxy);
+	additionalData.completeN8nOAuth2Flow = oauth2FlowProxy.complete.bind(oauth2FlowProxy);
+	additionalData.refreshN8nOAuth2Flow =
+		oauth2FlowProxy.refreshVirtualClientToken.bind(oauth2FlowProxy);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
@@ -908,6 +892,7 @@ export async function executeWebhook(
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
 		).buildTriggerIdentityCredentials(token, resource, grant, subject);
+		const runExecutionData = getRunExecutionData();
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}
@@ -924,6 +909,7 @@ export async function executeWebhook(
 		if (!credentialCheckProxy || !workflow.id) {
 			return undefined;
 		}
+		const runExecutionData = getRunExecutionData();
 		const executionContext =
 			runExecutionData?.executionData?.runtimeData ??
 			(additionalData.encryptedRunnerIdentity
@@ -959,7 +945,95 @@ export async function executeWebhook(
 		});
 	};
 
-	let didSendResponse = false;
+	return additionalData;
+}
+
+/**
+ * Executes a webhook
+ */
+// eslint-disable-next-line complexity
+export async function executeWebhook(
+	workflow: Workflow,
+	webhookData: IWebhookData,
+	workflowData: IWorkflowBase,
+	workflowStartNode: INode,
+	executionMode: WorkflowExecuteMode,
+	pushRef: string | undefined,
+	runExecutionData: IRunExecutionData | undefined,
+	executionId: string | undefined,
+	req: WebhookRequest,
+	res: express.Response,
+	responseCallback: WebhookResponseCallback,
+	destinationNode?: IDestinationNode,
+	options?: {
+		/**
+		 * Identity of the builder who registered this test webhook, for a manual run that
+		 * had to wait for a webhook and so never reached the point where a manual
+		 * execution normally picks its identity up from the auth cookie. Only a fallback:
+		 * a node that establishes its own carrier below still wins.
+		 */
+		encryptedRunnerIdentity?: string;
+	},
+): Promise<string | undefined> {
+	const responder = new WebhookResponder(responseCallback);
+
+	// Get the nodeType to know which responseMode is set
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(
+		workflowStartNode.type,
+		workflowStartNode.typeVersion,
+	);
+
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		$executionId: executionId,
+	};
+
+	const context = new WebhookExecutionContext(
+		workflow,
+		workflowStartNode,
+		webhookData,
+		executionMode,
+		additionalKeys,
+	);
+
+	let project: Project;
+	try {
+		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+	} catch {
+		throw new NotFoundError('Cannot find workflow');
+	}
+
+	// Prepare everything that is needed to run the workflow
+	const additionalData = await prepareWebhookAdditionalData({
+		workflow,
+		workflowStartNode,
+		executionMode,
+		executionId,
+		projectId: project?.id,
+		req,
+		res,
+		encryptedRunnerIdentity: options?.encryptedRunnerIdentity,
+		getRunExecutionData: () => runExecutionData,
+	});
+
+	const {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	} = evaluateResponseOptions(context, req);
+
+	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
+		// If the mode is not known we error. Is probably best like that instead of using
+		// the default that people know as early as possible (probably already testing phase)
+		// that something does not resolve properly.
+		const errorMessage = `The response mode '${responseMode}' is not valid!`;
+		responder.respondWithError(new UnexpectedError(errorMessage));
+		throw new InternalServerError(errorMessage);
+	}
+
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
 	let pendingEngineV2Response: PendingWebhookResponse | undefined;
@@ -1030,10 +1104,9 @@ export async function executeWebhook(
 			executionMode,
 			runExecutionData,
 			webhookType: ['formTrigger', 'form'].includes(nodeType.description.name) ? 'Form' : 'Webhook',
-			responseCallback,
+			responder,
 		});
 		const { webhookResultData } = invocationResult;
-		didSendResponse = invocationResult.didSendResponse;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 
 		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
@@ -1050,43 +1123,15 @@ export async function executeWebhook(
 			responseHeaders.applyToResponse(res);
 		}
 
-		if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
-			// The response got already send
-			responseCallback(null, {
-				noWebhookResponse: true,
-			});
-			didSendResponse = true;
-		}
+		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
+			webhookResultData,
+			responseCode,
+			responder,
+		});
+		if (!shouldContinueWorkflowExecution) return;
 
-		if (webhookResultData.workflowData === undefined) {
-			// Workflow should not run
-			if (webhookResultData.webhookResponse !== undefined) {
-				// Data to respond with is given
-				if (!didSendResponse) {
-					responseCallback(null, {
-						data: webhookResultData.webhookResponse as IDataObject | IDataObject[],
-						responseCode,
-					});
-					didSendResponse = true;
-				}
-			} else {
-				// Send default response
-
-				if (!didSendResponse) {
-					responseCallback(null, {
-						data: {
-							message: 'Webhook call received',
-						},
-						responseCode,
-					});
-					didSendResponse = true;
-				}
-			}
-			return;
-		}
-
-		// The node's output is the only place a file shows up, so this cannot run with
-		// the checks above.
+		// Engine v2 cannot receive files yet. A file exists only in the node's output,
+		// so this check runs after the node, unlike `engineV2Webhooks.assertSupported()`.
 		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
 		// Reactive credential-status gate. Runs only once we know the workflow will
@@ -1096,21 +1141,17 @@ export async function executeWebhook(
 		// user's resolvable (private) credentials are still unconnected, responding
 		// 428 Precondition Required with the missing-credential list and a signed
 		// connect link for each.
-		if (!didSendResponse && !res.headersSent && shouldEstablishTriggerIdentity(workflowStartNode)) {
-			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
-			if (credentialGate && !credentialGate.readyToExecute) {
-				responseCallback(null, {
-					data: credentialGate,
-					responseCode: 428,
-				});
-				didSendResponse = true;
-				return;
-			}
-		}
+		const shouldContinueAfterCredentialGate = await checkTriggerCredentialGate({
+			workflowStartNode,
+			additionalData,
+			res,
+			responder,
+		});
+		if (!shouldContinueAfterCredentialGate) return;
 
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.
-		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
+		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !responder.hasResponded;
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
@@ -1163,16 +1204,16 @@ export async function executeWebhook(
 			// takes time, and a node failing during that wait must not answer a second time.
 			void responsePromise.promise.then(
 				(response) => {
-					if (response !== EXECUTION_ENDED_WITHOUT_RESPONSE) didSendResponse = true;
+					if (response !== EXECUTION_ENDED_WITHOUT_RESPONSE) responder.markResponded();
 				},
 				() => {
-					didSendResponse = true;
+					responder.markResponded();
 				},
 			);
 			setupResponseNodePromise(
 				responsePromise,
 				res,
-				responseCallback,
+				responder,
 				workflowStartNode,
 				executionId,
 				workflow,
@@ -1187,25 +1228,25 @@ export async function executeWebhook(
 			// TODO: Add check for streaming nodes here
 			runData.httpResponse = res;
 			runData.streamingEnabled = true;
-			// No `responseCallback` here, unlike the formPage and hostedChat
+			// No `responder.respondWith()` here, unlike the formPage and hostedChat
 			// branches: streaming requires the trigger to have taken over the
 			// response itself, so it returns `noWebhookResponse: true` (see
 			// `Webhook.node.ts` and `ChatTrigger.node.ts`) and the handler for
 			// that above has already answered. Calling back here would answer a
 			// second time.
-			didSendResponse = true;
+			responder.markResponded();
 		}
 
 		// Before the run, because a short workflow answers before `startExecution`
 		// returns and nothing replays a missed response. The id is minted here, so
 		// the run and the listener agree on it.
-		if (routesToEngineV2 && responseMode !== 'onReceived') {
+		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
 			const engineExecutionId = createExecutionIdV2();
-			pendingEngineV2Response = Container.get(EngineV2WebhookResponder).waitForResponse(
+			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
-				responseMode === 'responseNode',
+				toResponseExpectation(responseMode),
 			);
-			runData.engineExecutionId = engineExecutionId;
+			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
@@ -1226,7 +1267,7 @@ export async function executeWebhook(
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
-			!didSendResponse && !shouldDeferOnReceivedResponse,
+			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
 			responsePromise,
@@ -1262,8 +1303,7 @@ export async function executeWebhook(
 				webhookResultData,
 			);
 			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responseCallback(null, webhookResponse);
-			didSendResponse = true;
+			responder.respondWith(webhookResponse);
 		}
 
 		Container.get(EventService).emit('workflow-executed', {
@@ -1275,7 +1315,7 @@ export async function executeWebhook(
 			source: 'webhook',
 		});
 
-		if (responseMode === 'formPage' && !didSendResponse) {
+		if (responseMode === 'formPage' && !responder.hasResponded) {
 			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
 			if (runExecutionData.resumeToken) {
 				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
@@ -1283,16 +1323,14 @@ export async function executeWebhook(
 			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
 			// See handleHostedChatResponse: the callback is the contract, not the write.
-			responseCallback(null, { noWebhookResponse: true });
-			didSendResponse = true;
+			responder.respondWithNoResponse();
 		}
 
-		didSendResponse = handleHostedChatResponse(
+		handleHostedChatResponse(
 			res,
 			responseMode,
-			didSendResponse,
 			executionId,
-			responseCallback,
+			responder,
 			runExecutionData?.resumeToken,
 		);
 
@@ -1313,14 +1351,14 @@ export async function executeWebhook(
 				const outcome = await waiting.settled;
 				if (outcome.status === 'response') {
 					if (!isHttpFullResponse(outcome.response)) {
-						throw new UnexpectedError('Engine 2.0 produced an invalid webhook response');
+						throw new UnexpectedError('Engine v2 produced an invalid webhook response');
 					}
 
-					didSendResponse = true;
+					responder.markResponded();
 					await sendResponseNodeResponse(
 						outcome.response,
 						res,
-						responseCallback,
+						responder,
 						workflowStartNode,
 						executionId,
 						workflow,
@@ -1330,8 +1368,7 @@ export async function executeWebhook(
 
 				if (outcome.status === 'completed' || outcome.status === 'failed') {
 					if (outcome.status === 'completed' && responseMode === 'responseNode') {
-						responseCallback(null, { data: undefined, responseCode });
-						didSendResponse = true;
+						responder.respondWith({ data: undefined, responseCode });
 						return undefined;
 					}
 
@@ -1358,12 +1395,11 @@ export async function executeWebhook(
 				});
 				// The webhook node can answer before the execution starts. Do not send a
 				// second response when the execution response later settles.
-				if (!didSendResponse) {
-					responseCallback(null, {
+				if (!responder.hasResponded) {
+					responder.respondWith({
 						data: { message: errorResponse.responseMessage },
 						responseCode: errorResponse.responseCode,
 					});
-					didSendResponse = true;
 				}
 
 				return undefined;
@@ -1382,24 +1418,25 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
-				executionId,
-				workflowId: workflowData.id,
-			});
+			void Container.get(WaitTracker).resumeParentExecution(
+				parentExecution,
+				executePromise,
+				{ executionId, workflowId: workflowData.id },
+				workflowData,
+			);
 		}
 
-		if (!didSendResponse) {
+		if (!responder.hasResponded) {
 			executePromise
 				.then(async (runData) => {
 					if (runData === undefined) {
-						if (!didSendResponse) {
-							responseCallback(null, {
+						if (!responder.hasResponded) {
+							responder.respondWith({
 								data: {
 									message: 'Workflow executed successfully but no data was returned',
 								},
 								responseCode,
 							});
-							didSendResponse = true;
 						}
 						return undefined;
 					}
@@ -1410,7 +1447,7 @@ export async function executeWebhook(
 
 					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
-						if (!didSendResponse) {
+						if (!responder.hasResponded) {
 							// The node that failed is not named in the response, so log it here:
 							// this is the only channel where naming it is safe.
 							Container.get(Logger).warn('Webhook execution failed before a response was sent', {
@@ -1419,32 +1456,30 @@ export async function executeWebhook(
 								responseMode,
 								lastNodeExecuted: runData.data.resultData.lastNodeExecuted,
 							});
-							responseCallback(null, {
+							responder.respondWith({
 								data: {
 									message: 'Error in workflow',
 								},
 								responseCode: 500,
 							});
 						}
-						didSendResponse = true;
 						return runData;
 					}
 
-					// In v1 `responseNode` mode, `responsePromise` calls `responseCallback`.
+					// In v1 `responseNode` mode, `responsePromise` sends the response.
 					if (responseMode === 'responseNode' && responsePromise) {
 						await Promise.allSettled([responsePromise.promise]);
-						if (!didSendResponse) {
+						if (!responder.hasResponded) {
 							// The execution succeeded but never reached the Respond to Webhook node,
 							// so answer here rather than leaving the caller waiting.
-							responseCallback(null, { data: undefined, responseCode });
-							didSendResponse = true;
+							responder.respondWith({ data: undefined, responseCode });
 						}
 						return undefined;
 					}
 
 					if (lastNodeTaskData === undefined) {
-						if (!didSendResponse) {
-							responseCallback(null, {
+						if (!responder.hasResponded) {
+							responder.respondWith({
 								data: {
 									message:
 										'Workflow executed successfully but the last node did not return any data',
@@ -1452,11 +1487,10 @@ export async function executeWebhook(
 								responseCode,
 							});
 						}
-						didSendResponse = true;
 						return runData;
 					}
 
-					if (didSendResponse) {
+					if (responder.hasResponded) {
 						return runData;
 					}
 
@@ -1468,8 +1502,7 @@ export async function executeWebhook(
 					);
 
 					if (!result.ok) {
-						responseCallback(result.error, {});
-						didSendResponse = true;
+						responder.respondWithError(result.error);
 						return runData;
 					}
 
@@ -1479,25 +1512,22 @@ export async function executeWebhook(
 						responseHeaders.set('content-type', response.contentType);
 					}
 
-					responseCallback(
-						null,
+					responder.respondWith(
 						response.type === 'static'
 							? createStaticResponse(response.body, responseCode, responseHeaders)
 							: createStreamResponse(response.stream, responseCode, responseHeaders),
 					);
-					didSendResponse = true;
 					return runData;
 				})
 				.catch((e: unknown) => {
 					const error = ensureError(e);
 					Container.get(ErrorReporter).error(error, { executionId });
 
-					if (!didSendResponse) {
-						responseCallback(
+					if (!responder.hasResponded) {
+						responder.respondWithError(
 							new OperationalError('There was a problem executing the workflow', {
 								cause: error,
 							}),
-							{},
 						);
 					}
 
@@ -1525,8 +1555,8 @@ export async function executeWebhook(
 				cause: error,
 			});
 		}
-		if (didSendResponse) throw responseError;
-		responseCallback(responseError, {});
+		if (responder.hasResponded) throw responseError;
+		responder.respondWithError(responseError);
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();

@@ -10,7 +10,7 @@ import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -303,6 +303,35 @@ export class InsightsService {
 			date: r.periodStart,
 			values: { timeSaved: r.timeSaved ?? 0 },
 		}));
+	}
+
+	/** The start of the oldest insights period of any bucket size, or `null` without data. */
+	async getEarliestDataDate() {
+		return await this.insightsByPeriodRepository.getEarliestDataDate();
+	}
+
+	/**
+	 * Succeeded plus failed executions of all workflows for each UTC day from
+	 * `startDate` to `endDate`, both inclusive, keyed by `YYYY-MM-DD`. A day
+	 * without executions has no entry.
+	 *
+	 * Unlike {@link getInsightsByTime}, this buckets by day for any range length.
+	 */
+	async getDailyExecutionTotals({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): Promise<Map<string, number>> {
+		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
+			periodUnit: 'day',
+			insightTypes: ['success', 'failure'],
+			startDate,
+			endDate,
+			timeZone: 'UTC',
+		});
+
+		return new Map(
+			rows.map((row) => [row.periodStart.slice(0, 10), (row.succeeded ?? 0) + (row.failed ?? 0)]),
+		);
 	}
 
 	private async queryInsightsByTime({

@@ -60,7 +60,7 @@ export type { SetupPanelItem, SetupPanelProps } from './N8nSetupPanel/SetupPanel
 export { default as N8nSetupConnection } from './N8nSetupConnection/SetupConnection.vue';
 export type { SetupConnectionProps } from './N8nSetupConnection/SetupConnection.types';
 export { default as N8nButtonList } from './N8nButtonList';
-export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
+export type { ButtonListOrientation, ButtonListProps, ButtonListVariant } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasPill } from './CanvasPill';

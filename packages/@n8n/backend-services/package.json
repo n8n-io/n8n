@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-services",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -22,6 +22,11 @@
   "files": [
     "dist/**/*"
   ],
+  "dependencies": {
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*"
+  },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
@@ -31,7 +36,8 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -35,7 +35,7 @@ vi.mock('./WorkflowReviewActivityFeed.vue', async () => {
 				};
 			},
 			template:
-				'<div data-test-id="workflow-review-activity-feed" :data-linked-workflows="linkedWorkflowsJson"><slot name="header" /><slot name="footer" /></div>',
+				'<div data-test-id="workflow-review-activity-feed" :data-linked-workflows="linkedWorkflowsJson"><slot name="header" /><slot name="footer" /><slot name="composer" /></div>',
 		},
 	};
 });
@@ -158,9 +158,8 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(getByTestId('workflow-review-no-description')).toBeInTheDocument();
 		});
 
-		// The description has to sit inside the feed's scroll container for the two to scroll
-		// together, and the composer has to stay outside it to keep its place at the bottom.
-		it('scrolls the description with the feed and keeps the composer below both', () => {
+		// Both go inside the feed's scroll container, so they scroll with the entries.
+		it('places the description and the composer inside the feed', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ description: 'Adds retry logic' }),
@@ -174,7 +173,7 @@ describe('WorkflowReviewDetailTabs', () => {
 			const composer = getByTestId('workflow-review-comment-composer');
 
 			expect(feed).toContainElement(description);
-			expect(feed.compareDocumentPosition(composer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+			expect(feed).toContainElement(composer);
 		});
 
 		it.each([

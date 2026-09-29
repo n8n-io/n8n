@@ -1,4 +1,5 @@
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -14,14 +15,15 @@ import { InstanceSettings } from 'n8n-core';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
+import { InsightsConfig } from '@/modules/insights/insights.config';
 import { InsightsService } from '@/modules/insights/insights.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { createOwner } from '@test-integration/db/users';
 
-import type { InstanceReportDataPoint } from '../database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from '../database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
@@ -99,13 +101,11 @@ describe('instance reporting retries', () => {
 		await testDb.truncate([
 			'InstanceMonitoringReport',
 			'Settings',
-			'User',
 			'InsightsByPeriod',
 			'InsightsMetadata',
 			'WorkflowEntity',
 			'Project',
 		]);
-		await createOwner();
 		await Container.get(SettingsRepository).upsertByKey(
 			CENTRAL_INSTANCE_MONITORING_SETTINGS_KEY,
 			JSON.stringify({ reportTime: REPORT_TIME }),
@@ -142,8 +142,8 @@ describe('instance reporting retries', () => {
 			Container.get(InstanceReportingConfig),
 			repository,
 			Container.get(InsightsService),
+			Container.get(InsightsConfig),
 			instanceSettings,
-			Container.get(OwnershipService),
 			Container.get(LicenseMetricsRepository),
 			mock<License>({ loadCertStr: async () => 'license-cert' }),
 			mockLogger(),
@@ -190,36 +190,44 @@ describe('instance reporting retries', () => {
 		);
 	}
 
-	/**
-	 * The database stamps `createdAt` with the real clock, not the fake one, so
-	 * a row from a fake "yesterday" reads as today's. Pin it to the day meant.
-	 */
-	async function stampCreatedAt(id: string, createdAt: Date) {
-		await repository.update({ id }, { createdAt });
+	async function createPendingOn(createdAt: Date, dataPoints: InstanceReportDataPoint[]) {
+		const report = await repository.createPending(dataPoints, createdAt);
+		if (!report) throw new Error(`A report was already created on ${createdAt.toISOString()}`);
+		// The database stamps `createdAt` with the real clock, not the fake one.
+		await repository.update({ id: report.id }, { createdAt });
+
+		return report;
 	}
 
 	/** A delivered report that covers `day`, generated the morning after it. */
 	async function seedDeliveredReport(day: string) {
-		const report = await repository.createPending([
-			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
-			{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
-		]);
-		await repository.markDelivered(report.id, new Date());
-		await stampCreatedAt(
-			report.id,
+		const report = await createPendingOn(
 			new Date(new Date(`${day}T07:43:00.000Z`).getTime() + Time.days.toMilliseconds),
+			[
+				{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
+				{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
+			],
 		);
+		await repository.markDelivered(report.id, new Date());
 		return report;
 	}
 
 	async function seedDailyExecutions(totalsByDay: Record<string, number>) {
+		await seedCompactedExecutions('day', totalsByDay);
+	}
+
+	/** Executions as insights holds them after compaction, keyed by period start. */
+	async function seedCompactedExecutions(
+		periodUnit: 'hour' | 'day' | 'week',
+		totalsByPeriodStart: Record<string, number>,
+	) {
 		const workflow = await createWorkflow({}, await createTeamProject());
-		for (const [day, value] of Object.entries(totalsByDay)) {
+		for (const [periodStart, value] of Object.entries(totalsByPeriodStart)) {
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value,
-				periodUnit: 'day',
-				periodStart: DateTime.fromISO(day, { zone: 'utc' }),
+				periodUnit,
+				periodStart: DateTime.fromISO(periodStart, { zone: 'utc' }),
 			});
 		}
 	}
@@ -232,7 +240,7 @@ describe('instance reporting retries', () => {
 			createdAt,
 		}: { attempts: number; lastAttemptAt: Date; createdAt: Date },
 	) {
-		const report = await repository.createPending([
+		const report = await createPendingOn(createdAt, [
 			{ kind: 'cumulative', name: 'billableExecutions', value: 0 },
 			{ kind: 'daily', name: 'billableExecutions', value: 5, date: day },
 		]);
@@ -240,7 +248,6 @@ describe('instance reporting retries', () => {
 			{ id: report.id },
 			{ attempts, lastError: 'ECONNREFUSED', lastAttemptAt },
 		);
-		await stampCreatedAt(report.id, createdAt);
 		return report;
 	}
 
@@ -328,8 +335,6 @@ describe('instance reporting retries', () => {
 		const [abandoned] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(abandoned).toMatchObject({ attempts: MAX_ATTEMPTS });
 		expect(dailyPoints(sentPayload(harness, 0))).toEqual([{ date: '2026-03-25', value: 5 }]);
-		// Keep the abandoned row on the day it was made, or tomorrow reads as settled too.
-		await stampCreatedAt(abandoned.id, new Date(AFTER_SLOT));
 
 		// The next pass finds the day settled and moves on to tomorrow's slot.
 		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
@@ -369,8 +374,6 @@ describe('instance reporting retries', () => {
 		const [rejected] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(rejected).toMatchObject({ attempts: 1 });
 		expectArmedFor(harness, NEXT_SLOT);
-		// Keep the rejected row on the day it was made, or tomorrow reads as settled too.
-		await stampCreatedAt(rejected.id, new Date(AFTER_SLOT));
 
 		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
@@ -413,9 +416,9 @@ describe('instance reporting retries', () => {
 		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-25');
 	});
 
-	test('caps a long gap at 30 days and still reads every day on its own', async () => {
+	test('backfills a gap longer than 30 days and still reads every day on its own', async () => {
 		await seedDeliveredReport('2026-01-01');
-		await seedDailyExecutions({ '2026-02-24': 6, '2026-03-25': 8 });
+		await seedDailyExecutions({ '2026-01-10': 4, '2026-02-24': 6, '2026-03-25': 8 });
 
 		const harness = makeHarness([accepted()]);
 		harness.scheduler.start();
@@ -423,11 +426,122 @@ describe('instance reporting retries', () => {
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const points = dailyPoints(sentPayload(harness, 0));
-		expect(points).toHaveLength(30);
-		// Exact days, not weekly buckets: a 30-day range still reads as days.
-		expect(points.at(0)).toEqual({ date: '2026-02-24', value: 6 });
+		// Every day from the first data on 01-10 to 03-25. Inside that range, a day
+		// without data is a real 0.
+		expect(points).toHaveLength(75);
+		expect(points.at(0)).toEqual({ date: '2026-01-10', value: 4 });
+		// Exact days, not weekly buckets, although the gap is longer than 30 days.
+		expect(points.find((point) => point.date === '2026-02-24')).toEqual({
+			date: '2026-02-24',
+			value: 6,
+		});
 		expect(points.at(-1)).toEqual({ date: '2026-03-25', value: 8 });
-		expect(points.slice(1, -1).every((point) => point.value === 0)).toBe(true);
+		expect(points.filter((point) => point.value !== 0)).toHaveLength(3);
+	});
+
+	test('carries the insights history on the first report, but no day older than the hourly compaction threshold', async () => {
+		// With a threshold of 30 days, compaction folded every hour before 02-24
+		// into daily rows, and older days into weekly rows.
+		const insightsConfig = Container.get(InsightsConfig);
+		const { compactionHourlyToDailyThresholdDays } = insightsConfig;
+		insightsConfig.compactionHourlyToDailyThresholdDays = 30;
+		onTestFinished(() => {
+			insightsConfig.compactionHourlyToDailyThresholdDays = compactionHourlyToDailyThresholdDays;
+		});
+
+		await seedCompactedExecutions('week', { '2026-01-19': 700 });
+		await seedCompactedExecutions('day', { '2026-02-20': 5, '2026-02-23': 6 });
+		await seedCompactedExecutions('hour', {
+			'2026-02-24T10:00:00': 7,
+			'2026-02-25T00:00:00': 8,
+			'2026-03-10T08:00:00': 2,
+			'2026-03-10T15:00:00': 3,
+			'2026-03-25T23:00:00': 4,
+		});
+
+		const harness = makeHarness([accepted()]);
+		harness.scheduler.start();
+		await armed(harness, 1);
+
+		const points = dailyPoints(sentPayload(harness, 0));
+		// From 29 days back to yesterday. 02-24 falls in the one day of margin.
+		expect(points).toHaveLength(29);
+		expect(points.at(0)).toEqual({ date: '2026-02-25', value: 8 });
+		expect(points.filter((point) => point.value !== 0)).toEqual([
+			{ date: '2026-02-25', value: 8 },
+			{ date: '2026-03-10', value: 5 },
+			{ date: '2026-03-25', value: 4 },
+		]);
+	});
+
+	test('carries every day since the first data once the receiver is reachable after skipped first reports', async () => {
+		await seedDailyExecutions({
+			'2026-03-20': 1,
+			'2026-03-21': 2,
+			'2026-03-22': 3,
+			'2026-03-23': 4,
+			'2026-03-24': 5,
+			'2026-03-25': 6,
+			'2026-03-26': 7,
+			'2026-03-27': 8,
+			'2026-03-28': 9,
+		});
+
+		// The receiver is unreachable for three days, then accepts.
+		const harness = makeHarness([
+			...Array.from({ length: 3 * MAX_ATTEMPTS }, unreachable),
+			accepted(),
+		]);
+		harness.scheduler.start();
+
+		let passes = 0;
+		for (const nextSlot of [
+			'2026-03-27T07:42:00.000Z',
+			'2026-03-28T07:42:00.000Z',
+			'2026-03-29T07:42:00.000Z',
+		]) {
+			await armed(harness, ++passes);
+			for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt++) {
+				await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+				await armed(harness, ++passes);
+			}
+
+			const [skipped] = await repository.find({
+				where: { status: 'skipped_after_max_retries' },
+				order: { reportDate: 'DESC' },
+				take: 1,
+			});
+			expect(skipped.attempts).toBe(MAX_ATTEMPTS);
+
+			await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+			await armed(harness, ++passes);
+			expectArmedFor(harness, nextSlot);
+			await vi.advanceTimersByTimeAsync(new Date(nextSlot).getTime() - Date.now());
+		}
+		await armed(harness, ++passes);
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(3 * MAX_ATTEMPTS + 1);
+		// Every report started at the first day with data, not at its own yesterday.
+		for (const index of [0, MAX_ATTEMPTS, 2 * MAX_ATTEMPTS]) {
+			expect(dailyPoints(sentPayload(harness, index)).at(0)?.date).toBe('2026-03-20');
+		}
+
+		const delivered = sentPayload(harness, 3 * MAX_ATTEMPTS);
+		expect(dailyPoints(delivered)).toEqual([
+			{ date: '2026-03-20', value: 1 },
+			{ date: '2026-03-21', value: 2 },
+			{ date: '2026-03-22', value: 3 },
+			{ date: '2026-03-23', value: 4 },
+			{ date: '2026-03-24', value: 5 },
+			{ date: '2026-03-25', value: 6 },
+			{ date: '2026-03-26', value: 7 },
+			{ date: '2026-03-27', value: 8 },
+			{ date: '2026-03-28', value: 9 },
+		]);
+		await expect(repository.findOneByOrFail({ id: delivered.batchId })).resolves.toMatchObject({
+			status: 'delivered',
+		});
+		await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-28');
 	});
 
 	test('resumes the retry budget and the remaining wait after a restart', async () => {
@@ -699,5 +813,36 @@ describe('instance reporting retries', () => {
 
 		const dates = await deliveredDailyDates();
 		expect(new Set(dates).size).toBe(dates.length);
+	});
+
+	test('retries after the delay and sends the report of a process that created it first and stopped', async () => {
+		const otherPoints: InstanceReportDataPoint[] = [
+			{ kind: 'cumulative', name: 'billableExecutions', value: 999 },
+		];
+		let other: InstanceMonitoringReport | undefined;
+
+		// Another process inserts today's report after this one found nothing pending.
+		const insights = Container.get(InsightsService);
+		const measure = insights.getDailyExecutionTotals.bind(insights);
+		vi.spyOn(insights, 'getDailyExecutionTotals').mockImplementation(async (args) => {
+			other = await createPendingOn(new Date(), otherPoints);
+			return await measure(args);
+		});
+
+		const harness = makeHarness([accepted()]);
+		harness.scheduler.start();
+		await armed(harness, 1);
+
+		expect(harness.httpRequest).not.toHaveBeenCalled();
+		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
+
+		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+		await armed(harness, 2);
+
+		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
+		expect(sentPayload(harness, 0)).toMatchObject({ batchId: other?.id, dataPoints: otherPoints });
+		await expect(repository.find()).resolves.toEqual([
+			expect.objectContaining({ id: other?.id, status: 'delivered' }),
+		]);
 	});
 });

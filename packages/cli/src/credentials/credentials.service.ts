@@ -1,5 +1,7 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { Time } from '@n8n/constants';
 import {
 	Project,
 	TransactionRunner,
@@ -59,11 +61,7 @@ import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
@@ -152,6 +150,13 @@ type UpdateOptions = {
 type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
+
+/**
+ * How long a credential created for an OAuth popup may stay unauthorized before
+ * the cleanup task deletes it. Well above the editor's own flow timeout, so only
+ * flows the editor could not finish (reload, closed tab) reach the sweep.
+ */
+export const PENDING_AUTHORIZATION_GRACE_MS = 1 * Time.hours.toMilliseconds;
 
 type InstanceCredentialWriteOptions = {
 	/** Set when the caller already ran the external hooks before its transaction. */
@@ -2090,6 +2095,15 @@ export class CredentialsService {
 		user: User,
 		options: { id?: string } = {},
 	) {
+		// The pending state ends when a token lands on the credential row. End-user
+		// credentials store tokens per user and instance credentials take another
+		// write path, so neither would ever leave it.
+		if (opts.pendingAuthorization && (opts.isResolvable || opts.usageScope === 'instance')) {
+			throw new BadRequestError(
+				'Pending authorization is only supported for project-scoped, non-resolvable credentials',
+			);
+		}
+
 		if (opts.usageScope === 'instance') {
 			if (options.id !== undefined) {
 				throw new BadRequestError('A supplied ID requires project usage scope');
@@ -2149,6 +2163,9 @@ export class CredentialsService {
 			...encryptedCredential,
 			isManaged: opts.isManaged,
 			isResolvable: opts.isResolvable ?? false,
+			pendingAuthorizationExpiresAt: opts.pendingAuthorization
+				? new Date(Date.now() + PENDING_AUTHORIZATION_GRACE_MS)
+				: null,
 		});
 
 		const persist =

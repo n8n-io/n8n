@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
@@ -36,8 +37,6 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-
-import { EventService } from './events/event.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
@@ -411,7 +410,7 @@ export class WorkflowRunner {
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
 			return await this.engineV2Dispatcher.start(data);
@@ -424,6 +423,7 @@ export class WorkflowRunner {
 				await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
+					data.userId,
 				);
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);

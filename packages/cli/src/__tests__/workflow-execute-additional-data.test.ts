@@ -1,3 +1,4 @@
+import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
@@ -21,6 +22,7 @@ import type {
 	WorkflowExecuteMode,
 	ExecuteAgentWorkflowContext,
 	IRunExecutionData,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -30,7 +32,6 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
@@ -42,7 +43,6 @@ import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-princi
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
 import {
@@ -65,6 +65,7 @@ const LAST_NODE_EXECUTED = 'Last node executed';
 const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionData[] | null> }) =>
 	mock<IRun>({
 		data: {
+			subWorkflowOutput: undefined,
 			resultData: {
 				runData: {
 					[LAST_NODE_EXECUTED]: [
@@ -209,6 +210,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(activeExecutions.add).not.toHaveBeenCalled();
 		});
 
+		it.each([false, true])(
+			'persists caller lastRunOnly=%s before the child starts',
+			async (returnLastRunOnly) => {
+				const workflowData = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Start',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.3,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+				activeExecutions.add.mockImplementationOnce(async (runData) => {
+					expect(runData.executionData?.subWorkflowOutput).toEqual({
+						lastRunOnly: returnLastRunOnly,
+					});
+					throw new Error('Stop after persistence check');
+				});
+				await expect(
+					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+						...mock<ExecuteWorkflowOptions>(),
+						loadedWorkflowData: workflowData,
+						loadedRunData: undefined,
+						returnLastRunOnly,
+					}),
+				).rejects.toThrow('Stop after persistence check');
+			},
+		);
+
+		it('keeps the saved output policy when supplied run data is reused', async () => {
+			const executionData = createRunExecutionData({ subWorkflowOutput: { lastRunOnly: true } });
+			activeExecutions.add.mockImplementationOnce(async (runData) => {
+				expect(runData.executionData?.subWorkflowOutput).toEqual({ lastRunOnly: true });
+				throw new Error('Stop after persistence check');
+			});
+			await expect(
+				executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+					...mock<ExecuteWorkflowOptions>(),
+					loadedWorkflowData: undefined,
+					loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
+					returnLastRunOnly: false,
+				}),
+			).rejects.toThrow('Stop after persistence check');
+		});
+
 		it('should execute workflow, return data and execution id', async () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
@@ -313,11 +363,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
-					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					// `rootExecutionMode` explicit: a deep mock auto-stubs every
+					// property, so leaving it out would hand `??` a truthy proxy.
+					mock<IWorkflowExecuteAdditionalData>({
+						userId: 'user-1',
+						rootExecutionMode: undefined,
+					}),
 					mock<ExecuteWorkflowOptions>({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 						parentWorkflowId: 'parent-1',
+						executionMode: 'manual',
 					}),
 				);
 
@@ -327,6 +383,76 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 			});
+
+			// A sub-workflow's own WorkflowExecute runs as 'integrated', so the
+			// original mode has to come from the root.
+			it('checks against the triggering user through a nested inline sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({
+						userId: 'user-1',
+						rootExecutionMode: 'manual',
+					}),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+						executionMode: 'integrated',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			});
+
+			// A triggered run now carries the publishing user for attribution. That
+			// must not turn this project check into a user check: an ordinary project
+			// credential has to keep working on a schedule even if the publisher's own
+			// access to it has since changed.
+			it('keeps the project check for an inline sub-workflow in a triggered run', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({
+						userId: 'publisher-1',
+						rootExecutionMode: undefined,
+					}),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+						executionMode: 'trigger',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			// A retry and an evaluation are started by a person and have carried a
+			// `userId` since long before publisher attribution existed, so narrowing
+			// the gate to manual/chat would have quietly changed them — and outside
+			// the feature flag, which never touches these modes.
+			it.each(['retry', 'evaluation'] as const)(
+				'checks against the acting user for an inline sub-workflow in a %s run',
+				async (executionMode) => {
+					await executeWorkflow(
+						mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+						mock<IWorkflowExecuteAdditionalData>({
+							userId: 'user-1',
+							rootExecutionMode: undefined,
+						}),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: subWorkflowData(),
+							doNotWaitToFinish: false,
+							parentWorkflowId: 'parent-1',
+							executionMode,
+						}),
+					);
+
+					expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+					expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+				},
+			);
 
 			it('checks credentials against the project for a database sub-workflow', async () => {
 				await executeWorkflow(
@@ -372,7 +498,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(integratedAdditionalData.userId).toBe('user-1');
 			});
 
-			it('does not carry the triggering user into a database sub-workflow (runs under its own project scope)', async () => {
+			// Two reasons the user has to survive this boundary. It is what lets the
+			// acting-user route pass a credential the person legitimately reaches, one
+			// level down as at the top. And an empty user sent any inline sub-workflow
+			// nested inside a stored one to the project check, which an inline
+			// sub-workflow has no project for — skipping the user check entirely.
+			it('carries the acting user into a database sub-workflow', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
@@ -382,8 +513,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 					}),
 				);
 
+				expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					'user-1',
+				);
 				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
-				expect(integratedAdditionalData.userId).toBeUndefined();
+				expect(integratedAdditionalData.userId).toBe('user-1');
 			});
 		});
 
@@ -391,6 +527,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const getMockRunWithCredentialFlags = (task: Partial<ITaskData>, executedByUserId?: string) =>
 				mock<IRun>({
 					data: {
+						subWorkflowOutput: undefined,
 						resultData: {
 							runData: {
 								[LAST_NODE_EXECUTED]: [
@@ -497,6 +634,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				) =>
 					mock<IRun>({
 						data: {
+							subWorkflowOutput: undefined,
 							resultData: {
 								runData: {
 									[LAST_NODE_EXECUTED]: [{ startTime: 100, ...task }],
@@ -1947,6 +2085,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			return {
 				mode: overrides.mode ?? 'manual',
 				data: {
+					subWorkflowOutput: undefined,
 					resultData: {
 						runData: overrides.runData ?? twoRunsOnTerminalNode,
 						pinData: overrides.pinData,

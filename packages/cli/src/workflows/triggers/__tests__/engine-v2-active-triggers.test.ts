@@ -53,7 +53,7 @@ describe('EngineV2ActiveTriggers', () => {
 		])('refuses an emit that carries $name', ({ emit }) => {
 			expect(() => engineV2ActiveTriggers.assertSupported(emit)).toThrow(UserError);
 			expect(() => engineV2ActiveTriggers.assertSupported(emit)).toThrow(
-				'Engine 2.0 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
+				'Engine v2 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
 			);
 		});
 	});
@@ -66,7 +66,7 @@ describe('EngineV2ActiveTriggers', () => {
 
 			expect(payloadGuard.assertNoFiles).toHaveBeenCalledWith(
 				slots,
-				'Engine 2.0 cannot receive files from a trigger yet.',
+				'Engine v2 cannot receive files from a trigger yet.',
 			);
 		});
 
