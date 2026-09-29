@@ -568,6 +568,9 @@ type TerminalGuardOrderServiceInternals = {
 			userId: string;
 			attempts: Array<{
 				credentialType: string;
+				setupMethod: 'setup_card' | 'conversation';
+				attemptId?: string;
+				startedAt: number;
 				created: boolean;
 				errorCode?: string;
 			}>;
@@ -577,10 +580,16 @@ type TerminalGuardOrderServiceInternals = {
 		runId: string,
 		userId: string,
 	) => {
+		markPending: (credentialType: string, attemptId?: string) => void;
 		markCreated: (credentialType: string) => void;
 		markCreateFailed: (credentialType: string, errorCode: string) => void;
 	};
-	emitBrowserCredentialSetupOutcomes: (threadId: string, runId: string) => void;
+	emitBrowserCredentialSetupOutcomes: (
+		threadId: string,
+		runId: string,
+		runStatus: 'completed' | 'cancelled' | 'errored',
+		runFinishReason?: string,
+	) => void;
 	publishRunFinish: (
 		threadId: string,
 		runId: string,
@@ -2159,6 +2168,7 @@ type SuspendedRunResumeServiceInternals = {
 		requestId: string,
 		data: {
 			approved: boolean;
+			autoSetup?: { credentialType: string };
 			userInput?: string;
 			scope?: 'once' | 'session';
 			denied?: boolean;
@@ -2859,6 +2869,41 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
+	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			autoSetup: { credentialType: 'datadogApi' },
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'run-1',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
+		);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			rebuiltAgent,
+			expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
+			expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
+		);
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
+		expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
+	});
+
 	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -2869,7 +2914,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
 			approved: true,
-			connectedSlugs: ['notion'],
+			autoSetup: { credentialType: 'datadogApi' },
 		});
 
 		expect(result).toBeNull();
@@ -2895,7 +2940,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.processResumedStream).not.toHaveBeenCalled();
 	});
 
-	it('does not rebuild the agent for a plain resume without new MCP connections', async () => {
+	it('does not rebuild the agent for a plain resume without autoSetup', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
@@ -3494,12 +3539,24 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			attempts: [
 				{
 					credentialType: 'slackApi',
+					setupMethod: 'setup_card' as const,
+					attemptId: 'attempt-1',
+					startedAt: 1000,
 					created: true,
 				},
 				{
 					credentialType: 'notionApi',
+					setupMethod: 'setup_card' as const,
+					attemptId: 'attempt-2',
+					startedAt: 2000,
 					created: false,
 					errorCode: 'missing_captured_fields',
+				},
+				{
+					credentialType: 'githubApi',
+					setupMethod: 'setup_card' as const,
+					startedAt: 3000,
+					created: false,
 				},
 			],
 		});
@@ -3519,20 +3576,22 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED,
+			'Instance AI Browser Use credential setup completed',
 			{
 				user_id: 'user-1',
 				credential_type: 'slackApi',
 				status: 'success',
 				is_valid: null,
 				is_new: true,
-				setup_method: 'conversation',
+				setup_method: 'setup_card',
 				thread_id: 'thread-a',
 				run_id: 'run-1',
+				credential_setup_attempt_id: 'attempt-1',
+				duration_ms: expect.any(Number),
 			},
 		);
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED,
+			'Instance AI Browser Use credential setup completed',
 			{
 				user_id: 'user-1',
 				credential_type: 'notionApi',
@@ -3541,15 +3600,79 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				error_code: 'missing_captured_fields',
 				is_valid: null,
 				is_new: true,
-				setup_method: 'conversation',
+				setup_method: 'setup_card',
 				thread_id: 'thread-a',
 				run_id: 'run-1',
+				credential_setup_attempt_id: 'attempt-2',
+				duration_ms: expect.any(Number),
+			},
+		);
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Instance AI Browser Use credential setup completed',
+			{
+				user_id: 'user-1',
+				credential_type: 'githubApi',
+				status: 'failure',
+				failure_stage: 'unknown',
+				error_code: 'not_attempted',
+				is_valid: null,
+				is_new: true,
+				setup_method: 'setup_card',
+				thread_id: 'thread-a',
+				run_id: 'run-1',
+				duration_ms: expect.any(Number),
 			},
 		);
 		expect(service.pendingBrowserCredentialSetups.size).toBe(0);
 	});
 
-	it('tracks an attempt when the agent creates a credential in the browser', async () => {
+	it('reports the run termination as error code when the user stops a pending credential setup', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: emptyWorkSummary(),
+		});
+		service.pendingBrowserCredentialSetups.set('run-1', {
+			userId: 'user-1',
+			attempts: [
+				{
+					credentialType: 'slackApi',
+					setupMethod: 'setup_card' as const,
+					startedAt: 1000,
+					created: false,
+				},
+			],
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Instance AI Browser Use credential setup completed',
+			expect.objectContaining({
+				credential_type: 'slackApi',
+				status: 'failure',
+				failure_stage: 'unknown',
+				error_code: 'run_cancelled',
+			}),
+		);
+	});
+
+	it('tracks a conversation-driven attempt when the LLM creates a credential without a setup card', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
 		mockClaimedResumeResult({
@@ -3560,6 +3683,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		});
 
 		const tracker = service.createBrowserCredentialSetupTracker('run-1', 'user-1');
+		// No markPending — the user asked in chat, no setup card was shown.
 		tracker.markCreateFailed('slackApi', 'missing_captured_fields');
 		tracker.markCreated('slackApi');
 		tracker.markCreateFailed('notionApi', 'credential_create_failed');
@@ -3580,7 +3704,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 		// The failed-then-retried slack attempt resolves as one success.
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED,
+			'Instance AI Browser Use credential setup completed',
 			expect.objectContaining({
 				user_id: 'user-1',
 				credential_type: 'slackApi',
@@ -3589,7 +3713,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			}),
 		);
 		expect(service.telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED,
+			'Instance AI Browser Use credential setup completed',
 			expect.objectContaining({
 				credential_type: 'notionApi',
 				status: 'failure',
@@ -3599,8 +3723,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			}),
 		);
 		const setupEvents = service.telemetry.track.mock.calls.filter(
-			([eventName]) =>
-				eventName === TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED,
+			([eventName]) => eventName === 'Instance AI Browser Use credential setup completed',
 		);
 		expect(setupEvents).toHaveLength(2);
 	});
@@ -4248,12 +4371,15 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 });
 
 describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
-	const CREDENTIAL_SETUP_EVENT = TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED;
+	const CREDENTIAL_SETUP_EVENT = 'Instance AI Browser Use credential setup completed';
 
 	function seedAttempts(
 		service: TerminalGuardOrderServiceInternals,
 		attempts: Array<{
 			credentialType: string;
+			setupMethod: 'setup_card' | 'conversation';
+			attemptId?: string;
+			startedAt: number;
 			created: boolean;
 			errorCode?: string;
 		}>,
@@ -4264,7 +4390,7 @@ describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
 	it('emits nothing when the run has no pending setups', () => {
 		const service = createTerminalGuardOrderService();
 
-		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1');
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'completed');
 
 		expect(service.telemetry.track).not.toHaveBeenCalled();
 	});
@@ -4274,16 +4400,21 @@ describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
 		seedAttempts(service, [
 			{
 				credentialType: 'slackApi',
+				setupMethod: 'setup_card',
+				attemptId: 'attempt-1',
+				startedAt: 1000,
 				created: true,
 			},
 			{
 				credentialType: 'notionApi',
+				setupMethod: 'conversation',
+				startedAt: 2000,
 				created: false,
 				errorCode: 'unresolved_field',
 			},
 		]);
 
-		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1');
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'completed');
 
 		expect(service.telemetry.track).toHaveBeenCalledTimes(2);
 		expect(service.telemetry.track).toHaveBeenCalledWith(CREDENTIAL_SETUP_EVENT, {
@@ -4292,9 +4423,11 @@ describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
 			status: 'success',
 			is_valid: null,
 			is_new: true,
-			setup_method: 'conversation',
+			setup_method: 'setup_card',
 			thread_id: 'thread-a',
 			run_id: 'run-1',
+			credential_setup_attempt_id: 'attempt-1',
+			duration_ms: expect.any(Number),
 		});
 		expect(service.telemetry.track).toHaveBeenCalledWith(CREDENTIAL_SETUP_EVENT, {
 			user_id: 'user-1',
@@ -4307,18 +4440,68 @@ describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
 			setup_method: 'conversation',
 			thread_id: 'thread-a',
 			run_id: 'run-1',
+			duration_ms: expect.any(Number),
 		});
 		expect(service.pendingBrowserCredentialSetups.size).toBe(0);
 
 		service.telemetry.track.mockClear();
-		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1');
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'completed');
 		expect(service.telemetry.track).not.toHaveBeenCalled();
 	});
 
-	it('is invoked by publishRunFinish', () => {
+	it.each([
+		['completed', undefined, 'not_attempted'],
+		['cancelled', undefined, 'run_cancelled'],
+		['cancelled', 'timeout', 'run_timed_out'],
+		['errored', 'stream_error', 'run_errored'],
+	] as const)(
+		'maps a %s run (reason %s) without flow error to error code %s',
+		(runStatus, reason, errorCode) => {
+			const service = createTerminalGuardOrderService();
+			seedAttempts(service, [
+				{ credentialType: 'slackApi', setupMethod: 'setup_card', startedAt: 1000, created: false },
+			]);
+
+			service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', runStatus, reason);
+
+			expect(service.telemetry.track).toHaveBeenCalledWith(
+				CREDENTIAL_SETUP_EVENT,
+				expect.objectContaining({
+					status: 'failure',
+					failure_stage: 'unknown',
+					error_code: errorCode,
+				}),
+			);
+		},
+	);
+
+	it('prefers the flow error code over the run termination code', () => {
 		const service = createTerminalGuardOrderService();
 		seedAttempts(service, [
-			{ credentialType: 'slackApi', created: false, errorCode: 'missing_captured_fields' },
+			{
+				credentialType: 'slackApi',
+				setupMethod: 'setup_card',
+				startedAt: 1000,
+				created: false,
+				errorCode: 'missing_captured_fields',
+			},
+		]);
+
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'cancelled');
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			CREDENTIAL_SETUP_EVENT,
+			expect.objectContaining({
+				failure_stage: 'generation',
+				error_code: 'missing_captured_fields',
+			}),
+		);
+	});
+
+	it('is invoked by publishRunFinish with the run status and reason', () => {
+		const service = createTerminalGuardOrderService();
+		seedAttempts(service, [
+			{ credentialType: 'slackApi', setupMethod: 'setup_card', startedAt: 1000, created: false },
 		]);
 
 		service.publishRunFinish('thread-a', 'run-1', 'cancelled', 'timeout');
@@ -4328,7 +4511,7 @@ describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
 			expect.objectContaining({
 				credential_type: 'slackApi',
 				status: 'failure',
-				error_code: 'missing_captured_fields',
+				error_code: 'run_timed_out',
 			}),
 		);
 		expect(service.pendingBrowserCredentialSetups.size).toBe(0);

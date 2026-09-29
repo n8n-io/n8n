@@ -39,6 +39,11 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
+		case 'credentialAutoSetup':
+			return {
+				approved: true,
+				autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
+			};
 		case 'credentialDestination':
 			return {
 				approved: request.approved,
@@ -87,6 +92,7 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.answers ? { answers: data.answers } : {}),
 		...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		...(data.scope ? { scope: data.scope } : {}),
+		...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
 		...(data.denied ? { denied: true } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),

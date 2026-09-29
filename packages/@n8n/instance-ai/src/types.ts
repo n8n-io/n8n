@@ -1671,11 +1671,13 @@ export interface InstanceAiContext {
 	runId?: string;
 	/**
 	 * Run-scoped outcome tracking for browser-assisted credential setup. The
-	 * browser tool wrapper reports each `browser_create_credential` outcome.
-	 * The host resolves the terminal success/failure telemetry when the run
-	 * finishes.
+	 * credentials tool marks an attempt pending when it hands off to the LLM
+	 * with `needsBrowserSetup`; the browser tool wrapper reports each
+	 * `browser_create_credential` outcome. The host resolves the terminal
+	 * success/failure telemetry when the run finishes.
 	 */
 	browserCredentialSetup?: {
+		markPending: (credentialType: string, attemptId?: string) => void;
 		markCreated: (credentialType: string) => void;
 		markCreateFailed: (credentialType: string, errorCode: string) => void;
 	};

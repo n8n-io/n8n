@@ -120,6 +120,11 @@ describe('confirmation payload → tool resume schema contract', () => {
 			targets: [['credentials', credentialsResumeSchema]],
 		},
 		{
+			label: 'credential auto-setup',
+			request: { kind: 'credentialAutoSetup', credentialType: 'firecrawlApi', attemptId: 'a-1' },
+			targets: [['credentials', credentialsResumeSchema]],
+		},
+		{
 			label: 'credential destination approval',
 			request: {
 				kind: 'credentialDestination',
@@ -194,6 +199,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		approval: true,
 		questions: true,
 		credentialSelection: true,
+		credentialAutoSetup: true,
 		credentialDestination: true,
 		domainAccessApprove: true,
 		domainAccessDeny: true,

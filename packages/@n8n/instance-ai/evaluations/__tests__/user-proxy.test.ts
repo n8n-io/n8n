@@ -1535,6 +1535,63 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
+	it("credentials(action='setup'): requests automatic setup when the agent picks auto", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'auto',
+			credentialType: 'slackApi',
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Ask for automatic setup of the Slack credential on the card.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-auto', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-1', name: 'My Slack' }] },
+			]),
+		);
+
+		expect(response.kind).toBe('credentialAutoSetup');
+		if (response.kind === 'credentialAutoSetup') {
+			expect(response.credentialType).toBe('slackApi');
+		}
+	});
+
+	it("credentials(action='setup'): declines auto setup when no credentialType can be resolved from context or the decision", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'choose_credential_setup_option', option: 'auto' });
+		const logger = fakeLogger();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack.' },
+				{ role: 'user', text: '[Ask for automatic setup of the credential on the card.]' },
+			],
+			agent,
+			logger,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			credentialEventWithRequests('req-cred-auto-ambiguous', [
+				{ credentialType: 'slackApi', existingCredentials: [{ id: 'cred-slack', name: 'Slack' }] },
+				{
+					credentialType: 'notionApi',
+					existingCredentials: [{ id: 'cred-notion', name: 'Notion' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+		}
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
 	it("credentials(action='setup'): declines when the agent picks skip", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });

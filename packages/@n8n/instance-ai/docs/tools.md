@@ -933,8 +933,10 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 | `requireUserSelection` | boolean | no | Keep the card open for an explicit choice |
 | `credentialFlow` | object | no | `{ stage: "generic" | "finalize" }` |
 
-**Returns**: one of the completed, deferred, or validation-error shapes. A
-completed result contains `{ success: true, credentials, message }`.
+**Returns**: one of the completed, deferred, browser-setup, or validation-error
+shapes. A completed result contains `{ success: true, credentials, message }`.
+A browser handoff contains `{ success: false, needsBrowserSetup: true,
+credentialType, docsUrl?, requiredFields? }`.
 
 **HITL**: Suspends execution and renders the credential setup UI. When a single
 matching *service-scoped* credential already exists, the card auto-selects it
@@ -942,7 +944,10 @@ and resolves without user input — a `success` result with a credentials map
 means setup is already complete, and the card is never open once a result is
 returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
-a service.
+a service. When `needsBrowserSetup=true`, the orchestrator should load the
+`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
+directly, then call `credentials(action="setup")` again to select the created
+credential.
 
 **Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
 to a workflow (`workflowId`, or the workflow this run last saved) and the stage

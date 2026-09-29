@@ -698,10 +698,11 @@ export class InstanceAiService {
 	private readonly threadPushRef = new Map<string, string>();
 
 	/**
-	 * Runs where the agent tried to create credentials through the browser,
-	 * keyed by runId with one record per setup attempt. Resolved to one
-	 * terminal success/failure telemetry event per attempt in
-	 * `publishRunFinish`, which also removes the entry.
+	 * Runs where the credentials tool handed off to browser-assisted credential
+	 * setup (`needsBrowserSetup`), keyed by runId with one record per setup
+	 * attempt (a run can attempt several). Resolved to one terminal
+	 * success/failure telemetry event per attempt in `publishRunFinish`.
+	 * Entries exist only between the hand-off and the run's terminal event.
 	 */
 	private readonly pendingBrowserCredentialSetups = new Map<
 		string,
@@ -709,6 +710,9 @@ export class InstanceAiService {
 			userId: string;
 			attempts: Array<{
 				credentialType: string;
+				setupMethod: 'setup_card' | 'conversation';
+				attemptId?: string;
+				startedAt: number;
 				created: boolean;
 				errorCode?: string;
 			}>;
@@ -5082,7 +5086,7 @@ export class InstanceAiService {
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both
-		// resume paths (MCP-connect rebuild + process-restart resume), so the user
+		// resume paths (auto-setup rebuild + process-restart resume), so the user
 		// is informed whenever a server is skipped — including after a resume.
 		// Failures come from createInstanceAgent's result (threaded from the MCP
 		// manager's getRegularTools call), not a shared manager field, so they
@@ -5626,7 +5630,7 @@ export class InstanceAiService {
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
 		let resumeOrchestrationContext = orchestrationContext;
-		if (data.connectedSlugs?.length) {
+		if (data.autoSetup || data.connectedSlugs?.length) {
 			const rebuilt = await this.rebuildAgentForResume(
 				activeUser,
 				threadId,
@@ -6741,7 +6745,7 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
-		this.emitBrowserCredentialSetupOutcomes(threadId, runId);
+		this.emitBrowserCredentialSetupOutcomes(threadId, runId, status, reason);
 		if (status === 'errored') {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
@@ -6763,10 +6767,12 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Per-run bookkeeping behind `context.browserCredentialSetup`.
-	 * `markCreated`/`markCreateFailed` resolve the latest open attempt for the
-	 * type, or open one when there is none, so every browser-assisted creation
-	 * produces a terminal telemetry event.
+	 * Per-run bookkeeping behind `context.browserCredentialSetup` (NODE-5511).
+	 * `markPending` opens an attempt when the user clicks auto-setup on the
+	 * credential card; `markCreated`/`markCreateFailed` resolve the latest open
+	 * attempt for the type — or open an implicit `'conversation'` attempt when
+	 * there is none, so LLM-initiated creations (user asked directly in chat,
+	 * no setup card involved) still produce a terminal telemetry event.
 	 */
 	private createBrowserCredentialSetupTracker(
 		runId: string,
@@ -6784,12 +6790,30 @@ export class InstanceAiService {
 			const attempts = getOrCreateAttempts();
 			let attempt = attempts.findLast((a) => a.credentialType === credentialType && !a.created);
 			if (!attempt) {
-				attempt = { credentialType, created: false };
+				attempt = {
+					credentialType,
+					setupMethod: 'conversation',
+					startedAt: Date.now(),
+					created: false,
+				};
 				attempts.push(attempt);
 			}
 			return attempt;
 		};
 		return {
+			markPending: (credentialType: string, attemptId?: string) => {
+				const attempts = getOrCreateAttempts();
+				if (attemptId && attempts.some((attempt) => attempt.attemptId === attemptId)) {
+					return;
+				}
+				attempts.push({
+					credentialType,
+					setupMethod: 'setup_card',
+					attemptId,
+					startedAt: Date.now(),
+					created: false,
+				});
+			},
 			markCreated: (credentialType: string) => {
 				const attempt = resolveOpenAttempt(credentialType);
 				attempt.created = true;
@@ -6803,15 +6827,31 @@ export class InstanceAiService {
 
 	/**
 	 * Emit one terminal telemetry event per browser-assisted credential setup
-	 * attempt of the finished run. Consumes the pending record so every attempt
-	 * yields exactly one success or failure event.
+	 * attempt of the finished run (NODE-5511). Consumes the pending record so
+	 * every attempt yields exactly one success or failure event. When the flow
+	 * itself never failed, the run's own termination (user stop, timeout,
+	 * stream error) is reported as the error code so aborts aren't counted as
+	 * flow failures.
 	 */
-	private emitBrowserCredentialSetupOutcomes(threadId: string, runId: string): void {
+	private emitBrowserCredentialSetupOutcomes(
+		threadId: string,
+		runId: string,
+		runStatus: 'completed' | 'cancelled' | 'errored',
+		runFinishReason?: string,
+	): void {
 		const browserSetup = this.pendingBrowserCredentialSetups.get(runId);
 		if (!browserSetup) return;
 		this.pendingBrowserCredentialSetups.delete(runId);
+		const terminalErrorCode =
+			runStatus === 'completed'
+				? 'not_attempted'
+				: runStatus === 'errored'
+					? 'run_errored'
+					: runFinishReason === INSTANCE_AI_RUN_TIMEOUT_REASON
+						? 'run_timed_out'
+						: 'run_cancelled';
 		for (const attempt of browserSetup.attempts) {
-			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_CREDENTIAL_SETUP_COMPLETED, {
+			this.telemetry.track('Instance AI Browser Use credential setup completed', {
 				user_id: browserSetup.userId,
 				credential_type: attempt.credentialType,
 				status: attempt.created ? 'success' : 'failure',
@@ -6819,14 +6859,16 @@ export class InstanceAiService {
 					? {}
 					: {
 							failure_stage: failureStageForErrorCode(attempt.errorCode),
-							error_code: attempt.errorCode,
+							error_code: attempt.errorCode ?? terminalErrorCode,
 						}),
 				// The flow never runs a credential test, so validation support is unknown.
 				is_valid: null,
 				is_new: true,
-				setup_method: 'conversation',
+				setup_method: attempt.setupMethod,
 				thread_id: threadId,
 				run_id: runId,
+				...(attempt.attemptId ? { credential_setup_attempt_id: attempt.attemptId } : {}),
+				duration_ms: Date.now() - attempt.startedAt,
 			});
 		}
 	}

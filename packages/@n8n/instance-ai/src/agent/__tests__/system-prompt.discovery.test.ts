@@ -1,5 +1,7 @@
 /**
- * Browser/computer-use *discoverability* asserts on the assembled system prompt.
+ * Browser/computer-use *discoverability* asserts on the assembled system prompt
+ * and the credentials tool description (which carries the needsBrowserSetup
+ * routing that used to live in the orchestrator routing index).
  *
  * These tests pin the orchestrator-level wiring that connects discovery
  * signals (OAuth setup, local files, screenshots, platform migration, shell
@@ -8,6 +10,7 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
+import { createCredentialsTool } from '../../tools/credentials.tool';
 import type { ComputerUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -19,22 +22,19 @@ const browserCapableOptions: { computerUseState: ComputerUseState } = {
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('chat request → Computer Use credential setup skill', () => {
-		it('routes credential setup to the Computer Use skill when the browser is available', () => {
-			const prompt = getSystemPrompt(browserCapableOptions);
+	describe('credentials tool → Computer Use credential setup skill', () => {
+		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
+			const tool = createCredentialsTool({} as never);
 
-			expect(prompt).toContain('credential-setup-with-computer-use');
+			expect(tool.description).toContain('needsBrowserSetup=true');
+			expect(tool.description).toContain('credential-setup-with-computer-use');
+			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 
-		it('omits the Computer Use skill when computer use is unavailable', () => {
-			const prompt = getSystemPrompt({
-				computerUseState: {
-					localComputer: { status: 'unavailable' },
-					browser: { status: 'unavailable' },
-				},
-			});
+		it('routes browser credential setup through Computer Use tools', () => {
+			const tool = createCredentialsTool({} as never);
 
-			expect(prompt).not.toContain('credential-setup-with-computer-use');
+			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 

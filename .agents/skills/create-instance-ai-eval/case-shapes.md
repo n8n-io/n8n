@@ -82,8 +82,8 @@ Rules that trip people up:
    credential-setup card" below. **The workflow setup wizard is the one that
    matters for a normal build**: live testing found the builder routes
    credential resolution through it during a workflow build, never through the
-   standalone tool. The standalone tool is real and live-verified too (both
-   `manual` and `skip`), but only via a standalone credential-connect
+   standalone tool. The standalone tool is real and live-verified too (all
+   three of `manual`/`auto`/`skip`), but only via a standalone credential-connect
    request with no build attached (e.g. "connect my Slack account now, before I
    build anything") — see the tool's own doc comment in `utils/user-proxy/tools.ts`
    for the captured shapes.
@@ -267,6 +267,7 @@ The wire shapes (verified live against both tools — `credentials.tool.ts`'s
 |---|---|---|---|
 | Set up now (zero existing) | `manual` → harness creates a credential | `{kind:'credentialSelection', credentials:{type: newId}}` | credential attached, and its connection test resolves as passing by default — see "Credential validity" below |
 | Select a specific one (2+ existing) | `manual` + `existingCredentialId` (standalone) or a matching id in `nodeCredentialsJson` (wizard) | `{kind:'credentialSelection', credentials:{type: id}}` | assistant should stop asking and proceed |
+| Automatic/browser setup | `choose_credential_setup_option(auto)` — standalone tool only | `{kind:'credentialAutoSetup', credentialType}` | `{success:false, needsBrowserSetup:true, ...}` |
 | Explicitly decline | `choose_credential_setup_option(skip)` (standalone) or dismiss the wizard card | `{kind:'approval', approved:false}` | `{success:true, deferred:true}` |
 | (nothing — default) | *(short-circuited, no LLM call)* | empty/no-op | deferred |
 
@@ -285,6 +286,12 @@ build:
 Do **not** assert a connection-test failure for either; such an assertion reds
 on every correct build. See "Credential validity" below for how to script a
 card-created credential that deliberately does not authenticate.
+
+**`auto` is reachable but inert** — the product genuinely rebuilds the agent
+and returns `needsBrowserSetup:true`, but this harness has no Computer Use
+tools attached, so the conversation stalls afterward (expected, not a bug).
+Keep any case scripting `auto` a local smoke test, never part of the gated
+suite — it will time out.
 
 ### Credential validity: a credential works by default
 
