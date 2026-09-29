@@ -351,7 +351,7 @@ const indexToShowSlotAt = computed(() => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const connectedNodes = workflowDocumentStore?.value?.getChildNodes(triggerName);
+	const connectedNodes = workflowDocumentStore?.value?.getChildNodes(triggerName, 'main', 1);
 
 	const hasFormPage = connectedNodes?.some((nodeName) => {
 		const _node = workflowDocumentStore?.value?.getNodeByName(nodeName);
