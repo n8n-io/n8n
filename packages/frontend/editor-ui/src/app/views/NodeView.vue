@@ -2225,7 +2225,7 @@ onBeforeUnmount(() => {
 					aria-hidden="true"
 				/>
 				<Suspense v-if="!isCanvasReadOnly">
-					<LazySetupWorkflowCredentialsButton />
+					<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButton" />
 				</Suspense>
 			</div>
 			<EvaluationsCanvasInfoCard
@@ -2379,12 +2379,15 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	align-items: flex-start;
 	gap: var(--spacing--xs);
+	pointer-events: none;
 }
 
 .canvasOnlyLogo {
 	height: var(--height--xl);
-	pointer-events: none;
-	user-select: none;
+}
+
+.setupCredentialsButton {
+	pointer-events: auto;
 }
 
 .evaluationsCanvasInfoCardWrapper {
