@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { configure, fireEvent, waitFor } from '@testing-library/vue';
+import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { saveAs } from 'file-saver';
 
@@ -66,12 +66,23 @@ const withBot = () =>
 		defaultDescription: DEFAULT_DESCRIPTION,
 	});
 
-// The availability panel starts collapsed, and unlocks once the credential is verified.
+const WHERE_TITLE = 'agents.channels.teams.setup.availability.whereTitle';
+const SUMMARY_SEPARATOR = 'agents.channels.teams.setup.availability.summarySeparator';
+
+// The panel starts collapsed and mounts its rows only once opened. In setup it
+// also stays inert until the credential is verified.
 const openAvailability = async (getByTestId: (id: string) => HTMLElement) => {
-	await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeEnabled());
-	await fireEvent.click(getByTestId('teams-where-summary'));
+	await waitFor(() => expect(getByTestId('teams-availability').closest('[inert]')).toBeNull());
+	await fireEvent.click(
+		within(getByTestId('teams-availability')).getByLabelText(`Toggle ${WHERE_TITLE}`),
+	);
 	await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
 };
+
+const expectSummary = async (getByTestId: (id: string) => HTMLElement, summary: string) =>
+	await waitFor(() =>
+		expect(within(getByTestId('teams-availability')).getByText(summary)).toBeVisible(),
+	);
 
 const props = (overrides: Record<string, unknown> = {}) => ({
 	mode: 'setup' as const,
@@ -234,13 +245,14 @@ describe('AgentChannelTeamsSetup', () => {
 
 		it('starts collapsed, summarised, with everything but direct chat off', async () => {
 			withBot();
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
 
-			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
-			expect(getByTestId('teams-where-summary').textContent).toBe(
-				'agents.channels.teams.setup.availability.directChat',
-			);
-			expect(getByTestId('teams-scope-channels')).not.toBeVisible();
+			await expectSummary(getByTestId, 'agents.channels.teams.setup.availability.directChatOnly');
+			expect(queryByTestId('teams-scope-channels')).toBeNull();
+
+			await openAvailability(getByTestId);
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(false);
 			expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(false);
 		});
@@ -268,14 +280,13 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
 			await fireEvent.click(getByTestId('teams-read-channels'));
 
-			await waitFor(() =>
-				expect(getByTestId('teams-where-summary').textContent).toBe(
-					[
-						'agents.channels.teams.setup.availability.directChat',
-						'agents.channels.teams.setup.availability.teamChannels',
-						'agents.channels.teams.setup.availability.readsChannels',
-					].join('agents.channels.teams.setup.availability.summarySeparator'),
-				),
+			await expectSummary(
+				getByTestId,
+				[
+					'agents.channels.teams.setup.availability.directChat',
+					'agents.channels.teams.setup.availability.teamChannels',
+					'agents.channels.teams.setup.availability.readsChannels',
+				].join(SUMMARY_SEPARATOR),
 			);
 		});
 
@@ -302,7 +313,8 @@ describe('AgentChannelTeamsSetup', () => {
 				}),
 			});
 
-			await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true));
+			await openAvailability(getByTestId);
+			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
 			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
 	});
@@ -449,21 +461,17 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 
 		it('starts the availability panel collapsed, summarised', async () => {
-			const { getByTestId } = renderComponent({ props: settingsProps() });
+			const { getByTestId, queryByTestId } = renderComponent({ props: settingsProps() });
 
-			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
-			// Rendered but folded away, so settings opens on the summary rather than
-			// on every control.
-			expect(getByTestId('teams-scope-channels')).not.toBeVisible();
+			// Settings opens on the summary rather than on every control.
+			await expectSummary(getByTestId, 'agents.channels.teams.setup.availability.directChatOnly');
+			expect(queryByTestId('teams-scope-channels')).toBeNull();
 		});
 
-		it('opens a collapsed panel when its header is clicked', async () => {
+		it('opens a collapsed panel with its chevron', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
-			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-where-summary'));
-
-			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+			await openAvailability(getByTestId);
 		});
 
 		it('shows what the manifest would use as a placeholder, not as a value', async () => {
@@ -510,8 +518,13 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
 				'Answers questions',
 			);
-			// Mounted while collapsed, so its state is readable without expanding.
-			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
+			await expectSummary(
+				getByTestId,
+				[
+					'agents.channels.teams.setup.availability.directChat',
+					'agents.channels.teams.setup.availability.teamChannels',
+				].join(SUMMARY_SEPARATOR),
+			);
 		});
 
 		it('offers the package again, so a change can be applied', async () => {
@@ -730,8 +743,7 @@ describe('AgentChannelTeamsSetup', () => {
 	it('adopts saved settings that arrive after the view is rendered', async () => {
 		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
 
-		// The panels start collapsed here, so the switch is present but not shown.
-		await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeInTheDocument());
+		await openAvailability(getByTestId);
 		expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(false);
 
 		await rerender(props({ mode: 'edit', savedSettings: { teamChannels: true } }));
@@ -742,7 +754,7 @@ describe('AgentChannelTeamsSetup', () => {
 	it('keeps an edit when saved settings arrive afterwards', async () => {
 		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
 
-		await waitFor(() => expect(getByTestId('teams-scope-groups')).toBeInTheDocument());
+		await openAvailability(getByTestId);
 		await fireEvent.click(getByTestId('teams-scope-groups'));
 
 		await rerender(props({ mode: 'edit', savedSettings: { teamChannels: true } }));
@@ -756,6 +768,7 @@ describe('AgentChannelTeamsSetup', () => {
 
 		const name = () => getByTestId('teams-display-name').querySelector('input');
 		await waitFor(() => expect(name()).toBeInTheDocument());
+		await openAvailability(getByTestId);
 		await fireEvent.update(name() as HTMLInputElement, 'My own name');
 
 		await rerender(

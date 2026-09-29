@@ -385,14 +385,12 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.teams.setup.registerApp.hint') }}
 						</N8nText>
-						<N8nText :class="$style.hint" size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.registerApp.prerequisites') }}
-						</N8nText>
 						<N8nButton
 							:href="ENTRA_APP_REGISTRATION_URL"
 							target="_blank"
 							variant="subtle"
 							size="medium"
+							icon="entra"
 							data-testid="teams-entra-register-link"
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.registerApp.button') }}
@@ -476,6 +474,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 								target="_blank"
 								variant="subtle"
 								size="medium"
+								icon="azure"
 								:disabled="!setupState?.deployToAzureUrl"
 								data-testid="teams-deploy-to-azure"
 								@click="agentTelemetry.trackClickedDeployToAzure({ agentId })"
@@ -546,7 +545,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 					<div
 						v-else-if="step.id === 'availability'"
 						:class="[$style.stepStack, { [$style.locked]: !ready }]"
-						:inert="!ready"
+						:inert="!ready || undefined"
 						data-testid="teams-availability-step"
 					>
 						<AgentChannelTeamsAvailability
