@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor, within } from '@testing-library/vue';
 
+import { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
 import { createComponentRenderer } from '../../__tests__/render';
 
@@ -184,6 +185,29 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('should render one skeleton row per page size while the first page loads', () => {
+		const { container } = render(N8nDataTableServer, {
+			props: { items: [], headers, itemsLength: 100, loading: true, itemsPerPage: 25 },
+		});
+
+		expect(container.querySelectorAll('tbody tr').length).toBe(25);
+	});
+
+	it('should render a bounded skeleton while All is loading', () => {
+		const { container } = render(N8nDataTableServer, {
+			props: {
+				items: [],
+				headers,
+				itemsLength: 100,
+				loading: true,
+				itemsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE,
+				showAll: true,
+			},
+		});
+
+		expect(container.querySelectorAll('tbody tr').length).toBe(10);
+	});
+
 	it('should return to the first page when the page size changes', async () => {
 		const { emitted, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 106, itemsPerPage: 50, page: 2 },
@@ -203,5 +227,22 @@ describe('N8nDataTableServer', () => {
 				expect.arrayContaining([expect.objectContaining({ page: 0, itemsPerPage: 100 })]),
 			]),
 		);
+	});
+
+	it('should emit all items per page when All is selected', async () => {
+		const { emitted, findAllByRole } = renderComponent({
+			props: { items, headers, itemsLength: 106, showAll: true },
+		});
+
+		const selectInput = await findAllByRole('combobox');
+		await userEvent.click(selectInput[0]);
+
+		const options = await getRenderedOptions();
+		const allOption = Array.from(options).find((option) => option.textContent === 'All');
+		await userEvent.click(allOption!);
+
+		expect(emitted('update:options').at(-1)).toStrictEqual([
+			expect.objectContaining({ itemsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE }),
+		]);
 	});
 });
