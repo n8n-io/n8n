@@ -32,7 +32,8 @@ const hitKey = (ruleId: string, workflowId: string) => `${ruleId}\u0000${workflo
 /**
  * Compares the scan hits for one batch of workflows with the stored findings.
  * Only `open` and `fixed` rows take part. Rows in any other status stay as
- * they are; later work defines how Notified and Won't Fix react to a re-scan.
+ * they are.
+ * TODO(CAT-4710): handle `notified` and `wont_fix` rows once triage can set them.
  */
 export function diffMigrationFindings(input: MigrationFindingDiffInput): MigrationFindingDiff {
 	const { targetVersion, hits, existing } = input;
