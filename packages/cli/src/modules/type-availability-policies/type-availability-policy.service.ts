@@ -1,5 +1,6 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,7 +8,6 @@ import { LRUCache } from 'lru-cache';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { CacheService } from '@/services/cache/cache.service';

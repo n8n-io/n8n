@@ -7,6 +7,7 @@ import {
 	SourceControlStatusPublicDto,
 	SourceControlStatusQueryPublicDto,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -26,7 +27,6 @@ import {
 import type { Response } from 'express';
 
 import { BadRequestError, ConflictError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { getTrackingInformationFromPullResult } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';

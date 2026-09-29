@@ -88,6 +88,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'inbound-auth-core',
 		]);
 	});
 
@@ -126,6 +127,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'inbound-auth-core',
 			'type-availability-policies',
 		]);
 	});
@@ -251,6 +253,26 @@ describe('initModules', () => {
 		await moduleRegistry.initModules('main');
 
 		expect(ModuleClass.init).not.toHaveBeenCalled();
+	});
+
+	it('should init only the listed modules when given a list', async () => {
+		const ListedModule = { init: vi.fn() };
+		const OtherModule = { init: vi.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: vi.fn().mockReturnValue([
+				['insights', { class: ListedModule }],
+				['mcp', { class: OtherModule }],
+			]),
+		});
+		Container.get = vi.fn().mockImplementation((moduleClass: unknown) => moduleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+		await moduleRegistry.initModules('main', ['insights']);
+
+		expect(ListedModule.init).toHaveBeenCalled();
+		expect(OtherModule.init).not.toHaveBeenCalled();
+		expect(moduleRegistry.getActiveModules()).toEqual(['insights']);
 	});
 
 	it('should accept module without `init` method', async () => {

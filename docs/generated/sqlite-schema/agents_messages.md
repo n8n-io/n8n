@@ -18,7 +18,7 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | author | TEXT |  | true |  |  |  |
 | content | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [agent_execution_message_links](agent_execution_message_links.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) |  |  |
+| id | varchar(36) |  | false | [agent_execution_message_links](agent_execution_message_links.md) [agent_message_queue](agent_message_queue.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) |  |  |
 | modelContent | TEXT |  | true |  |  |  |
 | modelContextAt | DATETIME |  | true |  |  |  |
 | origin | TEXT |  | true |  |  |  |
@@ -52,6 +52,7 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 erDiagram
 
 "agent_execution_message_links" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_candidates" }o--o| "agents_messages" : "FOREIGN KEY (sourceMessageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -75,6 +76,15 @@ erDiagram
   varchar_36_ executionId PK
   varchar_36_ messageId PK
   INTEGER position
+}
+"agent_message_queue" {
+  datetime_3_ createdAt
+  varchar_36_ executionId FK
+  INTEGER id
+  varchar_36_ messageId FK
+  TEXT payload
+  varchar_128_ threadId FK
+  datetime_3_ updatedAt
 }
 "agents_memory_entry_candidates" {
   varchar_36_ agentId FK

@@ -1,4 +1,4 @@
-import type { StepSlots } from '@n8n/engine';
+import type { ResponseExpectation, StepSlots } from '@n8n/engine';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -18,8 +18,12 @@ export type WebhookRunOutcome =
 export type PendingWebhookResponseOptions = {
 	/** The run whose answer this handle carries. */
 	executionId: ExecutionIdV2;
-	/** Whether a Respond to Webhook result answers this request. */
-	acceptsResponse: boolean;
+	/**
+	 * What the request waits for. Only `stepResponse` lets a Respond to Webhook
+	 * result answer it. The engine obeys this too, so this filter is a second
+	 * defense.
+	 */
+	expectation: ResponseExpectation;
 	/** How long to hold the request before it is answered without the run. */
 	timeoutMs: number;
 	/** Called once the answer is no longer needed, so the listener can go. */
@@ -36,7 +40,7 @@ export class PendingWebhookResponse {
 
 	readonly executionId: ExecutionIdV2;
 
-	private readonly acceptsResponse: boolean;
+	private readonly expectation: ResponseExpectation;
 
 	private readonly onRelease: (executionId: string) => void;
 
@@ -45,14 +49,9 @@ export class PendingWebhookResponse {
 	/** Held so an answered run does not leave a timer behind for the whole hold. */
 	private readonly timer: NodeJS.Timeout;
 
-	constructor({
-		executionId,
-		acceptsResponse,
-		timeoutMs,
-		onRelease,
-	}: PendingWebhookResponseOptions) {
+	constructor({ executionId, expectation, timeoutMs, onRelease }: PendingWebhookResponseOptions) {
 		this.executionId = executionId;
-		this.acceptsResponse = acceptsResponse;
+		this.expectation = expectation;
 		this.onRelease = onRelease;
 		this.settled = this.answer.promise;
 		this.timer = setTimeout(() => this.answer.resolve({ status: 'timeout' }), timeoutMs).unref();
@@ -63,7 +62,9 @@ export class PendingWebhookResponse {
 	}
 
 	resolveResponse(response: unknown): void {
-		if (this.acceptsResponse) this.answer.resolve({ status: 'response', response });
+		if (this.expectation.kind === 'stepResponse') {
+			this.answer.resolve({ status: 'response', response });
+		}
 	}
 
 	release(): void {
