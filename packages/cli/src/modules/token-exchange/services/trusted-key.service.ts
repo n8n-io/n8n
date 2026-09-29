@@ -3,9 +3,7 @@ import { Time } from '@n8n/constants';
 import { DbLock, DbLockService } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError, jsonParse } from 'n8n-workflow';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
@@ -19,6 +17,7 @@ import { TokenExchangeConfig } from '../token-exchange.config';
 import type {
 	JwksKeySource,
 	JwtAlgorithm,
+	ResolvedSourceKeys,
 	ResolvedTrustedKey,
 	StaticKeySource,
 	TrustedKeyData,
@@ -43,12 +42,6 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 };
 
 const STATIC_SOURCE_ID = 'static';
-
-/** The keys a source resolves to, and for a JWKS source the cache TTL its endpoint sent. */
-type ResolvedSourceKeys = {
-	keys: Array<{ kid: string; data: TrustedKeyData }>;
-	cacheTtlSeconds?: number;
-};
 
 /**
  * Manages trusted public keys for JWT signature verification.
@@ -366,73 +359,23 @@ export class TrustedKeyService {
 	 *
 	 * On success: old keys deleted, new keys inserted, source marked healthy.
 	 *
-	 * On failure: the transaction rolls back and keeps the existing keys and
-	 * `lastRefreshedAt`. The source is then marked as error, which bumps its
-	 * `updatedAt`, and the failure is thrown.
+	 * On failure: keeps the existing keys, marks the source as error under the lock,
+	 * and throws once that status is committed.
 	 * @throws {Error} when the lock cannot be taken, or the keys cannot be resolved or written.
 	 */
 	private async refreshSourceInternal(source: TrustedKeySourceEntity): Promise<void> {
-		try {
-			await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
-				const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
-				if (!freshSource) return;
-				const result = await this.resolveKeysForSource(freshSource);
-				await this.storeResolvedKeys(freshSource, result, tx);
-			});
-		} catch (error) {
-			const failure = ensureError(error);
-			// Written after the rollback: an aborted Postgres transaction rejects every later statement.
-			await this.trustedKeySourceRepository.update(source.id, {
-				status: 'error',
-				lastError: failure.message,
-			});
+		const failure = await this.dbLockService.withLockContext(
+			DbLock.TRUSTED_KEY_REFRESH,
+			async (ctx) =>
+				await this.trustedKeySourceRepository.refreshSource(
+					source.id,
+					async (freshSource) => await this.resolveKeysForSource(freshSource),
+					ctx,
+				),
+		);
+		if (failure) {
 			throw failure;
 		}
-	}
-
-	private async storeResolvedKeys(
-		source: TrustedKeySourceEntity,
-		result: ResolvedSourceKeys | undefined,
-		tx: EntityManager,
-	): Promise<void> {
-		if (!result) {
-			// Mark as refreshed so the source is skipped until the next interval,
-			// even though no keys were resolved (e.g. unsupported source type).
-			await tx.update(TrustedKeySourceEntity, source.id, {
-				status: 'healthy',
-				lastRefreshedAt: new Date(),
-			});
-			return;
-		}
-
-		const keys = result.keys;
-		const cacheTtlSeconds = result.cacheTtlSeconds;
-
-		// 1. DELETE old keys for this source
-		await tx.delete(TrustedKeyEntity, { sourceId: source.id });
-
-		// 2. INSERT new keys
-		for (const key of keys) {
-			await tx.save(TrustedKeyEntity, {
-				sourceId: source.id,
-				kid: key.kid,
-				data: JSON.stringify(key.data),
-				createdAt: new Date(),
-			});
-		}
-
-		// 3. UPDATE source status, and persist observed cache TTL for refresh scheduling
-		const updatePayload: Partial<TrustedKeySourceEntity> = {
-			status: 'healthy' as const,
-			lastError: null,
-			lastRefreshedAt: new Date(),
-		};
-		if (cacheTtlSeconds !== undefined) {
-			const config = jsonParse<Record<string, unknown>>(source.config);
-			config.cacheTtlSeconds = cacheTtlSeconds;
-			updatePayload.config = JSON.stringify(config);
-		}
-		await tx.update(TrustedKeySourceEntity, source.id, updatePayload);
 	}
 
 	/**
