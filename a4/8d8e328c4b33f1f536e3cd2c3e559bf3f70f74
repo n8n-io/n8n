@@ -620,6 +620,7 @@ packages/cli/src/modules/agents/background/background-job-tools.ts
   s_e5a64625bc5cd1::t_c7ea8d644cea2e 8,11,66-67,158,168-171,217-219
 packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
   s_e5a64625bc5cd1::t_0bd5c86955870d 249,260,385
+  s_89ffeedfd03265::t_9f3003ef7fab34 50-59,69,78,85,92-99,103,132
 packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
   s_e5a64625bc5cd1::t_d78d061a082772 20,106-114,116-119,127-128,297,305,333
 packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
