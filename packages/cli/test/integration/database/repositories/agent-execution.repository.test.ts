@@ -538,7 +538,7 @@ describe('AgentExecutionRepository', () => {
 		}
 	}
 
-	it('clears retained delegated state when a nested checkpoint is missing', async () => {
+	it('clears retained delegated state with missing and cyclic references', async () => {
 		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
 		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
 		if (!state) throw new Error('Expected checkpoint state');
@@ -558,7 +558,9 @@ describe('AgentExecutionRepository', () => {
 			{
 				...nested,
 				expired: false,
-				state: checkpointStateWithChildren(state, nested.threadId, []),
+				state: checkpointStateWithChildren(state, nested.threadId, [
+					{ runId: suspension.runId, agentId, threadId },
+				]),
 			},
 		]);
 

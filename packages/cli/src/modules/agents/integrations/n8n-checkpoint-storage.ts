@@ -289,17 +289,25 @@ export class N8NCheckpointStorage {
 
 	async deleteDelegatedForThread(agentId: string, threadId: string): Promise<void> {
 		const rows = await this.agentCheckpointRepository.findRetainedByThreadId(threadId);
+		const visited = new Set<string>();
 		for (const row of rows) {
-			if (row.agentId === agentId) await this.deleteDelegation(row.runId, agentId);
+			if (row.agentId === agentId) await this.deleteDelegation(row.runId, agentId, visited);
 		}
 	}
 
-	private async deleteDelegation(runId: string, agentId: string): Promise<void> {
+	private async deleteDelegation(
+		runId: string,
+		agentId: string,
+		visited: Set<string>,
+	): Promise<void> {
+		const identity = `${agentId}\0${runId}`;
+		if (visited.has(identity)) return;
+		visited.add(identity);
 		const status = await this.getStatus(runId, agentId);
 		const checkpoint = status.status === 'not-found' ? undefined : status.checkpoint;
 		const children = checkpoint ? getDelegatedChildCheckpoints(checkpoint, agentId) : [];
 		// Keep the parent until all children are cleared so reconciliation can retry.
-		for (const child of children) await this.deleteDelegation(child.runId, child.agentId);
+		for (const child of children) await this.deleteDelegation(child.runId, child.agentId, visited);
 		await this.delete(runId, agentId);
 	}
 
