@@ -263,7 +263,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 		for (const { id } of threads) {
 			// The target agent id is the suffix; memory impls are agent-scoped.
 			const memory = this.n8nMemory.getImplementation(id.slice(prefix.length));
-			await memory.deleteMessagesByThread(id);
 			await memory.deleteThread(id);
 		}
 	}

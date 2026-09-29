@@ -180,7 +180,10 @@ export class AgentsService {
 		schema: AgentJsonConfig,
 		projectId: string,
 		user: User,
-	): Promise<{ schemaConfig: AgentJsonConfig; integrations: AgentIntegrationConfig[] }> {
+	): Promise<{
+		schemaConfig: AgentJsonConfig;
+		integrations: AgentIntegrationConfig[];
+	}> {
 		const accessibleCredentialIds = new Set(
 			(await createAgentCredentialProvider(this.credentialsService, projectId, user).list()).map(
 				(credential) => credential.id,
@@ -195,10 +198,9 @@ export class AgentsService {
 		// The credential-claim check ignores publish state, so a copy holding the
 		// source's channel credentialId would block the original from republishing
 		// or reconnecting (and the reconciler records that 409 on the source's row).
-		const draftIntegrations = integrations.map((integration) => ({
-			...integration,
-			credentialId: '',
-		}));
+		const draftIntegrations = integrations.map((integration) =>
+			integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
+		);
 		return { schemaConfig, integrations: draftIntegrations };
 	}
 
@@ -215,6 +217,10 @@ export class AgentsService {
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	}
+
+	async isN8nChatPublished(agentId: string, projectId: string): Promise<boolean> {
+		return await this.agentRepository.isN8nChatPublished(agentId, projectId);
 	}
 
 	/**

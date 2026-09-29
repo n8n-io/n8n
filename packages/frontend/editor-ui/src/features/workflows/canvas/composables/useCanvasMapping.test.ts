@@ -24,6 +24,7 @@ import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { NO_OP_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -81,6 +82,29 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(mapped.type).toBe('canvas-node');
 		expect(mapped.position).toEqual({ x: 10, y: 20 });
 		expect(mapped.draggable).toBe(true);
+	});
+
+	it('labels an empty-group anchor as Replace Me without relabeling a regular No-Op', () => {
+		const anchor = createTestNode({
+			id: 'anchor',
+			name: 'No Operation, do nothing',
+			type: NO_OP_NODE_TYPE,
+			parameters: { emptyGroupAnchor: true },
+		}) as INodeUi;
+		const regularNoOp = createTestNode({
+			id: 'regular-no-op',
+			name: 'Keep this label',
+			type: NO_OP_NODE_TYPE,
+		}) as INodeUi;
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([anchor, regularNoOp]),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+		});
+
+		expect(nodes.value.find((node) => node.id === 'anchor')?.label).toBe('nodeView.replaceMe');
+		expect(nodes.value.find((node) => node.id === 'regular-no-op')?.label).toBe('Keep this label');
 	});
 
 	it('pulls subtitle from renderData.subtitleByNodeId', () => {

@@ -22,7 +22,7 @@ import { NodeMailer } from './node-mailer';
 import { InternalServerError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { toError } from '@/utils';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {

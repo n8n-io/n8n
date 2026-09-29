@@ -11,8 +11,9 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from '@n8n/backend-services';
+
 import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';

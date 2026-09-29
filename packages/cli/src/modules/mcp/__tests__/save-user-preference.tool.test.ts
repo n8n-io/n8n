@@ -9,7 +9,7 @@ import type { InputRequiredResult } from '@modelcontextprotocol/server';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

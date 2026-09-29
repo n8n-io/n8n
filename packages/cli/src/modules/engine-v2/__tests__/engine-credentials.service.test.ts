@@ -45,6 +45,7 @@ describe('EngineCredentialsService', () => {
 		vi.mocked(permissionChecker.findInaccessible).mockResolvedValue({
 			homeProject: mock(),
 			inaccessibleIds: [],
+			unusableForActingUser: [],
 		});
 		vi.mocked(credentialsHelper.getDecrypted).mockResolvedValue(decrypted);
 	});
@@ -83,15 +84,20 @@ describe('EngineCredentialsService', () => {
 		it('checks that the workflow may use the credential before decrypting', async () => {
 			await service.resolve(resolveRequest);
 
-			expect(permissionChecker.findInaccessible).toHaveBeenCalledExactlyOnceWith('wf-1', [
-				'cred-1',
-			]);
+			// The acting user rides along, so a credential only they may use still
+			// resolves mid-run, and one they may not does not.
+			expect(permissionChecker.findInaccessible).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				['cred-1'],
+				resolveRequest.context.userId,
+			);
 		});
 
 		it('refuses a credential the workflow may not use, and logs it', async () => {
 			vi.mocked(permissionChecker.findInaccessible).mockResolvedValue({
 				homeProject: mock(),
 				inaccessibleIds: ['cred-1'],
+				unusableForActingUser: [],
 			});
 
 			await expect(service.resolve(resolveRequest)).rejects.toThrow(ForbiddenError);

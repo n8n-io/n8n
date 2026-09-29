@@ -33,7 +33,7 @@ import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 
 @RestController('/users')

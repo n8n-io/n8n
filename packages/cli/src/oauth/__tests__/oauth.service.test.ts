@@ -35,7 +35,7 @@ import {
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');

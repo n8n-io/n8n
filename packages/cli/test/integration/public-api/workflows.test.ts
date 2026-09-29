@@ -2202,6 +2202,19 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test('should create a workflow with a description', async () => {
+		const description = 'What this workflow does';
+		const response = await authMemberAgent.post('/workflows').send({
+			...mockPostWorkflowPayload(),
+			description,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
+	});
+
 	test.each([
 		{ key: 'binaryMode', value: 'combined' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },

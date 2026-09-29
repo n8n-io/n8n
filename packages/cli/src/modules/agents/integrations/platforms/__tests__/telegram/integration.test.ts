@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ConflictError } from '@n8n/errors';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { Agent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';

@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { TeamsManifestService } from './teams-manifest.service';

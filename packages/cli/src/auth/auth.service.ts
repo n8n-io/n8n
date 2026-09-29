@@ -16,7 +16,7 @@ import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 interface AuthJwtPayload {
 	/** User Id */

@@ -323,7 +323,13 @@ export class AgentConfigService {
 			previousIntegrations,
 			nextIntegrations,
 		);
-		return { nextSchema, nextIntegrations, previousSchema, previousIntegrations, changedParts };
+		return {
+			nextSchema,
+			nextIntegrations,
+			previousSchema,
+			previousIntegrations,
+			changedParts,
+		};
 	}
 
 	private mergeConfigSchema(

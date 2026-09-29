@@ -10,7 +10,7 @@ import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@n8n/errors';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {

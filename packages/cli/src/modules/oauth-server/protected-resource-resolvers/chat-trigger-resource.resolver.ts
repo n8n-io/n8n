@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
