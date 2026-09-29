@@ -1,0 +1,24 @@
+packages/cli/src/public-api/v1/controllers/sso-saml.public.controller.ts
+  s_b061c71f859f81::t_615df5206b9903 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "37d557326a155bd709606c172aa761e673ac14e5",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b061c71f859f81": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "deabd09b-3174-4973-aa9d-f13b5d8ca837",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
