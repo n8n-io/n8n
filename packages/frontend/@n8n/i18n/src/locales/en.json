@@ -8858,6 +8858,7 @@
 	"agents.channels.teams.setup.install.needsReady": "Pick a verified credential in step 2 first. The package uses its Application (client) ID.",
 	"agents.channels.teams.setup.createBot.loadFailed": "Could not load the Teams setup for this agent.",
 	"agents.channels.teams.setup.install.connectFailed": "The package downloaded, but the channel is not connected: {error}",
+	"agents.channels.teams.setup.install.staleDownload": "The credential changed during the download, so that package is for the previous bot. Download it again.",
 	"agents.channels.teams.setup.install.title": "Connect Microsoft Teams",
 	"agents.channels.teams.setup.install.description": "Download the zip and upload it in Teams under Apps › Manage your apps › Upload an app.",
 	"agents.channels.teams.setup.install.button": "Download app package",

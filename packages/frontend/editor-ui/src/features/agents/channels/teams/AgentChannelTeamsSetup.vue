@@ -243,15 +243,32 @@ async function downloadPackage(): Promise<boolean> {
 let unmounted = false;
 onBeforeUnmount(() => (unmounted = true));
 
+// Set when the credential changed during a download, so the saved zip is for the old bot.
+const staleDownload = ref(false);
+
 // Connecting closes the modal, so it waits for the package to be saved.
 async function downloadAndConnect() {
+	const id = credentialId.value;
+	staleDownload.value = false;
 	if (!(await downloadPackage()) || unmounted) return;
+	// The package carries the bot ID of the credential it was built for, so a
+	// switch during the download must not connect the new one.
+	if (credentialId.value !== id || !ready.value) {
+		staleDownload.value = true;
+		return;
+	}
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
 	});
 	if (!props.connected) emit('connect');
 }
+
+// The modal clears the error when the credential changes. A conflict is about
+// the credential itself, so it stays in step 2.
+const showConnectError = computed(
+	() => Boolean(props.errorMessage) && !props.errorIsConflict && !props.connected,
+);
 
 async function loadSetupState() {
 	const request = ++latestSetupState;
@@ -406,9 +423,9 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							:credentials="credentials"
 							:credential-permissions="credentialPermissions"
 							:credentials-loading="credentialsLoading"
-							:disabled="loading"
+							:disabled="loading || downloading"
 							:loading="loading"
-							:error-message="errorMessage"
+							:error-message="showConnectError ? '' : errorMessage"
 							:error-is-conflict="errorIsConflict"
 							:force-new-credential="forceNewCredential"
 							@create="emit('create')"
@@ -561,7 +578,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 						</N8nText>
 
 						<div
-							:class="[$style.identity, { [$style.locked]: !ready }]"
+							:class="[$style.identity, ready ? $style.identityReady : $style.locked]"
 							data-testid="teams-identity"
 						>
 							<AgentPersonalisationIcon :personalisation="personalisation" :size="36" />
@@ -579,18 +596,26 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 								</N8nText>
 							</div>
 							<N8nButton
-								variant="solid"
+								variant="outline"
 								size="medium"
-								icon="download"
 								:disabled="!ready || loading"
 								:loading="downloading || loading"
 								data-testid="teams-download-package"
 								@click="downloadAndConnect"
 							>
 								{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+								<N8nIcon icon="download" size="medium" />
 							</N8nButton>
 						</div>
 
+						<N8nText
+							v-if="staleDownload"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-stale-download"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.staleDownload') }}
+						</N8nText>
 						<!-- A failed load and a claimed credential already say so in steps 2 and 3. -->
 						<N8nText
 							v-if="!ready && !credentialVerified && !setupLoadFailed"
@@ -601,18 +626,25 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							{{ i18n.baseText('agents.channels.teams.setup.install.needsReady') }}
 						</N8nText>
 						<!-- Connect errors otherwise land in step 2, far from this button. -->
-						<N8nText
-							v-if="errorMessage && !connected"
-							size="small"
-							:class="$style.error"
-							data-testid="teams-connect-error"
-						>
-							{{
-								i18n.baseText('agents.channels.teams.setup.install.connectFailed', {
-									interpolate: { error: errorMessage },
-								})
-							}}
-						</N8nText>
+						<div v-if="showConnectError" :class="$style.actions">
+							<N8nText size="small" :class="$style.error" data-testid="teams-connect-error">
+								{{
+									i18n.baseText('agents.channels.teams.setup.install.connectFailed', {
+										interpolate: { error: errorMessage },
+									})
+								}}
+							</N8nText>
+							<!-- The package is already downloaded, so a retry only connects. -->
+							<N8nButton
+								variant="ghost"
+								size="small"
+								:disabled="loading"
+								data-testid="teams-connect-retry"
+								@click="emit('connect')"
+							>
+								{{ i18n.baseText('generic.retry') }}
+							</N8nButton>
+						</div>
 						<N8nText
 							v-if="downloadError"
 							size="small"
@@ -783,8 +815,19 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 	gap: var(--spacing--xs);
 	width: 100%;
 	padding: var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius);
+	/* Matches the availability panel above it. */
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
+	border-radius: var(--radius--xs);
+}
+
+/*
+ * One step off the modal in both themes. The semantic tokens are relative to
+ * the page, and the dark modal is lighter than the dark page surface.
+ */
+.identityReady {
+	background: light-dark(var(--color--neutral-50), var(--color--white-alpha-50));
+	/* The dark fill matches the subtle border, which would hide it. */
+	border-color: light-dark(var(--border-color--subtle), var(--border-color));
 }
 
 .identityText {

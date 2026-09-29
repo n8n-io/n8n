@@ -101,7 +101,7 @@ const summary = computed(() => {
 </script>
 
 <template>
-	<N8nSettingsRowGroup>
+	<N8nSettingsRowGroup :class="$style.group">
 		<N8nSettingsRow
 			v-model="open"
 			:title="i18n.baseText('agents.channels.teams.setup.availability.whereTitle')"
@@ -132,3 +132,14 @@ const summary = computed(() => {
 		</N8nSettingsRow>
 	</N8nSettingsRowGroup>
 </template>
+
+<style module lang="scss">
+/*
+ * The group paints the page surface, which in dark mode is darker than the
+ * modal it sits in. Letting the modal show through keeps it flat in both themes.
+ * The doubled class outranks the group's own single-class rule.
+ */
+.group.group {
+	background: transparent;
+}
+</style>

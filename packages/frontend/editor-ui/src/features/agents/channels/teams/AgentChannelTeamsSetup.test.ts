@@ -345,15 +345,65 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-package-blocked')).toBeVisible();
 		});
 
-		it('shows a failed connect next to the button that started it', async () => {
+		const connectAndFail = async () => {
 			withBot();
-			const { getByTestId } = renderComponent({
-				props: props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }),
-			});
+			const utils = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(utils.getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(utils.getByTestId('teams-download-package'));
+			await waitFor(() => expect(utils.emitted().connect).toHaveLength(1));
+			await utils.rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+			return utils;
+		};
+
+		it('shows a failed connect next to the button that started it, and only there', async () => {
+			const { getByTestId, queryByText } = await connectAndFail();
 
 			await waitFor(() =>
 				expect(getByTestId('teams-connect-error')).toHaveTextContent('Bot rejected'),
 			);
+			expect(queryByText('Bot rejected')).toBeNull();
+		});
+
+		it('retries a failed connect without downloading the package again', async () => {
+			const { getByTestId, emitted } = await connectAndFail();
+			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeVisible());
+
+			await fireEvent.click(getByTestId('teams-connect-retry'));
+
+			expect(emitted().connect).toHaveLength(2);
+			expect(fetchTeamsAppPackage).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps a conflict in step 2, since it is about the credential', async () => {
+			withBot();
+			const { getByText, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', errorMessage: 'Bot in use', errorIsConflict: true }),
+			});
+
+			await waitFor(() => expect(getByText('Bot in use')).toBeVisible());
+			expect(queryByTestId('teams-connect-error')).toBeNull();
+		});
+
+		it('does not connect a credential picked while the package downloads', async () => {
+			withBot();
+			let release: ((blob: Blob) => void) | undefined;
+			vi.mocked(fetchTeamsAppPackage).mockImplementation(
+				async () => await new Promise((resolve) => (release = resolve)),
+			);
+			const { getByTestId, emitted, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(fetchTeamsAppPackage).toHaveBeenCalled());
+
+			await rerender(props({ modelValue: 'cred-2' }));
+			release?.(new Blob(['zip']));
+			await flushPromises();
+
+			expect(emitted().connect).toBeFalsy();
+			expect(showMessage).not.toHaveBeenCalled();
+			await waitFor(() => expect(getByTestId('teams-stale-download')).toBeVisible());
 		});
 
 		it('offers the package on a connected channel even when the check does not pass', async () => {
