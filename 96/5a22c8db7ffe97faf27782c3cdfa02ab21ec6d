@@ -22,6 +22,8 @@ packages/frontend/editor-ui/src/features/agents/agents-design-language.md
   s_0ed5271cdd014d::t_f5ad820b69d6df 165-167
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_0ed5271cdd014d::t_b27160b7a04934 7921
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_c5954c3047b5ed::t_fb1d9dfdf164ed 1078,1083
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -33,6 +35,14 @@ packages/frontend/@n8n/i18n/src/locales/en.json
       "agent_id": {
         "tool": "codex",
         "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
