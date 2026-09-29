@@ -1,0 +1,34 @@
+name: 'TMP: E2E repeat one spec (IAM-1464)'
+
+# Throwaway workflow on a scratch branch. It runs one spec many times in the
+# multi-main container project to measure flakiness after a de-flake change.
+# `workflow_dispatch` needs the file on the default branch, so this runs on
+# every push to the scratch branch instead. Not meant to land on master.
+
+on:
+  push:
+    branches:
+      - 'tmp/iam-1464-e2e-repeat'
+
+jobs:
+  prepare-docker:
+    name: Prepare Docker
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      runner: blacksmith-8vcpu-ubuntu-2204
+    secrets: inherit
+
+  e2e:
+    name: E2E repeat
+    needs: prepare-docker
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e --repeat-each=20
+      workers: '1'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      timeout-minutes: 90
+      pre-generated-matrix: '[{"shard":1,"specs":"tests/e2e/sharing/workflow-sharing.spec.ts","images":"caddy n8n postgres redis"}]'
+      artifact-prefix: tmp-repeat
+      currents-record-key: present
+    secrets: inherit
