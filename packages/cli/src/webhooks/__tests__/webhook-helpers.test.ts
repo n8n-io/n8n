@@ -52,6 +52,7 @@ import {
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
+	OperationalError,
 	UserError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -2355,12 +2356,14 @@ describe('executeWebhook on engine v2', () => {
 		webhookResult = { workflowData: [[{ json: { body: 'hi' } }]] } as IWebhookResponseData,
 		executionId,
 		destinationNode,
+		response = mock<express.Response>({ headersSent: false, writableEnded: false }),
 	}: {
 		responseMode?: string;
 		startNode?: INode;
 		webhookResult?: IWebhookResponseData;
 		executionId?: string;
 		destinationNode?: IDestinationNode;
+		response?: express.Response;
 	} = {}) => {
 		webhookService.runWebhook.mockResolvedValue(webhookResult);
 
@@ -2384,7 +2387,6 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		const responseCallback = vi.fn();
-		const response = mock<express.Response>({ headersSent: false, writableEnded: false });
 
 		const returned = await executeWebhook(
 			workflow,
@@ -2768,6 +2770,42 @@ describe('executeWebhook on engine v2', () => {
 				{ kind: 'stream' },
 				response,
 			);
+
+			// End the run, so its heartbeat and listener do not outlive the test.
+			answerRun('completed', {
+				nodeId: 'webhook-node-id',
+				nodeName: 'Webhook',
+				status: 'completed',
+				outputs: null,
+			});
+			await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1));
+		});
+
+		it('ends the stream when the run cannot start', async () => {
+			// The streaming node sends the headers before the run starts.
+			const response = mock<express.Response>({ headersSent: true, writableEnded: false });
+			workflowRunner.run.mockRejectedValueOnce(new Error('start failed'));
+
+			await expect(startWebhook({ responseMode: 'streaming', response })).rejects.toThrow(
+				'There was a problem executing the workflow',
+			);
+
+			expect(response.end).toHaveBeenCalledTimes(1);
+			expect(unsubscribe).toHaveBeenCalledTimes(1);
+		});
+
+		it('ends the stream when the responder cannot listen for the run', async () => {
+			const response = mock<express.Response>({ headersSent: true, writableEnded: false });
+			vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse').mockRejectedValueOnce(
+				new OperationalError('Engine v2 is at capacity'),
+			);
+
+			await expect(startWebhook({ responseMode: 'streaming', response })).rejects.toThrow(
+				'There was a problem executing the workflow',
+			);
+
+			expect(response.end).toHaveBeenCalledTimes(1);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('completes with one error record when the failed run already sent one', async () => {

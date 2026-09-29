@@ -1523,6 +1523,11 @@ export async function executeWebhook(
 	} catch (e: unknown) {
 		// Nothing will ever answer this one, so stop waiting for it.
 		pendingEngineV2Response?.release();
+		// The trigger already sent the stream headers, so no error response can
+		// follow. End the stream, or the caller waits for chunks that never come.
+		if (routesToEngineV2 && responseMode === 'streaming' && res.headersSent && !res.writableEnded) {
+			res.end();
+		}
 
 		const error = ensureError(e);
 		let responseError: Error;
