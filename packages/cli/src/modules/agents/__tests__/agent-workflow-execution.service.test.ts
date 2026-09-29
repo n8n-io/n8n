@@ -1135,7 +1135,12 @@ describe('AgentWorkflowExecutionService', () => {
 							url: 'https://mcp.example.com',
 							transport: 'streamableHttp',
 							authentication: 'none',
-							approval: { mode: 'global' },
+							toolPermissions: {
+								categories: {
+									read: 'always_allow',
+									write: 'require_approval',
+								},
+							},
 						},
 					],
 				},

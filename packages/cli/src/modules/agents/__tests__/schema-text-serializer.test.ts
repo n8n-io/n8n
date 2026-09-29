@@ -1,6 +1,6 @@
 import { McpServerConfigSchema } from '@n8n/api-types';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { JSONSchema7 } from 'json-schema';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
@@ -473,7 +473,7 @@ describe('union types', () => {
 
 describe('mcp server schema regression', () => {
 	it('renders authentication and discriminated unions with descriptions', () => {
-		const schema = zodToJsonSchema(McpServerConfigSchema) as JSONSchema7;
+		const schema = zodSchemaToJsonSchema(McpServerConfigSchema);
 		const output = jsonSchemaToCompactText(schema);
 
 		expect(output).toContain(
