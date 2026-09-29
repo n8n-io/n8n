@@ -239,6 +239,14 @@ N8N_PORT=5699 pnpm dev:be
 N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
 ```
 
+### Backend bench
+
+`pnpm backend:debug` starts a loopback page for this checkout. The page maps
+the database, the CLI REST API, the public API, and domain services. It
+refreshes when those sources change. The main checkout uses port 4317. A git
+worktree, including a Superset worktree, gets its own port. See
+`scripts/backend-debug-ui/README.md`.
+
 ### Basic Development Workflow Example (most used within n8n)
 
 If you're working on API and FE, a lot of team members run the following steps:

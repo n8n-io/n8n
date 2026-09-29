@@ -42,6 +42,8 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
+    "backend:debug": "node scripts/backend-debug-ui/server.mjs",
+    "backend:debug:test": "node --test scripts/backend-debug-ui/*.test.mjs",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",

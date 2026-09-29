@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex" />
+		<title>Backend bench</title>
+		<link rel="stylesheet" href="/ui/app.css" data-bench-css />
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			const root = document.querySelector('#app');
+			const state = {
+				catalog: null,
+				filter: '',
+				domainId: null,
+				routeId: null,
+				entityId: null,
+				showRepositories: false,
+				extra: { public: 0, rest: 0, entities: 0 },
+				draft: { method: 'GET', path: '', query: '', body: '' },
+				cookie: sessionStorage.getItem('n8n-backend-bench-cookie') ?? '',
+				apiKey: sessionStorage.getItem('n8n-backend-bench-api-key') ?? '',
+				pointer: '',
+				response: null,
+				previousBody: null,
+				history: [],
+				notice: '',
+				pulse: false,
+				n8n: { up: null, status: 0, port: null },
+				sending: false,
+				error: '',
+				send: null,
+			};
+			let mod = await import('/ui/app.js');
+			const render = () => mod.mount(root, state);
+
+			async function loadCatalog(announce) {
+				const response = await fetch('/api/catalog');
+				const catalog = await response.json();
+				if (state.routeId && !catalog.routes.some((route) => route.id === state.routeId)) {
+					state.routeId = null;
+					state.notice = 'The selected route is no longer in the map';
+				}
+				state.catalog = catalog;
+				state.pulse = true;
+				render();
+				clearTimeout(state.pulseTimer);
+				state.pulseTimer = setTimeout(() => {
+					state.pulse = false;
+				}, 700);
+				if (announce) flash(announce);
+			}
+
+			function flash(text) {
+				state.notice = text;
+				state.pulse = true;
+				render();
+				clearTimeout(state.noticeTimer);
+				state.noticeTimer = setTimeout(() => {
+					state.notice = '';
+					render();
+				}, 2200);
+			}
+
+			await loadCatalog();
+
+			const events = new EventSource('/api/events');
+			events.onmessage = async (event) => {
+				const message = JSON.parse(event.data);
+				if (message.type === 'catalog') await loadCatalog('Map updated');
+				else if (message.type === 'reload') location.reload();
+				else if (message.type === 'ui') {
+					const link = document.querySelector('[data-bench-css]');
+					const next = link.cloneNode();
+					next.href = `/ui/app.css?v=${message.revision}`;
+					next.addEventListener('load', () => link.remove(), { once: true });
+					link.after(next);
+					mod = await import(`/ui/app.js?v=${message.revision}`);
+					flash('UI refreshed');
+				}
+			};
+
+			async function refreshStatus() {
+				try {
+					const response = await fetch('/api/n8n-status');
+					const next = await response.json();
+					if (next.up !== state.n8n.up || next.status !== state.n8n.status) {
+						state.n8n = next;
+						render();
+					}
+				} catch {
+					/* The next poll retries. */
+				}
+			}
+			refreshStatus();
+			setInterval(refreshStatus, 5000);
+
+			window.addEventListener('keydown', (event) => {
+				if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+					event.preventDefault();
+					state.send?.();
+				}
+			});
+		</script>
+	</body>
+</html>
