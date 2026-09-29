@@ -381,6 +381,28 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(getHoverCard()).toBeNull();
 		});
 
+		it('shows the current name from the tab details instead of a stale tab name', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'Renamed Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await vi.waitFor(() => {
+				expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent(
+					'Renamed Workflow',
+				);
+			});
+			await hoverTab(container, 'wf-1');
+			expect(getHoverCard()).toHaveTextContent('Renamed Workflow');
+		});
+
 		it('shows the edited time and published status of a workflow', async () => {
 			mockSearchWorkflows.mockResolvedValue([
 				{

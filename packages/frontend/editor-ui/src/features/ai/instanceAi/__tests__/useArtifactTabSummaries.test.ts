@@ -95,11 +95,13 @@ describe('useArtifactTabSummaries', () => {
 		expect(getSummary(workflowTab('wf-1'))).toEqual({
 			updatedAt: UPDATED_AT,
 			type: 'workflow',
+			name: 'Workflow wf-1',
 			published: true,
 		});
 		expect(getSummary(workflowTab('wf-2'))).toEqual({
 			updatedAt: UPDATED_AT,
 			type: 'workflow',
+			name: 'Workflow wf-2',
 			published: false,
 		});
 	});
@@ -217,6 +219,7 @@ describe('useArtifactTabSummaries', () => {
 		// The count includes the system id column, like the data table cards.
 		expect(getSummary(dataTableTab('dt-1'))).toEqual({
 			type: 'data-table',
+			name: 'Table dt-1',
 			updatedAt: UPDATED_AT,
 			columnCount: 4,
 		});

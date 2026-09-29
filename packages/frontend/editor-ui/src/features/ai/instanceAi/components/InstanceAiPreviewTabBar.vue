@@ -126,6 +126,11 @@ function handleOpenInEditor(tab: ArtifactTab) {
 type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const { getSummary, refresh: refreshSummaries } = useArtifactTabSummaries(() => props.tabs);
+
+/** The current name from the tab details, or the tab's own name until they load. */
+function tabName(tab: ArtifactTab): string {
+	return getSummary(tab)?.name ?? tab.name;
+}
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -285,7 +290,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 								data-test-id="instance-ai-tab-building-spinner"
 							/>
 							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
-							<span :class="$style.label">{{ tab.name }}</span>
+							<span :class="$style.label">{{ tabName(tab) }}</span>
 						</TabsTrigger>
 						<span :class="$style.closeSlot">
 							<N8nIconButton
@@ -295,7 +300,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 								:class="$style.closeButton"
 								:aria-label="
 									i18n.baseText('instanceAi.previewTabBar.closeTab', {
-										interpolate: { name: tab.name },
+										interpolate: { name: tabName(tab) },
 									})
 								"
 								data-test-id="instance-ai-tab-close"
@@ -338,7 +343,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 					data-test-id="instance-ai-tab-hover-card"
 				>
 					<div :class="$style.hoverCardText">
-						<span :class="$style.hoverCardName">{{ hoveredTab.tab.name }}</span>
+						<span :class="$style.hoverCardName">{{ tabName(hoveredTab.tab) }}</span>
 						<span v-if="hoveredSummary" :class="$style.hoverCardMeta">
 							{{ i18n.baseText('instanceAi.previewTabBar.edited') }}
 							<TimeAgo :date="hoveredSummary.updatedAt" />

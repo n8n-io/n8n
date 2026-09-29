@@ -5,9 +5,10 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
 import type { ArtifactTab } from './useCanvasPreview';
 
+// `name` is the current name. The tab's own name can be stale after a rename.
 export type ArtifactTabSummary =
-	| { type: 'workflow'; updatedAt: string; published: boolean }
-	| { type: 'data-table'; updatedAt: string; columnCount: number };
+	| { type: 'workflow'; name: string; updatedAt: string; published: boolean }
+	| { type: 'data-table'; name: string; updatedAt: string; columnCount: number };
 
 /** `null` means the artifact was checked but has no details, e.g. it is deleted. */
 export type ArtifactTabSummaryEntry = ArtifactTabSummary | null;
@@ -47,6 +48,7 @@ export function useArtifactTabSummaries(tabs: () => ArtifactTab[]) {
 				workflow.id,
 				{
 					type: 'workflow',
+					name: workflow.name,
 					updatedAt: String(workflow.updatedAt),
 					published: !!workflow.activeVersionId,
 				},
@@ -67,6 +69,7 @@ export function useArtifactTabSummaries(tabs: () => ArtifactTab[]) {
 				dataTable.id,
 				{
 					type: 'data-table',
+					name: dataTable.name,
 					updatedAt: dataTable.updatedAt,
 					// Count the system id column too, like the data table cards do.
 					columnCount: dataTable.columns.length + 1,
