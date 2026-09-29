@@ -33,12 +33,19 @@ packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
   s_b061c71f859f81::t_9b6323104688be 285-289
 packages/cli/src/public-api/v1/shared/spec/schemas/samlConfigurationPublicDto.generated.yml
   s_b061c71f859f81::t_8445d76560957e 6,11,36-44,47,58-60,85,89,93-95,112-116,118-126,131-149
+packages/cli/src/public-api/v1/openapi.yml
+  h_ed1b2d65e81e8e 90-91
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.4",
   "base_commit_sha": "9f83f931b0d284024eca993854179a4b81321845",
   "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
   "sessions": {
     "s_b061c71f859f81": {
       "agent_id": {
