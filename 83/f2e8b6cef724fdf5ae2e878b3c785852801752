@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6e5e6dade5599e::t_614f94fb6daa34 1279-1292,2225
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_6e5e6dade5599e::t_a6413dde3f7713 1209,1211,1227,1229,1237,1239
+  s_6e5e6dade5599e::t_6b04f06bd2c9f3 1179-1208,1210,1212-1226,1228,1230-1236,1238,1240-1243
+  s_6e5e6dade5599e::t_d0400afe9268dc 92-115
+  s_6e5e6dade5599e::t_f14e5b6bbbba54 207,231-233
+  s_6e5e6dade5599e::t_24b647b30ae185 47
+  s_6e5e6dade5599e::t_f3d000f94f65ce 234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "83f2e8b6cef724fdf5ae2e878b3c785852801752",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
