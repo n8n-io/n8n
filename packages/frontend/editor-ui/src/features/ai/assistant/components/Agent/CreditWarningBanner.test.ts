@@ -115,6 +115,8 @@ describe('CreditWarningBanner', () => {
 
 		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
 		expect(text).toContain('aiAssistant.builder.creditBanner.trialText');
+		expect(text).toContain('"remaining":"100"');
+		expect(text).toContain('"total":"500"');
 	});
 
 	// The activation-capped trial cohort is never shown a balance,
