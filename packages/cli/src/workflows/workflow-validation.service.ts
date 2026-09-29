@@ -11,7 +11,7 @@ import {
 	mapConnectionsByDestination,
 	validateNodeCredentials,
 	getUnconnectedRequiredInputs,
-	isNodeConnected,
+	getExecutableNodeNames,
 	isTriggerLikeNode,
 	isTriggerNode,
 	classifyTriggerIdentity,
@@ -112,8 +112,38 @@ export class WorkflowValidationService {
 	) {}
 
 	/**
-	 * Validates node configuration (credentials, parameters) for connected and enabled nodes.
-	 * Trigger-like nodes are always validated even without connections.
+	 * Names of every node a run can reach. Publishing must not fail over a node
+	 * that never executes, and an edge alone does not make a node reachable: an
+	 * island of wired-up nodes with no path from a trigger never runs.
+	 *
+	 * Every enabled trigger is a start node, a disconnected one included, since
+	 * it still starts the workflow.
+	 */
+	private executableNodeNames(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Set<string> {
+		const connectionsByDestination = mapConnectionsByDestination(connections);
+		const reachable = new Set<string>();
+
+		for (const node of nodes) {
+			if (node.disabled) continue;
+
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType || !isTriggerLikeNode(nodeType)) continue;
+
+			for (const name of getExecutableNodeNames(connections, connectionsByDestination, node.name)) {
+				reachable.add(name);
+			}
+		}
+
+		return reachable;
+	}
+
+	/**
+	 * Validates node configuration (credentials, parameters) for every node a run
+	 * can reach. Enabled nodes only.
 	 */
 	private validateNodeConfiguration(
 		nodes: INode[],
@@ -121,7 +151,7 @@ export class WorkflowValidationService {
 		nodeTypes: NodeTypes,
 	): WorkflowValidationResult {
 		try {
-			const connectionsByDestination = mapConnectionsByDestination(connections);
+			const executable = this.executableNodeNames(nodes, connections, nodeTypes);
 			const issuesFound: Array<{ nodeName: string; issues: string[] }> = [];
 
 			for (const node of nodes) {
@@ -138,11 +168,10 @@ export class WorkflowValidationService {
 						continue;
 					}
 
-					const isNodeTriggerLike = isTriggerLikeNode(nodeType);
-
-					const isConnected = isNodeConnected(node.name, connections, connectionsByDestination);
-
-					if (!isConnected && !isNodeTriggerLike) continue;
+					// A node no run can reach cannot fail one, so it must not block
+					// publishing. Being wired to something is not enough: an island of
+					// connected nodes with no path from a trigger never executes.
+					if (!executable.has(node.name)) continue;
 
 					const nodeIssues: string[] = [];
 					const credentialIssues = validateNodeCredentials(node, nodeType);
@@ -411,7 +440,7 @@ export class WorkflowValidationService {
 			active: false,
 			nodeTypes,
 		});
-		const connectionsByDestination = mapConnectionsByDestination(connections);
+		const executable = this.executableNodeNames(nodes, connections, nodeTypes);
 		const issues: string[] = [];
 
 		// Those expressions need an isolate under the VM engine, or they throw.
@@ -422,14 +451,8 @@ export class WorkflowValidationService {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (!nodeType?.description) continue;
 
-				// A node wired to nothing cannot break a run, so it must not block
-				// publishing. Same rule as validateNodeConfiguration.
-				if (
-					!isNodeConnected(node.name, connections, connectionsByDestination) &&
-					!isTriggerLikeNode(nodeType)
-				) {
-					continue;
-				}
+				// Same rule as validateNodeConfiguration: only nodes a run can reach.
+				if (!executable.has(node.name)) continue;
 
 				// Same reasoning one hop out: a subnode is only ever resolved by the
 				// node it supplies, so if every one of those is disabled it cannot

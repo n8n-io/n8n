@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	ICredentialType,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -474,6 +474,37 @@ describe('WorkflowValidationService', () => {
 			};
 			// Agent is not connected to anything
 			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should skip validation for an island with no path from a trigger', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent: createNode('Agent', 'n8n-nodes-base.agent', { parameters: {} }),
+				Helper: createNode('Helper', 'n8n-nodes-base.agent', { parameters: {} }),
+			};
+			// Wired to each other but never reached by the webhook, so neither runs.
+			const connections: IConnections = {
+				Helper: { main: [[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((
 				type: string,
@@ -1800,8 +1831,30 @@ describe('WorkflowValidationService', () => {
 			} as unknown as INodeTypeDescription,
 		} as INodeType;
 
+		/** An entry point, so nodes wired behind it are reachable by a run. */
+		const triggerType = {
+			description: {
+				displayName: 'Trigger',
+				name: 'trigger',
+				group: ['trigger'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Trigger' },
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+			trigger: async () => undefined,
+		} as unknown as INodeType;
+
+		/** Wires the trigger into `target`, the way an activatable workflow would. */
+		const startedAt = (target: string) => ({
+			Trigger: { main: [[{ node: target, type: 'main', index: 0 }]] },
+		});
+
 		beforeEach(() => {
 			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
 				if (type === 'parser') return parserType;
 				if (type === 'agent') return agentType;
 				return modelType;
@@ -1810,8 +1863,9 @@ describe('WorkflowValidationService', () => {
 
 		it('rejects activation when a required input has nothing connected', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser'), node('Agent', 'agent')],
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Agent', 'agent')],
 				{
+					...startedAt('Agent'),
 					Parser: {
 						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
 					},
@@ -1823,6 +1877,82 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain(
 				"'Parser' has no node connected to its required 'Model' input",
 			);
+		});
+
+		it('ignores an island of wired nodes with no path from a trigger', async () => {
+			// The parser is connected, so it is not a floating node, but nothing
+			// reaches its agent. The island never runs, so it must not block
+			// publishing.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Tail', 'agent'),
+					node('Parser', 'parser'),
+					node('Island', 'agent'),
+				],
+				{
+					...startedAt('Tail'),
+					Parser: {
+						ai_outputParser: [[{ node: 'Island', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('ignores a chain behind a disabled trigger', async () => {
+			// A disabled trigger starts nothing, so nothing downstream of it runs.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger', true), node('Parser', 'mainParser')],
+				startedAt('Parser') as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a node behind a disabled node on the main path', async () => {
+			// A disabled node passes its input through, so what follows it still runs.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				if (type === 'agent') return agentType;
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Skipped', 'agent', true), node('Parser', 'mainParser')],
+				{
+					...startedAt('Skipped'),
+					Skipped: { main: [[{ node: 'Parser', type: 'main', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Parser'");
 		});
 
 		it('ignores a node that is wired to nothing', async () => {
@@ -1854,8 +1984,9 @@ describe('WorkflowValidationService', () => {
 
 		it('still checks a subnode whose consumer is enabled', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser'), node('Agent', 'agent')],
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Agent', 'agent')],
 				{
+					...startedAt('Agent'),
 					Parser: {
 						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
 					},
@@ -1869,8 +2000,14 @@ describe('WorkflowValidationService', () => {
 
 		it('still checks a subnode that also supplies an enabled consumer', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser'), node('Off', 'agent', true), node('On', 'agent')],
+				[
+					node('Trigger', 'trigger'),
+					node('Parser', 'parser'),
+					node('Off', 'agent', true),
+					node('On', 'agent'),
+				],
 				{
+					...startedAt('On'),
 					Parser: {
 						ai_outputParser: [
 							[
@@ -1890,6 +2027,7 @@ describe('WorkflowValidationService', () => {
 			// Its main output happens to be unwired, so the connection record shows
 			// only the ai_ edge. Declared outputs are what decide, not the wiring.
 			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
 				if (type === 'dualOutput') {
 					return {
 						description: {
@@ -1902,8 +2040,9 @@ describe('WorkflowValidationService', () => {
 			});
 
 			const result = await service.validateRequiredInputsConnected(
-				[node('Store', 'dualOutput'), node('Agent', 'agent', true)],
+				[node('Trigger', 'trigger'), node('Store', 'dualOutput'), node('Agent', 'agent', true)],
 				{
+					...startedAt('Store'),
 					Store: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
 				} as unknown as IConnections,
 				nodeTypes,
@@ -1917,6 +2056,7 @@ describe('WorkflowValidationService', () => {
 			// Unlike a subnode, a node with a main output runs whatever happens
 			// downstream, so its own unmet input still blocks publishing.
 			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
 				if (type === 'mainParser') {
 					return {
 						description: {
@@ -1929,8 +2069,9 @@ describe('WorkflowValidationService', () => {
 			});
 
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'mainParser'), node('Next', 'agent', true)],
+				[node('Trigger', 'trigger'), node('Parser', 'mainParser'), node('Next', 'agent', true)],
 				{
+					...startedAt('Parser'),
 					Parser: { main: [[{ node: 'Next', type: 'main', index: 0 }]] },
 				} as unknown as IConnections,
 				nodeTypes,
@@ -1959,15 +2100,17 @@ describe('WorkflowValidationService', () => {
 			} as INodeType;
 
 			beforeEach(() => {
-				nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
-					type === 'agentWithFallback' ? agentWithFallbackType : modelType,
-				);
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+					if (type === 'trigger') return triggerType;
+					return type === 'agentWithFallback' ? agentWithFallbackType : modelType;
+				});
 			});
 
 			it('rejects activation when only the primary model is connected', async () => {
 				const result = await service.validateRequiredInputsConnected(
-					[node('Agent', 'agentWithFallback'), node('Model', 'model')],
+					[node('Trigger', 'trigger'), node('Agent', 'agentWithFallback'), node('Model', 'model')],
 					{
+						...startedAt('Agent'),
 						Model: {
 							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
 						},
@@ -1981,8 +2124,14 @@ describe('WorkflowValidationService', () => {
 
 			it('allows activation once each model sits on its own input', async () => {
 				const result = await service.validateRequiredInputsConnected(
-					[node('Agent', 'agentWithFallback'), node('Primary', 'model'), node('Fallback', 'model')],
+					[
+						node('Trigger', 'trigger'),
+						node('Agent', 'agentWithFallback'),
+						node('Primary', 'model'),
+						node('Fallback', 'model'),
+					],
 					{
+						...startedAt('Agent'),
 						Primary: {
 							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
 						},
@@ -1999,11 +2148,13 @@ describe('WorkflowValidationService', () => {
 			it('treats a disabled fallback as not connected', async () => {
 				const result = await service.validateRequiredInputsConnected(
 					[
+						node('Trigger', 'trigger'),
 						node('Agent', 'agentWithFallback'),
 						node('Primary', 'model'),
 						node('Fallback', 'model', true),
 					],
 					{
+						...startedAt('Agent'),
 						Primary: {
 							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
 						},
@@ -2023,6 +2174,7 @@ describe('WorkflowValidationService', () => {
 			// A trigger starts the run whether or not anything feeds it, so the
 			// floating-node exemption must not cover it.
 			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
 				if (type === 'triggerParser') {
 					return { ...parserType, trigger: async () => undefined } as unknown as INodeType;
 				}
@@ -2073,8 +2225,9 @@ describe('WorkflowValidationService', () => {
 
 		it('treats a disabled source as not connected', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser'), node('Model', 'model', true)],
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Model', 'model', true)],
 				{
+					...startedAt('Parser'),
 					Model: {
 						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
 					},
@@ -2101,8 +2254,14 @@ describe('WorkflowValidationService', () => {
 
 		it('reports every unmet required input at once', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser A', 'parser'), node('Parser B', 'parser'), node('Agent', 'agent')],
+				[
+					node('Trigger', 'trigger'),
+					node('Parser A', 'parser'),
+					node('Parser B', 'parser'),
+					node('Agent', 'agent'),
+				],
 				{
+					...startedAt('Agent'),
 					'Parser A': {
 						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
 					},
@@ -2147,6 +2306,7 @@ describe('WorkflowValidationService', () => {
 
 			beforeEach(() => {
 				nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+					if (type === 'trigger') return triggerType;
 					if (type === 'gatedParser') return gatedParserType;
 					if (type === 'brokenParser') return brokenParserType;
 					if (type === 'agent') return agentType;
@@ -2162,8 +2322,9 @@ describe('WorkflowValidationService', () => {
 				expect(parser.parameters).toEqual({});
 
 				const result = await service.validateRequiredInputsConnected(
-					[parser, node('Agent', 'agent')],
+					[node('Trigger', 'trigger'), parser, node('Agent', 'agent')],
 					{
+						...startedAt('Agent'),
 						Parser: {
 							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
 						},
@@ -2181,8 +2342,9 @@ describe('WorkflowValidationService', () => {
 				// A swallowed expression error would read as "requires nothing" and
 				// let a broken workflow publish.
 				const result = await service.validateRequiredInputsConnected(
-					[node('Parser', 'brokenParser'), node('Agent', 'agent')],
+					[node('Trigger', 'trigger'), node('Parser', 'brokenParser'), node('Agent', 'agent')],
 					{
+						...startedAt('Agent'),
 						Parser: {
 							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
 						},
