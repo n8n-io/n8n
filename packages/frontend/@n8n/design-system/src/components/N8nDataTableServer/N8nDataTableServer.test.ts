@@ -187,6 +187,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should render one skeleton row per page size while the first page loads', () => {
 		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
 			props: { items: [], headers, itemsLength: 100, loading: true, itemsPerPage: 25 },
 		});
 
@@ -197,6 +198,7 @@ describe('N8nDataTableServer', () => {
 		const { container } = render(N8nDataTableServer, {
 			props: {
 				items: [],
+				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: 100,
 				loading: true,
