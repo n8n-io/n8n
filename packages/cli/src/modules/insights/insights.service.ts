@@ -10,7 +10,7 @@ import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 

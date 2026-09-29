@@ -9,8 +9,7 @@ import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
 

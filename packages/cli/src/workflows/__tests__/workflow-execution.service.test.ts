@@ -31,7 +31,7 @@ import type { WorkflowRequest } from '../workflow.request';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';

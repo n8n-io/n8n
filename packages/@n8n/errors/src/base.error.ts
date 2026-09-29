@@ -1,7 +1,7 @@
 import type { Event } from '@sentry/node';
 import callsites from 'callsites';
 
-import type { ErrorTags, ErrorLevel, ReportingOptions } from '@n8n/errors';
+import type { ErrorLevel, ErrorTags, ReportingOptions } from './types';
 
 export type BaseErrorOptions = { description?: string | undefined | null } & ErrorOptions &
 	ReportingOptions;
@@ -50,7 +50,7 @@ export abstract class BaseError extends Error {
 
 		try {
 			const filePath = callsites()[2].getFileName() ?? '';
-			const match = /packages\/([^\/]+)\//.exec(filePath)?.[1];
+			const match = /packages\/([^/]+)\//.exec(filePath)?.[1];
 
 			if (match) this.tags.packageName = match;
 		} catch {}

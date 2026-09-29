@@ -1,5 +1,4 @@
-import type { BaseErrorOptions } from './base.error';
-import { BaseError } from './base.error';
+import { BaseError, type BaseErrorOptions } from './base.error';
 
 export type OperationalErrorOptions = Omit<BaseErrorOptions, 'level'> & {
 	level?: 'info' | 'warning' | 'error';

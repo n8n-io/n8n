@@ -42,9 +42,7 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import {

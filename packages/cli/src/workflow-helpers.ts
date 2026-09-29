@@ -28,7 +28,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 

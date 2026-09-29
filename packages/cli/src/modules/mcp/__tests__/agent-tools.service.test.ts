@@ -27,7 +27,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';

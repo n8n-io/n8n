@@ -1,4 +1,4 @@
-import { BaseError } from 'n8n-workflow';
+import { BaseError } from '../base.error';
 
 /**
  * Special Error which allows to return also an error code and http status code

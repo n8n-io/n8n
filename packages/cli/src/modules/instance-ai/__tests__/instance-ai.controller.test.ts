@@ -72,10 +72,7 @@ import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';

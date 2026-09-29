@@ -24,7 +24,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import {
 	ProtectedResourceRegistry,

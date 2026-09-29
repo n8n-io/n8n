@@ -26,8 +26,7 @@ import type {
 
 import { EventService } from '@/events/event.service';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';

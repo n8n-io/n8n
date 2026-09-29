@@ -9,8 +9,7 @@ import { type ICredentialContext, jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@n8n/backend-services';

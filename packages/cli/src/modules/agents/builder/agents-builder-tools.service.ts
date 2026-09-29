@@ -44,8 +44,7 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { ConflictError, LockedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';

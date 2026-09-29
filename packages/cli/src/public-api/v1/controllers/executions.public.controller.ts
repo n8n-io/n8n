@@ -40,9 +40,7 @@ import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow'
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';

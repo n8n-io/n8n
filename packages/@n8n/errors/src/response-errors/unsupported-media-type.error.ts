@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from './response.error';
 
 export class UnsupportedMediaTypeError extends ResponseError {
 	constructor(message: string, hint: string | undefined = undefined) {

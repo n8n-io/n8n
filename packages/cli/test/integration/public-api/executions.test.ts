@@ -18,7 +18,7 @@ import { ActiveExecutions } from '@/active-executions';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import { ExecutionService } from '@/executions/execution.service';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { Telemetry } from '@/telemetry';

@@ -18,7 +18,7 @@ import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-op
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
