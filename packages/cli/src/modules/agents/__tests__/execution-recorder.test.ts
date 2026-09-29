@@ -297,14 +297,12 @@ describe('ExecutionRecorder', () => {
 			const recorder = new ExecutionRecorder();
 			const inputC = {
 				type: 'input',
-				queueId: 'queue-c',
-				message: { id: 'c', role: 'user', content: [{ type: 'text', text: 'C' }] },
+				messageId: 'c',
 				timestamp: 2_000,
 			} satisfies TimelineEvent;
 			const inputD = {
 				type: 'input',
-				queueId: 'queue-d',
-				message: { id: 'd', role: 'user', content: [{ type: 'text', text: 'D' }] },
+				messageId: 'd',
 				timestamp: 3_000,
 			} satisfies TimelineEvent;
 

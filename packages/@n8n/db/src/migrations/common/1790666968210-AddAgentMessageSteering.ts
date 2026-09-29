@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentMessageSteering1790259878851 implements ReversibleMigration {
+export class AddAgentMessageSteering1790666968210 implements ReversibleMigration {
 	async up({ schemaBuilder, escape, runQuery, isPostgres }: MigrationContext) {
 		const { addColumns, addForeignKey, createIndex, column } = schemaBuilder;
 		const executionTable = escape.tableName('agent_execution');

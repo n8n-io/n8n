@@ -123,11 +123,11 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			where: { id: executionId, status: 'running' },
 		});
 		const inputIds = new Set(
-			values.timeline?.filter((event) => event.type === 'input').map((event) => event.message.id),
+			values.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
 		);
 		// A failed commit acknowledgement must not let terminal recording erase durable input.
 		if (
-			current?.timeline?.some((event) => event.type === 'input' && !inputIds.has(event.message.id))
+			current?.timeline?.some((event) => event.type === 'input' && !inputIds.has(event.messageId))
 		)
 			return false;
 		// Build the SET values once. `cost` is never set as a literal here —

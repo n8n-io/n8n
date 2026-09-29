@@ -322,7 +322,9 @@ function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: st
 				runType: 'chain',
 				startTime: event.timestamp,
 				endTime: event.timestamp,
-				inputs: { message: event.message },
+				inputs: {
+					message: execution.inputMessages?.find(({ id }) => id === event.messageId),
+				},
 				outputs: {},
 				metadata: {},
 				children: [],

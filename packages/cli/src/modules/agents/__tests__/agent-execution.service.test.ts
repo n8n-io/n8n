@@ -516,9 +516,8 @@ describe('AgentExecutionService', () => {
 				...second,
 				{
 					type: 'input',
-					queueId: 'queue-1',
 					timestamp: 2,
-					message: { id: 'input-1', role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+					messageId: 'input-1',
 				},
 			];
 

@@ -1,7 +1,7 @@
-import { AddAgentMessageSteering1790259878851 as BaseMigration } from '../common/1790259878851-AddAgentMessageSteering';
+import { AddAgentMessageSteering1790666968210 as BaseMigration } from '../common/1790666968210-AddAgentMessageSteering';
 import type { MigrationContext } from '../migration-types';
 
-export class AddAgentMessageSteering1790259878851 extends BaseMigration {
+export class AddAgentMessageSteering1790666968210 extends BaseMigration {
 	async up(context: MigrationContext) {
 		await this.preserveQueueSequence(context, async () => await super.up(context));
 	}
@@ -12,8 +12,8 @@ export class AddAgentMessageSteering1790259878851 extends BaseMigration {
 
 	private async preserveQueueSequence(context: MigrationContext, migrate: () => Promise<void>) {
 		const name = `${context.tablePrefix}agent_message_queue`;
-		const [sequence] = await context.runQuery<Array<{ seq: number }>>(
-			'SELECT "seq" FROM "sqlite_sequence" WHERE "name" = :name',
+		const [sequence] = await context.runQuery<Array<{ seq: string }>>(
+			'SELECT CAST("seq" AS TEXT) AS "seq" FROM "sqlite_sequence" WHERE "name" = :name',
 			{ name },
 		);
 		await migrate();

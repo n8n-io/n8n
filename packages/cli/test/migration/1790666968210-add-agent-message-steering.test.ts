@@ -8,7 +8,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION = 'AddAgentMessageSteering1790259878851';
+const MIGRATION = 'AddAgentMessageSteering1790666968210';
 
 describe('AddAgentMessageSteering migration', () => {
 	let dataSource: DataSource;
@@ -17,6 +17,7 @@ describe('AddAgentMessageSteering migration', () => {
 	const threadId = randomUUID();
 	const executionId = randomUUID();
 	const steeringExecutionId = randomUUID();
+	const messageIds = [randomUUID(), randomUUID(), randomUUID()];
 
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
@@ -49,12 +50,34 @@ describe('AddAgentMessageSteering migration', () => {
 				{ steeringExecutionId, threadId },
 			);
 			await seed.runQuery(
-				`INSERT INTO ${seed.escape.tableName('agent_message_queue')} ("threadId", "source", "payload", "executionId") VALUES (:threadId, 'chat', '{}', :executionId)`,
+				`INSERT INTO ${seed.escape.tableName('agents_resources')} ("id") VALUES (:threadId)`,
 				values,
 			);
 			await seed.runQuery(
-				`INSERT INTO ${seed.escape.tableName('agent_message_queue')} ("threadId", "source", "payload") VALUES (:threadId, 'chat', '{}')`,
+				`INSERT INTO ${seed.escape.tableName('agents_threads')} ("id", "resourceId") VALUES (:threadId, :threadId)`,
 				values,
+			);
+			for (const id of messageIds) {
+				await seed.runQuery(
+					`INSERT INTO ${seed.escape.tableName('agents_messages')} ("id", "threadId", "resourceId", "role", "content") VALUES (:id, :threadId, :threadId, 'user', :content)`,
+					{
+						id,
+						threadId,
+						content: JSON.stringify({ role: 'user', content: [{ type: 'text', text: 'Input' }] }),
+					},
+				);
+			}
+			await seed.runQuery(
+				`INSERT INTO ${seed.escape.tableName('agent_execution_message_links')} ("executionId", "messageId", "direction", "position") VALUES (:executionId, :messageId, 'input', 0)`,
+				{ executionId, messageId: messageIds[0] },
+			);
+			await seed.runQuery(
+				`INSERT INTO ${seed.escape.tableName('agent_message_queue')} ("threadId", "messageId", "payload", "executionId") VALUES (:threadId, :messageId, '{"kind":"preview"}', :executionId)`,
+				{ ...values, messageId: messageIds[0] },
+			);
+			await seed.runQuery(
+				`INSERT INTO ${seed.escape.tableName('agent_message_queue')} ("threadId", "messageId", "payload") VALUES (:threadId, :messageId, '{"kind":"preview"}')`,
+				{ ...values, messageId: messageIds[1] },
 			);
 			// Retired IDs must stay retired when SQLite rebuilds the table.
 			await seed.runQuery(
@@ -86,9 +109,17 @@ describe('AddAgentMessageSteering migration', () => {
 				`SELECT "executionId", "steeringExecutionId" FROM ${ctx.escape.tableName('agent_message_queue')}`,
 			);
 			expect(rows).toEqual([{ executionId, steeringExecutionId: null }]);
+			expect(
+				await ctx.runQuery(
+					`SELECT "messageId" FROM ${ctx.escape.tableName('agent_execution_message_links')}`,
+				),
+			).toEqual([{ messageId: messageIds[0] }]);
+			expect(
+				await ctx.runQuery(`SELECT "id" FROM ${ctx.escape.tableName('agents_messages')}`),
+			).toHaveLength(3);
 			await ctx.runQuery(
-				`INSERT INTO ${ctx.escape.tableName('agent_message_queue')} ("threadId", "source", "payload", "steeringExecutionId", "steeringOrder") VALUES (:threadId, 'chat', '{}', :steeringExecutionId, 1)`,
-				{ threadId, steeringExecutionId },
+				`INSERT INTO ${ctx.escape.tableName('agent_message_queue')} ("threadId", "messageId", "payload", "steeringExecutionId", "steeringOrder") VALUES (:threadId, :messageId, '{"kind":"preview"}', :steeringExecutionId, 1)`,
+				{ threadId, steeringExecutionId, messageId: messageIds[1] },
 			);
 			const ids = await ctx.runQuery<Array<{ id: string | number }>>(
 				`SELECT "id" FROM ${ctx.escape.tableName('agent_message_queue')} ORDER BY "id"`,
@@ -96,8 +127,8 @@ describe('AddAgentMessageSteering migration', () => {
 			expect(Number(ids[1].id)).toBeGreaterThan(2);
 			await expect(
 				ctx.runQuery(
-					`INSERT INTO ${ctx.escape.tableName('agent_message_queue')} ("threadId", "source", "payload", "steeringExecutionId", "steeringOrder") VALUES (:threadId, 'chat', '{}', :steeringExecutionId, 1)`,
-					{ threadId, steeringExecutionId },
+					`INSERT INTO ${ctx.escape.tableName('agent_message_queue')} ("threadId", "messageId", "payload", "steeringExecutionId", "steeringOrder") VALUES (:threadId, :messageId, '{"kind":"preview"}', :steeringExecutionId, 1)`,
+					{ threadId, steeringExecutionId, messageId: messageIds[2] },
 				),
 			).rejects.toThrow();
 			await expect(

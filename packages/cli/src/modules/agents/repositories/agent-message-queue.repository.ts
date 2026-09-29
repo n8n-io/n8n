@@ -22,13 +22,13 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		const repository = this.managerFor(ctx).getRepository(AgentMessageQueue);
 		return await repository.save(
 			repository.create({
-                threadId,
-                messageId,
-                payload,
-                executionId: null,
-                steeringExecutionId: null,
-                steeringOrder: null,
-            }),
+				threadId,
+				messageId,
+				payload,
+				executionId: null,
+				steeringExecutionId: null,
+				steeringOrder: null,
+			}),
 		);
 	}
 

@@ -5,7 +5,6 @@ import {
 	settleChildTrace,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
-	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -263,7 +262,7 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
-	| { type: 'input'; queueId: string; message: AgentPersistedMessageDto; timestamp: number }
+	| { type: 'input'; messageId: string; timestamp: number }
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
@@ -390,9 +389,7 @@ export class ExecutionRecorder {
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		for (const event of events) {
-			if (
-				this.timeline.some((item) => item.type === 'input' && item.message.id === event.message.id)
-			)
+			if (this.timeline.some((item) => item.type === 'input' && item.messageId === event.messageId))
 				continue;
 			this.appendCompletedEvent(event);
 		}
