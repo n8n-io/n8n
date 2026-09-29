@@ -14,18 +14,6 @@ import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
 import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
 
-export interface NodeTypesInProjects {
-	projectIds: string[];
-	nodeTypes: string[];
-}
-
-export interface RestrictedNodeTypes {
-	shared: string[];
-	exceptProjectIds: string[];
-	byProjects: NodeTypesInProjects[];
-	nodeTypesInUse: string[];
-}
-
 export function runningVersionRowsCondition(dependencyAlias: string, workflowAlias: string) {
 	return `((${workflowAlias}.activeVersionId IS NULL AND ${dependencyAlias}.publishedVersionId IS NULL) OR ${dependencyAlias}.publishedVersionId = ${workflowAlias}.activeVersionId)`;
 }

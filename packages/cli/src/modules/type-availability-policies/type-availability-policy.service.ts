@@ -990,6 +990,7 @@ export class TypeAvailabilityPolicyService {
 		};
 	}
 
+	/** Bulk reads: one cached read per project fills the pool on a cold cache and fails runs. */
 	async evaluateComposedTypesForAllProjects(
 		kind: string,
 		typeNames: readonly string[],
@@ -1009,12 +1010,13 @@ export class TypeAvailabilityPolicyService {
 
 		return {
 			withoutProjectPolicy: composeVerdicts(instance, { ...UNCONFIGURED_PROJECT, kind }),
-			byProject: scopes.flatMap((scope) => {
-				if (scope.projectId === null) return [];
-				const project = toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []);
-
-				return [{ projectId: scope.projectId, verdicts: composeVerdicts(instance, project) }];
-			}),
+			byProject: scopes.map((scope) => ({
+				projectId: scope.projectId,
+				verdicts: composeVerdicts(
+					instance,
+					toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []),
+				),
+			})),
 		};
 	}
 

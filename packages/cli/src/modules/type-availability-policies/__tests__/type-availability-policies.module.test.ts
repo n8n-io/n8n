@@ -83,7 +83,6 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	it('answers the workflow list proxy from its restricted node types provider on init', async () => {
 		const restricted = {
 			shared: ['n8n-nodes-base.slack'],
-			exceptProjectIds: [],
 			byProjects: [],
 			nodeTypesInUse: ['n8n-nodes-base.slack'],
 		};

@@ -464,7 +464,6 @@ describe('WorkflowService', () => {
 			test('passes the restricted node types of each project to the list query', async () => {
 				const restrictedNodeTypes = {
 					shared: ['n8n-nodes-base.code'],
-					exceptProjectIds: ['project-a'],
 					byProjects: [{ projectIds: ['project-a'], nodeTypes: ['n8n-nodes-base.slack'] }],
 					nodeTypesInUse: ['n8n-nodes-base.code', 'n8n-nodes-base.slack'],
 				};
