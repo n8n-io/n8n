@@ -37,7 +37,12 @@ import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './constants';
-import { memberOriginFor, type BoundingBox, type CollapsedGroup } from './group-layout-utils';
+import {
+	collapseNodeGroups,
+	memberOriginFor,
+	type BoundingBox,
+	type CollapsedGroup,
+} from './group-layout-utils';
 import { parseVersion } from './string-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
@@ -608,87 +613,8 @@ export function resolveStickyGeometry(
 // Helpers: Node groups
 // ---------------------------------------------------------------------------
 
-/**
- * Namespace for the synthetic parent-graph node that stands in for a collapsed
- * group. Prefixed so it can never collide with a node's map key.
- */
-const GROUP_GRAPH_ID_PREFIX = '__nodeGroup__:';
-
 /** Vertical drop from a group's title bar to the top of its members. */
 const GROUP_HEADER_TO_MEMBERS_Y = GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
-
-/**
- * Fold each group's members into a single parent-graph node the size of the
- * collapsed chip, so the layout reserves the space the canvas actually draws.
- * Mutates `parentGraph`; returns one entry per folded group.
- *
- * Groups that overlap the AI cluster machinery, hold a sticky, or share a member
- * with an earlier group are left alone, since those members are already laid out
- * by a mechanism of their own.
- */
-function collapseNodeGroups(
-	parentGraph: dagre.graphlib.Graph,
-	nodeGroups: readonly ResolvedNodeGroup[],
-	keyByNodeId: ReadonlyMap<string, string>,
-	excludedKeys: ReadonlySet<string>,
-): CollapsedGroup[] {
-	const collapsed: CollapsedGroup[] = [];
-	const claimed = new Set<string>();
-	// Node keys come from node names, so a node could already be called
-	// `__nodeGroup__:0`. Snapshot them before any folding and step around a clash,
-	// otherwise the synthetic node would overwrite the real one.
-	const takenKeys = new Set(parentGraph.nodes());
-
-	nodeGroups.forEach((group, index) => {
-		const memberKeys: string[] = [];
-		for (const memberId of group.memberIds) {
-			const key = keyByNodeId.get(memberId);
-			// An unresolvable member is dropped by the serializer too, so the group
-			// the canvas receives will not contain it either.
-			if (key === undefined) continue;
-			// One member the layout must not move means the whole group has to stay
-			// where it is, since the canvas derives the chip from every member.
-			if (excludedKeys.has(key) || claimed.has(key)) return;
-			if (!parentGraph.hasNode(key)) continue;
-			if (!memberKeys.includes(key)) memberKeys.push(key);
-		}
-
-		if (memberKeys.length === 0) return;
-
-		const memberKeySet = new Set(memberKeys);
-		let graphId = `${GROUP_GRAPH_ID_PREFIX}${index}`;
-		while (takenKeys.has(graphId)) graphId += ':';
-		takenKeys.add(graphId);
-
-		// Capture the edges crossing the group boundary before the members go away.
-		const crossingEdges = parentGraph
-			.edges()
-			.filter((edge) => memberKeySet.has(edge.v) !== memberKeySet.has(edge.w));
-
-		const graph = createSubGraph(memberKeys, parentGraph);
-		dagre.layout(graph, { disableOptimalOrderHeuristic: true });
-
-		memberKeys.forEach((key) => parentGraph.removeNode(key));
-		memberKeys.forEach((key) => claimed.add(key));
-
-		parentGraph.setNode(graphId, {
-			width: GROUP_HEADER_WIDTH_COLLAPSED,
-			height: GROUP_HEADER_HEIGHT,
-		});
-
-		for (const edge of crossingEdges) {
-			const source = memberKeySet.has(edge.v) ? graphId : edge.v;
-			const target = memberKeySet.has(edge.w) ? graphId : edge.w;
-			// A group reached from its own members means a non-member sits between
-			// two members; there is no rank to give that, so leave it unwired.
-			if (source !== target) parentGraph.setEdge(source, target);
-		}
-
-		collapsed.push({ graphId, graph });
-	});
-
-	return collapsed;
-}
 
 /**
  * Unfold a group: place its members below and right of where the layout put the
@@ -809,7 +735,9 @@ export function calculateNodePositionsDagre(
 	}
 
 	const collapsedGroups = nodeGroups?.length
-		? collapseNodeGroups(parentGraph, nodeGroups, keyByNodeId, ungroupableKeys)
+		? collapseNodeGroups(parentGraph, nodeGroups, keyByNodeId, ungroupableKeys, {
+				createSubGraph,
+			})
 		: [];
 	const groupByGraphId = new Map(collapsedGroups.map((group) => [group.graphId, group]));
 
