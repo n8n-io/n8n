@@ -86,6 +86,11 @@ export const WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT = createExperiment('086_workflo
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 	'082_instance_ai_proactive_agent',
 );
+// Flag key assigned when the PostHog flag is created — follow the
+// `n8n:experiments` skill to create it and fill in the real key here.
+export const INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT = createExperiment(
+	'<flag-key>_test_agent_preview',
+);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
