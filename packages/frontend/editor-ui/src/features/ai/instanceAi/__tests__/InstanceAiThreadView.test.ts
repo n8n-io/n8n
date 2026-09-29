@@ -2674,7 +2674,48 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			// forceAgentWorthTesting also forces the preview experiment on — one
+			// flag gets a local/QA environment the full preview flow without a
+			// separate PostHog override.
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+		});
+
+		it('offers the preview variant when forced, with no PostHog override at all', async () => {
+			seedReadyAgent();
+			const evalsStore = mockedStore(useAgentEvalsStore);
+			evalsStore.generateDraftCases.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+			});
+			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
+			evalsStore.openRun.mockResolvedValue(undefined);
+			evalsStore.getReview.mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						status: 'success',
+						input: { input: 'Summarize the thread' },
+						output: { finalText: 'Done.' },
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			useSettingsStore().settings.evaluation = {
+				...useSettingsStore().settings.evaluation,
+				forceAgentWorthTesting: true,
+			};
+
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden once dismissed for this agent', () => {

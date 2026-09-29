@@ -8,6 +8,7 @@ import {
 import { useTestAgentPreviewExperiment } from './useTestAgentPreviewExperiment';
 
 const getVariant = vi.fn();
+const settingsState = { forceAgentWorthTesting: false };
 
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
@@ -15,9 +16,16 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	})),
 }));
 
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		settings: { evaluation: { forceAgentWorthTesting: settingsState.forceAgentWorthTesting } },
+	}),
+}));
+
 describe('useTestAgentPreviewExperiment', () => {
 	beforeEach(() => {
 		getVariant.mockReset();
+		settingsState.forceAgentWorthTesting = false;
 	});
 
 	it.each([
@@ -31,6 +39,13 @@ describe('useTestAgentPreviewExperiment', () => {
 
 		expect(isFeatureEnabled.value).toBe(enabled);
 		expect(getVariant).toHaveBeenCalledWith(INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name);
+	});
+
+	it('is enabled via the forceAgentWorthTesting override even when PostHog is off', () => {
+		getVariant.mockReturnValue(INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.control);
+		settingsState.forceAgentWorthTesting = true;
+
+		expect(useTestAgentPreviewExperiment().isFeatureEnabled.value).toBe(true);
 	});
 
 	it('registers the experiment for centralized enrollment tracking', () => {
