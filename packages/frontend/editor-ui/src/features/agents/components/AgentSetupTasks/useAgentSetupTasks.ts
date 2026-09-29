@@ -13,12 +13,12 @@ export function useAgentSetupTasks(context: ComputedRef<SetupContext>) {
 	const tasks = computed<Array<SetupTask<SetupTaskId>>>(() => {
 		return setupTaskOrder.map((id) => {
 			const definition: SetupTaskDefinition = setupTaskDefinitions[id];
-			const { getState, visible = true, ...task } = definition;
+			const { getState, getVisible, ...task } = definition;
 
 			return {
 				...task,
 				id,
-				visible,
+				visible: getVisible?.(context.value) ?? true,
 				state: getState(context.value),
 			};
 		});

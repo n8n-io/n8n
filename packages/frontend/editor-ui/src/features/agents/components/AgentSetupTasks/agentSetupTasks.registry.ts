@@ -16,6 +16,7 @@ export interface SetupContext {
 	};
 	publication: {
 		loaded: boolean;
+		canPublish: boolean;
 		activeVersionId: string | null;
 	};
 }
@@ -41,8 +42,9 @@ export interface SetupTask<TId extends string = string> {
 	};
 }
 
-export type SetupTaskDefinition = Omit<SetupTask, 'id' | 'state'> & {
+export type SetupTaskDefinition = Omit<SetupTask, 'id' | 'state' | 'visible'> & {
 	getState: (context: SetupContext) => SetupTaskState;
+	getVisible?: (context: SetupContext) => boolean;
 };
 
 /** Returns the task state after the agent configuration is available. */
@@ -106,6 +108,7 @@ export const setupTaskDefinitions = {
 	},
 	'publish-agent': {
 		titleKey: 'agents.builder.setupTasks.publishAgent',
+		getVisible: (context) => context.publication.canPublish,
 		required: false,
 		action: {
 			labelKey: 'agents.builder.setupTasks.publishAgent',

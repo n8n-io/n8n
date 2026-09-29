@@ -148,6 +148,8 @@ useKeybindings({
 	},
 });
 
+defineExpose({ publish: onPublishClick });
+
 async function onDropdownSelect(action: string) {
 	if (action === 'publish') {
 		await onPublishClick();
