@@ -25,17 +25,17 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 		super(AgentMessageEntity, dataSource.manager, transactionRunner);
 	}
 
-	async createExecutionInput(
+	async createInput(
 		params: {
-			executionId: string;
 			threadId: string;
 			resourceId: string;
 			content: AgentMessage;
+			modelContent?: AgentMessage;
 			author?: AgentMessageAuthor;
 			origin: AgentMessageOrigin;
 		},
 		ctx: OperationContext,
-	): Promise<string> {
+	): Promise<AgentMessageEntity> {
 		const manager = this.managerFor(ctx);
 		await manager
 			.createQueryBuilder()
@@ -60,17 +60,54 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			content: params.content,
 			author: params.author ?? null,
 			origin: params.origin,
-			modelContent: null,
+			modelContent:
+				params.modelContent && !isDeepStrictEqual(params.content, params.modelContent)
+					? params.modelContent
+					: null,
 			modelContextAt: null,
 		});
-		await manager.save(message);
+		return await manager.save(message);
+	}
+
+	async linkExecutionInput(
+		executionId: string,
+		messageId: string,
+		scope: { threadId: string; resourceId: string },
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		if (
+			!(await manager.existsBy(AgentMessageEntity, {
+				id: messageId,
+				threadId: scope.threadId,
+				resourceId: scope.resourceId,
+			}))
+		) {
+			throw new UnexpectedError('The input message does not belong to this session and resource');
+		}
 		await manager.insert(AgentExecutionMessageLink, {
-			executionId: params.executionId,
-			messageId: message.id,
+			executionId,
+			messageId,
 			direction: 'input',
 			position: 0,
 		});
-		return message.id;
+	}
+
+	async updatePendingInput(
+		id: string,
+		content: AgentMessage,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).save(this.create({ id, content, modelContent: null }));
+	}
+
+	async clearPendingInput(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).update(AgentMessageEntity, id, {
+			content: { role: 'user', content: [] },
+			author: null,
+			modelContent: null,
+			modelContextAt: null,
+		});
 	}
 
 	async copyExecutionInputs(
