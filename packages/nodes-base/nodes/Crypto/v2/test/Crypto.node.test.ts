@@ -614,7 +614,7 @@ describe('CryptoV2 Node', () => {
 				const encryptParams = mockEncryptParams({ mode: 'asymmetric', value: oversized });
 				delete encryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => encryptParams[name],
+					(name: string, _itemIndex, fallback) => encryptParams[name] ?? fallback,
 				);
 
 				await expect(cryptoNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
@@ -639,7 +639,7 @@ describe('CryptoV2 Node', () => {
 				const encryptParams = mockEncryptParams({ mode: 'asymmetric' });
 				delete encryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => encryptParams[name],
+					(name: string, _itemIndex, fallback) => encryptParams[name] ?? fallback,
 				);
 				const encryptResult = await cryptoNode.execute.call(mockExecuteFunctions);
 				const ciphertext = encryptResult[0][0].json.data as string;
@@ -650,7 +650,7 @@ describe('CryptoV2 Node', () => {
 				const decryptParams = mockDecryptParams(ciphertext, { mode: 'asymmetric' });
 				delete decryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => decryptParams[name],
+					(name: string, _itemIndex, fallback) => decryptParams[name] ?? fallback,
 				);
 
 				await expect(cryptoNode.execute.call(mockExecuteFunctions)).rejects.toThrow(

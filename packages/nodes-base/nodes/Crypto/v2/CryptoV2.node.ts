@@ -525,12 +525,12 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'OAEP Hash',
+			displayName: 'Hash Algorithm',
 			name: 'oaepHash',
 			type: 'options',
 			options: [
-				{ name: 'SHA-256', value: 'sha256' },
-				{ name: 'SHA-1', value: 'sha1' },
+				{ name: 'SHA256', value: 'sha256' },
+				{ name: 'SHA1', value: 'sha1' },
 			],
 			default: 'sha256',
 			description:
