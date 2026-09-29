@@ -589,8 +589,9 @@ export {
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export {
-	GetOtelSettingsQueryPublicDto,
 	OtelSettingsPublicDto,
+	OtelSettingsQueryPublicDto,
+	UpdateOtelSettingsPublicDto,
 } from './otel/otel-settings-public.dto';
 
 export {
