@@ -73,7 +73,7 @@ export function classifyHttpError(
 		if (error.hint) {
 			descriptor.hint = error.hint;
 		}
-		if (error.includeMetaInResponse !== false && error.meta) {
+		if (error.meta) {
 			descriptor.meta = error.meta;
 		}
 		return descriptor;

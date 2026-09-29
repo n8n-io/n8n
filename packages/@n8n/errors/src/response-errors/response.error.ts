@@ -12,9 +12,6 @@ export abstract class ResponseError extends BaseError {
 	 */
 	readonly meta?: Record<string, unknown>;
 
-	/** Controls whether REST responses include `meta`. */
-	readonly includeMetaInResponse?: boolean = true;
-
 	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.

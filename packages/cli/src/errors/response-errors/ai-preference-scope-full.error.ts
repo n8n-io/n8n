@@ -4,8 +4,6 @@ import { BadRequestError } from '@n8n/errors';
 
 /** The per-scope cap refused a preference write. `meta` stays out of the REST body. */
 export class AiPreferenceScopeFullError extends BadRequestError {
-	override readonly includeMetaInResponse = false;
-
 	constructor(
 		scope: AiPreferenceScope,
 		readonly meta: { limit: number; actual: number },
