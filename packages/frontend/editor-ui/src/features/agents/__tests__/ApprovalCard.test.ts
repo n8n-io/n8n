@@ -24,7 +24,7 @@ describe('ApprovalCard', () => {
 		setLanguage('en');
 	});
 
-	it('updates shared approval choices from the app locale', async () => {
+	it('updates shared approval labels from the app locale', async () => {
 		const input = parseApprovalInput({ ...approvalInput, supportsSessionApproval: true });
 		const wrapper = mountCard(input!);
 		expect(wrapper.text()).toContain('Always allow');
@@ -36,6 +36,7 @@ describe('ApprovalCard', () => {
 				['instanceAi.confirmation.alwaysAllowSuffix', 'in dieser Sitzung'],
 				['instanceAi.confirmation.approve', 'Einmal erlauben'],
 				['instanceAi.confirmation.deny', 'Ablehnen'],
+				['instanceAi.toolCall.input', 'Eingabe'],
 			]),
 		});
 		setLanguage('de');
@@ -46,6 +47,9 @@ describe('ApprovalCard', () => {
 		expect(sessionChoice.text()).toContain('in dieser Sitzung');
 		expect(wrapper.get('[data-test-id="approval-card-allow-once"]').text()).toBe('Einmal erlauben');
 		expect(wrapper.get('[data-test-id="approval-card-deny"]').text()).toBe('Ablehnen');
+		const args = wrapper.get('[data-test-id="approval-card-args"]');
+		expect(args.attributes('role')).toBe('region');
+		expect(args.element).toHaveAccessibleName('Eingabe');
 
 		setLanguage('en');
 		await nextTick();

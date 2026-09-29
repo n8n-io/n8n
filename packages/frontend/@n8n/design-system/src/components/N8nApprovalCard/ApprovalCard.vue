@@ -35,6 +35,8 @@ export interface ApprovalCardLabels {
 	allowed: string;
 	/** Label for a saved denial. */
 	denied: string;
+	/** Accessible name for the arguments region. Defaults to the title. */
+	args?: string;
 }
 
 interface ApprovalCardProps {
@@ -50,7 +52,7 @@ interface ApprovalCardProps {
 	descriptionLabel?: string;
 	/** Custom decisions. Defaults to the standard allow and deny choices. */
 	options?: readonly ApprovalOption[];
-	/** Translated text for the standard decisions and saved results. */
+	/** Translated text for the card. */
 	labels?: ApprovalCardLabels;
 	/** Add the session choice to the standard decisions. */
 	supportsSessionApproval?: boolean;
@@ -172,6 +174,8 @@ function onKeydown(event: KeyboardEvent) {
 			<div
 				v-if="formattedArgs"
 				:class="$style.description"
+				role="region"
+				:aria-label="labels.args ?? title"
 				tabindex="0"
 				data-test-id="approval-card-args"
 			>

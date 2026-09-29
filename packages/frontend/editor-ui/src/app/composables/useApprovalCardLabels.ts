@@ -11,5 +11,6 @@ export function useApprovalCardLabels() {
 		deny: i18n.baseText('instanceAi.confirmation.deny'),
 		allowed: i18n.baseText('instanceAi.confirmation.approved'),
 		denied: i18n.baseText('instanceAi.confirmation.denied'),
+		args: i18n.baseText('instanceAi.toolCall.input'),
 	}));
 }
