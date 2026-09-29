@@ -23,6 +23,7 @@ import type {
 	QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
@@ -139,7 +140,7 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
 			memory: { threadId: InternalThread; resourceId: string };
 		},
-	): AsyncGenerator<StreamChunk>;
+	): AsyncGenerator<AgentExecutionStreamChunk>;
 
 	/** An open approval prevents automatic session rotation. */
 	findOpenSuspension?(config: {
@@ -505,7 +506,7 @@ export class AgentChatBridge {
 
 	async deliverWakeResponse(
 		threadId: string,
-		chunks: StreamChunk[],
+		chunks: AgentExecutionStreamChunk[],
 		cardRecipientId?: string,
 	): Promise<void> {
 		await this.streamConsumer.consume(

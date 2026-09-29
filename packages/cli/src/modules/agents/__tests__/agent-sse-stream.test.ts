@@ -4,6 +4,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
 import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -118,18 +119,27 @@ describe('agent-sse-stream — connection setup', () => {
 		expect(res.write).not.toHaveBeenCalled();
 	});
 
-	it.each([null, 'progress'])('keeps delivery open after custom message data is %j', (data) => {
+	it('sends a steered message and keeps delivery open for the next chunk', () => {
 		const { res } = createResponse();
 		const { onChunk, abortSignal, close } = initSseStream(res);
+		const event: SteeredMessageEvent = {
+			type: 'message-steered',
+			queueId: '2',
+			executionId: 'execution-1',
+			message: {
+				id: 'message-2',
+				role: 'user',
+				content: [{ type: 'text', text: 'Use the second option.' }],
+				createdAt: '2026-09-29T11:00:00.000Z',
+			},
+		};
 
-		onChunk({
-			type: 'message',
-			message: { type: 'custom', data },
-		} as unknown as StreamChunk);
+		onChunk(event);
 		onChunk({ type: 'text-delta', id: 't-1', delta: 'hello' });
 
 		expect(abortSignal.aborted).toBe(false);
 		expect(res.end).not.toHaveBeenCalled();
+		expect(res.write).toHaveBeenCalledWith(`data: ${JSON.stringify(event)}\n\n`);
 		expect(res.write).toHaveBeenCalledWith(
 			'data: {"type":"text-delta","id":"t-1","delta":"hello"}\n\n',
 		);

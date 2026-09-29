@@ -9,6 +9,8 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
+
 export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -56,7 +58,7 @@ export function initSseStream(res: FlushableResponse) {
 		write(`data: ${JSON.stringify(event)}\n\n`);
 	};
 
-	const onChunk = (chunk: StreamChunk) => {
+	const onChunk = (chunk: AgentExecutionStreamChunk) => {
 		if (abortController.signal.aborted) return;
 		try {
 			emitChunkEvents(chunk, send);
@@ -212,8 +214,14 @@ function emitToolChunk(
 /**
  * Translate a single chunk into one or more SSE events.
  */
-export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent) => void): void {
+export function emitChunkEvents(
+	chunk: AgentExecutionStreamChunk,
+	send: (event: AgentSseEvent) => void,
+): void {
 	switch (chunk.type) {
+		case 'message-steered':
+			send(chunk);
+			return;
 		case 'start-step':
 			send({ type: 'start-step' });
 			return;
@@ -238,16 +246,6 @@ export function emitChunkEvents(chunk: StreamChunk, send: (event: AgentSseEvent)
 			emitToolChunk(chunk, send);
 			return;
 		case 'message': {
-			if (
-				chunk.message.type === 'custom' &&
-				typeof chunk.message.data === 'object' &&
-				chunk.message.data !== null &&
-				'type' in chunk.message.data &&
-				chunk.message.data.type === 'message-steered'
-			) {
-				send(chunk.message.data);
-				return;
-			}
 			const sseMessage = toAgentSseMessage(chunk.message);
 			if (sseMessage) send({ type: 'message', message: sseMessage });
 			return;

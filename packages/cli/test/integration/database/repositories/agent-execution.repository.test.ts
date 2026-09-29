@@ -3,12 +3,7 @@ import type {
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
-import {
-	Agent as RuntimeAgent,
-	Tool,
-	type SerializableAgentState,
-	type StreamChunk,
-} from '@n8n/agents';
+import { Agent as RuntimeAgent, Tool, type SerializableAgentState } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
 import { UserRepository, type OperationContext, type User } from '@n8n/db';
@@ -45,6 +40,7 @@ import { AgentExecutionService } from '@/modules/agents/agent-execution.service'
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
+import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -308,8 +304,8 @@ describe('AgentExecutionRepository', () => {
 		return spy;
 	}
 
-	async function collect(stream: AsyncIterable<StreamChunk>) {
-		const chunks: StreamChunk[] = [];
+	async function collect(stream: AsyncIterable<AgentExecutionStreamChunk>) {
+		const chunks: AgentExecutionStreamChunk[] = [];
 		for await (const chunk of stream) chunks.push(chunk);
 		return chunks;
 	}
@@ -1248,21 +1244,17 @@ describe('AgentExecutionRepository', () => {
 							}),
 						}),
 					);
-					expect(chunks).toContainEqual({
-						type: 'message',
-						message: {
-							type: 'custom',
-							data: expect.objectContaining({
-								type: 'message-steered',
-								queueId: c.id,
-								executionId,
-								message: expect.objectContaining({
-									id: c.messageId,
-									content: [{ type: 'text', text: 'C' }],
-								}),
+					expect(chunks).toContainEqual(
+						expect.objectContaining({
+							type: 'message-steered',
+							queueId: c.id,
+							executionId,
+							message: expect.objectContaining({
+								id: c.messageId,
+								content: [{ type: 'text', text: 'C' }],
 							}),
-						},
-					});
+						}),
+					);
 					expect(await repository.findOneByOrFail({ id: executionId })).toMatchObject({
 						status: 'success',
 						acceptsSteering: false,

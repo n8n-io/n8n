@@ -42,6 +42,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -278,8 +279,8 @@ function makeService(sandboxEnabled = false) {
 	};
 }
 
-async function collect(generator: AsyncGenerator<StreamChunk>) {
-	const chunks: StreamChunk[] = [];
+async function collect(generator: AsyncGenerator<AgentExecutionStreamChunk>) {
+	const chunks: AgentExecutionStreamChunk[] = [];
 	for await (const chunk of generator) chunks.push(chunk);
 	return chunks;
 }

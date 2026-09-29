@@ -18,7 +18,7 @@ import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
-import type { SteeredMessageEvent } from './types/agent-steering';
+import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
 	AgentExecutionService,
@@ -122,7 +122,7 @@ export class AgentTurnExecutionService {
 		return await this.agentExecutionService.getSessionMode(threadId);
 	}
 
-	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
+	async *execute(config: ExecuteTurnConfig): AsyncGenerator<AgentExecutionStreamChunk> {
 		let turn: AgentTurnRequest | undefined;
 		let previewControl: PreviewExecutionControl | undefined;
 		const state: TurnExecutionState = {
@@ -213,7 +213,7 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
 		for await (const value of streamAgentChunks(stream)) {
@@ -225,7 +225,7 @@ export class AgentTurnExecutionService {
 				const event = state.steeredMessages.get(value.message.id);
 				if (event) {
 					state.steeredMessages.delete(value.message.id);
-					yield { type: 'message', message: { type: 'custom', data: event } };
+					yield event;
 				}
 				continue;
 			}
