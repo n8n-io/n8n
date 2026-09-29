@@ -11,14 +11,13 @@ import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import type { AuthFetchDomainPolicy } from '@/utils/auth-fetch';

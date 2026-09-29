@@ -1,8 +1,7 @@
 import type { McpRegistryDiscoveryResponse } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
 import { McpRegistryController } from '../mcp-registry.controller';
