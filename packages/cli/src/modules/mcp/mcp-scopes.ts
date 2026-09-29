@@ -63,6 +63,13 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
+		// Session-log reads. Deliberately not riding along on agent:write or
+		// agent:execute: session logs expose conversations from every channel
+		// (Slack, schedules, other project members), so only an explicit read
+		// grant may see them. The build-verify loop needs agent:read anyway.
+		'search_agent_sessions',
+		'get_agent_session',
+		'get_agent_execution',
 	],
 	// The read tools ride along on a write-only grant: mutate_agent's
 	// configHash handshake starts at get_agent, and building needs search

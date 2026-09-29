@@ -41,6 +41,24 @@ function isSoftFailure(event: Extract<TimelineEvent, { type: 'tool-call' }>): bo
 	);
 }
 
+/**
+ * True when a closed tool-call event counts as a failure. Covers hard
+ * failures (`success: false`) and soft failures (a workflow tool or sub-agent
+ * delegation that reported an error in its output). Declined approvals are
+ * not failures. Keep every failure filter on this predicate so views cannot
+ * drift from the failure summary.
+ */
+export function isFailedToolCallEvent(
+	event: TimelineEvent,
+): event is Extract<TimelineEvent, { type: 'tool-call' }> {
+	return (
+		event.type === 'tool-call' &&
+		event.endTime !== 0 &&
+		!isDeclinedToolOutput(event.output) &&
+		(!event.success || isSoftFailure(event))
+	);
+}
+
 export function computeExecutionFailureSummary({
 	timeline,
 	status,
@@ -61,14 +79,7 @@ export function computeExecutionFailureSummary({
 	};
 
 	for (const event of timeline) {
-		if (
-			event.type !== 'tool-call' ||
-			event.endTime === 0 ||
-			isDeclinedToolOutput(event.output) ||
-			(event.success && !isSoftFailure(event))
-		) {
-			continue;
-		}
+		if (!isFailedToolCallEvent(event)) continue;
 
 		addFailure({
 			kind: event.kind,

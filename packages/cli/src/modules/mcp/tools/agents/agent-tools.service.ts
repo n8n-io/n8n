@@ -8,6 +8,8 @@ import {
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_MODEL_PROVIDERS,
+	AGENT_SESSION_ORIGINS,
+	AGENT_SESSION_STATUSES,
 	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
@@ -32,6 +34,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
@@ -56,6 +59,7 @@ import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import { isFailedToolCallEvent } from '@/modules/agents/utils/execution-failure-summary';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -71,6 +75,12 @@ import {
 	AGENT_BUILDER_REFERENCE_URI,
 	AGENT_CONFIG_JSON_SCHEMA,
 } from './agent-reference';
+import {
+	DEFAULT_TIMELINE_EVENT_CHAR_BUDGET,
+	toExecutionSummary,
+	toSessionSummary,
+	truncateTimeline,
+} from './agent-session-log.utils';
 import {
 	MCP_CALL_AGENT_TOOL_NAME,
 	MCP_CREATE_AGENT_TOOL_NAME,
@@ -188,6 +198,77 @@ const listAgentVersionsInput = {
 	...agentIdentityShape,
 	limit: z.number().int().min(1).max(100).optional().default(20),
 	offset: z.number().int().min(0).optional().default(0),
+} satisfies z.ZodRawShape;
+
+const searchAgentSessionsInput = {
+	...agentIdentityShape,
+	status: z.enum(AGENT_SESSION_STATUSES).optional().describe('Filter by session status'),
+	origin: z
+		.enum(AGENT_SESSION_ORIGINS)
+		.optional()
+		.describe('Filter by the channel that started the session, e.g. mcp, slack, schedule'),
+	updatedAfter: z
+		.string()
+		.datetime({ offset: true })
+		.optional()
+		.describe('Only sessions updated after this ISO 8601 time'),
+	updatedBefore: z
+		.string()
+		.datetime({ offset: true })
+		.optional()
+		.describe('Only sessions updated before this ISO 8601 time'),
+	limit: z.number().int().min(1).max(100).optional().default(20),
+	cursor: z.string().optional().describe('nextCursor from the previous page; treat it as opaque'),
+} satisfies z.ZodRawShape;
+
+const getAgentSessionInput = {
+	...agentIdentityShape,
+	sessionId: z
+		.string()
+		.min(1)
+		.describe(
+			'Session ID — the sessionId returned by call_agent, or an id from search_agent_sessions',
+		),
+	limit: z
+		.number()
+		.int()
+		.min(1)
+		.max(100)
+		.optional()
+		.default(20)
+		.describe('Executions per page, newest first'),
+	cursor: z.string().optional().describe('nextCursor from the previous page; treat it as opaque'),
+} satisfies z.ZodRawShape;
+
+const getAgentExecutionInput = {
+	...agentIdentityShape,
+	sessionId: z.string().min(1).describe('Session the execution belongs to'),
+	executionId: z
+		.string()
+		.min(1)
+		.describe('Execution ID — returned by call_agent or listed by get_agent_session'),
+	includeTimeline: z
+		.boolean()
+		.optional()
+		.default(false)
+		.describe(
+			'Include the timeline: text, reasoning, and tool calls with inputs and outputs. Off by default so a status check stays cheap',
+		),
+	failedToolsOnly: z
+		.boolean()
+		.optional()
+		.default(false)
+		.describe(
+			'With includeTimeline, return only failed tool calls — hard failures and soft failures such as a workflow tool whose run errored',
+		),
+	truncate: z
+		.number()
+		.int()
+		.min(1)
+		.optional()
+		.describe(
+			`Character cap per timeline event value. Defaults to ${DEFAULT_TIMELINE_EVENT_CHAR_BUDGET}. Raise it to see full payloads`,
+		),
 } satisfies z.ZodRawShape;
 
 const searchAgentsInput = {
@@ -378,6 +459,9 @@ const callAgentInput = {
 const emptyInput = {} satisfies z.ZodRawShape;
 
 type SearchAgentsInput = z.infer<z.ZodObject<typeof searchAgentsInput>>;
+type SearchAgentSessionsInput = z.infer<z.ZodObject<typeof searchAgentSessionsInput>>;
+type GetAgentSessionInput = z.infer<z.ZodObject<typeof getAgentSessionInput>>;
+type GetAgentExecutionInput = z.infer<z.ZodObject<typeof getAgentExecutionInput>>;
 type CreateAgentInput = z.infer<z.ZodObject<typeof createAgentInput>>;
 type MutateAgentInput = z.infer<z.ZodObject<typeof mutateAgentInput>>;
 type DiscoverAssetsInput = z.infer<z.ZodObject<typeof discoverAssetsInput>>;
@@ -410,6 +494,7 @@ export class McpAgentToolsService {
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentTestRunService: AgentTestRunService,
+		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentSecureRuntime: AgentSecureRuntime,
 		private readonly integrationPersistenceService: AgentIntegrationPersistenceService,
@@ -454,6 +539,9 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.unpublishAgentTool(user));
 		registerIfAllowed(this.revertAgentTool(user));
 		registerIfAllowed(this.listAgentVersionsTool(user));
+		registerIfAllowed(this.searchAgentSessionsTool(user));
+		registerIfAllowed(this.getAgentSessionTool(user));
+		registerIfAllowed(this.getAgentExecutionTool(user));
 		registerIfAllowed(this.deleteAgentTool(user));
 		registerIfAllowed(this.discoverAssetsTool(user));
 		registerIfAllowed(this.verifyMcpServerTool(user));
@@ -901,6 +989,167 @@ export class McpAgentToolsService {
 					);
 					return { ok: true, data: versions, count: versions.length };
 				}),
+		};
+	}
+
+	private searchAgentSessionsTool(user: User): ToolDefinition<typeof searchAgentSessionsInput> {
+		return {
+			name: 'search_agent_sessions',
+			config: {
+				description:
+					"List an Agent's sessions (conversations), newest first. Each row carries status, origin, and a failure summary. Filter origin mcp with status error to find failed MCP test runs. Use get_agent_session to read one session.",
+				inputSchema: searchAgentSessionsInput,
+				annotations: {
+					title: 'Search Agent Sessions',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async (input: SearchAgentSessionsInput) =>
+				await this.run(
+					user,
+					'search_agent_sessions',
+					{
+						agentId: input.agentId,
+						...(input.status ? { status: input.status } : {}),
+						...(input.origin ? { origin: input.origin } : {}),
+					},
+					async () => {
+						const agent = await this.resolveAgent(user, input.agentId);
+						await this.assertScope(user, agent.projectId, 'agent:read');
+						const { threads, nextCursor } = await this.agentExecutionService.getThreads(
+							agent.projectId,
+							input.agentId,
+							user.id,
+							input.limit,
+							input.cursor,
+							{
+								...(input.status ? { status: input.status } : {}),
+								...(input.origin ? { origin: input.origin } : {}),
+								...(input.updatedAfter ? { updatedAfter: new Date(input.updatedAfter) } : {}),
+								...(input.updatedBefore ? { updatedBefore: new Date(input.updatedBefore) } : {}),
+							},
+						);
+						const data = threads.map((thread) => ({
+							sessionId: thread.id,
+							title: thread.title,
+							status: thread.status,
+							source: thread.source,
+							firstMessage: thread.firstMessage,
+							failureSummary: thread.failureSummary,
+							taskId: thread.taskId,
+							createdAt: thread.createdAt.toISOString(),
+							updatedAt: thread.updatedAt.toISOString(),
+						}));
+						return { ok: true, data, count: data.length, nextCursor };
+					},
+				),
+		};
+	}
+
+	private getAgentSessionTool(user: User): ToolDefinition<typeof getAgentSessionInput> {
+		return {
+			name: 'get_agent_session',
+			config: {
+				description:
+					"Read one session: its metadata plus a page of execution summaries, newest first. Summaries carry status, error, and failure summary, but no timeline. Use get_agent_execution to read one execution's timeline.",
+				inputSchema: getAgentSessionInput,
+				annotations: {
+					title: 'Get Agent Session',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, sessionId, limit, cursor }: GetAgentSessionInput) =>
+				await this.run(user, 'get_agent_session', { agentId, sessionId }, async () => {
+					const agent = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, agent.projectId, 'agent:read');
+					const page = await this.agentExecutionService.getSessionExecutionsPage(
+						sessionId,
+						agent.projectId,
+						agentId,
+						user.id,
+						limit,
+						cursor,
+					);
+					if (!page) throw new UserError(`Session "${sessionId}" not found`);
+					return {
+						ok: true,
+						session: toSessionSummary(page.thread),
+						executions: page.executions.map(toExecutionSummary),
+						count: page.executions.length,
+						nextCursor: page.nextCursor,
+					};
+				}),
+		};
+	}
+
+	private getAgentExecutionTool(user: User): ToolDefinition<typeof getAgentExecutionInput> {
+		return {
+			name: 'get_agent_execution',
+			config: {
+				description:
+					'Read one execution of a session. Returns metadata by default; set includeTimeline for the step-by-step timeline: text, reasoning, and tool calls with inputs, outputs, and success flags. Timeline tool calls of kind workflow carry a workflowExecutionId that get_workflow_execution accepts. Use failedToolsOnly to debug a failing run.',
+				inputSchema: getAgentExecutionInput,
+				annotations: {
+					title: 'Get Agent Execution',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async (input: GetAgentExecutionInput) =>
+				await this.run(
+					user,
+					'get_agent_execution',
+					{
+						agentId: input.agentId,
+						sessionId: input.sessionId,
+						executionId: input.executionId,
+						includeTimeline: input.includeTimeline,
+					},
+					async () => {
+						const agent = await this.resolveAgent(user, input.agentId);
+						await this.assertScope(user, agent.projectId, 'agent:read');
+						const execution = await this.agentExecutionService.getExecutionDetail(
+							input.sessionId,
+							agent.projectId,
+							input.agentId,
+							user.id,
+							input.executionId,
+						);
+						if (!execution) {
+							throw new UserError(
+								`Execution "${input.executionId}" not found in session "${input.sessionId}"`,
+							);
+						}
+						const summary = toExecutionSummary(execution);
+						if (!input.includeTimeline) return { ok: true, execution: summary };
+
+						const allEvents = execution.timeline ?? [];
+						const events = input.failedToolsOnly
+							? allEvents.filter(isFailedToolCallEvent)
+							: allEvents;
+						const { timeline, truncated } = truncateTimeline(
+							events,
+							input.truncate ?? DEFAULT_TIMELINE_EVENT_CHAR_BUDGET,
+						);
+						return {
+							ok: true,
+							execution: summary,
+							timeline,
+							timelineEventCount: allEvents.length,
+							...(truncated
+								? { truncated: true, hint: 'Event payloads were cut. Raise truncate to see more.' }
+								: {}),
+						};
+					},
+				),
 		};
 	}
 

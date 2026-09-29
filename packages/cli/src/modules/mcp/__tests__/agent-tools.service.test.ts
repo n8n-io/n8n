@@ -30,6 +30,7 @@ import type { EventService } from '@/events/event.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
@@ -131,6 +132,7 @@ describe('McpAgentToolsService', () => {
 	const agentSkillsService = mockInstance(AgentSkillsService);
 	const agentTaskService = mockInstance(AgentTaskService);
 	const agentTestRunService = mockInstance(AgentTestRunService);
+	const agentExecutionService = mockInstance(AgentExecutionService);
 	const agentCustomToolsService = mockInstance(AgentCustomToolsService);
 	const agentSecureRuntime = mockInstance(AgentSecureRuntime);
 	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
@@ -150,6 +152,7 @@ describe('McpAgentToolsService', () => {
 		agentSkillsService,
 		agentTaskService,
 		agentTestRunService,
+		agentExecutionService,
 		agentCustomToolsService,
 		agentSecureRuntime,
 		integrationPersistenceService,
@@ -265,11 +268,14 @@ describe('McpAgentToolsService', () => {
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
+					'get_agent_execution',
+					'get_agent_session',
 					'list_agent_versions',
 					'mutate_agent',
 					'publish_agent',
 					'revert_agent',
 					'search_agents',
+					'search_agent_sessions',
 					'unpublish_agent',
 					'update_agent_integration',
 					'validate_agent',
@@ -377,6 +383,13 @@ describe('McpAgentToolsService', () => {
 			['unpublish_agent', 'agent:unpublish', identity],
 			['revert_agent', 'agent:update', identity],
 			['list_agent_versions', 'agent:read', identity],
+			['search_agent_sessions', 'agent:read', identity],
+			['get_agent_session', 'agent:read', { ...identity, sessionId: 'thread-1' }],
+			[
+				'get_agent_execution',
+				'agent:read',
+				{ ...identity, sessionId: 'thread-1', executionId: 'exec-1' },
+			],
 			['delete_agent', 'agent:delete', identity],
 			['discover_agent_assets', 'agent:read', { projectId: 'project-1', kind: 'models' }],
 			[
@@ -427,6 +440,9 @@ describe('McpAgentToolsService', () => {
 			['unpublish_agent', identity],
 			['revert_agent', identity],
 			['list_agent_versions', identity],
+			['search_agent_sessions', identity],
+			['get_agent_session', { ...identity, sessionId: 'thread-1' }],
+			['get_agent_execution', { ...identity, sessionId: 'thread-1', executionId: 'exec-1' }],
 			['delete_agent', identity],
 			[
 				'update_agent_integration',
@@ -1582,6 +1598,347 @@ describe('McpAgentToolsService', () => {
 				0,
 			);
 			expect(result.structuredContent).toEqual({ ok: true, data: versions, count: 1 });
+		});
+	});
+
+	describe('search_agent_sessions', () => {
+		it('lists sessions and converts date filters for the service', async () => {
+			const failureSummary = {
+				count: 1,
+				latest: {
+					kind: 'tool',
+					name: 'fetch',
+					message: 'boom',
+					occurredAt: 2,
+					executionId: 'exec-1',
+				},
+			};
+			agentExecutionService.getThreads.mockResolvedValue({
+				threads: [
+					{
+						id: 'thread-1',
+						title: 'Debug run',
+						status: 'error',
+						source: 'mcp',
+						firstMessage: 'Hi',
+						failureSummary,
+						taskId: null,
+						createdAt: new Date('2026-01-01T00:00:00.000Z'),
+						updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+					},
+				],
+				nextCursor: 'cursor-1',
+			} as never);
+
+			const result = await callTool('search_agent_sessions', {
+				agentId: 'agent-1',
+				status: 'error',
+				origin: 'mcp',
+				updatedAfter: '2026-01-01T00:00:00.000Z',
+				limit: 20,
+			});
+
+			expect(agentExecutionService.getThreads).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				'user-1',
+				20,
+				undefined,
+				{
+					status: 'error',
+					origin: 'mcp',
+					updatedAfter: new Date('2026-01-01T00:00:00.000Z'),
+				},
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				count: 1,
+				nextCursor: 'cursor-1',
+				data: [
+					{
+						sessionId: 'thread-1',
+						title: 'Debug run',
+						status: 'error',
+						source: 'mcp',
+						firstMessage: 'Hi',
+						failureSummary,
+						taskId: null,
+						createdAt: '2026-01-01T00:00:00.000Z',
+						updatedAt: '2026-01-02T00:00:00.000Z',
+					},
+				],
+			});
+		});
+	});
+
+	describe('get_agent_session', () => {
+		const thread = {
+			id: 'thread-1',
+			title: 'Debug run',
+			taskId: null,
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+			totalPromptTokens: 10,
+			totalCompletionTokens: 5,
+			totalCost: 0.1,
+			totalDuration: 1200,
+		};
+		const execution = {
+			id: 'exec-1',
+			status: 'error',
+			startedAt: new Date('2026-01-01T00:00:00.000Z'),
+			stoppedAt: new Date('2026-01-01T00:00:05.000Z'),
+			duration: 5000,
+			model: 'anthropic/claude',
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.1,
+			error: 'boom',
+			failureSummary: null,
+			hitlStatus: null,
+			source: 'mcp',
+			userMessage: 'Hi',
+		};
+
+		it('returns execution summaries without timelines', async () => {
+			agentExecutionService.getSessionExecutionsPage.mockResolvedValue({
+				thread,
+				executions: [execution],
+				nextCursor: null,
+			} as never);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				limit: 20,
+			});
+
+			expect(agentExecutionService.getSessionExecutionsPage).toHaveBeenCalledWith(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				20,
+				undefined,
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				session: {
+					sessionId: 'thread-1',
+					title: 'Debug run',
+					taskId: null,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					totals: { promptTokens: 10, completionTokens: 5, cost: 0.1, duration: 1200 },
+				},
+				executions: [
+					{
+						executionId: 'exec-1',
+						status: 'error',
+						startedAt: '2026-01-01T00:00:00.000Z',
+						stoppedAt: '2026-01-01T00:00:05.000Z',
+						duration: 5000,
+						model: 'anthropic/claude',
+						promptTokens: 10,
+						completionTokens: 5,
+						totalTokens: 15,
+						cost: 0.1,
+						error: 'boom',
+						failureSummary: null,
+						hitlStatus: null,
+						source: 'mcp',
+						userMessage: 'Hi',
+					},
+				],
+				count: 1,
+				nextCursor: null,
+			});
+		});
+
+		it('reports an out-of-scope session as not found', async () => {
+			agentExecutionService.getSessionExecutionsPage.mockResolvedValue(null);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'other-thread',
+				limit: 20,
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				error: expect.stringContaining('not found'),
+			});
+		});
+	});
+
+	describe('get_agent_execution', () => {
+		const toolCall = (overrides: Record<string, unknown> = {}) => ({
+			type: 'tool-call',
+			kind: 'tool',
+			name: 'fetch',
+			toolCallId: 'call-1',
+			input: { url: 'https://x.test' },
+			output: { ok: true },
+			startTime: 1,
+			endTime: 2,
+			success: true,
+			...overrides,
+		});
+		const executionRow = (timeline: unknown[]) =>
+			({
+				id: 'exec-1',
+				status: 'success',
+				startedAt: new Date('2026-01-01T00:00:00.000Z'),
+				stoppedAt: new Date('2026-01-01T00:00:05.000Z'),
+				duration: 5000,
+				model: 'anthropic/claude',
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+				cost: 0.1,
+				error: null,
+				failureSummary: null,
+				hitlStatus: null,
+				source: 'mcp',
+				userMessage: 'Hi',
+				timeline,
+			}) as never;
+
+		it('returns metadata only by default', async () => {
+			agentExecutionService.getExecutionDetail.mockResolvedValue(
+				executionRow([toolCall(), { type: 'text', content: 'Done', timestamp: 3 }]),
+			);
+
+			const result = await callTool('get_agent_execution', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				executionId: 'exec-1',
+				includeTimeline: false,
+				failedToolsOnly: false,
+			});
+
+			expect(agentExecutionService.getExecutionDetail).toHaveBeenCalledWith(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				'exec-1',
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				execution: expect.objectContaining({ executionId: 'exec-1', status: 'success' }),
+			});
+		});
+
+		it('filters the timeline to hard and soft failures with failedToolsOnly', async () => {
+			const hardFailure = toolCall({
+				toolCallId: 'call-2',
+				success: false,
+				output: { error: 'boom' },
+			});
+			const softFailure = toolCall({
+				toolCallId: 'call-3',
+				kind: 'workflow',
+				success: true,
+				output: { status: 'error' },
+			});
+			const declined = toolCall({
+				toolCallId: 'call-4',
+				success: false,
+				output: { declined: true },
+			});
+			agentExecutionService.getExecutionDetail.mockResolvedValue(
+				executionRow([
+					{ type: 'text', content: 'Working', timestamp: 1 },
+					toolCall(),
+					hardFailure,
+					softFailure,
+					declined,
+				]),
+			);
+
+			const result = await callTool('get_agent_execution', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				executionId: 'exec-1',
+				includeTimeline: true,
+				failedToolsOnly: true,
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				timeline: [
+					expect.objectContaining({ toolCallId: 'call-2' }),
+					expect.objectContaining({ toolCallId: 'call-3' }),
+				],
+				timelineEventCount: 5,
+			});
+		});
+
+		it('truncates oversized event payloads and says so', async () => {
+			const longText = 'a'.repeat(3000);
+			agentExecutionService.getExecutionDetail.mockResolvedValue(
+				executionRow([{ type: 'text', content: longText, timestamp: 1 }]),
+			);
+
+			const result = await callTool('get_agent_execution', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				executionId: 'exec-1',
+				includeTimeline: true,
+				failedToolsOnly: false,
+			});
+
+			const { timeline, truncated, hint } = result.structuredContent as {
+				timeline: Array<{ content: string }>;
+				truncated: boolean;
+				hint: string;
+			};
+			expect(truncated).toBe(true);
+			expect(hint).toContain('truncate');
+			expect(timeline[0].content).toHaveLength(2000 + '… [truncated 1000 chars]'.length);
+			expect(timeline[0].content.endsWith('… [truncated 1000 chars]')).toBe(true);
+		});
+
+		it('honours a caller-supplied truncate budget', async () => {
+			agentExecutionService.getExecutionDetail.mockResolvedValue(
+				executionRow([toolCall({ output: { blob: 'b'.repeat(500) } })]),
+			);
+
+			const result = await callTool('get_agent_execution', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				executionId: 'exec-1',
+				includeTimeline: true,
+				failedToolsOnly: false,
+				truncate: 100,
+			});
+
+			const { timeline } = result.structuredContent as {
+				timeline: Array<{ output: string }>;
+			};
+			expect(typeof timeline[0].output).toBe('string');
+			expect(timeline[0].output).toContain('… [truncated');
+		});
+
+		it('reports a missing execution as not found', async () => {
+			agentExecutionService.getExecutionDetail.mockResolvedValue(null);
+
+			const result = await callTool('get_agent_execution', {
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				executionId: 'missing',
+				includeTimeline: false,
+				failedToolsOnly: false,
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				error: expect.stringContaining('not found'),
+			});
 		});
 	});
 

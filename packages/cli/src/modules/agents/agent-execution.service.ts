@@ -121,6 +121,12 @@ export interface ThreadDetail {
 	executions: AgentExecution[];
 }
 
+export interface SessionExecutionsPage {
+	thread: AgentExecutionThread;
+	executions: AgentExecution[];
+	nextCursor: string | null;
+}
+
 export interface ThreadListItem
 	extends Omit<
 			AgentExecutionThread,
@@ -823,6 +829,60 @@ export class AgentExecutionService {
 			const entry = entries.get(execution.id);
 			if (entry) execution.timeline = entry.timeline;
 		}
+	}
+
+	/**
+	 * One page of a session's executions, newest first, without timelines.
+	 * Timelines stay unloaded so summary reads never touch the timeline column
+	 * or blob storage; use {@link getExecutionDetail} for one timeline.
+	 * Returns null when the thread is out of the caller's scope.
+	 */
+	async getSessionExecutionsPage(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		limit: number,
+		cursor?: string,
+	): Promise<SessionExecutionsPage | null> {
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
+
+		const before = cursor ? new Date(cursor) : undefined;
+		const executions = await this.agentExecutionRepository.findSummaryPageByThreadId(
+			threadId,
+			limit + 1,
+			before,
+		);
+		const hasMore = executions.length > limit;
+		if (hasMore) executions.pop();
+		await this.hydrateExecutionInputs(executions, thread.agentName);
+		return {
+			thread,
+			executions,
+			nextCursor: hasMore ? executions[executions.length - 1].createdAt.toISOString() : null,
+		};
+	}
+
+	/**
+	 * One execution of a session with its timeline hydrated — from the row for
+	 * `db` storage, from the blob store otherwise. Returns null when the thread
+	 * is out of the caller's scope or the execution is not part of it.
+	 */
+	async getExecutionDetail(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		executionId: string,
+	): Promise<AgentExecution | null> {
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
+		const execution = await this.agentExecutionRepository.findByIdInThread(executionId, threadId);
+		if (!execution) return null;
+		await this.hydrateExecutionInputs([execution], thread.agentName);
+		await this.hydrateTimelines(agentId, threadId, [execution]);
+		return execution;
 	}
 
 	/**
