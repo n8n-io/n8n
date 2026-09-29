@@ -2796,7 +2796,12 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: await credentialsService.decryptForUse(credential, { kind: 'user', user }),
+					// Judged where the thread uses it, like a run in that project would be.
+					data: await credentialsService.decryptForUse(
+						credential,
+						{ kind: 'user', user },
+						boundProjectId,
+					),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);

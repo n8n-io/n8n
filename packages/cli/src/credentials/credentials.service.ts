@@ -2375,11 +2375,13 @@ export class CredentialsService {
 	}): Promise<ICredentialsDecrypted> {
 		// Find the owning project to prevent leakage of other project data.
 		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
-		const decryptedData = await this.decryptForUse(
-			storedCredential,
-			{ kind: 'user', user },
-			owningProject?.id ?? null,
-		);
+		const actor: PolicyActor = { kind: 'user', user };
+		const projectId = owningProject?.id ?? null;
+		// The tester picks the provider test from the posted type, so that type must clear too.
+		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
+			await this.enforceCredentialUse(credentialsToTest, actor, projectId);
+		}
+		const decryptedData = await this.decryptForUse(storedCredential, actor, projectId);
 		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
 			? deepCopy(credentialsToTest)
 			: {

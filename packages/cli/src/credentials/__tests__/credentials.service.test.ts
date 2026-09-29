@@ -1186,12 +1186,12 @@ describe('CredentialsService', () => {
 
 		it('does not decrypt when the policy refuses', async () => {
 			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValue(credentialUseRefusal());
-			const getData = vi.spyOn(Credentials.prototype, 'getData');
+			const decrypt = vi.spyOn(service, 'decrypt');
 
 			await expect(service.decryptForUse(storedCredential, ownerActor, null)).rejects.toThrow(
 				PolicyViolationError,
 			);
-			expect(getData).not.toHaveBeenCalled();
+			expect(decrypt).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2058,6 +2058,26 @@ describe('CredentialsService', () => {
 					id: 'credential-id',
 					name: 'GitHub account',
 					type: 'githubApi',
+					data: {},
+				}),
+			).rejects.toThrow(PolicyViolationError);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('also judges the posted type when it differs from the stored one', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'credential-id', type: 'githubApi' }),
+			);
+			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async (context) => {
+				if (context.credentialType === 'slackApi') throw credentialUseRefusal();
+				return mock<PolicyCleared<'credentialDecrypt'>>();
+			});
+
+			await expect(
+				service.testWithCredentials(ownerUser, {
+					id: 'credential-id',
+					name: 'GitHub account',
+					type: 'slackApi',
 					data: {},
 				}),
 			).rejects.toThrow(PolicyViolationError);

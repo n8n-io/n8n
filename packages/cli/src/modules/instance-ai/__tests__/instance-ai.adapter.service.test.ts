@@ -7854,10 +7854,28 @@ describe('createCredentialAdapter', () => {
 				success: true,
 				message: 'ok',
 			});
-			expect(decryptForUse).toHaveBeenCalledWith(storedCredential, {
-				kind: 'user',
-				user: mockUser,
+			expect(decryptForUse).toHaveBeenCalledWith(
+				storedCredential,
+				{ kind: 'user', user: mockUser },
+				undefined,
+			);
+		});
+
+		it('judges the policy on the project the thread is bound to', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({});
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { service, mockUser } = adapterWith(decryptForUse, test);
+			const { credentialService } = service.createContext(mockUser, {
+				projectId: 'team-project-1',
 			});
+
+			await credentialService.test('cred-1');
+
+			expect(decryptForUse).toHaveBeenCalledWith(
+				storedCredential,
+				{ kind: 'user', user: mockUser },
+				'team-project-1',
+			);
 		});
 
 		it('does not run the test when the policy refuses the decrypt', async () => {

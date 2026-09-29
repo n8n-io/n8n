@@ -118,6 +118,20 @@ describe('a credential of a type an instance policy blocks', () => {
 		expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
 	});
 
+	test('POST /credentials/test is refused when the posted type is the blocked one', async () => {
+		const credential = await saveGithubCredential({ user: owner });
+		await putCredentialTypePolicy(ownerAgent, null, {
+			rules: [denyRule('deny-header-auth', 'httpHeaderAuth')],
+		});
+
+		const response = await ownerAgent.post('/credentials/test').send({
+			credentials: { id: credential.id, name: credential.name, type: 'httpHeaderAuth', data: {} },
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
 	test('an unsaved instance credential test is refused', async () => {
 		await denyGithub(null);
 
