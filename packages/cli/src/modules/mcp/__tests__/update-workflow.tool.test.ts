@@ -2075,6 +2075,24 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
+			// Ref: ADO-5928. Error workflow references must respect MCP availability.
+			test('rejects an error workflow that is not available in MCP', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { settings: { availableInMCP: false } })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain('not available in MCP');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('rejects when the error workflow is not found or inaccessible', async () => {
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1' ? buildExistingWorkflow() : null,
