@@ -6,8 +6,10 @@ import type {
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
-/** Tool calls that are internal bookkeeping and should not be shown to the user. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+/** Tool calls that are internal bookkeeping and should not be shown to the user.
+ *  `leave-onboarding` ends the turn right after the model's reply: hiding it keeps
+ *  that reply a user-facing final message instead of narration before a tool call. */
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave-onboarding']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
@@ -324,7 +326,14 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	const seenIds = new Set<string>();
 
 	// Check targetResource first (single-resource agents)
-	if (node.targetResource?.id && node.targetResource.type) {
+	if (
+		node.targetResource?.id &&
+		node.targetResource.type &&
+		(node.targetResource.type !== 'agent' ||
+			node.agentChange === 'created' ||
+			node.agentChange === 'updated' ||
+			node.agentChange === undefined)
+	) {
 		const type = node.targetResource.type;
 		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
 			seenIds.add(node.targetResource.id);

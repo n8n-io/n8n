@@ -119,7 +119,8 @@
 		"test": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
@@ -130,7 +131,8 @@
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
@@ -141,7 +143,8 @@
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],

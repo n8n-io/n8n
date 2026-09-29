@@ -189,7 +189,7 @@ const nodeType = computed(() =>
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
 const nodeTypeName = computed(() => node.value?.type);
-const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
+const { canUpdatePackage, hasUpdateAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -826,7 +826,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+					v-if="canUpdatePackage && hasUpdateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
 					style="margin-top: var(--spacing--sm)"
@@ -886,6 +886,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
+			:node-type-name="nodeTypeName"
 			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>

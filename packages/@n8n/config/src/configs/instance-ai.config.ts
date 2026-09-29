@@ -200,6 +200,22 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
+	 * Pin every Instance AI run on this instance to one published prompt profile
+	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
+	 *
+	 * Instance-wide on purpose, so the two system prompts never fragment the
+	 * prompt cache within one instance. A request-level `promptVersion` and a
+	 * value already selected for the thread both still win, so an eval keeps the
+	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
+	 * that resumes after you change it uses the new value. Profiles are keyed by
+	 * build mode, so pinning a `default`-mode profile also overrides a
+	 * progressive building assignment. An unknown version fails the run, and n8n
+	 * keeps serving everything else.
+	 */
+	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
+	promptVersion: string = '';
+
+	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
 	 * the `nodeTypes` filter on `workflows(action="list")`.
 	 *

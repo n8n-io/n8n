@@ -16,7 +16,7 @@ import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/const
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 

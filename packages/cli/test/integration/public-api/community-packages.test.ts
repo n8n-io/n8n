@@ -12,7 +12,6 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
-import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -122,15 +121,15 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return installed packages when present', async () => {
-			const pkg = mockPackage();
-			const node = mockNode(pkg.packageName);
-			pkg.authorName = 'Test Author';
-			pkg.authorEmail = 'test@example.com';
-			pkg.installedNodes = [node];
+			const packageName = mockPackageName();
+			const node = mockNode(packageName);
+			const pkg = mockPackage({
+				packageName,
+				authorName: 'Test Author',
+				authorEmail: 'test@example.com',
+				installedNodes: [node],
+			});
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
-			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
-				{ ...pkg, updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED },
-			]);
 			communityPackagesService.withLoadStatus.mockReturnValue([
 				{
 					...pkg,
@@ -187,42 +186,25 @@ describe('Community packages (Public API)', () => {
 			expect(response.body).toHaveLength(1);
 			expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 		});
-
-		it('should return packages with updateAvailable when outdated', async () => {
-			const pkg = mockPackage();
-			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
-
-			mockedExecuteNpmCommand.mockImplementation(() => {
-				const error = new Error('npm outdated');
-				Object.assign(error, {
-					code: 1,
-					stdout: JSON.stringify({
-						[pkg.packageName]: {
-							current: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							wanted: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							latest: COMMUNITY_PACKAGE_VERSION.UPDATED,
-							location: path.join('node_modules', pkg.packageName),
-						},
-					}),
-				});
-				throw error;
-			});
-
-			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
-				{
-					...pkg,
-					updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED,
-				},
-			]);
-
-			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
-
-			expect(response.status).toBe(200);
-			expect(response.body[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
-		});
 	});
 
 	describe('POST /community-packages', () => {
+		it('should return 403 when API key lacks communityPackage:install scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.post('/community-packages')
+				.send({ name: mockPackageName() });
+
+			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
+		});
+
 		it('should return 400 when package name is missing', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -244,11 +226,20 @@ describe('Community packages (Public API)', () => {
 				.send({ name: mockPackageName() });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('already installed');
+			expect(response.body).toStrictEqual({
+				message: `Package "${parsedNpmPackageName.packageName}" is already installed`,
+			});
 		});
 
 		it('should return 200 when package is installed successfully', async () => {
-			const pkg = mockPackage();
+			const packageName = mockPackageName();
+			const node = mockNode(packageName);
+			const pkg = mockPackage({
+				packageName,
+				authorName: 'Test Author',
+				authorEmail: 'author@example.com',
+				installedNodes: [node],
+			});
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
@@ -260,13 +251,68 @@ describe('Community packages (Public API)', () => {
 				.send({ name: mockPackageName() });
 
 			expect(response.status).toBe(200);
-			expect(response.body.packageName).toBe(pkg.packageName);
+			expect(response.body).toStrictEqual({
+				packageName: pkg.packageName,
+				installedVersion: pkg.installedVersion,
+				authorName: pkg.authorName,
+				authorEmail: pkg.authorEmail,
+				installedNodes: [
+					{
+						name: pkg.installedNodes[0].name,
+						type: pkg.installedNodes[0].type,
+						latestVersion: pkg.installedNodes[0].latestVersion,
+					},
+				],
+				createdAt: pkg.createdAt.toISOString(),
+				updatedAt: pkg.updatedAt.toISOString(),
+			});
 			// No version requested, so install() pins the latest vetted version:
 			// the same catalog lookup provides both it and the checksum.
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
 				mockedVettedPackage.npmVersion,
 				mockedVettedPackage.checksum,
+			);
+		});
+
+		it('should return 200 when the body contains an unknown field', async () => {
+			const pkg = mockPackage();
+			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName(), unknown: true });
+
+			expect(response.status).toBe(200);
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				parsedNpmPackageName.packageName,
+				mockedVettedPackage.npmVersion,
+				mockedVettedPackage.checksum,
+			);
+		});
+
+		it('should install with verification disabled when verify is false', async () => {
+			const pkg = mockPackage();
+			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName(), verify: false });
+
+			expect(response.status).toBe(200);
+			expect(communityNodeTypesService.findVetted).not.toHaveBeenCalled();
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				parsedNpmPackageName.packageName,
+				undefined,
+				undefined,
 			);
 		});
 
@@ -299,11 +345,45 @@ describe('Community packages (Public API)', () => {
 	});
 
 	describe('PATCH /community-packages/:name', () => {
+		it('should return 403 when API key lacks communityPackage:update scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.patch(`/community-packages/${encodeURIComponent(mockPackageName())}`)
+				.send({ version: COMMUNITY_PACKAGE_VERSION.UPDATED });
+
+			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
+			expect(communityPackagesService.updatePackage).not.toHaveBeenCalled();
+		});
+
+		it('should return 400 when update options are invalid', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/community-packages/${encodeURIComponent(mockPackageName())}`)
+				.send({ verify: 'false' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('verify');
+			expect(communityPackagesService.updatePackage).not.toHaveBeenCalled();
+		});
+
 		it('should return 200 when package is updated successfully', async () => {
-			const pkg = mockPackage();
-			const updatedPkg = mockPackage();
-			updatedPkg.packageName = pkg.packageName;
-			updatedPkg.installedVersion = COMMUNITY_PACKAGE_VERSION.UPDATED;
+			const packageName = mockPackageName();
+			const pkg = mockPackage({ packageName });
+			const updatedNode = mockNode(packageName);
+			const updatedPkg = mockPackage({
+				packageName,
+				installedVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
+				authorName: 'Test Author',
+				authorEmail: 'author@example.com',
+				installedNodes: [updatedNode],
+			});
 
 			communityPackagesService.findInstalledPackage.mockResolvedValue(pkg);
 			communityPackagesService.parseNpmPackageName.mockReturnValue({
@@ -318,7 +398,21 @@ describe('Community packages (Public API)', () => {
 				.send({ version: COMMUNITY_PACKAGE_VERSION.UPDATED });
 
 			expect(response.status).toBe(200);
-			expect(response.body.packageName).toBe(pkg.packageName);
+			expect(response.body).toStrictEqual({
+				packageName: pkg.packageName,
+				installedVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
+				authorName: updatedPkg.authorName,
+				authorEmail: updatedPkg.authorEmail,
+				installedNodes: [
+					{
+						name: updatedNode.name,
+						type: updatedNode.type,
+						latestVersion: updatedNode.latestVersion,
+					},
+				],
+				createdAt: updatedPkg.createdAt.toISOString(),
+				updatedAt: updatedPkg.updatedAt.toISOString(),
+			});
 			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
 				pkg.packageName,
 				pkg,
@@ -339,9 +433,59 @@ describe('Community packages (Public API)', () => {
 			expect(response.status).toBe(404);
 			expect(response.body.message).toBeDefined();
 		});
+
+		it('should pass a decoded scoped package name to the parser', async () => {
+			const name = '@author/n8n-nodes-foo';
+			const pkg = mockPackage({ packageName: name });
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: name,
+				rawString: name,
+				scope: '@author',
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(pkg);
+			communityPackagesService.updatePackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/community-packages/${encodeURIComponent(name)}`)
+				.send({});
+
+			expect(response.status).toBe(200);
+			expect(communityPackagesService.parseNpmPackageName).toHaveBeenCalledWith(name);
+		});
 	});
 
 	describe('DELETE /community-packages/:name', () => {
+		it('should return 403 when API key lacks communityPackage:uninstall scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.delete(`/community-packages/${encodeURIComponent(mockPackageName())}`);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toStrictEqual({ message: 'Forbidden' });
+		});
+
+		it('should return 400 when package name is invalid', async () => {
+			const name = 'invalid-package-name';
+			communityPackagesService.parseNpmPackageName.mockImplementation(() => {
+				throw new Error('Package name must start with n8n-nodes-');
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/community-packages/${encodeURIComponent(name)}`);
+
+			expect(response.status).toBe(400);
+			expect(response.body).toStrictEqual({ message: 'Package name must start with n8n-nodes-' });
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
+		});
+
 		it('should return 404 when package is not installed', async () => {
 			const name = mockPackageName();
 			communityPackagesService.parseNpmPackageName.mockReturnValue({
@@ -373,6 +517,23 @@ describe('Community packages (Public API)', () => {
 
 			expect(response.status).toBe(204);
 			expect(communityPackagesService.removePackage).toHaveBeenCalledTimes(1);
+		});
+
+		it('should pass a decoded scoped package name to the parser', async () => {
+			const name = '@author/n8n-nodes-foo';
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: name,
+				rawString: name,
+				scope: '@author',
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/community-packages/${encodeURIComponent(name)}`);
+
+			expect(response.status).toBe(404);
+			expect(communityPackagesService.parseNpmPackageName).toHaveBeenCalledWith(name);
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { TrustedKeyService } from './trusted-key.service';
@@ -14,10 +14,7 @@ const REFRESH_POLL_INTERVAL_SECONDS = 30;
 export class TrustedKeyRefreshTask implements SystemTask {
 	readonly name = 'trusted-key-refresh';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: REFRESH_POLL_INTERVAL_SECONDS,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(REFRESH_POLL_INTERVAL_SECONDS);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
