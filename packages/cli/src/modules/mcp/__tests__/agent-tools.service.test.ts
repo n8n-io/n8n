@@ -1120,6 +1120,29 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		/*
+		 * Regression test — tool telemetry keeps useful fields without raw call content.
+		 * Ref: ADO-5852
+		 */
+		it('redacts agent input and error text in telemetry while keeping tool output', async () => {
+			const agentId = 'sk-proj-example0123456789abcdef0123456789';
+			agentsService.findByIdForUser.mockResolvedValue(null);
+
+			const result = await callTool('validate_agent', { agentId });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				error: `Agent "${agentId}" not found`,
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'validate_agent',
+				parameters: { agentId: '[REDACTED]' },
+				results: { success: false, error: 'Agent "[REDACTED]" not found' },
+			});
+		});
+
 		it('omits call_agent when the user cannot execute the agent', async () => {
 			userHasScopesMock.mockImplementation(
 				async (_user, scopes) => !scopes.includes('agent:execute'),
