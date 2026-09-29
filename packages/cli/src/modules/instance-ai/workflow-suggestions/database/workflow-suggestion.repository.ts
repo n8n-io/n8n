@@ -1,15 +1,23 @@
-import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionContent,
+	WorkflowSuggestionBaseline,
+	WorkflowSuggestionActivity,
+	WorkflowSuggestionAppliedVersion,
+	WorkflowSuggestionPublication,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	SharedWorkflow,
 	TransactionRunner,
 	WorkflowEntity,
+	WorkflowPublishHistory,
 	isUniqueConstraintError,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
@@ -25,10 +33,12 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		scope: Pick<WorkflowSuggestion, 'workflowId' | 'projectId'>,
 		ctx: OperationContext = {},
 	) {
-		const suggestion = await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
-			id,
-			workflowId: scope.workflowId,
-			projectId: scope.projectId,
+		const manager = this.managerFor(ctx);
+		const suggestion = await manager.findOne(WorkflowSuggestion, {
+			where: { id, workflowId: scope.workflowId, projectId: scope.projectId },
+			...(ctx.trx && manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
 		});
 		if (!suggestion) throw new NotFoundError('Suggestion not found.');
 		return suggestion;
@@ -38,6 +48,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		baseline: WorkflowSuggestionBaseline,
 		payload: WorkflowSuggestionContent,
 		ctx: OperationContext,
+		resultKind: WorkflowSuggestion['resultKind'] = null,
 	) {
 		const manager = this.managerFor(ctx);
 		const suggestion = manager.create(WorkflowSuggestion, {
@@ -48,6 +59,9 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			state: 'pending',
 			closedReason: null,
 			closedAt: null,
+			resultKind,
+			appliedVersion: null,
+			publication: null,
 			payload,
 		});
 		try {
@@ -71,7 +85,11 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			where: { workflowId, role: 'workflow:owner' },
 			...(lockRows ? { lock: { mode: 'pessimistic_read' as const } } : {}),
 		});
-		return { workflow, projectId: owner?.projectId };
+		const publication = await manager.findOne(WorkflowPublishHistory, {
+			where: { workflowId },
+			order: { id: 'DESC' },
+		});
+		return { workflow, projectId: owner?.projectId, publicationId: publication?.id ?? null };
 	}
 
 	async appendSubmittedActivity(suggestionId: string, ctx: OperationContext) {
@@ -81,8 +99,95 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 				suggestionId,
 				action: 'submitted',
 				author: 'assistant',
+				actorId: null,
 			}),
 		);
+	}
+
+	async appendActivity(
+		suggestionId: string,
+		action: WorkflowSuggestionActivity['action'],
+		actorId: string | null,
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(WorkflowSuggestionActivityEntity)
+			.values({
+				id: generateNanoId(),
+				suggestionId,
+				action,
+				actorId,
+				author: action === 'submitted' ? 'assistant' : actorId ? 'human' : 'system',
+			})
+			.orIgnore()
+			.execute();
+	}
+
+	async closePending(
+		suggestion: WorkflowSuggestion,
+		reason: NonNullable<WorkflowSuggestion['closedReason']>,
+		actorId: string | null,
+		ctx: OperationContext,
+		appliedVersion: WorkflowSuggestionAppliedVersion | null = null,
+	) {
+		const result = await this.managerFor(ctx).update(
+			WorkflowSuggestion,
+			{ id: suggestion.id, state: 'pending' },
+			{ state: 'closed', closedReason: reason, closedAt: new Date(), appliedVersion },
+		);
+		if (result.affected !== 1) throw new ConflictError('The suggestion has already closed.');
+		await this.appendActivity(suggestion.id, reason, actorId, ctx);
+	}
+
+	async recordPublication(
+		suggestionId: string,
+		publication: WorkflowSuggestionPublication,
+		actorId: string | null,
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		const current = await manager.findOne(WorkflowSuggestion, {
+			where: { id: suggestionId, closedReason: 'applied' },
+			select: ['id', 'publication'],
+			...(ctx.trx && manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+		if (!current) throw new NotFoundError('Applied suggestion not found.');
+		// A later status read cannot undo a confirmed publication result.
+		if (
+			current.publication?.status === 'published' ||
+			(current.publication?.status === 'partial' && publication.status !== 'published')
+		) {
+			return current.publication;
+		}
+		if (publication.status === 'unpublished' && current.publication?.status === 'failed') {
+			return current.publication;
+		}
+		await manager.update(
+			WorkflowSuggestion,
+			{ id: suggestionId, closedReason: 'applied' },
+			{ publication },
+		);
+		if (publication.status === 'published' || publication.status === 'failed') {
+			await this.appendActivity(
+				suggestionId,
+				publication.status === 'published' ? 'published' : 'publish_failed',
+				actorId,
+				ctx,
+			);
+		}
+		return publication;
+	}
+
+	async getPendingForWorkflow(workflowId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
+			workflowId,
+			state: 'pending',
+		});
 	}
 
 	async getActivity(suggestionId: string) {

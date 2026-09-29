@@ -8,7 +8,14 @@ export type WorkflowSuggestionBaseline = {
 	workflowId: string;
 	projectId: string;
 	backgroundUserId: string;
-	expectedBaseline: { savedVersionId: string; publishedVersionId: string; checksum: string };
+	expectedBaseline: {
+		savedVersionId: string;
+		publishedVersionId: string;
+		checksum: string;
+		versionCounter?: number;
+		savedAt?: string;
+		publicationId?: number | null;
+	};
 	original: WorkflowSuggestionSnapshot;
 };
 
@@ -21,9 +28,31 @@ export type WorkflowSuggestionContent = {
 
 export type WorkflowSuggestionActivity = {
 	id: string;
-	action: 'submitted';
-	author: 'assistant';
+	action: 'submitted' | 'applied' | 'discarded' | 'outdated' | 'published' | 'publish_failed';
+	author: 'assistant' | 'human' | 'system';
+	actorId: string | null;
 	createdAt: string;
+};
+
+export type WorkflowSuggestionAction =
+	| 'approve-and-publish'
+	| 'open-in-editor'
+	| 'discard'
+	| 'retry-publication';
+
+export type WorkflowSuggestionAppliedVersion = {
+	versionId: string;
+	projectId: string;
+	baselinePublicationId: number | null;
+	previousPublishedVersionId: string;
+	checksum: string;
+	action: 'approve-and-publish' | 'open-in-editor';
+	actorId: string;
+};
+
+export type WorkflowSuggestionPublication = {
+	status: 'unpublished' | 'in_progress' | 'published' | 'partial' | 'failed' | 'unknown';
+	message?: string;
 };
 
 export type WorkflowSuggestionProposalDetail = {
@@ -34,6 +63,9 @@ export type WorkflowSuggestionProposalDetail = {
 	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];
 	state: 'pending' | 'closed';
 	closedReason: 'outdated' | 'applied' | 'discarded' | null;
+	resultKind: 'fix_ready' | 'needs_you' | null;
+	appliedVersion: WorkflowSuggestionAppliedVersion | null;
+	publication: WorkflowSuggestionPublication | null;
 	author: 'assistant';
 	payload: WorkflowSuggestionContent & { proposed: WorkflowSuggestionSnapshot };
 	activity: WorkflowSuggestionActivity[];

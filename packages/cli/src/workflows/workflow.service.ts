@@ -2,8 +2,16 @@ import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type {
+	User,
+	ListQueryDb,
+	Project,
+	WorkflowFolderUnionFull,
+	WorkflowHistory,
+	OperationContext,
+} from '@n8n/db';
 import {
+	TransactionRunner,
 	SharedWorkflow,
 	WorkflowEntity,
 	FolderRepository,
@@ -129,6 +137,7 @@ export class WorkflowService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async getMany(
@@ -412,6 +421,15 @@ export class WorkflowService {
 			versionDescription?: string;
 			/** Allows a package import to update archived content. */
 			allowArchivedUpdate?: boolean;
+			/** Commit a related state change with the prepared workflow and its history. */
+			guardedUpdate?: {
+				beforeSave: (
+					ctx: OperationContext,
+					original: WorkflowEntity,
+					prepared: WorkflowEntity,
+				) => Promise<void>;
+				afterSave: (ctx: OperationContext, saved: WorkflowEntity) => Promise<void>;
+			};
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -428,6 +446,7 @@ export class WorkflowService {
 			versionName,
 			versionDescription,
 			allowArchivedUpdate = false,
+			guardedUpdate,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -441,6 +460,11 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
+		}
+
+		const storedChecksum = await calculateWorkflowChecksum(workflow);
+		if (guardedUpdate && tagIds) {
+			throw new BadRequestError('A guarded workflow save cannot change tags.');
 		}
 
 		if (workflow.isArchived && !allowArchivedUpdate) {
@@ -642,21 +666,6 @@ export class WorkflowService {
 			fieldsToUpdate,
 		) as QueryDeepPartialEntity<WorkflowEntity>;
 
-		// Save the workflow to history first, so we can retrieve the complete version object for the update
-		if (saveNewVersion) {
-			await this.workflowHistoryService.saveVersion(
-				user,
-				workflowUpdateData,
-				workflowId,
-				autosaved,
-				source,
-				undefined,
-				versionName || versionDescription
-					? { name: versionName, description: versionDescription }
-					: undefined,
-			);
-		}
-
 		const versionIdToPublish =
 			workflow.activeVersionId && publishIfActive ? workflowUpdateData.versionId : null;
 
@@ -674,29 +683,60 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-		await this.workflowRepository.updateContent(workflowId, updatePayload, {
-			policyCleared: cleared,
-		});
 		const tagsDisabled = this.globalConfig.tags.disabled;
-
-		if (tagIds && !tagsDisabled) {
-			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
-		}
-
-		const relations = tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'];
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations,
-		});
-
-		if (updatedWorkflow === null) {
-			throw new BadRequestError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
+		const persist = async (ctx: OperationContext) => {
+			if (guardedUpdate) {
+				await guardedUpdate.beforeSave(
+					ctx,
+					workflow,
+					Object.assign(new WorkflowEntity(), workflow, updatePayload),
+				);
+			}
+			if (saveNewVersion) {
+				await this.workflowHistoryService.saveVersion(
+					user,
+					workflowUpdateData,
+					workflowId,
+					autosaved,
+					source,
+					undefined,
+					versionName || versionDescription
+						? { name: versionName, description: versionDescription }
+						: undefined,
+					guardedUpdate ? ctx : undefined,
+				);
+			}
+			const saved = await this.workflowRepository.updateContent(
+				workflowId,
+				updatePayload,
+				{ ...ctx, policyCleared: cleared },
+				storedChecksum,
 			);
-		}
+			if (!saved) {
+				throw new ConflictError('The workflow changed before the save completed.');
+			}
+			if (tagIds && !tagsDisabled) {
+				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+			}
+			const savedWorkflow = guardedUpdate
+				? await this.workflowRepository.findSavedWorkflow(workflowId, !tagsDisabled, ctx)
+				: await this.workflowRepository.findOne({
+						where: { id: workflowId },
+						relations: tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'],
+					});
+			if (!savedWorkflow) {
+				throw new BadRequestError(
+					`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				);
+			}
+			if (guardedUpdate) {
+				await guardedUpdate.afterSave(ctx, savedWorkflow);
+			}
+			return savedWorkflow;
+		};
+		const updatedWorkflow = guardedUpdate
+			? await this.transactionRunner.run({}, persist)
+			: await persist({});
 
 		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {
@@ -916,6 +956,13 @@ export class WorkflowService {
 			name?: string;
 			description?: string;
 			expectedChecksum?: string;
+			/** Restrict publication to the saved version and the current publication identity. */
+			expectedVersions?: {
+				savedVersionId: string;
+				activeVersionId: string | null;
+				projectId: string;
+				baselinePublicationId: number | null;
+			};
 			source?: WorkflowActionSource;
 		},
 	): Promise<WorkflowEntity> {
@@ -954,10 +1001,25 @@ export class WorkflowService {
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
+		if (options?.expectedVersions) {
+			if (!this.globalConfig.workflows.useWorkflowPublicationService) {
+				throw new ConflictError('Exact-version publication is not available.');
+			}
+			if (
+				workflow.versionId !== options.expectedVersions.savedVersionId ||
+				versionIdToActivate !== options.expectedVersions.savedVersionId ||
+				previousActiveVersionId !== options.expectedVersions.activeVersionId
+			) {
+				throw new ConflictError('The workflow changed before publication.');
+			}
+		}
 
 		// Reached with access to the workflow but not the right to release a version, so there is no
 		// existence to hide behind a 404 here.
-		if (resolvedWithEditorScopes && versionIdToActivate !== previousActiveVersionId) {
+		if (
+			resolvedWithEditorScopes &&
+			(versionIdToActivate !== previousActiveVersionId || options?.expectedVersions)
+		) {
 			this.logger.warn('User attempted to publish a workflow without permissions', {
 				workflowId,
 				userId: user.id,
@@ -992,7 +1054,7 @@ export class WorkflowService {
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
-		if (versionIdToActivate !== previousActiveVersionId) {
+		if (versionIdToActivate !== previousActiveVersionId || options?.expectedVersions) {
 			await this._validatePublisherCredentialAccess(workflowId, user, versionToActivate.nodes);
 		}
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
@@ -1045,18 +1107,34 @@ export class WorkflowService {
 		// passes, or just before an approval's auto-publish reaches it, therefore
 		// races — accepted, because both outcomes degrade gracefully (the approval
 		// stands and auto-publish reports `failed`).`.
-		if (versionIdToActivate !== previousActiveVersionId) {
+		if (versionIdToActivate !== previousActiveVersionId || options?.expectedVersions) {
 			await this.workflowPublishGuard.assertCanPublish(workflowId);
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this._publishViaOutbox(
-				user.id,
-				workflowId,
-				versionIdToActivate,
-				previousActiveVersionId,
-				workflow.updatedAt,
-			);
+			if (options?.expectedVersions) {
+				const published = await this.outboxRepository.enqueuePublishIfCurrent({
+					workflowId,
+					versionId: versionIdToActivate,
+					previousActiveVersionId,
+					checksum: options.expectedChecksum ?? (await calculateWorkflowChecksum(workflow)),
+					userId: user.id,
+					projectId: options.expectedVersions.projectId,
+					baselinePublicationId: options.expectedVersions.baselinePublicationId,
+				});
+				if (!published) {
+					throw new ConflictError('The workflow or its publication changed.');
+				}
+				this.workflowPublicationNotifier.requestDrain();
+			} else {
+				await this._publishViaOutbox(
+					user.id,
+					workflowId,
+					versionIdToActivate,
+					previousActiveVersionId,
+					workflow.updatedAt,
+				);
+			}
 
 			if (previousActiveVersionId) {
 				this.eventService.emit('workflow-deactivated', {

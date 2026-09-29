@@ -19,11 +19,14 @@ import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
+import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
+import { WorkflowSuggestionPublicationService } from './workflow-suggestion-publication.service';
 
 const suggestionInputSchema = z
 	.object({
 		graph: z.object({ nodes: z.array(z.unknown()), connections: z.record(z.unknown()) }).strict(),
 		explanation: z.string().trim().min(1).max(20_000),
+		resultKind: z.enum(['fix_ready', 'needs_you']).optional(),
 		errorContext: z
 			.object({
 				summary: z.string().max(4000),
@@ -38,6 +41,7 @@ const suggestionInputSchema = z
 export type PreparedWorkflowSuggestion = {
 	baseline: WorkflowSuggestionBaseline;
 	payload: WorkflowSuggestionContent;
+	resultKind?: WorkflowSuggestion['resultKind'];
 };
 
 @Service()
@@ -48,6 +52,7 @@ export class WorkflowSuggestionService {
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
 		private readonly modules: ModuleRegistry,
+		private readonly suggestionPublication: WorkflowSuggestionPublicationService,
 	) {}
 
 	private requireEnabled() {
@@ -55,7 +60,8 @@ export class WorkflowSuggestionService {
 			throw new NotFoundError('Workflow suggestions are not enabled.');
 	}
 
-	private async requireEditor(userId: string, workflowId: string) {
+	async requireEditor(userId: string, workflowId: string) {
+		this.requireEnabled();
 		const user = await this.users.findByIdWithRole(userId);
 		if (
 			!user ||
@@ -85,7 +91,10 @@ export class WorkflowSuggestionService {
 		this.requireEnabled();
 		await this.requireEditor(backgroundUserId, workflowId);
 		return await this.txRunner.run({}, async (ctx) => {
-			const { workflow, projectId } = await this.suggestions.readWorkflowTarget(workflowId, ctx);
+			const { workflow, projectId, publicationId } = await this.suggestions.readWorkflowTarget(
+				workflowId,
+				ctx,
+			);
 			if (!workflow || !projectId || !(await this.isPublished(workflow, ctx))) {
 				throw new ConflictError('The workflow must be fully published without saved changes.');
 			}
@@ -97,6 +106,9 @@ export class WorkflowSuggestionService {
 					savedVersionId: workflow.versionId,
 					publishedVersionId: workflow.versionId,
 					checksum: await calculateWorkflowChecksum(workflow),
+					versionCounter: workflow.versionCounter,
+					savedAt: workflow.updatedAt?.toISOString(),
+					publicationId,
 				},
 				original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
 			};
@@ -109,10 +121,11 @@ export class WorkflowSuggestionService {
 			graph: WorkflowSuggestionGraph;
 			explanation: string;
 			errorContext?: WorkflowSuggestionContent['errorContext'];
+			resultKind?: 'fix_ready' | 'needs_you';
 		},
 	): Promise<PreparedWorkflowSuggestion> {
 		this.requireEnabled();
-		const { explanation, errorContext } = suggestionInputSchema.parse(input);
+		const { explanation, errorContext, resultKind } = suggestionInputSchema.parse(input);
 		baseline = structuredClone(baseline);
 		const { workflowId, backgroundUserId, expectedBaseline, original } = baseline;
 		await this.requireEditor(backgroundUserId, workflowId);
@@ -126,6 +139,7 @@ export class WorkflowSuggestionService {
 		}
 		return {
 			baseline,
+			resultKind,
 			payload: {
 				original,
 				candidate: graph,
@@ -147,15 +161,89 @@ export class WorkflowSuggestionService {
 				target.projectId !== projectId ||
 				target.workflow.versionId !== expectedBaseline.savedVersionId ||
 				target.workflow.activeVersionId !== expectedBaseline.publishedVersionId ||
+				(expectedBaseline.publicationId !== undefined &&
+					expectedBaseline.publicationId !== target.publicationId) ||
+				(expectedBaseline.versionCounter !== undefined &&
+					target.workflow.versionCounter !== expectedBaseline.versionCounter) ||
+				(expectedBaseline.savedAt !== undefined &&
+					target.workflow.updatedAt.toISOString() !== expectedBaseline.savedAt) ||
 				(await calculateWorkflowChecksum(target.workflow)) !== expectedBaseline.checksum ||
 				!(await this.isPublished(target.workflow, ctx))
 			) {
 				throw new ConflictError('The workflow no longer matches the published baseline.');
 			}
-			const suggestion = await this.suggestions.createPending(baseline, payload, ctx);
+			const previous = await this.suggestions.getPendingForWorkflow(workflowId, ctx);
+			if (
+				previous &&
+				!(await this.matchesBaseline(
+					previous,
+					target.workflow,
+					target.projectId,
+					target.publicationId,
+				))
+			) {
+				await this.suggestions.closePending(previous, 'outdated', null, ctx);
+			}
+			const suggestion = await this.suggestions.createPending(
+				baseline,
+				payload,
+				ctx,
+				prepared.resultKind ?? null,
+			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;
 		});
+	}
+
+	async matchesBaseline(
+		suggestion: WorkflowSuggestion,
+		workflow: WorkflowEntity,
+		projectId?: string,
+		publicationId?: number | null,
+	) {
+		const baseline = suggestion.expectedBaseline;
+		return (
+			projectId === suggestion.projectId &&
+			!workflow.isArchived &&
+			workflow.versionId === baseline.savedVersionId &&
+			workflow.activeVersionId === baseline.publishedVersionId &&
+			(baseline.publicationId === undefined || baseline.publicationId === publicationId) &&
+			(baseline.versionCounter === undefined ||
+				workflow.versionCounter === baseline.versionCounter) &&
+			(baseline.savedAt === undefined || workflow.updatedAt.toISOString() === baseline.savedAt) &&
+			(await calculateWorkflowChecksum(workflow)) === baseline.checksum
+		);
+	}
+
+	async reconcilePending(
+		suggestionId: string,
+		scope: { workflowId: string; projectId: string },
+		ctx: OperationContext = {},
+	) {
+		return await this.txRunner.run(ctx, async (ctx) => {
+			const target = await this.suggestions.readWorkflowTarget(scope.workflowId, ctx);
+			let suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
+			if (
+				suggestion.state === 'pending' &&
+				(!target.workflow ||
+					!(await this.matchesBaseline(
+						suggestion,
+						target.workflow,
+						target.projectId,
+						target.publicationId,
+					)))
+			) {
+				await this.suggestions.closePending(suggestion, 'outdated', null, ctx);
+				suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
+			}
+			return { suggestion, target };
+		});
+	}
+
+	async reconcileWorkflow(workflowId: string) {
+		const pending = await this.suggestions.getPendingForWorkflow(workflowId);
+		if (pending)
+			await this.reconcilePending(pending.id, { workflowId, projectId: pending.projectId });
 	}
 
 	async getProposal(
@@ -166,13 +254,22 @@ export class WorkflowSuggestionService {
 	): Promise<WorkflowSuggestionProposalDetail> {
 		this.requireEnabled();
 		await this.requireEditor(viewer.id, workflowId);
-		const suggestion = await this.suggestions.getSuggestion(suggestionId, {
+		const { suggestion, target: current } = await this.reconcilePending(suggestionId, {
 			workflowId,
 			projectId,
 		});
-		const current = await this.suggestions.readWorkflowTarget(workflowId, {});
 		if (!current.workflow || current.projectId !== projectId) {
 			throw new NotFoundError('Proposal not found.');
+		}
+		if (suggestion.appliedVersion && suggestion.publication?.status !== 'published') {
+			const observed = await this.suggestionPublication.reconcile(
+				workflowId,
+				suggestion.appliedVersion,
+			);
+			suggestion.publication = await this.txRunner.run(
+				{},
+				async (ctx) => await this.suggestions.recordPublication(suggestion.id, observed, null, ctx),
+			);
 		}
 		const activity = await this.suggestions.getActivity(suggestionId);
 		return {
@@ -183,15 +280,19 @@ export class WorkflowSuggestionService {
 			expectedBaseline: suggestion.expectedBaseline,
 			state: suggestion.state,
 			closedReason: suggestion.closedReason,
+			resultKind: suggestion.resultKind ?? null,
+			appliedVersion: suggestion.appliedVersion ?? null,
+			publication: suggestion.publication ?? null,
 			author: 'assistant',
 			payload: {
 				...suggestion.payload,
 				proposed: { ...suggestion.payload.original, ...suggestion.payload.candidate },
 			},
-			activity: activity.map(({ id, action, author, createdAt }) => ({
+			activity: activity.map(({ id, action, author, actorId, createdAt }) => ({
 				id,
 				action,
 				author,
+				actorId: actorId ?? null,
 				createdAt: createdAt.toISOString(),
 			})),
 		};

@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| appliedVersion | json |  | true |  |  | Saved version, original published version, checksum, action, and human actor |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | closedAt | timestamp(3) with time zone |  | true |  |  |  |
 | closedReason | varchar(16) |  | true |  |  | Reason the suggestion closed |
@@ -12,6 +13,8 @@
 | id | varchar |  | false | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
 | payload | json |  | false |  |  | Independent baseline, graph, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
+| publication | json |  | true |  |  | Last observed publication status for the applied version |
+| resultKind | varchar(16) |  | true |  |  | Outcome supplied by the investigation; null does not permit Apply |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Target workflow |
@@ -21,6 +24,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_workflow_suggestion_closedReason | CHECK | CHECK ((("closedReason")::text = ANY ((ARRAY['outdated'::character varying, 'applied'::character varying, 'discarded'::character varying])::text[]))) |
+| CHK_workflow_suggestion_resultKind | CHECK | CHECK ((("resultKind")::text = ANY ((ARRAY['fix_ready'::character varying, 'needs_you'::character varying])::text[]))) |
 | CHK_workflow_suggestion_state | CHECK | CHECK (((state)::text = ANY ((ARRAY['pending'::character varying, 'closed'::character varying])::text[]))) |
 | FK_0f273c2cd9e1a097a8ba044fe9a | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_b415d749769e092f51575def2d2 | FOREIGN KEY | FOREIGN KEY ("backgroundUserId") REFERENCES "user"(id) ON DELETE CASCADE |
@@ -57,6 +61,7 @@ erDiagram
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_suggestion" {
+  json appliedVersion
   uuid backgroundUserId FK
   timestamp_3__with_time_zone closedAt
   varchar_16_ closedReason
@@ -65,6 +70,8 @@ erDiagram
   varchar id
   json payload
   varchar_36_ projectId FK
+  json publication
+  varchar_16_ resultKind
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
@@ -88,6 +95,7 @@ erDiagram
 }
 "public.workflow_suggestion_activity" {
   varchar_16_ action
+  uuid actorId FK
   varchar_16_ author
   timestamp_3__with_time_zone createdAt
   varchar id

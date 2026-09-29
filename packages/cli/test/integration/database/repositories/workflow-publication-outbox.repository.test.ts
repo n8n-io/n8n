@@ -1,13 +1,24 @@
-import { createActiveWorkflow, createWorkflow, newWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createActiveWorkflow,
+	createWorkflow,
+	createWorkflowWithHistory,
+	getPersonalProject,
+	newWorkflow,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { UNPUBLISH_VERSION_SENTINEL } from '@n8n/db';
 import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationRetryStateRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
+
+import { createMember } from '../../shared/db/users';
 
 describe('WorkflowPublicationOutboxRepository', () => {
 	let repository: WorkflowPublicationOutboxRepository;
@@ -25,6 +36,175 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('enqueuePublishIfCurrent', () => {
+		async function seed() {
+			const actor = await createMember();
+			const project = await getPersonalProject(actor);
+			const workflow = await createWorkflowWithHistory({}, actor);
+			return {
+				workflow,
+				input: {
+					workflowId: workflow.id,
+					versionId: workflow.versionId,
+					previousActiveVersionId: workflow.activeVersionId,
+					checksum: await calculateWorkflowChecksum(workflow),
+					userId: actor.id,
+					projectId: project.id,
+					baselinePublicationId: null,
+				},
+			};
+		}
+
+		it('commits the version, history, and outbox together', async () => {
+			const { workflow, input } = await seed();
+			expect(await repository.enqueuePublishIfCurrent(input)).toBe(true);
+			expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toMatchObject({
+				activeVersionId: workflow.versionId,
+			});
+			expect(await repository.findInFlightByWorkflowId(workflow.id)).toMatchObject({
+				publishedVersionId: workflow.versionId,
+			});
+			expect(
+				await Container.get(WorkflowPublishHistoryRepository).countBy({
+					workflowId: workflow.id,
+					event: 'activated',
+				}),
+			).toBe(1);
+		});
+
+		it.each([
+			{ versionId: 'another-saved-version' },
+			{ previousActiveVersionId: 'another-publication' },
+			{ checksum: 'changed-content' },
+			{ projectId: 'another-project' },
+		])('does not publish when the guarded baseline changed: %s', async (change) => {
+			const { workflow, input } = await seed();
+			expect(await repository.enqueuePublishIfCurrent({ ...input, ...change })).toBe(false);
+			expect(await repository.findInFlightByWorkflowId(workflow.id)).toBeNull();
+			expect(
+				await Container.get(WorkflowPublishHistoryRepository).countBy({ workflowId: workflow.id }),
+			).toBe(0);
+		});
+
+		it('enqueues only one concurrent retry for the same requested version', async () => {
+			const { workflow, input } = await seed();
+			await Container.get(WorkflowRepository).update(workflow.id, {
+				activeVersionId: workflow.versionId,
+			});
+			workflow.activeVersionId = workflow.versionId;
+			input.previousActiveVersionId = workflow.versionId;
+			input.checksum = await calculateWorkflowChecksum(workflow);
+			await repository.enqueue(workflow.id, workflow.versionId, 'publish');
+			const attempt = await repository.claimNextPendingRecord();
+			assert(attempt);
+			await repository.markFailed(attempt.id, 'Registration failed');
+
+			const results = await Promise.all([
+				repository.enqueuePublishIfCurrent(input),
+				repository.enqueuePublishIfCurrent(input),
+			]);
+			expect(results.sort()).toEqual([false, true]);
+			expect(await repository.countBy({ workflowId: workflow.id, status: 'pending' })).toBe(1);
+			expect(
+				await Container.get(WorkflowPublishHistoryRepository).countBy({
+					workflowId: workflow.id,
+					event: 'activated',
+				}),
+			).toBe(1);
+		});
+
+		it.each(['completed', 'partial_success'] as const)(
+			'does not repeat a %s attempt after its outbox record settles',
+			async (status) => {
+				const { workflow, input } = await seed();
+				await repository.enqueue(workflow.id, workflow.versionId, 'publish');
+				const attempt = await repository.claimNextPendingRecord();
+				assert(attempt);
+				if (status === 'completed') await repository.markCompleted(attempt.id);
+				else await repository.markPartialSuccess(attempt.id, 'One trigger failed');
+
+				expect(await repository.enqueuePublishIfCurrent(input)).toBe(false);
+				expect(await repository.countBy({ workflowId: workflow.id })).toBe(1);
+			},
+		);
+
+		it('rolls back the version and history when enqueue fails', async () => {
+			const { workflow, input } = await seed();
+			const enqueue = vi
+				.spyOn(repository, 'enqueue')
+				.mockRejectedValueOnce(new Error('Enqueue failed'));
+			try {
+				await expect(repository.enqueuePublishIfCurrent(input)).rejects.toThrow('Enqueue failed');
+			} finally {
+				enqueue.mockRestore();
+			}
+			expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toMatchObject({
+				activeVersionId: input.previousActiveVersionId,
+			});
+			expect(
+				await Container.get(WorkflowPublishHistoryRepository).countBy({ workflowId: workflow.id }),
+			).toBe(0);
+		});
+
+		it.each(['activated-other', 'activated-pruned', 'deactivated-applied'] as const)(
+			'blocks a later publication event even after outbox cleanup: %s',
+			async (event) => {
+				const { workflow, input } = await seed();
+				const otherVersion = await createWorkflowWithHistory();
+				await Container.get(WorkflowPublishHistoryRepository).insert({
+					workflowId: workflow.id,
+					versionId:
+						event === 'activated-other'
+							? otherVersion.versionId
+							: event === 'activated-pruned'
+								? null
+								: workflow.versionId,
+					event: event === 'deactivated-applied' ? 'deactivated' : 'activated',
+					userId: input.userId,
+				});
+				expect(await repository.enqueuePublishIfCurrent(input)).toBe(false);
+				expect(await repository.findInFlightByWorkflowId(workflow.id)).toBeNull();
+			},
+		);
+
+		it('ignores publication events before the captured baseline', async () => {
+			const { workflow, input } = await seed();
+			const history = Container.get(WorkflowPublishHistoryRepository);
+			const earlier = await history.save({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'deactivated',
+				userId: input.userId,
+			});
+			expect(
+				await repository.enqueuePublishIfCurrent({ ...input, baselinePublicationId: earlier.id }),
+			).toBe(true);
+		});
+
+		it('allows consecutive failed retries without recording a user unpublish', async () => {
+			const { workflow, input } = await seed();
+			expect(await repository.enqueuePublishIfCurrent(input)).toBe(true);
+			const first = await repository.claimNextPendingRecord();
+			assert(first);
+			await repository.markFailed(first.id, 'Registration failed');
+			workflow.activeVersionId = workflow.versionId;
+			input.previousActiveVersionId = workflow.versionId;
+			input.checksum = await calculateWorkflowChecksum(workflow);
+			expect(await repository.enqueuePublishIfCurrent(input)).toBe(true);
+			const second = await repository.claimNextPendingRecord();
+			assert(second);
+			await repository.markFailed(second.id, 'Registration failed again');
+
+			expect(await repository.enqueuePublishIfCurrent(input)).toBe(true);
+			expect(
+				await Container.get(WorkflowPublishHistoryRepository).countBy({
+					workflowId: workflow.id,
+					event: 'deactivated',
+				}),
+			).toBe(0);
+		});
 	});
 
 	it('enqueues a pending record that can then be claimed', async () => {

@@ -13,7 +13,7 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
+import { PROJECT_ROOT, UnexpectedError, UserError, calculateWorkflowChecksum } from 'n8n-workflow';
 
 import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
@@ -304,11 +304,37 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		id: string,
 		content: QueryDeepPartialEntity<WorkflowEntity>,
 		ctx: OperationContext,
-	) {
+		expectedChecksum?: string,
+	): Promise<boolean> {
 		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
+		if (expectedChecksum !== undefined) {
+			return await this.runInTransaction(ctx, async (manager) => {
+				const workflow = await manager.findOne(WorkflowEntity, {
+					where: { id },
+					...(manager.connection.options.type === 'postgres'
+						? { lock: { mode: 'for_no_key_update' as const } }
+						: {}),
+				});
+				if (!workflow || (await calculateWorkflowChecksum(workflow)) !== expectedChecksum) {
+					return false;
+				}
+				await runWorkflowContentWrite(
+					async () => await manager.update(WorkflowEntity, id, content),
+				);
+				return true;
+			});
+		}
 		await runWorkflowContentWrite(
 			async () => await this.managerFor(ctx).update(WorkflowEntity, id, content),
 		);
+		return true;
+	}
+
+	async findSavedWorkflow(id: string, includeTags: boolean, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			where: { id },
+			relations: includeTags ? ['tags', 'activeVersion'] : ['activeVersion'],
+		});
 	}
 
 	/**

@@ -1,6 +1,6 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import {
 	WorkflowHistory,
 	WorkflowHistoryRepository,
@@ -178,6 +178,7 @@ export class WorkflowHistoryService {
 		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
 		versionMetadata?: { name?: string; description?: string },
+		ctx?: OperationContext,
 	) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
@@ -186,14 +187,19 @@ export class WorkflowHistoryService {
 		}
 
 		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
-		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
+		const authors =
+			source === 'n8n-mcp'
+				? `${name} (via MCP)`
+				: source === 'n8n-ai'
+					? `${name} (with n8n Assistant)`
+					: name;
 
 		const repository = transactionManager
 			? transactionManager.getRepository(WorkflowHistory)
 			: this.workflowHistoryRepository;
 
 		try {
-			await repository.insert({
+			const version = {
 				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
@@ -203,8 +209,14 @@ export class WorkflowHistoryService {
 				autosaved,
 				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
 				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
-			});
+			};
+			if (ctx) {
+				await this.workflowHistoryRepository.insertVersion(version, ctx);
+			} else {
+				await repository.insert(version);
+			}
 		} catch (e) {
+			if (ctx) throw e;
 			const error = ensureError(e);
 			this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
 				error,

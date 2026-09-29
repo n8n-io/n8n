@@ -31,6 +31,10 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		await import('./workflow-suggestions/workflow-suggestions.controller.js');
+		const { WorkflowSuggestionEventRelay } = await import(
+			'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
+		);
+		Container.get(WorkflowSuggestionEventRelay);
 
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.

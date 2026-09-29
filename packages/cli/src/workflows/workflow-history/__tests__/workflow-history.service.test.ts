@@ -55,6 +55,46 @@ describe('WorkflowHistoryService', () => {
 	});
 
 	describe('saveVersion', () => {
+		it('keeps the human and Assistant authors on a guarded save', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			const ctx = {};
+			await workflowHistoryService.saveVersion(
+				testUser,
+				workflow,
+				'workflow-1',
+				false,
+				'n8n-ai',
+				undefined,
+				undefined,
+				ctx,
+			);
+			expect(workflowHistoryRepository.insertVersion).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'John Doe (with n8n Assistant)' }),
+				ctx,
+			);
+		});
+
+		it('propagates a history failure to the guarded save transaction', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			workflowHistoryRepository.insertVersion.mockRejectedValueOnce(
+				new Error('History unavailable'),
+			);
+			await expect(
+				workflowHistoryService.saveVersion(
+					testUser,
+					workflow,
+					'workflow-1',
+					false,
+					'n8n-ai',
+					undefined,
+					undefined,
+					{},
+				),
+			).rejects.toThrow('History unavailable');
+		});
+
 		it('should save a new version when nodes and connections are present', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });

@@ -17,6 +17,7 @@ import type { WorkflowPublicationStatusService } from '@/workflows/publication/w
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import type { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
+import type { WorkflowSuggestionPublicationService } from '../workflow-suggestion-publication.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -26,7 +27,15 @@ const publication = mock<WorkflowPublicationStatusService>();
 const modules = mock<ModuleRegistry>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
-const service = new WorkflowSuggestionService(suggestions, users, publication, tx, modules);
+const suggestionPublication = mock<WorkflowSuggestionPublicationService>();
+const service = new WorkflowSuggestionService(
+	suggestions,
+	users,
+	publication,
+	tx,
+	modules,
+	suggestionPublication,
+);
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
 const graph: WorkflowSuggestionGraph = {
@@ -71,6 +80,7 @@ beforeEach(async () => {
 			savedVersionId: versionId,
 			publishedVersionId: versionId,
 			checksum: await calculateWorkflowChecksum(workflow),
+			publicationId: null,
 		},
 		original: {
 			name: workflow.name,
@@ -99,7 +109,11 @@ beforeEach(async () => {
 	});
 	suggestions.getSuggestion.mockResolvedValue(suggestion);
 	suggestions.createPending.mockResolvedValue(suggestion);
-	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'project' });
+	suggestions.readWorkflowTarget.mockResolvedValue({
+		workflow,
+		projectId: 'project',
+		publicationId: null,
+	});
 	suggestions.getActivity.mockResolvedValue([]);
 	publication.getStatus.mockResolvedValue({
 		status: 'published',
@@ -157,6 +171,7 @@ it('stores the exact final graph and activity in the caller transaction', async 
 			errorContext,
 		},
 		ctx,
+		null,
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
 	expect(suggestions.readWorkflowTarget).toHaveBeenCalledWith(workflow.id, ctx);
@@ -263,6 +278,7 @@ it.each([
 		baseline,
 		expect.objectContaining({ candidate }),
 		ctx,
+		null,
 	);
 	expect(prepared.payload).not.toHaveProperty('validation');
 });
@@ -309,9 +325,17 @@ it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] a
 		if (change === 'published') workflow.activeVersionId = 'new';
 		if (change === 'archived') workflow.isArchived = true;
 		if (change === 'project')
-			suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'other' });
+			suggestions.readWorkflowTarget.mockResolvedValue({
+				workflow,
+				projectId: 'other',
+				publicationId: null,
+			});
 		if (change === 'deleted')
-			suggestions.readWorkflowTarget.mockResolvedValue({ workflow: null, projectId: undefined });
+			suggestions.readWorkflowTarget.mockResolvedValue({
+				workflow: null,
+				projectId: undefined,
+				publicationId: null,
+			});
 		await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 		expect(suggestions.createPending).not.toHaveBeenCalled();
 		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();
@@ -342,17 +366,25 @@ it('lets another current editor review without publish permission', async () => 
 	const detail = await service.getProposal(viewer, 'project', workflow.id, suggestion.id);
 	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
 	expect(detail.backgroundUserId).toBe(user.id);
-	expect(suggestions.getSuggestion).toHaveBeenCalledWith(suggestion.id, {
-		workflowId: workflow.id,
-		projectId: 'project',
-	});
+	expect(suggestions.getSuggestion).toHaveBeenCalledWith(
+		suggestion.id,
+		{
+			workflowId: workflow.id,
+			projectId: 'project',
+		},
+		ctx,
+	);
 	expect(userHasScopes).toHaveBeenCalledWith(viewer, ['workflow:read', 'workflow:update'], false, {
 		workflowId: 'wf',
 	});
 });
 
 it('rejects review after ownership changes', async () => {
-	suggestions.readWorkflowTarget.mockResolvedValue({ workflow, projectId: 'other' });
+	suggestions.readWorkflowTarget.mockResolvedValue({
+		workflow,
+		projectId: 'other',
+		publicationId: null,
+	});
 	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 		'not found',
 	);

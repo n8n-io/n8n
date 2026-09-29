@@ -1,6 +1,8 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
+	TransactionRunner,
+	OperationContext,
 	Project,
 	Role,
 	TagEntity,
@@ -136,6 +138,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
@@ -439,6 +442,7 @@ describe('WorkflowService', () => {
 	describe('update() redactionPolicy scope enforcement', () => {
 		const userHasScopesMock = vi.mocked(userHasScopes);
 		let workflowService: WorkflowService;
+		let transactionRunner: MockProxy<TransactionRunner>;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 		let licenseStateMock: MockProxy<LicenseState>;
@@ -450,12 +454,15 @@ describe('WorkflowService', () => {
 			update: Mock;
 			updateContent: Mock;
 			findOne: Mock;
+			findSavedWorkflow: Mock;
 		}>;
 
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			transactionRunner = mock<TransactionRunner>();
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
+			workflowRepositoryMock.updateContent.mockResolvedValue(true);
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			redactionEnforcementServiceMock = mock<RedactionEnforcementService>();
@@ -510,6 +517,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
+				transactionRunner, // transactionRunner
 			);
 
 			vi.clearAllMocks();
@@ -531,12 +539,117 @@ describe('WorkflowService', () => {
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
 			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(existingWorkflow);
 			return existingWorkflow;
 		}
 
 		function createUpdateData(settings: Record<string, unknown>) {
 			return { settings } as unknown as WorkflowEntity;
 		}
+
+		test('commits the prepared save and related state before after-update hooks', async () => {
+			const original = setupExistingWorkflow();
+			const ctx: OperationContext = {};
+			let committed = false;
+			transactionRunner.run.mockImplementation(async (_context, run) => {
+				const result = await run(ctx);
+				committed = true;
+				return result;
+			});
+			const beforeSave = vi.fn(
+				async (_ctx: OperationContext, stored: WorkflowEntity, prepared: WorkflowEntity) => {
+					expect(stored).toBe(original);
+					expect(prepared.nodes[0].name).toBe('Prepared node');
+					expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
+				},
+			);
+			const afterSave = vi.fn(async () => {
+				expect(committed).toBe(false);
+				expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalled();
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalled();
+			});
+			externalHooksMock.run.mockImplementation(async (hook, args) => {
+				if (hook === 'workflow.update') {
+					const data = args?.[0] as WorkflowEntity;
+					data.nodes[0].name = 'Prepared node';
+				}
+				if (hook === 'workflow.afterUpdate') expect(committed).toBe(true);
+			});
+			await workflowService.update(
+				mock<User>(),
+				mock<WorkflowEntity>({ nodes: [mock<INode>({ name: 'Submitted node' })] }),
+				original.id,
+				{ source: 'n8n-ai', guardedUpdate: { beforeSave, afterSave } },
+			);
+			expect(beforeSave).toHaveBeenCalledOnce();
+			expect(afterSave).toHaveBeenCalledWith(ctx, original);
+			expect(workflowHistoryServiceMock.saveVersion.mock.calls[0][7]).toBe(ctx);
+		});
+
+		test('does not write when the prepared proposal is rejected', async () => {
+			const original = setupExistingWorkflow();
+			transactionRunner.run.mockImplementation(async (ctx, run) => await run(ctx));
+			const afterSave = vi.fn();
+			await expect(
+				workflowService.update(
+					mock<User>(),
+					mock<WorkflowEntity>({ nodes: [mock<INode>()] }),
+					original.id,
+					{
+						guardedUpdate: {
+							beforeSave: async () => {
+								throw new ConflictError('Prepared content changed');
+							},
+							afterSave,
+						},
+					},
+				),
+			).rejects.toThrow('Prepared content changed');
+			expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
+			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+			expect(afterSave).not.toHaveBeenCalled();
+		});
+
+		test('does not complete the guarded save when history persistence fails', async () => {
+			const original = setupExistingWorkflow();
+			transactionRunner.run.mockImplementation(async (ctx, run) => await run(ctx));
+			workflowHistoryServiceMock.saveVersion.mockRejectedValueOnce(
+				new Error('History unavailable'),
+			);
+			const afterSave = vi.fn();
+			await expect(
+				workflowService.update(
+					mock<User>(),
+					mock<WorkflowEntity>({ nodes: [mock<INode>()] }),
+					original.id,
+					{
+						guardedUpdate: { beforeSave: vi.fn(), afterSave },
+					},
+				),
+			).rejects.toThrow('History unavailable');
+			expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
+			expect(afterSave).not.toHaveBeenCalled();
+			expect(externalHooksMock.run).not.toHaveBeenCalledWith(
+				'workflow.afterUpdate',
+				expect.anything(),
+			);
+		});
+
+		test('rejects an ordinary save when a concurrent writer changes the workflow', async () => {
+			const original = setupExistingWorkflow();
+			workflowRepositoryMock.updateContent.mockResolvedValueOnce(false);
+			await expect(
+				workflowService.update(
+					mock<User>(),
+					Object.assign(new WorkflowEntity(), { settings: {} }),
+					original.id,
+				),
+			).rejects.toThrow('changed before the save completed');
+			expect(externalHooksMock.run).not.toHaveBeenCalledWith(
+				'workflow.afterUpdate',
+				expect.anything(),
+			);
+		});
 
 		test('forwards the workflow hook context to workflow.update and workflow.afterUpdate', async () => {
 			setupExistingWorkflow();
@@ -580,6 +693,7 @@ describe('WorkflowService', () => {
 					versionId: expect.not.stringMatching('v1'),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -617,6 +731,7 @@ describe('WorkflowService', () => {
 					versionId: 'v1',
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -766,6 +881,7 @@ describe('WorkflowService', () => {
 				'ui',
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -810,6 +926,7 @@ describe('WorkflowService', () => {
 					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -834,6 +951,7 @@ describe('WorkflowService', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -880,6 +998,7 @@ describe('WorkflowService', () => {
 					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -902,6 +1021,7 @@ describe('WorkflowService', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -971,6 +1091,7 @@ describe('WorkflowService', () => {
 					}),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -997,6 +1118,7 @@ describe('WorkflowService', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'none' }),
 				}),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 
@@ -1151,6 +1273,7 @@ describe('WorkflowService', () => {
 						settings: expect.not.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
 					expect.anything(),
+					expect.any(String),
 				);
 			});
 
@@ -1172,6 +1295,7 @@ describe('WorkflowService', () => {
 						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
 					expect.anything(),
+					expect.any(String),
 				);
 			});
 
@@ -1198,6 +1322,7 @@ describe('WorkflowService', () => {
 						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
 					}),
 					expect.anything(),
+					expect.any(String),
 				);
 			});
 
@@ -1224,6 +1349,7 @@ describe('WorkflowService', () => {
 						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
 					}),
 					expect.anything(),
+					expect.any(String),
 				);
 			});
 		});
@@ -1354,6 +1480,7 @@ describe('WorkflowService', () => {
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 
 			// Bypass validation internals
@@ -1402,6 +1529,103 @@ describe('WorkflowService', () => {
 				expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
 			},
 		);
+
+		test.each([{ versionId: 'later-save' }, { activeVersionId: 'other-published-version' }])(
+			'rejects exact-version publication after identity drift: %s',
+			async (change) => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity(change));
+
+				await expect(
+					workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+						versionId: TARGET_VERSION_ID,
+						expectedVersions: {
+							savedVersionId: TARGET_VERSION_ID,
+							activeVersionId: PREVIOUS_VERSION_ID,
+							projectId: 'project-1',
+							baselinePublicationId: null,
+						},
+					}),
+				).rejects.toBeInstanceOf(ConflictError);
+				expect(outboxRepositoryMock.enqueuePublishIfCurrent).not.toHaveBeenCalled();
+			},
+		);
+
+		test('uses the guarded outbox commit for exact-version publication', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = true;
+			const workflow = makeWorkflowEntity();
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			outboxRepositoryMock.enqueuePublishIfCurrent.mockResolvedValue(true);
+			const actor = mock<User>({ id: 'publisher' });
+
+			await workflowService.activateWorkflow(actor, WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+				expectedVersions: {
+					savedVersionId: TARGET_VERSION_ID,
+					activeVersionId: PREVIOUS_VERSION_ID,
+					projectId: 'project-1',
+					baselinePublicationId: null,
+				},
+			});
+
+			expect(outboxRepositoryMock.enqueuePublishIfCurrent).toHaveBeenCalledExactlyOnceWith({
+				workflowId: WORKFLOW_ID,
+				versionId: TARGET_VERSION_ID,
+				previousActiveVersionId: PREVIOUS_VERSION_ID,
+				checksum: expect.any(String),
+				userId: actor.id,
+				projectId: 'project-1',
+				baselinePublicationId: null,
+			});
+			expect(outboxRepositoryMock.enqueue).not.toHaveBeenCalled();
+			expect(workflowMutationHooksMock.afterWorkflowPublished).toHaveBeenCalledOnce();
+		});
+
+		test('does not report publication when the exact-version commit loses a race', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = true;
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity());
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			outboxRepositoryMock.enqueuePublishIfCurrent.mockResolvedValue(false);
+
+			await expect(
+				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+					expectedVersions: {
+						savedVersionId: TARGET_VERSION_ID,
+						activeVersionId: PREVIOUS_VERSION_ID,
+						projectId: 'project-1',
+						baselinePublicationId: null,
+					},
+				}),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(workflowMutationHooksMock.afterWorkflowPublished).not.toHaveBeenCalled();
+			expect(eventServiceMock.emit).not.toHaveBeenCalled();
+		});
+
+		test('rechecks the review guard when retrying the same requested version', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = true;
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ activeVersionId: TARGET_VERSION_ID }),
+			);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowPublishGuardMock.assertCanPublish.mockRejectedValue(new ConflictError('Open review'));
+
+			await expect(
+				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+					expectedVersions: {
+						savedVersionId: TARGET_VERSION_ID,
+						activeVersionId: TARGET_VERSION_ID,
+						projectId: 'project-1',
+						baselinePublicationId: null,
+					},
+				}),
+			).rejects.toThrow('Open review');
+			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(outboxRepositoryMock.enqueuePublishIfCurrent).not.toHaveBeenCalled();
+		});
 
 		test('keeps the previous version running when an open review blocks a replacement', async () => {
 			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
@@ -2111,6 +2335,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
@@ -2252,6 +2477,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
@@ -2518,6 +2744,7 @@ describe('WorkflowService', () => {
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			workflowRepositoryMock = mock();
+			workflowRepositoryMock.updateContent.mockResolvedValue(true);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -2558,6 +2785,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
@@ -2638,6 +2866,7 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expect.not.objectContaining({ isArchived: expect.anything() }),
 				expect.anything(),
+				expect.any(String),
 			);
 		});
 	});
@@ -2676,6 +2905,7 @@ describe('WorkflowService', () => {
 			);
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
+			workflowRepositoryMock.updateContent.mockResolvedValue(true);
 
 			const licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
@@ -2728,6 +2958,7 @@ describe('WorkflowService', () => {
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
@@ -2789,6 +3020,7 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expect.anything(),
 				{ policyCleared: cleared },
+				expect.any(String),
 			);
 		});
 
@@ -2909,6 +3141,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
@@ -3012,6 +3245,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // transactionRunner
 			);
 		});
 
