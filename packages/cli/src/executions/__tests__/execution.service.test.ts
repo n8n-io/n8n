@@ -22,8 +22,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
@@ -166,7 +165,7 @@ describe('ExecutionService', () => {
 			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
 
-		it('should read an engine 2.0 id from the data plane, not the control plane', async () => {
+		it('should read an engine v2 id from the data plane, not the control plane', async () => {
 			const execution = mock<IExecutionResponse>({
 				id: V2_EXECUTION_ID,
 				data: { resultData: {} },
@@ -696,7 +695,6 @@ describe('ExecutionService', () => {
 					const job = mock<Job>({ data: { executionId: execution.id } });
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
-					// @ts-expect-error Private method
 					const stopInRegularModeSpy = vi.spyOn(executionService, 'stopInRegularMode');
 
 					/**

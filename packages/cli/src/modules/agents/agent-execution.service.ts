@@ -13,13 +13,24 @@ import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import {
+	checkpointExecutionId,
+	EXECUTION_METADATA_KEY,
+	type AgentExecutionAdmission,
+} from './types/agent-queued-message';
+import { AgentMessageRepository } from './repositories/agent-message.repository';
+import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-message.entity';
+import { messageToDto } from './agent-message-mapper';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { buildAgentTurnMetrics } from './agent-telemetry';
 import {
 	AgentExecutionThread,
@@ -37,6 +48,7 @@ import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
+	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
@@ -59,7 +71,7 @@ export interface RecordMessageParams {
 	userMessage: string | null;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
 	author?: AgentMessageAuthor;
-	/** Attachments included on the user turn; persisted on the run for the sessions view. */
+	/** Attachments included on the original input message. */
 	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
@@ -81,9 +93,22 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	resourceId: string;
+	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
+	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
+	/** Internal admission data. These fields are not stored on the execution. */
+	queueItemId?: string;
+	resumeRunId?: string;
+	allowSuspendedPredecessor?: boolean;
+}
+
+export interface AgentExecutionReservation {
+	execution: AgentExecution;
+	needsTitleSync: boolean;
+	inputMessageIds: string[];
 }
 
 interface TimelineSnapshotParams extends AgentExecutionLogRef {
@@ -119,6 +144,7 @@ export class AgentExecutionService {
 	private static readonly heartbeatIntervalMs = 30_000;
 
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
+	private readonly executionControllers = new Map<string, AbortController>();
 
 	private readonly pendingTimelineSnapshots = new Map<
 		string,
@@ -142,49 +168,182 @@ export class AgentExecutionService {
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
+		private readonly queueRepository: AgentMessageQueueRepository,
+		private readonly messageRepository: AgentMessageRepository,
 	) {}
 
-	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const { inserted, created, needsTitleSync } = await this.txRunner.run({}, async (ctx) => {
-			const prepared = await this.prepareThread(params, ctx);
-			const execution = this.agentExecutionRepository.create({
-				threadId: params.threadId,
-				status: 'running',
-				startedAt,
-				stoppedAt: null,
-				duration: 0,
-				userMessage: prepared.userMessage,
-				author: params.author ?? null,
-				model: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
-				cost: null,
-				// Save the background job signal before notifying clients that the execution started.
-				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
-				storedAt: 'db',
-				error: null,
-				failureSummary: null,
-				hitlStatus: null,
-				source: params.source ?? null,
-				attachments: params.attachments?.length ? params.attachments : null,
-			});
-			return {
-				inserted: await this.agentExecutionRepository.saveInContext(execution, ctx),
-				created: prepared.created,
-				needsTitleSync: !prepared.created && !prepared.thread.title,
-			};
+	async startExecutionRecording(
+		params: StartExecutionParams,
+		startedAt: Date,
+	): Promise<AgentExecutionAdmission> {
+		const reservation = await this.txRunner.run(
+			{},
+			async (ctx) => await this.reserveExecution(params, startedAt, ctx),
+		);
+		this.activateExecution(reservation, params);
+		return {
+			executionId: reservation.execution.id,
+			startedAt,
+			inputMessageIds: reservation.inputMessageIds,
+		};
+	}
+
+	async reserveExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
+	): Promise<AgentExecutionReservation> {
+		// The queue already locked the session. Its consumer validates the owner before execution.
+		const prepared = lockedQueueThread
+			? { thread: lockedQueueThread, created: false }
+			: await this.prepareThread(params, ctx);
+		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
+		const execution = this.agentExecutionRepository.create({
+			threadId: params.threadId,
+			status: 'running',
+			startedAt,
+			stoppedAt: null,
+			duration: 0,
+			userMessage: null,
+			author: null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			// Save the background job signal before notifying clients that the execution started.
+			timeline: params.initialTimeline?.length ? params.initialTimeline : null,
+			storedAt: 'db',
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: params.source ?? null,
+			attachments: null,
 		});
-		this.startHeartbeat(inserted.id);
-		if (created) this.executionsNeedingTitleSync.add(inserted.id);
-		if (needsTitleSync) await this.syncTitleFromMemory(params.threadId, params.agentId);
+		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		const inputMessageIds = await this.reserveInput(
+			params,
+			inserted.id,
+			predecessorId,
+			queueItem?.messageId,
+			ctx,
+		);
+		if (
+			queueItem &&
+			!(await this.queueRepository.linkExecution(
+				queueItem.id,
+				queueItem.executionId,
+				inserted.id,
+				ctx,
+			))
+		) {
+			throw new AgentTurnAlreadyRunningError();
+		}
+		return {
+			execution: inserted,
+			needsTitleSync: prepared.created || !prepared.thread.title,
+			inputMessageIds,
+		};
+	}
+
+	private async reserveInput(
+		params: StartExecutionParams,
+		executionId: string,
+		predecessorId: string | undefined,
+		queuedMessageId: string | undefined,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		if (predecessorId) {
+			return await this.messageRepository.copyExecutionInputs(
+				executionId,
+				predecessorId,
+				params.threadId,
+				ctx,
+			);
+		}
+		if (params.resumeRunId || params.userMessage === null) return [];
+		if (queuedMessageId) {
+			await this.messageRepository.linkExecutionInput(executionId, queuedMessageId, params, ctx);
+			return [queuedMessageId];
+		}
+		const [content] = buildInboundUserMessage(params.userMessage, params.attachments ?? []);
+		const message = await this.messageRepository.createInput(
+			{
+				threadId: params.threadId,
+				resourceId: params.resourceId,
+				content,
+				author: params.author,
+				origin: {
+					...params.messageOrigin,
+					source: params.source ?? null,
+					...(params.hideUserMessageFromTranscript && { hidden: true }),
+				},
+			},
+			ctx,
+		);
+		await this.messageRepository.linkExecutionInput(executionId, message.id, params, ctx);
+		return [message.id];
+	}
+
+	private async checkAdmission(params: StartExecutionParams, ctx: OperationContext) {
+		const { threadId, agentId, resumeRunId, queueItemId } = params;
+		const running = await this.agentExecutionRepository.findRunningByThread(threadId, ctx);
+		const active = await this.queueRepository.findActive(threadId, ctx);
+		if (resumeRunId) {
+			const checkpoint = await this.checkpointStorage.getStatus(resumeRunId, agentId, ctx);
+			if (
+				checkpoint.status !== 'active' ||
+				checkpoint.checkpoint.status !== 'suspended' ||
+				checkpoint.checkpoint.persistence?.threadId !== threadId
+			) {
+				throw new AgentTurnAlreadyRunningError();
+			}
+			const predecessorId = checkpointExecutionId(checkpoint.checkpoint);
+			const legacyPredecessor = !predecessorId && !active && params.allowSuspendedPredecessor;
+			if (
+				running.some(({ id }) => id !== predecessorId) &&
+				!(legacyPredecessor && running.length === 1)
+			) {
+				throw new AgentTurnAlreadyRunningError();
+			}
+			const inputExecutionId =
+				checkpoint.checkpoint.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
+			return {
+				queueItem: active,
+				predecessorId: typeof inputExecutionId === 'string' ? inputExecutionId : undefined,
+			};
+		}
+		if (
+			running.length ||
+			active ||
+			(await this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx))
+		) {
+			throw new AgentTurnAlreadyRunningError();
+		}
+		const head = await this.queueRepository.findHead(threadId, ctx);
+		if (head?.id !== queueItemId && (head || queueItemId)) throw new AgentTurnAlreadyRunningError();
+		return { queueItem: head, predecessorId: undefined };
+	}
+
+	/** Activate only after the reservation transaction commits. */
+	activateExecution(
+		{ execution, needsTitleSync }: AgentExecutionReservation,
+		params: StartExecutionParams,
+	): void {
+		this.executionControllers.set(execution.id, new AbortController());
+		this.startHeartbeat(execution.id);
+		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
 			threadId: params.threadId,
-			executionId: inserted.id,
+			executionId: execution.id,
 		});
-		return inserted.id;
+	}
+
+	getAbortSignal(executionId: string): AbortSignal {
+		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
@@ -246,26 +405,38 @@ export class AgentExecutionService {
 		}
 	}
 
-	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
+	async finalizeInterruptedExecution(
+		execution: RunningAgentExecution,
+		staleBefore: Date,
+	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
 		const error = 'Agent execution was interrupted by a process restart.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const finalized = await this.agentExecutionRepository.updateIfRunning(execution.id, {
-			status: 'interrupted',
-			stoppedAt,
-			duration,
-			timeline: timeline.length > 0 ? timeline : null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline,
-				status: 'interrupted',
-				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
+		const finalized = await this.txRunner.run({}, async (ctx) => {
+			if (!(await this.agentExecutionThreadRepository.lockById(execution.threadId, ctx)))
+				return false;
+			return await this.agentExecutionRepository.updateIfRunning(
+				execution.id,
+				{
+					status: 'interrupted',
+					stoppedAt,
+					duration,
+					timeline: timeline.length > 0 ? timeline : null,
+					storedAt: 'db',
+					error,
+					failureSummary: computeExecutionFailureSummary({
+						timeline,
+						status: 'interrupted',
+						error,
+						stoppedAt: stoppedAt.getTime(),
+					}),
+				},
+				staleBefore,
+				ctx,
+			);
 		});
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
@@ -294,21 +465,34 @@ export class AgentExecutionService {
 
 	private startHeartbeat(executionId: string): void {
 		const timer = setInterval(() => {
-			void this.agentExecutionRepository.touchRunning(executionId).catch((error: unknown) => {
-				this.logger.warn('Failed to heartbeat a running agent execution', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
+			void this.agentExecutionRepository
+				.touchRunning(executionId)
+				.then((owned) => {
+					if (!owned) this.abortLostExecution(executionId);
+				})
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to heartbeat a running agent execution', {
+						executionId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
-			});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);
+	}
+
+	private abortLostExecution(executionId: string): void {
+		this.executionControllers
+			.get(executionId)
+			?.abort(new OperationalError('Agent execution ownership was lost'));
+		this.stopHeartbeat(executionId);
 	}
 
 	private stopHeartbeat(executionId: string): void {
 		const timer = this.heartbeatTimers.get(executionId);
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
+		this.executionControllers.delete(executionId);
 	}
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
@@ -334,10 +518,10 @@ export class AgentExecutionService {
 		}
 	}
 
-	private async prepareThread(
+	async prepareThread(
 		params: StartExecutionParams,
 		ctx: OperationContext,
-	): Promise<{ userMessage: string | null; created: boolean; thread: AgentExecutionThread }> {
+	): Promise<{ created: boolean; thread: AgentExecutionThread }> {
 		const { thread, created } = await this.agentExecutionThreadRepository.findOrCreate(
 			params.threadId,
 			params.agentId,
@@ -351,7 +535,7 @@ export class AgentExecutionService {
 			params.sessionMode,
 		);
 		if (!created) await this.agentExecutionThreadRepository.bumpUpdatedAt(params.threadId, ctx);
-		return { userMessage: cleanUserMessage(params.userMessage, params.agentName), created, thread };
+		return { created, thread };
 	}
 
 	private async completeRecordedExecution(
@@ -530,7 +714,7 @@ export class AgentExecutionService {
 			return {
 				...t,
 				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
-				firstMessage: messageMap.get(t.id) ?? null,
+				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
 				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
@@ -553,8 +737,64 @@ export class AgentExecutionService {
 		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
+		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	private async hydrateExecutionInputs(
+		executions: AgentExecution[],
+		agentName: string,
+	): Promise<void> {
+		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
+		const seen = new Set<string>();
+		for (const execution of executions) {
+			const messages = inputs.get(execution.id);
+			if (!messages) continue;
+			execution.inputMessageIds = messages.map(({ id }) => id);
+			execution.inputMessages = [];
+			for (const message of messages) {
+				if (seen.has(message.id)) continue;
+				seen.add(message.id);
+				if (message.origin?.hidden) continue;
+				const dto = this.inputMessageToDto(message, execution.id, agentName);
+				if (!dto) continue;
+				execution.inputMessages.push(dto);
+			}
+			const parts = execution.inputMessages.flatMap(({ content }) => content);
+			execution.userMessage =
+				parts
+					.filter((part) => part.type === 'text' && part.text)
+					.map((part) => part.text)
+					.join('\n') || null;
+			execution.author = execution.inputMessages[0]?.author ?? null;
+			execution.attachments = parts.flatMap((part) => {
+				if (part.type !== 'file' || !part.fileId) return [];
+				return [
+					{
+						id: part.fileId,
+						fileName: part.fileName ?? '',
+						mimeType: part.mimeType ?? 'application/octet-stream',
+						sizeBytes: part.sizeBytes ?? 0,
+					},
+				];
+			});
+		}
+	}
+
+	private inputMessageToDto(message: AgentMessageEntity, executionId: string, agentName: string) {
+		const dto = messageToDto({ ...message.content, id: message.id, createdAt: message.createdAt });
+		if (!dto) return null;
+		dto.author = message.author ?? undefined;
+		dto.executionId = executionId;
+		dto.content = dto.content.filter((part) => {
+			if (part.type !== 'text' || part.text === undefined) return true;
+			const text = cleanUserMessage(part.text, agentName);
+			if (text === null) return false;
+			part.text = text;
+			return true;
+		});
+		return dto;
 	}
 
 	/**
@@ -626,6 +866,26 @@ export class AgentExecutionService {
 		}
 		if (options.sessionMode === 'existing') return false;
 		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+	}
+
+	async canUseProductionChatThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		sessionMode: AgentSessionMode,
+	): Promise<boolean> {
+		const thread = await this.findThreadById(threadId);
+		if (!thread) return sessionMode === 'new';
+		if (
+			thread.projectId !== projectId ||
+			thread.agentId !== agentId ||
+			!canUseTopLevelDraftThread(thread, userId) ||
+			thread.taskId !== null
+		)
+			return false;
+		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
+		return sources.get(threadId) === N8N_CHAT_PRODUCTION_SOURCE;
 	}
 
 	private async canUseUnrecordedDraftThread(
@@ -793,7 +1053,7 @@ export class AgentExecutionService {
 	}
 }
 
-function toSessionStatus(
+export function toSessionStatus(
 	latestStatus: AgentExecutionStatus | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {

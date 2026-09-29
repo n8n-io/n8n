@@ -5,6 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
+import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
 const props = defineProps<{
@@ -18,11 +19,6 @@ const props = defineProps<{
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
 const HOVER_GRACE_MS = 200;
-
-const SCOPE_TITLE_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
-};
 
 const i18n = useI18n();
 
@@ -47,7 +43,7 @@ const open = computed(
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
-		(props.scope && SCOPE_TITLE_KEY[props.scope]) ??
+		(props.scope && SCOPE_LABEL_KEY[props.scope]) ??
 		'typeAvailabilityPolicies.restrictedNode.title',
 );
 </script>

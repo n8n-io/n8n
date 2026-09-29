@@ -7,7 +7,7 @@ import {
 	type FocusOutsideEvent,
 	type PointerDownOutsideEvent,
 } from 'reka-ui';
-import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, useId, watch } from 'vue';
 
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
@@ -32,6 +32,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	trigger: 'click',
 	activatorIcon: () => ({ type: 'icon', value: 'ellipsis' }),
 	modal: true,
+	suppressCloseAutoFocus: false,
 	disabled: false,
 	teleported: true,
 	loading: false,
@@ -80,9 +81,13 @@ provide(
 const internalOpen = ref(props.defaultOpen ?? false);
 
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+const triggerRef = ref<InstanceType<typeof DropdownMenuTrigger> | null>(null);
 const searchableContentRef = ref<{ highlightFirstItem: () => void } | null>(null);
+const generatedContentId = `n8n-dropdown-menu-${useId()}`;
+const contentId = computed(() => props.id ?? generatedContentId);
 const externalNavigationControllers: DropdownMenuExternalNavigationController[] = [];
 let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
+let suppressNextCloseAutoFocus = false;
 
 const isExternalSearchMode = computed(() => props.searchable && props.searchMode === 'external');
 const effectiveModal = computed(() => (isExternalSearchMode.value ? false : props.modal));
@@ -124,6 +129,15 @@ const focusExternalTarget = (allowClosed = false) => {
 	if (!allowClosed && !internalOpen.value) return;
 	if (!isExternalSearchMode.value || !props.externalFocusTarget?.isConnected) return;
 	props.externalFocusTarget.focus({ preventScroll: true });
+};
+
+const focusTrigger = () => {
+	const trigger = triggerRef.value?.$el as HTMLElement | undefined;
+	if (!trigger) return;
+	const focusTarget =
+		trigger.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]') ??
+		(trigger.matches('button, [href], input, select, textarea, [tabindex]') ? trigger : undefined);
+	focusTarget?.focus();
 };
 
 const syncExternalActiveDescendant = () => {
@@ -174,17 +188,16 @@ const handleContentOpenAutoFocus = (event: Event) => {
 };
 
 const handleContentCloseAutoFocus = (event: Event) => {
-	if (isExternalSearchMode.value) event.preventDefault();
+	if (isExternalSearchMode.value || props.suppressCloseAutoFocus || suppressNextCloseAutoFocus) {
+		event.preventDefault();
+	}
+	suppressNextCloseAutoFocus = false;
 };
 
-const externalContentEventHandlers = computed(() =>
-	isExternalSearchMode.value
-		? {
-				onOpenAutoFocus: handleContentOpenAutoFocus,
-				onCloseAutoFocus: handleContentCloseAutoFocus,
-			}
-		: {},
-);
+const contentFocusEventHandlers = computed(() => ({
+	...(isExternalSearchMode.value ? { onOpenAutoFocus: handleContentOpenAutoFocus } : {}),
+	onCloseAutoFocus: handleContentCloseAutoFocus,
+}));
 
 const handleContentInteractOutside = (event: FocusOutsideEvent | PointerDownOutsideEvent) => {
 	if (
@@ -241,9 +254,13 @@ function findItemById(
 }
 
 const handleItemSelect = (value: T) => {
+	const item = findItemById(props.items, value);
 	emit('select', value);
 	// Toggle-style rows (e.g. credential selection) keep the menu open.
-	if (!findItemById(props.items, value)?.keepOpen) close();
+	if (!item?.keepOpen) {
+		suppressNextCloseAutoFocus = item?.suppressCloseAutoFocus ?? false;
+		close();
+	}
 };
 
 const handleItemSearch = (term: string, itemId: T) => {
@@ -344,11 +361,17 @@ watch(
 );
 
 watch(
-	[internalOpen, isExternalSearchMode, () => props.externalFocusTarget],
+	[internalOpen, isExternalSearchMode, () => props.externalFocusTarget, contentId],
 	async ([isOpen, externalMode, target], _oldValues, onCleanup) => {
 		if (!isOpen || !externalMode || !target) return;
 
-		const attributes = ['aria-activedescendant', 'aria-controls', 'aria-expanded', 'aria-haspopup'];
+		const attributes = [
+			'aria-activedescendant',
+			'aria-controls',
+			'aria-expanded',
+			'aria-haspopup',
+			'role',
+		];
 		const previousAttributes = new Map(
 			attributes.map((attribute) => [attribute, target.getAttribute(attribute)]),
 		);
@@ -360,13 +383,13 @@ watch(
 			}
 		});
 
-		await nextTick();
-		if (!internalOpen.value || props.externalFocusTarget !== target) return;
-
+		target.setAttribute('role', 'combobox');
 		target.setAttribute('aria-expanded', 'true');
 		target.setAttribute('aria-haspopup', 'menu');
-		const contentId = (contentRef.value?.$el as HTMLElement | undefined)?.id;
-		if (contentId) target.setAttribute('aria-controls', contentId);
+		target.setAttribute('aria-controls', contentId.value);
+
+		await nextTick();
+		if (!internalOpen.value || props.externalFocusTarget !== target) return;
 		focusExternalTarget();
 		syncExternalActiveDescendant();
 	},
@@ -411,33 +434,28 @@ watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
 	});
 });
 
-defineExpose({ open, close, highlightFirstItem, handleExternalKeydown });
+defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrigger });
 </script>
 
-<!-- TODO DS-580: Let consumers bind trigger props/listeners directly in the slot so their
-	element can be the actual trigger. For now this wrapper owns hover events and test ids. -->
 <template>
 	<DropdownMenuRoot :modal="effectiveModal" :open="internalOpen" @update:open="handleOpenChange">
-		<DropdownMenuTrigger as-child :disabled="disabled">
-			<span
-				v-if="slots.trigger"
-				:class="$style.trigger"
-				:data-test-id="dataTestId"
-				@pointerenter="triggerHoverEnter"
-				@pointerleave="triggerHoverLeave"
-			>
-				<slot name="trigger" />
-			</span>
+		<DropdownMenuTrigger
+			ref="triggerRef"
+			as-child
+			:disabled="disabled"
+			:class="$style.trigger"
+			:data-test-id="dataTestId"
+			@pointerenter="triggerHoverEnter"
+			@pointerleave="triggerHoverLeave"
+		>
+			<slot v-if="slots.trigger" name="trigger" />
 			<N8nButton
 				v-else
 				:icon="activatorIcon?.type === 'icon' ? (activatorIcon.value as IconName) : undefined"
-				:data-test-id="dataTestId"
 				:disabled="disabled"
 				:icon-only="true"
 				variant="ghost"
 				size="xsmall"
-				@pointerenter="triggerHoverEnter"
-				@pointerleave="triggerHoverLeave"
 			>
 				<template v-if="activatorIcon?.type === 'emoji'" #icon>
 					{{ activatorIcon.value }}
@@ -453,8 +471,8 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown });
 				ref="contentRef"
 				v-bind="{
 					...fixedContentProps,
-					...(id ? { id } : {}),
-					...externalContentEventHandlers,
+					id: contentId,
+					...contentFocusEventHandlers,
 				}"
 				data-menu-content
 				:data-test-id="contentTestId"

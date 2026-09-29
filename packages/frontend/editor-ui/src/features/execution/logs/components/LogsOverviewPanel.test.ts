@@ -23,6 +23,7 @@ import {
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { NO_OP_NODE_TYPE } from '@/app/constants';
 
 const { mockDocumentStore } = vi.hoisted(() => ({
 	mockDocumentStore: {
@@ -226,6 +227,41 @@ describe('LogsOverviewPanel', () => {
 		expect(groupRow.getByText('My Group')).toBeInTheDocument();
 		// A group row has no node icon
 		expect(groupRow.queryByRole('img')).not.toBeInTheDocument();
+	});
+
+	it('should render an empty group as a non-expandable row with an empty badge', async () => {
+		const anchor = createTestNode({
+			id: 'anchor',
+			name: 'Empty group anchor',
+			type: NO_OP_NODE_TYPE,
+			parameters: { emptyGroupAnchor: true },
+		});
+		const workflow = createTestWorkflowObject({ id: 'w1', nodes: [anchor] });
+		workflow.getNode(anchor.name)!.parameters = { emptyGroupAnchor: true };
+		const execution = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: { runData: { [anchor.name]: [createTestTaskData()] } },
+			}),
+		});
+		const logs = createLogTree(workflow, execution, {}, {}, undefined, [
+			{ id: 'empty-group', name: 'Empty Group', nodeIds: [anchor.id] },
+		]);
+		const rendered = render({
+			isOpen: true,
+			execution,
+			entries: logs,
+			flatLogEntries: flattenLogEntries(logs, {}),
+		});
+
+		await fireEvent.click(rendered.getByText('Overview'));
+
+		const tree = within(rendered.getByRole('tree'));
+		const groupRow = within(tree.getByText('Empty Group').closest('[role=treeitem]')!);
+
+		expect(groupRow.getByTestId('logs-empty-group-badge')).toHaveTextContent('empty');
+		expect(groupRow.getByLabelText('Toggle row')).not.toBeVisible();
+		expect(tree.getAllByRole('treeitem')).toHaveLength(1);
 	});
 
 	it('reflects a running member in the group row status', async () => {

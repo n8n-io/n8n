@@ -266,6 +266,9 @@ Usage:
 Local dev (no $CHANGED_FILES set): runs the full suite.
 CI: scopes via vitest related --run; runs the full suite when the package is
 affected by an upstream change; skips if the package wasn't touched.
+With COVERAGE_ENABLED=true and a change signal, coverage uses istanbul and
+measures only the package's changed source files (coverage is off when there
+are none). Without a change signal, the vitest config decides coverage.
 Unrecognised flags are forwarded to the runner.
 `);
 }

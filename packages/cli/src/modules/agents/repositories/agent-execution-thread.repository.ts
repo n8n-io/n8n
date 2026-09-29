@@ -42,6 +42,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
+	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(AgentExecutionThread, {
+			where: { id: threadId },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
 	/**
 	 * Find an existing thread or create a new one.
 	 * Assign a display number on creation. Concurrent sessions can share a number.
@@ -315,12 +324,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.where('id = :threadId', { threadId })
 			.setParameters({ promptTokens, completionTokens, cost, duration })
 			.execute();
-	}
-
-	/** Delete a thread, validating project ownership. Returns true if deleted. */
-	async deleteByIdAndProjectId(threadId: string, projectId: string): Promise<boolean> {
-		const result = await this.delete({ id: threadId, projectId });
-		return (result.affected ?? 0) > 0;
 	}
 
 	async deleteSession(

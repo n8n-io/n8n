@@ -1,7 +1,7 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ReportingOptions } from '@n8n/errors';
+import { type ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';

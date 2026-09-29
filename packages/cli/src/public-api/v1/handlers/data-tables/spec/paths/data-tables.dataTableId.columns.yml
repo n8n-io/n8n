@@ -1,30 +1,3 @@
-get:
-  x-eov-operation-id: listDataTableColumns
-  x-required-scope: dataTableColumn:read
-  x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
-  tags:
-    - DataTable
-  summary: List columns of a data table
-  description: Retrieve all columns for a specific data table.
-  operationId: list-data-table-columns
-  parameters:
-    - $ref: '../schemas/parameters/dataTableId.yml'
-  responses:
-    '200':
-      description: Successfully retrieved columns
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              $ref: '../schemas/dataTableColumn.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '404':
-      $ref: '../../../../shared/spec/responses/notFound.yml'
-  security:
-    - ApiKeyAuth: []
-
 post:
   x-eov-operation-id: createDataTableColumn
   x-required-scope: dataTableColumn:create

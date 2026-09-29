@@ -1,0 +1,370 @@
+import type { Message } from '@n8n/agents';
+import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+
+import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
+
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
+import type { AgentMessageOrigin } from './entities/agent-message.entity';
+import { ExecutionRecorder } from './execution-recorder';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { AgentMessageRepository } from './repositories/agent-message.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import type {
+	AgentExecutionAdmission,
+	AgentQueuedMessage,
+	AgentQueueDispatch,
+	QueuedIntegrationMessage,
+	QueuedPreviewMessage,
+} from './types/agent-queued-message';
+import { canContinueThreadInPreview, type AgentSessionMode } from './utils/agent-thread-access';
+import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
+
+export interface ClaimedAgentMessage {
+	item: AgentMessageQueue;
+	payload: Omit<QueuedPreviewMessage, 'userId'> | QueuedIntegrationMessage;
+	thread: AgentExecutionThread;
+	/** Admission identifies the committed execution that the turn pipeline must reuse. */
+	admission: AgentExecutionAdmission;
+	recording: StartExecutionParams;
+}
+
+@Service()
+export class AgentMessageQueueService {
+	/** The main consumer installs this callback. Webhook processes only enqueue. */
+	onAvailable?: (threadId: string) => void;
+
+	constructor(
+		private readonly txRunner: TransactionRunner,
+		private readonly repository: AgentMessageQueueRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
+		private readonly executionRepository: AgentExecutionRepository,
+		private readonly executionService: AgentExecutionService,
+		private readonly checkpointStorage: N8NCheckpointStorage,
+		private readonly agentRepository: AgentRepository,
+		private readonly attachments: AgentChatAttachmentService,
+		private readonly updates: AgentExecutionUpdateBroadcaster,
+		private readonly messages: AgentMessageRepository,
+	) {}
+
+	/** Save a pending message. It is durably accepted when the transaction commits. */
+	async enqueue(
+		input: {
+			agentId: string;
+			projectId: string;
+			threadId: string;
+			sessionMode: AgentSessionMode;
+			source: string;
+			payload: AgentQueuedMessage;
+		},
+		onInserted?: (queueId: string) => void,
+	): Promise<AgentMessageQueue> {
+		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
+		if (!agent) throw new UserError('Agent not found');
+		const { payload } = input;
+		const item = await this.txRunner.run({}, async (ctx) => {
+			await this.executionService.prepareThread(
+				{
+					...input,
+					agentName: agent.name,
+					userMessage: payload.message,
+					resourceId: payload.resourceId,
+					access:
+						payload.kind === 'preview'
+							? { accessScope: 'user', ownerId: payload.userId }
+							: { accessScope: 'project', ownerId: null },
+				},
+				ctx,
+			);
+			const inserted = await this.enqueueMessage(input.threadId, input.source, payload, ctx);
+			// Register delivery before another main can see the committed item.
+			onInserted?.(inserted.id);
+			return inserted;
+		});
+		if (payload.kind === 'preview') this.updates.notifyQueueUpdated(item.threadId);
+		this.onAvailable?.(item.threadId);
+		return item;
+	}
+
+	private async enqueueMessage(
+		threadId: string,
+		source: string,
+		payload: AgentQueuedMessage,
+		ctx: OperationContext,
+	): Promise<AgentMessageQueue> {
+		const { message, resourceId, attachments = [], ...dispatch } = payload;
+		const [content] = buildInboundUserMessage(message, attachments);
+		let queueDispatch: AgentQueueDispatch = { kind: 'preview' };
+		let modelContent: Message | undefined;
+		let author: AgentMessageAuthor | undefined;
+		let origin: AgentMessageOrigin = { source };
+		if (dispatch.kind === 'integration') {
+			const {
+				modelMessage,
+				author: inputAuthor,
+				platformThreadId,
+				messageContext: fullContext,
+				...integrationDispatch
+			} = dispatch;
+			const {
+				platform: _platform,
+				integrationConnectionId,
+				messageId,
+				...messageContext
+			} = fullContext;
+			queueDispatch = { ...integrationDispatch, messageContext };
+			[modelContent] = buildInboundUserMessage(modelMessage, attachments);
+			author = inputAuthor;
+			origin = {
+				source,
+				integrationConnectionId,
+				platformMessageId: messageId,
+				platformThreadId,
+			};
+		}
+		const input = await this.messages.createInput(
+			{ threadId, resourceId, content, modelContent, author, origin },
+			ctx,
+		);
+		return await this.repository.enqueue(threadId, input.id, queueDispatch, ctx);
+	}
+
+	async listPending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+	}): Promise<AgentChatQueueResponse> {
+		const thread = await this.threadRepository.findOneBy({ id: input.threadId });
+		// A client-created Preview session can have no accepted messages yet.
+		if (!thread) return { items: [] };
+		await this.assertPreviewAccess(thread, input);
+		const items = await this.repository.listPending(thread.id);
+		return {
+			items: items
+				.filter((item) => item.payload.kind === 'preview')
+				.map((item) => ({
+					id: item.id,
+					...readInboundUserMessage(item.message.content),
+					createdAt: item.createdAt.toISOString(),
+				})),
+		};
+	}
+
+	async removePending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+	}): Promise<void> {
+		const removed = await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertPreviewAccess(thread, input, ctx);
+			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
+			if (!item || item.payload.kind !== 'preview')
+				throw new NotFoundError('Queued message not found');
+			if (
+				item.executionId !== null ||
+				!(await this.repository.removePending(thread.id, item.id, ctx))
+			) {
+				throw new ConflictError('This message has already started');
+			}
+			const attachmentIds = readInboundUserMessage(item.message.content).attachments.map(
+				({ id }) => id,
+			);
+			await this.messages.clearPendingInput(item.messageId, ctx);
+			return { threadId: item.threadId, attachmentIds };
+		});
+		this.updates.notifyQueueUpdated(removed.threadId);
+		await this.attachments.deleteByIds(removed.attachmentIds);
+	}
+
+	async updatePending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+		message: string;
+	}): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertPreviewAccess(thread, input, ctx);
+			const item = await this.repository.findItem(thread.id, input.queueId, ctx);
+			if (!item || item.payload.kind !== 'preview')
+				throw new NotFoundError('Queued message not found');
+			if (item.executionId !== null) throw new ConflictError('This message has already started');
+			const message = input.message.trim();
+			const { attachments } = readInboundUserMessage(item.message.content);
+			if (!message && !attachments.length)
+				throw new BadRequestError('A message or attachment is required');
+			const [content] = buildInboundUserMessage(message, attachments);
+			await this.messages.updatePendingInput(item.messageId, content, ctx);
+		});
+		this.updates.notifyQueueUpdated(input.threadId);
+	}
+
+	private async assertPreviewAccess(
+		thread: AgentExecutionThread,
+		input: { projectId: string; agentId: string; userId: string },
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const sources = await this.executionRepository.findFirstSourceByThreadIds([thread.id], ctx);
+		if (
+			thread.projectId !== input.projectId ||
+			thread.agentId !== input.agentId ||
+			!canContinueThreadInPreview(thread, input.userId, sources.get(thread.id))
+		) {
+			throw new NotFoundError('Session not found');
+		}
+	}
+
+	/**
+	 * Give the oldest pending message exclusive use of the session for its execution.
+	 * Running work and valid suspended checkpoints block a claim.
+	 */
+	async claimNext(
+		threadId: string,
+		canConsume: (
+			item: AgentMessageQueue,
+			thread: AgentExecutionThread,
+			ctx: OperationContext,
+		) => Promise<boolean>,
+	): Promise<ClaimedAgentMessage | null> {
+		const claimed = await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(threadId, ctx);
+			if (!thread || (await this.isBlocked(thread, ctx))) return null;
+			const active = await this.repository.findActive(threadId, ctx);
+			if (active?.executionId)
+				await this.repository.removeActive(threadId, active.executionId, ctx);
+			const item = await this.repository.findHead(threadId, ctx);
+			if (!item || !(await canConsume(item, thread, ctx))) return null;
+			const payload = this.restoreInput(item);
+			const recording = this.recordingFor(item, thread, payload);
+			await this.threadRepository.bumpUpdatedAt(threadId, ctx);
+			// Reservation creates the running execution and links it to this item in one transaction.
+			// Runtime work starts only after the transaction commits.
+			const reservation = await this.executionService.reserveExecution(
+				recording,
+				new Date(),
+				ctx,
+				thread,
+			);
+			return { item, thread, payload, recording, reservation };
+		});
+		if (!claimed) return null;
+		this.executionService.activateExecution(claimed.reservation, claimed.recording);
+		const { execution } = claimed.reservation;
+		if (!execution.startedAt) throw new OperationalError('Queued execution has no start time');
+		return {
+			item: claimed.item,
+			payload: claimed.payload,
+			thread: claimed.thread,
+			recording: claimed.recording,
+			admission: {
+				executionId: execution.id,
+				startedAt: execution.startedAt,
+				inputMessageIds: claimed.reservation.inputMessageIds,
+			},
+		};
+	}
+
+	/**
+	 * Release the queue item after execution and any suspension have ended.
+	 * Ignore callbacks for an execution that no longer owns the item.
+	 */
+	async settle(threadId: string, executionId: string): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(threadId, ctx);
+			if (!thread) return;
+			const active = await this.repository.findActive(threadId, ctx);
+			if (active?.executionId !== executionId || (await this.isBlocked(thread, ctx))) return;
+			await this.repository.removeActive(threadId, executionId, ctx);
+		});
+		this.onAvailable?.(threadId);
+	}
+
+	async recordFailure(
+		claim: ClaimedAgentMessage,
+		error: unknown,
+		signal?: AbortSignal,
+	): Promise<void> {
+		const { executionId, startedAt } = claim.admission;
+		const execution = await this.executionRepository.findExecution(executionId);
+		if (execution?.status !== 'running') return;
+		const recorder = new ExecutionRecorder(undefined, undefined, undefined, startedAt);
+		if (!signal?.aborted) recorder.record({ type: 'error', error });
+		recorder.record({ type: 'finish', finishReason: 'error' });
+		const record = recorder.getMessageRecord();
+		await this.executionService.finalizeExecution(executionId, {
+			...claim.recording,
+			record: signal?.aborted ? { ...record, finishReason: 'cancelled', error: null } : record,
+		});
+	}
+
+	private async isBlocked(thread: AgentExecutionThread, ctx: OperationContext): Promise<boolean> {
+		if (await this.executionRepository.existsRunningByThread(thread.id, ctx)) return true;
+		return (
+			(await this.checkpointStorage.findSuspendedForThread(thread.agentId, thread.id, ctx)) !== null
+		);
+	}
+
+	private recordingFor(
+		item: AgentMessageQueue,
+		thread: AgentExecutionThread,
+		payload: ClaimedAgentMessage['payload'],
+	): StartExecutionParams {
+		return {
+			threadId: thread.id,
+			agentId: thread.agentId,
+			agentName: thread.agentName,
+			projectId: thread.projectId,
+			access: { accessScope: thread.accessScope, ownerId: thread.ownerId },
+			sessionMode: 'existing',
+			queueItemId: item.id,
+			userMessage: payload.message,
+			resourceId: payload.resourceId,
+			source: item.message.origin?.source ?? undefined,
+			attachments: payload.attachments,
+			author: payload.kind === 'integration' ? payload.author : undefined,
+		};
+	}
+
+	private restoreInput(item: AgentMessageQueue): ClaimedAgentMessage['payload'] {
+		const input = {
+			...readInboundUserMessage(item.message.content),
+			resourceId: item.message.resourceId,
+		};
+		if (item.payload.kind === 'preview') return { ...item.payload, ...input };
+		if (!item.message.author) throw new UnexpectedError('Queued integration input has no author');
+		const { origin } = item.message;
+		if (!origin?.source || !origin.integrationConnectionId || !origin.platformThreadId)
+			throw new UnexpectedError('Queued integration input has incomplete origin');
+		return {
+			...item.payload,
+			...input,
+			platformThreadId: origin.platformThreadId,
+			messageContext: {
+				...item.payload.messageContext,
+				platform: origin.source,
+				integrationConnectionId: origin.integrationConnectionId,
+				...(origin.platformMessageId !== undefined ? { messageId: origin.platformMessageId } : {}),
+			},
+			author: item.message.author,
+			modelMessage: readInboundUserMessage(item.message.modelContent ?? item.message.content)
+				.message,
+		};
+	}
+}

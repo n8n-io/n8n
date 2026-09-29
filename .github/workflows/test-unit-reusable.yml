@@ -35,6 +35,9 @@ on:
         type: string
 env:
   NODE_OPTIONS: --max-old-space-size=7168
+  # With a change signal, the shared vitest configs measure only the changed files.
+  # Turbo hashes this value, so a scoped coverage result never replays in a full run.
+  COVERAGE_SCOPE: ${{ inputs.changedFiles != '' && 'changed-files' || 'all' }}
 
 jobs:
   unit-test-backend:
@@ -270,8 +273,10 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      # One package runs on this runner, so use every CPU. The CI default
+      # (half the CPUs) is for jobs that run many suites at once.
       - name: Test Nodes
-        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize
+        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize -- --maxWorkers=100%
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

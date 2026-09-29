@@ -27,9 +27,8 @@ the test.
 - Keep the receiver's request log visible. You must see the raw body.
 - `sqlite3` is installed. The dev instance uses SQLite at
   `~/.n8n/database.sqlite` unless you set another database.
-- An n8n owner account exists on the instance (the report reads insights as the
-  instance owner). Complete the setup screen first if this is a fresh
-  `~/.n8n`.
+- An n8n owner account exists on the instance, so you can build the workflows
+  in step 2. Complete the setup screen first if this is a fresh `~/.n8n`.
 
 ```bash
 export N8N_DB=~/.n8n/database.sqlite   # used by the snippets below
@@ -161,11 +160,18 @@ with:
 Confirm the numbers match what you recorded in step 2, and that `date` is
 yesterday's UTC date, not today's.
 
+"Exactly two entries" holds when `insights_by_period` has no rows older than
+yesterday, as on a fresh `~/.n8n`. The first report backfills the `insights`
+history. With an older database, it gives one `daily` point for every day from
+the oldest row to yesterday, oldest first, but for at most 89 days (the
+hour-to-day compaction threshold minus one). Days without rows inside that
+range carry `0`.
+
 **n8n side.**
 
 ```bash
 sqlite3 -header "$N8N_DB" \
-  "SELECT id, createdAt, deliveredAt, attempts, lastError, dataPoints
+  "SELECT id, reportDate, createdAt, deliveredAt, attempts, lastError, dataPoints
    FROM instance_monitoring_report ORDER BY createdAt DESC LIMIT 5;"
 ```
 
@@ -179,7 +185,7 @@ Run these after step 4. Each is short.
 
 | # | Scenario | Steps | Expected |
 |---|---|---|---|
-| 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasDeliveredToday` short-circuits the tick |
+| 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasSettledToday` short-circuits the tick |
 | 5.2 | Retry resends the same measurement | Make the receiver answer 500. Delete today's delivered row, then restart | Request arrives, `lastError` holds `rejected with status 500`, `deliveredAt` NULL, `attempts` grows. Retries land ~5 minutes apart, 3 attempts in total, then `Giving up on the instance report for today`. Every retry carries the **same** `batchId` and the same values — no re-measurement |
 | 5.3 | Recovery keeps the pending row | During 5.2, switch the receiver back to 201 before the third attempt | The next attempt reuses the pending row and marks it delivered. No second row for the day |
 | 5.4 | Untrusted certificate | Set `N8N_LICENSE_CERT` to a certificate the receiver does not trust (any well-formed one from another CA), clear today's row, restart | The receiver answers 401, delivery fails, `lastError` names the status. Nothing is marked delivered |

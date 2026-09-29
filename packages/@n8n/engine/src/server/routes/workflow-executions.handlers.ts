@@ -22,7 +22,14 @@ const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).opt
 
 const datetimeStringWithOffset = () => z.string().datetime({ offset: true });
 
-const ExecutionStatusSchema = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']);
+const ExecutionStatusSchema = z.enum([
+	'queued',
+	'running',
+	'waiting',
+	'completed',
+	'failed',
+	'cancelled',
+]);
 
 const SearchExecutionsBody = z
 	.object({

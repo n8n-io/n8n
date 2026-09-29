@@ -11,13 +11,10 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-		});
-
 		test('should show up when double clicked on a node and close when Back to canvas clicked', async ({
 			n8n,
 		}) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			const canvasNodes = n8n.canvas.getCanvasNodes();
 			await canvasNodes.first().dblclick();
@@ -27,6 +24,7 @@ test.describe(
 		});
 
 		test('should show input panel when node is not connected', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.deselectAll();
 			await n8n.canvas.addNode('Edit Fields (Set)', { closeNDV: true });
@@ -53,6 +51,7 @@ test.describe(
 		});
 
 		test('should show correct validation state for resource locator params', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Typeform Trigger', { closeNDV: false });
 			await expect(n8n.ndv.container).toBeVisible();
 
@@ -63,6 +62,7 @@ test.describe(
 		});
 
 		test('should show validation errors only after blur or re-opening of NDV', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Airtable', { closeNDV: false, action: 'Search records' });
 			await expect(n8n.ndv.container).toBeVisible();
@@ -110,6 +110,7 @@ test.describe(
 		});
 
 		test('webhook should fallback to webhookId if path is empty', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Webhook', { closeNDV: false });
 
 			await expect(n8n.canvas.getNodeIssuesByName('Webhook')).toBeHidden();
@@ -134,6 +135,7 @@ test.describe(
 		});
 
 		test('should properly show node execution indicator', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: false });
 
@@ -172,6 +174,7 @@ test.describe(
 		test('should not push NDV header out with a lot of code in Code node editor', async ({
 			n8n,
 		}) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: false });
 
@@ -192,6 +195,7 @@ test.describe(
 		});
 
 		test('should allow editing code in fullscreen in the code editors', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: false });
 
@@ -213,6 +217,7 @@ test.describe(
 			test('ADO-2931 - should handle multiple branches of the same input with the first branch empty correctly', async ({
 				n8n,
 			}) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow(
 					'Test_ndv_two_branches_of_same_parent_false_populated.json',
 					'Multiple Branches Test',
@@ -230,6 +235,7 @@ test.describe(
 
 		test.describe('Execution Indicators - Multi-Node', () => {
 			test('should properly show node execution indicator for multiple nodes', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 				await n8n.ndv.clickBackToCanvasButton();
 

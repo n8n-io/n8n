@@ -12,7 +12,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import type { N8nOAuth2Flow } from '@/services/oauth2-flow-proxy.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { OAuthServerService } from './oauth-server.service';
 
