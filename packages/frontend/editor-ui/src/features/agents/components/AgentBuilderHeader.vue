@@ -6,7 +6,7 @@
  * Navigation intents are emitted as events, except for the project breadcrumb
  * which links back to the owning project/personal page.
  */
-import { computed, onMounted, useCssModule } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
@@ -61,6 +61,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const router = useRouter();
 const $style = useCssModule();
+const publishButton = ref<InstanceType<typeof AgentPublishButton>>();
 
 const { createAgent } = useCreateAgent();
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
@@ -84,6 +85,12 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 ]);
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
+
+function publishAgent() {
+	return publishButton.value?.publish();
+}
+
+defineExpose({ publishAgent });
 
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
@@ -233,6 +240,7 @@ function onMenuSelect(id: string) {
 				@close-preview="emit('close-preview')"
 			/>
 			<AgentPublishButton
+				ref="publishButton"
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"

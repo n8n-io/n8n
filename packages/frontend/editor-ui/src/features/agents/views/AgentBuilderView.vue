@@ -120,6 +120,7 @@ import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
+import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -726,7 +727,7 @@ const setupChecklistContext = computed(() => {
 			loaded: initialized.value && localConfig.value !== null,
 			model: localConfig.value?.model ?? '',
 			instructions: localConfig.value?.instructions ?? '',
-			toolCount: localConfig.value?.tools.length ?? 0,
+			toolCount: localConfig.value?.tools?.length ?? 0,
 		},
 		channels: {
 			loaded: initialized.value,
@@ -734,11 +735,36 @@ const setupChecklistContext = computed(() => {
 		},
 		publication: {
 			loaded: initialized.value,
+			canPublish:
+				initialized.value &&
+				!isUnsaved.value &&
+				effectiveCanEditAgent.value &&
+				(localConfig.value?.model.trim().length ?? 0) > 0 &&
+				(localConfig.value?.instructions.trim().length ?? 0) > 0,
 			activeVersionId: agent.value?.activeVersionId ?? null,
 		},
 	};
 });
 const { tasks: setupTasks } = useAgentSetupTasks(setupChecklistContext);
+const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
+	'builderHeader',
+);
+const editorColumn = useTemplateRef<{ onSetupTaskAction: (task: SetupTask) => void }>(
+	'editorColumn',
+);
+
+async function onSetupTaskAction(task: SetupTask) {
+	if (activeMainTab.value !== 'agent') {
+		activeMainTab.value = 'agent';
+		await nextTick();
+	}
+
+	editorColumn.value?.onSetupTaskAction(task);
+}
+
+function onSetupTaskPublishAgent() {
+	void builderHeader.value?.publishAgent();
+}
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
@@ -2886,6 +2912,7 @@ useKeybindings({
 		/>
 		<AgentBuilderHeader
 			v-else
+			ref="builderHeader"
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -2909,7 +2936,7 @@ useKeybindings({
 			@switch-agent="onSwitchAgent"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
-		<AgentSetupTasks v-if="!isStandalonePreview" :tasks="setupTasks" />
+		<AgentSetupTasks v-if="!isStandalonePreview" :tasks="setupTasks" @action="onSetupTaskAction" />
 		<div
 			v-if="
 				!isArtifactMode &&
@@ -3046,6 +3073,7 @@ useKeybindings({
 				/>
 
 				<AgentBuilderEditorColumn
+					ref="editorColumn"
 					v-else
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
@@ -3098,6 +3126,7 @@ useKeybindings({
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
+					@publish-agent="onSetupTaskPublishAgent"
 				/>
 
 				<AgentVersionHistoryPanel
