@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_ffa0492de4d6b4::t_a4354ea1238fed 18,1305
+  s_ffa0492de4d6b4::t_493cf1da16967c 1304,1306-1311,1317-1323,1327-1330,1338-1346
+  s_ffa0492de4d6b4::t_bed20e7265138b 1312-1316,1331-1337
+  s_ffa0492de4d6b4::t_e6b15c853b6bbc 1324-1326
+packages/@n8n/db/src/migrations/common/1790590278292-AddAgentExecutionMessages.ts
+  s_ffa0492de4d6b4::t_b279b28b56f818 6,14-17,85,91
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_ffa0492de4d6b4::t_b279b28b56f818 3,104-114
+packages/cli/src/modules/agents/entities/agent-message.entity.ts
+  s_ffa0492de4d6b4::t_b279b28b56f818 18-19
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ffa0492de4d6b4::t_493cf1da16967c 1590-1619
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_ffa0492de4d6b4::t_b279b28b56f818 775-781
+packages/cli/test/migration/1790590278292-add-agent-execution-messages.test.ts
+  s_ffa0492de4d6b4::t_b279b28b56f818 172-193,233,246,257-260
+docs/generated/postgres-schema/public.agents_messages.md
+  s_ffa0492de4d6b4::t_72ad708e978712 38
+docs/generated/sqlite-schema/agents_messages.md
+  s_ffa0492de4d6b4::t_938309fdd18198 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "37b4cea5ba53866c41c4d898f141687bafbc5bf9",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
