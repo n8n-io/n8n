@@ -18,13 +18,19 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 	project: 'typeAvailabilityPolicies.restrictedNode.description.project',
 };
 
-/** One sentence that names the blocked node and tells the user to contact an admin. */
+const NEXT_STEP_KEY = {
+	contact: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
+	replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.replace',
+} satisfies Record<string, BaseTextKey>;
+
+/** One sentence that names the blocked node and tells the user what to do next. */
 export function describeNodeTypeRestriction(
 	nodeTypeName: string,
 	scope?: NodeTypeAvailabilityScope,
+	nextStepKind: keyof typeof NEXT_STEP_KEY = 'contact',
 ): string {
 	const i18n = useI18n();
-	const nextStep = i18n.baseText('typeAvailabilityPolicies.restrictedNode.nextStep.contact');
+	const nextStep = i18n.baseText(NEXT_STEP_KEY[nextStepKind]);
 	return i18n.baseText(
 		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
 		{ interpolate: { nodeType: nodeTypeName, nextStep } },

@@ -160,6 +160,27 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 		});
 
+		it('ignores an older response for the same project after a forced refetch', async () => {
+			let resolveFirst: (value: AvailableTypesResponse) => void = () => {};
+			mocks.fetchAvailableTypes
+				.mockImplementationOnce(
+					async () =>
+						await new Promise<AvailableTypesResponse>((resolve) => {
+							resolveFirst = resolve;
+						}),
+				)
+				.mockResolvedValueOnce(PROJECT_B_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			const first = store.fetchForProject('project-a');
+			await store.fetchForProject('project-a', { force: true });
+			resolveFirst(PROJECT_A_RESPONSE);
+			await first;
+
+			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(false);
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
 		it('reflects the new project after a switch', async () => {
 			mocks.fetchAvailableTypes
 				.mockResolvedValueOnce(PROJECT_A_RESPONSE)

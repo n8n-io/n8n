@@ -20,6 +20,9 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const loadedProjectId = ref<string | null>(null);
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
+		// Only the newest request may commit: an older response for the same project must not
+		// overwrite a forced reload.
+		let latestRequest = 0;
 
 		const isEnabled = computed(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
@@ -36,6 +39,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			if (!isEnabled.value) return;
 
 			requestedProjectId.value = projectId;
+			const request = ++latestRequest;
 
 			if (projectId === loadedProjectId.value && !force) {
 				isLoading.value = false;
@@ -45,20 +49,20 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			isLoading.value = true;
 			try {
 				const entries = await fetchAvailableTypes(rootStore.restApiContext, projectId);
-				if (requestedProjectId.value !== projectId) return;
+				if (request !== latestRequest) return;
 
 				restrictedNodeTypes.value = new Map(
 					entries.filter((entry) => !entry.available).map((entry) => [entry.name, entry]),
 				);
 				loadedProjectId.value = projectId;
 			} catch (error) {
-				if (requestedProjectId.value !== projectId) return;
+				if (request !== latestRequest) return;
 
 				console.error('Failed to fetch available types for project', projectId, error);
 				restrictedNodeTypes.value = new Map();
 				loadedProjectId.value = null;
 			} finally {
-				if (requestedProjectId.value === projectId) isLoading.value = false;
+				if (request === latestRequest) isLoading.value = false;
 			}
 		}
 
@@ -73,6 +77,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		}
 
 		function reset(): void {
+			latestRequest++;
 			restrictedNodeTypes.value = new Map();
 			loadedProjectId.value = null;
 			requestedProjectId.value = null;
