@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Crypto/v2/CryptoV2.node.ts
+  s_0cbae9c6c680da::t_6b1799eff16b22 532-533
+  s_0cbae9c6c680da::t_19b0e9816ff8fe 528
+packages/nodes-base/nodes/Crypto/v2/test/Crypto.node.test.ts
+  s_0cbae9c6c680da::t_61ba4df483127a 617,642,653
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c77609771d6aca4e4ab5be4ca9026cb3552d27e7",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0cbae9c6c680da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ffe4f0-5058-433e-936b-fb614c555416",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
