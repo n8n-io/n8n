@@ -132,15 +132,17 @@ describe('McpConnectionDiscoveryService', () => {
 		mcpClientGetConnectionFailuresMock.mockReturnValue([]);
 	});
 
-	it('returns the discovered connection and classifies tools from registry annotations', async () => {
+	it('returns the discovered connection and classifies tools from live annotations', async () => {
 		mcpClientListToolsMock.mockResolvedValue([
 			{
 				name: 'git_hub_search_repositories',
 				description: 'Search repositories',
+				mcpAnnotations: { readOnlyHint: true },
 			} as BuiltTool,
 			{
 				name: 'ignored-prefix',
 				mcpToolName: 'remove_repository',
+				mcpAnnotations: { destructiveHint: true },
 			} as BuiltTool,
 		]);
 		const { service } = createService();
@@ -172,6 +174,32 @@ describe('McpConnectionDiscoveryService', () => {
 			connectionTimeoutMs: 10_000,
 		});
 		expect(mcpClientCloseMock).toHaveBeenCalledOnce();
+	});
+
+	it('ignores registry annotations and classifies tools without live annotations by name', async () => {
+		mcpClientListToolsMock.mockResolvedValue([
+			{ name: 'git_hub_custom_widget' } as BuiltTool,
+			{ name: 'git_hub_delete_repository' } as BuiltTool,
+		]);
+		const { service, registryService } = createService();
+		registryService.get.mockResolvedValue(
+			makeServer({
+				tools: [
+					{ name: 'custom_widget', annotations: { readOnlyHint: true } },
+					{ name: 'delete_repository', annotations: { readOnlyHint: true } },
+				],
+			}),
+		);
+
+		const response = await service.discover(user, {
+			slug: 'git hub',
+			credentialId: 'credential-1',
+		});
+
+		expect(response.tools).toEqual([
+			{ name: 'custom_widget', category: 'write' },
+			{ name: 'delete_repository', category: 'write' },
+		]);
 	});
 
 	it('resolves credential data through the credentials helper with project and user context', async () => {

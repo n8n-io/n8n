@@ -13,7 +13,7 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { OperationalError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -68,17 +68,12 @@ function safeServerName(name: string): string {
 	return (normalized || 'mcp_server').slice(0, 64);
 }
 
-function toTool(
-	tool: BuiltTool,
-	serverName: string,
-	registryServer: McpRegistryServer,
-): McpRegistryDiscoveredTool {
+function toTool(tool: BuiltTool, serverName: string): McpRegistryDiscoveredTool {
 	const name = tool.mcpToolName ?? stripServerPrefix(tool.name, serverName);
-	const registryTool = registryServer.tools.find((candidate) => candidate.name === name);
 	return {
 		name,
 		...(tool.description ? { description: tool.description } : {}),
-		category: classifyMcpTool({ name, annotations: registryTool?.annotations }),
+		category: classifyMcpTool({ name, annotations: tool.mcpAnnotations }),
 	};
 }
 
@@ -98,7 +93,7 @@ async function listToolsWithinDeadline(
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 	const timeout = new Promise<never>((_, reject) => {
 		timeoutId = setTimeout(
-			() => reject(new Error(`MCP discovery timed out after ${timeoutMs}ms`)),
+			() => reject(new OperationalError(`MCP discovery timed out after ${timeoutMs}ms`)),
 			timeoutMs,
 		);
 	});
@@ -142,9 +137,11 @@ export class McpConnectionDiscoveryService {
 		}
 
 		let failureReason: McpRegistryDiscoveryFailureReason = 'unknown';
+		let receivedResponse = false;
 		const classifiedFetch: CustomFetch = async (input, init) => {
 			try {
 				const response = await prepared.clientConfig.fetch(input, init);
+				receivedResponse = true;
 				failureReason = classifyResponseFailure(response, failureReason);
 				return response;
 			} catch (error) {
@@ -162,7 +159,7 @@ export class McpConnectionDiscoveryService {
 
 		try {
 			const tools = (await listToolsWithinDeadline(client, discoveryTimeoutMs)).map((tool) =>
-				toTool(tool, prepared.clientConfig.name, prepared.registryServer),
+				toTool(tool, prepared.clientConfig.name),
 			);
 			if (client.getConnectionFailures().length > 0) return disconnected(failureReason);
 			return {
@@ -171,7 +168,7 @@ export class McpConnectionDiscoveryService {
 				tools,
 			};
 		} catch (error) {
-			if (failureReason === 'unknown') failureReason = 'server_unavailable';
+			if (failureReason === 'unknown' && !receivedResponse) failureReason = 'server_unavailable';
 			this.logger.warn('MCP discovery connection failed', {
 				errorType: ensureError(error).name,
 			});
@@ -190,7 +187,7 @@ export class McpConnectionDiscoveryService {
 		source: McpRegistryDiscoveryRequest,
 	): Promise<PreparedDiscovery> {
 		const server = await this.registryService.get(source.slug);
-		if (!server || server.status !== 'active') {
+		if (server?.status !== 'active') {
 			throw new NotFoundError('MCP registry server not found');
 		}
 		const connection = resolveMcpRegistryConnection(server);
