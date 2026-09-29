@@ -83,6 +83,100 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(store.startRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-1');
 	});
 
+	it('renders the answer as formatted markdown', async () => {
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'getReview').mockReturnValue({
+			run: { status: 'completed' } as never,
+			results: [
+				{
+					status: 'success',
+					input: { input: 'x' },
+					output: { finalText: 'A **bold** claim and a [link](https://example.com).' },
+				} as never,
+			],
+			resultsCount: 1,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+
+		const { container, findByText } = renderComponent();
+
+		expect(await findByText('bold')).toBeInTheDocument();
+		expect(container.querySelector('strong')).toHaveTextContent('bold');
+		expect(container.querySelector('a[href="https://example.com"]')).toBeInTheDocument();
+	});
+
+	it('collapses a long answer behind a toggle, capped at 500px', async () => {
+		vi.spyOn(HTMLDivElement.prototype, 'scrollHeight', 'get').mockReturnValue(800);
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'getReview').mockReturnValue({
+			run: { status: 'completed' } as never,
+			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			resultsCount: 1,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+		const user = userEvent.setup();
+
+		const { findByTestId, getByText } = renderComponent();
+
+		const toggle = await findByTestId('instance-ai-test-agent-preview-toggle-answer');
+		expect(getByText('Show more')).toBeInTheDocument();
+
+		await user.click(toggle);
+
+		expect(getByText('Show less')).toBeInTheDocument();
+	});
+
+	it('shows no toggle for an answer that fits within the cap', async () => {
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			datasetId: 'dataset-1',
+			dataTableId: 'table-1',
+			cases: [{ input: 'x', whatToCheck: 'y' }],
+		});
+		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'getReview').mockReturnValue({
+			run: { status: 'completed' } as never,
+			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			resultsCount: 1,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+
+		const { findByText, queryByTestId } = renderComponent();
+
+		await findByText('y');
+		expect(queryByTestId('instance-ai-test-agent-preview-toggle-answer')).not.toBeInTheDocument();
+	});
+
 	it('emits dismiss when "Needs work" is clicked', async () => {
 		const store = useAgentEvalsStore();
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
