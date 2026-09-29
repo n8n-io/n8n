@@ -11,7 +11,7 @@ class MockIntersectionObserver {
 	disconnected = false;
 
 	constructor(
-		private readonly callback: IntersectionObserverCallback,
+		private readonly onIntersection: IntersectionObserverCallback,
 		options?: IntersectionObserverInit,
 	) {
 		this.root = options?.root ?? null;
@@ -27,7 +27,7 @@ class MockIntersectionObserver {
 	}
 
 	trigger(isIntersecting: boolean) {
-		this.callback(
+		this.onIntersection(
 			[{ isIntersecting } as IntersectionObserverEntry],
 			this as unknown as IntersectionObserver,
 		);
