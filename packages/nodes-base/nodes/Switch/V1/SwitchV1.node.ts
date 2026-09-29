@@ -11,12 +11,12 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	parseRegexLiteral,
-	safeRegex,
+	safeInternalRegex,
 } from 'n8n-workflow';
 
 export function matchesRegex(value1: NodeParameterValue, value2: NodeParameterValue): boolean {
 	const { source, flags } = parseRegexLiteral((value2 || '').toString());
-	return safeRegex.test(source, (value1 || '').toString(), flags);
+	return safeInternalRegex.test(source, (value1 || '').toString(), flags);
 }
 
 export class SwitchV1 implements INodeType {

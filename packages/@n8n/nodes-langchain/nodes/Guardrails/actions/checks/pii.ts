@@ -7,7 +7,7 @@
  * schema for entity selection, output/result structures, and the async guardrail
  * check_fn for runtime enforcement.
  */
-import { safeRegex } from 'n8n-workflow';
+import { safeInternalRegex } from 'n8n-workflow';
 
 import { parseRegex } from '../../helpers/common';
 import type { CreateCheckFn, CustomRegex } from '../types';
@@ -226,7 +226,7 @@ function detectPii(text: string, config: PIIConfig): PiiDetectionResult {
 	const matchAgainstPattern = (name: string, literal: { source: string; flags: string }) => {
 		// make sure to add the global flag to the regex, otherwise while() will never end
 		const flags = literal.flags.includes('g') ? literal.flags : literal.flags + 'g';
-		const matches = safeRegex.matchAll(literal.source, text, flags);
+		const matches = safeInternalRegex.matchAll(literal.source, text, flags);
 		for (const match of matches) {
 			if (match.index === undefined) continue;
 
