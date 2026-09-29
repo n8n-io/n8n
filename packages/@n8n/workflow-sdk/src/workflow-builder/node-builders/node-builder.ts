@@ -1232,7 +1232,10 @@ class StickyNoteInstance
 	}
 
 	/** Copy under a new id. The caller passes the anchors already mapped to the new node ids. */
-	cloneWithId(newId: string, anchorIds: readonly string[]): StickyNoteInstance {
+	cloneStickyNoteWithIdAndAnchors(
+		newId: string,
+		remappedAnchorIds: readonly string[],
+	): StickyNoteInstance {
 		const content = this.config.parameters?.content;
 		return new StickyNoteInstance(
 			typeof content === 'string' ? content : '',
@@ -1245,7 +1248,7 @@ class StickyNoteInstance
 				height: numberParameter(this.config.parameters?.height),
 				name: this.name,
 			},
-			anchorIds,
+			remappedAnchorIds,
 			newId,
 		);
 	}
@@ -1396,10 +1399,10 @@ export function cloneNodeWithId(
 ): NodeInstance<string, string, unknown> {
 	// A sticky must stay a sticky, and its anchors must follow the nodes to their new ids.
 	if (instance instanceof StickyNoteInstance) {
-		const anchorIds = instance.stickyAnchorIds.map(
+		const remappedAnchorIds = instance.stickyAnchorIds.map(
 			(anchorId) => newIdByOldId.get(anchorId) ?? anchorId,
 		);
-		return instance.cloneWithId(newId, anchorIds);
+		return instance.cloneStickyNoteWithIdAndAnchors(newId, remappedAnchorIds);
 	}
 
 	const connections =
