@@ -324,11 +324,8 @@ watch(
 		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
-					<span v-if="showStaticRole" :class="$style.trailingRow">
-						<span :class="$style.rectBadge">
-							{{ locale.baseText('auth.roles.owner') }}
-						</span>
-						<span :class="$style.actionBox" aria-hidden="true"></span>
+					<span v-if="showStaticRole" :class="$style.rectBadge">
+						{{ locale.baseText('auth.roles.owner') }}
 					</span>
 					<N8nBadge v-else variant="outline">
 						{{ locale.baseText('auth.roles.owner') }}
@@ -344,26 +341,23 @@ watch(
 				<ProjectSharingInfo :project="project">
 					<span v-if="staticRole" :class="$style.trailingRow">
 						<N8nText
-							:class="$style.labelBox"
 							color="text-light"
 							:title="staticRoleDescription"
 							data-test-id="project-sharing-static-role"
 						>
 							{{ staticRole.displayName }}
 						</N8nText>
-						<span :class="$style.actionBox">
-							<N8nButton
-								v-if="canRemoveProject(project)"
-								variant="subtle"
-								icon-only
-								native-type="button"
-								icon="trash-2"
-								:aria-label="locale.baseText('generic.delete')"
-								:disabled="props.readonly"
-								data-test-id="project-sharing-remove"
-								@click="onRoleAction(project, 'remove')"
-							/>
-						</span>
+						<N8nButton
+							v-if="canRemoveProject(project)"
+							variant="subtle"
+							icon-only
+							native-type="button"
+							icon="trash-2"
+							:aria-label="locale.baseText('generic.delete')"
+							:disabled="props.readonly"
+							data-test-id="project-sharing-remove"
+							@click="onRoleAction(project, 'remove')"
+						/>
 					</span>
 				</ProjectSharingInfo>
 				<N8nSelect
@@ -414,7 +408,6 @@ watch(
 	align-items: center;
 	justify-content: center;
 	white-space: nowrap;
-	min-width: 7rem;
 	height: var(--height--sm);
 	padding-inline: var(--spacing--2xs);
 	border: 1px solid var(--border-color);
@@ -430,20 +423,6 @@ watch(
 	flex-shrink: 0;
 	gap: var(--spacing--2xs);
 	white-space: nowrap;
-}
-
-.labelBox {
-	display: inline-block;
-	width: 7rem;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	text-align: left;
-}
-
-.actionBox {
-	display: inline-flex;
-	justify-content: flex-end;
 }
 
 .selectedProjects {

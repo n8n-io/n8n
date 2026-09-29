@@ -307,24 +307,16 @@ function goToUpgrade() {
 				>
 					<ProjectSharingInfo :project="entry.project" :subtitle="entry.subtitle">
 						<div :class="$style.onlyYou">
-							<N8nText
-								:class="$style.labelBox"
-								size="small"
-								color="text-light"
-								:title="usedInAccessText"
-							>
+							<N8nText color="text-light" :title="usedInAccessText">
 								{{ usedInAccessText }}
 							</N8nText>
-							<span :class="$style.actionBox">
-								<N8nButton
-									size="small"
-									variant="outline"
-									data-test-id="credential-used-in-project-share"
-									@click="shareUsedInProject(entry.project.id)"
-								>
-									{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
-								</N8nButton>
-							</span>
+							<N8nButton
+								variant="outline"
+								data-test-id="credential-used-in-project-share"
+								@click="shareUsedInProject(entry.project.id)"
+							>
+								{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
+							</N8nButton>
 						</div>
 					</ProjectSharingInfo>
 				</li>
@@ -368,19 +360,5 @@ function goToUpgrade() {
 	flex-shrink: 0;
 	gap: var(--spacing--2xs);
 	white-space: nowrap;
-}
-
-.labelBox {
-	display: inline-block;
-	width: 7rem;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	text-align: left;
-}
-
-.actionBox {
-	display: inline-flex;
-	justify-content: flex-end;
 }
 </style>
