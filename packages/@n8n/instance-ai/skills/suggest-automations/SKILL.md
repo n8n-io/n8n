@@ -98,8 +98,8 @@ Slack or Google Sheets. Never run a command or read a file to find them.
      step 4.
    - `Show me other ideas`: repeat step 2 with three automations not shown in
      this thread yet, after one sentence such as "Here are three more."
-   - Free text that describes a task: that is the user's request. Go to
-     step 5.
+   - Free text that describes a task: that is the user's request. Give it a
+     title as in step 2 and go to step 4.
    - Free text that asks for a change, for example another app or a topic:
      repeat step 2 with three automations that fit it.
    - Free text that names no task and no change, for example "skip", "no" or
@@ -112,8 +112,10 @@ Slack or Google Sheets. Never run a command or read a file to find them.
    `introMessage` and `freeTextLabel` out: the card's own "Something else"
    row lets the user ask for another automation. Read the answer:
    - `Yes, build it`: go to step 5.
-   - `Not now`, or `answered: false`: do not build. Reply as for a skip in
-     step 3.
+   - `Not now`: do not build, and stay in the flow. Repeat step 2 with the
+     same three automations, after one sentence such as "No problem. Pick
+     another one, or ask for other ideas."
+   - `answered: false`: do not build. Reply as for a skip in step 3.
    - Free text: read it as in step 3.
 5. Write exactly one line before the first tool call, `Building <title> now.`,
    and no other text until the `build-workflow` result. Load `workflow-builder`
@@ -124,9 +126,9 @@ Slack or Google Sheets. Never run a command or read a file to find them.
 ## Rules
 
 - One `ask-user` call per turn. Keep every message to four sentences or fewer.
-- A build needs a picked suggestion that the user confirmed with `Yes, build
-  it`, or a task in the user's words. Never start one after a skip, a
-  dismissal, or free text that names nothing.
+- A build needs `Yes, build it` from the user on the step 4 card, for a
+  picked suggestion and for a task in the user's words alike. Never start one
+  after a skip, a dismissal, or free text that names nothing.
 - No apps given: suggest what people on the team most often automate, and
   name no app.
 - Talk about the automation, never about the mechanics. Do not say
