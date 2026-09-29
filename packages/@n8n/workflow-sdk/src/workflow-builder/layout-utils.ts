@@ -368,6 +368,26 @@ function createParentGraph(
 	return parentGraph;
 }
 
+function addConnectionEdges(
+	parentGraph: dagre.graphlib.Graph,
+	nonStickyNames: readonly string[],
+	nodes: ReadonlyMap<string, GraphNode>,
+): void {
+	const nonStickySet = new Set(nonStickyNames);
+	for (const name of nonStickyNames) {
+		const graphNode = nodes.get(name)!;
+		for (const [, outputMap] of graphNode.connections) {
+			for (const targets of outputMap.values()) {
+				for (const target of targets) {
+					if (nonStickySet.has(target.node)) {
+						parentGraph.setEdge(name, target.node);
+					}
+				}
+			}
+		}
+	}
+}
+
 function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.graphlib.Graph {
 	const subGraph = new dagre.graphlib.Graph();
 	subGraph.setGraph({
@@ -849,21 +869,7 @@ export function calculateNodePositionsDagre(
 	if (!needsLayout) return positions;
 
 	const parentGraph = createParentGraph(nonStickyNames, aiParentNames, aiConfigNames, nodes);
-
-	// Add edges from connections
-	const nonStickySet = new Set(nonStickyNames);
-	for (const name of nonStickyNames) {
-		const graphNode = nodes.get(name)!;
-		for (const [, outputMap] of graphNode.connections) {
-			for (const targets of outputMap.values()) {
-				for (const target of targets) {
-					if (nonStickySet.has(target.node)) {
-						parentGraph.setEdge(name, target.node);
-					}
-				}
-			}
-		}
-	}
+	addConnectionEdges(parentGraph, nonStickyNames, nodes);
 
 	// Fold groups away before splitting into components, so a group that bridges
 	// two otherwise-separate clusters keeps them in one component.
