@@ -5,7 +5,7 @@ import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';

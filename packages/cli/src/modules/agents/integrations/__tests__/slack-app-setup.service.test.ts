@@ -9,7 +9,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@n8n/errors';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@n8n/backend-services';
 

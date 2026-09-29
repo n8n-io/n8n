@@ -6,7 +6,7 @@ import type { CryptoKey } from 'jose';
 import { CompactEncrypt, compactDecrypt, exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher, InstanceSettings } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { OAuthJweKeyService } from '../oauth-jwe-key.service';
 import {
