@@ -29,6 +29,7 @@ export function stripUntypedNullable(node: unknown): void {
 
 	for (const [key, value] of Object.entries(node)) {
 		if (DATA_VALUED_KEYS.has(key)) {
+			continue;
 		}
 		stripUntypedNullable(value);
 	}
