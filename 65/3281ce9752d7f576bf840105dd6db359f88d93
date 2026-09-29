@@ -10,6 +10,7 @@ packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConn
   s_1c454f33116688::t_9473871b5cd858 3,501,503-505,511
   s_1c454f33116688::t_4be9f2cdb5e0ec 585
   s_1c454f33116688::t_e92010516e4518 376-386,396,512,514-519
+  s_7396ec8a4dae48::t_242934015918e7 513
 packages/frontend/@n8n/design-system/src/components/N8nTabs/index.ts
   s_1c454f33116688::t_c94e8ea2e1aea6 3
 packages/frontend/@n8n/i18n/src/locales/en.json
@@ -26,6 +27,14 @@ packages/frontend/@n8n/i18n/src/locales/en.json
         "tool": "pi",
         "id": "01a0ab01-29a2-775a-944f-5e73dea2f7d0",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7396ec8a4dae48": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ec4a-a5a2-7699-9a7d-9e91eb66f4ad",
+        "model": "gpt-6-astra"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
     }
