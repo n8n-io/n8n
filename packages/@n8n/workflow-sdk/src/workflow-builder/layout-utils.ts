@@ -473,6 +473,20 @@ function layoutSubgraphs(
 	});
 }
 
+/** Arrange disconnected components vertically, matching the existing tidy-up order. */
+function arrangeSubgraphs(subgraphs: readonly LayoutSubgraph[]): dagre.graphlib.Graph | undefined {
+	if (subgraphs.length <= 1) return undefined;
+
+	const compositeGraph = createVerticalGraph(
+		subgraphs.map(({ boundingBox }, index) => ({
+			box: boundingBox,
+			id: index.toString(),
+		})),
+	);
+	dagre.layout(compositeGraph);
+	return compositeGraph;
+}
+
 // ---------------------------------------------------------------------------
 // Sticky note repositioning
 // ---------------------------------------------------------------------------
@@ -767,17 +781,7 @@ export function calculateNodePositionsDagre(
 
 	const subgraphs = layoutSubgraphs(parentGraph, aiParentNames, aiConfigNames);
 
-	// Arrange subgraphs vertically (skip composite layout for single subgraph)
-	let compositeGraph: dagre.graphlib.Graph | undefined;
-	if (subgraphs.length > 1) {
-		compositeGraph = createVerticalGraph(
-			subgraphs.map(({ boundingBox }, index) => ({
-				box: boundingBox,
-				id: index.toString(),
-			})),
-		);
-		dagre.layout(compositeGraph);
-	}
+	const compositeGraph = arrangeSubgraphs(subgraphs);
 
 	// Compute final positions
 	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
