@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { effectScope, type EffectScope } from 'vue';
+import { fireEvent } from '@testing-library/vue';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
 
-const POINTER_ID = 1;
 const GAP = 4;
+const pointer = { pointerId: 1, pointerType: 'mouse' };
 
 // jsdom has no layout, so each tab gets a fixed box: [id, width].
 function createTabs(layout: Array<[string, number]>) {
@@ -17,22 +18,6 @@ function createTabs(layout: Array<[string, number]>) {
 		left += width + GAP;
 		return element;
 	});
-}
-
-function pointerEvent(
-	type: string,
-	init: { clientX?: number; button?: number; pointerType?: string; target?: Element } = {},
-) {
-	const event = new MouseEvent(type, {
-		clientX: init.clientX ?? 0,
-		button: init.button ?? 0,
-		bubbles: true,
-		cancelable: true,
-	});
-	Object.defineProperty(event, 'pointerId', { value: POINTER_ID });
-	Object.defineProperty(event, 'pointerType', { value: init.pointerType ?? 'mouse' });
-	if (init.target) Object.defineProperty(event, 'target', { value: init.target });
-	return event as PointerEvent;
 }
 
 describe('useTabDragReorder', () => {
@@ -59,25 +44,39 @@ describe('useTabDragReorder', () => {
 
 	function setup(layout: Array<[string, number]>) {
 		const elements = createTabs(layout);
+		// Attached, so events on a tab bubble up to the window like in the app.
+		elements.forEach((element) => document.body.appendChild(element));
 		const onReorder = vi.fn();
 		const onDragStart = vi.fn();
 		scope = effectScope();
 		const drag = scope.run(() =>
 			useTabDragReorder({ getTabElements: () => elements, onReorder, onDragStart }),
 		)!;
+		// The tab bar binds each tab's pointerdown to the composable the same way.
+		elements.forEach((element) =>
+			element.addEventListener('pointerdown', (event) =>
+				drag.onPointerDown(element.dataset.tabItemId ?? '', event),
+			),
+		);
 
-		function press(tabId: string, clientX: number, init: Parameters<typeof pointerEvent>[1] = {}) {
-			drag.onPointerDown(tabId, pointerEvent('pointerdown', { clientX, ...init }));
+		function press(
+			tabId: string,
+			clientX: number,
+			init: { button?: number; pointerType?: string; target?: Element } = {},
+		) {
+			const tab = elements.find((element) => element.dataset.tabItemId === tabId);
+			const { target = tab, ...eventInit } = init;
+			if (target) fireEvent.pointerDown(target, { clientX, ...pointer, ...eventInit });
 		}
 		const move = (clientX: number) => {
-			window.dispatchEvent(pointerEvent('pointermove', { clientX }));
+			fireEvent.pointerMove(window, { clientX, ...pointer });
 			flushFrame();
 		};
 		const transforms = () =>
 			Object.fromEntries(
 				elements.map((element) => [element.dataset.tabItemId, element.style.transform]),
 			);
-		const release = () => window.dispatchEvent(pointerEvent('pointerup'));
+		const release = () => fireEvent.pointerUp(window, pointer);
 
 		return { ...drag, elements, onReorder, onDragStart, press, move, release, transforms };
 	}
@@ -85,6 +84,7 @@ describe('useTabDragReorder', () => {
 	afterEach(() => {
 		scope?.stop();
 		vi.unstubAllGlobals();
+		document.body.innerHTML = '';
 	});
 
 	it('does not start a drag for a small movement', () => {
@@ -130,8 +130,8 @@ describe('useTabDragReorder', () => {
 		]);
 		ctx.press('a', 50);
 
-		window.dispatchEvent(pointerEvent('pointermove', { clientX: 60 }));
-		window.dispatchEvent(pointerEvent('pointermove', { clientX: 70 }));
+		fireEvent.pointerMove(window, { clientX: 60, ...pointer });
+		fireEvent.pointerMove(window, { clientX: 70, ...pointer });
 		expect(frameCallbacks).toHaveLength(1);
 		expect(ctx.transforms().a).toBe('');
 
@@ -146,7 +146,7 @@ describe('useTabDragReorder', () => {
 		]);
 		ctx.press('a', 50);
 
-		window.dispatchEvent(pointerEvent('pointermove', { clientX: 200 }));
+		fireEvent.pointerMove(window, { clientX: 200, ...pointer });
 		ctx.release();
 
 		expect(ctx.onReorder).toHaveBeenCalledWith('a', 1);
