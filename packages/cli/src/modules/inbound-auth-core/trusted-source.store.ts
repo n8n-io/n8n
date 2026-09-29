@@ -24,6 +24,7 @@ import {
 	TrustedSourceRepository,
 	type TrustedSourceRowChanges,
 } from './database/repositories/trusted-source.repository';
+import { TransactionRunner } from '@n8n/db';
 
 /**
  * A trusted source as consumers see it: decrypted, validated and migrated to the latest config
@@ -65,6 +66,7 @@ export class TrustedSourceStore {
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
 		private readonly trustedSourceIdentityRepository: TrustedSourceIdentityRepository,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async getById(id: string): Promise<TrustedSource | undefined> {
@@ -120,13 +122,15 @@ export class TrustedSourceStore {
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
 		}
-		if (Object.keys(changes).length > 0) {
-			await this.trustedSourceRepository.updateById(id, changes);
-		}
-		// After the row write, so a failed update does not drop bindings.
-		if (options?.clearBindings) {
-			await this.trustedSourceIdentityRepository.clearByTrustedSourceId(id);
-		}
+		await this.transactionRunner.run({}, async (ctx) => {
+			if (Object.keys(changes).length > 0) {
+				await this.trustedSourceRepository.updateById(id, changes, ctx);
+			}
+			// After the row write, so a failed update does not drop bindings.
+			if (options?.clearBindings) {
+				await this.trustedSourceIdentityRepository.clearByTrustedSourceId(id, ctx);
+			}
+		});
 		await this.invalidateCache(row, changes.issuer);
 	}
 
