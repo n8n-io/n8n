@@ -16,7 +16,9 @@ export function stripUntypedNullable(node: unknown): void {
 		return;
 	}
 
-	if (!isRecord(node)) return;
+	if (!isRecord(node)) {
+		return;
+	}
 
 	// A boolean value means the keyword, not a property that happens to be named `nullable`.
 	const declaresNullable = typeof node.nullable === 'boolean';
@@ -26,7 +28,8 @@ export function stripUntypedNullable(node: unknown): void {
 	}
 
 	for (const [key, value] of Object.entries(node)) {
-		if (DATA_VALUED_KEYS.has(key)) continue;
+		if (DATA_VALUED_KEYS.has(key)) {
+		}
 		stripUntypedNullable(value);
 	}
 }

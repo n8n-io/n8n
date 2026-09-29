@@ -190,7 +190,7 @@ export function buildRequestBodyJsonSchema(
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
 
-	// Keep this in step with `buildArtifactsFromRegistry` — both convert the same DTOs to OpenAPI,
+	// Keep in sync with `buildArtifactsFromRegistry`, both convert the same DTOs to OpenAPI
 	// and `/discover` serves this schema straight from a route at runtime.
 	stripUntypedNullable(schema);
 

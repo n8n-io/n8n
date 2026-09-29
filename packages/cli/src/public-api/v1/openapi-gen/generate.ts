@@ -90,8 +90,8 @@ export function buildArtifactsFromRegistry(
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
 
-	// zod-to-openapi emits `z.unknown()`/`z.any()` as `{ nullable: true }` with no `type`, which
-	// ajv (via express-openapi-validator) rejects at schema-compile time once bundled.
+	// zod-to-openapi emits `z.unknown()`/`z.any()` as `{ nullable: true }` with no `type` which
+	// express-openapi-validator rejects at schema-compile time once bundled.
 	stripUntypedNullable(document);
 
 	const artifacts: GeneratedArtifact[] = [];
