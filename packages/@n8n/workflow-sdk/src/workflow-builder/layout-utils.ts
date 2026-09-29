@@ -33,7 +33,12 @@ import {
 	STICKY_HEADER_HEIGHT,
 	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
-import { collapseNodeGroups, placeGroupMembers, type BoundingBox } from './group-layout-utils';
+import {
+	collapseNodeGroups,
+	placeGroupMembers,
+	type BoundingBox,
+	type CollapsedGroup,
+} from './group-layout-utils';
 import { parseVersion } from './string-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
@@ -487,6 +492,66 @@ function arrangeSubgraphs(subgraphs: readonly LayoutSubgraph[]): dagre.graphlib.
 	return compositeGraph;
 }
 
+/** Convert component and AI graph coordinates into boxes keyed by runtime node key. */
+function boxesFromSubgraphs(
+	subgraphs: readonly LayoutSubgraph[],
+	compositeGraph: dagre.graphlib.Graph | undefined,
+	groupByGraphId: ReadonlyMap<string, CollapsedGroup>,
+): Record<string, BoundingBox> {
+	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
+
+	subgraphs.forEach(({ graph, aiGraphs }, index) => {
+		let offset = { x: 0, y: 0 };
+		if (compositeGraph) {
+			const subgraphPosition = compositeGraph.node(index.toString());
+			offset = {
+				x: 0,
+				y: subgraphPosition.y - subgraphPosition.height / 2,
+			};
+		}
+		const aiParentIds = new Set(aiGraphs.map(({ aiParentId }) => aiParentId));
+
+		for (const nodeId of graph.nodes()) {
+			const { x, y, width, height } = graph.node(nodeId);
+			const box: BoundingBox = {
+				x: x + offset.x - width / 2,
+				y: y + offset.y - height / 2,
+				width,
+				height,
+			};
+
+			const group = groupByGraphId.get(nodeId);
+			if (group) {
+				placeGroupMembers(group, box, boundingBoxByNodeId, {
+					boundingBoxFromGraph,
+					snapToGrid,
+				});
+				continue;
+			}
+
+			if (!aiParentIds.has(nodeId)) {
+				boundingBoxByNodeId[nodeId] = box;
+				continue;
+			}
+
+			const aiGraphInfo = aiGraphs.find(({ aiParentId }) => aiParentId === nodeId);
+			if (!aiGraphInfo) continue;
+
+			for (const aiNodeId of aiGraphInfo.graph.nodes()) {
+				const aiNode = aiGraphInfo.graph.node(aiNodeId);
+				boundingBoxByNodeId[aiNodeId] = {
+					x: aiNode.x + box.x - aiNode.width / 2,
+					y: aiNode.y + box.y - aiNode.height / 2,
+					width: aiNode.width,
+					height: aiNode.height,
+				};
+			}
+		}
+	});
+
+	return boundingBoxByNodeId;
+}
+
 // ---------------------------------------------------------------------------
 // Sticky note repositioning
 // ---------------------------------------------------------------------------
@@ -783,54 +848,7 @@ export function calculateNodePositionsDagre(
 
 	const compositeGraph = arrangeSubgraphs(subgraphs);
 
-	// Compute final positions
-	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
-
-	subgraphs.forEach(({ graph, aiGraphs }, index) => {
-		let offset = { x: 0, y: 0 };
-		if (compositeGraph) {
-			const subgraphPosition = compositeGraph.node(index.toString());
-			offset = {
-				x: 0,
-				y: subgraphPosition.y - subgraphPosition.height / 2,
-			};
-		}
-		const aiParentIds = new Set(aiGraphs.map(({ aiParentId }) => aiParentId));
-
-		for (const nodeId of graph.nodes()) {
-			const { x, y, width, height } = graph.node(nodeId);
-			const box: BoundingBox = {
-				x: x + offset.x - width / 2,
-				y: y + offset.y - height / 2,
-				width,
-				height,
-			};
-
-			const group = groupByGraphId.get(nodeId);
-			if (group) {
-				placeGroupMembers(group, box, boundingBoxByNodeId, {
-					boundingBoxFromGraph,
-					snapToGrid,
-				});
-			} else if (aiParentIds.has(nodeId)) {
-				const aiGraphInfo = aiGraphs.find(({ aiParentId }) => aiParentId === nodeId);
-				if (!aiGraphInfo) continue;
-
-				const parentOffset = { x: box.x, y: box.y };
-				for (const aiNodeId of aiGraphInfo.graph.nodes()) {
-					const aiNode = aiGraphInfo.graph.node(aiNodeId);
-					boundingBoxByNodeId[aiNodeId] = {
-						x: aiNode.x + parentOffset.x - aiNode.width / 2,
-						y: aiNode.y + parentOffset.y - aiNode.height / 2,
-						width: aiNode.width,
-						height: aiNode.height,
-					};
-				}
-			} else {
-				boundingBoxByNodeId[nodeId] = box;
-			}
-		}
-	});
+	const boundingBoxByNodeId = boxesFromSubgraphs(subgraphs, compositeGraph, groupByGraphId);
 
 	// Post-process: top-align AI subtrees when no conflicts
 	subgraphs
