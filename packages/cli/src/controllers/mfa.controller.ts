@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import {
@@ -11,7 +12,6 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';

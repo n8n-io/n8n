@@ -8,6 +8,7 @@ import {
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -18,7 +19,6 @@ import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
 

@@ -1,9 +1,9 @@
 import type { CreateRoleDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Role } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 
 import { RolesPublicController } from '../roles.public.controller';

@@ -23,15 +23,27 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
-    "@n8n/di": "workspace:*"
+    "@n8n/constants": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "cache-manager": "catalog:",
+    "ioredis": "5.3.2",
+    "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "ioredis-mock": "^8.8.1",
+    "lodash": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

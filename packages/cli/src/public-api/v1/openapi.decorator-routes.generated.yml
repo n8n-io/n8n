@@ -156,6 +156,9 @@ paths:
   /node-type-policies/scopes/{scopeId}/attachments:
     put:
       $ref: ./handlers/node-type-policies/spec/paths/replaceNodeTypePolicyAttachments.generated.yml
+  /settings/otel:
+    get:
+      $ref: ./handlers/settings/spec/paths/getOtelSettings.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml

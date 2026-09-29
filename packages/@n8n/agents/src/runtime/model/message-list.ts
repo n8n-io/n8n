@@ -426,9 +426,13 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.inputSet.has(m));
 	}
 
-	removeInput(): void {
-		this.all = this.all.filter((message) => !this.inputSet.has(message));
-		this.inputSet.clear();
+	removeInput(messageIds: readonly string[]): void {
+		const ids = new Set(messageIds);
+		this.all = this.all.filter((message) => {
+			if (!this.inputSet.has(message) || !ids.has(message.id)) return true;
+			this.inputSet.delete(message);
+			return false;
+		});
 	}
 
 	/** All messages currently in the list, as live references. */

@@ -14,8 +14,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {

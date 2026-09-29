@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { OperationalError } from 'n8n-workflow';
 
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
@@ -16,6 +17,14 @@ const workflowSourceFileBindingSchema = z.object({
 	sourceHash: z.string().optional(),
 	/** False when the source was read while parameter values were hidden. */
 	parameterValuesIncluded: z.boolean().optional(),
+	setupPending: z.boolean().optional(),
+	setupPreferences: z
+		.object({
+			runId: z.string().optional(),
+			satisfiedCredentialTypes: z.array(z.string()),
+			preferNewCredentialTypes: z.array(z.string()),
+		})
+		.optional(),
 });
 
 const workflowSourceFileBindingsSchema = z.record(z.string(), workflowSourceFileBindingSchema);
@@ -55,13 +64,22 @@ function getFallbackBindings(context: InstanceAiContext): Map<string, WorkflowSo
 
 async function readThreadBindings(
 	context: InstanceAiContext,
+	requirePersistence = false,
 ): Promise<Record<string, WorkflowSourceFileBinding> | undefined> {
-	if (!context.threadMemory || !context.threadId) return undefined;
+	if (!context.threadMemory || !context.threadId) {
+		if (requirePersistence) throw new OperationalError('Workflow setup persistence is unavailable');
+		return undefined;
+	}
 
 	try {
 		const thread = await getThread(context.threadMemory, context.threadId);
+		if (requirePersistence) {
+			if (!thread) throw new OperationalError('The workflow setup thread is unavailable');
+			return workflowSourceFileBindingsSchema.parse(thread.metadata?.[METADATA_KEY] ?? {});
+		}
 		return parseBindings(thread?.metadata?.[METADATA_KEY]);
 	} catch (error) {
+		if (requirePersistence) throw error;
 		context.logger?.debug('Failed to read workflow source file bindings from thread metadata', {
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -72,9 +90,10 @@ async function readThreadBindings(
 export async function getWorkflowSourceFileBinding(
 	context: InstanceAiContext,
 	filePath: string,
+	options: { requirePersistence?: boolean } = {},
 ): Promise<WorkflowSourceFileBinding | undefined> {
 	const normalizedFilePath = normalizeWorkflowSourceFilePath(filePath);
-	const threadBindings = await readThreadBindings(context);
+	const threadBindings = await readThreadBindings(context, options.requirePersistence);
 	if (threadBindings) {
 		return (
 			threadBindings[normalizedFilePath] ?? getFallbackBindings(context).get(normalizedFilePath)
@@ -111,14 +130,14 @@ export async function findWorkflowSourceFileBindingsForWorkflow(
 export async function saveWorkflowSourceFileBinding(
 	context: InstanceAiContext,
 	binding: WorkflowSourceFileBinding,
+	options: { requirePersistence?: boolean } = {},
 ): Promise<WorkflowSourceFileBinding> {
 	const normalizedBinding = {
 		...binding,
 		filePath: normalizeWorkflowSourceFilePath(binding.filePath),
 	};
 
-	// Always keep the run-local copy: a later thread-metadata read can fail, and the
-	// binding must still be found so an existing file is never treated as unbound.
+	// Retain the identity for retries even when its durable write fails.
 	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 
 	if (context.threadMemory && context.threadId) {
@@ -138,6 +157,9 @@ export async function saveWorkflowSourceFileBinding(
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+	if (options.requirePersistence) {
+		throw new OperationalError('Could not persist the workflow setup context');
 	}
 
 	return normalizedBinding;

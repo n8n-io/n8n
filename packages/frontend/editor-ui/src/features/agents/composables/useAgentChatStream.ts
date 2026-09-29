@@ -1143,6 +1143,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
 		if (sessionId) {
 			body.sessionId = sessionId;
+			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
 		}
 		if (files?.length) {

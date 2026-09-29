@@ -320,7 +320,7 @@ export {
 export type { UsageState } from './schemas/usage.schema';
 
 export type {
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeInstanceIssue,
@@ -707,6 +707,13 @@ export type {
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
+
+export {
+	instanceAiSetupCredentialSelectionKey,
+	instanceAiSetupCredentialAppliedKey,
+	readPendingInstanceAiSetupCredentialSelections,
+	type InstanceAiSetupCredentialSelection,
+} from './schemas/instance-ai-setup-credential-selection';
 
 export type {
 	McpRegistryServerStatus,

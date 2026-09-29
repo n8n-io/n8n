@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -69,7 +70,6 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -94,6 +94,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { toResponseExpectation } from './engine-v2-response-expectation';
 import { EngineV2Webhooks } from './engine-v2-webhooks';
 import {
 	applySandboxCSP,
@@ -604,6 +605,39 @@ export async function invokeWebhook({
 	}
 }
 
+/** Stops OAuth webhook execution when required trigger credentials are not ready. */
+export async function checkTriggerCredentialGate({
+	workflowStartNode,
+	additionalData,
+	res,
+	responder,
+}: {
+	workflowStartNode: INode;
+	additionalData: IWorkflowExecuteAdditionalData;
+	res: express.Response;
+	responder: WebhookResponder;
+}): Promise<boolean> {
+	if (
+		responder.hasResponded ||
+		res.headersSent ||
+		!shouldEstablishTriggerIdentity(workflowStartNode)
+	) {
+		return true;
+	}
+
+	const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
+	if (!credentialGate || credentialGate.readyToExecute) {
+		return true;
+	}
+
+	responder.respondWith({
+		data: credentialGate,
+		responseCode: 428,
+	});
+
+	return false;
+}
+
 /**
  * Sends the immediate webhook response unless a response was already sent. When the
  * node answered the request itself (`noWebhookResponse`), it only reports that to the
@@ -1107,20 +1141,13 @@ export async function executeWebhook(
 		// user's resolvable (private) credentials are still unconnected, responding
 		// 428 Precondition Required with the missing-credential list and a signed
 		// connect link for each.
-		if (
-			!responder.hasResponded &&
-			!res.headersSent &&
-			shouldEstablishTriggerIdentity(workflowStartNode)
-		) {
-			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
-			if (credentialGate && !credentialGate.readyToExecute) {
-				responder.respondWith({
-					data: credentialGate,
-					responseCode: 428,
-				});
-				return;
-			}
-		}
+		const shouldContinueAfterCredentialGate = await checkTriggerCredentialGate({
+			workflowStartNode,
+			additionalData,
+			res,
+			responder,
+		});
+		if (!shouldContinueAfterCredentialGate) return;
 
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.
@@ -1213,13 +1240,13 @@ export async function executeWebhook(
 		// Before the run, because a short workflow answers before `startExecution`
 		// returns and nothing replays a missed response. The id is minted here, so
 		// the run and the listener agree on it.
-		if (routesToEngineV2 && responseMode !== 'onReceived') {
+		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
 			const engineExecutionId = createExecutionIdV2();
 			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
 				engineExecutionId,
-				responseMode === 'responseNode',
+				toResponseExpectation(responseMode),
 			);
-			runData.engineExecutionId = engineExecutionId;
+			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
@@ -1391,10 +1418,12 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
-				executionId,
-				workflowId: workflowData.id,
-			});
+			void Container.get(WaitTracker).resumeParentExecution(
+				parentExecution,
+				executePromise,
+				{ executionId, workflowId: workflowData.id },
+				workflowData,
+			);
 		}
 
 		if (!responder.hasResponded) {

@@ -41,7 +41,8 @@ export function attachResponseHooks(
 	);
 
 	additionalData.hooks.addHandler('sendResponse', (response) => {
-		const result = respond.send(toJsonPayload(response));
+		// The payload is built only if the caller expects it.
+		const result = respond.send(() => toJsonPayload(response));
 		if (!result.ok) {
 			// Fail the node so the caller can see the response error.
 			throw result.error;
