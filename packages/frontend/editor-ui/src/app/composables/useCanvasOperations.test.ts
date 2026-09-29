@@ -88,12 +88,10 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { defineComponent, h, isVNode, nextTick, reactive, ref, shallowRef } from 'vue';
+import { isVNode, nextTick, reactive, ref, shallowRef } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
-import { mount } from '@vue/test-utils';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowsApi from '@/app/api/workflows';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -6348,43 +6346,6 @@ describe('useCanvasOperations', () => {
 				message:
 					'We selected "credA" credentials for the "Set" node. Please check it\'s the right one.',
 			});
-		});
-
-		it('does not auto-select credentials for imported nodes on a read-only canvas', async () => {
-			const toast = useToast();
-			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
-			getAutoSelectedCredentialMock.mockReturnValue({
-				credentialType: 'cred',
-				credential: { id: '1', name: 'credA' },
-			});
-			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
-				createTestWorkflowObject({ nodes, connections: {} }),
-			);
-
-			let canvasOperations: ReturnType<typeof useCanvasOperations> | undefined;
-			const wrapper = mount(
-				defineComponent({
-					setup() {
-						canvasOperations = useCanvasOperations();
-						return () => h('div');
-					},
-				}),
-				{
-					global: {
-						provide: { [EditorEnabledFeaturesKey as symbol]: ref({ readOnly: true }) },
-					},
-				},
-			);
-			if (!canvasOperations) throw new Error('Canvas operations did not initialize');
-
-			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
-
-			expect(getAutoSelectedCredentialMock).not.toHaveBeenCalled();
-			expect(result.nodes?.[0]?.credentials).toBeUndefined();
-			expect(toast.showMessage).not.toHaveBeenCalledWith(
-				expect.objectContaining({ title: 'Credentials auto-added' }),
-			);
-			wrapper.unmount();
 		});
 
 		it('should show a generic toast when credentials are auto-selected for multiple nodes', async () => {

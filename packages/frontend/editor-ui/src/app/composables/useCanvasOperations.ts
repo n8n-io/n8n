@@ -147,8 +147,7 @@ import {
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { TELEMETRY_EVENT, type InferTelemetryProps, type TelemetryEventDef } from '@n8n/telemetry';
-import { computed, getCurrentInstance, nextTick, ref, type DeepReadonly } from 'vue';
-import { useEditorContext } from '@/app/composables/useEditorContext';
+import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
@@ -264,8 +263,6 @@ export function useCanvasOperations() {
 	const setupPanelStore = useSetupPanelStore();
 	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	// Out-of-tree callers have no editor context to inject.
-	const editorContext = getCurrentInstance() ? useEditorContext() : undefined;
 	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
 	// router guards) as well as inside the editor, so derive the NDV store from
 	// the document store (which keeps a fallback) rather than injectNDVStore().
@@ -1411,8 +1408,6 @@ export function useCanvasOperations() {
 	 * panel excludes them for the same reason.
 	 */
 	function autoSelectNodeCredentials(nodes: INode[]) {
-		if (editorContext?.readOnly.value) return;
-
 		const autoSelected = nodes.flatMap((node) => {
 			if (node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE) {
 				return [];
