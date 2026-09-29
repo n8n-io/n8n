@@ -30,9 +30,9 @@ watch(
 	(open) => {
 		if (!open) return;
 		const budget = props.config?.config?.guardrails?.budget;
-		amount.value = budget?.monthlyBudgetUsd;
+		amount.value = parseBudgetAmount(budget?.monthlyBudgetUsd);
 		const saved = budget?.alertThresholdPercent;
-		alertOn.value = saved !== undefined && budget?.monthlyBudgetUsd !== undefined;
+		alertOn.value = saved !== undefined && amount.value !== undefined;
 		alertPercent.value = saved === undefined ? 80 : snapAlertPercent(saved);
 	},
 	{ immediate: true },
@@ -123,6 +123,9 @@ function save() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 }
 
 .amountRow {
@@ -152,5 +155,8 @@ function save() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 }
 </style>

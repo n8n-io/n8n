@@ -427,15 +427,15 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
-const NonNegativeUsdSchema = z.number().min(0);
+const PositiveUsdSchema = z.number().positive();
 
-/** Opt-in session cap and monthly budget. `enabled: false` keeps the saved amounts. */
+/** Opt-in session cap and monthly budget. Amounts are greater than 0. `enabled: false` keeps the saved amounts. */
 export const BudgetGuardrailConfigSchema = z
 	.object({
 		enabled: z.boolean(),
-		monthlyBudgetUsd: NonNegativeUsdSchema.optional(),
+		monthlyBudgetUsd: PositiveUsdSchema.optional(),
 		alertThresholdPercent: z.number().int().min(1).max(100).optional(),
-		sessionCostCapUsd: NonNegativeUsdSchema.optional(),
+		sessionCostCapUsd: PositiveUsdSchema.optional(),
 	})
 	.superRefine((budget, ctx) => {
 		if (budget.alertThresholdPercent !== undefined && budget.monthlyBudgetUsd === undefined) {

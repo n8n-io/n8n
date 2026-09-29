@@ -71,6 +71,18 @@ describe('AgentBudgetMonthlyModal', () => {
 		expect(wrapper.getComponent(ElSlider).props('modelValue')).toBe(70);
 	});
 
+	it('drops a monthly budget of 0 and its alert', async () => {
+		const wrapper = mountModal();
+		wrapper.getComponent(N8nInputNumber).vm.$emit('update:modelValue', 0);
+		await wrapper.get('[data-testid="agent-budget-monthly-save"]').trigger('click');
+
+		const saved = wrapper.emitted('save')?.[0]?.[0] as Partial<AgentJsonConfig>;
+		expect(saved.config?.guardrails?.budget).toEqual({
+			enabled: true,
+			sessionCostCapUsd: 5,
+		});
+	});
+
 	it('omits the percent when the alert switch is off', async () => {
 		const wrapper = mountModal();
 		const toggle = wrapper.getComponent(N8nSwitch2);
@@ -110,13 +122,14 @@ describe('AgentBudgetSessionModal', () => {
 		expect(saved.config?.guardrails?.budget?.sessionCostCapUsd).toBeUndefined();
 	});
 
-	it('keeps a cap of 0', async () => {
+	it('drops a cap of 0', async () => {
 		const wrapper = mountModal();
 		wrapper.getComponent(N8nInputNumber).vm.$emit('update:modelValue', 0);
 		await wrapper.get('[data-testid="agent-budget-session-save"]').trigger('click');
 
 		const saved = wrapper.emitted('save')?.[0]?.[0] as Partial<AgentJsonConfig>;
-		expect(saved.config?.guardrails?.budget?.sessionCostCapUsd).toBe(0);
+		expect(saved.config?.guardrails?.budget?.sessionCostCapUsd).toBeUndefined();
+		expect(saved.config?.guardrails?.budget?.monthlyBudgetUsd).toBe(200);
 		expect(saved.config?.guardrails?.budget?.enabled).toBe(true);
 	});
 });

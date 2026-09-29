@@ -68,20 +68,20 @@ function hasId(value: string | undefined): value is string {
 	return value !== undefined && value.length > 0;
 }
 
+/** A budget of 0 is not a cap. */
+function positiveUsd(value: number | undefined): number | undefined {
+	if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
+	return value;
+}
+
 /**
  * Stops the next model call when a session cap or a monthly budget is already
  * spent. The crossing call is recorded. A missing `usage.cost` adds nothing.
  */
 export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGuardrail {
-	const {
-		ledger,
-		sessionId,
-		agentId,
-		sessionCostCapUsd,
-		monthlyBudgetUsd,
-		alertThresholdPercent,
-		onNotice,
-	} = options;
+	const { ledger, sessionId, agentId, alertThresholdPercent, onNotice } = options;
+	const sessionCostCapUsd = positiveUsd(options.sessionCostCapUsd);
+	const monthlyBudgetUsd = positiveUsd(options.monthlyBudgetUsd);
 	const alertLine =
 		monthlyBudgetUsd !== undefined && alertThresholdPercent !== undefined
 			? (monthlyBudgetUsd * alertThresholdPercent) / 100

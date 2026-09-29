@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { getAgentBudgetSpend } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
-import { formatBudgetUsd } from '../utils/budget-config';
+import { formatBudgetUsd, parseBudgetAmount } from '../utils/budget-config';
 import AgentBudgetMonthlyModal from './AgentBudgetMonthlyModal.vue';
 import AgentBudgetSessionModal from './AgentBudgetSessionModal.vue';
 import AgentPanel from './AgentPanel.vue';
@@ -33,8 +33,8 @@ const spendState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
 let spendRequest = 0;
 
 const budget = computed(() => props.config?.config?.guardrails?.budget);
-const monthlyBudget = computed(() => budget.value?.monthlyBudgetUsd);
-const sessionCap = computed(() => budget.value?.sessionCostCapUsd);
+const monthlyBudget = computed(() => parseBudgetAmount(budget.value?.monthlyBudgetUsd));
+const sessionCap = computed(() => parseBudgetAmount(budget.value?.sessionCostCapUsd));
 
 const usagePercent = computed(() => {
 	const limit = monthlyBudget.value;
@@ -100,7 +100,7 @@ const sessionValue = computed(() => {
 		data-testid="agent-budget-panel"
 	>
 		<div :class="[shared.disabled && disabled, $style.body]">
-			<div data-testid="agent-budget-usage">
+			<div data-testid="agent-budget-usage" :class="budgetUsageRow">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.budget.usage.label') }}
 				</N8nText>
@@ -214,6 +214,11 @@ const sessionValue = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.budgetUsageRow {
+	display: flex;
+	align-content: space-between;
 }
 
 .usageLine,

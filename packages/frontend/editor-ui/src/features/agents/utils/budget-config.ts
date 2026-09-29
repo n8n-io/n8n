@@ -32,8 +32,9 @@ export function formatBudgetUsd(amount: number): string {
 	}).format(amount);
 }
 
+/** A budget must be greater than 0. Empty, 0, and negative amounts are unset. */
 export function parseBudgetAmount(value: number | null | undefined): number | undefined {
-	if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return undefined;
+	if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined;
 	return value;
 }
 

@@ -743,6 +743,15 @@ describe('AgentJsonConfigSchema — config.guardrails.budget', () => {
 		});
 	});
 
+	it.each(['sessionCostCapUsd', 'monthlyBudgetUsd'] as const)('rejects a %s of 0', (field) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, [field]: 0 } } },
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	it('rejects a negative amount', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,

@@ -38,26 +38,38 @@ interface ResolvedBudgetLimits {
 	alertThresholdPercent?: number;
 }
 
+function positiveUsd(value: number | undefined): number | undefined {
+	if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
+	return value;
+}
+
 function resolveBudgetLimits(input: BudgetAttachInput): ResolvedBudgetLimits | undefined {
 	if (input.useRootSessionCap) {
 		const childOn = input.budget?.enabled === true;
-		if (!childOn && input.rootSessionCapUsd === undefined) return undefined;
+		const sessionCostCapUsd = positiveUsd(input.rootSessionCapUsd);
+		const monthlyBudgetUsd = childOn ? positiveUsd(input.budget?.monthlyBudgetUsd) : undefined;
+		if (sessionCostCapUsd === undefined && monthlyBudgetUsd === undefined) return undefined;
 		return {
 			sessionId: input.sessionId,
 			agentId: input.agentId,
-			sessionCostCapUsd: input.rootSessionCapUsd,
-			monthlyBudgetUsd: childOn ? input.budget?.monthlyBudgetUsd : undefined,
-			alertThresholdPercent: childOn ? input.budget?.alertThresholdPercent : undefined,
+			sessionCostCapUsd,
+			monthlyBudgetUsd,
+			alertThresholdPercent:
+				monthlyBudgetUsd !== undefined && childOn ? input.budget?.alertThresholdPercent : undefined,
 		};
 	}
 
 	if (input.budget?.enabled !== true) return undefined;
+	const sessionCostCapUsd = positiveUsd(input.budget.sessionCostCapUsd);
+	const monthlyBudgetUsd = positiveUsd(input.budget.monthlyBudgetUsd);
+	if (sessionCostCapUsd === undefined && monthlyBudgetUsd === undefined) return undefined;
 	return {
 		sessionId: input.sessionId,
 		agentId: input.agentId,
-		sessionCostCapUsd: input.budget.sessionCostCapUsd,
-		monthlyBudgetUsd: input.budget.monthlyBudgetUsd,
-		alertThresholdPercent: input.budget.alertThresholdPercent,
+		sessionCostCapUsd,
+		monthlyBudgetUsd,
+		alertThresholdPercent:
+			monthlyBudgetUsd !== undefined ? input.budget.alertThresholdPercent : undefined,
 	};
 }
 

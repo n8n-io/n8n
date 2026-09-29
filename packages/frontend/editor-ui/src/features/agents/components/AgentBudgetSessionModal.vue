@@ -24,7 +24,7 @@ watch(
 	() => props.open,
 	(open) => {
 		if (!open) return;
-		amount.value = props.config?.config?.guardrails?.budget?.sessionCostCapUsd;
+		amount.value = parseBudgetAmount(props.config?.config?.guardrails?.budget?.sessionCostCapUsd);
 	},
 	{ immediate: true },
 );

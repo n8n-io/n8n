@@ -36,7 +36,31 @@ function onUpdate(value: number | number[]) {
 		:show-tooltip="false"
 		:disabled="disabled"
 		:style="brandColor"
+		:class="$style.slider"
 		data-testid="agent-budget-alert-slider"
 		@update:model-value="onUpdate"
 	/>
 </template>
+
+<style lang="scss" module>
+/* A bar at 100% grows this flex item past the dialog and the track wraps. */
+.slider {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	flex-wrap: nowrap;
+	padding-inline: calc(var(--el-slider-button-size) / 2);
+
+	:global(.el-slider__runway) {
+		flex: 1 1 0%;
+		min-width: 0;
+		max-width: 100%;
+		margin: 0;
+	}
+
+	:global(.el-slider__bar) {
+		max-width: 100%;
+	}
+}
+</style>

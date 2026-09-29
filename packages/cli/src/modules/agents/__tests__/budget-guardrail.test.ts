@@ -30,6 +30,18 @@ describe('withBudgetGuardrail', () => {
 		expect(off).toBe(base);
 	});
 
+	it('attaches nothing when every amount is 0', () => {
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			budget: { enabled: true, monthlyBudgetUsd: 0, sessionCostCapUsd: 0 },
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+
+		expect(attached.guardrails).toBeUndefined();
+		expect(attached).toBe(base);
+	});
+
 	it('attaches one hook when the guardrail is on', () => {
 		const attached = withBudgetGuardrail(base, {
 			ledger,
