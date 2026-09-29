@@ -78,6 +78,7 @@ describe('SlackMethodsService', () => {
 				data: {
 					accessToken: 'xoxb-token',
 					signatureSecret: 'signing-secret',
+					agentId: 'agent-1',
 				},
 				projectId: 'project-1',
 			},
