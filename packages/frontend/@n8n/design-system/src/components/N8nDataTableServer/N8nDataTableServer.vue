@@ -239,6 +239,16 @@ const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
+
+// The All page size is -1. v-for needs a positive count for the loading placeholder.
+const ALL_PAGE_SKELETON_ROWS = 10;
+
+const skeletonRowCount = computed(() =>
+	itemsPerPage.value === PAGINATION_ALL_ITEMS_PER_PAGE
+		? ALL_PAGE_SKELETON_ROWS
+		: itemsPerPage.value,
+);
+
 watch(itemsPerPage, (value) => {
 	// TanStack clamps page size to at least 1, so All must skip setPageSize.
 	if (value === PAGINATION_ALL_ITEMS_PER_PAGE) {
@@ -477,7 +487,7 @@ const table = useVueTable({
 							</tr>
 						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
-							<tr v-for="item in itemsPerPage" :key="item">
+							<tr v-for="item in skeletonRowCount" :key="item">
 								<td
 									v-for="coll in table.getVisibleFlatColumns()"
 									:key="coll.id"
