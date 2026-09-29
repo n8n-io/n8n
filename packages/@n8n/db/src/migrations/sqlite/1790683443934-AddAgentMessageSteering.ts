@@ -1,7 +1,7 @@
-import { AddAgentMessageSteering1790666968210 as BaseMigration } from '../common/1790666968210-AddAgentMessageSteering';
+import { AddAgentMessageSteering1790683443934 as BaseMigration } from '../common/1790683443934-AddAgentMessageSteering';
 import type { MigrationContext } from '../migration-types';
 
-export class AddAgentMessageSteering1790666968210 extends BaseMigration {
+export class AddAgentMessageSteering1790683443934 extends BaseMigration {
 	async up(context: MigrationContext) {
 		await this.preserveQueueSequence(context, async () => await super.up(context));
 	}

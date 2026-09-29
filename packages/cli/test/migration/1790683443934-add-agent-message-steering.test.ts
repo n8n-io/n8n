@@ -8,7 +8,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION = 'AddAgentMessageSteering1790666968210';
+const MIGRATION = 'AddAgentMessageSteering1790683443934';
 
 describe('AddAgentMessageSteering migration', () => {
 	let dataSource: DataSource;
