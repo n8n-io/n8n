@@ -6,10 +6,8 @@ import type { MisfireCount, SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { CacheService } from '@n8n/backend-services';
-
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import { CachedMetricQueryFactory, toGaugeValue } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS } from './constant';
 
 const SNAPSHOT_CACHE_KEY = 'metrics:scheduler:snapshot:v1';
@@ -48,7 +46,7 @@ export class PrometheusSchedulerMetricsService
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly cacheService: CacheService,
+		private readonly cachedMetricQueries: CachedMetricQueryFactory,
 		private readonly taskRepository: ScheduledTaskRepository,
 	) {}
 
@@ -174,8 +172,7 @@ export class PrometheusSchedulerMetricsService
 		// collapses the gauges' collects to a single query.
 		const ttlMs = this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds;
 
-		const query = new CachedMetricQuery<ScheduledTaskMetricSnapshot>({
-			cacheService: this.cacheService,
+		const query = this.cachedMetricQueries.create<ScheduledTaskMetricSnapshot>({
 			cacheKey: SNAPSHOT_CACHE_KEY,
 			ttlMs,
 			query: async () => await repository.getMetricSnapshot(),
@@ -185,8 +182,7 @@ export class PrometheusSchedulerMetricsService
 			name: `${prefix}scheduler_tasks_pending`,
 			help: 'Number of pending scheduler tasks awaiting dispatch. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
 			async collect() {
-				const snapshot = await query.get();
-				this.set(snapshot.pending);
+				this.set(toGaugeValue(await query.get(), (snapshot) => snapshot.pending));
 			},
 		});
 
@@ -194,8 +190,7 @@ export class PrometheusSchedulerMetricsService
 			name: `${prefix}scheduler_tasks_due`,
 			help: 'Number of pending scheduler tasks already due for dispatch. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
 			async collect() {
-				const snapshot = await query.get();
-				this.set(snapshot.due);
+				this.set(toGaugeValue(await query.get(), (snapshot) => snapshot.due));
 			},
 		});
 
@@ -203,8 +198,7 @@ export class PrometheusSchedulerMetricsService
 			name: `${prefix}scheduler_tasks_running`,
 			help: 'Number of scheduler tasks currently claimed and in flight. Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
 			async collect() {
-				const snapshot = await query.get();
-				this.set(snapshot.running);
+				this.set(toGaugeValue(await query.get(), (snapshot) => snapshot.running));
 			},
 		});
 
@@ -212,11 +206,12 @@ export class PrometheusSchedulerMetricsService
 			name: `${prefix}scheduler_oldest_pending_age_seconds`,
 			help: 'Age in seconds of the oldest due pending scheduler task; 0 means no due backlog (not a task 0s late). Cluster-wide snapshot, identical on every main; aggregate with max/avg, not sum.',
 			async collect() {
-				const snapshot = await query.get();
 				this.set(
-					snapshot.oldestPendingAgeMs !== null
-						? snapshot.oldestPendingAgeMs * Time.milliseconds.toSeconds
-						: 0,
+					toGaugeValue(await query.get(), (snapshot) =>
+						snapshot.oldestPendingAgeMs !== null
+							? snapshot.oldestPendingAgeMs * Time.milliseconds.toSeconds
+							: 0,
+					),
 				);
 			},
 		});
