@@ -71,7 +71,7 @@ afterEach(async () => {
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
-async function fixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fix_ready') {
+async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fix_ready') {
 	const user = await createUser();
 	const workflow = await createWorkflowWithHistory({}, user);
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId, active: true });
@@ -96,6 +96,11 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fix_ready
 		explanation: 'Update the workflow graph.',
 		resultKind: resultKind ?? undefined,
 	});
+	return { user, workflow, original, project, graph, prepared };
+}
+
+async function fixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fix_ready') {
+	const { user, workflow, original, project, graph, prepared } = await prepareFixture(resultKind);
 	const suggestion = await suggestionService.createSuggestion(prepared);
 	const act = async (action: Parameters<WorkflowSuggestionActionsService['act']>[4]) =>
 		await actions.act(user, project.id, workflow.id, suggestion.id, action);
@@ -202,6 +207,80 @@ it('discards a proposal without saving its graph or changing its stored content'
 	});
 	expect(await suggestions.getActivity(suggestion.id)).toEqual(activity);
 });
+
+it('restores the suggestion and activity when the caller rolls back a discard', async () => {
+	const { user, original, project, suggestion } = await fixture();
+	const beforeActivity = await suggestions.getActivity(suggestion.id);
+	const scope = { workflowId: original.id, projectId: project.id };
+	const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
+
+	await expect(
+		Container.get(TransactionRunner).run({}, async (ctx) => {
+			await actions.discard(user, project.id, original.id, suggestion.id, ctx);
+			expect(await suggestions.getSuggestion(suggestion.id, scope, ctx)).toMatchObject({
+				state: 'closed',
+				closedReason: 'discarded',
+			});
+			throw new Error('Caller transaction failed.');
+		}),
+	).rejects.toThrow('Caller transaction failed.');
+
+	expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
+	expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+});
+
+it('creates and discards a suggestion in the caller transaction', async () => {
+	const { user, original, project, prepared } = await prepareFixture();
+	const scope = { workflowId: original.id, projectId: project.id };
+
+	const suggestion = await Container.get(TransactionRunner).run({}, async (ctx) => {
+		const created = await suggestionService.createSuggestion(prepared, ctx);
+		await actions.discard(user, project.id, original.id, created.id, ctx);
+		expect(await suggestions.getSuggestion(created.id, scope, ctx)).toMatchObject({
+			state: 'closed',
+			closedReason: 'discarded',
+		});
+		return created;
+	});
+
+	expect(await suggestions.getSuggestion(suggestion.id, scope)).toMatchObject({
+		state: 'closed',
+		closedReason: 'discarded',
+		payload: suggestion.payload,
+	});
+	const activity = await suggestions.getActivity(suggestion.id);
+	expect(activity).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ action: 'submitted', author: 'assistant', actorId: null }),
+			expect.objectContaining({ action: 'discarded', author: 'human', actorId: user.id }),
+		]),
+	);
+	expect(activity).toHaveLength(2);
+});
+
+it.each(['disabled', 'unrelated'] as const)(
+	'rejects a caller-transaction discard by a %s user',
+	async (access) => {
+		const { user, original, project, suggestion } = await fixture();
+		const actor = access === 'disabled' ? user : await createUser();
+		if (access === 'disabled') {
+			await Container.get(UserRepository).update(actor.id, { disabled: true });
+		}
+		const scope = { workflowId: original.id, projectId: project.id };
+		const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
+		const beforeActivity = await suggestions.getActivity(suggestion.id);
+
+		await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await expect(
+				actions.discard(actor, project.id, original.id, suggestion.id, ctx),
+			).rejects.toThrow('edit access');
+			expect(await suggestions.getSuggestion(suggestion.id, scope, ctx)).toEqual(beforeSuggestion);
+		});
+
+		expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
+		expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+	},
+);
 
 it('closes a proposal as outdated after settings change without a new version', async () => {
 	const { user, original, project, suggestion, act } = await fixture();

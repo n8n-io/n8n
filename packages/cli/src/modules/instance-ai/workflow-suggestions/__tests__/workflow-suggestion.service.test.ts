@@ -6,12 +6,10 @@ import {
 	type Transaction,
 	type TransactionRunner,
 	type User,
-	type UserRepository,
 } from '@n8n/db';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
@@ -19,10 +17,7 @@ import type { WorkflowSuggestionRepository } from '../database/workflow-suggesti
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 import type { WorkflowSuggestionPublicationService } from '../workflow-suggestion-publication.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
-
 const suggestions = mock<WorkflowSuggestionRepository>();
-const users = mock<UserRepository>();
 const publication = mock<WorkflowPublicationStatusService>();
 const modules = mock<ModuleRegistry>();
 const tx = mock<TransactionRunner>();
@@ -30,7 +25,6 @@ const ctx: OperationContext = { trx: mock<Transaction>() };
 const suggestionPublication = mock<WorkflowSuggestionPublicationService>();
 const service = new WorkflowSuggestionService(
 	suggestions,
-	users,
 	publication,
 	tx,
 	modules,
@@ -58,8 +52,7 @@ let suggestion: WorkflowSuggestion;
 beforeEach(async () => {
 	vi.resetAllMocks();
 	modules.isActive.mockReturnValue(true);
-	users.findByIdWithRole.mockResolvedValue(user);
-	vi.mocked(userHasScopes).mockResolvedValue(true);
+	suggestions.findEditor.mockResolvedValue(user);
 	tx.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 	workflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf',
@@ -342,27 +335,22 @@ it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] a
 	},
 );
 
-it.each(['disabled', 'no edit access'] as const)(
-	'blocks capture, final preparation, and review for a user with %s',
-	async (failure) => {
-		if (failure === 'disabled')
-			users.findByIdWithRole.mockResolvedValue(mock<User>({ id: user.id, disabled: true }));
-		else vi.mocked(userHasScopes).mockResolvedValue(false);
-		await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
-		await expect(
-			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
-		).rejects.toThrow('edit access');
-		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
-			'edit access',
-		);
-		expect(suggestions.createPending).not.toHaveBeenCalled();
-		expect(suggestions.getSuggestion).not.toHaveBeenCalled();
-	},
-);
+it('blocks capture, final preparation, and review without current edit access', async () => {
+	suggestions.findEditor.mockResolvedValue(null);
+	await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
+	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
+		'edit access',
+	);
+	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
+		'edit access',
+	);
+	expect(suggestions.createPending).not.toHaveBeenCalled();
+	expect(suggestions.getSuggestion).not.toHaveBeenCalled();
+});
 
 it('lets another current editor review without publish permission', async () => {
 	const viewer = mock<User>({ id: 'another-editor', disabled: false });
-	users.findByIdWithRole.mockResolvedValue(viewer);
+	suggestions.findEditor.mockResolvedValue(viewer);
 	const detail = await service.getProposal(viewer, 'project', workflow.id, suggestion.id);
 	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
 	expect(detail.backgroundUserId).toBe(user.id);
@@ -374,9 +362,7 @@ it('lets another current editor review without publish permission', async () => 
 		},
 		ctx,
 	);
-	expect(userHasScopes).toHaveBeenCalledWith(viewer, ['workflow:read', 'workflow:update'], false, {
-		workflowId: 'wf',
-	});
+	expect(suggestions.findEditor).toHaveBeenCalledWith(viewer.id, workflow.id, {});
 });
 
 it('rejects review after ownership changes', async () => {

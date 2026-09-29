@@ -1,6 +1,6 @@
 import type { WorkflowSuggestionAction, WorkflowSuggestionAppliedVersion } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { TransactionRunner, WorkflowEntity, type User } from '@n8n/db';
+import { TransactionRunner, WorkflowEntity, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import isEqual from 'lodash/isEqual';
@@ -150,9 +150,15 @@ export class WorkflowSuggestionActionsService {
 		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
 	}
 
-	async discard(user: User, projectId: string, workflowId: string, suggestionId: string) {
-		await this.service.requireEditor(user.id, workflowId);
-		await this.txRunner.run({}, async (ctx) => {
+	async discard(
+		user: User,
+		projectId: string,
+		workflowId: string,
+		suggestionId: string,
+		ctx: OperationContext = {},
+	) {
+		await this.txRunner.run(ctx, async (ctx) => {
+			await this.service.requireEditor(user.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,
 				{ workflowId, projectId },

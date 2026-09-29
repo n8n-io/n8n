@@ -9,6 +9,7 @@ import {
 	BaseRepository,
 	SharedWorkflow,
 	TransactionRunner,
+	User,
 	WorkflowEntity,
 	WorkflowPublishHistory,
 	isUniqueConstraintError,
@@ -19,6 +20,8 @@ import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
@@ -26,6 +29,25 @@ import { WorkflowSuggestion } from './workflow-suggestion.entity';
 export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggestion> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowSuggestion, dataSource.manager, transactionRunner);
+	}
+
+	async findEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
+		const manager = this.managerFor(ctx);
+		const user = await manager.findOne(User, { where: { id: userId }, relations: ['role'] });
+		if (
+			!user ||
+			user.disabled ||
+			!(await userHasScopes(
+				user,
+				['workflow:read', 'workflow:update'],
+				false,
+				{ workflowId },
+				manager,
+			))
+		) {
+			return null;
+		}
+		return user;
 	}
 
 	async getSuggestion(

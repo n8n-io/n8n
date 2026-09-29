@@ -5,7 +5,7 @@ import type {
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
-import { TransactionRunner, UserRepository } from '@n8n/db';
+import { TransactionRunner } from '@n8n/db';
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -14,7 +14,6 @@ import pick from 'lodash/pick';
 import { calculateWorkflowChecksum, WORKFLOW_CHECKSUM_FIELDS } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
@@ -48,7 +47,6 @@ export type PreparedWorkflowSuggestion = {
 export class WorkflowSuggestionService {
 	constructor(
 		private readonly suggestions: WorkflowSuggestionRepository,
-		private readonly users: UserRepository,
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
 		private readonly modules: ModuleRegistry,
@@ -60,14 +58,10 @@ export class WorkflowSuggestionService {
 			throw new NotFoundError('Workflow suggestions are not enabled.');
 	}
 
-	async requireEditor(userId: string, workflowId: string) {
+	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
 		this.requireEnabled();
-		const user = await this.users.findByIdWithRole(userId);
-		if (
-			!user ||
-			user.disabled ||
-			!(await userHasScopes(user, ['workflow:read', 'workflow:update'], false, { workflowId }))
-		) {
+		const user = await this.suggestions.findEditor(userId, workflowId, ctx);
+		if (!user) {
 			throw new ForbiddenError('Workflow edit access is required.');
 		}
 		return user;
