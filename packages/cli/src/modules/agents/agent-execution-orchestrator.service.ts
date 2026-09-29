@@ -1,8 +1,4 @@
-import {
-	type Agent as RuntimeAgent,
-	type SerializableAgentState,
-	type StreamChunk,
-} from '@n8n/agents';
+import { type Agent as RuntimeAgent, type SerializableAgentState } from '@n8n/agents';
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
@@ -66,6 +62,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
@@ -427,7 +424,7 @@ export class AgentExecutionOrchestratorService {
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
-	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<AgentExecutionStreamChunk> {
 		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
 		if (
 			resume.source === N8N_CHAT_PRODUCTION_SOURCE &&
@@ -445,7 +442,7 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
-	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<AgentExecutionStreamChunk> {
 		const draft = { ...config, sessionMode: config.sessionMode ?? 'new' };
 		const sandboxPrincipalHash = hashAgentSandboxPrincipal({
 			type: 'n8n-user',
@@ -467,7 +464,7 @@ export class AgentExecutionOrchestratorService {
 	 */
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -558,7 +555,7 @@ export class AgentExecutionOrchestratorService {
 
 	async *executeForN8nChatPublished(
 		config: ExecuteForN8nChatPublishedConfig,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -649,7 +646,7 @@ export class AgentExecutionOrchestratorService {
 	 */
 	async *executeForTaskPublished(
 		config: ExecuteForTaskPublishedConfig,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
@@ -702,7 +699,9 @@ export class AgentExecutionOrchestratorService {
 	 * Execute a task on demand against the current (draft) config as the
 	 * requesting user.
 	 */
-	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+	async *executeForTaskNow(
+		config: ExecuteForTaskNowConfig,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, user, message, memory, taskId } = config;
 
 		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
@@ -814,12 +813,12 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	private async *streamWakeResponse(
-		stream: AsyncGenerator<StreamChunk>,
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
 		abortSignal: AbortSignal,
 		delivery?: { bridge: AgentChatBridge; threadId: string },
 		cardRecipientId?: string,
-	): AsyncGenerator<StreamChunk> {
-		const chunks: StreamChunk[] = [];
+	): AsyncGenerator<AgentExecutionStreamChunk> {
+		const chunks: AgentExecutionStreamChunk[] = [];
 		let runError: unknown;
 		for await (const chunk of stream) {
 			if (delivery) chunks.push(chunk);
@@ -868,7 +867,9 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Stream an agent response, record it, and yield each chunk.
 	 */
-	async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
+	async *streamChatResponse(
+		config: StreamChatResponseConfig,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -897,8 +898,10 @@ export class AgentExecutionOrchestratorService {
 		acquire: () => Promise<AgentRuntime>,
 		use: (
 			runtime: AgentRuntime,
-		) => AsyncGenerator<StreamChunk> | Promise<AsyncGenerator<StreamChunk>>,
-	): AsyncGenerator<StreamChunk> {
+		) =>
+			| AsyncGenerator<AgentExecutionStreamChunk>
+			| Promise<AsyncGenerator<AgentExecutionStreamChunk>>,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const runtime = await acquire();
 		try {
 			yield* await use(runtime);

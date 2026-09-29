@@ -1,4 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -284,6 +285,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
+				mock<AgentMessageSteeringService>(),
 			),
 			telemetry,
 			runtimeCacheService,

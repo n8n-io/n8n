@@ -383,6 +383,7 @@ export interface AgentBuilderOpenSuspension {
 
 export interface AgentChatQueueItem {
 	id: string;
+	steeringExecutionId: string | null;
 	message: string;
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	createdAt: string;
@@ -390,6 +391,7 @@ export interface AgentChatQueueItem {
 
 export interface AgentChatQueueResponse {
 	items: AgentChatQueueItem[];
+	steerableExecutionId: string | null;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */

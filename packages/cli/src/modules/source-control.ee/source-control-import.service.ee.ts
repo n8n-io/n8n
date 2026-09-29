@@ -863,11 +863,14 @@ export class SourceControlImportService {
 		// skip after that point would leave it stopped with nothing imported in its place.
 		let cleared: PolicyCleared<'contentImport'>;
 		try {
-			cleared = await this.policyEnforcementService.enforceContentImport({
-				workflow: { id, name: importedWorkflow.name, nodes },
-				projectId: targetOwnerProject.id,
-				transport: 'source-control',
-			});
+			cleared = await this.policyEnforcementService.enforceContentImport(
+				{
+					workflow: { id, name: importedWorkflow.name, nodes },
+					projectId: targetOwnerProject.id,
+					transport: 'source-control',
+				},
+				{ kind: 'user', user: { id: userId } },
+			);
 		} catch (error) {
 			// A blocked workflow is skipped, not fatal — the rest of the pull still lands. A check
 			// that broke is not scoped to one workflow, so it fails the pull rather than silently
@@ -1116,11 +1119,14 @@ export class SourceControlImportService {
 				// its stored data can't be read.
 				let cleared: PolicyCleared<'contentImport'>;
 				try {
-					cleared = await this.policyEnforcementService.enforceContentImport({
-						credential: { id: credential.id ?? null, type },
-						projectId: targetOwnerProject.id,
-						transport: 'source-control',
-					});
+					cleared = await this.policyEnforcementService.enforceContentImport(
+						{
+							credential: { id: credential.id ?? null, type },
+							projectId: targetOwnerProject.id,
+							transport: 'source-control',
+						},
+						{ kind: 'user', user: { id: userId } },
+					);
 				} catch (error) {
 					if (!(error instanceof PolicyViolationError)) throw error;
 

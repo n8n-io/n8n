@@ -208,14 +208,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		status: NonNullable<AgentSessionQueryFilters['status']>,
 	) {
 		const latestStatus = this.latestExecutionStatusSubquery(query);
-		const failureExists = this.failureExistsSubquery(query);
 		if (status === 'succeeded') {
-			query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
-		} else if (status === 'error') {
-			query.andWhere(
-				`((${latestStatus}) = 'error' OR ` +
-					`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
-			);
+			query.andWhere(`(${latestStatus}) = 'success'`);
 		} else {
 			query.andWhere(`(${latestStatus}) = :sessionStatus`, { sessionStatus: status });
 		}
@@ -240,16 +234,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.orderBy('latestExecution.createdAt', 'DESC')
 			.addOrderBy('latestExecution.id', 'DESC')
 			.limit(1)
-			.getQuery();
-	}
-
-	private failureExistsSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
-		return query
-			.subQuery()
-			.select('1')
-			.from(AgentExecution, 'failedExecution')
-			.where('failedExecution.threadId = thread.id')
-			.andWhere('failedExecution.failureSummary IS NOT NULL')
 			.getQuery();
 	}
 
