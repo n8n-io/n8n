@@ -1,5 +1,4 @@
 import type {
-	BreakingChangeReportResult,
 	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
 	MigrationFindingStatus,
@@ -11,7 +10,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import type { RuleRegistry } from '../../breaking-changes.rule-registry.service';
-import type { BreakingChangeService } from '../../breaking-changes.service';
+import type {
+	BreakingChangeDetectionResult,
+	BreakingChangeService,
+} from '../../breaking-changes.service';
 import type { MigrationFinding } from '../../database/entities/migration-finding.entity';
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type { MigrationFindingRepository } from '../../database/repositories/migration-finding.repository';
@@ -24,7 +26,10 @@ import {
 
 const TARGET_VERSION: BreakingChangeVersion = 'v2';
 
-function detectionResult(hits: MigrationFindingHit[]): BreakingChangeReportResult {
+function detectionResult(
+	hits: MigrationFindingHit[],
+	failedWorkflowIds: string[] = [],
+): BreakingChangeDetectionResult {
 	const workflowIdsByRule = new Map<string, string[]>();
 	for (const hit of hits) {
 		const ids = workflowIdsByRule.get(hit.ruleId) ?? [];
@@ -50,6 +55,7 @@ function detectionResult(hits: MigrationFindingHit[]): BreakingChangeReportResul
 		},
 		totalWorkflows: 0,
 		shouldCache: false,
+		failedWorkflowIds,
 	};
 }
 
@@ -185,6 +191,24 @@ describe('MigrationFindingSyncService', () => {
 			expect.anything(),
 		);
 		expect(findingRepository.insertMany).not.toHaveBeenCalled();
+	});
+
+	it('leaves the findings of a workflow untouched when a rule threw for it', async () => {
+		givenWorkflows(3);
+		breakingChangeService.detect.mockResolvedValue(detectionResult([], ['wf-0001']));
+		findingRepository.listForWorkflows.mockResolvedValue([
+			findingRow(1, 'rule-a', 'wf-0001', 'open'),
+			findingRow(2, 'rule-a', 'wf-0002', 'open'),
+		]);
+
+		await service.sync(TARGET_VERSION);
+
+		expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
+			TARGET_VERSION,
+			['wf-0000', 'wf-0002'],
+			expect.anything(),
+		);
+		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
 	});
 
 	it('runs one transaction per batch of 100 workflows', async () => {

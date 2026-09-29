@@ -218,6 +218,23 @@ describe('BreakingChangeService', () => {
 			);
 		});
 
+		it('should list the workflows where a rule threw and keep them out of the report result', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
+
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
+
+			const scan = await service.detect('v2');
+			expect(scan.failedWorkflowIds).toEqual(['wf-1']);
+
+			const result = await service.getDetectionResults('v2');
+			expect(result).not.toHaveProperty('failedWorkflowIds');
+		});
+
 		it('should reject when detection fails and allow a later detection to run', async () => {
 			workflowRepository.count.mockRejectedValueOnce(new Error('db down'));
 			workflowRepository.count.mockResolvedValue(0);

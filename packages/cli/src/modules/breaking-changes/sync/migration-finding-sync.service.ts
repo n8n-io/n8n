@@ -71,8 +71,18 @@ export class MigrationFindingSyncService {
 
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
-		const { report } = await this.breakingChangeService.detect(targetVersion);
+		const { report, failedWorkflowIds } = await this.breakingChangeService.detect(targetVersion);
 		const hitsByWorkflow = groupHitsByWorkflow(report.workflowResults);
+
+		// A rule that threw leaves no hit for its workflow. Treating that as "clean"
+		// would mark real findings fixed, so those workflows are left untouched.
+		const failed = new Set(failedWorkflowIds);
+		if (failed.size > 0) {
+			this.logger.warn('Skipping workflows whose rules failed during the scan', {
+				targetVersion,
+				count: failed.size,
+			});
+		}
 
 		// Page over every workflow, not only the affected ones, so findings
 		// for workflows the scan no longer flags are marked fixed.
@@ -82,7 +92,11 @@ export class MigrationFindingSyncService {
 			const workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			if (workflowIds.length === 0) break;
 
-			await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow);
+			await this.syncBatch(
+				targetVersion,
+				workflowIds.filter((id) => !failed.has(id)),
+				hitsByWorkflow,
+			);
 			if (workflowIds.length < take) break;
 			afterId = workflowIds[workflowIds.length - 1];
 		}
@@ -106,6 +120,8 @@ export class MigrationFindingSyncService {
 		workflowIds: string[],
 		hitsByWorkflow: Map<string, MigrationFindingHit[]>,
 	): Promise<void> {
+		if (workflowIds.length === 0) return;
+
 		const hits = workflowIds.flatMap((workflowId) => hitsByWorkflow.get(workflowId) ?? []);
 
 		await this.txRunner.run({}, async (ctx: OperationContext) => {
