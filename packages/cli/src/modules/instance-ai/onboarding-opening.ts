@@ -6,8 +6,8 @@ interface OnboardingOpening {
 	title: string;
 	/**
 	 * First assistant message. Markdown: a blank line starts a paragraph, and the chat shows the
-	 * paragraphs one after the other before the card. `{{firstName}}` becomes the user's first
-	 * name, or "there".
+	 * paragraphs one after the other before the card. A new paragraph needs its own animation rule
+	 * in `InstanceAiConversation.vue`. `{{firstName}}` becomes the user's first name, or "there".
 	 */
 	greeting: string;
 	/**

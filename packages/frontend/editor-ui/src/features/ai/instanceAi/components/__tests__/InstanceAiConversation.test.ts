@@ -212,6 +212,30 @@ describe('InstanceAiConversation', () => {
 		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
 	});
 
+	it('keeps the chat input while the onboarding follow-up is held', async () => {
+		vi.useFakeTimers();
+		store.isOnboardingChromeHidden.mockReturnValue(true);
+		const createdAt = '2026-04-01T00:00:00.000Z';
+		thread.messages = [
+			{ id: 'greeting', role: 'assistant', content: 'Hi there', createdAt },
+		] as InstanceAiMessage[];
+		const wrapper = mountConversation();
+		// Past the greeting's lines and thinking beats.
+		await vi.advanceTimersByTimeAsync(5000);
+
+		thread.messages = [
+			...thread.messages,
+			{ id: 'follow-up', role: 'assistant', content: 'Got it.', createdAt },
+		] as InstanceAiMessage[];
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('Got it.');
+		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+		vi.useRealTimers();
+	});
+
 	it('emits thread-missing when the thread cannot be found', async () => {
 		store.threads = [];
 		const notFound = new ResponseError('Not found');
