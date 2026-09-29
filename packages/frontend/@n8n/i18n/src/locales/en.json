@@ -5700,6 +5700,7 @@
 	"settings.n8nAgent.permissions.group.web": "Web",
 	"settings.n8nAgent.permissions.group.preferences": "Preferences",
 	"settings.n8nAgent.permissions.group.mcp": "MCP tools",
+	"settings.n8nAgent.permissions.group.mcpDescription": "The settings below apply unless a connector has its own settings",
 	"settings.n8nAgent.permissions.group.default": "Default",
 	"settings.n8nAgent.permissions.group.exception": "1 exception",
 	"settings.n8nAgent.permissions.group.exceptions": "{count} exceptions",
