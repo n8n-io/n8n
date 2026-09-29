@@ -10,7 +10,7 @@ import {
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { sampleConfig } from '../saml/sample-metadata';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -111,6 +111,15 @@ describe('SAML SSO configuration in Public API', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().get('/settings/sso/saml');
 
 			expect(response.status).toBe(401);
+		});
+
+		it('rejects a member default API key that lacks saml:manage', async () => {
+			testServer.license.enable('feat:saml');
+			const member = await createMemberWithApiKey();
+
+			const response = await testServer.publicApiAgentFor(member).get('/settings/sso/saml');
+
+			expect(response.status).toBe(403);
 		});
 
 		it('reads through the SAML service without reimplementing preferences', async () => {
@@ -234,6 +243,17 @@ describe('SAML SSO configuration in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('rejects an unknown request body field with 400', async () => {
+			testServer.license.enable('feat:saml');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/saml')
+				.send({ ...sampleConfig, unknown: true });
+
+			expect(response.status).toBe(400);
+		});
+
 		it('rejects a well-formed body with invalid values with 400', async () => {
 			testServer.license.enable('feat:saml');
 			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
@@ -282,6 +302,18 @@ describe('SAML SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
+				.put('/settings/sso/saml')
+				.send(sampleConfig);
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects a member default API key that lacks saml:manage', async () => {
+			testServer.license.enable('feat:saml');
+			const member = await createMemberWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(member)
 				.put('/settings/sso/saml')
 				.send(sampleConfig);
 
