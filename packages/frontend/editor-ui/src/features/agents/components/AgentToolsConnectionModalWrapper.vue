@@ -343,10 +343,6 @@ function commit() {
 	});
 }
 
-/**
- * The picker closes on Save whether or not the tool was added, so a restriction
- * found at that point needs its own explanation.
- */
 function notifyRestricted(nodeTypeName: string): boolean {
 	const restriction = getNodeItemRestriction(nodeTypeName);
 	if (!restriction) return false;
@@ -458,7 +454,6 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		// The policy answer covers only the node types the server had loaded when it was fetched.
 		if (props.data.projectId) {
 			await typeAvailabilityPoliciesStore.fetchForProject(props.data.projectId, { force: true });
 		}

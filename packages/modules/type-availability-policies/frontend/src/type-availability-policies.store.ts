@@ -20,18 +20,13 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const loadedProjectId = ref<string | null>(null);
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
-		// Only the newest request may commit: an older response for the same project must not
-		// overwrite a forced reload.
 		let latestRequest = 0;
 
 		const isEnabled = computed(
 			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
 		);
 
-		/**
-		 * `force` refetches the loaded project, for when the server's node set changed
-		 * (a community node install). The loaded answer stays in place until the new one lands.
-		 */
+		/** `force` refetches the loaded project after the server's node set changed. */
 		async function fetchForProject(
 			projectId: string,
 			{ force = false }: { force?: boolean } = {},

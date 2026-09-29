@@ -101,10 +101,6 @@ function restrictionFor(nodeType: INodeTypeDescription) {
 	return getNodeItemRestriction(nodeType.name) ?? undefined;
 }
 
-/**
- * The settings view closes on Save whether or not the tool was added, so a
- * restriction found at that point needs its own explanation.
- */
 function notifyRestricted(nodeType: INodeTypeDescription): boolean {
 	const restriction = getNodeItemRestriction(nodeType.name);
 	if (!restriction) return false;
@@ -365,7 +361,6 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 
 			const installedName = removePreviewToken(nodeType.name);
 			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
-			// The policy answer covers only the node types the server had loaded when it was fetched.
 			const projectId = projectsStore.personalProject?.id;
 			if (projectId) {
 				await typeAvailabilityPoliciesStore.fetchForProject(projectId, { force: true });

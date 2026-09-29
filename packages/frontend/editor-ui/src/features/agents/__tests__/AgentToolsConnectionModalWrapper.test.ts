@@ -1288,7 +1288,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
 			};
 			mockRestrictedNodeTypes();
-			// The install adds a node type the loaded answer does not cover; the refetch reports it.
 			const fetchForProject = vi
 				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
 				.mockImplementation(async (_projectId, options) => {

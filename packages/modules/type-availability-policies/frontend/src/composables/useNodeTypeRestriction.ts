@@ -23,7 +23,6 @@ const NEXT_STEP_KEY = {
 	replace: 'typeAvailabilityPolicies.restrictedNode.nextStep.replace',
 } satisfies Record<string, BaseTextKey>;
 
-/** One sentence that names the blocked node and tells the user what to do next. */
 export function describeNodeTypeRestriction(
 	nodeTypeName: string,
 	scope?: NodeTypeAvailabilityScope,

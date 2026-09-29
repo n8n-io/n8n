@@ -109,7 +109,6 @@ const rowRef = ref<HTMLElement | null>(null);
 				/>
 			</span>
 
-			<!-- A configured tool keeps its actions: the user needs Remove to clear a tool that a policy now blocks. -->
 			<template v-if="mode === 'configured'">
 				<N8nTooltip :content="i18n.baseText('chatHub.toolsManager.configure')">
 					<N8nIconButton
