@@ -87,6 +87,7 @@ import {
 } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
+import { useAgentSetupTasks } from '../components/AgentSetupTasks/useAgentSetupTasks';
 import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
@@ -118,6 +119,7 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
+import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -718,6 +720,15 @@ function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
 const connectedTriggers = ref<string[]>([]);
+const setupChecklistContext = computed(() => {
+	return {
+		channels: {
+			loaded: initialized.value,
+			ids: connectedTriggers.value,
+		},
+	};
+});
+const { tasks: setupTasks } = useAgentSetupTasks(setupChecklistContext);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
@@ -2888,6 +2899,7 @@ useKeybindings({
 			@switch-agent="onSwitchAgent"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
+		<AgentSetupTasks v-if="!isStandalonePreview" :tasks="setupTasks" />
 		<div
 			v-if="
 				!isArtifactMode &&
