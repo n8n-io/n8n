@@ -1,4 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -23,7 +24,6 @@ import type { ConcurrencyControlService } from '@/concurrency/concurrency-contro
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';

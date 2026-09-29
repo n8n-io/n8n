@@ -129,6 +129,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
 | [trusted_key_source](trusted_key_source.md) | 8 |  | table |
+| [trusted_source](trusted_source.md) | 12 |  | table |
+| [trusted_source_identity](trusted_source_identity.md) | 8 |  | table |
 | [type_availability_policy](type_availability_policy.md) | 7 |  | table |
 | [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
 | [type_availability_policy_scope](type_availability_policy_scope.md) | 8 |  | table |
@@ -187,8 +189,9 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -333,6 +336,8 @@ erDiagram
 "test_run" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_run" }o--o| "evaluation_config" : "FOREIGN KEY (evaluationConfigId) REFERENCES evaluation_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "trusted_key" |o--|| "trusted_key_source" : "FOREIGN KEY (sourceId) REFERENCES trusted_key_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"trusted_source_identity" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"trusted_source_identity" |o--|| "trusted_source" : "FOREIGN KEY (sourceId) REFERENCES trusted_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "type_availability_policy_attachment" |o--|| "type_availability_policy" : "FOREIGN KEY (policyId) REFERENCES type_availability_policy (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "type_availability_policy_attachment" |o--|| "type_availability_policy_scope" : "FOREIGN KEY (scopeId) REFERENCES type_availability_policy_scope (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "type_availability_policy_scope" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -593,8 +598,8 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ executionId FK
   INTEGER id
+  varchar_36_ messageId FK
   TEXT payload
-  varchar_32_ source
   varchar_128_ threadId FK
   datetime_3_ updatedAt
 }
@@ -1587,6 +1592,30 @@ erDiagram
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt
+}
+"trusted_source" {
+  TEXT config
+  INTEGER configVersion
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar issuer
+  datetime_3_ lastCheckedAt
+  TEXT lastError
+  varchar_16_ managedBy
+  varchar_128_ name
+  varchar_16_ status
+  varchar_32_ type
+  datetime_3_ updatedAt
+}
+"trusted_source_identity" {
+  datetime_3_ createdAt
+  datetime_3_ lastSeenAt
+  varchar_32_ provenance
+  varchar_36_ sourceId PK
+  varchar_16_ status
+  varchar subject PK
+  datetime_3_ updatedAt
+  varchar userId FK
 }
 "type_availability_policy" {
   datetime_3_ createdAt

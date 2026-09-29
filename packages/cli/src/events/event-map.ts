@@ -1,5 +1,4 @@
-import { TypedEmitter } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import type {} from '@n8n/backend-services';
 
 import type { AiEventMap } from './maps/ai.event-map';
 import type { ExecutionDataEventMap } from './maps/execution-data.event-map';
@@ -11,15 +10,16 @@ import type { RelayEventMap } from './maps/relay.event-map';
 import type { SystemTaskMetricsEventMap } from './maps/system-task-metrics.event-map';
 import type { WorkflowPublicationMetricsEventMap } from './maps/workflow-publication-metrics.event-map';
 
-export type EventMap = RelayEventMap &
-	QueueMetricsEventMap &
-	AiEventMap &
-	ExecutionDataEventMap &
-	InstanceAiEventMap &
-	McpPostSaveMetricsEventMap &
-	WorkflowPublicationMetricsEventMap &
-	PollTriggerMetricsEventMap &
-	SystemTaskMetricsEventMap;
-
-@Service()
-export class EventService extends TypedEmitter<EventMap> {}
+// Keep CLI payload types here so the shared service does not depend on CLI modules.
+declare module '@n8n/backend-services' {
+	interface EventMap
+		extends RelayEventMap,
+			QueueMetricsEventMap,
+			AiEventMap,
+			ExecutionDataEventMap,
+			InstanceAiEventMap,
+			McpPostSaveMetricsEventMap,
+			WorkflowPublicationMetricsEventMap,
+			PollTriggerMetricsEventMap,
+			SystemTaskMetricsEventMap {}
+}

@@ -81,6 +81,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
 		...overrides,
 	};
 	return {
@@ -202,6 +203,44 @@ describe('StepReadyHandler', () => {
 			}),
 		);
 	});
+
+	it.each([
+		['stepResponse', true],
+		['runEnd', false],
+		['none', false],
+	] as const)(
+		'gives the step an emitter that obeys the stored expectation %s',
+		async (kind, sends) => {
+			const responseSender: ExecutionResponseSender = { send: vi.fn(), stop: vi.fn() };
+			const executor: IStepExecutor = {
+				execute: vi.fn(async (request) => {
+					await Promise.resolve();
+					request.respond.send(() => ({ ok: true }));
+					return { outputs: [[{ json: { ok: true } }]] };
+				}),
+			};
+			const handler = makeHandler(
+				makeExecutionStore({ responseExpectation: { kind } }),
+				makeStepStore(),
+				makeQueue(),
+				{ v1StepExecutor: executor },
+				makeLifecycleEventPublisher(),
+				responseSender,
+			);
+
+			await handler.handle(event);
+
+			if (sends) {
+				expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+					type: 'response',
+					executionId: 'exec-1',
+					payload: { ok: true },
+				});
+			} else {
+				expect(responseSender.send).not.toHaveBeenCalled();
+			}
+		},
+	);
 
 	it('reads inputs from the predecessor step outputs when the predecessor is not the trigger', async () => {
 		const executor = makeExecutor();

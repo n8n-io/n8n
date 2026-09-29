@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,8 +24,6 @@ import type {
 	IWebhookResponseCallbackData,
 	WaitingWebhookRequest,
 } from './webhook.types';
-
-import { EventService } from '@/events/event.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';

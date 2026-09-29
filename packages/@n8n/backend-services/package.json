@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*"
   },

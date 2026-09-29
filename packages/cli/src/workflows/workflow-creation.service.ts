@@ -1,5 +1,6 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
@@ -17,7 +18,6 @@ import { v4 as uuid } from 'uuid';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
