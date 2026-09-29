@@ -1783,17 +1783,22 @@ describe('McpAgentToolsService', () => {
 				],
 			} as never);
 
+			// Two-element page from offset 0: only a real newest-first reversal
+			// yields [exec-3, exec-2]; a raw oldest-first slice would fail here.
 			const result = await callTool('get_agent_session', {
 				agentId: 'agent-1',
 				sessionId: 'thread-1',
-				limit: 1,
-				offset: 1,
+				limit: 2,
+				offset: 0,
 			});
 
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
-				executions: [expect.objectContaining({ executionId: 'exec-2' })],
-				count: 1,
+				executions: [
+					expect.objectContaining({ executionId: 'exec-3' }),
+					expect.objectContaining({ executionId: 'exec-2' }),
+				],
+				count: 2,
 				total: 3,
 				nextOffset: 2,
 			});

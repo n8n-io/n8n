@@ -86,11 +86,12 @@ export function truncateTimeline(
 		} catch {
 			serialized = String(value);
 		}
-		if (serialized.length <= budget) return value;
+		// Scrub before slicing: a secret that straddles the cut would otherwise
+		// leave an unrecognized — and unscrubbed — prefix behind.
+		const scrubbed = scrubSecretsInText(serialized);
+		if (scrubbed.length <= budget) return scrubbed === serialized ? value : scrubbed;
 		truncated = true;
-		return (
-			scrubSecretsInText(serialized.slice(0, budget)) + truncationMarker(serialized.length - budget)
-		);
+		return scrubbed.slice(0, budget) + truncationMarker(scrubbed.length - budget);
 	};
 
 	const timeline = events.map((event): ShapedTimelineEvent => {
@@ -120,6 +121,10 @@ export function truncateTimeline(
 				return { ...event, response: capValue(event.response) };
 			case 'background-task-signal':
 				return { ...event, signal: capValue(event.signal) };
+			// Carries only a message reference — nothing to cap. No default case:
+			// a new event variant must fail the build until it gets a decision here.
+			case 'input':
+				return { ...event };
 		}
 	});
 
