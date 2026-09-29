@@ -325,6 +325,21 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		});
 	});
 
+	it('omits configureTools from the SDK config when tool permissions are not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('configureTools');
+	});
+
 	it('omits connectionTimeoutMs from the SDK config when not provided', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		const oauthService = mock<OauthService>();

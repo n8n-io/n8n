@@ -109,6 +109,7 @@ export async function buildMcpClientForServer(
 		onConnectionFailed,
 		onToolCallSettled,
 	} = deps;
+	const { toolPermissions } = server;
 	const { McpClient } = await import('@n8n/agents');
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
@@ -193,7 +194,9 @@ export async function buildMcpClientForServer(
 		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
-		configureTools: (tools) => compileMcpToolPermissions(server.toolPermissions, tools),
+		...(toolPermissions !== undefined && {
+			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
+		}),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,

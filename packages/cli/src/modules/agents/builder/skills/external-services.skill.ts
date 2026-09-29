@@ -248,9 +248,14 @@ ${mcpServerSchemaText}
 
 ### Tool exposure and approval
 
-- Omit \`toolPermissions\` unless the user explicitly asks to require approval
-  or block a tool or category. Omission allows all MCP tools without approval.
-- When the user asks for permission controls, set both
+- Omit \`toolPermissions\` unless the user explicitly asks to require approval,
+  block a tool or category, or restrict which tools are exposed. Omission
+  allows all MCP tools without approval.
+- Treat requests to expose or allow only named tools as an allowlist. Set both
+  \`toolPermissions.categories.read\` and
+  \`toolPermissions.categories.write\` to \`"blocked"\`, then add each selected
+  tool to \`toolPermissions.tools\` as an \`"always_allow"\` override.
+- For other permission controls, set both
   \`toolPermissions.categories.read\` and
   \`toolPermissions.categories.write\`. Use \`"always_allow"\` for categories
   the user did not restrict.
