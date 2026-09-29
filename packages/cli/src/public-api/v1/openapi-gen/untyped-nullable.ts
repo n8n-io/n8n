@@ -3,7 +3,8 @@ import { isRecord } from '@n8n/utils/is-record';
 // These keys hold data, not schemas, so an example payload is never rewritten.
 const DATA_VALUED_KEYS = new Set(['example', 'examples', 'default', 'enum']);
 
-// `nullable` on a composed schema has different semantics, so those nodes stay unchanged.
+// ajv rejects `nullable` on these nodes too, but dropping it would stop them accepting `null`.
+// Leave them unchanged: a composed nullable schema needs a fix at its source.
 const COMPOSITION_KEYS = ['$ref', 'allOf', 'anyOf', 'oneOf', 'not'];
 
 /**
