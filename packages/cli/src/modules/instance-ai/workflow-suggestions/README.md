@@ -29,6 +29,8 @@ The response includes the original snapshot and the proposed snapshot. The store
 
 ## Storage and deletion
 
+The suggestion tables stay empty until the feature starts creating results. The review migration assumes empty tables. Baseline metadata is required. There is no legacy-row backfill or fallback for missing baseline fields.
+
 The suggestion table stores its own content. It does not reference workflow history or Assistant threads. Foreign keys delete the suggestion when its workflow, original project, or background user is deleted. This also deletes its activity, including for pending proposals. A later insert cannot reference a deleted parent. Investigation callers must stop when a required parent is missing.
 
 A workflow transfer does not transfer its suggestions. Creation and actions reject a changed owner project. Reads, actions, and creation reconcile outdated pending suggestions. Workflow events also request reconciliation. The baseline includes the saved timestamp, content counter, and publication history position. Restoring version pointers does not restore an old suggestion.

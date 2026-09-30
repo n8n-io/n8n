@@ -12,9 +12,9 @@ export type WorkflowSuggestionBaseline = {
 		savedVersionId: string;
 		publishedVersionId: string;
 		checksum: string;
-		versionCounter?: number;
-		savedAt?: string;
-		publicationId?: number | null;
+		versionCounter: number;
+		savedAt: string;
+		publicationId: number | null;
 	};
 	original: WorkflowSuggestionSnapshot;
 };

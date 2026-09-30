@@ -1,14 +1,14 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddWorkflowSuggestionReviewState1790759889862 implements ReversibleMigration {
-	async up({ schemaBuilder: s, escape, runQuery }: MigrationContext) {
+	async up({ schemaBuilder: s }: MigrationContext) {
 		await s.addColumns(
 			'workflow_suggestion',
 			[
 				s
 					.column('resultKind')
 					.varchar(16)
-					.withEnumCheck(['fix_ready', 'needs_you'])
+					.notNull.withEnumCheck(['fix_ready', 'needs_you'])
 					.comment('Investigation outcome; only fix_ready permits Apply'),
 				s
 					.column('appliedVersion')
@@ -21,11 +21,6 @@ export class AddWorkflowSuggestionReviewState1790759889862 implements Reversible
 			],
 			{ recreatesOnSqlite: true },
 		);
-		// Older suggestions have no readiness decision. Keep Apply disabled for them.
-		await runQuery(
-			`UPDATE ${escape.tableName('workflow_suggestion')} SET ${escape.columnName('resultKind')} = 'needs_you'`,
-		);
-		await s.addNotNull('workflow_suggestion', 'resultKind', { recreatesOnSqlite: true });
 		await s.addColumns(
 			'workflow_suggestion_activity',
 			[

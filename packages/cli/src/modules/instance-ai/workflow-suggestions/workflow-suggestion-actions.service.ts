@@ -117,7 +117,7 @@ export class WorkflowSuggestionActionsService {
 									versionId: saved.versionId,
 									projectId,
 									previousPublishedVersionId: suggestion.expectedBaseline.publishedVersionId,
-									baselinePublicationId: suggestion.expectedBaseline.publicationId ?? null,
+									baselinePublicationId: suggestion.expectedBaseline.publicationId,
 									checksum: await calculateWorkflowChecksum(saved),
 									action,
 									actorId: user.id,

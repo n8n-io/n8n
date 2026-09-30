@@ -104,7 +104,7 @@ export class WorkflowSuggestionService {
 				publishedVersionId: workflow.versionId,
 				checksum: await calculateWorkflowChecksum(workflow),
 				versionCounter: workflow.versionCounter,
-				savedAt: workflow.updatedAt?.toISOString(),
+				savedAt: workflow.updatedAt.toISOString(),
 				publicationId: await this.suggestions.getLatestPublicationId(workflowId),
 			},
 			original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
@@ -155,12 +155,9 @@ export class WorkflowSuggestionService {
 				target.projectId !== projectId ||
 				target.workflow.versionId !== expectedBaseline.savedVersionId ||
 				target.workflow.activeVersionId !== expectedBaseline.publishedVersionId ||
-				(expectedBaseline.publicationId !== undefined &&
-					expectedBaseline.publicationId !== target.publicationId) ||
-				(expectedBaseline.versionCounter !== undefined &&
-					target.workflow.versionCounter !== expectedBaseline.versionCounter) ||
-				(expectedBaseline.savedAt !== undefined &&
-					target.workflow.updatedAt.toISOString() !== expectedBaseline.savedAt) ||
+				expectedBaseline.publicationId !== target.publicationId ||
+				target.workflow.versionCounter !== expectedBaseline.versionCounter ||
+				target.workflow.updatedAt.toISOString() !== expectedBaseline.savedAt ||
 				(await calculateWorkflowChecksum(target.workflow)) !== expectedBaseline.checksum ||
 				!(await this.isPublished(target.workflow, ctx))
 			) {
@@ -192,8 +189,8 @@ export class WorkflowSuggestionService {
 	async matchesBaseline(
 		suggestion: WorkflowSuggestion,
 		workflow: WorkflowEntity,
-		projectId?: string,
-		publicationId?: number | null,
+		projectId: string | undefined,
+		publicationId: number | null,
 	) {
 		const baseline = suggestion.expectedBaseline;
 		return (
@@ -201,10 +198,9 @@ export class WorkflowSuggestionService {
 			!workflow.isArchived &&
 			workflow.versionId === baseline.savedVersionId &&
 			workflow.activeVersionId === baseline.publishedVersionId &&
-			(baseline.publicationId === undefined || baseline.publicationId === publicationId) &&
-			(baseline.versionCounter === undefined ||
-				workflow.versionCounter === baseline.versionCounter) &&
-			(baseline.savedAt === undefined || workflow.updatedAt.toISOString() === baseline.savedAt) &&
+			baseline.publicationId === publicationId &&
+			workflow.versionCounter === baseline.versionCounter &&
+			workflow.updatedAt.toISOString() === baseline.savedAt &&
 			(await calculateWorkflowChecksum(workflow)) === baseline.checksum
 		);
 	}

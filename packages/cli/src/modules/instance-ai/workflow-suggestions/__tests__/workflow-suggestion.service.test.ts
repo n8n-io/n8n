@@ -65,6 +65,8 @@ beforeEach(async () => {
 		nodes: [],
 		connections: {},
 		versionId,
+		versionCounter: 1,
+		updatedAt: new Date('2026-09-30T00:00:00.000Z'),
 		activeVersionId: versionId,
 		isArchived: false,
 		settings: { executionTimeout: 30 },
@@ -79,6 +81,8 @@ beforeEach(async () => {
 			savedVersionId: versionId,
 			publishedVersionId: versionId,
 			checksum: await calculateWorkflowChecksum(workflow),
+			versionCounter: workflow.versionCounter,
+			savedAt: workflow.updatedAt.toISOString(),
 			publicationId: null,
 		},
 		original: {
