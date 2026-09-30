@@ -33,6 +33,7 @@ import {
 	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
+	WorkflowOperationError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -56,6 +57,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
+import type { Job } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
@@ -64,12 +66,18 @@ import { WorkflowRunner } from '@/workflow-runner';
 // class isn't initialised when the hoisted factory first resolves.
 const setupQueue = vi.fn();
 const addJob = vi.fn();
+const waitForJob = vi.fn();
+const popJobResult = vi.fn();
 
 @Service()
 class MockScalingService {
 	setupQueue = setupQueue;
 
 	addJob = addJob;
+
+	waitForJob = waitForJob;
+
+	popJobResult = popJobResult;
 }
 
 vi.mock('@/scaling/scaling.service', () => ({
@@ -1085,6 +1093,70 @@ describe('enqueueExecution', () => {
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 
+	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		const readError = new Error('db unavailable');
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(undefined);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValueOnce(
+			readError,
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		await expect(workflowExecution).rejects.toThrowError(readError);
+		// A failed run makes the webhook answer with an error instead of a success without data
+		expect(processError).toHaveBeenCalledWith(
+			readError,
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
+	});
+
+	it('should fail the execution when its record is gone after the job ended', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(undefined);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
+			undefined,
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		// An unsaved execution is deleted by the worker, so a missing record is not a bug
+		await expect(workflowExecution).rejects.toThrowError('Could not find execution with id "1"');
+		expect(processError).toHaveBeenCalledWith(
+			expect.any(WorkflowOperationError),
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
+	});
 	it('should finalize the execution when pool resolution fails', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
