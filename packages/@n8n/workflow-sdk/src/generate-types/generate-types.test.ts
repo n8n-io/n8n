@@ -3097,39 +3097,42 @@ describe('generate-types', () => {
 			expect(findDuplicateTypeMembers(content)).toEqual([]);
 		});
 
-		it('should emit no duplicate members across the real node corpus', async () => {
-			const nodesPath = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
-			if (!fs.existsSync(nodesPath)) {
-				// Needs a built nodes-base. The fixture test above covers the unit.
-				return;
-			}
-			const outputDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'n8n-node-defs-'));
-			try {
-				const nodes = JSON.parse(
-					await fs.promises.readFile(nodesPath, 'utf-8'),
-				) as NodeTypeDescription[];
-				await generateTypes.orchestrateGeneration({ nodes, outputDir });
+		// Needs a built nodes-base. Skip, rather than pass, when it is absent so
+		// the corpus check is visibly unrun.
+		const corpusNodesPath = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
 
-				const duplicates: string[] = [];
-				const walk = async (dir: string): Promise<void> => {
-					for (const entry of await fs.promises.readdir(dir, { withFileTypes: true })) {
-						const entryPath = path.join(dir, entry.name);
-						if (entry.isDirectory()) {
-							await walk(entryPath);
-						} else if (entry.name.endsWith('.ts')) {
-							const source = await fs.promises.readFile(entryPath, 'utf-8');
-							for (const name of findDuplicateTypeMembers(source)) {
-								duplicates.push(`${path.relative(outputDir, entryPath)}: ${name}`);
+		it.skipIf(!fs.existsSync(corpusNodesPath))(
+			'should emit no duplicate members across the real node corpus',
+			async () => {
+				const outputDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'n8n-node-defs-'));
+				try {
+					const nodes = JSON.parse(
+						await fs.promises.readFile(corpusNodesPath, 'utf-8'),
+					) as NodeTypeDescription[];
+					await generateTypes.orchestrateGeneration({ nodes, outputDir });
+
+					const duplicates: string[] = [];
+					const walk = async (dir: string): Promise<void> => {
+						for (const entry of await fs.promises.readdir(dir, { withFileTypes: true })) {
+							const entryPath = path.join(dir, entry.name);
+							if (entry.isDirectory()) {
+								await walk(entryPath);
+							} else if (entry.name.endsWith('.ts')) {
+								const source = await fs.promises.readFile(entryPath, 'utf-8');
+								for (const name of findDuplicateTypeMembers(source)) {
+									duplicates.push(`${path.relative(outputDir, entryPath)}: ${name}`);
+								}
 							}
 						}
-					}
-				};
-				await walk(outputDir);
-				expect(duplicates).toEqual([]);
-			} finally {
-				await fs.promises.rm(outputDir, { recursive: true, force: true });
-			}
-		}, 120_000);
+					};
+					await walk(outputDir);
+					expect(duplicates).toEqual([]);
+				} finally {
+					await fs.promises.rm(outputDir, { recursive: true, force: true });
+				}
+			},
+			120_000,
+		);
 	});
 
 	// =========================================================================
