@@ -123,8 +123,6 @@ export class UpdateDataTableColumnPublicDto implements UpdateDataTableColumnPubl
 	}
 }
 
-// A row has system columns (id, createdAt, updatedAt) plus arbitrary user-defined columns, so the
-// schema must accept unknown keys.
 export const dataTableRowPublicSchema = z
 	.object({
 		id: z.number().int().openapi(dataTableRowFieldDocs.id),
@@ -153,8 +151,6 @@ export class CreateDataTableRowsPublicDto extends Z.class({
 		.openapi(createDataTableRowsFieldDocs.returnType),
 }) {}
 
-// `returnType: 'id'` results only ever carry an `id`, so this must reject the richer 'all' shape
-// (which also has an `id`) to avoid the union silently stripping it down when parsed.
 const insertDataTableRowsResponseSchema = z.union([
 	z
 		.object({ success: z.literal(true), insertedRows: z.number().int() })
@@ -177,9 +173,6 @@ export class InsertDataTableRowsResponsePublicDto {
 	}
 }
 
-// Unlike the internal filter schema, `condition` must not default to `eq`: the legacy public
-// upsert contract required it (eov rejected an omitted `condition` with 400), and silently
-// defaulting it would change that behavior.
 const publicUpsertFilterSchema = z
 	.object({
 		type: dataTableFilterTypeSchema.default('and'),
@@ -208,9 +201,6 @@ const dataTableRowWithStatePublicSchema = z
 	})
 	.passthrough();
 
-// The with-state schema must come before the plain row schema: it's the only one requiring
-// `dryRunState`, so trying the plain (non-strict) schema first would silently strip that field
-// from a real dry-run entry instead of rejecting it and falling through.
 const upsertDataTableRowResponseSchema = z.union([
 	z.boolean().openapi({ description: 'Returned when returnData is false and dryRun is false' }),
 	z.array(dataTableRowWithStatePublicSchema).openapi({
