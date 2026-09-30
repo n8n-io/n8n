@@ -199,11 +199,11 @@ export class ActiveExecutions {
 	attachWorkflowExecution(
 		executionId: string,
 		workflowExecution: PCancelable<IRun>,
-		options?: { isEnqueued?: boolean },
+		options?: { isQueueJob?: boolean },
 	) {
 		const execution = this.getExecutionOrFail(executionId);
 		execution.workflowExecution = workflowExecution;
-		execution.isEnqueued = options?.isEnqueued;
+		execution.isQueueJob = options?.isQueueJob;
 	}
 
 	attachResponsePromise(
@@ -330,7 +330,7 @@ export class ActiveExecutions {
 		return Object.keys(this.activeExecutions).filter(
 			(executionId) =>
 				this.activeExecutions[executionId].status === 'running' &&
-				!this.activeExecutions[executionId].isEnqueued,
+				!this.activeExecutions[executionId].isQueueJob,
 		);
 	}
 

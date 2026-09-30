@@ -153,7 +153,7 @@ export interface IExecutingWorkflowData {
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
-	isEnqueued?: boolean;
+	isQueueJob?: boolean;
 }
 
 export interface IActiveDirectorySettings {

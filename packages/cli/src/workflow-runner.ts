@@ -953,7 +953,7 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution, {
-			isEnqueued: true,
+			isQueueJob: true,
 		});
 	}
 

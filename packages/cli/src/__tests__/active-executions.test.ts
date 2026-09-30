@@ -579,7 +579,7 @@ describe('ActiveExecutions', () => {
 
 			const enqueuedExecutionId = await addExecutionWithStatus('running');
 			activeExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
-				isEnqueued: true,
+				isQueueJob: true,
 			});
 
 			expect(activeExecutions.getRunningExecutionIds()).toEqual([inProcessExecutionId]);
@@ -595,7 +595,7 @@ describe('ActiveExecutions', () => {
 			const enqueuedWorkflowExecution = new PCancelable<IRun>((resolve) => resolve());
 			enqueuedWorkflowExecution.cancel = vi.fn();
 			activeExecutions.attachWorkflowExecution(enqueuedExecutionId, enqueuedWorkflowExecution, {
-				isEnqueued: true,
+				isQueueJob: true,
 			});
 			const enqueuedPostExecutePromise =
 				activeExecutions.getPostExecutePromise(enqueuedExecutionId);
