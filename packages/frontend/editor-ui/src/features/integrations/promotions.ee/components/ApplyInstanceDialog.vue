@@ -44,17 +44,25 @@ function onOpenChange(value: boolean) {
 
 function reportApplied(result: AppliedResult) {
 	const { workflows } = result.counts;
+	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
+	const summary = i18n.baseText('settings.promotions.apply.toast.success.message', {
+		interpolate: {
+			created: String(workflows.created),
+			updated: String(workflows.updated),
+			archived: String(workflows.archived),
+			deleted: String(workflows.deleted),
+		},
+	});
+
+	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-		message: i18n.baseText('settings.promotions.apply.toast.success.message', {
-			interpolate: {
-				created: String(workflows.created),
-				updated: String(workflows.updated),
-				archived: String(workflows.archived),
-				deleted: String(workflows.deleted),
-			},
-		}),
-		type: 'success',
+		message: notPublished
+			? `${summary} ${i18n.baseText('settings.promotions.apply.toast.notPublished', {
+					interpolate: { count: String(notPublished) },
+				})}`
+			: summary,
+		type: notPublished ? 'warning' : 'success',
 	});
 }
 
