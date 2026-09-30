@@ -132,7 +132,7 @@ export class InstanceReportingService {
 		let work: DueReportWork = { expiredReport: null, reportDue: false, slot: null };
 		if (pending?.status !== 'sending') {
 			const current =
-				pending && now.getTime() < slotOn(reportTime, pending.createdAt) + Time.days.toMilliseconds
+				pending && now.getTime() < slotOn(reportTime, slotDay(pending)) + Time.days.toMilliseconds
 					? pending
 					: null;
 			const slot = dueSlot(reportTime, now);
@@ -414,6 +414,11 @@ export class InstanceReportingService {
 function slotOn(reportTime: string, day: Date): number {
 	const [hour, minute] = reportTime.split(':').map(Number);
 	return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour, minute);
+}
+
+/** The UTC day of the report's slot. A legacy row without `reportDate` falls back to `createdAt`. */
+function slotDay(report: InstanceMonitoringReport): Date {
+	return report.reportDate ? new Date(`${report.reportDate}T00:00:00.000Z`) : report.createdAt;
 }
 
 /** The latest slot at or before `now`, or `null` once yesterday's slot is past its grace. */

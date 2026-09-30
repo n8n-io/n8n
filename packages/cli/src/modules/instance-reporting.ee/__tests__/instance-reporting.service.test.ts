@@ -354,6 +354,22 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.hasSettledToday).toHaveBeenCalledWith(LATE_SLOT);
 		});
 
+		it('expires a report sent after midnight at the next slot', async () => {
+			const { service, reportRepository } = lateHarness();
+			const pending = makeReport({
+				reportDate: '2026-03-26',
+				createdAt: new Date('2026-03-27T00:02:00.000Z'),
+			});
+			reportRepository.findPending.mockResolvedValue(pending);
+
+			expect((await service.findDueWork(new Date('2026-03-27T23:49:00.000Z'))).expiredReport).toBe(
+				null,
+			);
+			expect((await service.findDueWork(new Date('2026-03-27T23:50:00.000Z'))).expiredReport).toBe(
+				pending,
+			);
+		});
+
 		it('stops waiting for the slot once its grace has passed', async () => {
 			const { service } = lateHarness();
 			expect((await service.findDueWork(new Date('2026-03-27T00:49:00.000Z'))).reportDue).toBe(
