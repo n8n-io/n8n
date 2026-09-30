@@ -99,8 +99,13 @@ annotations, `as`, or loops. `trigger()` and `node()` take one object
 definition.
 
 Use `node()` and `trigger()` only for nodes without a contract, for example
-triggers, IF, Switch, Merge and Code. Use the type definition for their
+triggers, Switch, Merge and Code. Use the type definition for their
 parameters.
+
+IF is the `if.condition` action. Set each condition `type` to the type of
+`left`. When the data has another type (for example an amount as the string
+"120.50"), convert it in `left` (`={{ Number($json.amount) }}`). The build
+rejects a `left` expression of the wrong type.
 
 - Native node first. Use Set, Filter, IF, Switch, Sort, Aggregate, Split Out,
   Limit and Merge with expressions. Use a Code node only for logic that needs
@@ -121,8 +126,9 @@ parameters.
   Fix the reference. Do not add defensive code (`|| []`, `typeof` checks)
   for fields that the contract types.
 - Use `$('Node Name').item.json.field` or `nodeJson(node, 'field')` for
-  values from further upstream, in AI subnodes, and after IF, Switch or
-  Merge. Do not use `.first()` for per-item data.
+  values from further upstream, in AI subnodes, and after Switch or Merge.
+  Items pass through `if.condition` unchanged, so `$json` after it is the
+  item before it. Do not use `.first()` for per-item data.
 
 ## Output samples
 
