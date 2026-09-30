@@ -89,6 +89,28 @@ describe('AgentBudgetPanel', () => {
 		expect(wrapper.text()).toContain('$5');
 	});
 
+	it('shows Usage unavailable when the spend read fails', async () => {
+		getAgentBudgetSpend.mockReset().mockRejectedValue(new Error('read failed'));
+		const wrapper = mount(AgentBudgetPanel, {
+			props: {
+				config: config({
+					guardrails: {
+						budget: {
+							enabled: true,
+							monthlyBudgetUsd: 200,
+						},
+					},
+				}),
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			},
+		});
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Usage unavailable');
+		expect(wrapper.text()).not.toContain('used');
+	});
+
 	it('opens the matching modal from each row', async () => {
 		getAgentBudgetSpend.mockReset();
 		const wrapper = mount(AgentBudgetPanel, {

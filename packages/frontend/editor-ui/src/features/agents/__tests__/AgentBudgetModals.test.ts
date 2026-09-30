@@ -84,6 +84,20 @@ describe('AgentBudgetMonthlyModal', () => {
 		});
 	});
 
+	it('turns the guardrail off when the only remaining amount is cleared', async () => {
+		const withoutSessionCap = config();
+		delete withoutSessionCap.config?.guardrails?.budget?.sessionCostCapUsd;
+		const wrapper = mount(AgentBudgetMonthlyModal, {
+			props: { open: true, config: withoutSessionCap },
+			global: { stubs: { AgentModal: AgentModalStub } },
+		});
+		wrapper.getComponent(N8nInputNumber).vm.$emit('update:modelValue', undefined);
+		await wrapper.get('[data-testid="agent-budget-monthly-save"]').trigger('click');
+
+		const saved = wrapper.emitted('save')?.[0]?.[0] as Partial<AgentJsonConfig>;
+		expect(saved.config?.guardrails?.budget).toEqual({ enabled: false });
+	});
+
 	it('omits the percent when the alert switch is off', async () => {
 		const wrapper = mountModal();
 		const toggle = wrapper.getComponent(N8nSwitch2);
