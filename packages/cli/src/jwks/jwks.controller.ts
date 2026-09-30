@@ -6,31 +6,31 @@ import type { Response } from 'express';
 
 import { AuthlessRequest } from '@/requests';
 
-import { OAuthJweKeyService } from './oauth-jwe-key.service';
-import { OAuthJweConfig } from './oauth-jwe.config';
-import { type JwksResponse, PublicJweJwkSchema } from './oauth-jwe.schemas';
+import { JwksConfig } from './jwks.config';
+import { JwksRegistry } from './jwks.registry';
+import { type JwksResponse, PublicJwkSchema } from './jwks.schemas';
 
-const configService = Container.get(OAuthJweConfig);
+const jwksConfig = Container.get(JwksConfig);
 
 @RestController('/.well-known')
-export class OAuthJweController {
+export class JwksController {
 	constructor(
-		private readonly jweKeyService: OAuthJweKeyService,
+		private readonly jwksRegistry: JwksRegistry,
 		private readonly logger: Logger,
 	) {}
 
 	@Get('/jwks.json', {
 		skipAuth: true,
 		ipRateLimit: {
-			limit: configService.rateLimitJwksPerMinute,
+			limit: jwksConfig.rateLimitJwksPerMinute,
 			windowMs: 1 * Time.minutes.toMilliseconds,
 		},
 	})
 	async getKeys(_req: AuthlessRequest, res: Response): Promise<void> {
-		const jwks = await this.jweKeyService.getPublicJwks();
+		const jwks = await this.jwksRegistry.getPublicJwks();
 
 		const keys = jwks
-			.map((key) => PublicJweJwkSchema.safeParse(key))
+			.map((key) => PublicJwkSchema.safeParse(key))
 			.filter((result) => {
 				if (!result.success) {
 					this.logger.warn('Failed to parse public JWK', { error: result.error });
