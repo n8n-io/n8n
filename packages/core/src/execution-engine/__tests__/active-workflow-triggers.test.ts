@@ -132,6 +132,16 @@ describe('ActiveWorkflowTriggers', () => {
 		);
 	};
 
+	it('counts a workflow with multiple triggers once and removes it after deactivation', async () => {
+		expect(activeWorkflowTriggers.getDiagnosticCounts()).toEqual({ workflows: 0 });
+
+		await addWorkflow({ triggerNodes: [triggerNode], pollNodes: [pollNode] });
+		expect(activeWorkflowTriggers.getDiagnosticCounts()).toEqual({ workflows: 1 });
+
+		await activeWorkflowTriggers.remove(workflowId);
+		expect(activeWorkflowTriggers.getDiagnosticCounts()).toEqual({ workflows: 0 });
+	});
+
 	describe('addAllTriggers()', () => {
 		describe('should activate workflow', () => {
 			it('with trigger function nodes', async () => {

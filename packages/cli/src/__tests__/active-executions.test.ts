@@ -118,6 +118,19 @@ describe('ActiveExecutions', () => {
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
+	test('should report execution and response mode counts until execution cleanup', async () => {
+		expect(activeExecutions.getDiagnosticCounts()).toEqual({ executions: 0, responseModes: 0 });
+
+		const executionId = await activeExecutions.add(executionData);
+		activeExecutions.setResponseMode(executionId, 'lastNode');
+		expect(activeExecutions.getDiagnosticCounts()).toEqual({ executions: 1, responseModes: 1 });
+
+		const completed = activeExecutions.getPostExecutePromise(executionId);
+		activeExecutions.finalizeExecution(executionId);
+		await completed;
+		expect(activeExecutions.getDiagnosticCounts()).toEqual({ executions: 0, responseModes: 0 });
+	});
+
 	test('Should update execution if add is called with execution ID', async () => {
 		const executionId = await activeExecutions.add(executionData, {
 			executionId: FAKE_SECOND_EXECUTION_ID,
