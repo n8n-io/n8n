@@ -12,16 +12,19 @@
 import fc from 'fast-check';
 
 import * as Helpers from './helpers';
+import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
 import { CALLABLE_METHODS } from '../src/expressions/native-evaluation';
 import { Workflow } from '../src/workflow';
 
-// Two pre-existing, flag-independent quickjs bridge behaviours are kept out
-// of the generated data: a string is truncated at its first NUL character
-// on the way across, and a lone surrogate (which indexing an astral character
-// yields) comes back as U+FFFD replacement characters. Data strings stay
-// NUL-free and inside the Basic Multilingual Plane.
+// Three pre-existing, flag-independent quickjs bridge behaviours are kept out
+// of the comparison: a string is truncated at its first NUL character on the
+// way across, a lone surrogate (which indexing an astral character yields)
+// comes back as U+FFFD replacement characters, and undefined inside an array
+// result comes back as null (vm keeps undefined; native sides with vm). Data
+// strings stay NUL-free and inside the Basic Multilingual Plane; the array
+// case is skipped below.
 const noNul = (s: string) => !s.includes('\0');
 const bmpString = (maxLength: number) =>
 	fc
@@ -139,7 +142,7 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 		await workflow.expression.releaseIsolate();
 	});
 
-	const outcome = (expr: string, json: object, native: boolean) => {
+	const outcome = (expr: string, json: IDataObject, native: boolean) => {
 		const item = { json };
 		const runData = createRunExecutionData({
 			resultData: {
@@ -182,6 +185,12 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 			fc.property(expression, data, (expr, json) => {
 				const viaEngine = outcome(expr, json, false);
 				const viaNative = outcome(expr, json, true);
+
+				const holesAsNull =
+					Expression.getActiveImplementation() === 'quickjs' &&
+					Array.isArray(viaNative.value) &&
+					viaNative.value.some((element) => element === undefined);
+				if (holesAsNull) return;
 
 				if (viaEngine.error) {
 					expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);
