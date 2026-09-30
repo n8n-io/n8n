@@ -199,11 +199,7 @@ describe('CredentialConnectionStatusService', () => {
 			await service.cleanupOrphanedEntriesForUsers(['sharee-1'], em);
 
 			// ASSERT — retention is evaluated against credential:connect, not credential:update
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
-				'credential',
-				'credential:connect',
-				em,
-			);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', 'credential:connect');
 			expect(sharedCredentialsRepository.findPairsWithCredentialAccess).toHaveBeenCalledWith(
 				[{ credentialId: CRED_ID, userId: 'sharee-1' }],
 				'credential:connect',

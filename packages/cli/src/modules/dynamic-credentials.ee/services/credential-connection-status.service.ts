@@ -214,7 +214,6 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 					const validCredRoles = await this.roleService.rolesWithScope(
 						'credential',
 						CREDENTIAL_RETAIN_SCOPE,
-						em,
 					);
 					return await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
 						pairsToCheck,
