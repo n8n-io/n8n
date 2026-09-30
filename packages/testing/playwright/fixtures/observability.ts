@@ -3,12 +3,14 @@ import type { N8NStartupDiagnostics } from 'n8n-containers';
 import { consumeStartupFailure } from 'n8n-containers';
 import type { N8NStack } from 'n8n-containers/stack';
 
+import type { Sut } from './sut';
+
 export type ObservabilityTestFixtures = {
 	autoAttachLogs: undefined;
 };
 
 export type ObservabilityWorkerFixtures = {
-	n8nContainer: N8NStack;
+	sut: Pick<Sut, 'stack'>;
 };
 
 /**
@@ -170,15 +172,16 @@ export const observabilityFixtures: Fixtures<
 	ObservabilityWorkerFixtures
 > = {
 	autoAttachLogs: [
-		async ({ n8nContainer }, use, testInfo) => {
+		async ({ sut }, use, testInfo) => {
 			await use(undefined);
+			const n8nContainer = sut.stack;
 
 			const isFailure = testInfo.status !== testInfo.expectedStatus;
 			const alwaysAttach = shouldAlwaysAttachStartup(testInfo);
 
-			// n8nContainer is undefined when createN8NStack threw before returning,
-			// so observability/metrics aren't queryable. Drain whatever diagnostics
-			// the container service stashed before re-throwing.
+			// n8nContainer is undefined for an attached SUT, or when createN8NStack
+			// threw before returning. Drain whatever diagnostics the container
+			// service stashed before re-throwing. An attached SUT stashes none.
 			if (!n8nContainer) {
 				if (!isFailure) return;
 				const failure = consumeStartupFailure();

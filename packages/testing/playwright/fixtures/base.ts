@@ -3,17 +3,14 @@ import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
-import { createN8NStack } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
-import {
-	CAPABILITIES,
-	shouldSkipContainerRequirement,
-	type CapabilityOption,
-} from './capabilities';
-import { consoleErrorFixtures } from './console-error-monitor';
+import { shouldSkipContainerRequirement, type CapabilityOption } from './capabilities';
+import { watchConsoleErrors } from './console-error-monitor';
 import { engineParityDisposition, workflowSettingsFor } from './engine-parity';
-import { N8N_AUTH_COOKIE } from '../config/constants';
+import { resolveConfig } from './resolve-config';
+import { roleFromTags, signIn, wantsReset, type StorageState } from './session';
+import { startSut, type Sut } from './sut';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
@@ -24,30 +21,32 @@ import {
 } from '../fixtures/quarantine';
 import { v8CoverageFixtures } from '../fixtures/v8-coverage';
 import { n8nPage } from '../pages/n8nPage';
-import { ApiHelpers } from '../services/api-helper';
+import { ApiHelpers, type ApiHelpersOptions } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
-import { getBackendUrl, getFrontendUrl } from '../utils/url-helper';
 
 type TestFixtures = {
 	n8n: n8nPage;
+	/** An isolated API client with its own cookies, signed in as the test's role. */
 	api: ApiHelpers;
 	baseURL: string;
+	/** Reset (with `@db:reset`), default features, then one sign-in. */
+	session: StorageState;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
 	/** Type-safe service helpers (mailpit, gitea, proxy, observability, etc.) */
 	services: ServiceHelpers;
 	/**
 	 * Direct URLs to each main instance (bypasses load balancer).
-	 * Only available in container mode with multi-main setup.
-	 * Index 0 = main-1, Index 1 = main-2, etc.
+	 * Empty unless the SUT exposes its mains. Index 0 = main-1, Index 1 = main-2, etc.
 	 */
 	mainUrls: string[];
 	/**
 	 * Create an API helper for a specific main instance (bypasses load balancer).
-	 * Useful for multi-main testing scenarios.
 	 * @param mainIndex - 0-based index of the main (0 = main-1, 1 = main-2, etc.)
 	 */
 	createApiForMain: (mainIndex: number) => Promise<ApiHelpers>;
+	/** The Docker stack. Skips the test when the SUT has none, for example when attached. */
+	n8nContainer: N8NStack;
 	/** Internal auto fixture: per-spec backend V8 coverage (DEVP-370). No-op
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
@@ -57,36 +56,15 @@ type TestFixtures = {
 };
 
 type WorkerFixtures = {
-	n8nUrl: string;
+	containerConfig: N8NConfig;
+	capability?: CapabilityOption;
+	n8nStackConfig: N8NConfig;
+	sut: Sut;
+	apiOptions: ApiHelpersOptions;
 	backendUrl: string;
 	frontendUrl: string;
 	internalUrl: string;
-	dbSetup: undefined;
-	n8nStackConfig: N8NConfig;
-	n8nContainer: N8NStack;
-	capability?: CapabilityOption;
 };
-
-type ProjectUse = { containerConfig?: N8NConfig };
-
-function parseGlobalTestEnv(): Record<string, string> {
-	const raw = process.env.N8N_TEST_ENV;
-	if (!raw) return {};
-	try {
-		return JSON.parse(raw) as Record<string, string>;
-	} catch {
-		console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
-		return {};
-	}
-}
-
-function logKeepalive(container: N8NStack): void {
-	console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
-	console.log(`    URL: ${container.baseUrl}`);
-	console.log(`    Project: ${container.projectName}`);
-	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
-	console.log('=========================================================\n');
-}
 
 export const test = base.extend<
 	TestFixtures &
@@ -101,12 +79,44 @@ export const test = base.extend<
 	...backendV8CoverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
-	...consoleErrorFixtures,
 	...quarantineFixtures,
 	...a11yFixtures,
 
-	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
+	// --- Worker: what to run, and the SUT that runs it ---
+
+	containerConfig: [{}, { scope: 'worker', option: true }],
 	capability: [undefined, { scope: 'worker', option: true }],
+
+	n8nStackConfig: [
+		async ({ containerConfig, capability }, use) => {
+			await use(resolveConfig(containerConfig, capability, process.env));
+		},
+		{ scope: 'worker', box: true },
+	],
+
+	sut: [
+		async ({ n8nStackConfig }, use) => {
+			const sut = await startSut(n8nStackConfig);
+			await use(sut);
+			await sut.stop();
+		},
+		{ scope: 'worker', box: true, title: 'SUT' },
+	],
+
+	apiOptions: [
+		async ({ n8nStackConfig }, use) => {
+			await use({ workflowSettings: workflowSettingsFor(n8nStackConfig) });
+		},
+		{ scope: 'worker', box: true },
+	],
+
+	backendUrl: [async ({ sut }, use) => await use(sut.url), { scope: 'worker' }],
+	frontendUrl: [async ({ sut }, use) => await use(sut.editorUrl), { scope: 'worker' }],
+	// n8n as seen from inside the stack, for specs that make n8n call itself
+	// (an HTTP Request node, a webhook destination).
+	internalUrl: [async ({ sut }, use) => await use(sut.internalUrl), { scope: 'worker' }],
+
+	// --- Test: which tests run here ---
 
 	// Rejects an unknown @engine:* tag anywhere; only an engine v2 stack skips or
 	// expects failure. See fixtures/engine-parity.ts for the tags.
@@ -120,11 +130,11 @@ export const test = base.extend<
 		{ auto: true },
 	],
 
-	// Service requirements now come from test.use(), so local projects cannot filter them by title.
+	// Service requirements come from test.use(), so projects cannot filter them by title.
 	containerRequirement: [
-		async ({ capability }, use, testInfo) => {
+		async ({ capability, sut }, use, testInfo) => {
 			testInfo.skip(
-				shouldSkipContainerRequirement(capability, !!getBackendUrl()),
+				shouldSkipContainerRequirement(capability, !sut.stack),
 				'This test requires container services',
 			);
 			await use(undefined);
@@ -132,225 +142,65 @@ export const test = base.extend<
 		{ auto: true },
 	],
 
-	// Resolves the effective N8NConfig from project.containerConfig (base) +
-	// capability (override) + N8N_TEST_ENV (global). Topology-neutral: it
-	// always produces a config, even when a container will not be provisioned.
-	n8nStackConfig: [
-		async ({ capability }, use, workerInfo) => {
-			const { containerConfig: base = {} } = workerInfo.project.use as ProjectUse;
-			const override: N8NConfig = !capability
-				? {}
-				: typeof capability === 'string'
-					? CAPABILITIES[capability]
-					: capability;
+	// --- Test: known state, identity, and clients ---
 
-			const globalEnv = parseGlobalTestEnv();
-
-			const config: N8NConfig = {
-				...base,
-				...override,
-				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
-				env: {
-					...globalEnv,
-					...base.env,
-					...override.env,
-					E2E_TESTS: 'true',
-					N8N_RESTRICT_FILE_ACCESS_TO: '',
-				},
-				// Coverage pipeline opt-in: when the coverage runner sets N8N_COVERAGE_DIR,
-				// bridge it to the stack's typed config so containers collect V8 coverage.
-				...(process.env.N8N_COVERAGE_DIR ? { coverageHostDir: process.env.N8N_COVERAGE_DIR } : {}),
-			};
-
-			await use(config);
-		},
-		{ scope: 'worker', box: true },
-	],
-
-	// Creates container from n8nStackConfig.
-	// When N8N_BASE_URL is set, skips container creation for local testing.
-	n8nContainer: [
-		async ({ n8nStackConfig }, use) => {
-			if (getBackendUrl()) {
-				await use(null!);
-				return;
-			}
-
-			const container = await createN8NStack(n8nStackConfig);
-			await use(container);
-
-			if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
-				logKeepalive(container);
-				return;
-			}
-
-			await container.stop();
-		},
-		{ scope: 'worker', box: true },
-	],
-
-	n8nUrl: [
-		async ({ n8nContainer }, use) => {
-			const envBaseURL = process.env.N8N_BASE_URL ?? n8nContainer?.baseUrl;
-			await use(envBaseURL);
-		},
-		{ scope: 'worker' },
-	],
-
-	backendUrl: [
-		async ({ n8nContainer }, use) => {
-			const envBackendURL = getBackendUrl() ?? n8nContainer?.baseUrl;
-			await use(envBackendURL);
-		},
-		{ scope: 'worker' },
-	],
-
-	frontendUrl: [
-		async ({ n8nContainer }, use) => {
-			const envFrontendURL = getFrontendUrl() ?? n8nContainer?.baseUrl;
-			await use(envFrontendURL);
-		},
-		{ scope: 'worker' },
-	],
-
-	// The n8n URL as seen from *inside* the stack, for specs that make n8n itself
-	// call it (an HTTP Request node, a webhook destination). Under container
-	// projects the node runs in a main or worker container, where the host-mapped
-	// `backendUrl` port does not exist - use the network alias instead. Locally
-	// there are no containers and n8n shares the host's loopback, so they match.
-	internalUrl: [
-		async ({ n8nContainer, backendUrl }, use) => {
-			await use(n8nContainer?.internalMainUrls[0] ?? backendUrl);
-		},
-		{ scope: 'worker' },
-	],
-
-	dbSetup: [
-		async ({ n8nContainer, n8nStackConfig }, use) => {
-			if (n8nContainer) {
-				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
-				const api = new ApiHelpers(apiContext);
-				await api.resetDatabase();
-				await apiContext.dispose();
-
-				// The reset endpoint only reaches the control plane database.
-				if (n8nStackConfig.engine) {
-					await (
-						n8nContainer.services.enginePostgres ?? n8nContainer.services.postgres
-					).truncateEngineDatabase();
-				}
-			}
-			await use(undefined);
-		},
-		{ scope: 'worker' },
-	],
-
-	baseURL: async ({ frontendUrl, dbSetup }, use) => {
-		void dbSetup; // Ensure dbSetup runs first
-		await use(frontendUrl);
+	session: async ({ sut }, use, { tags }) => {
+		if (wantsReset(tags)) await sut.reset();
+		await sut.applyDefaults();
+		await use(await signIn(sut.url, roleFromTags(tags)));
 	},
 
-	n8n: async ({ context, n8nStackConfig }, use, testInfo) => {
-		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
-		await setupDefaultInterceptors(context);
-		const page = await context.newPage();
+	baseURL: async ({ sut }, use) => await use(sut.editorUrl),
 
-		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
-		// Can be lowered (e.g. 0.5) to speed up tests, but avoid 0 as it causes race conditions
-		await page.addInitScript(() => {
-			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
-		});
-
-		const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
-		await n8nInstance.api.setupFromTags(testInfo.tags);
-
-		// Auth fallback: untagged tests establish the owner session
-		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-		const cookies = await context.cookies();
-		const authCookie = cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-		if (!hasAuthTag && !authCookie) {
-			await n8nInstance.api.signin('owner');
-		}
-
-		if (!testInfo.tags.includes('@auth:none')) {
-			await n8nInstance.start.withProjectFeatures();
-		}
-		await use(n8nInstance);
+	page: async ({ page, session }, use, testInfo) => {
+		const consoleErrors = watchConsoleErrors(page.context());
+		await setupDefaultInterceptors(page.context());
+		// 1 keeps normal debounce timing. Lower values speed tests up, but 0 causes races.
+		await page.addInitScript(() => sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1'));
+		await page.context().setStorageState(session);
+		await use(page);
+		await consoleErrors.report(testInfo);
 	},
 
-	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {
-		const context = await request.newContext({ baseURL: backendUrl });
-		const api = new ApiHelpers(context, { workflowSettings: workflowSettingsFor(n8nStackConfig) });
-		await api.setupFromTags(testInfo.tags);
-
-		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-		const apiCookies = await context.storageState();
-		const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-
-		if (!hasAuthTag && !authCookie) {
-			await api.signin('owner');
-		}
-
-		await use(api);
-		await context.dispose();
+	api: async ({ sut, session, apiOptions }, use) => {
+		await using context = await request.newContext({ baseURL: sut.url, storageState: session });
+		await use(new ApiHelpers(context, apiOptions));
 	},
 
-	mainUrls: async ({ n8nContainer }, use) => {
-		const urls = n8nContainer?.mainUrls ?? [];
-		await use(urls);
+	// n8n.api shares the page's cookies, so API and UI sign-in change the same session.
+	n8n: async ({ page, apiOptions }, use) => {
+		await use(new n8nPage(page, ApiHelpers.forPage(page, apiOptions)));
 	},
 
-	createApiForMain: async ({ n8nContainer, n8nStackConfig }, use, testInfo) => {
-		const contexts: Array<{ dispose: () => Promise<void> }> = [];
+	mainUrls: async ({ sut }, use) => await use(sut.mainUrls),
 
-		const createApi = async (mainIndex: number): Promise<ApiHelpers> => {
-			const mainUrls = n8nContainer?.mainUrls ?? [];
-			if (mainIndex < 0 || mainIndex >= mainUrls.length) {
+	n8nContainer: async ({ sut: { stack } }, use, testInfo) => {
+		if (!stack) return testInfo.skip(true, 'Needs a Docker stack that the harness controls');
+		await use(stack);
+	},
+
+	createApiForMain: async ({ sut, session, apiOptions }, use) => {
+		await using contexts = new AsyncDisposableStack();
+		await use(async (mainIndex) => {
+			const url = sut.mainUrls[mainIndex];
+			if (!url) {
 				throw new TestError(
-					`Invalid main index ${mainIndex}. Available mains: ${mainUrls.length}. ` +
+					`Invalid main index ${mainIndex}. Available mains: ${sut.mainUrls.length}. ` +
 						'Ensure you are running in multi-main container mode.',
 				);
 			}
-
-			const context = await request.newContext({ baseURL: mainUrls[mainIndex] });
-			contexts.push(context);
-
-			const api = new ApiHelpers(context, {
-				workflowSettings: workflowSettingsFor(n8nStackConfig),
-			});
-			await api.setupFromTags(testInfo.tags.filter((tag) => tag.toLowerCase() !== '@db:reset'));
-
-			const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
-			const apiCookies = await context.storageState();
-			const authCookie = apiCookies.cookies.find((cookie) => cookie.name === N8N_AUTH_COOKIE);
-
-			if (!hasAuthTag && !authCookie) {
-				await api.signin('owner');
-			}
-
-			return api;
-		};
-
-		await use(createApi);
-
-		// Cleanup all created contexts
-		for (const ctx of contexts) {
-			await ctx.dispose();
-		}
+			const context = contexts.use(
+				await request.newContext({ baseURL: url, storageState: session }),
+			);
+			return new ApiHelpers(context, apiOptions);
+		});
 	},
 
 	setupRequirements: async ({ n8n, context }, use) => {
-		const setupFunction = async (requirements: TestRequirements): Promise<void> => {
-			await setupTestRequirements(n8n, context, requirements);
-		};
-
-		await use(setupFunction);
+		await use(async (requirements) => await setupTestRequirements(n8n, context, requirements));
 	},
 
-	services: async ({ n8nContainer }, use) => {
-		await use(n8nContainer.services);
-	},
+	services: async ({ sut }, use) => await use(sut.services),
 });
 
 export { expect };
@@ -359,13 +209,12 @@ export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
 
 /*
 Fixture Dependency Graph:
-Worker: capability + project.containerConfig → n8nStackConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
-Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
-        backendUrl → api
-        n8nContainer → services
-        n8n → a11y
+Worker: containerConfig + capability → n8nStackConfig → [sut, apiOptions]
+        sut → [backendUrl, frontendUrl, internalUrl]
+Test:   sut → session → [api, page] → n8n
+        sut → [baseURL, services, mainUrls, n8nContainer]
+        sut + session → createApiForMain
 
-n8nStackConfig: Resolved N8NConfig (topology-neutral, always produced)
-n8nContainer:   Container lifecycle (stop, containers, mainUrls, etc.)
-services:       Type-safe helpers (mailpit, gitea, proxy, observability, etc.)
+sut:     the instance under test (Docker stack per worker, or an attached instance)
+session: reset with @db:reset, default features, then one sign-in as a storage state
 */

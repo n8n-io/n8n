@@ -12,7 +12,6 @@ service containers, deployment topologies, diagnostics, and benchmark artifacts.
 | Test PostgreSQL, queue mode, multi-main, encryption, or process lifecycle | `tests/infrastructure/` |
 | Measure infrastructure throughput or resource use | [`tests/infrastructure/benchmarks/README.md`](tests/infrastructure/benchmarks/README.md) |
 | Measure browser or canvas performance | `tests/performance/README.md` |
-| Test fixtures, startup, telemetry, or harness behavior | `tests/framework/` |
 
 Read `AGENTS.md` before you add a test. It defines suite boundaries, fixtures,
 container capabilities, and required verification.
@@ -36,21 +35,11 @@ Product Playwright tests live under `tests/`. Most product tests are grouped
 under `tests/e2e/`, with infrastructure, performance, evaluation, and other
 test suites beside it.
 
-Framework and harness tests live under `tests/framework/`. These tests verify
-the test framework, fixtures, startup lifecycle, diagnostics, and harness
-contracts. They are not product E2E tests and must not be added under
-`tests/e2e/`.
-
-Run the framework unit tests with the package Vitest configuration:
+Fixtures have no separate harness suite. The product specs exercise them. Unit
+tests for pure fixture logic live next to the code and run with:
 
 ```bash
-pnpm exec vitest run tests/framework/telemetry.test.ts
-```
-
-Run the browser-backed harness contract tests with the dedicated configuration:
-
-```bash
-pnpm test:harness
+pnpm test:unit
 ```
 
 Inspect the full E2E distribution without running tests or containers:
