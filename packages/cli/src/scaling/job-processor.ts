@@ -585,6 +585,7 @@ export class JobProcessor {
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+		this.trackedJobs.delete(String(jobId));
 		this.cancellationReasons[jobId] = reason;
 	}
 
