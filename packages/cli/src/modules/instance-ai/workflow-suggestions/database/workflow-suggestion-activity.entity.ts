@@ -1,3 +1,4 @@
+import type { WorkflowSuggestionActivity } from '@n8n/api-types';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
@@ -14,8 +15,8 @@ export class WorkflowSuggestionActivityEntity extends WithTimestampsAndStringId 
 	suggestion: Relation<WorkflowSuggestion>;
 
 	@Column({ type: 'varchar', length: 16 })
-	action: 'submitted';
+	action: WorkflowSuggestionActivity['action'];
 
 	@Column({ type: 'varchar', length: 16 })
-	author: 'assistant';
+	author: WorkflowSuggestionActivity['author'];
 }

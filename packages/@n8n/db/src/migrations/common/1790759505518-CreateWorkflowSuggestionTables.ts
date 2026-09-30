@@ -61,11 +61,18 @@ export class CreateWorkflowSuggestionTables1790759505518 implements ReversibleMi
 				column('suggestionId').varchar(36).notNull,
 				column('action')
 					.varchar(16)
-					.notNull.withEnumCheck(['submitted'])
+					.notNull.withEnumCheck([
+						'submitted',
+						'applied',
+						'discarded',
+						'outdated',
+						'published',
+						'publish_failed',
+					])
 					.comment('Proposal activity action'),
 				column('author')
 					.varchar(16)
-					.notNull.withEnumCheck(['assistant'])
+					.notNull.withEnumCheck(['assistant', 'human', 'system'])
 					.comment('Authorship, separate from the background user'),
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),

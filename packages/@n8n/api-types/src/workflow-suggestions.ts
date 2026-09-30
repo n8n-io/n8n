@@ -21,8 +21,8 @@ export type WorkflowSuggestionContent = {
 
 export type WorkflowSuggestionActivity = {
 	id: string;
-	action: 'submitted';
-	author: 'assistant';
+	action: 'submitted' | 'applied' | 'discarded' | 'outdated' | 'published' | 'publish_failed';
+	author: 'assistant' | 'human' | 'system';
 	createdAt: string;
 };
 

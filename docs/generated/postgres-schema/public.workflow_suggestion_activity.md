@@ -15,8 +15,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_workflow_suggestion_activity_action | CHECK | CHECK (((action)::text = 'submitted'::text)) |
-| CHK_workflow_suggestion_activity_author | CHECK | CHECK (((author)::text = 'assistant'::text)) |
+| CHK_workflow_suggestion_activity_action | CHECK | CHECK (((action)::text = ANY ((ARRAY['submitted'::character varying, 'applied'::character varying, 'discarded'::character varying, 'outdated'::character varying, 'published'::character varying, 'publish_failed'::character varying])::text[]))) |
+| CHK_workflow_suggestion_activity_author | CHECK | CHECK (((author)::text = ANY ((ARRAY['assistant'::character varying, 'human'::character varying, 'system'::character varying])::text[]))) |
 | FK_c9a28e6f7349dc4950aeb858692 | FOREIGN KEY | FOREIGN KEY ("suggestionId") REFERENCES workflow_suggestion(id) ON DELETE CASCADE |
 | PK_382a74180d2539b68f5990db193 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_suggestion_activity_action_not_null | n | NOT NULL action |

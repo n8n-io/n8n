@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NULL, "suggestionId" varchar(36) NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NULL, "suggestionId" varchar(36) NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant', 'human', 'system')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -26,8 +26,8 @@ CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NU
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("action" IN ('submitted')) |
-| - | CHECK | CHECK ("author" IN ('assistant')) |
+| - | CHECK | CHECK ("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed')) |
+| - | CHECK | CHECK ("author" IN ('assistant', 'human', 'system')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_workflow_suggestion_activity_1 | PRIMARY KEY | PRIMARY KEY (id) |
