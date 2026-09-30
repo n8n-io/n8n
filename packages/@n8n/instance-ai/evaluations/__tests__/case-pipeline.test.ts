@@ -554,6 +554,132 @@ describe('createCasePipeline', () => {
 		expect(output).toMatchObject({ passed: false, attribution: 'builder_issue' });
 		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
 	});
+
+	describe('a seeded Agent whose model has no declared credential', () => {
+		// The restore binds a seeded Agent's model only to a declared credential of
+		// its provider's type, and the builder sees only declared credentials. With
+		// none declared, the Agent cannot run whatever the builder does.
+		const lowTier = (model: string) => ({ modelsByDifficulty: { low: { model, credential: '' } } });
+		const seededCase = (credentials: Array<{ type: string }> = [], subAgents?: object) => ({
+			...scenarioCase(['happy-path']),
+			credentials,
+			seed: {
+				mode: 'inline',
+				messages: [],
+				agents: [
+					{
+						id: 'seed-agent',
+						config: { name: 'Support', model: 'anthropic/claude-sonnet-4-5', subAgents },
+					},
+				],
+			},
+		});
+		const runWith = async (opts: {
+			testCase: object;
+			createdAgentIds: string[];
+			model: string;
+			subAgents?: object;
+		}) => {
+			const lane = makeLane();
+			vi.mocked(lane.tracedExecuteAgent).mockResolvedValue({
+				success: false,
+				score: 0,
+				reasoning: 'runtime failed',
+				agentEvalResult: { errors: [] },
+			} as never);
+			const build = okBuild({
+				workflowId: undefined,
+				workflowJsons: [],
+				transcript: [] as never,
+				artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+				createdAgentIds: opts.createdAgentIds,
+			});
+			const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+			const artifact = {
+				agentId: 'agent-1',
+				config: { name: 'Support', model: opts.model, subAgents: opts.subAgents },
+				skills: {},
+			};
+			const pipeline = createCasePipeline(
+				makeDeps(orchestrator, {
+					testCaseByFileSlug: new Map([['case-a', opts.testCase as never]]),
+					agentContextByKey: new Map([
+						['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact })],
+					]),
+				}),
+			);
+			return { output: await pipeline.runRow(rowInputs('happy-path')), lane };
+		};
+
+		it('is not run, and the red is the framework_issue', async () => {
+			const { output, lane } = await runWith({
+				testCase: seededCase(),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+			});
+
+			expect(output).toMatchObject({ passed: false, attribution: 'framework_issue' });
+			expect(output.reasoning).toContain('anthropicApi');
+			expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		});
+
+		it('runs when the case declares a credential of the model provider', async () => {
+			const { lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi' }]),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+		});
+
+		it('never blames the framework for an Agent the builder built', async () => {
+			// Not among the restored ids: the live turn created it.
+			const { output, lane } = await runWith({
+				testCase: seededCase(),
+				createdAgentIds: ['seed-restored-elsewhere'],
+				model: 'anthropic/claude-sonnet-4-5',
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+			expect(output.attribution).not.toBe('framework_issue');
+		});
+
+		it('checks a seeded sub-agent model the same way', async () => {
+			const { output, lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+				subAgents: lowTier('openai/gpt-4.1-nano'),
+			});
+
+			expect(output).toMatchObject({ passed: false, attribution: 'framework_issue' });
+			expect(output.reasoning).toContain('openAiApi');
+			expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
+		});
+
+		it('never blames the framework for a sub-agent model the builder changed', async () => {
+			const { lane } = await runWith({
+				testCase: seededCase([{ type: 'anthropicApi' }], lowTier('openai/gpt-4.1-nano')),
+				createdAgentIds: ['agent-1'],
+				model: 'anthropic/claude-sonnet-4-5',
+				subAgents: lowTier('xai/grok-4'),
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+		});
+
+		it('never blames the framework when the builder changed the seeded model', async () => {
+			const { output, lane } = await runWith({
+				testCase: seededCase(),
+				createdAgentIds: ['agent-1'],
+				model: 'xai/grok-4',
+			});
+
+			expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
+			expect(output.attribution).not.toBe('framework_issue');
+		});
+	});
 });
 
 function deferred(): { promise: Promise<unknown>; resolve: (v: unknown) => void } {
