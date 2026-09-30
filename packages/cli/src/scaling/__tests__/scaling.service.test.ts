@@ -447,8 +447,9 @@ describe('ScalingService', () => {
 				await vi.advanceTimersByTimeAsync(500);
 				await stopped;
 
-				expect(scopedLogger.info.mock.calls.map(([message]) => message)).toContainEqual(
-					expect.stringContaining('exec-1'),
+				expect(scopedLogger.info).toHaveBeenCalledWith(
+					'Waiting for 1 executions to start... (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
 				);
 			});
 
