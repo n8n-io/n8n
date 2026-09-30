@@ -811,6 +811,15 @@ describe('EvalThreadRestoreService', () => {
 				expect(options?.schema).toMatchObject({ credential: '' });
 			});
 
+			it('keeps the blank under an empty allowlist, the pin of a case that declares none', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', new Map(), new Set());
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
 			it('keeps the blank when two credentials match, rather than picking one', async () => {
 				credentialsRepo.findByTypesInProject.mockResolvedValue([
 					credential('cred-a'),

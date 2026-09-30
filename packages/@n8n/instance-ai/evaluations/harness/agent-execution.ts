@@ -40,18 +40,32 @@ import type { CaseSeed } from './schema';
 /** LLM credential types the eval seeder can create (credentials/seeder.ts). */
 const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
 
-/** The seed's model for the Agent under test, when the seed restored that Agent.
+/** The seed's config for the Agent under test, when the seed restored that Agent.
  *  `createdAgentIds` is positional to `seed.agents`; an Agent the live turn
  *  created is not in it. */
-export function seededAgentModel(
+export function seededAgentConfig(
 	seed: CaseSeed | undefined,
 	createdAgentIds: string[] | undefined,
 	agentId: string,
-): string | undefined {
+): unknown {
 	if (seed?.mode !== 'inline') return undefined;
 	const index = (createdAgentIds ?? []).indexOf(agentId);
-	const config = index === -1 ? undefined : seed.agents[index]?.config;
-	return isRecord(config) && typeof config.model === 'string' ? config.model : undefined;
+	return index === -1 ? undefined : seed.agents[index]?.config;
+}
+
+/** Every model an Agent config names, by slot: the main model and each
+ *  `subAgents.modelsByDifficulty` tier — the slots the restore binds. */
+function modelSlots(config: unknown): Map<string, string> {
+	const slots = new Map<string, string>();
+	if (!isRecord(config)) return slots;
+	if (typeof config.model === 'string' && config.model !== '') slots.set('model', config.model);
+	const tiers = isRecord(config.subAgents) ? config.subAgents.modelsByDifficulty : undefined;
+	if (isRecord(tiers)) {
+		for (const [tier, entry] of Object.entries(tiers)) {
+			if (isRecord(entry) && typeof entry.model === 'string') slots.set(tier, entry.model);
+		}
+	}
+	return slots;
 }
 
 /**
@@ -61,27 +75,32 @@ export function seededAgentModel(
  * documented behaviour, so the eval is what cannot proceed. With one declared,
  * an empty model is the builder's miss.
  *
- * A seeded Agent still on its seed's model, when the case declares no credential
- * of that model's provider: the restore had nothing to bind and the builder sees
- * only declared credentials, so the eval cannot run it. The captured config
- * redacts `credential`, so the rule reads the inputs, not the credential.
+ * A seeded Agent with a model slot still on the seed's model, when the case
+ * declares no credential of that model's provider: the restore had nothing to
+ * bind and the builder sees only declared credentials, so the eval cannot run
+ * it. A slot the builder changed is the builder's. The captured config redacts
+ * `credential`, so the rule reads the inputs, not the credential.
  */
 export function draftAgentVerdict(
 	artifact: AgentArtifact | undefined,
 	credentials: TestCaseCredential[] | undefined,
-	seededModel?: string,
+	seededConfig?: unknown,
 ): { attribution: EvalAttribution; reasoning: string; execError: string } | undefined {
 	if (!artifact || !isRecord(artifact.config)) return undefined;
 	const model = artifact.config.model;
 	if (typeof model === 'string' && model.trim() !== '') {
-		if (model !== seededModel) return undefined;
-		const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
-		if ((credentials ?? []).some((c) => types.includes(c.type))) return undefined;
-		return {
-			attribution: 'framework_issue',
-			reasoning: `The seeded Agent's model ${model} needs a ${types.join(' or ')} credential, and the case declares none, so the eval has no credential to run the Agent with.`,
-			execError: 'Seeded Agent model has no declared credential',
-		};
+		const seeded = modelSlots(seededConfig);
+		for (const [slot, slotModel] of modelSlots(artifact.config)) {
+			if (seeded.get(slot) !== slotModel) continue;
+			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(slotModel));
+			if (types.length === 0 || (credentials ?? []).some((c) => types.includes(c.type))) continue;
+			return {
+				attribution: 'framework_issue',
+				reasoning: `The seeded Agent's model ${slotModel} needs a ${types.join(' or ')} credential, and the case declares none, so the eval has no credential to run the Agent with.`,
+				execError: 'Seeded Agent model has no declared credential',
+			};
+		}
+		return undefined;
 	}
 	const offeredLlmCredential = (credentials ?? []).some((c) => LLM_CREDENTIAL_TYPES.has(c.type));
 	return offeredLlmCredential

@@ -17,7 +17,7 @@ import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
 import {
 	draftAgentVerdict,
-	seededAgentModel,
+	seededAgentConfig,
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
@@ -349,7 +349,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			const draft = draftAgentVerdict(
 				capturedAgent?.artifact,
 				testCase?.credentials,
-				seededAgentModel(testCase?.seed, build.createdAgentIds, agentRef.id),
+				seededAgentConfig(testCase?.seed, build.createdAgentIds, agentRef.id),
 			);
 			if (draft) {
 				logger.warn(`    [${scenario.name}] not run: ${draft.reasoning}`);
