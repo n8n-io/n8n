@@ -5,6 +5,7 @@ import type {
 	ResolvedDependency,
 } from '@n8n/api-types';
 import {
+	chunkIds,
 	CredentialsRepository,
 	ProjectRelationRepository,
 	WorkflowDependencyRepository,
@@ -263,14 +264,15 @@ export class WorkflowDependencyQueryService {
 			folderId,
 			projectId,
 		);
-		if (workflowIds.length === 0) return [];
-
-		const byWorkflow = await this.getResourceDependencies(workflowIds, 'workflow', user);
 
 		const dependencies = new Map<string, ResolvedDependency>();
-		for (const result of Object.values(byWorkflow)) {
-			for (const dependency of result.dependencies) {
-				dependencies.set(`${dependency.type}:${dependency.id}`, dependency);
+		// A folder hierarchy has no size limit, so keep each query under the driver's bind ceiling.
+		for (const chunk of chunkIds(workflowIds)) {
+			const byWorkflow = await this.getResourceDependencies(chunk, 'workflow', user);
+			for (const result of Object.values(byWorkflow)) {
+				for (const dependency of result.dependencies) {
+					dependencies.set(`${dependency.type}:${dependency.id}`, dependency);
+				}
 			}
 		}
 

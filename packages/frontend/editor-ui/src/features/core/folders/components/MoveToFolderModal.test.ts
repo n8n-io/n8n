@@ -793,8 +793,21 @@ describe('MoveToFolderModal', () => {
 			);
 			expect(getByText('2 data tables')).toBeInTheDocument();
 
+			// The warning must not block: the transfer still goes through with it on screen.
 			const submitButton = getByTestId('confirm-move-folder-button');
 			await waitFor(() => expect(submitButton).toBeEnabled());
+			await userEvent.click(submitButton);
+
+			await waitFor(() =>
+				expect(projectsStore.moveResourceToProject).toHaveBeenCalledWith(
+					'workflow',
+					TEST_WORKFLOW_RESOURCE.id,
+					teamProjects[0].id,
+					undefined,
+					undefined,
+				),
+			);
+			expect(getByTestId('move-modal-data-tables-warning')).toBeInTheDocument();
 		});
 
 		it('should not warn when moving a workflow within the same project', async () => {
@@ -873,6 +886,13 @@ describe('MoveToFolderModal', () => {
 			await selectTeamProject(getByTestId('project-sharing-select'));
 
 			expect(queryByTestId('move-modal-data-tables-warning')).not.toBeInTheDocument();
+
+			// Suppressing the warning must not reroute the submit: without a current project the
+			// transfer branch is still the one whose events the workflow list and editor handle.
+			await userEvent.click(getByTestId('confirm-move-folder-button'));
+
+			await waitFor(() => expect(projectsStore.moveResourceToProject).toHaveBeenCalled());
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should not warn when the workflow has no data table dependencies', async () => {

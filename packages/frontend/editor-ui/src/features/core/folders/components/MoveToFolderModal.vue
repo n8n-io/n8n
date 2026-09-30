@@ -90,14 +90,8 @@ const isOwnPersonalProject = computed(() => {
 		selectedProject.value?.id === projectsStore.personalProject?.id
 	);
 });
-// There is no current project on the Overview and Shared pages, so fall back to the project the
-// resource lives in — otherwise every destination there looks like a transfer.
-const currentResourceProjectId = computed(() => {
-	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
-});
-
 const isTransferringOwnership = computed(() => {
-	return selectedProject.value && selectedProject.value?.id !== currentResourceProjectId.value;
+	return selectedProject.value && selectedProject.value?.id !== projectsStore.currentProject?.id;
 });
 
 const workflowCount = ref(0);
@@ -389,10 +383,22 @@ const descriptionMessage = computed(() => {
 
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
-// Data tables belong to a single project and can't be shared, so they only survive a transfer if
-// the destination already owns them.
+// If there is not current project (e.g. on the Overview page), default to the resource's home project
+const currentResourceProjectId = computed(() => {
+	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
+});
+
+// Deliberately not `isTransferringOwnership`: that one also picks the submit branch, and the
+// Overview and Shared pages have no current project, so comparing against it there would route a
+// same-project move down the transfer path.
+const isChangingProject = computed(
+	() => selectedProject.value && selectedProject.value.id !== currentResourceProjectId.value,
+);
+
+// Data tables belong to a single project and can't be shared, so they only survive a move if the
+// destination already owns them.
 const usedDataTables = computed(() =>
-	isTransferringOwnership.value
+	isChangingProject.value
 		? resourceDependencies.value.filter(
 				(dep) => dep.type === 'dataTableId' && dep.projectId !== selectedProject.value?.id,
 			)
