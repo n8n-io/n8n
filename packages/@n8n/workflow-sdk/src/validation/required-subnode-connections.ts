@@ -106,6 +106,7 @@ function findParents(workflow: WorkflowForSubnodeWiring, nodeName: string): stri
 
 function addConnection(
 	workflow: WorkflowForSubnodeWiring,
+	incoming: IncomingIndex,
 	sourceNode: string,
 	targetNode: string,
 	connectionType: string,
@@ -113,6 +114,15 @@ function addConnection(
 	const byType = (workflow.connections[sourceNode] ??= {});
 	const outputs = (byType[connectionType] ??= []);
 	outputs[0] = [...(outputs[0] ?? []), { node: targetNode, type: connectionType, index: 0 }];
+
+	// Keep the index in step with the graph. A repair one level down reads the
+	// sources of its own parent, and that parent may have been repaired earlier
+	// in this same pass, so a stale index would lose the chain.
+	const byTargetType = incoming.get(targetNode) ?? new Map<string, Set<string>>();
+	const sources = byTargetType.get(connectionType) ?? new Set<string>();
+	sources.add(sourceNode);
+	byTargetType.set(connectionType, sources);
+	incoming.set(targetNode, byTargetType);
 }
 
 /**
@@ -133,64 +143,85 @@ export function connectRequiredSubnodeInputs(
 	const added: AddedSubnodeConnection[] = [];
 	const incoming = buildIncomingIndex(workflow);
 
-	for (const node of workflow.nodes) {
-		if (!node.name) continue;
+	function onePass(): number {
+		let count = 0;
 
-		// validate-workflow.ts does the same: the wire can carry a string.
-		const version =
-			typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
+		for (const node of workflow.nodes) {
+			if (!node.name) continue;
 
-		let builderHintInputs;
-		try {
-			builderHintInputs = nodeTypesProvider.getByNameAndVersion(node.type, version)?.description
-				?.builderHint?.inputs;
-		} catch {
-			continue; // unknown type or version
-		}
-		if (!builderHintInputs) continue;
+			// validate-workflow.ts does the same: the wire can carry a string.
+			const version =
+				typeof node.typeVersion === 'string'
+					? parseFloat(node.typeVersion)
+					: (node.typeVersion ?? 1);
 
-		const parameters = node.parameters ?? {};
-
-		for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
-			if (!connectionType.startsWith('ai_')) continue;
-			if (!inputConfig?.required) continue;
-			if (cleared.has(`${node.name}\u0000${connectionType}`)) continue;
-
-			// A gated input does not exist until its condition holds.
-			const displayOptions = inputConfig.displayOptions as DisplayOptions | undefined;
-			if (displayOptions) {
-				const context: DisplayOptionsContext = {
-					parameters,
-					nodeVersion: version,
-					rootParameters: parameters,
-				};
-				if (!matchesDisplayOptions(context, displayOptions)) continue;
+			let builderHintInputs;
+			try {
+				builderHintInputs = nodeTypesProvider.getByNameAndVersion(node.type, version)?.description
+					?.builderHint?.inputs;
+			} catch {
+				continue; // unknown type or version
 			}
+			if (!builderHintInputs) continue;
 
-			// buildIncomingIndex only stores non-empty sets.
-			if (incoming.get(node.name)?.get(connectionType)) continue;
+			const parameters = node.parameters ?? {};
 
-			// Take the source from the parent the subnode hangs off, not the whole graph.
-			const parentBySource = new Map<string, string>();
-			for (const parent of findParents(workflow, node.name)) {
-				for (const source of incoming.get(parent)?.get(connectionType) ?? []) {
-					if (source !== node.name) parentBySource.set(source, parent);
+			for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
+				if (!connectionType.startsWith('ai_')) continue;
+				if (!inputConfig?.required) continue;
+				if (cleared.has(`${node.name}\u0000${connectionType}`)) continue;
+
+				// A gated input does not exist until its condition holds.
+				const displayOptions = inputConfig.displayOptions as DisplayOptions | undefined;
+				if (displayOptions) {
+					const context: DisplayOptionsContext = {
+						parameters,
+						nodeVersion: version,
+						rootParameters: parameters,
+					};
+					if (!matchesDisplayOptions(context, displayOptions)) continue;
 				}
+
+				// buildIncomingIndex only stores non-empty sets.
+				if (incoming.get(node.name)?.get(connectionType)) continue;
+
+				// Take the source from the parent the subnode hangs off, not the whole graph.
+				const parentBySource = new Map<string, string>();
+				for (const parent of findParents(workflow, node.name)) {
+					for (const source of incoming.get(parent)?.get(connectionType) ?? []) {
+						if (source !== node.name) parentBySource.set(source, parent);
+					}
+				}
+
+				// Wire only when the source is unambiguous.
+				const candidates = [...parentBySource.keys()];
+				if (candidates.length !== 1) continue;
+
+				const [sourceNode] = candidates;
+				addConnection(workflow, incoming, sourceNode, node.name, connectionType);
+				added.push({
+					sourceNode,
+					targetNode: node.name,
+					connectionType,
+					viaParent: parentBySource.get(sourceNode) as string,
+				});
+				count++;
 			}
-
-			// Wire only when the source is unambiguous.
-			const candidates = [...parentBySource.keys()];
-			if (candidates.length !== 1) continue;
-
-			const [sourceNode] = candidates;
-			addConnection(workflow, sourceNode, node.name, connectionType);
-			added.push({
-				sourceNode,
-				targetNode: node.name,
-				connectionType,
-				viaParent: parentBySource.get(sourceNode) as string,
-			});
 		}
+
+		return count;
+	}
+
+	// One repair can supply the parent another repair reads from, and
+	// `workflow.nodes` is in no particular order, so a single pass would make the
+	// result depend on that order. Sweep until a pass changes nothing.
+	//
+	// A pass only fills an input that had no source, and `addConnection` records
+	// it, so each input is filled at most once and each chain needs at most one
+	// pass per link. The cap is belt and braces: it holds even if a later edit
+	// stops the index from being updated, which would otherwise spin here.
+	for (let pass = 0; pass <= workflow.nodes.length; pass++) {
+		if (onePass() === 0) break;
 	}
 
 	return added;

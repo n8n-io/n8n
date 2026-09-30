@@ -6,6 +6,8 @@ import { test, expect } from '../../../fixtures/base';
 const AGENT = '@n8n/n8n-nodes-langchain.agent';
 const PARSER = '@n8n/n8n-nodes-langchain.outputParserAutofixing';
 const LANGCHAIN_CODE = '@n8n/n8n-nodes-langchain.code';
+const VECTOR_STORE_TOOL = '@n8n/n8n-nodes-langchain.toolVectorStore';
+const IN_MEMORY_VECTOR_STORE = '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
 
 /**
  * A schedule trigger feeding a No-Op, plus an agent with an autofixing parser
@@ -150,6 +152,75 @@ test.describe(
 			expect(
 				response.ok(),
 				`publish was refused over an inputs expression the engine ignores: ${await response.text()}`,
+			).toBe(true);
+
+			await expect
+				.poll(async () => (await api.workflows.getPublicationStatus(created.id)).status, {
+					timeout: 15_000,
+				})
+				.toBe('published');
+		});
+
+		test('publishes a subnode nested behind a disabled parent', async ({ api }) => {
+			// The tool only feeds the disabled agent, and the vector store only feeds
+			// the tool, so nothing ever asks the store for its Embedding input.
+			// Stopping at the first consumer reads the store as live, because the tool
+			// between them is enabled.
+			const created = await api.workflows.createWorkflow({
+				name: `nested behind a disabled parent ${nanoid()}`,
+				nodes: [
+					{
+						id: nanoid(),
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1.2,
+						position: [0, 0],
+						parameters: { rule: { interval: [{ field: 'days' }] } },
+					},
+					{
+						id: nanoid(),
+						name: 'Agent',
+						type: AGENT,
+						typeVersion: 2.2,
+						position: [220, 0],
+						parameters: { promptType: 'define', text: 'hello' },
+						disabled: true,
+					},
+					{
+						id: nanoid(),
+						name: 'Store Tool',
+						type: VECTOR_STORE_TOOL,
+						typeVersion: 1,
+						position: [220, 260],
+						// Set so the parameter validator passes and the required-input
+						// check is what this test actually exercises.
+						parameters: { name: 'store_tool', description: 'company docs' },
+					},
+					{
+						id: nanoid(),
+						name: 'Store',
+						type: IN_MEMORY_VECTOR_STORE,
+						typeVersion: 1.3,
+						position: [420, 420],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Schedule Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Store Tool': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					Store: {
+						ai_vectorStore: [[{ node: 'Store Tool', type: 'ai_vectorStore', index: 0 }]],
+					},
+				},
+				settings: { executionOrder: 'v1' },
+			});
+			cleanupWorkflowIds.push(created.id);
+
+			const response = await api.workflows.activateRaw(created.id, created.versionId);
+
+			expect(
+				response.ok(),
+				`publish was refused over a subnode nothing can reach: ${await response.text()}`,
 			).toBe(true);
 
 			await expect

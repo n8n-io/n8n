@@ -10,6 +10,7 @@ const AGENT = '@n8n/n8n-nodes-langchain.agent';
 const PARSER = '@n8n/n8n-nodes-langchain.outputParserStructured';
 const LOADER = '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 const MODEL = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
+const AUTOFIX = '@n8n/n8n-nodes-langchain.outputParserAutofixing';
 
 const BUILDER_HINTS: Record<string, unknown> = {
 	[AGENT]: {
@@ -18,6 +19,9 @@ const BUILDER_HINTS: Record<string, unknown> = {
 	},
 	[PARSER]: {
 		ai_languageModel: { required: true, displayOptions: { show: { autoFix: [true] } } },
+	},
+	[AUTOFIX]: {
+		ai_languageModel: { required: true },
 	},
 	[LOADER]: {
 		ai_textSplitter: {
@@ -202,5 +206,46 @@ describe('connectRequiredSubnodeInputs', () => {
 		const workflow = agentWithParser({ autoFix: true });
 
 		expect(connectRequiredSubnodeInputs(workflow, throwingNodeTypes)).toEqual([]);
+	});
+
+	// An autofixing parser both consumes and produces `ai_outputParser`, so two
+	// of them chain. Repairing the outer one is what makes the inner one's source
+	// findable, and `workflow.nodes` carries no ordering guarantee.
+	describe.each([
+		['outer parser first', ['Autofix Outer', 'Autofix Inner']],
+		['inner parser first', ['Autofix Inner', 'Autofix Outer']],
+	])('with a repair that depends on another repair (%s)', (_label, order) => {
+		it('wires both, whatever order the nodes arrive in', () => {
+			const workflow: WorkflowForSubnodeWiring = {
+				nodes: [
+					{ name: 'Agent', type: AGENT, typeVersion: 3.1, parameters: {} },
+					{ name: 'OpenAI Chat Model', type: MODEL, typeVersion: 1.3, parameters: {} },
+					...order.map((name) => ({ name, type: AUTOFIX, typeVersion: 1, parameters: {} })),
+				],
+				connections: {
+					'OpenAI Chat Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					'Autofix Outer': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					'Autofix Inner': {
+						ai_outputParser: [[{ node: 'Autofix Outer', type: 'ai_outputParser', index: 0 }]],
+					},
+				},
+			};
+
+			const added = connectRequiredSubnodeInputs(workflow, nodeTypes);
+
+			expect(added.map((link) => link.targetNode).sort()).toEqual([
+				'Autofix Inner',
+				'Autofix Outer',
+			]);
+			// The inner one takes its model from the parent that was just repaired.
+			expect(added.find((link) => link.targetNode === 'Autofix Inner')).toMatchObject({
+				sourceNode: 'OpenAI Chat Model',
+				viaParent: 'Autofix Outer',
+			});
+		});
 	});
 });

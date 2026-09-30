@@ -1984,6 +1984,87 @@ describe('WorkflowValidationService', () => {
 			expect(result).toEqual({ isValid: true });
 		});
 
+		it('ignores a subnode nested behind a disabled consumer', async () => {
+			// 'Inner' feeds 'Outer', which is enabled, so looking only one hop out
+			// reads it as live. 'Outer' only feeds the disabled agent though, so
+			// nothing ever resolves either of them.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Inner', 'parser'),
+					node('Outer', 'parser'),
+					node('Agent', 'agent', true),
+				],
+				{
+					...startedAt('Agent'),
+					Outer: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					Inner: {
+						ai_outputParser: [[{ node: 'Outer', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a subnode nested behind an enabled consumer', async () => {
+			// Same shape with the agent enabled, so the whole chain resolves.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Inner', 'parser'),
+					node('Outer', 'parser'),
+					node('Agent', 'agent'),
+				],
+				{
+					...startedAt('Agent'),
+					Outer: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					Inner: {
+						ai_outputParser: [[{ node: 'Outer', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Inner'");
+			expect(result.error).toContain("'Outer'");
+		});
+
+		it('ignores a subnode whose consumer chain loops back on itself', async () => {
+			// A cycle between two supply nodes must not hang the consumer walk.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Left', 'parser'),
+					node('Right', 'parser'),
+					node('Agent', 'agent', true),
+				],
+				{
+					...startedAt('Agent'),
+					Left: {
+						ai_outputParser: [
+							[
+								{ node: 'Right', type: 'ai_outputParser', index: 0 },
+								{ node: 'Agent', type: 'ai_outputParser', index: 0 },
+							],
+						],
+					},
+					Right: {
+						ai_outputParser: [[{ node: 'Left', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
 		it('still checks a subnode that also supplies an enabled consumer', async () => {
 			const result = await service.validateRequiredInputsConnected(
 				[
