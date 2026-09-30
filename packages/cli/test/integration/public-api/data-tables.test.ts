@@ -1586,7 +1586,7 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should accept isEmpty and isNotEmpty conditions', async () => {
+	test('should accept isEmpty condition', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'status', type: 'string' }],
 			data: [{ status: null }, { status: 'archived' }],
@@ -1603,6 +1603,26 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toHaveLength(1);
+	});
+
+	test('should accept isNotEmpty condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: null }, { status: 'archived' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'isNotEmpty', value: null }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0]).toHaveProperty('status', 'archived');
 	});
 
 	test('should delete rows with returnData false', async () => {
