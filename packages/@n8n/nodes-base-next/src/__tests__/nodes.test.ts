@@ -4,7 +4,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
 import { actions, nodeTypeOf } from '../index';
-import { sendRequest } from '../nodes/http/request';
+import { getRequest, sendRequest } from '../nodes/http/request';
 import { getManyDatabasePages } from '../nodes/notion/database-page.get-all';
 
 const page = (id: string) => ({
@@ -25,7 +25,11 @@ const page = (id: string) => ({
 
 interface Call {
 	credentialType: string;
-	options: { url: string; body?: { start_cursor?: string; filter?: unknown; page_size?: number } };
+	options: {
+		url: string;
+		qs?: Record<string, unknown>;
+		body?: { start_cursor?: string; filter?: unknown; page_size?: number };
+	};
 }
 
 function run(
@@ -152,6 +156,60 @@ describe('notion.databasePage.getAll', () => {
 		expect(issues.join()).toContain(
 			'input.where.conditions[0].condition: needs "op" set to one of',
 		);
+	});
+});
+
+describe('httpRequest.get', () => {
+	const url = 'https://api.example.com/v1/customers';
+	const pages: Record<string, unknown> = {
+		first: { data: [{ id: 1 }, { id: 2 }], next_cursor: 'c2' },
+		c2: { data: [{ id: 3 }, { id: 4 }], next_cursor: 'c3' },
+		c3: { data: [{ id: 5 }], next_cursor: null },
+	};
+	const respond = ({ options }: Call) =>
+		pages[typeof options.qs?.cursor === 'string' ? options.qs.cursor : 'first'];
+
+	it('follows the cursor into the query parameter until the cursor is null', async () => {
+		const { execute, calls } = run(
+			getRequest,
+			{
+				url,
+				query: { limit: '2' },
+				pagination: { cursorPath: 'next_cursor', queryParameter: 'cursor' },
+			},
+			respond,
+		);
+		const [items = []] = (await execute) ?? [];
+		expect(calls.map((call) => call.options.qs)).toEqual([
+			{ limit: '2' },
+			{ limit: '2', cursor: 'c2' },
+			{ limit: '2', cursor: 'c3' },
+		]);
+		expect(items.map((item) => item.json)).toEqual([pages.first, pages.c2, pages.c3]);
+	});
+
+	it('reads a nested cursor and stops at maxPages', async () => {
+		const { execute, calls } = run(
+			getRequest,
+			{ url, pagination: { cursorPath: 'meta.next', queryParameter: 'page', maxPages: 2 } },
+			() => ({ meta: { next: 7 } }),
+		);
+		const [items = []] = (await execute) ?? [];
+		expect(calls.map((call) => call.options.qs)).toEqual([{}, { page: '7' }]);
+		expect(items).toHaveLength(2);
+	});
+
+	it('fetches one page without pagination', async () => {
+		const { execute, calls } = run(getRequest, { url }, respond);
+		const [items = []] = (await execute) ?? [];
+		expect(calls).toHaveLength(1);
+		expect(items.map((item) => item.json)).toEqual([pages.first]);
+	});
+
+	it('rejects pagination without a query parameter', () => {
+		expect(
+			validate({ url, pagination: { cursorPath: 'next_cursor' } }, getRequest.inputSchema).join(),
+		).toContain('queryParameter');
 	});
 });
 

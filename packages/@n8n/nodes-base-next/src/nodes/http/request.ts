@@ -1,4 +1,15 @@
-import { defineAction, defineNode, json, oneOf, record, str, variant } from '@n8n/node-sdk';
+import {
+	defineAction,
+	defineNode,
+	int,
+	json,
+	obj,
+	oneOf,
+	record,
+	str,
+	variant,
+	type HttpRequest,
+} from '@n8n/node-sdk';
 
 export const httpRequest = defineNode({
 	id: 'httpRequest',
@@ -16,6 +27,19 @@ function toItems(body: unknown): Array<Record<string, unknown>> {
 	return [isRecord(body) ? body : { data: body }];
 }
 
+/** Same page limit as the legacy HTTP Request node. */
+const MAX_PAGES = 100;
+
+/** An empty, null, or missing cursor ends pagination. */
+function cursorAt(body: unknown, path: string): string | undefined {
+	const value = path
+		.split('.')
+		.reduce<unknown>((node, key) => (isRecord(node) ? node[key] : undefined), body);
+	return typeof value === 'string' || typeof value === 'number'
+		? String(value) || undefined
+		: undefined;
+}
+
 const common = {
 	url: str().hint('Full URL; never URL-encode an expression'),
 	query: record(str()).hint('Never put secrets here; attach a credential').optional(),
@@ -28,16 +52,33 @@ export const getRequest = defineAction({
 	action: 'GET a URL',
 	summary: 'Read from any HTTP API. Use a dedicated action when one exists for the service.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
-	input: common,
+	input: {
+		...common,
+		pagination: obj({
+			cursorPath: str().hint('Dot path to the next cursor in the response body, e.g. next_cursor'),
+			queryParameter: str().hint('Query parameter that sends the cursor, e.g. cursor'),
+			maxPages: int().with({ minimum: 1 }).default(MAX_PAGES),
+		})
+			.hint('Cursor pagination; each page emits items; stops on a null or empty cursor')
+			.optional(),
+	},
 	output: json().hint('The parsed response body; an array body emits one item per element'),
 	async run({ input, http, emit }) {
-		const body = await http.request({
-			method: 'GET',
-			url: input.url,
-			query: input.query,
-			headers: input.headers,
-		});
-		toItems(body).forEach(emit);
+		const { pagination } = input;
+		const fetchPage = async (query: HttpRequest['query'], page: number): Promise<void> => {
+			const body = await http.request({
+				method: 'GET',
+				url: input.url,
+				query,
+				headers: input.headers,
+			});
+			toItems(body).forEach(emit);
+			const next = pagination && cursorAt(body, pagination.cursorPath);
+			if (pagination && next !== undefined && page < (pagination.maxPages ?? MAX_PAGES)) {
+				await fetchPage({ ...input.query, [pagination.queryParameter]: next }, page + 1);
+			}
+		};
+		await fetchPage(input.query, 1);
 	},
 });
 
