@@ -104,7 +104,8 @@ const moduleSearchAction = searchAction.extend({
 		.describe(
 			'Search nodes by service and operation, e.g. "notion get many pages", or by AI connection type. ' +
 				'`nodeModules` holds the typed module of each service: import it and call its actions. ' +
-				'Pass `queries` to search for all services in one call.',
+				'Pass `queries` with every service of the workflow in one call, also HTTP. ' +
+				'Call it in the same step as `load_skill`, not after it.',
 		),
 	connectionType: searchAction.shape.connectionType.describe('AI sub-node connection type'),
 	limit: searchAction.shape.limit.describe('Max results (default 10)'),
