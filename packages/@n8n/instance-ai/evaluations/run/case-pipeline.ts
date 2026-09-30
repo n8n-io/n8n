@@ -23,7 +23,11 @@ import {
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { scenariosRequireSerialSeeding, type ScenarioSeedContext } from '../harness/seed-tables';
+import {
+	scenariosRequireSerialSeeding,
+	workflowDeduplicates,
+	type ScenarioSeedContext,
+} from '../harness/seed-tables';
 import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
@@ -591,7 +595,12 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// Scenarios of one case share tables by name, so seeded rows must not
 		// interleave — the retired direct loop ran them at concurrency 1; rows now
 		// arrive independently, so the gate is a per-build-key chain instead.
-		return scenariosRequireSerialSeeding(authoredScenarios)
+		// The same chain covers Remove Duplicates: its keys live per workflow and the
+		// eval resets them around every run, so a parallel scenario would see or lose them.
+		const serial =
+			scenariosRequireSerialSeeding(authoredScenarios) ||
+			workflowDeduplicates(build.workflowJsons[0]);
+		return serial
 			? await withSerialSeeding(cacheKey, runWorkflowScenario)
 			: await runWorkflowScenario();
 	};
