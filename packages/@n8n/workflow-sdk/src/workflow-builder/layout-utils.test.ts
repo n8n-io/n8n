@@ -506,7 +506,7 @@ describe('calculateNodePositionsDagre', () => {
 	});
 
 	describe('node groups', () => {
-		it('does not create a partial chip when a persisted member ID is unresolved', () => {
+		it('lays out the surviving members when a persisted member ID is unresolved', () => {
 			const triggerConnections = makeMainConns([[0, [makeTarget('first')]]]);
 			const firstConnections = makeMainConns([[0, [makeTarget('second')]]]);
 			const nodes = new Map<string, GraphNode>([
@@ -552,8 +552,12 @@ describe('calculateNodePositionsDagre', () => {
 			const withUnresolvedMember = calculateNodePositionsDagre(nodes, [
 				{ name: 'Stage', memberIds: ['first-id', 'missing-id'] },
 			]);
+			const withOnlySurvivingMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id'] },
+			]);
 
-			expect(withUnresolvedMember).toEqual(withoutGroup);
+			expect(withUnresolvedMember).toEqual(withOnlySurvivingMember);
+			expect(withUnresolvedMember).not.toEqual(withoutGroup);
 		});
 	});
 });

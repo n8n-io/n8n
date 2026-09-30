@@ -93,9 +93,9 @@ function resolveGroup(
 	const memberKeys: string[] = [];
 	for (const memberId of group.memberIds) {
 		const memberKey = keyByNodeId.get(memberId);
-		// A partial chip would make the visible group frame disagree with its
-		// persisted membership, so an unresolved member invalidates the group.
-		if (memberKey === undefined || !nodes.has(memberKey)) return undefined;
+		// Keep the resolved members that serialization will emit. A group with no
+		// surviving members is discarded below.
+		if (memberKey === undefined || !nodes.has(memberKey)) continue;
 		if (!memberKeys.includes(memberKey)) memberKeys.push(memberKey);
 	}
 
