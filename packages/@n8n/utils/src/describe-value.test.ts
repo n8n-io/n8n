@@ -1,0 +1,137 @@
+import { runInNewContext } from 'node:vm';
+import { describe, expect, it } from 'vitest';
+
+import { describeValue } from './describe-value';
+
+describe('describeValue', () => {
+	it('should describe an error by its name and stack frames without its message', () => {
+		const error = new TypeError('boom');
+
+		const result = describeValue(error);
+
+		expect(result).toMatch(/^TypeError\n\s+at /);
+		expect(result).not.toContain('boom');
+	});
+
+	it('should describe an error from another realm by its name and stack frames', () => {
+		const error: unknown = runInNewContext('new Error("secret-message")');
+
+		const result = describeValue(error);
+
+		expect(result).toMatch(/^Error\n\s+at /);
+		expect(result).not.toContain('secret-message');
+	});
+
+	it('should not read lines of a multi-line message as stack frames', () => {
+		const error = new Error('safe\n    at handler (private value)');
+
+		const result = describeValue(error);
+
+		expect(result).toMatch(/^Error\n\s+at /);
+		expect(result).not.toContain('private value');
+		expect(result).not.toContain('safe');
+	});
+
+	it('should describe an error without a stack by its name only', () => {
+		const error = new RangeError('boom');
+		delete error.stack;
+
+		expect(describeValue(error)).toBe('RangeError');
+	});
+
+	it('should include at most 10 stack frames', () => {
+		const error = new Error('boom');
+		error.stack = [
+			'Error: boom',
+			...Array.from({ length: 20 }, (_, i) => `    at frame${i} (file.js:${i}:1)`),
+		].join('\n');
+
+		const lines = describeValue(error).split('\n');
+
+		expect(lines[0]).toBe('Error');
+		expect(lines.slice(1)).toHaveLength(10);
+		expect(lines[10]).toBe('    at frame9 (file.js:9:1)');
+	});
+
+	it('should cap the description at 1000 characters', () => {
+		const error = new Error('boom');
+		error.name = 'N'.repeat(100);
+		error.stack = [
+			`${error.name}: boom`,
+			...Array.from({ length: 10 }, (_, i) => `    at frame${i} (${'f'.repeat(250)}.js:${i}:1)`),
+		].join('\n');
+
+		expect(describeValue(error).length).toBeLessThanOrEqual(1000);
+	});
+
+	it('should describe an error-like object by its keys only', () => {
+		const result = describeValue({ name: 'CustomError', message: 'boom' });
+
+		expect(result).toBe('Object with keys [name, message]');
+		expect(result).not.toContain('boom');
+	});
+
+	it('should describe a plain object by its keys only', () => {
+		const result = describeValue({
+			headers: { authorization: 'Bearer abc' },
+			body: 'secret-value',
+		});
+
+		expect(result).toBe('Object with keys [headers, body]');
+		expect(result).not.toContain('Bearer abc');
+		expect(result).not.toContain('secret-value');
+	});
+
+	it('should list at most 10 keys of an object', () => {
+		const reason = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`k${i}`, i]));
+
+		expect(describeValue(reason)).toBe(
+			'Object with keys [k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, ...]',
+		);
+	});
+
+	it('should describe an array by its type name and length only', () => {
+		const result = describeValue(['first-element', 'second-element']);
+
+		expect(result).toBe('Array of length 2');
+		expect(result).not.toContain('first-element');
+		expect(result).not.toContain('second-element');
+	});
+
+	it('should describe a large buffer by its type name and length', () => {
+		expect(describeValue(Buffer.alloc(1e6))).toBe('Buffer of length 1000000');
+	});
+
+	it('should describe a class instance by its constructor name and keys', () => {
+		class MyClass {
+			value = 'secret-value';
+		}
+
+		const result = describeValue(new MyClass());
+
+		expect(result).toBe('MyClass with keys [value]');
+		expect(result).not.toContain('secret-value');
+	});
+
+	it('should describe a string by its length only', () => {
+		const result = describeValue('plain text');
+
+		expect(result).toBe('string of length 10');
+		expect(result).not.toContain('plain text');
+	});
+
+	it('should describe a long string by its length only', () => {
+		const result = describeValue('a'.repeat(5000));
+
+		expect(result).toBe('string of length 5000');
+	});
+
+	it.each([
+		{ reason: undefined, expected: 'undefined' },
+		{ reason: null, expected: 'null' },
+		{ reason: 42, expected: '42' },
+		{ reason: Symbol('tag'), expected: 'Symbol(tag)' },
+	])('should describe the primitive $expected', ({ reason, expected }) => {
+		expect(describeValue(reason)).toBe(expected);
+	});
+});
