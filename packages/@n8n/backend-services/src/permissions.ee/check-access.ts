@@ -1,4 +1,4 @@
-import type { User, EntityManager } from '@n8n/db';
+import type { EntityManager, User } from '@n8n/db';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
@@ -10,11 +10,11 @@ import {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { type Scope, hasGlobalScope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { NotFoundError } from '@n8n/errors';
 import { CredentialsFinderService } from '../credentials/credentials-finder.service';
-import { NotFoundError } from '../errors/response-errors/not-found.error';
 import { RoleService } from '../services/role.service';
 
 import { ScopedResourceResolverRegistry } from './scoped-resource-resolver.registry';

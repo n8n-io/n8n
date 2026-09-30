@@ -1,9 +1,9 @@
 import {
+	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	CredentialsRepository,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -11,8 +11,8 @@ import { type Scope } from '@n8n/permissions';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { NotFoundError } from '@n8n/errors';
 import { CredentialsFinderService } from '../../credentials/credentials-finder.service';
-import { NotFoundError } from '../../errors/response-errors/not-found.error';
 import { RoleService } from '../../services/role.service';
 import { userHasScopes } from '../check-access';
 import { ScopedResourceResolverRegistry } from '../scoped-resource-resolver.registry';
