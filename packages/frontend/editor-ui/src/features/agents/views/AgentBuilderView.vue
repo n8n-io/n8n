@@ -1330,9 +1330,12 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveRes
 			refreshConfigValidation(snapshot.projectId, snapshot.agentId),
 		]);
 	} catch (error) {
-		if (!isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) {
-			showError(error, locale.baseText('agents.builder.loadError'));
-		}
+		console.error(error);
+	}
+	if (isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) return 'outdated';
+	if (snapshot.revision !== configEditRevision) {
+		invalidateConfigValidation();
+		return 'outdated';
 	}
 	return undefined;
 }
@@ -1380,7 +1383,6 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 // UI feel laggy right after an edit.
 const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
-	showErrorStatus: true,
 	onError: (error: unknown) => {
 		// Surface backend validation errors (e.g. incompatible workflow-tool
 		// triggers or body nodes) so the user isn't left wondering why their
@@ -1462,9 +1464,6 @@ const saveStatus = computed(() => {
 	];
 	if (statuses.includes('saving')) {
 		return 'saving';
-	}
-	if (statuses.includes('error')) {
-		return 'error';
 	}
 	if (statuses.includes('saved')) {
 		return 'saved';

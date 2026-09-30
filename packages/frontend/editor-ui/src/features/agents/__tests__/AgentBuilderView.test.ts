@@ -2533,25 +2533,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			isBuilt: boolean;
-			saveConfig: (snapshot: {
-				type: 'config';
-				projectId: string;
-				agentId: string;
-				config: TestAgentConfig;
-			}) => Promise<void>;
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
 		};
 
 		expect(vm.isBuilt).toBe(false);
 
-		await vm.saveConfig({
-			type: 'config',
-			projectId: 'p1',
-			agentId: 'a1',
-			config: withDefaultLlm({
-				name: 'Agent One',
-				instructions: 'You are a helpful assistant.',
-			})!,
-		});
+		vm.onConfigFieldUpdate({ instructions: 'Updated instructions' });
+		await vm.flushAutosave();
 		await nextTick();
 
 		expect(updateConfigMock).toHaveBeenCalled();
@@ -2704,6 +2693,14 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
 		).toEqual(expect.objectContaining({ instructions: 'Cris' }));
+		expect(
+			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
+		).toBe('idle');
+		expect(
+			wrapper
+				.find('[data-testid="stub-agent-builder-header"]')
+				.attributes('data-config-validation-status'),
+		).toBe('null');
 
 		vm.onConfigFieldUpdate({ instructions: 'Crisp.' });
 		await vm.flushAutosave();
@@ -2715,7 +2712,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		);
 	});
 
-	it('marks a rejected draft as unsaved and clears the error after a later save', async () => {
+	it('keeps a rejected draft for the next save', async () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
@@ -2733,7 +2730,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(mockConfig.value?.instructions).toBe('You are a helpful assistant.');
 		expect(
 			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
-		).toBe('error');
+		).toBe('idle');
 		expect(showErrorMock).toHaveBeenCalled();
 
 		vm.onConfigFieldUpdate({ instructions: 'Crisp.' });
@@ -2744,7 +2741,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		).toBe('saved');
 	});
 
-	it('keeps the saved status when a refresh fails after the write', async () => {
+	it('keeps the saved status without a save error when a refresh fails after the write', async () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
@@ -2760,7 +2757,7 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(
 			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
 		).toBe('saved');
-		expect(showErrorMock).toHaveBeenCalledWith(refreshError, 'agents.builder.loadError');
+		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
 	it('reloads the latest agent and drops an autosave rejected as stale', async () => {
@@ -2804,25 +2801,14 @@ describe('AgentBuilderView — configuration validation', () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			configValidation: { status: 'valid' | 'invalid' } | null;
-			saveConfig: (snapshot: {
-				type: 'config';
-				projectId: string;
-				agentId: string;
-				config: TestAgentConfig;
-			}) => Promise<void>;
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
 		};
 
 		expect(vm.configValidation?.status).toBe('invalid');
 
-		await vm.saveConfig({
-			type: 'config',
-			projectId: 'p1',
-			agentId: 'a1',
-			config: withDefaultLlm({
-				name: 'Agent One',
-				instructions: 'You are a helpful assistant.',
-			})!,
-		});
+		vm.onConfigFieldUpdate({ instructions: 'Updated instructions' });
+		await vm.flushAutosave();
 		await nextTick();
 
 		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);

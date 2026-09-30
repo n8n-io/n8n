@@ -156,7 +156,7 @@ function mountHeader(
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
 		beforePublish: () => Promise<boolean>;
-		saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+		saveStatus: 'idle' | 'saving' | 'saved';
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -195,14 +195,6 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.find('[data-testid="agent-header-preview-btn"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
-	});
-
-	it('shows a persistent unsaved label after a save fails', () => {
-		const wrapper = mountHeader({ saveStatus: 'error' });
-
-		expect(wrapper.get('[data-testid="agent-header-save-status"]').text()).toBe(
-			'agents.builder.header.notSaved',
-		);
 	});
 
 	it('hides breadcrumbs and switcher in artifact mode', () => {

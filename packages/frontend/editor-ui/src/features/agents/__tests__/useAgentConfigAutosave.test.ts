@@ -59,7 +59,6 @@ describe('useAgentConfigAutosave', () => {
 		const autosave = useAgentConfigAutosave<{ value: string }>({
 			save,
 			onError,
-			showErrorStatus: true,
 			debounceMs: 500,
 		});
 
@@ -67,7 +66,7 @@ describe('useAgentConfigAutosave', () => {
 
 		await expect(autosave.flushAutosave()).rejects.toBe(error);
 		expect(onError).toHaveBeenCalledWith(error);
-		expect(autosave.saveStatus.value).toBe('error');
+		expect(autosave.saveStatus.value).toBe('idle');
 		// The snapshot is restored for a retry, so the loop still reports it as pending.
 		expect(autosave.hasPendingSave.value).toBe(true);
 
