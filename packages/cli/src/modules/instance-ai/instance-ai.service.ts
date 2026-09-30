@@ -2796,13 +2796,6 @@ export class InstanceAiService {
 
 		context.workspace = runtimeWorkspace;
 		context.workspaceRoot = workspaceRoot;
-		if (context.nodeContractsEnabled && runtimeWorkspace && !abortSignal.aborted) {
-			// Set up the sandbox while the model plans, so the first build does not wait for it.
-			// The lazy workspace shares one setup with later calls. The build retries a failure.
-			void getWorkspaceRoot(runtimeWorkspace).catch((error: unknown) => {
-				this.logger.debug('Workspace warm-up failed', { threadId, error: getErrorMessage(error) });
-			});
-		}
 		context.threadId = threadId;
 		context.threadMemory = memory;
 		// Tool-emitted telemetry is an open-ended property bag (search queries,
