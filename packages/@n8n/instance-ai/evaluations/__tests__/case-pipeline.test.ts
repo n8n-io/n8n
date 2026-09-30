@@ -775,7 +775,7 @@ describe('seed-table scenarios (TRUST-311 parity)', () => {
 });
 
 describe('dedupe scenarios queue on the workflow they run', () => {
-	const TRIGGER = 'trigger';
+	const TRIGGER = 'n8n-nodes-base.manualTrigger';
 	const dedupeWorkflow = (id: string) =>
 		({ id, nodes: [{ type: TRIGGER }, { type: 'n8n-nodes-base.removeDuplicates' }] }) as never;
 
