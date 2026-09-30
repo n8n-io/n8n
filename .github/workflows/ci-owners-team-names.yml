@@ -1,7 +1,12 @@
 name: 'CI: Validate OWNERS team names'
 
+# This workflow must use pull_request_target so forks cannot change the guard
+# that rejects OWNERS and GROUPS.json edits. It checks out only the trusted base
+# revision. Proposed ownership files are read as data and written outside the
+# checkout. No PR-controlled code runs with the app token.
+
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     paths:
       - 'OWNERS'
       - 'GROUPS.json'
@@ -53,6 +58,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          set -o pipefail
           gh api "repos/${GITHUB_REPOSITORY}/contents/OWNERS?ref=${HEAD_SHA}" \
             --jq .content | base64 --decode > "${RUNNER_TEMP}/OWNERS"
           gh api "repos/${GITHUB_REPOSITORY}/contents/GROUPS.json?ref=${HEAD_SHA}" \
