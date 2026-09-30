@@ -190,6 +190,7 @@ export class SourceControlImportService {
 		const remoteWorkflowFiles = await glob('*.json', {
 			cwd: this.workflowExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		// Parse in bounded batches and project each workflow to its slim status shape
@@ -338,6 +339,7 @@ export class SourceControlImportService {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		const remoteCredentialFilesRead = await mapInBatches(
@@ -472,6 +474,7 @@ export class SourceControlImportService {
 		const variablesFile = await glob(SOURCE_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (variablesFile.length > 0) {
 			this.logger.debug(`Importing variables from file ${variablesFile[0]}`);
@@ -495,6 +498,7 @@ export class SourceControlImportService {
 		const dataTableFiles = await glob('*.json', {
 			cwd: this.dataTableExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		if (dataTableFiles.length === 0) {
@@ -596,6 +600,7 @@ export class SourceControlImportService {
 		const foldersFile = await glob(SOURCE_CONTROL_FOLDERS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (foldersFile.length > 0) {
 			this.logger.debug(`Importing folders from file ${foldersFile[0]}`);
@@ -648,6 +653,7 @@ export class SourceControlImportService {
 		const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 		if (tagsFile.length > 0) {
 			this.logger.debug(`Importing tags from file ${tagsFile[0]}`);
@@ -691,6 +697,7 @@ export class SourceControlImportService {
 		const remoteProjectFiles = await glob('*.json', {
 			cwd: this.projectExportFolder,
 			absolute: true,
+			followSymbolicLinks: false,
 		});
 
 		const remoteProjects = await mapInBatches(

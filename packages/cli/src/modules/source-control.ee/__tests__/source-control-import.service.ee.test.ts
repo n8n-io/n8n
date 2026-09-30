@@ -4076,6 +4076,7 @@ describe('SourceControlImportService', () => {
 				expect(globMock).toHaveBeenCalledWith('*.json', {
 					cwd: '/mock/n8n/git/datatables',
 					absolute: true,
+					followSymbolicLinks: false,
 				});
 			});
 

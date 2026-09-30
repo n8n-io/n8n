@@ -143,7 +143,7 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
+			expect(response.body).toStrictEqual({
 				...validSettings,
 				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
 			});
@@ -275,6 +275,31 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(partial);
 
 			expect(response.status).toBe(400);
+			expect(response.body.message).toContain(
+				"request/body must have required property 'exporterServiceName'",
+			);
+		});
+
+		it('rejects a body with an unknown field', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, unexpectedField: true });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpectedField');
+		});
+
+		it('rejects an unknown query parameter without changing the settings', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel?unexpectedField=1')
+				.send(validSettings);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpectedField');
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(read.body.exporterServiceName).not.toBe(validSettings.exporterServiceName);
 		});
 
 		it('rejects a well-formed body with invalid values with 400', async () => {
@@ -305,6 +330,8 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(403);
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(read.body.exporterServiceName).not.toBe(validSettings.exporterServiceName);
 		});
 	});
 

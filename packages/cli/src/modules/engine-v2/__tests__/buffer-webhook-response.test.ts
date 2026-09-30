@@ -49,6 +49,7 @@ describe('a Buffer webhook response through the response channel', () => {
 				mode: 'production',
 				iteration: 0,
 				callerContext: { hostMode: 'webhook' },
+				responseExpectation: expectation,
 			},
 			respond: createResponseEmitter(sender, { id: executionId, responseExpectation: expectation }),
 		} as unknown as StepExecutionRequest);
