@@ -6,7 +6,6 @@ import type {
 } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { computed } from 'vue';
-import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
@@ -94,18 +93,13 @@ const durationSec = computed<number | undefined>(() => {
 		test-id="instance-ai-thinking-block"
 	>
 		<template v-for="(entry, index) in props.entries" :key="index">
-			<div v-if="entry.type === 'text'" :class="$style.thought">
+			<!-- Reasoning renders inline: the header already shows its first sentence. -->
+			<div v-if="entry.type === 'text' || entry.type === 'reasoning'" :class="$style.thought">
 				<InstanceAiMarkdown
 					:content="entry.content"
 					:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				/>
 			</div>
-
-			<AiReasoningBlock
-				v-else-if="entry.type === 'reasoning'"
-				:entry="entry"
-				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
-			/>
 
 			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
 

@@ -82,10 +82,14 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 	}
 }
 
-export function toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
+export function toStream(chunks: StreamChunk[], gapMs = 0): AsyncGenerator<StreamChunk> {
 	return (async function* stream() {
 		await Promise.resolve();
-		for (const chunk of chunks) yield chunk;
+		for (const chunk of chunks) {
+			// A gap lets a platform that renders on a timer actually tick.
+			if (gapMs) await new Promise((resolve) => setTimeout(resolve, gapMs));
+			yield chunk;
+		}
 	})();
 }
 
@@ -213,6 +217,8 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	// check the connection cooldown itself (e.g. WhatsApp's automatic replies —
 	// see `withWhatsAppRateLimitBackoff`), so both paths agree on one connection's state.
 	channelRateLimitGuard?: ChannelRateLimitGuard;
+	/** Delay between chunks, so a timer-driven renderer ticks. */
+	streamGapMs?: number;
 }): ReplayContextSetup<TChat> {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
@@ -231,11 +237,11 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		executeForChatPublished: vi.fn<AgentExecutor['executeForChatPublished']>((config) => {
 			selectedContext = config.messageContext ?? undefined;
 			selectedThreadId = config.memory.threadId.id;
-			return toStream(stream);
+			return toStream(stream, params.streamGapMs);
 		}),
 		resumeForChat: vi.fn<AgentExecutor['resumeForChat']>((config) => {
 			selectedContext = config.messageContext ?? undefined;
-			return toStream(stream);
+			return toStream(stream, params.streamGapMs);
 		}),
 		// Mirrors how production wires the gate. It admits every run by default,
 		// so a test that wants the stale branch resolves it to false.
@@ -247,7 +253,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
 		if (payload.kind !== 'integration') throw new Error('Expected integration input');
 		pending.push({ payload: deepCopy(payload), threadId });
-		return mock<AgentMessageQueue>();
+		return { status: 'accepted', item: mock<AgentMessageQueue>() };
 	});
 
 	const bridge = new AgentChatBridge(
@@ -294,7 +300,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 				await bridge.consumeQueuedMessage(
 					item.payload,
 					item.threadId,
-					{ executionId: 'execution-1', startedAt: new Date() },
+					{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
 					new AbortController().signal,
 					params.integration,
 				);

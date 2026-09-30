@@ -9,6 +9,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -109,6 +110,7 @@ beforeEach(() => {
 	vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
 	vi.spyOn(nodeTypesStore, 'fetchCommunityNodePreviews').mockResolvedValue(undefined);
 	vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+	vi.spyOn(useTypeAvailabilityPoliciesStore(pinia), 'reload').mockResolvedValue(undefined);
 	vi.spyOn(nodeTypesStore, 'getCommunityNodeAttributes').mockResolvedValue({
 		npmVersion: '1.0.0',
 		authorGithubUrl: 'https://github.com/test',
@@ -227,6 +229,7 @@ describe('useInstallNode', () => {
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
 			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
+			expect(useTypeAvailabilityPoliciesStore().reload).toHaveBeenCalled();
 			expect(showMessage).toHaveBeenCalledWith({
 				title: 'settings.communityNodes.messages.install.success',
 				type: 'success',

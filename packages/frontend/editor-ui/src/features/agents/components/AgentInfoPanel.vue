@@ -67,6 +67,7 @@ const props = withDefaults(
 );
 const emit = defineEmits<{
 	'update:config': [changes: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
 }>();
 
 const i18n = useI18n();
@@ -220,6 +221,7 @@ function scheduleDeploymentNameEmit(value: string) {
 
 function onDeploymentNameInput(value: string) {
 	deploymentName.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		cancelDeploymentNameEmit();
 		emit('update:config', { modelDeploymentName: value });
@@ -367,6 +369,7 @@ const emitInstructionsDebounced = useDebounceFn(() => {
 
 function onInstructionsInput(value: string) {
 	instructions.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		emit('update:config', { instructions: value });
 		return;

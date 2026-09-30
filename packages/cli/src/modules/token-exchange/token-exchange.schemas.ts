@@ -1,25 +1,11 @@
 import type { Secret } from 'jsonwebtoken';
+import { JwtAlgorithmSchema, type JwtAlgorithm } from '@n8n/inbound-auth';
 import { z } from 'zod';
 
 /** RFC 8693 grant type URN for token exchange */
 export const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange' as const;
 
-/**
- * Asymmetric-only JWT algorithms accepted for trusted key sources.
- * Symmetric (HMAC) and 'none' are excluded by design.
- */
-export const JwtAlgorithmSchema = z.enum([
-	'RS256',
-	'RS384',
-	'RS512',
-	'ES256',
-	'ES384',
-	'ES512',
-	'PS256',
-	'PS384',
-	'PS512',
-	'EdDSA',
-]);
+export { JwtAlgorithmSchema, type JwtAlgorithm };
 
 /**
  * Validates JWT claims originating from an external identity provider.
@@ -78,7 +64,6 @@ export type TrustedKeySource = z.infer<typeof TrustedKeySourceSchema>;
 export type StaticKeySource = Extract<TrustedKeySource, { type: 'static' }>;
 export type JwksKeySource = Extract<TrustedKeySource, { type: 'jwks' }>;
 
-export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 export type TrustedKeySourceType = 'static' | 'jwks';
 export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
 
@@ -98,6 +83,12 @@ export const TrustedKeyDataSchema = z.object({
 });
 
 export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
+
+/** Resolved keys and the optional cache lifetime returned by a JWKS endpoint. */
+export type ResolvedSourceKeys = {
+	keys: Array<{ kid: string; data: TrustedKeyData }>;
+	cacheTtlSeconds?: number;
+};
 
 /**
  * A trusted key that has been normalized and resolved to an in-memory

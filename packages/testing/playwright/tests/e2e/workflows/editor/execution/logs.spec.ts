@@ -21,10 +21,6 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.goHome();
-		});
-
 		test('should populate logs as manual execution progresses', async ({
 			n8n,
 			setupRequirements,

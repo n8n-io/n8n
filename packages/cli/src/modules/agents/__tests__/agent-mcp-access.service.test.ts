@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { LockedError } from '@n8n/errors';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import { AgentMcpAccessService } from '../agent-mcp-access.service';

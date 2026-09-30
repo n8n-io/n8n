@@ -18,7 +18,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('webhook fires the published version even when the draft has diverged', async ({
+		test('webhook fires the published version even when the draft has diverged @engine:v2', async ({
 			api,
 		}) => {
 			const { workflowId, webhookPath } = await api.workflows.importWorkflowFromFile(
@@ -72,7 +72,7 @@ test.describe(
 		// `n8nContainer.serviceResults.postgres` rather than `services.postgres`
 		// because the latter is a lazy helper that throws when postgres is absent,
 		// which would error the test on sqlite instead of skipping it.
-		test('reconciles a webhook that went missing from storage on re-publish', async ({
+		test('reconciles a webhook that went missing from storage on re-publish @engine:v2', async ({
 			api,
 			services,
 			n8nContainer,

@@ -120,6 +120,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
+export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
 export type { SettingsRowConfigureProps } from './N8nSettingsRowConfigure';
 export { default as N8nSettingsRowGroup } from './N8nSettingsRowGroup';
