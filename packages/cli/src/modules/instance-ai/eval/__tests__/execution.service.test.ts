@@ -667,6 +667,16 @@ describe('EvalExecutionService', () => {
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
 		});
 
+		it('aborts the mock handler when the run ends, so a request loop left running stops', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockRejectedValue(new Error('execution crashed'));
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const options = createLlmMockHandlerMock.mock.calls[0][0] as { signal?: AbortSignal };
+			expect(options.signal?.aborted).toBe(true);
+		});
+
 		it('preserves an intentional zero-item bypass pin instead of injecting a phantom item', async () => {
 			const bypassNode = {
 				id: 'node-3',
