@@ -140,7 +140,7 @@ export class ModuleRegistry {
 					// Neither entrypoint is on disk.
 					throw new MissingModuleError(
 						moduleName,
-						enterpriseError instanceof Error ? enterpriseError.message : '',
+						primaryError instanceof Error ? primaryError.message : '',
 					);
 				}
 			}

@@ -249,7 +249,10 @@ describe('loadModules', () => {
 		});
 
 		it('should throw `MissingModuleError` if neither entrypoint exists', async () => {
-			await expect(loadModule('absent-module')).rejects.toThrow(MissingModuleError);
+			const loading = loadModule('absent-module');
+			await expect(loading).rejects.toThrow(MissingModuleError);
+			await expect(loading).rejects.toThrow('absent-module/absent-module.module.js');
+			await expect(loading).rejects.not.toThrow('absent-module.ee');
 		});
 	});
 });
