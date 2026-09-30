@@ -1,24 +1,3 @@
-get:
-  x-eov-operation-id: getOtelSettings
-  x-required-scope: otel:manage
-  x-eov-operation-handler: v1/handlers/otel/otel.handler
-  tags:
-    - SettingsOtel
-  summary: Retrieve the OpenTelemetry configuration
-  description: >
-    Retrieve the current OpenTelemetry configuration, including every field exposed in the UI.
-    Requires the `otel:manage` scope.
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/otel-settings.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '403':
-      $ref: '../../../../shared/spec/responses/forbidden.yml'
 put:
   x-eov-operation-id: updateOtelSettings
   x-required-scope: otel:manage

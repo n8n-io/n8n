@@ -53,6 +53,7 @@ describe('workflow_step_execution table (integration)', () => {
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 			finishedAt: null,
 		});
 		await repo.save(execution);

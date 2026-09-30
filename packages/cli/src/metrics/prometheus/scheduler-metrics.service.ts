@@ -6,7 +6,7 @@ import type { MisfireCount, SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import type { PrometheusMetricsCollector } from './base';
 import { CachedMetricQuery } from './cached-metric-query';

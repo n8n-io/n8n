@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
+import type { EndedMessage, ExecutionResponse, ResponseExpectation } from '@n8n/engine';
 import { decodeBufferBody } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
@@ -61,6 +61,8 @@ export class EngineV2WebhookResponder {
 	 *
 	 * @param executionId The caller must mint this ID, use it here, and pass it to
 	 * `StartExecution`.
+	 * @param expectation What the request waits for. Pass the same value to
+	 * `StartExecution`.
 	 * @throws {UnexpectedError} If the execution response receiver is not set, or
 	 * if the service already waits for this execution.
 	 * @throws {OperationalError} If the service is at capacity, or if it cannot
@@ -68,7 +70,7 @@ export class EngineV2WebhookResponder {
 	 */
 	async waitForResponse(
 		executionId: ExecutionIdV2,
-		acceptsResponse = false,
+		expectation: ResponseExpectation,
 	): Promise<PendingWebhookResponse> {
 		const { receiver } = this;
 		if (!receiver) {
@@ -90,7 +92,7 @@ export class EngineV2WebhookResponder {
 
 		const response = new PendingWebhookResponse({
 			executionId,
-			acceptsResponse,
+			expectation,
 			timeoutMs: this.engineConfig.webhookResponseTimeout,
 			onRelease: (id) => this.release(id),
 		});

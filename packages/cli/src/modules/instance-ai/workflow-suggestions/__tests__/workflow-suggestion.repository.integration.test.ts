@@ -176,7 +176,7 @@ it('reverts and reapplies the suggestion schema', async () => {
 	// Template databases skip migrate(), which normally installs the DSL wrappers.
 	postgresMigrations.forEach(wrapMigration);
 	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790667560304',
+		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790759505518',
 	);
 	if (!migration) throw new Error('The workflow suggestion migration is not registered.');
 	// Test this schema directly. Newer migrations must remain applied.

@@ -1,6 +1,7 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import { validateExecutableGraph, type WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
+import type { ResponseExpectation } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type {
 	CallerContext,
@@ -22,6 +23,8 @@ export interface StartExecutionRequest {
 	mode?: ExecutionMode;
 	/** Stored with the execution and handed to every step executor. */
 	callerContext: CallerContext;
+	/** What kind of a response the caller expects. Defaults to 'none' */
+	responseExpectation?: ResponseExpectation;
 	/**
 	 * Caller-minted, so the caller can record state against the run before it
 	 * starts. The engine never mints one.
@@ -65,6 +68,7 @@ export class StartExecutionService {
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
 			callerContext: request.callerContext,
+			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a

@@ -203,7 +203,22 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// still knows why the build ended) — attach them as-is.
 		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
 			const verdicts = await verdictsPromise;
-			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
+			// A conversation a budget ended is graded on what was saved by then, but
+			// the iteration is neither a pass nor a failure: every row keeps its
+			// verdict for the record and is stamped `timeout` + `incomplete`, which
+			// keeps it out of the pass rate here and in lang-tracer.
+			const stamped: TargetOutput = build.timeout
+				? {
+						...output,
+						buildTimeout: build.timeout,
+						incomplete: true,
+						attribution: 'timeout',
+						failureCategory: 'build_timeout',
+					}
+				: output;
+			return verdicts && verdicts.length > 0
+				? { ...stamped, expectationResults: verdicts }
+				: stamped;
 		};
 
 		// A staged prior run that never produced an execution record leaves the case
@@ -270,6 +285,15 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				workflowJson: build.workflowJsons[0],
 				buildTrace: build.buildTrace,
 				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
+				// Same neutral stamp the scenario rows get (see `attachExpectations`).
+				...(build.timeout
+					? {
+							buildTimeout: build.timeout,
+							incomplete: true,
+							attribution: 'timeout' as const,
+							failureCategory: 'build_timeout',
+						}
+					: {}),
 			};
 		}
 
@@ -282,6 +306,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				// Seeding, transport and provider failures are harness/infra problems,
 				// not agent build failures — keep them out of the build_failure bucket,
 				// which lang-tracer's legacy map reads straight as `builder_issue`.
+				// (A timed-out build is re-stamped in `attachExpectations`.)
 				failureCategory:
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				// The verdict lang-tracer actually stores. A provider outage is infra

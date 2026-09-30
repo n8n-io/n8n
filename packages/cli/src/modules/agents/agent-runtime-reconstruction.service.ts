@@ -84,6 +84,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import { createMarkSessionFailedTool } from './tools/mark-session-failed.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
@@ -1027,6 +1028,7 @@ export class AgentRuntimeReconstructionService {
 		};
 		await this.attachSubAgentDelegationTool({ ...delegationParams, config, parentWorkspaceHandle });
 		this.attachWriteTodosTool(agent, agentId);
+		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
 		await this.attachBackgroundJobTools({
 			...delegationParams,

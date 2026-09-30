@@ -102,6 +102,12 @@ type SkippedCredential = { id?: string; name?: string; violations: string[] };
 	flagsSchema,
 })
 export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -158,7 +164,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			async (transactionManager, ctx) => {
 				const result = await this.checkRelations(
 					transactionManager,
-					credentials,
+					admitted.map(({ credential }) => credential),
 					project.id,
 					flags,
 				);
@@ -267,11 +273,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 		let cleared: PolicyCleared<'contentImport'>;
 		try {
-			cleared = await Container.get(PolicyEnforcementService).enforceContentImport({
-				credential: { id: credential.id ?? null, type },
-				projectId: credential.usageScope === 'instance' ? null : landingProjectId,
-				transport: 'cli',
-			});
+			cleared = await Container.get(PolicyEnforcementService).enforceContentImport(
+				{
+					credential: { id: credential.id ?? null, type },
+					projectId: credential.usageScope === 'instance' ? null : landingProjectId,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
 		} catch (error) {
 			if (!(error instanceof PolicyViolationError)) throw error;
 
