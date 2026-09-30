@@ -37,6 +37,8 @@ import CommunityNodeFooter from '@/features/settings/communityNodes/components/n
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -115,6 +117,12 @@ const quickConnect = computed(() => {
 	}
 
 	return null;
+});
+
+// CommunityNodeInfo shows the promotion when community node details are open.
+const gatewayCreditsPromotion = useGatewayCreditsPromotion(() => {
+	const items = useViewStacks().activeViewStack.items;
+	return !communityNodeDetails.value && items?.length ? { nodeType: items[0].key } : undefined;
 });
 
 const hasNoTriggerActions = computed(
@@ -274,8 +282,13 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
-		<div :class="$style.banner" v-if="quickConnect">
-			<QuickConnectBanner :text="quickConnect.text" :disclaimer="quickConnect.disclaimer" />
+		<div v-if="quickConnect || gatewayCreditsPromotion" :class="$style.banner">
+			<QuickConnectBanner
+				v-if="quickConnect"
+				:text="quickConnect.text"
+				:disclaimer="quickConnect.disclaimer"
+			/>
+			<GatewayCreditsPromotion v-if="gatewayCreditsPromotion" :text="gatewayCreditsPromotion" />
 		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>
@@ -424,6 +437,9 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 	z-index: 1;
 }
 .banner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	margin: var(--spacing--sm);
 	margin-top: 0;
 }

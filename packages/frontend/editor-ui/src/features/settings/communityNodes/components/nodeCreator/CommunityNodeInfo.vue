@@ -12,6 +12,8 @@ import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import CommunityNodeUpdateInfo from './CommunityNodeUpdateInfo.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 
 const { activeViewStack } = useViewStacks();
 
@@ -34,6 +36,9 @@ const quickConnect = computed(() => {
 	const pkg = packageName.value;
 	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
 });
+const gatewayCreditsPromotion = useGatewayCreditsPromotion(() =>
+	nodeTypeName.value ? { nodeType: nodeTypeName.value } : undefined,
+);
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -180,6 +185,11 @@ onMounted(async () => {
 			:text="quickConnect?.text"
 			:disclaimer="quickConnect?.disclaimer"
 		/>
+		<GatewayCreditsPromotion
+			v-if="gatewayCreditsPromotion"
+			:text="gatewayCreditsPromotion"
+			:class="$style.gatewayCreditsPromotion"
+		/>
 		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
@@ -201,6 +211,9 @@ onMounted(async () => {
 
 .description {
 	margin: var(--spacing--md) 0;
+}
+.gatewayCreditsPromotion {
+	margin-top: var(--spacing--2xs);
 }
 .separator {
 	height: var(--border-width);
