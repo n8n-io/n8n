@@ -1,4 +1,4 @@
-import { AuthError } from '@n8n/errors';
+import { AuthError } from '@/errors/response-errors/auth.error';
 
 /**
  * A SAML login that can only be linked to an existing user by email, while the
