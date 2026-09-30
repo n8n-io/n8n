@@ -402,7 +402,9 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 	parent
 		.nodes()
 		.filter((id) => nodeIdSet.has(id))
-		.forEach((id) => subGraph.setNode(id, parent.node(id)));
+		// Dagre mutates node labels during layout. Copy them so a subgraph layout
+		// cannot change the graph that will be laid out later.
+		.forEach((id) => subGraph.setNode(id, { ...parent.node(id) }));
 
 	parent
 		.edges()
