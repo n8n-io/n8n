@@ -36,7 +36,7 @@ defineProps<{
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--sm);
+	margin-bottom: var(--spacing--xs);
 }
 
 .content {
@@ -44,6 +44,9 @@ defineProps<{
 	height: 105px;
 	overflow-y: auto;
 	scrollbar-width: thin;
+	line-height: var(--line-height--lg);
+	font-family: var(--font-family);
+	font-size: var(--font-size--md);
 }
 
 .iconWrap {

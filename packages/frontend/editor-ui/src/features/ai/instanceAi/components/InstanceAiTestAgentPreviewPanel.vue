@@ -199,11 +199,11 @@ function onOpenEvals() {
 		<template v-else-if="phase === 'awaiting-confirmation'">
 			<N8nCard data-test-id="instance-ai-test-agent-preview-input" :class="$style.inputCard">
 				<template #header>
-					<N8nText step="xs" color="text-base">
+					<N8nText step="xs" color="text-base" :class="$style.header">
 						{{ i18n.baseText('instanceAi.testAgentPreview.eyebrow') }}
 					</N8nText>
 				</template>
-				<N8nText color="text-dark">{{ previewInput }}</N8nText>
+				<N8nText color="text-dark" :class="$style.title">{{ previewInput }}</N8nText>
 			</N8nCard>
 			<AgentAnswerCard
 				data-test-id="instance-ai-test-agent-preview-output"
@@ -300,6 +300,15 @@ function onOpenEvals() {
 	border-radius: var(--radius--lg);
 }
 
+.header {
+	color: var(--text-color--subtler);
+}
+
+.title {
+	margin-top: var(--spacing--4xs);
+	font-size: var(--font-size--md);
+}
+
 .loadingRow {
 	display: flex;
 	align-items: center;
@@ -309,8 +318,8 @@ function onOpenEvals() {
 // The input is a quoted pill rather than a response card — flatter than
 // `N8nCard`'s default so it reads as "what was asked", not "an answer".
 .inputCard {
-	background-color: var(--background--subtle);
 	border: none;
+	padding: 0;
 }
 
 .caseList {
