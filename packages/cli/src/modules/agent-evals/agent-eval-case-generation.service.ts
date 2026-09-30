@@ -40,6 +40,10 @@ const MAX_CASE_COUNT = 20;
 // embeds the agent's own instructions), so persisted text can't balloon.
 const MAX_CASE_TEXT_CHARS = 2_000;
 
+// `scenario` is meant to be one or two words — a much tighter cap than the
+// other fields, so a runaway model can't turn it into a second `whatToCheck`.
+const MAX_SCENARIO_CHARS = 40;
+
 // Bound a single generation so a hung provider can't pin the request.
 const GENERATE_TIMEOUT_MS = 60_000;
 
@@ -210,11 +214,15 @@ export class AgentEvalCaseGenerationService {
 			});
 			const parsed = generatedCasesSchema.safeParse(result.structuredOutput);
 			if (!parsed.success) return null;
-			// Trim and drop cases with a blank input or check — a whitespace-only
-			// field would persist an unusable draft row.
+			// Trim and drop cases with a blank input, check, or scenario — a
+			// whitespace-only field would persist an unusable draft row.
 			const cases = parsed.data.cases
-				.map((c) => ({ input: c.input.trim(), whatToCheck: c.whatToCheck.trim() }))
-				.filter((c) => c.input.length > 0 && c.whatToCheck.length > 0);
+				.map((c) => ({
+					input: c.input.trim(),
+					whatToCheck: c.whatToCheck.trim(),
+					scenario: c.scenario.trim(),
+				}))
+				.filter((c) => c.input.length > 0 && c.whatToCheck.length > 0 && c.scenario.length > 0);
 			// Require the full requested count so a partial dataset is never persisted.
 			return cases.length >= expectedCount ? cases : null;
 		};
@@ -306,6 +314,7 @@ function boundCases(cases: AgentEvalDraftCase[], limit: number): AgentEvalDraftC
 	return cases.slice(0, limit).map((c) => ({
 		input: truncateText(c.input, MAX_CASE_TEXT_CHARS),
 		whatToCheck: truncateText(c.whatToCheck, MAX_CASE_TEXT_CHARS),
+		scenario: truncateText(c.scenario, MAX_SCENARIO_CHARS),
 	}));
 }
 

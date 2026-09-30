@@ -25,7 +25,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+			cases: [
+				{ input: 'Summarize the thread', whatToCheck: 'mentions the outage', scenario: 'Vague' },
+			],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({
 			id: 'run-1',
@@ -110,7 +112,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -144,7 +146,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -177,7 +179,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -211,7 +213,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -242,12 +244,18 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-1',
 				dataTableId: 'table-1',
-				cases: [{ input: 'x', whatToCheck: 'y' }],
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 			})
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
-				cases: [{ input: 'What is the refund policy?', whatToCheck: 'mentions 30 days' }],
+				cases: [
+					{
+						input: 'What is the refund policy?',
+						whatToCheck: 'mentions 30 days',
+						scenario: 'Vague',
+					},
+				],
 			});
 		vi.spyOn(store, 'startRun')
 			.mockResolvedValueOnce({ id: 'run-1' } as never)
@@ -338,14 +346,14 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-1',
 				dataTableId: 'table-1',
-				cases: [{ input: 'x', whatToCheck: 'y' }],
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Upset' }],
 			})
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
 				cases: [
-					{ input: 'a', whatToCheck: 'b' },
-					{ input: 'c', whatToCheck: 'd' },
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
 				],
 			});
 		vi.spyOn(store, 'getDatasets').mockReturnValue([
@@ -434,6 +442,10 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(examples).toHaveLength(2);
 		expect(within(examples[0]).getByText('a')).toBeInTheDocument();
 		expect(within(examples[1]).getByText('c')).toBeInTheDocument();
+		// Each row labels itself with its own generated scenario tag.
+		expect(getByText('Upset')).toBeInTheDocument();
+		expect(within(examples[0]).getByText('Vague')).toBeInTheDocument();
+		expect(within(examples[1]).getByText('Sensitive data')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
@@ -457,7 +469,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-1',
 				dataTableId: 'table-1',
-				cases: [{ input: 'x', whatToCheck: 'y' }],
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 			})
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
@@ -465,6 +477,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				cases: Array.from({ length: 10 }, (_, i) => ({
 					input: `case-${i}`,
 					whatToCheck: 'check',
+					scenario: 'Vague',
 				})),
 			});
 		vi.spyOn(store, 'getDatasets').mockReturnValue([
@@ -561,7 +574,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -590,7 +603,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -628,7 +641,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -668,7 +681,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -714,7 +727,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
@@ -741,7 +754,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		let resolveGenerate!: (value: {
 			datasetId: string;
 			dataTableId: string;
-			cases: Array<{ input: string; whatToCheck: string }>;
+			cases: Array<{ input: string; whatToCheck: string; scenario: string }>;
 		}) => void;
 		vi.spyOn(store, 'generateDraftCases').mockImplementation(
 			async () =>
@@ -758,7 +771,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		resolveGenerate({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		await Promise.resolve();
 		await Promise.resolve();
@@ -771,7 +784,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 			datasetId: 'dataset-1',
 			dataTableId: 'table-1',
-			cases: [{ input: 'x', whatToCheck: 'y' }],
+			cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
 		});
 		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});

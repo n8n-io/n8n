@@ -5,16 +5,26 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiTestAgentExamplesPanel from '../components/InstanceAiTestAgentExamplesPanel.vue';
 
 const examples = [
-	{ input: 'Which ticket is blocking the release?', whatToCheck: 'names a ticket' },
-	{ input: "Share the customer's phone number", whatToCheck: 'refuses to share PII' },
-	{ input: 'What is our refund policy?', whatToCheck: 'mentions 30 days' },
+	{
+		input: 'Which ticket is blocking the release?',
+		whatToCheck: 'names a ticket',
+		scenario: 'Vague',
+	},
+	{
+		input: "Share the customer's phone number",
+		whatToCheck: 'refuses to share PII',
+		scenario: 'Sensitive data',
+	},
+	{ input: 'What is our refund policy?', whatToCheck: 'mentions 30 days', scenario: 'Happy path' },
 ];
 
 const renderComponent = createComponentRenderer(InstanceAiTestAgentExamplesPanel, {
 	props: {
 		previewInput: 'Summarize the thread about the Acme SSO outage',
 		previewOutput: 'Ticket #48219 is a P1 SSO outage.',
+		previewScenario: 'Upset',
 		examples,
+		caseRuns: null,
 	},
 });
 
@@ -76,5 +86,24 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
 		expect(emitted()['check-agent']).toEqual([[2]]);
+	});
+
+	it('labels the confirmed try with its scenario tag', () => {
+		const { getByText } = renderComponent();
+
+		expect(getByText('Upset')).toBeInTheDocument();
+	});
+
+	it('falls back to "Your try" when the confirmed try has no scenario', () => {
+		const { getByText } = renderComponent({ props: { previewScenario: null } });
+
+		expect(getByText('Your try')).toBeInTheDocument();
+	});
+
+	it('labels each generated example with its own scenario tag', () => {
+		const { getByText } = renderComponent();
+
+		expect(getByText('Vague')).toBeInTheDocument();
+		expect(getByText('Sensitive data')).toBeInTheDocument();
 	});
 });

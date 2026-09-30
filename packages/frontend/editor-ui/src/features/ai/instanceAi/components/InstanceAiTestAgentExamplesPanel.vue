@@ -23,6 +23,10 @@ export type SuiteCaseRun = {
 const props = defineProps<{
 	previewInput: string;
 	previewOutput: string;
+	/** The confirmed try's scenario tag, e.g. "Vague". Null when it has none
+	 *  (the builder's own reused test result was never scenario-generated) —
+	 *  falls back to a generic "Your try" label. */
+	previewScenario: string | null;
 	/** Already fetched in full (up to 10) — the slider only trims the display. */
 	examples: AgentEvalDraftCase[];
 	addingExample?: boolean;
@@ -95,7 +99,7 @@ function onViewEvals() {
 			status="pass"
 			:input="previewInput"
 			:output="previewOutput"
-			:label="i18n.baseText('instanceAi.testAgentPreview.yourTry')"
+			:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
 			test-id="instance-ai-test-agent-examples-try"
 		/>
 
@@ -138,6 +142,7 @@ function onViewEvals() {
 					status="idle"
 					:input="example.input"
 					:output="null"
+					:label="example.scenario"
 					test-id="instance-ai-test-agent-examples-example"
 				/>
 				<AgentEvalTryRow

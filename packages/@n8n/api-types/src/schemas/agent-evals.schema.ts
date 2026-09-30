@@ -239,6 +239,8 @@ export type AgentEvalRunSummary = {
 export const agentEvalDraftCaseSchema = z.object({
 	input: z.string().min(1),
 	whatToCheck: z.string().min(1),
+	/** One or two words naming the kind of scenario the case exercises, e.g. "Vague", "Sensitive data", "Upset". */
+	scenario: z.string().min(1),
 });
 export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 

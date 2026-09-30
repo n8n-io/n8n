@@ -65,6 +65,7 @@ function makeCases(n: number) {
 	return Array.from({ length: n }, (_, i) => ({
 		input: `input ${i + 1}`,
 		whatToCheck: `check ${i + 1}`,
+		scenario: `scenario ${i + 1}`,
 	}));
 }
 
@@ -248,19 +249,24 @@ describe('AgentEvalCaseGenerationService', () => {
 		generateMock.mockResolvedValue({
 			structuredOutput: {
 				cases: [
-					{ input: '  needs trimming  ', whatToCheck: '  ok  ' },
+					{ input: '  needs trimming  ', whatToCheck: '  ok  ', scenario: '  Vague  ' },
 					...makeCases(5),
-					{ input: '   ', whatToCheck: 'blank input dropped' },
-					{ input: 'blank check dropped', whatToCheck: '  ' },
+					{ input: '   ', whatToCheck: 'blank input dropped', scenario: 'x' },
+					{ input: 'blank check dropped', whatToCheck: '  ', scenario: 'x' },
+					{ input: 'blank scenario dropped', whatToCheck: 'ok', scenario: '   ' },
 				],
 			},
 		});
 
 		const result = await service.generateDraftCases(user, 'project-1', 'agent-1');
 
-		// 8 returned, 2 blank dropped → 6 valid, capped at the requested 6.
+		// 9 returned, 3 blank dropped → 6 valid, capped at the requested 6.
 		expect(result.cases).toHaveLength(6);
-		expect(result.cases[0]).toEqual({ input: 'needs trimming', whatToCheck: 'ok' });
+		expect(result.cases[0]).toEqual({
+			input: 'needs trimming',
+			whatToCheck: 'ok',
+			scenario: 'Vague',
+		});
 		const insertedRows = dataTableService.insertRows.mock.calls[0][2] as Array<{
 			input: string;
 			criteria: string;
@@ -292,16 +298,18 @@ describe('AgentEvalCaseGenerationService', () => {
 	});
 
 	it('caps and truncates untrusted model output before persisting', async () => {
-		// Model returns more cases than requested (default 6), with an oversized field.
+		// Model returns more cases than requested (default 6), with oversized fields.
 		const overLimit = Array.from({ length: 8 }, (_, i) => ({
 			input: i === 0 ? 'x'.repeat(5000) : `input ${i + 1}`,
 			whatToCheck: `check ${i + 1}`,
+			scenario: i === 0 ? 'y'.repeat(100) : `scenario ${i + 1}`,
 		}));
 		generateMock.mockResolvedValue({ structuredOutput: { cases: overLimit } });
 
 		const result = await service.generateDraftCases(user, 'project-1', 'agent-1');
 
 		expect(result.cases).toHaveLength(6);
+		expect(result.cases[0].scenario).toHaveLength(40);
 		const insertedRows = dataTableService.insertRows.mock.calls[0][2] as Array<{
 			input: string;
 			criteria: string;

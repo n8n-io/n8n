@@ -205,12 +205,24 @@ describe('agentEvalDraftCaseSchema', () => {
 			agentEvalDraftCaseSchema.safeParse({
 				input: 'Reset my password',
 				whatToCheck: 'Explains steps',
+				scenario: 'Vague',
 			}).success,
 		).toBe(true);
 	});
 
 	it('rejects a draft case missing whatToCheck', () => {
-		expect(agentEvalDraftCaseSchema.safeParse({ input: 'Reset my password' }).success).toBe(false);
+		expect(
+			agentEvalDraftCaseSchema.safeParse({ input: 'Reset my password', scenario: 'Vague' }).success,
+		).toBe(false);
+	});
+
+	it('rejects a draft case missing scenario', () => {
+		expect(
+			agentEvalDraftCaseSchema.safeParse({
+				input: 'Reset my password',
+				whatToCheck: 'Explains steps',
+			}).success,
+		).toBe(false);
 	});
 });
 

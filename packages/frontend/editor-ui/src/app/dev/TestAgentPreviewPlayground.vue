@@ -46,6 +46,7 @@ function stubStore() {
 		const cases = Array.from({ length: count }, (_, i) => ({
 			input: count === 1 ? sampleInput.value : `Sample question ${i + 1} about something else`,
 			whatToCheck: 'mentions the key detail',
+			scenario: count === 1 ? 'Happy path' : `Scenario ${i + 1}`,
 		}));
 		logLine(`generateDraftCases(count=${count}) → ${cases.length} case(s)`);
 		return { datasetId: 'dev-dataset', dataTableId: 'dev-table', cases };

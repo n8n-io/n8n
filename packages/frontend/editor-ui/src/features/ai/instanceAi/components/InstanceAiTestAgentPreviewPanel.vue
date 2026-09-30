@@ -86,6 +86,9 @@ const sampleInput = ref('');
 // Cleared once the user submits their own sample, so the display switches
 // over to that new run instead of sticking with the builder's original test.
 const useInitialCase = ref(Boolean(props.initialCase));
+// The generated preview case's scenario tag. Null when reusing the builder's
+// own test result (`initialCase`), which was never scenario-generated.
+const previewScenario = ref<string | null>(null);
 
 const previewResult = computed(() =>
 	previewRunId.value ? store.getReview(previewRunId.value).results[0] : undefined,
@@ -166,6 +169,7 @@ async function runGeneratedPreview(customInput?: string) {
 		const { projectId, agentId } = props.target;
 		const result = await store.generateDraftCases(projectId, agentId, { count: 1 });
 		if (!isMounted) return;
+		previewScenario.value = result.cases[0]?.scenario ?? null;
 		if (customInput) {
 			await applyCustomInput(projectId, agentId, result.datasetId, customInput);
 			if (!isMounted) return;
@@ -268,9 +272,11 @@ async function onAddExample(input: string) {
 	try {
 		const created = await store.createCase(projectId, source, { input, whatToCheck: '' });
 		if (!isMounted || !created) return;
+		// No `scenario` — it's an LLM-generated tag, not something a user's own
+		// typed example has. The examples panel only labels rows with a non-empty one.
 		suiteCases.value = [
 			...suiteCases.value,
-			{ input: created.input, whatToCheck: created.whatToCheck },
+			{ input: created.input, whatToCheck: created.whatToCheck, scenario: '' },
 		];
 	} finally {
 		if (isMounted) addingExample.value = false;
@@ -441,6 +447,7 @@ function onDontCreateEvals() {
 			<InstanceAiTestAgentExamplesPanel
 				:preview-input="previewInput"
 				:preview-output="previewOutput ?? ''"
+				:preview-scenario="previewScenario"
 				:examples="suiteCases"
 				:adding-example="addingExample"
 				:case-runs="suiteCaseRuns"

@@ -109,15 +109,17 @@ function describeTuple(tuple: DimensionTuple): string {
 
 export const CASE_GENERATION_SYSTEM_PROMPT = [
 	'You generate realistic test cases for evaluating a specific AI agent.',
-	'Each test case has two fields:',
+	'Each test case has three fields:',
 	'- `input`: a realistic message an end user would actually send this agent.',
 	'- `whatToCheck`: a short, plain-language description of what a good response should do — NOT a score, NOT code, NOT a rubric.',
+	'- `scenario`: one or two words naming the kind of scenario the case exercises, e.g. "Vague", "Sensitive data", "Upset", "Missing detail", "Other language", "Happy path", "Off topic".',
 	'',
 	'Rules:',
 	'- Ground every case in the actual name, instructions, and tools of the agent below. Do not invent capabilities it does not have.',
 	'- These are DRAFTS a human will review and edit. Never assume a single "correct" answer or write grading logic.',
 	'- Write one case per numbered scenario, in order, following the guidance for that scenario.',
 	'- Keep each `input` natural and self-contained (no placeholders like "<name>").',
+	'- Make `scenario` specific to what actually makes that case distinct (the tone, the gap, the trick), not a restatement of the capability or difficulty being exercised.',
 ].join('\n');
 
 /**
@@ -137,6 +139,6 @@ export function buildCaseGenerationUserPrompt(
 		`Write exactly ${tuples.length} test cases — one for each numbered scenario below, in the same order:`,
 		scenarios,
 		'',
-		'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…" }, … ] }.',
+		'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "scenario": "…" }, … ] }.',
 	].join('\n');
 }

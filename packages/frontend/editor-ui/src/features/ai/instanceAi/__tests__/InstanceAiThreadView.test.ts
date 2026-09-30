@@ -2460,7 +2460,9 @@ describe('InstanceAiThreadView', () => {
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
 				datasetId: 'dataset-1',
 				dataTableId: 'table-1',
-				cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+				cases: [
+					{ input: 'Summarize the thread', whatToCheck: 'mentions the outage', scenario: 'Vague' },
+				],
 			});
 			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
 			evalsStore.openRun.mockResolvedValue(undefined);
@@ -2560,7 +2562,7 @@ describe('InstanceAiThreadView', () => {
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
-				cases: [{ input: 'a', whatToCheck: 'b' }],
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
 			});
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
@@ -2573,16 +2575,73 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('requests the evals focus after starting a run from "Check your agent"', async () => {
+		it('requests the evals focus after viewing evals from "Check your agent"', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
 				cases: [
-					{ input: 'a', whatToCheck: 'b' },
-					{ input: 'c', whatToCheck: 'd' },
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
 				],
+			});
+			evalsStore.getDatasets.mockReturnValue([
+				{
+					id: 'dataset-2',
+					name: 'Draft cases',
+					description: null,
+					agentId: 'agent-1',
+					columnMapping: { input: 'input', criteria: 'criteria' },
+					createdById: null,
+					createdAt: '',
+					updatedAt: '',
+					datasetSource: 'data_table',
+					datasetRef: { dataTableId: 'table-2' },
+				},
+			] as never);
+			evalsStore.fetchCases.mockResolvedValue([
+				{ rowId: 1, input: 'a', whatToCheck: 'b' },
+				{ rowId: 2, input: 'c', whatToCheck: 'd' },
+			] as never);
+			evalsStore.deleteCase.mockResolvedValue(true);
+			evalsStore.startRun
+				.mockResolvedValueOnce({ id: 'preview-run' } as never)
+				.mockResolvedValueOnce({ id: 'suite-run' } as never);
+			evalsStore.getReview.mockImplementation((runId) => {
+				if (runId === 'suite-run') {
+					return {
+						run: { status: 'completed' } as never,
+						results: [
+							{ sourceRowId: '1', status: 'success', input: {}, output: { finalText: 'b answer' } },
+							{ sourceRowId: '2', status: 'success', input: {}, output: { finalText: 'd answer' } },
+						],
+						resultsCount: 2,
+						ratingsByResultId: {},
+						pendingByResultId: {},
+						draftsByResultId: {},
+						counts: null,
+						loading: false,
+						loadingMore: false,
+					} as never;
+				}
+				return {
+					run: { status: 'completed' } as never,
+					results: [
+						{
+							status: 'success',
+							input: { input: 'Summarize the thread' },
+							output: { finalText: 'Done.' },
+						},
+					],
+					resultsCount: 1,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				} as never;
 			});
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
@@ -2590,10 +2649,14 @@ describe('InstanceAiThreadView', () => {
 			await user.click(await findByTestId('instance-ai-test-agent-preview-looks-good'));
 			await user.click(await findByTestId('instance-ai-test-agent-examples-check-agent'));
 
+			expect(evalsStore.startRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2');
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
+
+			await user.click(await findByTestId('instance-ai-test-agent-examples-view-evals'));
+
 			await vi.waitFor(() => {
 				expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
 			});
-			expect(evalsStore.startRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2');
 		});
 
 		it('keeps the preview panel visible through generation even though it populates the dataset cache', async () => {
@@ -2623,7 +2686,13 @@ describe('InstanceAiThreadView', () => {
 				return {
 					datasetId: 'dataset-1',
 					dataTableId: 'table-1',
-					cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+					cases: [
+						{
+							input: 'Summarize the thread',
+							whatToCheck: 'mentions the outage',
+							scenario: 'Vague',
+						},
+					],
 				};
 			});
 
@@ -2734,7 +2803,9 @@ describe('InstanceAiThreadView', () => {
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
 				datasetId: 'dataset-1',
 				dataTableId: 'table-1',
-				cases: [{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' }],
+				cases: [
+					{ input: 'Summarize the thread', whatToCheck: 'mentions the outage', scenario: 'Vague' },
+				],
 			});
 			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
 			evalsStore.openRun.mockResolvedValue(undefined);
