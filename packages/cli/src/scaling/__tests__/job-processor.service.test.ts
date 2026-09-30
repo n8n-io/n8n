@@ -285,7 +285,7 @@ describe('JobProcessor', () => {
 			return () => resolveExecution(mock<IExecutionResponse>({ status: 'crashed' }));
 		};
 
-		it('should report a job as running while its execution is still being loaded', async () => {
+		it('should list a job as running and in preflight, but not in the running jobs summary, while its execution is still being loaded', async () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			const settleExecution = createPendingExecution(executionPersistence);
 			const jobProcessor = createJobProcessor(executionPersistence);
@@ -297,6 +297,10 @@ describe('JobProcessor', () => {
 			const processing = jobProcessor.processJob(job);
 
 			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
+			expect(jobProcessor.getJobsInPreflight()).toEqual([
+				{ jobId: 'job-1', executionId: 'exec-1' },
+			]);
 
 			settleExecution();
 			await processing;
@@ -315,26 +319,6 @@ describe('JobProcessor', () => {
 
 			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
 			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
-		});
-
-		it('should list a job in preflight but not in the running jobs summary', async () => {
-			const executionPersistence = mock<ExecutionPersistence>();
-			const settleExecution = createPendingExecution(executionPersistence);
-			const jobProcessor = createJobProcessor(executionPersistence);
-			const job = mock<Job>({
-				id: 'job-1',
-				data: { executionId: 'exec-1', loadStaticData: false },
-			});
-
-			const processing = jobProcessor.processJob(job);
-
-			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
-			expect(jobProcessor.getJobsInPreflight()).toEqual([
-				{ jobId: 'job-1', executionId: 'exec-1' },
-			]);
-
-			settleExecution();
-			await processing;
 		});
 	});
 
