@@ -1569,7 +1569,8 @@ describe('AgentRuntime — reasoning-only turn', () => {
 		const error = chunks.find(
 			(chunk): chunk is StreamChunk & { type: 'error' } => chunk.type === 'error',
 		);
-		expect(String((error?.error as Error).message)).toContain('no output');
+		if (!error) throw new Error('Expected an error chunk');
+		expect(String((error.error as Error).message)).toContain('no output');
 	});
 
 	it('fails a reasoning-only length turn without retrying or persisting it', async () => {

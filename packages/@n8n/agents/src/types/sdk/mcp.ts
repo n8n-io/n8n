@@ -1,3 +1,7 @@
+import type { McpToolDescriptor } from '@n8n/ai-utilities/agent-config';
+
+export type { McpToolAnnotations, McpToolDescriptor } from '@n8n/ai-utilities/agent-config';
+
 export type McpVerifyResult =
 	| { ok: true; servers: Array<{ name: string; tools: number }> }
 	| { ok: false; errors: Array<{ server: string; error: string }> };
@@ -8,6 +12,14 @@ export interface McpToolCallSettledEvent {
 	/** Exact normalized name exposed to the model. */
 	modelToolName?: string;
 	success: boolean;
+}
+
+export type McpToolFilter = { mode: 'allow' | 'exclude'; tools: string[] };
+export type McpRequireApproval = string[] | boolean;
+
+export interface McpToolConfiguration {
+	toolFilter?: McpToolFilter;
+	requireApproval?: McpRequireApproval;
 }
 
 /**
@@ -61,7 +73,13 @@ export interface McpServerConfig {
 	 *   require approval; all other tools from the server run without interruption.
 	 * - `false` / omitted — no approval requirement.
 	 */
-	requireApproval?: string[] | boolean;
+	requireApproval?: McpRequireApproval;
+
+	/**
+	 * Configure filtering and approval after the server returns its tool list.
+	 * This callback runs once for each tool listing before tools are resolved.
+	 */
+	configureTools?: (tools: McpToolDescriptor[]) => McpToolConfiguration;
 
 	/**
 	 * Custom fetch implementation used by URL-based transports (SSE,
@@ -86,5 +104,5 @@ export interface McpServerConfig {
 	 * anything. This matches the JSON-config semantics ("no filter applied"
 	 * is expressed by omitting the field).
 	 */
-	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
+	toolFilter?: McpToolFilter;
 }

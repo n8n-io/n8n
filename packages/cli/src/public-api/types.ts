@@ -1,10 +1,9 @@
 import type {
-	AddDataTableRowsDto,
 	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
 	PublicCreateDestination,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
+	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
@@ -122,25 +121,7 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
 	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
 
 	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
@@ -184,6 +165,13 @@ export declare namespace LogStreamingRequest {
 export declare namespace OtelSettingsRequest {
 	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
+
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
 }
 
 // ----------------------------------

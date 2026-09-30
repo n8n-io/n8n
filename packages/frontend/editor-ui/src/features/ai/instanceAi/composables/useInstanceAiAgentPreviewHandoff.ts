@@ -10,4 +10,6 @@ export interface AgentPreviewHandoffParams {
 	sessionTitle?: string;
 	executionId?: string;
 	initialDraft?: PendingComposerDraft;
+	/** Runs only after the assistant composer accepts the hand-off. */
+	onAccepted?: () => void;
 }
