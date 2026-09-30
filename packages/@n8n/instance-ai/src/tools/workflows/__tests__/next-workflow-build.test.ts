@@ -67,8 +67,7 @@ describe('next workflow build', () => {
 		expect(text).toContain('"Done tasks": {');
 		expect(text).toContain('property_completed: {\n\t\t\t\tstart: string;');
 		expect(synthesizedFixtures(workflow)['Done tasks']?.[0]).toMatchObject({
-			id: 'example',
-			property_completed: { start: 'example', end: 'example', time_zone: 'example' },
+			property_completed: { start: '2026-09-15' },
 		});
 		expect(synthesizedFixtures(workflow, { 'Done tasks': [{ id: 'mine' }] })).toEqual({
 			'Done tasks': [{ id: 'mine' }],

@@ -31,6 +31,7 @@ import {
 	searchNextActions,
 } from './next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
+import { warmWorkspace } from '../workspace/warm-workspace';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
@@ -421,6 +422,7 @@ async function handleModuleSearch(
 	const nodeModules = [...new Set(searches.flatMap(({ nodes }) => nodes))].flatMap(
 		(nodeId) => nextNodeModule(nodeId) ?? [],
 	);
+	if (nodeModules.length) warmWorkspace(context);
 	const modulesPart = nodeModules.length ? { nodeModules } : {};
 	if (!queryList) {
 		const [{ nodes: _nodes, ...single }] = searches;
@@ -491,7 +493,10 @@ async function resolveNodeTypeDefinitions(
 			const moduleDefinition = context.nodeContractsEnabled
 				? resolveModuleDefinition(nodeType)
 				: undefined;
-			if (moduleDefinition) return moduleDefinition;
+			if (moduleDefinition) {
+				warmWorkspace(context);
+				return moduleDefinition;
+			}
 
 			const options = typeof req === 'string' ? undefined : req;
 			const moduleNode = context.nodeContractsEnabled ? nextNodeIdOfNodeType(nodeType) : undefined;

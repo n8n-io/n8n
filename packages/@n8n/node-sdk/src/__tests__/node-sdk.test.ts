@@ -15,6 +15,7 @@ import {
 	toNodeType,
 	validate,
 	variant,
+	type Action,
 	type Infer,
 } from '../index';
 
@@ -214,15 +215,74 @@ describe('exampleOf', () => {
 });
 
 describe('generateNodeModule', () => {
+	const moduleOf = (...actions: Action[]) =>
+		generateNodeModule(
+			'todo',
+			actions.map((action) => ({
+				contract: toContract(action),
+				nodeType: `@n8n/nodes-base-next.${action.id}`,
+			})),
+		);
+
+	const list = variant('mode', {
+		name: { name: str().hint('Exact list name') },
+		id: { id: str().hint('Numeric list ID') },
+	});
+	const listAction = (id: string, extra = {}) =>
+		defineAction({
+			node: todo,
+			id,
+			action: 'Find tasks',
+			summary: 'Find tasks in a list.',
+			flow: listTasks.flow,
+			output: listTasks.output,
+			async run() {},
+			input: {
+				...extra,
+				list,
+				sort: variant('by', {
+					field: { field: str().hint('Exact field name'), direction: oneOf('asc', 'desc') },
+					rank: { field: str().hint('Exact field name'), weight: num() },
+				}),
+			},
+		});
+
 	it('wraps non-literal leaves in Value and keeps selectors literal', () => {
-		const text = generateNodeModule('todo', [
-			{ contract: toContract(listTasks), nodeType: '@n8n/nodes-base-next.todoTaskGetAll' },
-		]);
+		const text = moduleOf(listTasks);
 		expect(text).toContain('project: Value<I, C, string>;');
-		expect(text).toContain('mode: "limit";');
-		expect(text).toContain('max?: Value<I, C, number>;');
 		expect(text).toContain('status?: "open" | "done";');
 		expect(text).toContain('export const todo = {\n\ttask: {\n\t\t/** Get many tasks.');
-		expect(text).toContain('contractStep("@n8n/nodes-base-next.todoTaskGetAll", config)');
+		expect(text).toContain('contractStep("@n8n/nodes-base-next.todo.task.getAll", config)');
+	});
+
+	it('prints short objects without docs on one line', () => {
+		expect(moduleOf(listTasks)).toContain(
+			'paging: { mode: "all" } | { mode: "limit"; max?: Value<I, C, number> };',
+		);
+	});
+
+	it('shows the action flow once, on the factory', () => {
+		const text = moduleOf(listTasks);
+		expect(text).toContain(
+			'/** Get many tasks. List tasks in a project. (read, 1:N) */\n\t\tgetAll:',
+		);
+		expect(text.match(/List tasks in a project/g)).toHaveLength(1);
+	});
+
+	it('shows a field doc that repeats across union branches on the first branch only', () => {
+		const text = moduleOf(listAction('todo.task.search'));
+		expect(text.match(/\/\*\* Exact field name \*\//g)).toHaveLength(1);
+		expect(text).toContain('/** Numeric list ID */');
+	});
+
+	it('names a repeated type once and references the name', () => {
+		const text = moduleOf(
+			listAction('todo.task.search'),
+			listAction('todo.task.find', { limit: num() }),
+		);
+		expect(text).toContain('type TodoTaskSearchList<I, C> = {\n\tmode: "name";');
+		expect(text.match(/list: TodoTaskSearchList<I, C>;/g)).toHaveLength(2);
+		expect(text.match(/Exact list name/g)).toHaveLength(1);
+		expect(text).toContain('export type TodoTaskFindOutput = TodoTaskSearchOutput;');
 	});
 });
