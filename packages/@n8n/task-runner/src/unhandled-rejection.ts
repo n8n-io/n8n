@@ -1,7 +1,12 @@
-import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { types } from 'node:util';
 
 const MAX_REASON_LENGTH = 1000;
+const MAX_NAME_LENGTH = 100;
+const MAX_KEY_LENGTH = 100;
+const MAX_KEYS = 10;
+const MAX_FRAMES = 10;
+const MAX_FRAME_LENGTH = 200;
+const FRAME_PATTERN = /^\s+at /;
 const LOG_PREFIX = 'Unhandled promise rejection in task runner, continuing.';
 
 function describeKind(reason: object): string {
@@ -13,14 +18,28 @@ function describeKind(reason: object): string {
 	return 'Object';
 }
 
-function describeObject(reason: object): string {
-	// Only real errors are trusted, since a plain object's `message` can hold request data.
-	if (types.isNativeError(reason)) {
-		if (typeof reason.stack === 'string') return reason.stack;
-		const name = typeof reason.name === 'string' ? reason.name : 'Error';
-		const message = typeof reason.message === 'string' ? reason.message : '';
-		return `${name}: ${message}`;
+function extractFrames(stack: string): string[] {
+	const frames: string[] = [];
+	let start = 0;
+	while (start < stack.length && frames.length < MAX_FRAMES) {
+		const newline = stack.indexOf('\n', start);
+		const end = newline === -1 ? stack.length : newline;
+		const line = stack.slice(start, end);
+		if (FRAME_PATTERN.test(line)) frames.push(line.slice(0, MAX_FRAME_LENGTH));
+		start = end + 1;
 	}
+	return frames;
+}
+
+function describeError(error: Error): string {
+	const name = (typeof error.name === 'string' ? error.name : 'Error').slice(0, MAX_NAME_LENGTH);
+	// The message is never logged, since it can hold request data.
+	const frames = typeof error.stack === 'string' ? extractFrames(error.stack) : [];
+	return [name, ...frames].join('\n');
+}
+
+function describeObject(reason: object): string {
+	if (types.isNativeError(reason)) return describeError(reason);
 
 	const kind = describeKind(reason);
 	// Read only the length: listing every index of a huge array or buffer can exhaust the heap.
@@ -30,16 +49,24 @@ function describeObject(reason: object): string {
 	if (ArrayBuffer.isView(reason) && 'length' in reason && typeof reason.length === 'number') {
 		return `${kind} of length ${reason.length}`;
 	}
-	return kind;
+
+	const keys = Object.keys(reason);
+	const shown = keys.slice(0, MAX_KEYS).map((key) => key.slice(0, MAX_KEY_LENGTH));
+	const more = keys.length > MAX_KEYS ? ', ...' : '';
+	return `${kind} with keys [${shown.join(', ')}${more}]`;
 }
 
 export function describeRejectionReason(reason: unknown): string {
-	const text =
-		(typeof reason === 'object' && reason !== null) || typeof reason === 'function'
-			? describeObject(reason)
-			: String(reason);
+	let text: string;
+	if ((typeof reason === 'object' && reason !== null) || typeof reason === 'function') {
+		text = describeObject(reason);
+	} else if (typeof reason === 'string') {
+		text = `string of length ${reason.length}`;
+	} else {
+		text = String(reason);
+	}
 
-	return sanitizeErrorDetail(text, MAX_REASON_LENGTH);
+	return text.slice(0, MAX_REASON_LENGTH);
 }
 
 export function onUnhandledRejection(reason: unknown): void {
