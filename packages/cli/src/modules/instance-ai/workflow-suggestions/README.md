@@ -52,6 +52,8 @@ Use **Approve and publish** as the action label. All actions require an enabled 
 
 Apply locks the workflow and rechecks the suggestion baseline after normal save preparation. It commits workflow content, required history, the applied-version record, and activity together. A failed transaction cannot leave a saved fix with a pending suggestion. History records the human editor and Assistant authorship. Activity keeps the background user separate from the human actor.
 
+Suggestion reads do not request row locks. Closure updates only pending suggestions. Competing actions return the recorded result. Apply rolls back its workflow changes if another action closes the suggestion first.
+
 Ordinary saves keep their existing conflict checks. An ordinary save that started before Apply can still finish after Apply commits. This feature does not add a new conflict check to every workflow save.
 
 The detail exposes `appliedVersion` and the recorded publication outcome. Publication uses the existing outbox and trigger status. It distinguishes unpublished, pending, partial, successful, failed, and unknown outcomes. A lost response or active-version pointer alone does not prove success or failure. Retries reject later saved content, ownership changes, and intervening publication. Confirmed publication outcomes remain recorded after outbox cleanup.

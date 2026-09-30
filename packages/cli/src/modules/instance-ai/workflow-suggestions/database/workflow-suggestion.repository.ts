@@ -55,12 +55,10 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		scope: Pick<WorkflowSuggestion, 'workflowId' | 'projectId'>,
 		ctx: OperationContext = {},
 	) {
-		const manager = this.managerFor(ctx);
-		const suggestion = await manager.findOne(WorkflowSuggestion, {
-			where: { id, workflowId: scope.workflowId, projectId: scope.projectId },
-			...(ctx.trx && manager.connection.options.type === 'postgres'
-				? { lock: { mode: 'pessimistic_write' as const } }
-				: {}),
+		const suggestion = await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
+			id,
+			workflowId: scope.workflowId,
+			projectId: scope.projectId,
 		});
 		if (!suggestion) throw new NotFoundError('Suggestion not found.');
 		return suggestion;
@@ -177,8 +175,9 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			{ id: suggestion.id, state: 'pending' },
 			{ state: 'closed', closedReason: reason, closedAt: new Date(), appliedVersion },
 		);
-		if (result.affected !== 1) throw new ConflictError('The suggestion has already closed.');
+		if (result.affected !== 1) return false;
 		await this.appendActivity(suggestion.id, reason, actorId, ctx);
+		return true;
 	}
 
 	async recordPublication(

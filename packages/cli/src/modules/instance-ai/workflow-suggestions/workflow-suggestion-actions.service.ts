@@ -122,7 +122,14 @@ export class WorkflowSuggestionActionsService {
 									action,
 									actorId: user.id,
 								};
-								await this.suggestions.closePending(suggestion, 'applied', user.id, ctx, applied);
+								const closed = await this.suggestions.closePending(
+									suggestion,
+									'applied',
+									user.id,
+									ctx,
+									applied,
+								);
+								if (!closed) throw new ConflictError('The suggestion has already closed.');
 							},
 						},
 					},

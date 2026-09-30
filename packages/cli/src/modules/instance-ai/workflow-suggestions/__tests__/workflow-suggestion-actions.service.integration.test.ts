@@ -27,6 +27,7 @@ import { createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
 import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestion-actions.service';
 import { WorkflowSuggestionPublicationService } from '../workflow-suggestion-publication.service';
@@ -405,19 +406,73 @@ it('resolves concurrent apply and discard actions to one terminal state', async 
 	const { original, graph, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-	const outcomes = await Promise.allSettled([act('open-in-editor'), act('discard')]);
-
-	expect(outcomes.some((outcome) => outcome.status === 'fulfilled')).toBe(true);
+	const outcomes = await Promise.all([act('open-in-editor'), act('discard')]);
 	const stored = await suggestions.findOneByOrFail({ id: suggestion.id });
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	expect(stored.state).toBe('closed');
 	expect(['applied', 'discarded']).toContain(stored.closedReason);
+	expect(outcomes.map(({ closedReason }) => closedReason)).toEqual([
+		stored.closedReason,
+		stored.closedReason,
+	]);
 	expect(saved.nodes).toEqual(stored.closedReason === 'applied' ? graph.nodes : original.nodes);
 	expect(await history.countBy({ workflowId: original.id })).toBe(
 		beforeHistory + (stored.closedReason === 'applied' ? 1 : 0),
 	);
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
 });
+
+it.skipIf(process.env.DB_TYPE !== 'postgresdb')(
+	'rolls back Apply when another connection discards the suggestion before it closes',
+	async () => {
+		const { original, suggestion, user, act } = await fixture();
+		const beforeHistory = await history.countBy({ workflowId: original.id });
+		const peer = await new DataSource({
+			...Container.get(DataSource).options,
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+		}).initialize();
+		const closePending = suggestions.closePending.bind(suggestions);
+		vi.spyOn(suggestions, 'closePending').mockImplementationOnce(async (...args) => {
+			await peer.transaction(async (manager) => {
+				await manager.query("SET LOCAL lock_timeout = '250ms'");
+				await manager.update(
+					WorkflowSuggestion,
+					{ id: suggestion.id, state: 'pending' },
+					{
+						state: 'closed',
+						closedReason: 'discarded',
+						closedAt: new Date(),
+					},
+				);
+				await manager.save(
+					manager.create(WorkflowSuggestionActivityEntity, {
+						suggestionId: suggestion.id,
+						action: 'discarded',
+						author: 'human',
+						actorId: user.id,
+					}),
+				);
+			});
+			return await closePending(...args);
+		});
+		try {
+			expect(await act('open-in-editor')).toMatchObject({
+				closedReason: 'discarded',
+				appliedVersion: null,
+			});
+			expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+			expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
+			expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
+				'submitted',
+				'discarded',
+			]);
+		} finally {
+			await peer.destroy();
+		}
+	},
+);
 
 it('rejects Apply when an editor saves after suggestion preparation', async () => {
 	const { user, original, graph, suggestion, act } = await fixture();

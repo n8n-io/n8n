@@ -21,6 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { createUser } from '@test-integration/db/users';
 
 import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 
 let suggestions: WorkflowSuggestionRepository;
@@ -173,7 +174,7 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	});
 });
 
-describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL Apply row locks', () => {
+describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent writes', () => {
 	let peer: DataSource;
 
 	beforeAll(async () => {
@@ -187,6 +188,33 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL Apply row lock
 	});
 	afterAll(async () => {
 		if (peer?.isInitialized) await peer.destroy();
+	});
+
+	it('lets another request close a suggestion while its read transaction stays open', async () => {
+		const suggestion = await saveProposal();
+		await tx.run({}, async (ctx) => {
+			const current = await suggestions.getSuggestion(suggestion.id, suggestion, ctx);
+			await peer.transaction(async (manager) => {
+				await manager.query("SET LOCAL lock_timeout = '250ms'");
+				await manager.update(
+					WorkflowSuggestion,
+					{ id: suggestion.id, state: 'pending' },
+					{
+						state: 'closed',
+						closedReason: 'discarded',
+						closedAt: new Date(),
+					},
+				);
+			});
+			expect(await suggestions.closePending(current, 'outdated', null, ctx)).toBe(false);
+			expect(await suggestions.getSuggestion(suggestion.id, suggestion, ctx)).toMatchObject({
+				state: 'closed',
+				closedReason: 'discarded',
+			});
+		});
+		expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
+			'submitted',
+		]);
 	});
 
 	async function assertWriteBlocked(write: (manager: EntityManager) => Promise<unknown>) {
