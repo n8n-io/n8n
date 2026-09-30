@@ -67,7 +67,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
 			<div data-test-id="add-resource-actions" >
-				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
+				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value" :disabled="action.disabled" @click="$emit('action', action.value)">{{ action.label }}</button>
 			</div>
 		</div>
 	`,
@@ -350,7 +350,28 @@ describe('ProjectHeader', () => {
 	});
 
 	describe('dropdown', () => {
-		it('offers folder creation on overview when the personal project allows it', () => {
+		it('offers New folder on overview when the personal project allows it', async () => {
+			vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+				...route,
+				name: VIEWS.WORKFLOWS,
+			} as RouteLocationNormalizedLoadedGeneric);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+			settingsStore.isFoldersFeatureEnabled = true;
+			projectsStore.currentProject = createTestProject({ scopes: [] });
+			projectsStore.personalProject = createTestProject({
+				type: ProjectTypes.Personal,
+				scopes: ['folder:create'],
+			});
+
+			const { getByTestId, emitted } = renderComponent();
+
+			expect(getByTestId('menu-folder')).toHaveTextContent('New folder');
+			expect(getByTestId('menu-folder')).toBeEnabled();
+			await userEvent.click(getByTestId('menu-folder'));
+			expect(emitted('createFolder')).toHaveLength(1);
+		});
+
+		it('disables New folder on overview without personal project permission', () => {
 			vi.spyOn(router, 'useRoute').mockReturnValueOnce({
 				...route,
 				name: VIEWS.WORKFLOWS,
@@ -359,12 +380,62 @@ describe('ProjectHeader', () => {
 			settingsStore.isFoldersFeatureEnabled = true;
 			projectsStore.personalProject = createTestProject({
 				type: ProjectTypes.Personal,
-				scopes: ['folder:create'],
+				scopes: [],
 			});
 
 			const { getByTestId } = renderComponent();
+			expect(getByTestId('menu-folder')).toBeDisabled();
+		});
 
-			expect(getByTestId('menu-folder')).toBeInTheDocument();
+		it('offers New folder as registration CTA on self-hosted instances', async () => {
+			vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+				...route,
+				name: VIEWS.WORKFLOWS,
+			} as RouteLocationNormalizedLoadedGeneric);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+			settingsStore.deploymentType = 'default';
+			usersStore.currentUser = mock<IUser>({ globalScopes: ['community:register'] });
+			projectsStore.personalProject = createTestProject({
+				type: ProjectTypes.Personal,
+				scopes: [],
+			});
+
+			const { getByTestId, emitted } = renderComponent();
+			expect(getByTestId('menu-folder')).toBeEnabled();
+			await userEvent.click(getByTestId('menu-folder'));
+			expect(emitted('createFolder')).toHaveLength(1);
+		});
+
+		it('uses the selected project permission for New folder', () => {
+			vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+				...route,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+			} as RouteLocationNormalizedLoadedGeneric);
+			settingsStore.isFoldersFeatureEnabled = true;
+			projectsStore.currentProject = createTestProject({ scopes: ['folder:create'] });
+			projectsStore.personalProject = createTestProject({
+				type: ProjectTypes.Personal,
+				scopes: [],
+			});
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('menu-folder')).toBeEnabled();
+		});
+
+		it('does not offer New folder on shared workflows', () => {
+			vi.spyOn(router, 'useRoute').mockReturnValueOnce({
+				...route,
+				name: VIEWS.SHARED_WORKFLOWS,
+			} as RouteLocationNormalizedLoadedGeneric);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
+			settingsStore.isFoldersFeatureEnabled = true;
+			projectsStore.personalProject = createTestProject({
+				type: ProjectTypes.Personal,
+				scopes: ['folder:create'],
+			});
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('menu-folder')).not.toBeInTheDocument();
 		});
 
 		it('should create a credential', async () => {

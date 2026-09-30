@@ -9,10 +9,12 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -24,6 +26,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -74,7 +77,13 @@ const router = createRouter({
 	history: createWebHistory(),
 	routes: [
 		{
+			path: '/projects/:projectId',
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			component: { template: '<div></div>' },
+		},
+		{
 			path: '/:projectId?',
+			name: VIEWS.WORKFLOWS,
 			component: { template: '<div></div>' },
 		},
 		{
@@ -588,7 +597,7 @@ describe('Folders', () => {
 		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
 	});
 
-	it('shows folder creation on overview after folders become available', async () => {
+	it('removes the legacy folder button on overview', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 		const projectsStore = mockedStore(useProjectsStore);
@@ -599,18 +608,23 @@ describe('Folders', () => {
 		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { getByTestId } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(getByTestId('add-folder-button')).toBeVisible();
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 	});
 
 	it('creates a folder in the personal project from overview', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = createTestProject({
+			id: 'other-project',
+			type: ProjectTypes.Team,
+			scopes: [],
+		});
 		projectsStore.personalProject = {
 			id: 'personal-project',
 			type: ProjectTypes.Personal,
@@ -629,7 +643,8 @@ describe('Folders', () => {
 
 		const { getByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
-		await userEvent.click(getByTestId('add-folder-button'));
+		await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+		await userEvent.click(await waitFor(() => getByTestId('action-folder')));
 
 		await waitFor(() =>
 			expect(router.currentRoute.value).toMatchObject({
@@ -641,6 +656,73 @@ describe('Folders', () => {
 			'New folder',
 			'personal-project',
 			undefined,
+		);
+	});
+
+	it('opens registration from New folder when folders are unavailable', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		settingsStore.isFoldersFeatureEnabled = false;
+		settingsStore.deploymentType = 'default';
+		const usersStore = mockedStore(useUsersStore);
+		usersStore.currentUser = { globalScopes: ['community:register'] } as IUser;
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = createTestProject({
+			id: 'personal-project',
+			type: ProjectTypes.Personal,
+			scopes: [],
+		});
+		const uiStore = mockedStore(useUIStore);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+		await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+		await userEvent.click(await waitFor(() => getByTestId('action-folder')));
+
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({ name: COMMUNITY_PLUS_ENROLLMENT_MODAL }),
+		);
+		expect(foldersStore.createFolder).not.toHaveBeenCalled();
+	});
+
+	it('creates a folder in the selected project from New folder', async () => {
+		await router.push('/projects/team-project');
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = createTestProject({
+			id: 'team-project',
+			name: 'Team project',
+			type: ProjectTypes.Team,
+			scopes: ['folder:create'],
+		});
+		projectsStore.personalProject = createTestProject({
+			id: 'personal-project',
+			type: ProjectTypes.Personal,
+			scopes: [],
+		});
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		mockPrompt.mockResolvedValue({ action: 'confirm', value: 'Team folder' });
+		foldersStore.createFolder.mockResolvedValue({
+			resource: 'folder',
+			id: 'team-folder',
+			name: 'Team folder',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			subFolderCount: 0,
+		});
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+		await userEvent.click(within(getByTestId('add-resource')).getByRole('button'));
+		await userEvent.click(await waitFor(() => getByTestId('action-folder')));
+
+		await waitFor(() =>
+			expect(foldersStore.createFolder).toHaveBeenCalledWith(
+				'Team folder',
+				'team-project',
+				undefined,
+			),
 		);
 	});
 

@@ -81,7 +81,15 @@ const headerIcon = computed((): IconOrEmoji => {
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 const folderProject = computed(() =>
-	projectPages.isOverviewSubPage ? projectsStore.personalProject : homeProject.value,
+	projectPages.isOverviewSubPage && !projectPages.isSharedSubPage
+		? projectsStore.personalProject
+		: homeProject.value,
+);
+const showFolderRegistration = computed(
+	() =>
+		settingsStore.deploymentType === 'default' &&
+		!settingsStore.isFoldersFeatureEnabled &&
+		getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
 const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
@@ -134,11 +142,12 @@ const showSettings = computed(
 
 const showFolders = computed(() => {
 	return (
-		settingsStore.isFoldersFeatureEnabled &&
+		(settingsStore.isFoldersFeatureEnabled || showFolderRegistration.value) &&
 		([VIEWS.PROJECTS_WORKFLOWS, VIEWS.PROJECTS_FOLDERS].includes(route.name as VIEWS) ||
 			(projectPages.isOverviewSubPage &&
+				!projectPages.isSharedSubPage &&
 				route.name === VIEWS.WORKFLOWS &&
-				!!projectsStore.personalProject?.id))
+				(showFolderRegistration.value || !!projectsStore.personalProject?.id)))
 	);
 });
 
@@ -284,7 +293,8 @@ const menu = computed(() => {
 			label: i18n.baseText('projects.header.create.folder'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
-				!getResourcePermissions(folderProject.value?.scopes).folder.create,
+				(!showFolderRegistration.value &&
+					!getResourcePermissions(folderProject.value?.scopes).folder.create),
 		});
 	}
 

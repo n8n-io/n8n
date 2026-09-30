@@ -112,7 +112,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -400,10 +399,6 @@ const currentBreadcrumbsProjectName = computed(() => {
 		: project.name;
 });
 
-const currentParentName = computed(
-	() => currentFolder.value?.name ?? currentBreadcrumbsProjectName.value,
-);
-
 const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	const project = currentBreadcrumbsProject.value;
 	if (!project) return [];
@@ -606,15 +601,6 @@ const showRegisteredCommunityCTA = computed(
 
 const isOverviewWorkflows = computed(
 	() => projectPages.isOverviewSubPage && !projectPages.isSharedSubPage,
-);
-
-const showOverviewFolderButton = computed(
-	() =>
-		isOverviewWorkflows.value &&
-		foldersEnabled.value &&
-		!!projectsStore.personalProject?.id &&
-		getResourcePermissions(projectsStore.personalProject?.scopes).folder.create &&
-		!readOnlyEnv.value,
 );
 
 const showAIStarterCollectionCallout = computed(() => {
@@ -1865,13 +1851,18 @@ const createFolderInCurrent = async () => {
 		});
 		return;
 	}
-	if (!currentBreadcrumbsProject.value) return;
-	const currentParent = currentFolder.value?.name || currentBreadcrumbsProjectName.value;
+	const project = isOverviewWorkflows.value
+		? projectsStore.personalProject
+		: currentBreadcrumbsProject.value;
+	if (!project) return;
+	const currentParent = isOverviewWorkflows.value
+		? i18n.baseText('projects.menu.personal')
+		: (currentFolder.value?.name ?? currentBreadcrumbsProjectName.value);
 	if (!currentParent) return;
 	await createFolder({
-		id: (route.params.folderId as string) ?? '-1',
+		id: isOverviewWorkflows.value ? project.id : ((route.params.folderId as string) ?? project.id),
 		name: currentParent,
-		type: currentFolder.value ? 'folder' : 'project',
+		type: !isOverviewWorkflows.value && currentFolder.value ? 'folder' : 'project',
 	});
 };
 
@@ -2258,30 +2249,6 @@ const onNameSubmit = async (name: string) => {
 					time-range="week"
 				/>
 			</ProjectHeader>
-		</template>
-		<template v-if="showRegisteredCommunityCTA || showOverviewFolderButton" #add-button>
-			<N8nTooltip placement="top">
-				<template #content>
-					<span>
-						{{
-							currentParentName
-								? i18n.baseText('folders.add.to.parent.message', {
-										interpolate: { parent: currentParentName },
-									})
-								: i18n.baseText('folders.add.here.message')
-						}}
-					</span>
-				</template>
-				<N8nButton
-					variant="outline"
-					size="medium"
-					iconOnly
-					icon="folder-plus"
-					:aria-label="i18n.baseText('workflows.addFolder')"
-					data-test-id="add-folder-button"
-					@click="createFolderInCurrent"
-				/>
-			</N8nTooltip>
 		</template>
 		<template #callout>
 			<N8nCallout
