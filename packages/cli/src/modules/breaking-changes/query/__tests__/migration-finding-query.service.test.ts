@@ -2,6 +2,7 @@ import type {
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeVersion,
 	BreakingChangeWorkflowIssue,
+	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
@@ -27,6 +28,7 @@ import type {
 } from '../../database/repositories/migration-finding.repository';
 import type {
 	BreakingChangeRuleMetadata,
+	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
@@ -68,6 +70,18 @@ function issueFor(node: INode): BreakingChangeWorkflowIssue {
 		level: 'warning',
 		nodeId: node.id,
 		nodeName: node.name,
+	};
+}
+
+/** A batch rule: it needs every workflow before it can report, so it has no per-workflow check. */
+function batchRule(id: string): IBreakingChangeBatchWorkflowRule {
+	return {
+		id,
+		getMetadata: () => metadata(id),
+		getRecommendations: async () => [],
+		collectWorkflowData: async () => {},
+		produceReport: async () => ({ affectedWorkflows: [] }),
+		reset: () => {},
 	};
 }
 
@@ -343,6 +357,54 @@ describe('MigrationFindingQueryService', () => {
 				failure,
 				expect.objectContaining({ extra: { ruleId: 'rule-a', workflowId: 'wf-1' } }),
 			);
+		});
+
+		it('takes the issues of a batch rule from one full scan, keyed by workflow', async () => {
+			ruleRegistry.getRule.mockReturnValue(batchRule('batch-rule'));
+			findingRepository.listOpenForRule.mockResolvedValue([
+				openFinding(1, 'batch-rule', {
+					id: 'wf-1',
+					name: 'Still affected',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+				openFinding(2, 'batch-rule', {
+					id: 'wf-2',
+					name: 'No longer in the scan',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			const issue: BreakingChangeWorkflowIssue = {
+				title: 'Calls a waiting sub-workflow',
+				description: 'The call changes behaviour',
+				level: 'warning',
+				nodeId: 'wf-1-node-0',
+			};
+			breakingChangeService.detect.mockResolvedValue({
+				report: {
+					generatedAt: new Date(),
+					targetVersion: TARGET_VERSION,
+					currentVersion: '3.0.0',
+					instanceResults: [],
+					workflowResults: [
+						{ ruleId: 'other-rule', affectedWorkflows: [{ id: 'wf-2', issues: [issue] }] },
+						{ ruleId: 'batch-rule', affectedWorkflows: [{ id: 'wf-1', issues: [issue] }] },
+					] as BreakingChangeWorkflowRuleResult[],
+				},
+				totalWorkflows: 2,
+				shouldCache: false,
+				failedWorkflowIds: [],
+			});
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule');
+
+			expect(breakingChangeService.detect).toHaveBeenCalledTimes(1);
+			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(result.affectedWorkflows).toEqual([
+				expect.objectContaining({ id: 'wf-1', issues: [issue] }),
+				expect.objectContaining({ id: 'wf-2', issues: [] }),
+			]);
 		});
 
 		it('rejects an unknown rule id with a not-found error', async () => {

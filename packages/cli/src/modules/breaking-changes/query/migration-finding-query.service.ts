@@ -128,19 +128,24 @@ export class MigrationFindingQueryService {
 			this.workflowRepository.findByIds(workflowIds, { fields: WORKFLOW_FIELDS }),
 			this.workflowStatisticsRepository.findByWorkflowIds(workflowIds),
 		]);
-		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 		const statisticsByWorkflow = groupByWorkflowId(statistics);
+		// A batch rule decides from all workflows at once, so its issues come from the full scan.
+		// The current endpoint scans for every rule, so this is no regression for the few batch rules.
+		const issuesByWorkflow =
+			'collectWorkflowData' in rule
+				? await this.issuesFromScan(targetVersion, rule.id)
+				: await this.issuesFromRecheck(rule, workflows);
 
 		const affectedWorkflows: BreakingChangeAffectedWorkflow[] = [];
 		for (const finding of findings) {
-			const workflow = workflowsById.get(finding.workflowId);
 			affectedWorkflows.push({
 				id: finding.workflowId,
 				name: finding.workflow.name,
 				active: !!finding.workflow.activeVersionId,
 				lastUpdatedAt: finding.workflow.updatedAt,
 				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
-				issues: workflow ? await this.detectIssues(rule, workflow) : [],
+				// A workflow the rule no longer flags stays listed, without issues, until the next sync.
+				issues: issuesByWorkflow.get(finding.workflowId) ?? [],
 			});
 		}
 
@@ -163,28 +168,40 @@ export class MigrationFindingQueryService {
 		};
 	}
 
-	/**
-	 * Re-runs one rule on one workflow for its issue list, which the table does not store.
-	 * A batch rule needs every workflow to decide, so it gets no issues here. A rule that no
-	 * longer fires, or that throws, yields none too; the finding stays listed until the next sync.
-	 */
-	private async detectIssues(
-		rule: WorkflowLevelRule,
-		workflow: WorkflowEntity,
-	): Promise<BreakingChangeWorkflowIssue[]> {
-		if (!('detectWorkflow' in rule)) return [];
+	/** Issues per workflow id for one rule, taken from a full scan. Concurrent callers share the scan. */
+	private async issuesFromScan(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
+		const { report } = await this.breakingChangeService.detect(targetVersion);
+		const result = report.workflowResults.find((entry) => entry.ruleId === ruleId);
+		return new Map(
+			(result?.affectedWorkflows ?? []).map((workflow) => [workflow.id, workflow.issues]),
+		);
+	}
 
-		try {
-			const result = await rule.detectWorkflow(workflow, groupNodesByType(workflow.nodes));
-			return result.issues;
-		} catch (error) {
-			this.logger.warn('Breaking change rule failed for workflow, listing it without issues', {
-				ruleId: rule.id,
-				workflowId: workflow.id,
-			});
-			this.errorReporter.error(error, { extra: { ruleId: rule.id, workflowId: workflow.id } });
-			return [];
+	/**
+	 * Re-runs one rule on the given workflows for their issue lists, which the table does not store.
+	 * A rule that throws for a workflow yields no issues for it.
+	 */
+	private async issuesFromRecheck(
+		rule: IBreakingChangeWorkflowRule,
+		workflows: WorkflowEntity[],
+	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
+		const issuesByWorkflow = new Map<string, BreakingChangeWorkflowIssue[]>();
+		for (const workflow of workflows) {
+			try {
+				const result = await rule.detectWorkflow(workflow, groupNodesByType(workflow.nodes));
+				issuesByWorkflow.set(workflow.id, result.issues);
+			} catch (error) {
+				this.logger.warn('Breaking change rule failed for workflow, listing it without issues', {
+					ruleId: rule.id,
+					workflowId: workflow.id,
+				});
+				this.errorReporter.error(error, { extra: { ruleId: rule.id, workflowId: workflow.id } });
+			}
 		}
+		return issuesByWorkflow;
 	}
 }
 
