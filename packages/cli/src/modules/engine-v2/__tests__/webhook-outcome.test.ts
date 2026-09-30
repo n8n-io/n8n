@@ -118,4 +118,14 @@ describe('toWebhookOutcome', () => {
 			expect(toWebhookOutcome(response(payload), expectation)).toBeUndefined();
 		},
 	);
+
+	it('does not settle on a chunk', () => {
+		const chunk: ExecutionResponse = {
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hi' },
+		};
+
+		expect(toWebhookOutcome(chunk, { kind: 'stream' })).toBeUndefined();
+	});
 });

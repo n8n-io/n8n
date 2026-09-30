@@ -38,6 +38,10 @@ export function toWebhookOutcome(
 			// A Buffer body arrives base64-encoded, because the channel is JSON.
 			return { status: 'response', response: decodeBufferBody(received.payload) };
 
+		case 'chunk':
+			// A chunk is a part of a stream. It never answers the request alone.
+			return undefined;
+
 		case 'ended': {
 			const { nodeName, outputs, error } = received.lastStep;
 
