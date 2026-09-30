@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
@@ -756,6 +756,38 @@ describe('InstanceAiCredentialSetup', () => {
 				await expectSubmitted(confirmSpy);
 			});
 
+			it('keeps Continue disabled while a selected credential waits for its sign-in', async () => {
+				const credentialsStore = useCredentialsStore();
+				credentialsStore.upsertCredential(created);
+				const getDataSpy = vi
+					.spyOn(credentialsStore, 'getCredentialData')
+					.mockResolvedValue({ ...created, data: {} } as never);
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const { getByTestId } = renderOAuthCard([
+					{
+						credentialType: 'slackApi',
+						reason: 'Slack',
+						existingCredentials: [{ id: 'api-1', name: 'Slack' }],
+					},
+					{ ...oauthRequests[0], existingCredentials: [{ id: created.id, name: created.name }] },
+				]);
+
+				await vi.waitFor(() => expect(getDataSpy).toHaveBeenCalledWith({ id: 'oauth-1' }));
+				await nextTick();
+				expect(confirmSpy).not.toHaveBeenCalled();
+				expect(getByTestId('instance-ai-credential-continue-button')).toBeDisabled();
+
+				getDataSpy.mockResolvedValue(signedIn as never);
+				credentialsStore.upsertCredential({ ...created, updatedAt: '2026-09-30T10:01:00.000Z' });
+
+				await vi.waitFor(() =>
+					expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+						kind: 'credentialSelection',
+						credentials: { slackApi: 'api-1', linearMcpOAuth2Api: 'oauth-1' },
+					}),
+				);
+			});
+
 			it('submits a credential right away when its grant type needs no sign-in', async () => {
 				const credentialsStore = useCredentialsStore();
 				vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
@@ -787,8 +819,11 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 		});
 
-		it('does not auto-continue before credential types load', async () => {
-			stubCredentialTypes(useCredentialsStore(), () => undefined);
+		it('auto-continues only after credential types load', async () => {
+			const typesLoaded = ref(false);
+			stubCredentialTypes(useCredentialsStore(), (name) =>
+				typesLoaded.value ? { name, displayName: name, properties: [] } : undefined,
+			);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			renderComponent({
@@ -800,8 +835,16 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 			await nextTick();
 			await nextTick();
-
 			expect(confirmSpy).not.toHaveBeenCalled();
+
+			typesLoaded.value = true;
+
+			await vi.waitFor(() =>
+				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+					kind: 'credentialSelection',
+					credentials: { type1: 'existing-1' },
+				}),
+			);
 		});
 
 		it('keeps a sole generic auth credential preselected but does not auto-submit', async () => {

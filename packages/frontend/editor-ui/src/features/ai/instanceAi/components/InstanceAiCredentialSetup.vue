@@ -197,6 +197,15 @@ const anySelected = computed(() =>
 	props.credentialRequests.some((r) => isStepComplete(r.credentialType)),
 );
 
+/** Continue must not drop a selected credential that is still waiting for its sign-in. */
+const canContinue = computed(
+	() =>
+		anySelected.value &&
+		props.credentialRequests.every(
+			(r) => !selections.value[r.credentialType] || isStepComplete(r.credentialType),
+		),
+);
+
 /** The submitted-state label: finalize has its own copy; otherwise distinguish a full submit from a mixed skip/select one. */
 const submittedLabelKey = computed(() => {
 	if (isFinalize.value) return 'instanceAi.credential.finalize.applied';
@@ -518,7 +527,7 @@ async function handleContinue() {
 
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
-		if (id && isStepComplete(type)) credentials[type] = id;
+		if (id) credentials[type] = id;
 	}
 
 	trackCredentialInput();
@@ -804,7 +813,7 @@ async function handleSetupAutomatically() {
 							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
-							:disabled="!anySelected"
+							:disabled="!canContinue"
 							data-test-id="instance-ai-credential-continue-button"
 							@click="handleContinue"
 						/>
