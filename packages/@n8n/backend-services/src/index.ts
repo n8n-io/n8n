@@ -4,3 +4,15 @@ export { CacheService } from './services/cache/cache.service';
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
 export { UrlService } from './services/url.service';
+export {
+	classifyHttpError,
+	isResponseError,
+	type HttpErrorClassifierContext,
+	type HttpErrorDescriptor,
+	HttpErrorKind,
+} from './errors/http-error-classifier';
+export {
+	serializeInternalRestError,
+	serializePublicApiError,
+	type InternalRestErrorBody,
+} from './errors/http-error-serializers';

@@ -1634,9 +1634,6 @@ importers:
 
   packages/@n8n/backend-common:
     dependencies:
-      '@n8n/api-types':
-        specifier: workspace:*
-        version: link:../api-types
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -1649,18 +1646,12 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
-      '@n8n/errors':
-        specifier: workspace:*
-        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
-      express-openapi-validator:
-        specifier: 5.5.3
-        version: 5.5.3(express@5.2.1(supports-color@5.5.0))
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -1801,6 +1792,9 @@ importers:
 
   packages/@n8n/backend-services:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../backend-common
@@ -1825,6 +1819,9 @@ importers:
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
+      express-openapi-validator:
+        specifier: 5.5.3
+        version: 5.5.3(express@5.2.1(supports-color@8.1.1))
       ioredis:
         specifier: 5.3.2
         version: 5.3.2(supports-color@8.1.1)
@@ -34426,20 +34423,6 @@ snapshots:
 
   bn.js@5.2.3: {}
 
-  body-parser@2.3.0(supports-color@5.5.0):
-    dependencies:
-      bytes: 3.1.2
-      content-type: 2.0.0
-      debug: 4.4.3(supports-color@5.5.0)
-      http-errors: 2.0.1
-      iconv-lite: 0.7.3
-      on-finished: 2.4.1
-      qs: 6.15.2
-      raw-body: 3.0.2
-      type-is: 2.1.0
-    transitivePeerDependencies:
-      - supports-color
-
   body-parser@2.3.0(supports-color@8.1.1):
     dependencies:
       bytes: 3.1.2
@@ -36733,7 +36716,7 @@ snapshots:
       path-to-regexp: 8.4.0
       qs: 6.15.2
 
-  express-openapi-validator@5.5.3(express@5.2.1(supports-color@5.5.0)):
+  express-openapi-validator@5.5.3(express@5.2.1(supports-color@8.1.1)):
     dependencies:
       '@apidevtools/json-schema-ref-parser': 12.0.2
       '@types/multer': 1.4.12
@@ -36741,7 +36724,7 @@ snapshots:
       ajv-draft-04: 1.0.0(ajv@8.20.0)
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
-      express: 5.2.1(supports-color@5.5.0)
+      express: 5.2.1(supports-color@8.1.1)
       json-schema-traverse: 1.0.0
       lodash.clonedeep: 4.5.0
       lodash.get: 4.4.2
@@ -36794,39 +36777,6 @@ snapshots:
       router: 2.2.0(supports-color@8.1.1)
       send: 1.2.0(supports-color@8.1.1)
       serve-static: 2.2.0(supports-color@8.1.1)
-      statuses: 2.0.2
-      type-is: 2.1.0
-      vary: 1.1.2
-    transitivePeerDependencies:
-      - supports-color
-
-  express@5.2.1(supports-color@5.5.0):
-    dependencies:
-      accepts: 2.0.0
-      body-parser: 2.3.0(supports-color@5.5.0)
-      content-disposition: 1.0.0
-      content-type: 1.0.5
-      cookie: 0.7.2
-      cookie-signature: 1.2.2
-      debug: 4.4.3(supports-color@5.5.0)
-      depd: 2.0.0
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      etag: 1.8.1
-      finalhandler: 2.1.0(supports-color@5.5.0)
-      fresh: 2.0.0
-      http-errors: 2.0.1
-      merge-descriptors: 2.0.0
-      mime-types: 3.0.2
-      on-finished: 2.4.1
-      once: 1.4.0
-      parseurl: 1.3.3
-      proxy-addr: 2.0.7
-      qs: 6.15.2
-      range-parser: 1.2.1
-      router: 2.2.0(supports-color@5.5.0)
-      send: 1.2.0(supports-color@5.5.0)
-      serve-static: 2.2.0(supports-color@5.5.0)
       statuses: 2.0.2
       type-is: 2.1.0
       vary: 1.1.2
@@ -37041,17 +36991,6 @@ snapshots:
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
-
-  finalhandler@2.1.0(supports-color@5.5.0):
-    dependencies:
-      debug: 4.4.3(supports-color@5.5.0)
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      on-finished: 2.4.1
-      parseurl: 1.3.3
-      statuses: 2.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   finalhandler@2.1.0(supports-color@8.1.1):
     dependencies:
@@ -42193,16 +42132,6 @@ snapshots:
 
   route-recognizer@0.3.4: {}
 
-  router@2.2.0(supports-color@5.5.0):
-    dependencies:
-      debug: 4.4.3(supports-color@5.5.0)
-      depd: 2.0.0
-      is-promise: 4.0.0
-      parseurl: 1.3.3
-      path-to-regexp: 8.4.0
-    transitivePeerDependencies:
-      - supports-color
-
   router@2.2.0(supports-color@8.1.1):
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -42452,22 +42381,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  send@1.2.0(supports-color@5.5.0):
-    dependencies:
-      debug: 4.4.3(supports-color@5.5.0)
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      etag: 1.8.1
-      fresh: 2.0.0
-      http-errors: 2.0.1
-      mime-types: 3.0.2
-      ms: 2.1.3
-      on-finished: 2.4.1
-      range-parser: 1.2.1
-      statuses: 2.0.2
-    transitivePeerDependencies:
-      - supports-color
-
   send@1.2.0(supports-color@8.1.1):
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -42505,15 +42418,6 @@ snapshots:
       escape-html: 1.0.3
       parseurl: 1.3.3
       send: 0.19.2(supports-color@8.1.1)
-    transitivePeerDependencies:
-      - supports-color
-
-  serve-static@2.2.0(supports-color@5.5.0):
-    dependencies:
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      parseurl: 1.3.3
-      send: 1.2.0(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 

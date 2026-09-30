@@ -1,5 +1,5 @@
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { classifyHttpError, HttpErrorKind } from '@n8n/backend-common';
+import { classifyHttpError, HttpErrorKind } from '@n8n/backend-services';
 
 describe('classifyHttpError', () => {
 	it('includes meta for LicenseEulaRequiredError', () => {

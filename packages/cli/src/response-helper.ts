@@ -4,7 +4,7 @@ import {
 	isResponseError,
 	Logger,
 	serializeInternalRestError,
-} from '@n8n/backend-common';
+} from '@n8n/backend-services';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type ReportingOptions } from '@n8n/errors';

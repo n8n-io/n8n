@@ -4,7 +4,7 @@ import {
 	classifyHttpError,
 	serializePublicApiError,
 	type HttpErrorClassifierContext,
-} from '@n8n/backend-common';
+} from '@n8n/backend-services';
 
 /**
  * Maps errors from the public API stack to HTTP responses. Used by the

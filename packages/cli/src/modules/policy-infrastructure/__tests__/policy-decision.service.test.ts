@@ -17,7 +17,7 @@ import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { classifyHttpError, serializeInternalRestError } from '@n8n/backend-common';
+import { classifyHttpError, serializeInternalRestError } from '@n8n/backend-services';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 

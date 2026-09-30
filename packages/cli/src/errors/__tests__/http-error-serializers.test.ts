@@ -1,5 +1,5 @@
-import { classifyHttpError } from '@n8n/backend-common';
-import { serializeInternalRestError, serializePublicApiError } from '@n8n/backend-common';
+import { classifyHttpError } from '@n8n/backend-services';
+import { serializeInternalRestError, serializePublicApiError } from '@n8n/backend-services';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';

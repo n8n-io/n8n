@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
@@ -31,6 +32,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
+    "express-openapi-validator": "5.5.3",
     "ioredis": "5.3.2",
     "n8n-workflow": "workspace:*"
   },

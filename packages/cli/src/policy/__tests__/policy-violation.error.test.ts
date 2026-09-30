@@ -1,8 +1,8 @@
 import type { PolicyViolation } from '@n8n/decorators';
 import { UserError } from 'n8n-workflow';
 
-import { classifyHttpError, HttpErrorKind } from '@n8n/backend-common';
-import { serializeInternalRestError } from '@n8n/backend-common';
+import { classifyHttpError, HttpErrorKind } from '@n8n/backend-services';
+import { serializeInternalRestError } from '@n8n/backend-services';
 
 import {
 	isPolicyRefusal,
