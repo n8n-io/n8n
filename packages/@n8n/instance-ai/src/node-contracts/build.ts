@@ -302,6 +302,25 @@ export async function fetchResourceOutputs(
 	return new Map(fetched.flat());
 }
 
+/**
+ * `$json` is the direct parent's output. When a field it reads is missing there but an
+ * earlier node declares it, name the explicit read that works.
+ */
+function upstreamReadFix(
+	expression: string,
+	parents: string[],
+	ancestors: string[],
+	outputs: ReadonlyMap<string, JsonSchema>,
+): string | undefined {
+	const field = /\$json\.([A-Za-z_$][\w$]*)/.exec(expression)?.[1];
+	const declares = (name: string) => Boolean(field && outputs.get(name)?.properties?.[field]);
+	if (!field || parents.some(declares)) return undefined;
+	const source = ancestors.find(declares);
+	return source
+		? `$json is the previous node's output. Read the earlier field with $('${source}').item.json.${field}.`
+		: undefined;
+}
+
 /** `$('Name')` and `$node['Name']` reads; a non-literal name has no captured group. */
 const NODE_READ = /\$(?:\(|node\[)\s*(?:(['"])(.*?)\1)?/g;
 
@@ -316,12 +335,8 @@ export async function checkContractOutputReads(
 	resourceOutputs: ReadonlyMap<string, JsonSchema> = new Map(),
 ): Promise<ContractIssue[]> {
 	const byDestination = mapConnectionsByDestination(toEngineConnections(json.connections));
-	const outputTypes = new Map(
-		[...contractOutputs(byDestination, contractNodes, resourceOutputs)].map(([name, schema]) => [
-			name,
-			schemaToTs(schema),
-		]),
-	);
+	const outputs = contractOutputs(byDestination, contractNodes, resourceOutputs);
+	const outputTypes = new Map([...outputs].map(([name, schema]) => [name, schemaToTs(schema)]));
 	const checks = (json.nodes ?? []).flatMap((node) => {
 		const nodeName = node.name;
 		if (!nodeName) return [];
@@ -342,13 +357,25 @@ export async function checkContractOutputReads(
 		const slots = compiled
 			? expressionSlots(compiled.input, compiled.contract.input, 'parameters')
 			: expressionSlots(node.parameters, undefined, 'parameters');
-		return slots.map((slot) => ({ nodeName, nodes, inputJson, ...slot }));
+		const ancestors = getParentNodes(byDestination, nodeName, NodeConnectionTypes.Main).filter(
+			(name) => !parents.includes(name),
+		);
+		return slots.map((slot) => ({ nodeName, nodes, inputJson, parents, ancestors, ...slot }));
 	});
 	if (checks.length === 0) return [];
 
 	const service = await getExpressionService();
 	return checks.flatMap(
-		({ nodeName, nodes, inputJson, path, expression, schema }): ContractIssue[] => {
+		({
+			nodeName,
+			nodes,
+			inputJson,
+			parents,
+			ancestors,
+			path,
+			expression,
+			schema,
+		}): ContractIssue[] => {
 			const readsTypedNodesOnly = [...expression.matchAll(NODE_READ)].every(
 				(match) => match[2] !== undefined && Object.hasOwn(nodes, match[2]),
 			);
@@ -367,12 +394,13 @@ export async function checkContractOutputReads(
 				...(analysis.slotError ? [analysis.slotError] : []),
 			];
 			if (messages.length === 0) return [];
+			const fix = inputJson ? upstreamReadFix(expression, parents, ancestors, outputs) : undefined;
 			return [
 				{
 					code: 'CONTRACT_EXPRESSION_TYPE',
 					severity: 'error',
 					nodeName,
-					message: `'${nodeName}' ${path} = ${JSON.stringify(expression)}: ${messages.join(' ')}`,
+					message: `'${nodeName}' ${path} = ${JSON.stringify(expression)}: ${[...messages, ...(fix ? [fix] : [])].join(' ')}`,
 				},
 			];
 		},

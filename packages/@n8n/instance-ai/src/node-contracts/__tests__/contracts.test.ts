@@ -327,6 +327,32 @@ describe('node contracts', () => {
 		});
 	});
 
+	it('names the explicit read when $json misses a field of an earlier node', async () => {
+		const customer = {
+			name: 'Normalize Customer',
+			type: 'set.fields',
+			parameters: { fields: [{ name: 'email', value: 'a@b.test', type: 'string' }] },
+		};
+		const mail = {
+			name: 'Mail',
+			type: 'gmail.message.send',
+			parameters: {
+				to: 'x@y.test',
+				subject: 'Hi',
+				body: { format: 'text', text: 'Hello' },
+			},
+		};
+		const { issues } = await build(
+			workflowOf([customer, mail, post({ email: '={{ $json.email }}' })]),
+		);
+		expect(issues).toEqual([
+			expect.objectContaining({
+				code: 'CONTRACT_EXPRESSION_TYPE',
+				message: expect.stringContaining("$('Normalize Customer').item.json.email"),
+			}),
+		]);
+	});
+
 	it('keeps reads of non-contract nodes loose', async () => {
 		const code = { name: 'Code', type: 'n8n-nodes-base.code', parameters: {} };
 		expect(
