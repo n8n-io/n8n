@@ -1,0 +1,59 @@
+packages/cli/src/modules/type-availability-policies/restricted-node-types.provider.ts
+  s_921d1449fd82b3::t_9d6c0a05c395f8 24,34
+  s_921d1449fd82b3::t_894c8383a2bcda 63
+  s_921d1449fd82b3::t_2dfecfa002eb96 46,51-52
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository.ts
+  s_921d1449fd82b3::t_3e8f50084f4b19 31,33,37-39,47,52,54-59,61-64
+  s_921d1449fd82b3::t_f2b51024fb135f 49-51,66-69
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_921d1449fd82b3::t_894c8383a2bcda 31
+  s_921d1449fd82b3::t_1289b971425c28 23-24,30,34
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_921d1449fd82b3::t_3106e32da82505 85-91,94-95,97-100,102-115,119,1603-1605,1609,1614-1621,1623,1641-1650
+  s_921d1449fd82b3::t_2397fbed8521ef 93,96,116,121-122,1622
+  s_921d1449fd82b3::t_6c2096e01eb756 117,120,1613
+  s_921d1449fd82b3::t_8d317290440750 118
+  s_921d1449fd82b3::t_becd4dc07ea35f 1006,1016
+  s_921d1449fd82b3::t_78280758a3ba1d 1611
+  s_921d1449fd82b3::t_ed3093513b43e8 16-18,862,920,954,984,1116,1153,1180,1227,1329,1334
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_921d1449fd82b3::t_2dfecfa002eb96 35-37
+  s_921d1449fd82b3::t_f920c59a9755a4 6-7
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_921d1449fd82b3::t_894c8383a2bcda 88
+  s_921d1449fd82b3::t_3815ca75aba685 13-18
+packages/cli/src/workflows/restricted-node-types-provider-proxy.service.ts
+  s_921d1449fd82b3::t_894c8383a2bcda 8
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_921d1449fd82b3::t_b1231e952681e6 986,995-996,1013,1016,1020,1022,1026-1035
+  s_921d1449fd82b3::t_9d6c0a05c395f8 1017-1019,1021
+packages/cli/src/modules/type-availability-policies/__tests__/restricted-node-types.provider.test.ts
+  s_921d1449fd82b3::t_162b4967293beb 68-73
+  s_921d1449fd82b3::t_894c8383a2bcda 59
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_921d1449fd82b3::t_894c8383a2bcda 469
+  s_921d1449fd82b3::t_f2b51024fb135f 453-455
+  s_921d1449fd82b3::t_1a9c46b92b0114 59-62,448-452,457-459,461,480
+packages/cli/test/integration/policy/workflow-list.restricted-node.test.ts
+  s_921d1449fd82b3::t_162b4967293beb 192,197-198,211-225,228-236,250-252
+  s_921d1449fd82b3::t_1e67524bde7686 8-13,188-191,193-196,199-210,226-227,237,246-249
+  s_921d1449fd82b3::t_1a9c46b92b0114 238-245
+packages/cli/src/workflows/workflow.service.ts
+  s_921d1449fd82b3::t_f920c59a9755a4 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d520ffd95f289df116bbcb22109a29f448fba44",
+  "prompts": {},
+  "sessions": {
+    "s_921d1449fd82b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f38c4379-293a-48cd-bdfa-d2c30af0c1c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
