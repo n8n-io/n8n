@@ -9,7 +9,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { SYSTEM_RESOLVER_ID } from '../../constants';
 import { DynamicCredentialUserEntry } from '../../database/entities/dynamic-credential-user-entry';

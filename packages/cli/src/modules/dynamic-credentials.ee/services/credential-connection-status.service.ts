@@ -18,7 +18,7 @@ import type {
 	UserConnection,
 } from '@/credentials/credential-connection-status-provider.interface';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';

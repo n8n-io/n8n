@@ -1,22 +1,20 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { EventService } from '../../events/event.service';
+import { RoleCacheService } from '../role-cache.service';
+import { RoleDeletionCheckProxy } from '../role-deletion-check-proxy.service';
+import { RoleService } from '../role.service';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { RoleCacheService } from '@/services/role-cache.service';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
-
 describe('RoleService.rolesWithScope', () => {
 	const licenseState = mock<LicenseState>();
-	const roleRepository = mockInstance(RoleRepository);
-	const scopeRepository = mockInstance(ScopeRepository);
-	const roleCacheService = mockInstance(RoleCacheService);
-	const logger = mockInstance(Logger);
-	const roleDeletionCheckProxy = mockInstance(RoleDeletionCheckProxy);
-	const eventService = mockInstance(EventService);
+	const roleRepository = mock<RoleRepository>();
+	const scopeRepository = mock<ScopeRepository>();
+	const roleCacheService = mock<RoleCacheService>();
+	const logger = mock<Logger>();
+	const roleDeletionCheckProxy = mock<RoleDeletionCheckProxy>();
+	const eventService = mock<EventService>();
 
 	const roleService = new RoleService(
 		licenseState,
@@ -39,11 +37,9 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', 'project:read');
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
-				'project',
-				['project:read'],
-				undefined,
-			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [
+				'project:read',
+			]);
 			expect(result).toEqual(mockRoles);
 		});
 
@@ -54,11 +50,7 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', inputScopes);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
-				'project',
-				inputScopes,
-				undefined,
-			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', inputScopes);
 			expect(result).toEqual(mockRoles);
 		});
 
@@ -68,7 +60,7 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', []);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [], undefined);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', []);
 			expect(result).toEqual([]);
 		});
 	});
@@ -110,11 +102,10 @@ describe('RoleService.rolesWithScope', () => {
 				'project:update',
 			]);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
-				'project',
-				['project:read', 'project:update'],
-				undefined,
-			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [
+				'project:read',
+				'project:update',
+			]);
 			expect(result).toEqual(mockRoles);
 		});
 	});
@@ -130,24 +121,15 @@ describe('RoleService.rolesWithScope', () => {
 			await roleService.rolesWithScope('project', 'project:delete');
 
 			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledTimes(3);
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
-				1,
-				'credential',
-				['credential:read'],
-				undefined,
-			);
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
-				2,
-				'workflow',
-				['workflow:execute'],
-				undefined,
-			);
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
-				3,
-				'project',
-				['project:delete'],
-				undefined,
-			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(1, 'credential', [
+				'credential:read',
+			]);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(2, 'workflow', [
+				'workflow:execute',
+			]);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(3, 'project', [
+				'project:delete',
+			]);
 		});
 
 		it('should handle mixed scope arrays', async () => {
@@ -161,11 +143,7 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', mixedScopes);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
-				'project',
-				mixedScopes,
-				undefined,
-			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', mixedScopes);
 			expect(result).toEqual(mockRoles);
 		});
 	});

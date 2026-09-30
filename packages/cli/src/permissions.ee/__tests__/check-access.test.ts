@@ -13,7 +13,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@n8n/errors';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 import { userHasScopes } from '../check-access';
 
@@ -187,7 +187,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes);
 			expect(result).toBe(true);
 		});
 
@@ -209,7 +209,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes);
 			expect(result).toBe(true);
 		});
 
@@ -231,7 +231,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes);
 			expect(result).toBe(true);
 		});
 
@@ -273,7 +273,7 @@ describe('userHasScopes', () => {
 
 			await userHasScopes(user, ['credential:read'], false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', ['credential:read'], undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', ['credential:read']);
 			expect(roleServiceMock).not.toHaveBeenCalledWith('workflow', expect.anything());
 		});
 
@@ -292,7 +292,7 @@ describe('userHasScopes', () => {
 
 			await userHasScopes(user, ['workflow:execute'], false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', ['workflow:execute'], undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', ['workflow:execute']);
 			expect(roleServiceMock).not.toHaveBeenCalledWith('credential', expect.anything());
 		});
 
@@ -396,7 +396,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes);
 			expect(result).toBe(true);
 		});
 	});

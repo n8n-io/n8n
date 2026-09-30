@@ -6,7 +6,7 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {
@@ -44,7 +44,7 @@ export class WorkflowFinderService {
 			em?: EntityManager;
 		} = {},
 	) {
-		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
@@ -92,13 +92,12 @@ export class WorkflowFinderService {
 	private async buildSingleWorkflowReadWhere(
 		user: User,
 		scopes: Scope[],
-		em?: EntityManager,
 	): Promise<FindOptionsWhere<SharedWorkflow>> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
 
 		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roleService.rolesWithScope('project', scopes, em),
-			this.roleService.rolesWithScope('workflow', scopes, em),
+			this.roleService.rolesWithScope('project', scopes),
+			this.roleService.rolesWithScope('workflow', scopes),
 		]);
 
 		return {

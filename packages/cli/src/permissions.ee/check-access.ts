@@ -16,7 +16,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@n8n/errors';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:read',
@@ -125,7 +125,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('credential', scopes, entityManager);
+		const validRoles = await roleService.rolesWithScope('credential', scopes);
 
 		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
@@ -150,7 +150,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('workflow', scopes, entityManager);
+		const validRoles = await roleService.rolesWithScope('workflow', scopes);
 
 		return workflows.some(
 			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),
