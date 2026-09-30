@@ -1350,7 +1350,8 @@ type PropertyDisplayOptions = NonNullable<NodeProperty['displayOptions']>;
  * Remove the conditions that the generated file already implies: `@version`
  * is implicit from the file path, and every key the current combination
  * defines is already decided. A property only reaches a combination's file
- * when its show and hide conditions on those keys hold, so a remaining
+ * when its show and hide conditions on those keys hold (see
+ * `getPropertiesForCombination` and `appliesToCombination`), so a remaining
  * `hide: { operation: ['execute'] }` in the insert file is not a condition.
  * What remains is the condition the builder still has to meet at run time.
  */
@@ -1459,6 +1460,33 @@ function tryMergeShowValueVariants(
 }
 
 /**
+ * Whether a nested property can display in the file of a combination.
+ * `getPropertiesForCombination` applies this rule to top-level properties
+ * only, so nested values need it here. Otherwise a value that the
+ * combination can never show would be documented as available, and
+ * `getResidualDisplayOptions` would then drop its condition. Root references
+ * (`/operation`) and bare keys both resolve against the combination.
+ */
+function appliesToCombination(
+	displayOptions: NodeProperty['displayOptions'],
+	combination?: DiscriminatorCombination,
+): boolean {
+	if (!displayOptions || !combination) return true;
+	const valueFor = (key: string): string | undefined =>
+		combination[key.startsWith('/') ? key.slice(1) : key];
+
+	for (const [key, conditions] of Object.entries(displayOptions.show ?? {})) {
+		const value = valueFor(key);
+		if (value !== undefined && !checkConditions(conditions, [value])) return false;
+	}
+	for (const [key, conditions] of Object.entries(displayOptions.hide ?? {})) {
+		const value = valueFor(key);
+		if (value !== undefined && checkConditions(conditions, [value])) return false;
+	}
+	return true;
+}
+
+/**
  * Emit one type member per nested property name. Collection options and
  * fixedCollection values often declare the same name several times with
  * different displayOptions. One key per name keeps the type valid: identical
@@ -1474,6 +1502,7 @@ function emitNestedPropertyLines(
 	for (const prop of properties) {
 		// Skip notice and other display-only types
 		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) continue;
+		if (!appliesToCombination(prop.displayOptions, discriminatorContext)) continue;
 		const type = mapNestedPropertyType(prop, discriminatorContext);
 		if (!type) continue;
 		const variants = variantsByName.get(prop.name) ?? [];

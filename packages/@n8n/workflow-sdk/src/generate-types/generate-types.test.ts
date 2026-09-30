@@ -811,6 +811,28 @@ describe('generate-types', () => {
 				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
 			});
 
+			it('should drop a nested value that the combination can never show', () => {
+				// Freshdesk contact: `email` under additionalFields is shown only for update
+				const prop = collectionWith([
+					{ displayName: 'Address', name: 'address', type: 'string', default: '' },
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { '/operation': ['update'] } },
+					},
+				]);
+
+				const createResult = generateTypes.mapPropertyType(prop, { operation: 'create' });
+				expect(createResult).toContain('address?:');
+				expect(createResult).not.toContain('email?:');
+
+				const updateResult = generateTypes.mapPropertyType(prop, { operation: 'update' });
+				expect(updateResult).toContain('email?:');
+				expect(updateResult).not.toContain('@displayOptions');
+			});
+
 			it('should drop the conditions when one variant is unconditional', () => {
 				const result = generateTypes.mapPropertyType(
 					collectionWith([
