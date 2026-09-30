@@ -19,6 +19,10 @@ export interface SetupContext {
 		canPublish: boolean;
 		activeVersionId: string | null;
 	};
+	sessions: {
+		loaded: boolean;
+		count: number;
+	};
 }
 
 export interface SetupTask<TId extends string = string> {
@@ -66,6 +70,24 @@ function getPublishAgentState(context: SetupContext): SetupTaskState {
 	return context.publication.activeVersionId ? 'complete' : 'todo';
 }
 
+function canTestAgent(context: SetupContext): boolean {
+	return (
+		context.config.model.trim().length > 0 &&
+		context.config.instructions.trim().length > 0 &&
+		context.config.toolCount > 0
+	);
+}
+
+function isTestAgentComplete(context: SetupContext): boolean {
+	return context.sessions.loaded && context.sessions.count > 0;
+}
+
+function getTestAgentState(context: SetupContext): SetupTaskState {
+	if (!context.sessions.loaded) return 'unknown';
+
+	return isTestAgentComplete(context) ? 'complete' : 'todo';
+}
+
 export const setupTaskDefinitions = {
 	'choose-model': {
 		titleKey: 'agents.builder.setupTasks.chooseModel',
@@ -78,10 +100,10 @@ export const setupTaskDefinitions = {
 		getState: (context) => getConfigState(context, context.config.model.trim().length > 0),
 	},
 	'add-tool': {
-		titleKey: 'agents.builder.tools.add',
+		titleKey: 'agents.builder.setupTasks.addTool',
 		required: false,
 		action: {
-			labelKey: 'agents.builder.tools.add',
+			labelKey: 'agents.builder.setupTasks.addTool',
 			target: { kind: 'tool' },
 		},
 		getState: (context) => getConfigState(context, context.config.toolCount > 0),
@@ -96,19 +118,30 @@ export const setupTaskDefinitions = {
 		},
 		getState: (context) => getConfigState(context, context.config.instructions.trim().length > 0),
 	},
+	'test-agent': {
+		titleKey: 'agents.builder.setupTasks.testAgent',
+		required: false,
+		action: {
+			labelKey: 'agents.builder.setupTasks.testAgent',
+			target: { kind: 'agent' },
+			path: 'preview',
+		},
+		getVisible: canTestAgent,
+		getState: getTestAgentState,
+	},
 	'add-channel': {
-		titleKey: 'agents.builder.channel.add',
-		descriptionKey: 'agents.builder.channel.empty.description',
+		titleKey: 'agents.builder.setupTasks.addChannel',
+		descriptionKey: 'agents.builder.setupTasks.addChannel.description',
 		required: true,
 		action: {
-			labelKey: 'agents.builder.channel.add',
+			labelKey: 'agents.builder.setupTasks.addChannel',
 			target: { kind: 'channel' },
 		},
 		getState: getAddChannelState,
 	},
 	'publish-agent': {
 		titleKey: 'agents.builder.setupTasks.publishAgent',
-		getVisible: (context) => context.publication.canPublish,
+		getVisible: (context) => context.publication.canPublish && isTestAgentComplete(context),
 		required: false,
 		action: {
 			labelKey: 'agents.builder.setupTasks.publishAgent',
@@ -124,6 +157,7 @@ export const setupTaskOrder = [
 	'choose-model',
 	'add-tool',
 	'add-instructions',
+	'test-agent',
 	'add-channel',
 	'publish-agent',
 ] as const satisfies readonly SetupTaskId[];

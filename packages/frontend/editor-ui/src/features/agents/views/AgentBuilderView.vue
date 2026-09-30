@@ -636,6 +636,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+const previewSessionsLoaded = ref(false);
 let disposed = false;
 let latestSessionsFetchRequestId = 0;
 /**
@@ -729,7 +730,9 @@ const setupChecklistContext = computed(() => {
 			model: localConfig.value?.model ?? '',
 			instructions: localConfig.value?.instructions ?? '',
 			toolCount:
-				(localConfig.value?.tools?.length ?? 0) + (localConfig.value?.mcpServers?.length ?? 0),
+				(localConfig.value?.tools?.length ?? 0) +
+				(localConfig.value?.mcpServers?.length ?? 0) +
+				(localConfig.value?.subAgents?.agents?.length ?? 0),
 		},
 		channels: {
 			loaded: initialized.value,
@@ -744,6 +747,10 @@ const setupChecklistContext = computed(() => {
 				isPublishReady.value,
 			activeVersionId: agent.value?.activeVersionId ?? null,
 		},
+		sessions: {
+			loaded: initialized.value && previewSessionsLoaded.value,
+			count: sessionsStore.previewThreads.length,
+		},
 	};
 });
 const { tasks: setupTasks } = useAgentSetupTasks(setupChecklistContext);
@@ -755,6 +762,11 @@ const editorColumn = useTemplateRef<{ onSetupTaskAction: (task: SetupTask) => vo
 );
 
 async function onSetupTaskAction(task: SetupTask) {
+	if (task.action.path === 'preview') {
+		await onOpenPreview();
+		return;
+	}
+
 	if (activeMainTab.value !== 'agent') {
 		activeMainTab.value = 'agent';
 		await nextTick();
@@ -2572,6 +2584,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
+		previewSessionsLoaded.value = false;
 		if (!isUnsaved.value) {
 			void sessionsStore
 				.fetchThreads(targetProjectId, targetAgentId)
@@ -2581,6 +2594,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				})
 				.finally(() => {
 					if (!isCurrentInitialization()) return;
+					previewSessionsLoaded.value = true;
 					sessionsStore.startAutoRefresh();
 				});
 		}
