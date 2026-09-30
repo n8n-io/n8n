@@ -4,7 +4,7 @@
  * `calculateNodePositionsDagre` in layout-utils.ts positions every node as if it
  * were visible, and json-serializer.ts appends `nodeGroups` afterwards without
  * reserving space for them. The canvas draws a group collapsed by default: a
- * fixed 400x96 chip that sits GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT above
+ * fixed 400x96 chip that sits GROUP_PADDING_Y_TOP + CANVAS_GROUP_HEADER_HEIGHT above
  * its members. So the chip lands off-row and at the wrong width.
  */
 import type { WorkflowJSON } from '../types/base';
@@ -25,7 +25,9 @@ import { languageModel, tool } from './node-builders/subnode-builders';
 // Reading the SDK's own copy here would let both sides drift from the canvas together.
 const GROUP_PADDING_X = 56;
 const GROUP_PADDING_Y_TOP = 40;
-const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
+// Keep the canvas expectation independent from the SDK constant so this test can
+// detect drift between the two packages.
+const CANVAS_GROUP_HEADER_HEIGHT = 96;
 const GROUP_HEADER_WIDTH_COLLAPSED = 400;
 
 const [NODE_W, NODE_H] = DEFAULT_NODE_SIZE;
@@ -83,9 +85,9 @@ function visibleBoxes(json: WorkflowJSON): Map<string, Box> {
 		const minY = Math.min(...members.map((m) => m.position[1]));
 		boxes.set(g.name, {
 			x: snap(minX - GROUP_PADDING_X),
-			y: snap(minY - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+			y: snap(minY - GROUP_PADDING_Y_TOP - CANVAS_GROUP_HEADER_HEIGHT),
 			width: GROUP_HEADER_WIDTH_COLLAPSED,
-			height: GROUP_HEADER_HEIGHT,
+			height: CANVAS_GROUP_HEADER_HEIGHT,
 		});
 	}
 
@@ -494,7 +496,7 @@ describe('collapsed node group layout after tidyUp', () => {
 		// assertion below is measuring the wrong frame.
 		expect(SDK_GROUP_PADDING_X).toBe(GROUP_PADDING_X);
 		expect(SDK_GROUP_PADDING_Y_TOP).toBe(GROUP_PADDING_Y_TOP);
-		expect(SDK_GROUP_HEADER_HEIGHT).toBe(GROUP_HEADER_HEIGHT);
+		expect(SDK_GROUP_HEADER_HEIGHT).toBe(CANVAS_GROUP_HEADER_HEIGHT);
 		expect(SDK_GROUP_HEADER_WIDTH_COLLAPSED).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 
