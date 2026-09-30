@@ -51,6 +51,7 @@ const emit = defineEmits<{
 	'header-action': [item: string];
 	'open-preview': [];
 	'close-preview': [];
+	'publish-ready': [ready: boolean];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -249,6 +250,7 @@ function onMenuSelect(id: string) {
 				:config-validation-status="configValidationStatus"
 				:config-validation-issues="props.configValidationIssues ?? []"
 				:before-publish="beforePublish"
+				@publish-ready="emit('publish-ready', $event)"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"

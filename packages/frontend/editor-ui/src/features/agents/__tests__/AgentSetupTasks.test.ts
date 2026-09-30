@@ -70,6 +70,56 @@ const tasks: Array<SetupTask<SetupTaskId>> = [
 ];
 
 describe('AgentSetupTasks', () => {
+	it.each([undefined, null])(
+		'keeps the multi-colour stroke when personalisation is %s',
+		(personalisation) => {
+			const wrapper = mount(AgentSetupTasks, { props: { tasks, personalisation } });
+			const container = wrapper.get('[data-testid="agent-setup-tasks"]');
+
+			expect(container.classes()).not.toContain('hasPersonalisation');
+			expect(container.attributes('style') ?? '').not.toContain('--agent-personalisation-gradient');
+		},
+	);
+
+	it('uses the personalisation gradient and updates it when the prop changes', async () => {
+		const wrapper = mount(AgentSetupTasks, {
+			props: {
+				tasks,
+				personalisation: {
+					icon: 'bot',
+					gradient: { from: '#112233', to: '#445566', angle: 90, fromStop: 10, toStop: 85 },
+				},
+			},
+		});
+		const container = wrapper.get<HTMLDivElement>('[data-testid="agent-setup-tasks"]');
+		const style = container.element.style;
+
+		expect(container.classes()).toContain('hasPersonalisation');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#112233');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-to')).toBe('#445566');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-angle')).toBe('90deg');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-from-stop')).toBe('10%');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-to-stop')).toBe('85%');
+
+		await wrapper.setProps({
+			personalisation: {
+				icon: 'bot',
+				gradient: { from: '#778899', to: '#AABBCC', angle: 135, fromStop: 0, toStop: 100 },
+			},
+		});
+
+		expect(style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#778899');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-to')).toBe('#AABBCC');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-angle')).toBe('135deg');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-from-stop')).toBe('0%');
+		expect(style.getPropertyValue('--agent-personalisation-gradient-to-stop')).toBe('100%');
+
+		await wrapper.setProps({ personalisation: null });
+
+		expect(container.classes()).not.toContain('hasPersonalisation');
+		expect(container.attributes('style') ?? '').not.toContain('--agent-personalisation-gradient');
+	});
+
 	it('only shows visible tasks', () => {
 		const wrapper = mount(AgentSetupTasks, { props: { tasks } });
 
