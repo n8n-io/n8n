@@ -1,7 +1,5 @@
 import type {
-	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
@@ -157,17 +155,6 @@ export declare namespace DataTableRequest {
 			dryRun?: string | boolean;
 		}
 	>;
-
-	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
-
-	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
-
-	type UpdateColumn = AuthenticatedRequest<
-		{ dataTableId: string; columnId: string },
-		{},
-		UpdateDataTableColumnDto,
-		{}
-	>;
 }
 
 // ----------------------------------
@@ -205,7 +192,6 @@ export declare namespace SsoSamlRequest {
 // ----------------------------------
 
 export declare namespace OtelSettingsRequest {
-	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }

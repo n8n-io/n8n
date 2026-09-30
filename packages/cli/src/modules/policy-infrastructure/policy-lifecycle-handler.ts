@@ -33,9 +33,9 @@ export class PolicyLifecycleHandler {
 		// lookup fails the run. The other pre-execution gates let this throw too.
 		const project = await this.ownershipService.getWorkflowProjectCached(ctx.workflow.id);
 
-		await this.policyEnforcementService.enforceWorkflowStart({
-			workflow: ctx.workflow,
-			projectId: project.id,
-		});
+		await this.policyEnforcementService.enforceWorkflowStart(
+			{ workflow: ctx.workflow, projectId: project.id },
+			{ kind: 'system', reason: 'execution', executionId: ctx.executionId },
+		);
 	}
 }

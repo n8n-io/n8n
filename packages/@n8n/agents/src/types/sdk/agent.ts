@@ -7,7 +7,7 @@ import type {
 } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
-import type { AgentMessage, ContentMetadata } from './message';
+import type { AgentDbMessage, AgentMessage, ContentMetadata } from './message';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
@@ -90,6 +90,8 @@ export interface AgentResult {
 
 export type StreamChunk = ContentMetadata &
 	(
+		| { type: 'input-boundary'; acknowledge: () => void }
+		| { type: 'input'; message: AgentDbMessage }
 		| { type: 'start-step' }
 		| { type: 'finish-step' }
 		| { type: 'text-start'; id: string }
@@ -207,7 +209,17 @@ export interface SideCallUsageReport {
 	reportId: string;
 }
 
+export interface AgentInputBoundary {
+	/** Current turn messages, ready for durable storage. */
+	messages: AgentDbMessage[];
+	lastCreatedAt: number;
+	completing: boolean;
+	canContinue: boolean;
+}
+
 export interface ExecutionOptions {
+	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>;
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;

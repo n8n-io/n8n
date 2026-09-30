@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { N8nHoverCard, N8nIcon, N8nIconButton, N8nLoading } from '@n8n/design-system';
+import {
+	N8nDropdownMenu,
+	N8nHoverCard,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+} from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -15,9 +23,10 @@ import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { HOVER_DELAY } from '@/app/constants/durations';
+import { DEBOUNCE_TIME, HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
+import { useProjectResourceSearch } from '../composables/useProjectResourceSearch';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
@@ -29,17 +38,22 @@ const props = withDefaults(
 		isExpanded?: boolean;
 		isExpandDisabled?: boolean;
 		previewToggleLabel?: string;
+		/** The thread's project. The new tab picker lists its resources. */
+		projectId?: string;
 	}>(),
 	{
 		isExpanded: false,
 		isExpandDisabled: false,
 		previewToggleLabel: undefined,
+		projectId: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	togglePreview: [];
 	toggleExpanded: [];
+	closeTab: [tabId: string];
+	openTab: [tab: ArtifactTab];
 }>();
 
 const i18n = useI18n();
@@ -67,8 +81,9 @@ function scrollTabIntoView(tabId: string) {
 	const tabList = getTabListElement();
 	if (!tabList) return;
 
-	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-id]')).find(
-		(tab) => tab.dataset.tabId === tabId,
+	// Measure the tab item, not the trigger, which is positioned inside it.
+	const activeTab = Array.from(tabList.querySelectorAll<HTMLElement>('[data-tab-item-id]')).find(
+		(tab) => tab.dataset.tabItemId === tabId,
 	);
 	if (!activeTab) return;
 
@@ -123,7 +138,11 @@ function handleOpenInEditor(tab: ArtifactTab) {
 
 type HoverTarget = { tabId: string; reference: HTMLElement };
 
-const { getSummary, refresh: refreshSummaries } = useArtifactTabSummaries(() => props.tabs);
+const {
+	getSummary,
+	displayName: tabName,
+	refresh: refreshSummaries,
+} = useArtifactTabSummaries(() => props.tabs);
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -229,6 +248,34 @@ function handleHoverCardOpenChange(open: boolean) {
 	else if (!isPointerOnTab) scheduleHideTabHoverCard();
 }
 
+// --- New tab picker ---
+
+const isPickerOpen = ref(false);
+const resourceSearch = useProjectResourceSearch({
+	projectId: () => props.projectId,
+	excludedTabs: () => props.tabs,
+});
+const pickerItems = computed(
+	(): Array<DropdownMenuItemProps<string>> =>
+		resourceSearch.results.value.map((resource) => ({
+			id: `${resource.type}:${resource.id}`,
+			label: resource.name,
+			icon: { type: 'icon', value: resource.icon },
+		})),
+);
+
+function handlePickerOpenChange(open: boolean) {
+	isPickerOpen.value = open;
+	if (open) void resourceSearch.search();
+}
+
+function handlePickerSelect(itemId: string) {
+	const resource = resourceSearch.results.value.find(
+		(result) => `${result.type}:${result.id}` === itemId,
+	);
+	if (resource) emit('openTab', resource);
+}
+
 async function handleCopyLink(tab: ArtifactTab) {
 	const href = tabHref(tab);
 	if (!href) return;
@@ -258,25 +305,49 @@ async function handleCopyLink(tab: ArtifactTab) {
 		>
 			<ContextMenuRoot v-for="tab in tabs" :key="tab.id">
 				<ContextMenuTrigger as-child>
-					<TabsTrigger
-						:value="tab.id"
-						:data-tab-id="tab.id"
-						:class="$style.tab"
+					<!-- The close button cannot sit inside the trigger button, so both share a wrapper. -->
+					<div
+						:class="[$style.tab, { [$style.tabActive]: tab.id === activeTabId }]"
+						:data-tab-item-id="tab.id"
 						@mouseenter="showTabHoverCard(tab, $event)"
 						@mouseleave="handleTabMouseLeave"
 						@contextmenu="hideTabHoverCard"
+						@mousedown.middle.prevent
+						@auxclick.middle.prevent="emit('closeTab', tab.id)"
 					>
-						<N8nIcon
-							v-if="tab.building"
-							icon="spinner"
-							size="large"
-							spin
-							:class="$style.icon"
-							data-test-id="instance-ai-tab-building-spinner"
-						/>
-						<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
-						<span :class="$style.label">{{ tab.name }}</span>
-					</TabsTrigger>
+						<TabsTrigger
+							:value="tab.id"
+							:data-tab-id="tab.id"
+							:class="$style.tabTrigger"
+							@keydown.delete.prevent="emit('closeTab', tab.id)"
+						>
+							<N8nIcon
+								v-if="tab.building"
+								icon="spinner"
+								size="large"
+								spin
+								:class="$style.icon"
+								data-test-id="instance-ai-tab-building-spinner"
+							/>
+							<N8nIcon v-else :icon="tab.icon" size="large" :class="$style.icon" />
+							<span :class="$style.label">{{ tabName(tab) }}</span>
+						</TabsTrigger>
+						<span :class="$style.closeSlot">
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.closeButton"
+								:aria-label="
+									i18n.baseText('instanceAi.previewTabBar.closeTab', {
+										interpolate: { name: tabName(tab) },
+									})
+								"
+								data-test-id="instance-ai-tab-close"
+								@click.stop="emit('closeTab', tab.id)"
+							/>
+						</span>
+					</div>
 				</ContextMenuTrigger>
 				<ContextMenuPortal>
 					<ContextMenuContent :class="$style.contextMenu">
@@ -291,6 +362,34 @@ async function handleCopyLink(tab: ArtifactTab) {
 					</ContextMenuContent>
 				</ContextMenuPortal>
 			</ContextMenuRoot>
+			<N8nDropdownMenu
+				v-if="projectId"
+				:model-value="isPickerOpen"
+				:items="pickerItems"
+				:loading="resourceSearch.isLoading.value && pickerItems.length === 0"
+				:search-placeholder="i18n.baseText('instanceAi.previewTabBar.searchResources')"
+				:search-debounce="getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH)"
+				:empty-text="i18n.baseText('instanceAi.previewTabBar.noResources')"
+				:extra-popper-class="$style.picker"
+				max-height="320px"
+				placement="bottom-start"
+				content-test-id="instance-ai-tab-picker"
+				searchable
+				@update:model-value="handlePickerOpenChange"
+				@search="resourceSearch.search"
+				@select="handlePickerSelect"
+			>
+				<template #trigger>
+					<N8nIconButton
+						icon="plus"
+						variant="ghost"
+						size="small"
+						:class="[$style.newTabButton, { [$style.newTabButtonOpen]: isPickerOpen }]"
+						:aria-label="i18n.baseText('instanceAi.previewTabBar.newTab')"
+						data-test-id="instance-ai-new-tab-button"
+					/>
+				</template>
+			</N8nDropdownMenu>
 		</TabsList>
 		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
 		<N8nHoverCard
@@ -312,7 +411,7 @@ async function handleCopyLink(tab: ArtifactTab) {
 					data-test-id="instance-ai-tab-hover-card"
 				>
 					<div :class="$style.hoverCardText">
-						<span :class="$style.hoverCardName">{{ hoveredTab.tab.name }}</span>
+						<span :class="$style.hoverCardName">{{ tabName(hoveredTab.tab) }}</span>
 						<span v-if="hoveredSummary" :class="$style.hoverCardMeta">
 							{{ i18n.baseText('instanceAi.previewTabBar.edited') }}
 							<TimeAgo :date="hoveredSummary.updatedAt" />
@@ -422,20 +521,48 @@ async function handleCopyLink(tab: ArtifactTab) {
 }
 
 .tab {
-	// The dark surface is neutral-900 already, so a fixed neutral would not show on hover.
-	--tab--background--hover: var(--background--hover);
-	--tab--background--active: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	--tab--background: transparent;
 
+	position: relative;
 	flex: 0 1 auto;
 	min-width: 64px;
 	max-width: 270px;
 	height: var(--height--md);
 	display: flex;
+	border-radius: var(--radius--2xs);
+	background-color: var(--tab--background);
+
+	// The dark surface is neutral-900 already, so a fixed neutral would not show on hover.
+	&:hover {
+		--tab--background: var(--background--hover);
+	}
+
+	&.tabActive {
+		--tab--background: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	}
+
+	// Show the close button on hover and while it has keyboard focus.
+	&:hover .closeSlot,
+	.closeSlot:focus-within {
+		opacity: 1;
+	}
+
+	// Only the button takes the pointer. A click on the rest of the cover reaches the trigger below.
+	&:hover .closeButton,
+	.closeSlot:focus-within .closeButton {
+		pointer-events: auto;
+	}
+}
+
+.tabTrigger {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: 0 var(--spacing--xs);
 	border: none;
-	border-radius: var(--radius--2xs);
+	border-radius: inherit;
 	background-color: transparent;
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--sm);
@@ -443,13 +570,8 @@ async function handleCopyLink(tab: ArtifactTab) {
 	line-height: var(--line-height--lg);
 	cursor: pointer;
 
-	&:hover {
-		background-color: var(--tab--background--hover);
-	}
-
 	&[data-state='active'] {
 		color: var(--text-color);
-		background-color: var(--tab--background--active);
 	}
 
 	.label {
@@ -468,6 +590,36 @@ async function handleCopyLink(tab: ArtifactTab) {
 		@supports not (animation-timeline: scroll()) {
 			text-overflow: ellipsis;
 		}
+	}
+}
+
+// Covers the end of the label with the tab background, so the tab keeps its width.
+// The hover background is translucent, so it is layered on the surface to hide the label.
+.closeSlot {
+	--close-slot--background:
+		linear-gradient(var(--tab--background), var(--tab--background)), var(--background--surface);
+
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	padding-right: var(--spacing--4xs);
+	border-radius: 0 var(--radius--2xs) var(--radius--2xs) 0;
+	background: var(--close-slot--background);
+	opacity: 0;
+	pointer-events: none;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 100%;
+		bottom: 0;
+		width: var(--spacing--sm);
+		background: var(--close-slot--background);
+		mask-image: linear-gradient(to left, #000, #0000);
 	}
 }
 
@@ -552,6 +704,19 @@ async function handleCopyLink(tab: ArtifactTab) {
 .statusTagPublished {
 	background-color: light-dark(var(--color--green-100), var(--color--green-800));
 	color: light-dark(var(--color--green-800), var(--color--neutral-white));
+}
+
+.newTabButton {
+	flex-shrink: 0;
+}
+
+// Keep the hover background while the picker is open, as in the design.
+.newTabButtonOpen {
+	background-color: var(--background--hover);
+}
+
+.picker {
+	width: 200px;
 }
 
 .contextMenu {

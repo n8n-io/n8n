@@ -5,6 +5,8 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
+	type AgentChatListItem,
+	type AgentChatListResponse,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
@@ -24,6 +26,7 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -81,6 +84,7 @@ export class AgentsService {
 		private readonly eventService: EventService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/**
@@ -146,7 +150,10 @@ export class AgentsService {
 
 		let saved: Agent;
 		try {
-			saved = await this.agentRepository.save(agent);
+			// `insertNew`, not `save`: `save` would update the row a reused
+			// client-minted id names instead of letting the primary key reject it.
+			await this.agentRepository.insertNew(agent);
+			saved = agent;
 		} catch (error) {
 			return {
 				agent: await this.adoptExistingAgent(id, projectId, adoptOnCollision, error),
@@ -310,8 +317,38 @@ export class AgentsService {
 		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
 	}
 
-	async findByUserPaginated(userId: string, options: ListAgentsQueryDto): Promise<AgentListResult> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+	/**
+	 * Agents the user can reach over the n8n Chat channel, meaning their
+	 * **published** config carries it.
+	 *
+	 * Scoped to `agent:execute`, the scope the production chat route itself
+	 * requires, so a `project:chatUser` sees exactly the agents they may talk
+	 * to. That is only safe because the response is {@link AgentChatListItem}:
+	 * the published instructions, tools and skills stay on the server. Widen
+	 * the shape and this scope has to narrow again.
+	 *
+	 * Carries the project relation, because the chat page labels each agent
+	 * with its project.
+	 */
+	async findChatReachableByUserPaginated(
+		user: User,
+		options: ListAgentsQueryDto,
+	): Promise<AgentChatListResponse> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
+			projectIds,
+			options,
+			{ withProject: true },
+		);
+		return { count, data: data.map(toChatListItem) };
+	}
+
+	/** The agents overview list: every project the user belongs to, no scope check. */
+	async findByUserMembershipPaginated(
+		user: User,
+		options: ListAgentsQueryDto,
+	): Promise<AgentListResult> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
@@ -498,4 +535,18 @@ export class AgentsService {
 			});
 		}
 	}
+}
+
+/**
+ * Keeps the chat list to what the page renders. The icon comes from the
+ * published snapshot, the same config the run would use.
+ */
+function toChatListItem(agent: Agent): AgentChatListItem {
+	const personalisation = agent.activeVersion?.schema?.personalisation;
+	return {
+		id: agent.id,
+		name: agent.name,
+		...(personalisation ? { personalisation } : {}),
+		project: { id: agent.projectId, name: agent.project.name },
+	};
 }

@@ -1,0 +1,65 @@
+operationId: createDataTableColumn
+tags:
+  - DataTable
+summary: Add a column to a data table
+description: Add a new column to an existing data table.
+x-required-scope: dataTableColumn:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 63
+            pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+            description: Column name. Must start with a letter; only letters, digits, and underscores after that; maximum 63 characters.
+          type:
+            type: string
+            enum:
+              - string
+              - number
+              - boolean
+              - date
+            description: Column data type
+          index:
+            type: integer
+            minimum: 0
+            description: Column position (optional, appended to end if omitted)
+        required:
+          - name
+          - type
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/dataTableColumnPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

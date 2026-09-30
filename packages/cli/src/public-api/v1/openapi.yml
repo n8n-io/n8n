@@ -101,10 +101,6 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
-  /data-tables/{dataTableId}/columns:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
-  /data-tables/{dataTableId}/columns/{columnId}:
-    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml'
   /n8n-packages/export:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:
