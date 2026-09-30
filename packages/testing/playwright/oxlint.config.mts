@@ -1,0 +1,85 @@
+import { backendConfig } from '@n8n/oxlint-config/backend';
+import { defineConfig } from 'oxlint';
+
+export default defineConfig({
+	extends: [backendConfig],
+	options: { typeAware: true },
+	jsPlugins: ['eslint-plugin-playwright'],
+	ignorePatterns: [
+		'playwright-report/**/*',
+		'ms-playwright-cache/**/*',
+		'.playwright-browsers/**/*',
+		'coverage/**/*',
+		'scripts/**/*',
+		'janitor.config.mjs',
+	],
+	rules: {
+		'playwright/missing-playwright-await': 'error',
+		'playwright/no-conditional-in-test': 'error',
+		'playwright/no-focused-test': 'error',
+		'playwright/no-networkidle': 'error',
+		'playwright/no-standalone-expect': 'error',
+		'playwright/no-unsafe-references': 'error',
+		'playwright/no-wait-for-navigation': 'error',
+		'playwright/prefer-web-first-assertions': 'error',
+		'playwright/valid-describe-callback': 'error',
+		'playwright/valid-expect': 'error',
+		'playwright/valid-expect-in-promise': 'error',
+		'playwright/valid-test-tags': 'error',
+		'playwright/valid-title': 'error',
+		'import-x-alias/no-extraneous-dependencies': [
+			'error',
+			{
+				devDependencies: ['**/tests/**', '**/e2e/**', '**/playwright/**'],
+				optionalDependencies: false,
+			},
+		],
+	},
+	overrides: [
+		{
+			files: [
+				'Types.ts',
+				'composables/**/*.ts',
+				'helpers/**/*.ts',
+				'pages/**/*.ts',
+				'tests/e2e/regression/[A-Z]*.spec.ts',
+			],
+			rules: { 'unicorn/filename-case': 'off' },
+		},
+		{
+			files: [
+				'fixtures/langsmith.ts',
+				'fixtures/quarantine.ts',
+				'tests/cli-workflows/workflow-tests.spec.ts',
+				'tests/e2e/chat-hub/fixtures.ts',
+				'tests/e2e/instance-ai/fixtures.ts',
+				'tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts',
+				'tests/e2e/workflows/editor/execution/fixtures.ts',
+				'tests/framework/consumers.ts',
+			],
+			rules: { 'no-empty-pattern': 'off' },
+		},
+		{
+			files: [
+				'composables/BuilderWizardComposer.ts',
+				'helpers/ClipboardHelper.ts',
+				'pages/PublicFormPage.ts',
+				'pages/SettingsUsersPage.ts',
+				'pages/SourceControlPushModal.ts',
+				'reporters/ci-metrics.test.ts',
+				'services/tag-api-helper.ts',
+				'services/variables-api-helper.ts',
+				'tests/cli-workflows/setup-workflow-tests.ts',
+				'tests/e2e/projects/projects.spec.ts',
+				'tests/e2e/workflows/editor/expressions/quickjs-engine.spec.ts',
+				'tests/e2e/workflows/executions/list.spec.ts',
+				'tests/e2e/workflows/templates/templates.spec.ts',
+				'tests/evals/_smoke/langsmith-fixture.spec.ts',
+				'tests/evals/instance-ai/weather-alert.spec.ts',
+				'tests/infrastructure/benchmarks/ui/executions-list-customer-scale.spec.ts',
+				'utils/benchmark/kafka-driver.ts',
+			],
+			rules: { 'typescript/promise-function-async': 'off' },
+		},
+	],
+});

@@ -7760,6 +7760,12 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
       '@types/markdown-it':
         specifier: 'catalog:'
         version: 13.0.9
@@ -7769,6 +7775,12 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -7809,6 +7821,18 @@ importers:
         specifier: catalog:undici-v7
         version: 7.29.1
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -7840,12 +7864,24 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -7900,6 +7936,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
@@ -7987,6 +8026,12 @@ importers:
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -8009,12 +8054,24 @@ importers:
         specifier: 'catalog:'
         version: 27.0.2
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../@n8n/vitest-config
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
