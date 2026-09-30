@@ -876,15 +876,25 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.nextCursor).toBeNull();
-
-		const row = response.body.data[0];
-		expect(row).toHaveProperty('id');
-		expect(row).toHaveProperty('name');
-		expect(row).toHaveProperty('age');
-		expect(row).toHaveProperty('createdAt');
-		expect(row).toHaveProperty('updatedAt');
+		expect(response.body).toStrictEqual({
+			data: [
+				{
+					id: expect.any(Number),
+					name: 'Alice',
+					age: 30,
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: expect.any(Number),
+					name: 'Bob',
+					age: 25,
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+			],
+			nextCursor: null,
+		});
 	});
 
 	test('should sort rows by column ascending', async () => {
@@ -1167,13 +1177,22 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body).toHaveLength(2);
-		expect(response.body[0]).toHaveProperty('id');
-		expect(response.body[0]).toHaveProperty('name', 'Alice');
-		expect(response.body[0]).toHaveProperty('age', 30);
-		expect(response.body[1]).toHaveProperty('name', 'Bob');
-		expect(response.body[1]).toHaveProperty('age', 25);
+		expect(response.body).toStrictEqual([
+			{
+				id: expect.any(Number),
+				name: 'Alice',
+				age: 30,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(Number),
+				name: 'Bob',
+				age: 25,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 
 	test('should use default returnType when not provided', async () => {
@@ -1359,10 +1378,15 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body).toHaveLength(1);
-		expect(response.body[0]).toHaveProperty('email', 'existing@example.com');
-		expect(response.body[0]).toHaveProperty('status', 'updated');
+		expect(response.body).toStrictEqual([
+			{
+				id: expect.any(Number),
+				email: 'existing@example.com',
+				status: 'updated',
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 
 	test('should preview upsert with dryRun true', async () => {

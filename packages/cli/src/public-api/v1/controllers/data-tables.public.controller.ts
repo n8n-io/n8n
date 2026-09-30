@@ -38,13 +38,7 @@ import {
 import type { Response } from 'express';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type {
-	DataTableRow,
-	DataTableRowReturn,
-	DataTableRowReturnWithState,
-	DataTableInsertRowsResult,
-	DataTableInsertRowsReturnType,
-} from 'n8n-workflow';
+import type { DataTableRow, DataTableRowReturn, DataTableRowReturnWithState } from 'n8n-workflow';
 
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
@@ -152,22 +146,6 @@ const isRowWithId = (row: object): row is Pick<DataTableRowReturn, 'id'> => !('c
 const isRowWithState = (
 	row: DataTableRowReturn | DataTableRowReturnWithState,
 ): row is DataTableRowReturnWithState => Object.hasOwn(row, 'dryRunState');
-
-const toInsertDataTableRowsResponsePublic = (
-	result: DataTableInsertRowsResult<DataTableInsertRowsReturnType>,
-) =>
-	Array.isArray(result)
-		? result.map((row) => (isRowWithId(row) ? row : toDataTableRowPublic(row)))
-		: result;
-
-const toUpsertDataTableRowResponsePublic = (
-	result: boolean | DataTableRowReturn[] | DataTableRowReturnWithState[],
-) =>
-	typeof result === 'boolean'
-		? result
-		: result.map((row) =>
-				isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
-			);
 
 @PublicApiController('/data-tables')
 export class DataTablesPublicController {
@@ -489,7 +467,9 @@ export class DataTablesPublicController {
 				body.returnType,
 			);
 
-			return toInsertDataTableRowsResponsePublic(result);
+			return Array.isArray(result)
+				? result.map((row) => (isRowWithId(row) ? row : toDataTableRowPublic(row)))
+				: result;
 		} catch (error) {
 			return handleError(error);
 		}
@@ -525,7 +505,11 @@ export class DataTablesPublicController {
 				dryRun,
 			);
 
-			return toUpsertDataTableRowResponsePublic(result);
+			return typeof result === 'boolean'
+				? result
+				: result.map((row) =>
+						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
+					);
 		} catch (error) {
 			return handleError(error);
 		}
