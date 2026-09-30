@@ -5,7 +5,7 @@ const COLUMN = 'status';
 const VALUES_BEFORE = ['pending', 'delivered', 'skipped_after_max_retries'];
 const VALUES_AFTER = [...VALUES_BEFORE, 'sending'];
 
-export class AllowSendingInstanceReportStatus1790695464341 implements ReversibleMigration {
+export class AllowSendingInstanceReportStatus1790774580617 implements ReversibleMigration {
 	async up({ schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropEnumCheck(TABLE, COLUMN, { recreatesOnSqlite: true });
 		await schemaBuilder.addEnumCheck(TABLE, COLUMN, VALUES_AFTER, { recreatesOnSqlite: true });

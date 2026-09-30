@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AllowSendingInstanceReportStatus1790695464341';
+const MIGRATION_NAME = 'AllowSendingInstanceReportStatus1790774580617';
 const TABLE = 'instance_monitoring_report';
 
 describe('AllowSendingInstanceReportStatus Migration', () => {
