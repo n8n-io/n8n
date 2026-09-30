@@ -1,6 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import type { GatewayCreditsPromotion } from '@n8n/api-types';
-import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -14,10 +14,11 @@ const isActive = (promotion: GatewayCreditsPromotion | null | undefined, now: nu
 /** Returns the Gateway credits promotion text of a community node, or undefined when it does not apply. */
 export function useGatewayCreditsPromotion(target: MaybeRefOrGetter<PromotionTarget | undefined>) {
 	const nodeTypesStore = useNodeTypesStore();
-	const { isEnabled, isCredentialTypeSupported, fetchConfig } = useAiGateway();
-	const { isNodeSupported } = useAiGatewayStore();
+	const settingsStore = useSettingsStore();
+	const aiGatewayStore = useAiGatewayStore();
+	const isEnabled = computed(() => settingsStore.isAiGatewayEnabled);
 
-	void fetchConfig();
+	if (isEnabled.value) void aiGatewayStore.fetchConfig();
 
 	const initialTarget = toValue(target);
 	// The credential modal can open before a workflow loads the community node catalog.
@@ -34,7 +35,7 @@ export function useGatewayCreditsPromotion(target: MaybeRefOrGetter<PromotionTar
 		const value = toValue(target);
 		if (!value) return undefined;
 		if ('nodeType' in value) return nodeTypesStore.communityNodeType(value.nodeType);
-		if (!isCredentialTypeSupported(value.credentialType)) return undefined;
+		if (!aiGatewayStore.isCredentialTypeSupported(value.credentialType)) return undefined;
 		// Strapi serves node descriptions without `credentials`, so read them from the installed node type.
 		return [...nodeTypesStore.vettedCommunityNodeTypes.values()].find(
 			({ name, gatewayCreditsPromotion }) =>
@@ -51,7 +52,7 @@ export function useGatewayCreditsPromotion(target: MaybeRefOrGetter<PromotionTar
 			!isEnabled.value ||
 			!node ||
 			!isActive(node.gatewayCreditsPromotion, Date.now()) ||
-			!isNodeSupported(node.name)
+			!aiGatewayStore.isNodeSupported(node.name)
 		) {
 			return undefined;
 		}

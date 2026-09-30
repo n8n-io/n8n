@@ -1,30 +1,27 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { ref } from 'vue';
-import type { CommunityNodeType, GatewayCreditsPromotion } from '@n8n/api-types';
+import type { CommunityNodeType, FrontendSettings, GatewayCreditsPromotion } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGatewayCreditsPromotion } from './useGatewayCreditsPromotion';
 
 const gateway = {
-	isEnabled: ref(true),
 	supportedNodes: [] as string[],
 	supportedCredentialTypes: ['typeSafeAiApi'],
 };
 
-vi.mock('@/app/composables/useAiGateway', () => ({
-	useAiGateway: () => ({
-		isEnabled: gateway.isEnabled,
-		fetchConfig: vi.fn().mockResolvedValue(undefined),
-		isCredentialTypeSupported: (type: string) => gateway.supportedCredentialTypes.includes(type),
-	}),
-}));
-
 vi.mock('@/app/stores/aiGateway.store', () => ({
 	useAiGatewayStore: () => ({
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		isCredentialTypeSupported: (type: string) => gateway.supportedCredentialTypes.includes(type),
 		isNodeSupported: (name: string) => gateway.supportedNodes.includes(name.replace(/Tool$/, '')),
 	}),
 }));
+
+const setGatewayEnabled = (enabled: boolean) => {
+	useSettingsStore().settings = { aiGateway: { enabled } } as FrontendSettings;
+};
 
 const NODE_TYPE = '@typesafe-ai/n8n-nodes-typesafe-ai.typeSafeAi';
 const TEXT = 'Free until October 10, 2026.';
@@ -53,7 +50,7 @@ const setup = (promotion: GatewayCreditsPromotion) => {
 describe('useGatewayCreditsPromotion', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
-		gateway.isEnabled.value = true;
+		setGatewayEnabled(true);
 		gateway.supportedNodes = [NODE_TYPE];
 		gateway.supportedCredentialTypes = ['typeSafeAiApi'];
 		vi.useFakeTimers({ now: new Date('2026-06-01T00:00:00Z') });
@@ -78,7 +75,7 @@ describe('useGatewayCreditsPromotion', () => {
 
 	it('returns nothing when Gateway credits are disabled', () => {
 		setup({ text: TEXT });
-		gateway.isEnabled.value = false;
+		setGatewayEnabled(false);
 
 		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBeUndefined();
 	});
