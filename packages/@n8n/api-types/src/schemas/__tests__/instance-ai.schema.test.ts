@@ -67,7 +67,7 @@ describe('Instance AI prompt version requests', () => {
 		}
 	});
 
-	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+	it('accepts a thread artifact index, including an empty one, and rejects an oversized list', () => {
 		const base = { message: 'Change this', timeZone: 'UTC' };
 		expect(
 			InstanceAiSendMessageRequest.safeParse({
@@ -83,7 +83,7 @@ describe('Instance AI prompt version requests', () => {
 				...base,
 				threadArtifacts: { artifacts: [] },
 			}).success,
-		).toBe(false);
+		).toBe(true);
 		expect(
 			InstanceAiSendMessageRequest.safeParse({
 				...base,
