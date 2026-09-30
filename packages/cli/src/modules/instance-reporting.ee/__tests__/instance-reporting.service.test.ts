@@ -20,10 +20,7 @@ import type { InstanceMonitoringReport } from '../database/entities/instance-mon
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
-import {
-	InstanceReportAlreadyCreatedError,
-	InstanceReportingService,
-} from '../instance-reporting.service';
+import { InstanceReportingService } from '../instance-reporting.service';
 
 vi.mock('@/constants', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/constants')>()),
@@ -508,11 +505,11 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
 		});
 
-		test('throws without sending when another process already created the report for today', async () => {
+		test('sends nothing when another process already created the report for today', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			reportRepository.createPending.mockResolvedValue(null);
 
-			await expect(service.sendReport()).rejects.toThrow(InstanceReportAlreadyCreatedError);
+			await expect(service.sendReport()).resolves.toBeUndefined();
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();

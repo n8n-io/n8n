@@ -49,12 +49,6 @@ class InstanceReportRejectedError extends OperationalError {
 	}
 }
 
-export class InstanceReportAlreadyCreatedError extends OperationalError {
-	constructor() {
-		super('Another process already created the instance report for today');
-	}
-}
-
 type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
 
 export interface DueReportWork {
@@ -165,8 +159,7 @@ export class InstanceReportingService {
 	 *
 	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
 	 *
-	 * @throws when delivery fails and a retry may succeed, or another process created
-	 * today's report, so the scheduler retries with backoff.
+	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
 	 */
 	async sendReport(): Promise<void> {
 		const licenseCert = this.config.instanceReportingAuthToken
@@ -196,10 +189,8 @@ export class InstanceReportingService {
 			const now = new Date();
 			const days = await this.missedDays(now);
 			if (days.length > 0) {
+				// `null` when a concurrent pass created the row. That pass sends it.
 				report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
-				if (!report) {
-					throw new InstanceReportAlreadyCreatedError();
-				}
 			}
 		}
 		return report;

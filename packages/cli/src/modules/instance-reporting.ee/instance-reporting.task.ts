@@ -2,10 +2,7 @@ import { Time } from '@n8n/constants';
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
-import {
-	InstanceReportAlreadyCreatedError,
-	InstanceReportingService,
-} from './instance-reporting.service';
+import { InstanceReportingService } from './instance-reporting.service';
 
 @SystemTask()
 export class InstanceReportingTask implements SystemTask {
@@ -37,18 +34,7 @@ export class InstanceReportingTask implements SystemTask {
 			);
 		}
 		if (reportDue) {
-			await this.sendReport();
-		}
-	}
-
-	private async sendReport(): Promise<void> {
-		try {
 			await this.reportingService.sendReport();
-		} catch (error) {
-			// A concurrent pass created the row. A later pass can resume that same batch.
-			if (!(error instanceof InstanceReportAlreadyCreatedError)) {
-				throw error;
-			}
 		}
 	}
 }

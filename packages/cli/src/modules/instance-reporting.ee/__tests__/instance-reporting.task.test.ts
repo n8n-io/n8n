@@ -14,10 +14,7 @@ import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 
 import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
-import {
-	InstanceReportAlreadyCreatedError,
-	type InstanceReportingService,
-} from '../instance-reporting.service';
+import type { InstanceReportingService } from '../instance-reporting.service';
 import { InstanceReportingTask } from '../instance-reporting.task';
 
 function setup() {
@@ -72,12 +69,6 @@ describe('InstanceReportingTask', () => {
 		expect(service.skip.mock.invocationCallOrder[0]).toBeLessThan(
 			service.sendReport.mock.invocationCallOrder[0],
 		);
-	});
-
-	it('leaves a concurrent creator to deliver the stored report', async () => {
-		const { task, service } = setup();
-		service.sendReport.mockRejectedValue(new InstanceReportAlreadyCreatedError());
-		await expect(task.run()).resolves.toBeUndefined();
 	});
 
 	it('exposes a delivery failure to the runner', async () => {
