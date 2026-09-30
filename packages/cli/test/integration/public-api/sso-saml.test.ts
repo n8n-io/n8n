@@ -12,10 +12,6 @@ import {
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
-import {
-	getServiceProviderEntityId,
-	getServiceProviderReturnUrl,
-} from '@/modules/sso-saml/service-provider.ee';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { sampleConfig } from '../saml/sample-metadata';
 import { setupTestServer } from '@test-integration/utils';
@@ -23,12 +19,14 @@ import { setupTestServer } from '@test-integration/utils';
 function mockedSamlConfigurationPublicDto(
 	override: Partial<SamlConfigurationPublicDto> = {},
 ): SamlConfigurationPublicDto {
+	const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
+
 	return {
 		...sampleConfig,
 		metadata: CREDENTIAL_BLANKING_VALUE,
-		relayState: Container.get(UrlService).getInstanceBaseUrl(),
-		entityID: getServiceProviderEntityId(),
-		returnUrl: getServiceProviderReturnUrl(),
+		relayState: baseUrl,
+		entityID: `${baseUrl}/rest/sso/saml/metadata`,
+		returnUrl: `${baseUrl}/rest/sso/saml/acs`,
 		...override,
 	};
 }
