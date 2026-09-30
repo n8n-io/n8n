@@ -642,6 +642,30 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findExistingIds', () => {
+		it('returns only the ids that still exist', async () => {
+			entityManager.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), { id: 'a' }),
+				Object.assign(new WorkflowEntity(), { id: 'c' }),
+			]);
+
+			const result = await workflowRepository.findExistingIds(['a', 'b', 'c']);
+
+			expect(result).toEqual(['a', 'c']);
+			expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+				select: { id: true },
+				where: { id: In(['a', 'b', 'c']) },
+			});
+		});
+
+		it('does not query when no ids are given', async () => {
+			const result = await workflowRepository.findExistingIds([]);
+
+			expect(result).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findPreExistingWorkflows', () => {
 		it('merges workflows returned from different chunks', async () => {
 			const first = Object.assign(new WorkflowEntity(), { id: 'first' });

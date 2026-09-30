@@ -2,7 +2,7 @@ import type { BreakingChangeVersion, BreakingChangeWorkflowRuleResult } from '@n
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
@@ -38,6 +38,7 @@ export class MigrationFindingSyncService {
 		private readonly txRunner: TransactionRunner,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
 	}
@@ -90,6 +91,7 @@ export class MigrationFindingSyncService {
 		const take = MigrationFindingSyncService.BATCH_SIZE;
 		let afterId: string | undefined;
 		let workflowIds: string[];
+		let failedBatches = 0;
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 
@@ -102,13 +104,31 @@ export class MigrationFindingSyncService {
 				return;
 			}
 
-			await this.syncBatch(
-				targetVersion,
-				workflowIds.filter((id) => !failed.has(id)),
-				hitsByWorkflow,
-			);
+			const batchIds = workflowIds.filter((id) => !failed.has(id));
+			try {
+				await this.syncBatch(targetVersion, batchIds, hitsByWorkflow);
+			} catch (error) {
+				// One bad batch must not lose the rest. The sync record is withheld
+				// below, so the next sync visits this batch again.
+				failedBatches++;
+				this.logger.warn('Migration finding sync batch failed, continuing with the next batch', {
+					targetVersion,
+					batchStart: batchIds[0],
+				});
+				this.errorReporter.error(error, {
+					extra: { targetVersion, batchStart: batchIds[0] },
+				});
+			}
 			afterId = workflowIds.at(-1);
 		} while (workflowIds.length === take);
+
+		if (failedBatches > 0) {
+			this.logger.warn('Migration finding sync was partial, not recording it as complete', {
+				targetVersion,
+				failedBatches,
+			});
+			return;
+		}
 
 		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
 		await this.syncRepository.upsertForVersion(
@@ -126,14 +146,18 @@ export class MigrationFindingSyncService {
 	/** Reads, diffs, and writes one batch inside a single transaction. */
 	private async syncBatch(
 		targetVersion: BreakingChangeVersion,
-		workflowIds: string[],
+		pagedIds: string[],
 		hitsByWorkflow: Map<string, MigrationFindingHit[]>,
 	): Promise<void> {
-		if (workflowIds.length === 0) return;
-
-		const hits = workflowIds.flatMap((workflowId) => hitsByWorkflow.get(workflowId) ?? []);
+		if (pagedIds.length === 0) return;
 
 		await this.txRunner.run({}, async (ctx: OperationContext) => {
+			// A workflow deleted since its page was read can still have a scan hit.
+			// A finding for it would break the foreign key, so the page is re-checked here.
+			const workflowIds = await this.workflowRepository.findExistingIds(pagedIds, ctx);
+			if (workflowIds.length === 0) return;
+
+			const hits = workflowIds.flatMap((workflowId) => hitsByWorkflow.get(workflowId) ?? []);
 			const existing = await this.findingRepository.listForWorkflows(
 				targetVersion,
 				workflowIds,

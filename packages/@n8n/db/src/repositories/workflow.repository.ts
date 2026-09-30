@@ -524,6 +524,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows.map(({ id }) => id);
 	}
 
+	/** The subset of `workflowIds` that still exists, in no particular order. */
+	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+
+		const workflows = await this.managerFor(ctx).find(WorkflowEntity, {
+			select: { id: true },
+			where: { id: In(workflowIds) },
+		});
+
+		return workflows.map(({ id }) => id);
+	}
+
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) {
 			return [];

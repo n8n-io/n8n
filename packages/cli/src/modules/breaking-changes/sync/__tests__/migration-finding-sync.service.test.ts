@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -79,6 +79,7 @@ describe('MigrationFindingSyncService', () => {
 	let findingRepository: MockProxy<MigrationFindingRepository>;
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
 	let txRunner: MockProxy<TransactionRunner>;
+	let errorReporter: MockProxy<ErrorReporter>;
 	let isLeader: boolean;
 	let service: MigrationFindingSyncService;
 
@@ -108,9 +109,12 @@ describe('MigrationFindingSyncService', () => {
 		findingRepository = mock<MigrationFindingRepository>();
 		syncRepository = mock<MigrationFindingSyncRepository>();
 		txRunner = mock<TransactionRunner>();
+		errorReporter = mock<ErrorReporter>();
 		isLeader = true;
 
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		// By default every paged id still exists when the batch re-checks it.
+		workflowRepository.findExistingIds.mockImplementation(async (ids) => ids);
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
@@ -124,6 +128,7 @@ describe('MigrationFindingSyncService', () => {
 			txRunner,
 			instanceSettings,
 			mockLogger(),
+			errorReporter,
 		);
 	});
 
@@ -243,6 +248,54 @@ describe('MigrationFindingSyncService', () => {
 		const visited = findingRepository.listForWorkflows.mock.calls.flatMap(([, ids]) => ids);
 		expect(visited).toHaveLength(150);
 		expect(new Set(visited).size).toBe(150);
+	});
+
+	it('ignores a workflow deleted after its page was read, so no finding targets it', async () => {
+		givenWorkflows(3);
+		breakingChangeService.detect.mockResolvedValue(
+			detectionResult([
+				{ ruleId: 'rule-a', workflowId: 'wf-0000' },
+				{ ruleId: 'rule-a', workflowId: 'wf-0001' },
+			]),
+		);
+		// wf-0001 is gone by the time the batch transaction re-checks the page.
+		workflowRepository.findExistingIds.mockResolvedValue(['wf-0000', 'wf-0002']);
+
+		await service.sync(TARGET_VERSION);
+
+		expect(workflowRepository.findExistingIds).toHaveBeenCalledWith(
+			['wf-0000', 'wf-0001', 'wf-0002'],
+			expect.anything(),
+		);
+		expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
+			TARGET_VERSION,
+			['wf-0000', 'wf-0002'],
+			expect.anything(),
+		);
+		expect(findingRepository.insertMany).toHaveBeenCalledWith(
+			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0000' }],
+			expect.anything(),
+		);
+		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+	});
+
+	it('continues with the next batch when one batch fails, and records no sync', async () => {
+		givenWorkflows(250);
+		const failure = new Error('batch failed');
+		txRunner.run
+			.mockImplementationOnce(async (ctx, fn) => await fn(ctx))
+			.mockImplementationOnce(async () => {
+				throw failure;
+			});
+
+		await service.sync(TARGET_VERSION);
+
+		expect(txRunner.run).toHaveBeenCalledTimes(3);
+		expect(findingRepository.listForWorkflows).toHaveBeenCalledTimes(2);
+		expect(errorReporter.error).toHaveBeenCalledWith(failure, {
+			extra: { targetVersion: TARGET_VERSION, batchStart: 'wf-0100' },
+		});
+		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
 	});
 
 	it('does not write the sync record before every batch is done', async () => {
