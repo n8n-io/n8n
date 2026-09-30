@@ -1,6 +1,13 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+	RoleService,
+} from '@n8n/backend-services';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
 	FolderRepository,
@@ -37,7 +44,6 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";

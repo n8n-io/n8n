@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RoleService } from '@n8n/backend-services';
 import {
 	GLOBAL_MEMBER_ROLE,
 	type AuthIdentity,
@@ -10,7 +10,6 @@ import {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
 import type { UserService } from '@/services/user.service';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';

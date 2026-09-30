@@ -5,45 +5,44 @@ import type {
 } from '@n8n/api-types';
 import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
 import {
 	CredentialsEntity,
+	Scope as DBScope,
+	GLOBAL_ADMIN_ROLE,
+	ListQueryDb,
+	ProjectRelation,
+	Role,
+	RoleRepository,
+	ScopeRepository,
+	ScopesField,
 	SharedCredentials,
 	SharedWorkflow,
 	User,
-	ListQueryDb,
-	ScopesField,
-	ProjectRelation,
-	RoleRepository,
-	Role,
-	Scope as DBScope,
-	ScopeRepository,
-	GLOBAL_ADMIN_ROLE,
+	isUniqueConstraintError,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
-	Scope,
-	Role as RoleDTO,
 	AssignableProjectRole,
-	AssignableGlobalRole,
+	Role as RoleDTO,
 	RoleNamespace,
+	Scope,
 } from '@n8n/permissions';
 import {
-	combineScopes,
 	CUSTOM_ROLE_SCOPE_WHITELIST,
-	getAuthPrincipalScopes,
-	getRoleScopes,
-	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
+	combineScopes,
+	getAuthPrincipalScopes,
+	getRoleScopes,
+	isBuiltInRole,
 	withMandatoryInstanceScopes,
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
+import { EventService } from '../events/event.service';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';
 import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
@@ -467,7 +466,7 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
+	isRoleLicensed(role: AssignableProjectRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {

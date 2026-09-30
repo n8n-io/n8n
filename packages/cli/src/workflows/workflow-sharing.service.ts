@@ -1,4 +1,5 @@
 import { Logger, LicenseState } from '@n8n/backend-common';
+import { RoleService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, SharedWorkflowRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -10,8 +11,6 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
-
-import { RoleService } from '@/services/role.service';
 
 export type ShareWorkflowOptions =
 	| { scopes: Scope[]; projectId?: string }

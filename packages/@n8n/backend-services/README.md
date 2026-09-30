@@ -27,13 +27,14 @@ and infrastructure services that need the persistence layer or that only
 
 ## What lives here
 
-- `EventService`: the shared, typed event bus.
-- `UrlService`: instance and webhook URLs.
-- `CacheService`: application cache access.
-- `RedisClientService`: shared Redis connections and support code.
-- `ProtectedResourceRegistry`: protected OAuth resource registration and lookup.
-- `RoleService`: role and scope resolution.
-- Finder services and scope checks: resource access queries.
+| Export | Purpose |
+| --- | --- |
+| `ResponseError` and its subclasses (`BadRequestError`, `NotFoundError`, `ForbiddenError`, ...) | Errors that map to an HTTP status code in a REST response |
+| `CacheService` | Memory or Redis cache with hash support |
+| `RedisClientService` | Redis client factory with reconnect handling |
+| `ProtectedResourceRegistry` | Registry of OAuth 2.1 protected resources served by the instance |
+| `EventService` and `EventMap` | Typed event bus. See [Events](#events) |
+| `RoleService`, `RoleCacheService`, `RoleDeletionCheckProxy` | Role and scope resolution |
 
 
 ### Register event payloads

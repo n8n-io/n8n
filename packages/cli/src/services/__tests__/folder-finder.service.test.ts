@@ -1,7 +1,6 @@
+import type { RoleService } from '@n8n/backend-services';
 import type { Folder, FolderRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { RoleService } from '@/services/role.service';
 
 import { FolderFinderService } from '../folder-finder.service';
 

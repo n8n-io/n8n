@@ -1,10 +1,10 @@
+import type { RoleService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { isTriggerNodeType, type INode, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

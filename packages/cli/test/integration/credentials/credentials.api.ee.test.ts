@@ -1,3 +1,4 @@
+import { RoleCacheService } from '@n8n/backend-services';
 import {
 	createWorkflow,
 	shareWorkflowWithUsers,
@@ -20,7 +21,6 @@ import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@/services/role-cache.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 

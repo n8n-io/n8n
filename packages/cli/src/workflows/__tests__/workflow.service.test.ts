@@ -1,5 +1,12 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RoleService } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ConflictError,
+	NotFoundError,
+	UnprocessableRequestError,
+	WorkflowPublishBlockedError,
+} from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -44,7 +51,6 @@ import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/pol
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { RoleService } from '@/services/role.service';
 import type { TagService } from '@/services/tag.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';

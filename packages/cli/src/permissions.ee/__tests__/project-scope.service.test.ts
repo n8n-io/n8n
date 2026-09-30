@@ -1,7 +1,6 @@
+import { RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, User } from '@n8n/db';
-
-import { RoleService } from '@/services/role.service';
 
 import { ProjectScopeService } from '../project-scope.service';
 
