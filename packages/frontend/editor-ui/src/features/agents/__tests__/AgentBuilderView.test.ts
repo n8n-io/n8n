@@ -5161,11 +5161,27 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 
 		// The collaboration banner is visible.
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 
 		// Editing is disabled via effectiveCanEditAgent → isEditingLocked.
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
 			false,
 		);
+
+		wrapper.unmount();
+	});
+
+	it('hides the assistant toggle behind the take-over banner for another tab', async () => {
+		getAgentWriteLockMock.mockResolvedValue({ userId: 'user-1', clientId: 'tab-2' });
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-collaboration-take-over"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 
 		wrapper.unmount();
 	});
@@ -5182,6 +5198,7 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 
 		// No lock held by anyone — the tab is writable (lazy acquisition).
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
 			true,
 		);
@@ -5200,6 +5217,7 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 
 		// The banner appears and editing is disabled.
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
 			false,
 		);

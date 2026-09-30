@@ -2683,7 +2683,12 @@ function onSwitchAgent(nextAgentId: string) {
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
-			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
+			v-if="
+				!isArtifactMode &&
+				instanceAiAvailable &&
+				!isAiPanelOpen &&
+				!agentCollaborationStore.shouldBeReadOnly
+			"
 			:class="$style.aiToggleBar"
 		>
 			<N8nTooltip :content="locale.baseText('agents.builder.header.editWithAi')">
