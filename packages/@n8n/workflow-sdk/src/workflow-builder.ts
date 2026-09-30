@@ -746,6 +746,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			newIdByKey.set(mapKey, newId);
 			newIdByOldId.set(instance.id, newId);
 		}
+		// A handle retained from the previous regeneration can still be used to
+		// create an anchored sticky. Let that stale ID follow its current node too.
+		for (const [staleId, mapKey] of this._staleIdToKeyMap ?? []) {
+			const newId = newIdByKey.get(mapKey);
+			if (newId !== undefined) newIdByOldId.set(staleId, newId);
+		}
 
 		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
