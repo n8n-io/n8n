@@ -102,6 +102,50 @@ describe('WorkflowApiHelper.waitForExecutionById', () => {
 	});
 });
 
+describe('WorkflowApiHelper.activateAndWaitForPublication', () => {
+	function apiPublishing(statuses: Array<{ status: string; liveVersionId: string | null }>) {
+		const post = vi.fn().mockResolvedValue({ ok: () => true });
+		const get = vi.fn();
+		for (const status of statuses) {
+			get.mockResolvedValueOnce({ ok: () => true, json: async () => ({ data: status }) });
+		}
+		return { api: { request: { post, get }, options: {} } as unknown as ApiHelpers, post, get };
+	}
+
+	test('activates the version and returns once it is live', async () => {
+		const { api, post, get } = apiPublishing([
+			{ status: 'in_progress', liveVersionId: null },
+			{ status: 'published', liveVersionId: 'v-1' },
+		]);
+
+		await new WorkflowApiHelper(api).activateAndWaitForPublication('wf-1', 'v-1', 2000, 0);
+
+		expect(post).toHaveBeenCalledWith('/rest/workflows/wf-1/activate', {
+			data: { versionId: 'v-1' },
+		});
+		expect(get).toHaveBeenCalledTimes(2);
+	});
+
+	test('keeps waiting while a previous version is still live', async () => {
+		const { api, get } = apiPublishing([
+			{ status: 'published', liveVersionId: 'v-0' },
+			{ status: 'published', liveVersionId: 'v-1' },
+		]);
+
+		await new WorkflowApiHelper(api).activateAndWaitForPublication('wf-1', 'v-1', 2000, 0);
+
+		expect(get).toHaveBeenCalledTimes(2);
+	});
+
+	test('throws when the version does not go live in time', async () => {
+		const { api } = apiPublishing(Array(50).fill({ status: 'in_progress', liveVersionId: null }));
+
+		await expect(
+			new WorkflowApiHelper(api).activateAndWaitForPublication('wf-1', 'v-1', 20, 5),
+		).rejects.toThrow(/did not publish version v-1/);
+	});
+});
+
 describe('WorkflowApiHelper.runManually engine routing', () => {
 	function apiReturningExecutionId(executionId: string, options: ApiHelpers['options']) {
 		const post = vi.fn().mockResolvedValue({

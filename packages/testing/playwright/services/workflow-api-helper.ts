@@ -126,6 +126,32 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Like {@link activate}, but also waits until the version is live. Activation
+	 * only queues the publication: the leader registers the triggers and webhooks
+	 * and writes the published version later.
+	 */
+	async activateAndWaitForPublication(
+		workflowId: string,
+		versionId: string,
+		timeoutMs = 10000,
+		pollIntervalMs = 250,
+	): Promise<void> {
+		await this.activate(workflowId, versionId);
+
+		const deadline = Date.now() + timeoutMs;
+		let publication = await this.getPublicationStatus(workflowId);
+		while (publication.status !== 'published' || publication.liveVersionId !== versionId) {
+			if (Date.now() >= deadline) {
+				throw new TestError(
+					`Workflow ${workflowId} did not publish version ${versionId} within ${timeoutMs}ms (status: ${publication.status})`,
+				);
+			}
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+			publication = await this.getPublicationStatus(workflowId);
+		}
+	}
+
 	async update(
 		workflowId: string,
 		versionId: string,
