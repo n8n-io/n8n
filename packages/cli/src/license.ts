@@ -239,12 +239,20 @@ export class License implements LicenseProvider {
 		this.logger.debug('License activated');
 	}
 
+	/** Loads the cert another instance stored. Never renews. */
 	@OnPubSubEvent('reload-license')
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		await this.manager.reload();
+		try {
+			await this.manager.reloadStoredCert();
+		} catch (error: unknown) {
+			this.logger.warn('Failed to reload the stored license cert', {
+				error: error instanceof Error ? error.message : error,
+			});
+			return;
+		}
 		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
 	}

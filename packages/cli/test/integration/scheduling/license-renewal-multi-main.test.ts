@@ -91,7 +91,7 @@ const { fakeLicenseServer, FakeLicenseManager } = vi.hoisted(() => {
 			await this.initCert();
 		}
 
-		async reload(): Promise<void> {
+		async reloadStoredCert(): Promise<void> {
 			await this.initCert();
 		}
 

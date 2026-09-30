@@ -362,6 +362,47 @@ describe('License', () => {
 		);
 	});
 
+	describe('reload', () => {
+		const lastManager = () => {
+			const { instances } = (LicenseManager as MockedClass<typeof LicenseManager>).mock;
+			return instances[instances.length - 1];
+		};
+
+		it('loads the stored cert and never starts the manager over', async () => {
+			const callback = vi.fn();
+			license.onCertRefresh(callback);
+
+			await license.reload();
+
+			expect(lastManager().reloadStoredCert).toHaveBeenCalledTimes(1);
+			expect(lastManager().reload).not.toHaveBeenCalled();
+			expect(callback).toHaveBeenCalledTimes(1);
+		});
+
+		it('warns and skips the refresh callbacks when the stored cert cannot be read', async () => {
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			license = new License(
+				logger,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock<GlobalConfig>({ license: licenseConfig, multiMainSetup: { enabled: false } }),
+			);
+			await license.init();
+			vi.mocked(lastManager().reloadStoredCert).mockRejectedValueOnce(new Error('db down'));
+			const callback = vi.fn();
+			license.onCertRefresh(callback);
+
+			await expect(license.reload()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to reload the stored license cert', {
+				error: 'db down',
+			});
+			expect(callback).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('device fingerprint', () => {
 		const getDeviceFingerprint = () => {
 			const licenseManager = LicenseManager as MockedClass<typeof LicenseManager>;
