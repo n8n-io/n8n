@@ -13,6 +13,7 @@ required:
   - authnRequestsSigned
   - wantAssertionsSigned
   - wantMessageSigned
+  - emailVerifiedRequired
   - signingPrivateKey
   - signingCertificate
   - acsBinding
@@ -38,6 +39,7 @@ properties:
       - firstName
       - lastName
       - userPrincipalName
+      - emailVerified
       - n8nInstanceRole
       - n8nProjectRoles
     properties:
@@ -53,6 +55,11 @@ properties:
       userPrincipalName:
         type: string
         description: SAML attribute mapped to the user's principal name.
+      emailVerified:
+        type: string
+        description: >
+          SAML attribute that states whether the identity provider verified the user's email.
+          An empty string when unused.
       n8nInstanceRole:
         type: string
         description: SAML attribute mapped to the n8n instance role.
@@ -99,6 +106,13 @@ properties:
     type: boolean
     description: Whether signed SAML messages are required.
     example: true
+  emailVerifiedRequired:
+    type: boolean
+    description: >
+      Whether the identity provider must assert that the user's email address is verified before
+      a login is linked to an existing user by email. When disabled, only an explicit negative
+      assertion is rejected.
+    example: false
   signingPrivateKey:
     type: string
     description: >

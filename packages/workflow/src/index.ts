@@ -75,6 +75,7 @@ export {
 	randomInt,
 	randomString,
 	isSafeObjectProperty,
+	isUsableObjectKey,
 	setSafeObjectProperty,
 	isCommunityPackageName,
 	dedupe,

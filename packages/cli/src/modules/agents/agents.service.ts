@@ -164,7 +164,10 @@ export class AgentsService {
 
 		let saved: Agent;
 		try {
-			saved = await this.agentRepository.save(agent);
+			// `insertNew`, not `save`: `save` would update the row a reused
+			// client-minted id names instead of letting the primary key reject it.
+			await this.agentRepository.insertNew(agent);
+			saved = agent;
 		} catch (error) {
 			if (!id || !isUniqueConstraintError(error)) throw error;
 			// Never disclose whether the id exists in another project.
