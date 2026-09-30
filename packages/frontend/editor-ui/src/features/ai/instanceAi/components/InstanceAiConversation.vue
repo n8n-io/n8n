@@ -222,6 +222,8 @@ const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role
 /** The third line has risen at ~1.7 s, the card lands at ~2.7 s. */
 const GREETING_LINES_MS = 1760;
 const GREETING_THINKING_MS = 940;
+/** Longer than the greeting's beat, so the last question does not land the moment the card closes. */
+const FOLLOW_UP_THINKING_MS = 1800;
 const greetingPhase = ref<'lines' | 'thinking' | null>(null);
 let greetingShown = false;
 let greetingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -259,7 +261,7 @@ watch(
 		followUpTimer = setTimeout(() => {
 			followUpHeld.value = false;
 			followUpTimer = null;
-		}, GREETING_THINKING_MS);
+		}, FOLLOW_UP_THINKING_MS);
 	},
 );
 onUnmounted(() => {
