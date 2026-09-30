@@ -34,8 +34,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -74,6 +73,13 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 		label: 'settings.personal.theme.dark',
 	},
 ]);
+
+const themeItems = computed(() =>
+	themeOptions.value.map((item) => ({
+		value: item.name,
+		label: i18n.baseText(item.label),
+	})),
+);
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -494,21 +500,13 @@ onBeforeUnmount(() => {
 			</div>
 			<div>
 				<N8nInputLabel :label="i18n.baseText('settings.personal.theme')">
-					<N8nSelect
+					<N8nSelect2
 						v-model="currentSelectedTheme"
+						:items="themeItems"
 						:class="$style.themeSelect"
 						data-test-id="theme-select"
-						size="small"
-						filterable
-					>
-						<N8nOption
-							v-for="item in themeOptions"
-							:key="item.name"
-							:label="i18n.baseText(item.label)"
-							:value="item.name"
-						>
-						</N8nOption>
-					</N8nSelect>
+						size="large"
+					/>
 				</N8nInputLabel>
 			</div>
 		</div>
