@@ -1259,6 +1259,23 @@ describe('nodes tool', () => {
 			);
 		});
 
+		it('returns the nearest actions for an unknown action id', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.getNodeTypeDefinition!).mockResolvedValue(null);
+			const result = await executeTool<{
+				definitions: Array<{ error?: string; actions?: Array<{ id: string }> }>;
+			}>(createNodesTool(context, 'full'), {
+				action: 'type-definition',
+				nodeTypes: ['notion.page.getAll'],
+			});
+
+			expect(result.definitions[0].actions?.map(({ id }) => id)).toEqual([
+				'notion.databasePage.getAll',
+				'notion.databasePage.get',
+				'gmail.message.getAll',
+			]);
+		});
+
 		it('searches several services in one call', async () => {
 			const context = createContractContext();
 			const result = await executeTool<{

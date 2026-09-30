@@ -29,6 +29,7 @@ import {
 	contractsForNodeType,
 	findContractForLegacyRequest,
 	getContract,
+	nearestContracts,
 } from '../node-contracts';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
@@ -493,6 +494,16 @@ async function resolveNodeTypeDefinitions(
 				: [];
 
 			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
+
+			const nearest = context.nodeContractsEnabled && !result ? nearestContracts(nodeType) : [];
+			if (nearest.length) {
+				return {
+					nodeType,
+					content: '',
+					error: `No action '${nodeType}'. The nearest actions follow; request one by id.`,
+					actions: nearest.map(contractSignature),
+				};
+			}
 
 			if (!result) {
 				return {

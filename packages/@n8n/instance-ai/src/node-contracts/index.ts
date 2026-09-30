@@ -207,3 +207,17 @@ export function contractView(contract: ActionContract, selections: Record<string
 			: `${outputType(contract.output)} (a variant's output replaces it)`,
 	};
 }
+
+/**
+ * Agents guess action ids from memory. For an unknown id, the actions of the same node
+ * first, then actions with the same operation name.
+ */
+export function nearestContracts(id: string, limit = 3): ActionContract[] {
+	const [node, ...rest] = id.split('.');
+	const operation = rest.at(-1);
+	const score = (contract: ActionContract) =>
+		(contract.node === node ? 2 : 0) + (contract.id.endsWith(`.${operation}`) ? 1 : 0);
+	return CONTRACTS.filter((contract) => score(contract) > 0)
+		.sort((a, b) => score(b) - score(a))
+		.slice(0, limit);
+}
