@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { OnLifecycleEvent, OnPubSubEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -10,7 +11,6 @@ import type {
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import { ExecutionLevelTracer } from './execution-level-tracer';

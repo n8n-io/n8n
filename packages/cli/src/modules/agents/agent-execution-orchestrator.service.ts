@@ -1,8 +1,4 @@
-import {
-	type Agent as RuntimeAgent,
-	type SerializableAgentState,
-	type StreamChunk,
-} from '@n8n/agents';
+import { type Agent as RuntimeAgent, type SerializableAgentState } from '@n8n/agents';
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
@@ -44,6 +40,7 @@ import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
+	isAgentSandboxPrincipalHash,
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
@@ -63,9 +60,13 @@ import { IntegrationMessageContextService } from './integrations/integration-mes
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { BACKGROUND_APPROVAL_RUN_PREFIX } from './background/sub-agent-background-state';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
@@ -94,7 +95,7 @@ interface ChatExecutionInput extends AgentExecutionInput {
 }
 
 interface ChatExecutionCallbacks {
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
+	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	/** Runs after the turn is stored. Adds the execution ID to the SSE done event. */
 	onExecutionRecorded?: (executionId: string) => void;
 }
@@ -279,6 +280,8 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -427,7 +430,8 @@ export class AgentExecutionOrchestratorService {
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
-	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<AgentExecutionStreamChunk> {
+		if (await this.resumeBackgroundForChat(config)) return;
 		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
 		if (
 			resume.source === N8N_CHAT_PRODUCTION_SOURCE &&
@@ -442,10 +446,120 @@ export class AgentExecutionOrchestratorService {
 		);
 	}
 
+	async resumeBackgroundForChat(config: ResumeForChatConfig): Promise<boolean> {
+		if (!config.runId.startsWith(BACKGROUND_APPROVAL_RUN_PREFIX)) return false;
+		const job = await this.backgroundJobRepository.findById(
+			config.runId.slice(BACKGROUND_APPROVAL_RUN_PREFIX.length),
+		);
+		if (!job || job.parentAgentId !== config.agentId || job.status !== 'suspended') {
+			throw new UserError('This background approval is no longer available');
+		}
+		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
+		const approval = await this.backgroundJobService.getApproval(job);
+		if (
+			!approval ||
+			approval.token !== config.toolCallId ||
+			!isAgentSandboxPrincipalHash(job.parentPrincipalHash) ||
+			approval.scope.projectId !== config.projectId
+		) {
+			throw new UserError('This background approval is no longer available');
+		}
+		const memoryScope = {
+			threadId: job.parentThreadId,
+			resourceId: job.parentResourceId,
+			hostMetadata: encodeAgentSandboxHostMetadata({
+				projectId: config.projectId,
+				principalHash: job.parentPrincipalHash,
+			}),
+		};
+		if (
+			(config.expectedMemory?.threadId !== undefined &&
+				config.expectedMemory.threadId !== memoryScope.threadId) ||
+			(config.expectedMemory?.resourceId !== undefined &&
+				config.expectedMemory.resourceId !== memoryScope.resourceId)
+		) {
+			throw new UserError('This background approval does not belong to this chat');
+		}
+		await this.resolveResumeAccess(resume, memoryScope);
+		this.validateResumeSandbox(resume, memoryScope);
+		if (resume.usePublishedVersion) {
+			const expected = approval.metadata.messageContext;
+			const actual = config.messageContext;
+			const destination = expected?.replyTarget ?? expected?.target;
+			if (
+				!expected ||
+				!actual ||
+				actual.platform !== expected.platform ||
+				actual.integrationConnectionId !== expected.integrationConnectionId ||
+				!destination?.threadId ||
+				actual.target.threadId !== destination.threadId
+			) {
+				throw new UserError('This background approval does not belong to this chat');
+			}
+		}
+		const { SubAgentBackgroundRunner } = await import(
+			'./background/sub-agent-background-runner.js'
+		);
+		const { AgentsCredentialProvider } = await import('./adapters/agents-credential-provider.js');
+		const { CredentialsService } = await import('@/credentials/credentials.service.js');
+		await Container.get(SubAgentBackgroundRunner).resume(
+			job,
+			{ token: config.toolCallId, resumeData: config.resumeData },
+			{
+				projectId: config.projectId,
+				parentAgentId: job.parentAgentId,
+				credentialProvider: new AgentsCredentialProvider(
+					Container.get(CredentialsService),
+					config.projectId,
+					config.user,
+					job.subAgentId ?? undefined,
+				),
+				runType: resume.usePublishedVersion ? 'production' : 'test',
+				workflowToolExecutionMode: resume.usePublishedVersion ? 'integrated' : 'manual',
+				user: config.user,
+			},
+		);
+		return true;
+	}
+
+	async deliverBackgroundApproval(
+		config: Pick<ExecuteForWakeConfig, 'agentId' | 'projectId' | 'memory' | 'identity'>,
+		title: string,
+		approval: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>,
+	): Promise<void> {
+		if (config.identity.type === 'draft') {
+			await this.assertDraftChatAccess({
+				...config,
+				user: config.identity.user,
+				sessionMode: 'existing',
+			});
+			return;
+		}
+		const delivery = await this.getWakeDelivery(
+			config.agentId,
+			config.identity.integrationType,
+			approval.metadata.messageContext,
+		);
+		await delivery.bridge.deliverBackgroundApproval(delivery.threadId, {
+			jobId: approval.metadata.jobId,
+			title,
+			token: approval.token,
+			toolCall: {
+				type: 'tool-call-suspended',
+				runId: approval.runId,
+				toolCallId: approval.pending.toolCallId,
+				toolName: approval.pending.toolName,
+				input: approval.pending.input,
+				suspendPayload: approval.pending.suspendPayload,
+				resumeSchema: approval.pending.resumeSchema,
+			},
+		});
+	}
+
 	/**
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
-	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<AgentExecutionStreamChunk> {
 		const draft = { ...config, sessionMode: config.sessionMode ?? 'new' };
 		const sandboxPrincipalHash = hashAgentSandboxPrincipal({
 			type: 'n8n-user',
@@ -467,7 +581,7 @@ export class AgentExecutionOrchestratorService {
 	 */
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -496,9 +610,14 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						author,
 						attachments,
+						messageOrigin: {
+							integrationConnectionId: config.messageContext?.integrationConnectionId,
+							platformMessageId: config.messageContext?.messageId,
+						},
 						source: integrationType,
 						access: { accessScope: 'project', ownerId: null },
 						sessionMode,
@@ -553,7 +672,7 @@ export class AgentExecutionOrchestratorService {
 
 	async *executeForN8nChatPublished(
 		config: ExecuteForN8nChatPublishedConfig,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -595,6 +714,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						attachments,
 						source: N8N_CHAT_PRODUCTION_SOURCE,
@@ -643,7 +763,7 @@ export class AgentExecutionOrchestratorService {
 	 */
 	async *executeForTaskPublished(
 		config: ExecuteForTaskPublishedConfig,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
@@ -662,6 +782,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						source: 'task',
 						taskId,
@@ -695,7 +816,9 @@ export class AgentExecutionOrchestratorService {
 	 * Execute a task on demand against the current (draft) config as the
 	 * requesting user.
 	 */
-	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+	async *executeForTaskNow(
+		config: ExecuteForTaskNowConfig,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, user, message, memory, taskId } = config;
 
 		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
@@ -717,6 +840,7 @@ export class AgentExecutionOrchestratorService {
 					},
 					{
 						threadId: memory.threadId,
+						resourceId: memory.resourceId,
 						userMessage: message,
 						source: 'task',
 						taskId,
@@ -806,12 +930,12 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	private async *streamWakeResponse(
-		stream: AsyncGenerator<StreamChunk>,
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
 		abortSignal: AbortSignal,
 		delivery?: { bridge: AgentChatBridge; threadId: string },
 		cardRecipientId?: string,
-	): AsyncGenerator<StreamChunk> {
-		const chunks: StreamChunk[] = [];
+	): AsyncGenerator<AgentExecutionStreamChunk> {
+		const chunks: AgentExecutionStreamChunk[] = [];
 		let runError: unknown;
 		for await (const chunk of stream) {
 			if (delivery) chunks.push(chunk);
@@ -860,7 +984,9 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Stream an agent response, record it, and yield each chunk.
 	 */
-	async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
+	async *streamChatResponse(
+		config: StreamChatResponseConfig,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -889,8 +1015,10 @@ export class AgentExecutionOrchestratorService {
 		acquire: () => Promise<AgentRuntime>,
 		use: (
 			runtime: AgentRuntime,
-		) => AsyncGenerator<StreamChunk> | Promise<AsyncGenerator<StreamChunk>>,
-	): AsyncGenerator<StreamChunk> {
+		) =>
+			| AsyncGenerator<AgentExecutionStreamChunk>
+			| Promise<AsyncGenerator<AgentExecutionStreamChunk>>,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const runtime = await acquire();
 		try {
 			yield* await use(runtime);
@@ -914,6 +1042,9 @@ export class AgentExecutionOrchestratorService {
 		session: Pick<
 			StartExecutionParams,
 			| 'threadId'
+			| 'resourceId'
+			| 'messageOrigin'
+			| 'hideUserMessageFromTranscript'
 			| 'userMessage'
 			| 'author'
 			| 'attachments'
@@ -1005,6 +1136,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memoryScope.threadId,
+				resourceId: memoryScope.resourceId,
 				resumeRunId: runId,
 				userMessage: null,
 				source,
@@ -1134,6 +1266,7 @@ export class AgentExecutionOrchestratorService {
 			threadId,
 			agentId,
 			agentName: runtime.agent.name,
+			resourceId: memoryScope.resourceId,
 			projectId,
 			userMessage: null,
 			sessionMode: 'existing',
@@ -1216,6 +1349,7 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memory.threadId,
+				resourceId: memory.resourceId,
 				access,
 				admittedExecution: config.admittedExecution,
 				userMessage: message,
@@ -1372,7 +1506,15 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			agentName: agentInstance.name,
 			projectId,
-			userMessage: hideUserMessageFromTranscript ? null : message,
+			userMessage: message,
+			resourceId: memory.resourceId,
+			hideUserMessageFromTranscript,
+			...(config.messageContext && {
+				messageOrigin: {
+					integrationConnectionId: config.messageContext.integrationConnectionId,
+					platformMessageId: config.messageContext.messageId,
+				},
+			}),
 			sessionMode,
 			author,
 			attachments,
@@ -1405,7 +1547,9 @@ export class AgentExecutionOrchestratorService {
 			},
 			{
 				threadId: memory.threadId,
-				userMessage: null,
+				resourceId: memory.resourceId,
+				userMessage: config.message,
+				hideUserMessageFromTranscript: true,
 				source: productionUserId ? N8N_CHAT_PRODUCTION_SOURCE : integrationType,
 				abortSignal,
 				access,

@@ -10,7 +10,7 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -28,6 +28,7 @@ import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -598,7 +599,9 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
-			...properties,
+			...(eventName === USER_CALLED_MCP_TOOL_EVENT
+				? redactTelemetryProperties(properties)
+				: properties),
 			instance_id: instanceId,
 			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,

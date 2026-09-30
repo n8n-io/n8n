@@ -120,6 +120,130 @@ describe('AgentChatStreamConsumer — rate-limit fallback', () => {
 	});
 });
 
+function isAsyncIterable(value: unknown): boolean {
+	return typeof (value as Record<symbol, unknown>)?.[Symbol.asyncIterator] === 'function';
+}
+
+/** Separates streamed posts (an async iterable) from discrete ones. */
+function makeStreamingThread({
+	stall = false,
+	settleAfterMs,
+	rejectAfterMs,
+}: { stall?: boolean; settleAfterMs?: number; rejectAfterMs?: number } = {}) {
+	const streamed: unknown[] = [];
+	const discrete: unknown[] = [];
+	const post = vi.fn(async (message: unknown) => {
+		if (!isAsyncIterable(message)) {
+			discrete.push(message);
+			return undefined;
+		}
+		streamed.push(message);
+		if (settleAfterMs !== undefined) {
+			return await new Promise((resolve) => setTimeout(resolve, settleAfterMs));
+		}
+		if (rejectAfterMs !== undefined) {
+			return await new Promise((_resolve, reject) =>
+				setTimeout(() => reject(new Error('late failure')), rejectAfterMs),
+			);
+		}
+		if (stall) return await new Promise(() => {});
+		for await (const _chunk of message as AsyncIterable<string>) {
+			// Drain the iterable the way a real adapter does.
+		}
+		return undefined;
+	});
+	const thread = mock<Thread<unknown, unknown>>();
+	thread.post = post as unknown as typeof thread.post;
+	return { thread, streamed, discrete };
+}
+
+function makeStreamingConsumer(
+	options: Partial<ConstructorParameters<typeof AgentChatStreamConsumer>[0]> = {},
+) {
+	return new AgentChatStreamConsumer({
+		disableStreaming: false,
+		logger: mock<Logger>(),
+		postErrorToThread: vi.fn().mockResolvedValue(undefined),
+		handleSuspension: vi.fn().mockResolvedValue('posted'),
+		handleMessage: vi.fn().mockResolvedValue(true),
+		isIntegrationActionTool: () => true,
+		...options,
+	});
+}
+
+describe('AgentChatStreamConsumer — singleStreamedRunPerTurn', () => {
+	const textThenMessageThenText = (): StreamChunk[] => [
+		{ type: 'text-delta', id: 't-1', delta: 'Before' },
+		{ type: 'message', message: { text: 'a card' } } as unknown as StreamChunk,
+		{ type: 'text-delta', id: 't-2', delta: 'After' },
+	];
+
+	it('streams once and posts the trailing text as its own message', async () => {
+		const { thread, streamed, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer({ singleStreamedRunPerTurn: true });
+
+		await consumer.consume(makeStream(textThenMessageThenText()), thread);
+
+		expect(streamed).toHaveLength(1);
+		expect(discrete).toEqual([{ markdown: 'After' }]);
+	});
+
+	it('opens a second streamed post when the platform allows it', async () => {
+		const { thread, streamed, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer();
+
+		await consumer.consume(makeStream(textThenMessageThenText()), thread);
+
+		expect(streamed).toHaveLength(2);
+		expect(discrete).toEqual([]);
+	});
+});
+
+describe('AgentChatStreamConsumer — silent outcome after a discrete post', () => {
+	it('drops trailing text that a do_not_respond outcome silenced', async () => {
+		const { thread, streamed, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer({ singleStreamedRunPerTurn: true });
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'Before' },
+				{ type: 'message', message: { text: 'a card' } } as unknown as StreamChunk,
+				{ type: 'text-delta', id: 't-2', delta: 'After' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'teams_action',
+					output: { silent: true },
+				},
+			]),
+			thread,
+		);
+
+		expect(streamed).toHaveLength(1);
+		expect(discrete).toEqual([]);
+	});
+});
+
+describe('AgentChatStreamConsumer — delivery that must not stream', () => {
+	it('buffers a proactive send even on a streaming platform', async () => {
+		const { thread, streamed, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer();
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'Scheduled ' },
+				{ type: 'text-delta', id: 't-1', delta: 'reminder' },
+			]),
+			thread,
+			// What deliverWakeResponse passes, so a failure can be retried.
+			{ throwOnDeliveryError: true },
+		);
+
+		expect(streamed).toEqual([]);
+		expect(discrete).toEqual([{ markdown: 'Scheduled reminder' }]);
+	});
+});
+
 describe('AgentChatStreamConsumer — suspension routing', () => {
 	function makeSuspensionConsumer(disableStreaming: boolean) {
 		const handleSuspension = vi.fn().mockResolvedValue('posted');

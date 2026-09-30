@@ -325,7 +325,7 @@ describe('workflowDocument.store orchestration', () => {
 				id: 'c-1',
 				name: 'Cred',
 				credentialType: 'httpBasicAuth',
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			return {

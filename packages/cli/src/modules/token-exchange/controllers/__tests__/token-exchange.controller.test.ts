@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -5,9 +6,7 @@ import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { AuthError, BadRequestError } from '@n8n/errors';
 import type { AuthlessRequest } from '@/requests';
 
 import { TokenExchangeService } from '../../services/token-exchange.service';

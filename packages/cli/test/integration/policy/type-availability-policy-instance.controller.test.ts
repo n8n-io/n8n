@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -5,7 +6,6 @@ import { Container } from '@n8n/di';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';

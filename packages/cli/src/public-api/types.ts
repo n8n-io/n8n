@@ -1,12 +1,6 @@
 import type {
-	AddDataTableColumnDto,
-	AddDataTableRowsDto,
-	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
 	PublicCreateDestination,
-	UpdateOidcConfigurationDto,
-	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
@@ -126,25 +120,7 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
 	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
 
 	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
@@ -157,19 +133,6 @@ export declare namespace DataTableRequest {
 			returnData?: string | boolean;
 			dryRun?: string | boolean;
 		}
-	>;
-
-	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
-
-	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
-
-	type UpdateColumn = AuthenticatedRequest<
-		{ dataTableId: string; columnId: string },
-		{},
-		UpdateDataTableColumnDto,
-		{}
 	>;
 }
 
@@ -208,8 +171,6 @@ export declare namespace SsoSamlRequest {
 // ----------------------------------
 
 export declare namespace OtelSettingsRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }
 
@@ -222,13 +183,4 @@ export declare namespace LdapRequest {
 	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
 	type GetSync = PaginatedRequest;
 	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
-}
-
-// ----------------------------------
-//        /settings/sso/oidc
-// ----------------------------------
-
-export declare namespace SsoOidcRequest {
-	type Get = AuthenticatedRequest;
-	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

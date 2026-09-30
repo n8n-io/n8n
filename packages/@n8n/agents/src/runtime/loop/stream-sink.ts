@@ -1,4 +1,6 @@
 import type { StreamTextTransform, TextStreamPart, ToolSet } from 'ai';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { raceWithAbort } from '../../sdk/abort';
 
 import { finalizeRun } from './run-output-sink';
 import type {
@@ -11,7 +13,7 @@ import type {
 } from '../../types/runtime/agent-loop';
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
-import type { AgentMessage } from '../../types/sdk/message';
+import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
@@ -53,6 +55,25 @@ const STALL_RETRY_SAFE_CHUNK_TYPES = new Set<string>([
  * chunks. Owns the smooth-stream transform option.
  */
 export class StreamSink implements RunOutputSink<void> {
+	async inputBoundary(signal: AbortSignal): Promise<void> {
+		const acknowledged = createDeferredPromise();
+		await raceWithAbort(
+			async () => {
+				await this.guard.write({
+					type: 'input-boundary',
+					acknowledge: () => acknowledged.resolve(),
+				});
+				if (this.guard.isClosed) throw new Error('Agent stream closed before input consumption');
+				await acknowledged.promise;
+			},
+			AbortSignal.any([signal, this.guard.closedSignal]),
+		);
+	}
+
+	async emitInput(message: AgentDbMessage): Promise<void> {
+		await this.guard.write({ type: 'input', message });
+	}
+
 	private lastUsage: TokenUsage | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The

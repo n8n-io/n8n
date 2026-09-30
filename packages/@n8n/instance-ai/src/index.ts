@@ -335,6 +335,7 @@ export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiP
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,
 );
+export declare const CONCISE_PROMPT_VERSION: typeof PromptProfilesMod.CONCISE_PROMPT_VERSION;
 export const assertInstanceAiPromptVersion: typeof PromptProfilesMod.assertInstanceAiPromptVersion =
 	lazyFunction(() => loadPromptProfiles().assertInstanceAiPromptVersion);
 export const describePromptProfile: typeof PromptProfilesMod.describePromptProfile = lazyFunction(
@@ -459,6 +460,7 @@ defineLazyExport(
 	'suspendedInstanceContextSchema',
 	() => loadInstanceContextState().suspendedInstanceContextSchema,
 );
+defineLazyExport('CONCISE_PROMPT_VERSION', () => loadPromptProfiles().CONCISE_PROMPT_VERSION);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
 defineLazyExport(
 	'SANDBOX_RUNTIME_SKILLS_DIR',

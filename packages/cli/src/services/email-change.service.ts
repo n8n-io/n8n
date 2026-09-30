@@ -3,8 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { MfaService } from '@/mfa/mfa.service';
 import { PasswordUtility } from '@/services/password.utility';
