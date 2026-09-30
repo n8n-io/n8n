@@ -1,7 +1,5 @@
 import type {
-	AddDataTableRowsDto,
 	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
 	PublicCreateDestination,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
@@ -123,25 +121,7 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
 	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
 
 	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 

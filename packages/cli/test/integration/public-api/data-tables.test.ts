@@ -946,7 +946,9 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			.query({ sortBy: 'invalid_format' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Invalid sort format, expected <columnName>:<asc/desc>');
+		expect(response.body.message).toBe(
+			'request/query/sortBy/sort Invalid sort format, expected <columnName>:<asc/desc>',
+		);
 	});
 
 	test('should reject invalid sort direction', async () => {
@@ -960,7 +962,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			.query({ sortBy: 'name:invalid' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Invalid sort direction');
+		expect(response.body.message).toBe('request/query/sortBy/sort Invalid sort direction');
 	});
 
 	test('should reject an unknown sort column', async () => {
