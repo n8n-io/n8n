@@ -187,6 +187,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				guidance: formatWorkflowLoopGuidance(action, {
 					workItemId: input.workItemId,
 					setupPanelEnabled: context.setupPanelEnabled === true,
+					hostSource: context.domainContext?.nodeContractsEnabled === true,
 				}),
 			};
 		})

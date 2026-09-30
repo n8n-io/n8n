@@ -428,6 +428,18 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Node configuration is invalid after schema change');
 		});
 
+		it('tells a host-source builder to resend the complete source instead of editing a file', () => {
+			const action: WorkflowLoopAction = {
+				type: 'rebuild',
+				workflowId: 'wf-rebuild-3',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
+				failureDetails: 'Wrong body',
+			};
+			const result = formatWorkflowLoopGuidance(action, { hostSource: true });
+			expect(result).toContain('complete corrected sourceCode');
+			expect(result).not.toContain('edit workspace source file');
+		});
+
 		it('should instruct to load workflow-builder, edit the source file, and rebuild with filePath', () => {
 			const action: WorkflowLoopAction = {
 				type: 'rebuild',

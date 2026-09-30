@@ -1075,7 +1075,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
-					hostSource: context.nodeContractsEnabled && sourceCode !== undefined,
+					hostSource: hostSource !== undefined,
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
@@ -1134,7 +1134,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
-						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
+						hostSource !== undefined
+							? 'Fix the source using the validation diagnostics, then call build-workflow again with the same filePath and the complete corrected sourceCode.'
+							: 'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
 					summary: 'Workflow source failed validation.',
 					binding,
 					sourceHash,
@@ -1157,7 +1159,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_name_missing',
 					guidance:
-						'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same filePath.',
+						hostSource !== undefined
+							? 'Add a workflow name in the source or pass the name parameter, then call build-workflow again with the complete sourceCode.'
+							: 'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same filePath.',
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
@@ -1379,7 +1383,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: 'workflow_grouping_decision_missing';
 
 					const guidance =
-						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
+						(hostSource !== undefined
+							? 'Fix the source so the stages form valid node groups, then call build-workflow again with the complete sourceCode. '
+							: 'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ') +
 						(groupWasDropped
 							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
 							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
