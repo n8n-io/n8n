@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
-import { N8nIcon, N8nText, N8nToggle } from '@n8n/design-system';
+import type { AgentJsonConfig } from '@n8n/api-types';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import type { SetupTask, SetupTaskId } from './agentSetupTasks.registry';
 
@@ -17,34 +17,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const isMinimised = ref(true);
-const isPeekEnabled = ref(false);
-const dragOffset = ref(0);
-const isDragging = ref(false);
-
-const DRAG_THRESHOLD = 32;
-const CLICK_SLOP = 4;
-let dragStartY = 0;
-let suppressHeaderClick = false;
-
-const beamStyle = computed(() => {
-	if (!props.personalisation) return undefined;
-
-	const gradient = { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...props.personalisation.gradient };
-	return {
-		'--agent-personalisation-gradient-from': gradient.from,
-		'--agent-personalisation-gradient-to': gradient.to,
-		'--agent-personalisation-gradient-angle': `${gradient.angle}deg`,
-		'--agent-personalisation-gradient-from-stop': `${gradient.fromStop}%`,
-		'--agent-personalisation-gradient-to-stop': `${gradient.toStop}%`,
-	};
-});
-
-const panelStyle = computed(() => ({
-	...beamStyle.value,
-	'--agent-setup-drag-offset': `${dragOffset.value}px`,
-}));
-
 const areTasksResolved = computed(() => props.tasks.every((task) => task.state !== 'unknown'));
 
 const sortedList = computed(() => {
@@ -53,111 +25,20 @@ const sortedList = computed(() => {
 		.toSorted((a, b) => Number(a.state === 'complete') - Number(b.state === 'complete'));
 });
 
-const remainingTaskCount = computed(() => {
-	return props.tasks.filter((task) => task.state !== 'complete').length;
-});
-
 const completedTaskCount = computed(() => {
-	return props.tasks.filter((task) => task.state === 'complete').length;
+	return sortedList.value.filter((task) => task.state === 'complete').length;
 });
 
-function toggleMinimise() {
-	isMinimised.value = !isMinimised.value;
-	isPeekEnabled.value = false;
-}
+const completedTasksAreGrouped = computed(() => completedTaskCount.value > 3);
 
-function enablePeek() {
-	isPeekEnabled.value = true;
-}
-
-function maximise() {
-	if (isMinimised.value) {
-		toggleMinimise();
-	}
-}
-
-function onHeaderClick() {
-	if (suppressHeaderClick) {
-		suppressHeaderClick = false;
-		return;
-	}
-
-	maximise();
-}
-
-function onHeaderPointerDown(event: PointerEvent) {
-	if (event.button !== 0 || !(event.currentTarget instanceof HTMLElement)) return;
-	if (event.target instanceof Element && event.target.closest('button')) return;
-
-	dragStartY = event.clientY;
-	dragOffset.value = 0;
-	isDragging.value = true;
-	event.currentTarget.setPointerCapture(event.pointerId);
-}
-
-function onHeaderPointerMove(event: PointerEvent) {
-	if (!isDragging.value) return;
-
-	const offset = event.clientY - dragStartY;
-	dragOffset.value = isMinimised.value ? Math.min(0, offset) : Math.max(0, offset);
-}
-
-function onHeaderPointerUp(event: PointerEvent) {
-	if (!isDragging.value || !(event.currentTarget instanceof HTMLElement)) return;
-
-	const didDrag = Math.abs(dragOffset.value) >= DRAG_THRESHOLD;
-	if (didDrag) {
-		isMinimised.value = dragOffset.value > 0;
-		isPeekEnabled.value = false;
-	}
-
-	suppressHeaderClick = Math.abs(dragOffset.value) > CLICK_SLOP;
-	window.setTimeout(() => {
-		suppressHeaderClick = false;
-	}, 0);
-	dragOffset.value = 0;
-	isDragging.value = false;
-	event.currentTarget.releasePointerCapture(event.pointerId);
-}
-
-function onHeaderPointerCancel() {
-	dragOffset.value = 0;
-	isDragging.value = false;
-}
-
-watch(areTasksResolved, (resolved) => {
-	if (resolved && remainingTaskCount.value > 0) {
-		isMinimised.value = false;
-	}
-});
+const incompleteTasks = computed(() =>
+	sortedList.value.filter((task) => task.state !== 'complete'),
+);
 </script>
 
 <template>
-	<div
-		role="complementary"
-		:class="[
-			$style.container,
-			{
-				[$style.hasBorderBeam]: !isMinimised,
-				[$style.isMinimised]: isMinimised,
-				[$style.isPeekEnabled]: isPeekEnabled,
-				[$style.hasPersonalisation]: !!personalisation,
-				[$style.isDragging]: isDragging,
-			},
-		]"
-		:style="panelStyle"
-		data-testid="agent-setup-tasks"
-	>
-		<div aria-hidden="true" :class="$style.borderBeamStroke" />
-		<div
-			:class="[$style.header, { [$style.isClickable]: isMinimised }]"
-			data-testid="agent-setup-tasks-header"
-			@click="onHeaderClick"
-			@pointerdown="onHeaderPointerDown"
-			@pointermove="onHeaderPointerMove"
-			@pointerup="onHeaderPointerUp"
-			@pointercancel="onHeaderPointerCancel"
-		>
+	<div role="complementary" :class="[$style.container, ,]" data-testid="agent-setup-tasks">
+		<div :class="$style.header" data-testid="agent-setup-tasks-header">
 			<div :class="$style.headerContent">
 				<N8nText tag="h3" bold>
 					{{ i18n.baseText('agents.builder.setupTasks.title') }}
@@ -166,25 +47,15 @@ watch(areTasksResolved, (resolved) => {
 					{{ completedTaskCount }} / {{ sortedList.length }}
 				</N8nText>
 			</div>
-			<N8nToggle
-				:icon="isMinimised ? 'chevron-up' : 'chevron-down'"
-				variant="ghost"
-				icon-size="large"
-				size="small"
-				:class="$style.minimiseToggle"
-				:label="isMinimised ? i18n.baseText('generic.expand') : i18n.baseText('generic.collapse')"
-				@click.stop="toggleMinimise"
-			/>
 		</div>
 		<TransitionGroup
 			v-if="areTasksResolved"
 			tag="ul"
 			:class="$style.list"
 			:move-class="$style.listMove"
-			:inert="isMinimised"
 		>
 			<li
-				v-for="task in sortedList"
+				v-for="task in completedTasksAreGrouped ? incompleteTasks : sortedList"
 				:key="task.id"
 				role="button"
 				tabindex="0"
@@ -199,241 +70,58 @@ watch(areTasksResolved, (resolved) => {
 				<N8nText bold :class="$style.taskTitle">{{ i18n.baseText(task.titleKey) }}</N8nText>
 				<N8nIcon icon="arrow-right" color="text-light" :class="$style.taskActionIcon" />
 			</li>
+			<li
+				v-if="completedTasksAreGrouped"
+				:key="'completed-tasks'"
+				:class="[$style.listItem, $style.isComplete]"
+			>
+				<div :class="[$style.taskIcon, $style.isComplete]">
+					<N8nIcon icon="check" size="small" :stroke-width="2.5" />
+				</div>
+				<N8nText bold :class="$style.taskTitle">
+					{{
+						i18n.baseText('agents.builder.setupTasks.tasksDone', {
+							interpolate: { count: completedTaskCount.toString() },
+						})
+					}}
+				</N8nText>
+			</li>
 		</TransitionGroup>
 	</div>
-	<div
-		v-if="isMinimised"
-		aria-hidden="true"
-		:class="$style.peekTrigger"
-		data-testid="agent-setup-tasks-peek-trigger"
-		@pointerenter="enablePeek"
-	/>
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/common/var';
-@use '@n8n/design-system/css/mixins/popover' as popover;
 @use '@n8n/design-system/css/mixins/mixins' as mixins;
 @use '@n8n/design-system/css/mixins/utils' as utils;
 @use '@n8n/design-system/css/mixins/_focus' as focus;
 @use '@n8n/design-system/css/mixins/motion' as motion;
 
-.container,
-.peekTrigger {
-	--n8n-agent-setup-task-list--min-width: 20rem;
-	--n8n-agent-setup-task-list--max-width: 40rem;
-	--n8n-agent-setup-task-list--padding: var(--spacing--sm);
-
-	width: clamp(
-		var(--n8n-agent-setup-task-list--min-width),
-		16dvw,
-		var(--n8n-agent-setup-task-list--max-width)
-	);
-}
-
-/* stylelint-disable */
-@property --agent-setup-beam-angle {
-	syntax: '<angle>';
-	initial-value: 0deg;
-	inherits: true;
-}
-
-@property --agent-setup-beam-opacity {
-	syntax: '<number>';
-	initial-value: 0;
-	inherits: true;
-}
-
-@property --agent-setup-beam-hover-opacity {
-	syntax: '<number>';
-	initial-value: 1;
-	inherits: true;
-}
-/* stylelint-enable */
-
 .container {
-	@include popover.popover-surface;
-
-	position: fixed;
-	isolation: isolate;
-	bottom: var(--n8n-agent-setup-task-list--padding);
-	right: var(--n8n-agent-setup-task-list--padding);
+	--n8n-agent-setup-task-list--padding: var(--spacing--sm);
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	--agent-setup-panel-offset: 0%;
-	--agent-setup-drag-offset: 0px;
-
-	transform: translateY(calc(var(--agent-setup-panel-offset) + var(--agent-setup-drag-offset)));
-	transition:
-		transform var(--duration--snappy) var(--easing--ease-out),
-		--agent-setup-beam-hover-opacity calc(3 * var(--duration--snappy)) ease;
-
-	@include motion.reduced-motion;
-
-	&.hasBorderBeam {
-		animation:
-			agentSetupBeamSpin calc(4 * var(--duration--base)) linear 2,
-			agentSetupBeamFadeIn calc(4 * var(--duration--base)) linear 2;
-
-		@include motion.reduced-motion;
-
-		&:hover {
-			--agent-setup-beam-hover-opacity: 0;
-
-			animation-play-state: paused, running;
-			transition-duration: var(--duration--snappy), calc(var(--duration--slow) / 2);
-		}
-	}
-
-	&.hasBorderBeam .borderBeamStroke {
-		--agent-setup-beam-sweep-mask: conic-gradient(
-			from var(--agent-setup-beam-angle),
-			transparent 0% 30%,
-			var(--color--white-alpha-100) 36%,
-			var(--color--white-alpha-300) 44%,
-			white 52% 80%,
-			var(--color--white-alpha-300) 86%,
-			var(--color--white-alpha-100) 92%,
-			transparent 95% 100%
-		);
-
-		--agent-setup-beam-colours:
-			radial-gradient(
-				ellipse var(--spacing--3xl) var(--spacing--xl) at 33% -7%,
-				var(--color--pink-500),
-				transparent
-			),
-			radial-gradient(
-				ellipse var(--spacing--4xl) var(--spacing--2xl) at 12% -5%,
-				var(--color--blue-500),
-				transparent
-			),
-			radial-gradient(
-				ellipse var(--spacing--2xl) var(--spacing--3xl) at 2% 68%,
-				var(--color--green-500),
-				transparent
-			),
-			radial-gradient(
-				ellipse var(--spacing--4xl) var(--spacing--xl) at 74% 100%,
-				var(--color--purple-500),
-				transparent
-			),
-			radial-gradient(
-				ellipse var(--spacing--3xl) var(--spacing--xl) at 94% 0%,
-				var(--color--orange-400),
-				transparent
-			),
-			radial-gradient(
-				ellipse var(--spacing--xl) var(--spacing--4xl) at 100% 27%,
-				var(--color--pink-500),
-				transparent
-			);
-
-		position: absolute;
-		inset: 0;
-		border-radius: inherit;
-		pointer-events: none;
-		background:
-			conic-gradient(
-				from var(--agent-setup-beam-angle),
-				transparent 0% 54%,
-				var(--color--white-alpha-100) 57%,
-				var(--color--white-alpha-300) 60%,
-				var(--color--white-alpha-600) 63%,
-				var(--color--white-alpha-700) 66%,
-				var(--color--white-alpha-600) 69%,
-				var(--color--white-alpha-300) 72%,
-				var(--color--white-alpha-100) 75%,
-				transparent 78% 100%
-			),
-			var(--agent-setup-beam-colours);
-		z-index: 1;
-		padding: 1.5px;
-		opacity: calc(var(--agent-setup-beam-opacity) * var(--agent-setup-beam-hover-opacity));
-		-webkit-mask:
-			var(--agent-setup-beam-sweep-mask),
-			linear-gradient(white 0 0) content-box,
-			linear-gradient(white 0 0);
-		-webkit-mask-composite: source-in, xor;
-		mask:
-			var(--agent-setup-beam-sweep-mask),
-			linear-gradient(white 0 0) content-box,
-			linear-gradient(white 0 0);
-		mask-composite: intersect, exclude;
-	}
-
-	&.hasPersonalisation .borderBeamStroke {
-		--agent-setup-beam-colours: linear-gradient(
-			var(--agent-personalisation-gradient-angle),
-			var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop),
-			var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop)
-		);
-
-		@supports (background: linear-gradient(90deg in oklch, red, blue)) {
-			--agent-setup-beam-colours: linear-gradient(
-				var(--agent-personalisation-gradient-angle) in oklch,
-				var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop),
-				var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop)
-			);
-		}
-	}
-
-	&.isDragging {
-		transition: none;
-	}
-
-	&.isMinimised {
-		--agent-setup-panel-offset: 100%;
-
-		&:focus-within,
-		&.isPeekEnabled:hover,
-		&:has(+ .peekTrigger:hover),
-		&.isDragging {
-			--agent-setup-panel-offset: calc(100% - calc(var(--height--xl) - var(--spacing--xs)));
-		}
-
-		.header {
-			border-color: transparent;
-		}
-	}
-}
-.peekTrigger {
-	position: fixed;
-	right: var(--n8n-agent-setup-task-list--padding);
-	bottom: var(--n8n-agent-setup-task-list--padding);
-	height: calc(var(--height--xl) * 2);
-	background: transparent;
-	z-index: var.$index-popper - 1;
+	background-color: var(--color--neutral-100);
+	border: 1px dashed var(--border-color);
+	max-height: 240px;
+	overflow: hidden;
+	border-radius: var(--radius--lg);
 }
 .header {
+	flex-shrink: 0;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding-inline: calc(var(--n8n-agent-setup-task-list--padding) / 2);
-	height: calc(var(--height--xl) + var(--spacing--4xs));
-	border-bottom: var(--border);
-	border-color: var(--border-color--subtle);
-	touch-action: none;
+	padding: var(--n8n-agent-setup-task-list--padding);
+	padding-block-end: 0;
 	user-select: none;
-
-	&:active {
-		cursor: grabbing;
-	}
-
-	&.isClickable {
-		cursor: default;
-	}
 }
 .headerContent {
 	display: flex;
 	align-items: baseline;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding-inline: calc(var(--n8n-agent-setup-task-list--padding) / 2);
 	transform: translateY(1px);
-}
-.minimiseToggle {
-	color: var(--text-color--subtle);
 }
 .list {
 	flex: 1;
@@ -517,31 +205,6 @@ watch(areTasksResolved, (resolved) => {
 		background-color: var(--color--neutral-200);
 		border-color: var(--color--neutral-200);
 		box-shadow: none;
-	}
-}
-
-@keyframes agentSetupBeamSpin {
-	0% {
-		--agent-setup-beam-angle: 0deg;
-	}
-
-	50%,
-	100% {
-		--agent-setup-beam-angle: 360deg;
-	}
-}
-
-@keyframes agentSetupBeamFadeIn {
-	0% {
-		--agent-setup-beam-opacity: 0;
-	}
-
-	50% {
-		--agent-setup-beam-opacity: 1;
-	}
-
-	100% {
-		--agent-setup-beam-opacity: 0;
 	}
 }
 

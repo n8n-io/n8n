@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
-import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
+import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -30,6 +30,7 @@ import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
+import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -58,6 +59,8 @@ const props = defineProps<{
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	tasks?: Array<SetupTask<SetupTaskId>>;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -92,6 +95,7 @@ const emit = defineEmits<{
 	'generate-eval-cases': [];
 	'open-preview': [];
 	'publish-agent': [];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
@@ -156,6 +160,12 @@ defineExpose({ onSetupTaskAction });
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+					<AgentSetupTasks
+						v-if="tasks && tasks.length > 0"
+						:tasks="tasks ?? []"
+						:personalisation="personalisation"
+						@action="emit('setup-task-action', $event)"
+					/>
 					<AgentInfoPanel
 						ref="agentInfoPanel"
 						:config="localConfig"
@@ -498,5 +508,13 @@ defineExpose({ onSetupTaskAction });
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
 	}
+}
+
+.setupTasks {
+	padding-inline: var(--agent-builder-content-padding-inline);
+	padding-block-end: var(--spacing--lg);
+	max-width: var(--agent-builder-content-max-width);
+	margin: 0 auto;
+	width: 100%;
 }
 </style>
