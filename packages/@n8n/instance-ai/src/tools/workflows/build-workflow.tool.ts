@@ -253,21 +253,10 @@ export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSch
 	})
 	.strict();
 
-const hostSourceCodeSchema = z
-	.string()
-	.optional()
-	.describe(
-		'Full TypeScript SDK workflow source. Always pass the complete workflow here. The tool builds it and runs SDK and contract validation, then returns the errors. filePath only identifies the workflow source.',
-	);
-
 function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
-	const schema =
-		context.folderExplorationEnabled === true
-			? buildWorkflowInputSchemaWithFolderPlacement
-			: buildWorkflowInputSchema;
-	return context.nodeContractsEnabled
-		? schema.extend({ sourceCode: hostSourceCodeSchema })
-		: schema;
+	return context.folderExplorationEnabled === true
+		? buildWorkflowInputSchemaWithFolderPlacement
+		: buildWorkflowInputSchema;
 }
 
 /**
@@ -631,7 +620,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
 	const sourceGuidance = context.nodeContractsEnabled
-		? 'Pass the full workflow as `sourceCode` on every call. Do not write the file separately and do not run `workflow-sdk validate`: this tool runs SDK and contract validation and returns the errors.'
+		? 'Write `@n8n/workflow-sdk/next` source. Pass the full source as `sourceCode` (the tool writes filePath), or edit filePath with `workspace_str_replace_file` and pass filePath. ' +
+			'The tool builds in the sandbox and type-checks with `tsc --strict`; it returns each error with file:line.'
 		: 'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 			'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).';
 
@@ -891,11 +881,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
-			// With node contracts the host builds inline source, so the sandbox is not needed.
-			const hostSource = context.nodeContractsEnabled ? input.sourceCode : undefined;
-
 			// Persist inline source first so the workspace file stays canonical for later repairs.
-			if (hostSource === undefined && input.sourceCode !== undefined && context.workspace) {
+			if (input.sourceCode !== undefined && context.workspace) {
 				try {
 					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
 						logger: context.logger,
@@ -930,10 +917,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			let sourceCode: string;
 			let sourceHash: string;
 			try {
-				({ source: sourceCode, sourceHash } =
-					hostSource === undefined
-						? await readWorkflowSourceFile(context, filePath, ctx.abortSignal)
-						: { source: hostSource, sourceHash: hashWorkflowSource(hostSource) });
+				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
+					context,
+					filePath,
+					ctx.abortSignal,
+				));
 			} catch (error) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
@@ -1075,7 +1063,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
-					hostSource: hostSource !== undefined,
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
@@ -1134,9 +1121,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
-						hostSource !== undefined
-							? 'Fix the source using the validation diagnostics, then call build-workflow again with the same filePath and the complete corrected sourceCode.'
-							: 'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
+						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
 					summary: 'Workflow source failed validation.',
 					binding,
 					sourceHash,
@@ -1159,9 +1144,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_name_missing',
 					guidance:
-						hostSource !== undefined
-							? 'Add a workflow name in the source or pass the name parameter, then call build-workflow again with the complete sourceCode.'
-							: 'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same filePath.',
+						'Add a workflow name in the workspace source file or pass the name parameter, then call build-workflow again with the same filePath.',
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
@@ -1383,9 +1366,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: 'workflow_grouping_decision_missing';
 
 					const guidance =
-						(hostSource !== undefined
-							? 'Fix the source so the stages form valid node groups, then call build-workflow again with the complete sourceCode. '
-							: 'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ') +
+						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
 						(groupWasDropped
 							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
 							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");

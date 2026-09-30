@@ -112,6 +112,14 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
+			// Action-contract nodes exist only while the node contracts spike is enabled.
+			// In the monorepo the package also matches from CLI_DIR/.., so load one copy only.
+			if (
+				this.globalConfig.instanceAi.nodeContractsEnabled &&
+				!('@n8n/nodes-base-next' in this.loaders)
+			) {
+				await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/nodes-base-next');
+			}
 		}
 
 		await this.loadNodesFromCustomDirectories();

@@ -22,11 +22,13 @@ function leaf(text: string, schema: JsonSchema, mode: Mode): string {
 	return mode.input && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
 }
 
-function objectTs(schema: JsonSchema, mode: Mode): string {
+function objectTs(schema: JsonSchema, mode: Mode, tag?: { name: string; values: string }): string {
 	const inner = `${mode.indent}\t`;
 	const required = new Set(schema.required ?? []);
+	const properties = Object.entries(schema.properties ?? {}).filter(([name]) => name !== tag?.name);
 	const members = [
-		...Object.entries(schema.properties ?? {}).map(
+		...(tag ? [`${inner}${key(tag.name)}: ${tag.values};`] : []),
+		...properties.map(
 			([name, child]) =>
 				`${doc(child['x-n8n-hint'] ?? child.description, inner)}${inner}${key(name)}${required.has(name) || !mode.input ? '' : '?'}: ${toTs(child, { ...mode, indent: inner })};`,
 		),
@@ -47,10 +49,32 @@ function objectTs(schema: JsonSchema, mode: Mode): string {
 	return members.length ? `{\n${members.join('\n')}\n${mode.indent}}` : 'Record<string, never>';
 }
 
+/**
+ * A tagged union with branches that differ only in the tag collapses to one object per
+ * distinct shape (`op: "equals" | "contains"; value: …`), which keeps agent views small.
+ */
+function variantTs(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mode): string {
+	const name = schema.discriminator?.propertyName ?? '';
+	const groups = new Map<string, { branch: JsonSchema; tags: unknown[] }>();
+	for (const branch of branches) {
+		const rest = objectTs(branch, mode, { name, values: '' });
+		const group = groups.get(rest);
+		const tagValue = branch.properties?.[name]?.const;
+		if (group) group.tags.push(tagValue);
+		else groups.set(rest, { branch, tags: [tagValue] });
+	}
+	return [...groups.values()]
+		.map(({ branch, tags }) =>
+			objectTs(branch, mode, { name, values: tags.map((t) => JSON.stringify(t)).join(' | ') }),
+		)
+		.join(' | ');
+}
+
 /** JSON Schema as TypeScript type text. */
 export function toTs(schema: JsonSchema, mode: Mode): string {
 	if (schema.const !== undefined) return JSON.stringify(schema.const);
 	if (schema.enum) return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
+	if (schema.discriminator && schema.oneOf) return variantTs(schema, schema.oneOf, mode);
 	const union = schema.oneOf ?? schema.anyOf;
 	if (union) return union.map((option) => toTs(option, mode)).join(' | ');
 	switch (schema.type) {

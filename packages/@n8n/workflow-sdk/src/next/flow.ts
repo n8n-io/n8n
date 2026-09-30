@@ -230,7 +230,8 @@ export type OutputOf<N extends string, Default> = N extends keyof NodeOutputs
  */
 export function contractStep<In, Ctx, Out, N extends string>(
 	id: string,
-	config: { readonly name: N; readonly sample?: readonly Out[] },
+	// The generated module types `sample`; `Out` comes from its declared return type.
+	config: { readonly name: N; readonly sample?: readonly unknown[] },
 ): Step<In, Ctx, Out, N> {
 	const { name, sample, ...parameters } = config;
 	return {

@@ -2,7 +2,6 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import {
-	parseWorkflowCodeToBuilder,
 	validateWorkflow,
 	workflow as workflowBuilder,
 	type WorkflowJSON,
@@ -16,17 +15,20 @@ import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
-import {
-	checkContractOutputReads,
-	compileContractNodes,
-	fetchResourceOutputs,
-} from '../../node-contracts';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
+import { writeWorkspaceFile, writeWorkspaceFileMap } from '../../workspace/workspace-files';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
+import {
+	NEXT_TSCONFIG_FILENAME,
+	NODE_OUTPUTS_PATH,
+	nextWorkspaceFiles,
+	nodeOutputsDeclaration,
+	typecheckWorkflowSource,
+} from './next-workflow-build';
 
-export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx' | 'host-ast';
+export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx';
 
 export type WorkflowSourceCompileFailureReason =
 	| 'workflow_json_parse_failed'
@@ -34,7 +36,8 @@ export type WorkflowSourceCompileFailureReason =
 	| 'workflow_source_unsupported_extension'
 	| 'workflow_source_sandbox_unavailable'
 	| 'workflow_source_sandbox_failed'
-	| 'workflow_source_build_failed';
+	| 'workflow_source_build_failed'
+	| 'workflow_source_type_errors';
 
 export type WorkflowSourceCompileResult =
 	| {
@@ -300,6 +303,7 @@ async function compileTypeScriptWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
 	abortSignal?: AbortSignal,
+	tsconfig?: string,
 ): Promise<WorkflowSourceCompileResult> {
 	if (!context.workspace) {
 		return {
@@ -320,7 +324,7 @@ async function compileTypeScriptWorkflowSource(
 		const sandboxFilePath = joinWorkspacePath(root, filePath);
 		buildResult = await runInSandbox(
 			context.workspace,
-			`node --import tsx build.mjs '${escapeSingleQuotes(sandboxFilePath)}'`,
+			`${tsconfig ? `TSX_TSCONFIG_PATH='${escapeSingleQuotes(tsconfig)}' ` : ''}node --import tsx build.mjs '${escapeSingleQuotes(sandboxFilePath)}'`,
 			{ cwd: root, abortSignal },
 		);
 	} catch (error) {
@@ -370,65 +374,6 @@ async function compileTypeScriptWorkflowSource(
 	};
 }
 
-const SDK_IMPORT_STATEMENT = /^\s*import\s[^;]*?from\s*['"]@n8n\/workflow-sdk['"];?/gm;
-
-/** The sandbox build output for `source`, or the error message. */
-function buildOnHost(source: string): SandboxWorkflowBuildOutput | undefined | string {
-	try {
-		const wf = parseWorkflowCodeToBuilder(source.replace(SDK_IMPORT_STATEMENT, ''));
-		const validation = wf.validate();
-		// Serialize like build.mjs, so both compilers give the same shape (undefined becomes null).
-		const stdout = JSON.stringify(
-			{
-				success: true,
-				workflow: wf.toJSON({ tidyUp: true }),
-				declaredOutputFixtures: wf.generatePinData().toJSON({ tidyUp: true }).pinData,
-				warnings: [...validation.errors, ...validation.warnings],
-			},
-			(_key, value: unknown) => (value === undefined ? null : value),
-		);
-		return parseSandboxBuildOutput(stdout);
-	} catch (error) {
-		return error instanceof Error ? error.message : String(error);
-	}
-}
-
-/**
- * Builds TypeScript SDK source with the SDK AST interpreter, so no sandbox is needed.
- * The interpreter rejects import statements and provides every SDK function, so the
- * SDK import is removed. Every other import still fails.
- */
-function compileTypeScriptWorkflowSourceOnHost(source: string): WorkflowSourceCompileResult {
-	const buildOutput = buildOnHost(source);
-	if (typeof buildOutput === 'string') {
-		return {
-			success: false,
-			reason: 'workflow_source_build_failed',
-			editable: true,
-			errors: [buildOutput],
-			summary: 'Workflow source failed to build.',
-		};
-	}
-
-	if (!buildOutput?.workflow) {
-		return {
-			success: false,
-			reason: 'workflow_source_build_failed',
-			editable: true,
-			errors: ['Workflow source did not produce a workflow with name, nodes, and connections.'],
-			summary: 'Workflow source failed to build.',
-		};
-	}
-
-	return {
-		success: true,
-		workflow: buildOutput.workflow,
-		declaredOutputFixtures: buildOutput.declaredOutputFixtures,
-		warnings: buildOutput.warnings ?? [],
-		compiler: 'host-ast',
-	};
-}
-
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
 /**
@@ -473,6 +418,57 @@ async function collectCredentialResolutionWarnings(
 	return warnings;
 }
 
+/**
+ * Node contracts: write the typed node modules the source imports, build in the sandbox,
+ * write the per-node output types the build revealed, then type-check with `tsc --strict`.
+ */
+async function compileNextWorkflowSource(
+	context: InstanceAiContext,
+	filePath: string,
+	source: string,
+	abortSignal?: AbortSignal,
+): Promise<WorkflowSourceCompileResult> {
+	const workspace = context.workspace;
+	if (!workspace) return await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
+	const prepared = nextWorkspaceFiles(source);
+	if (!prepared.ok) {
+		return {
+			success: false,
+			reason: 'workflow_source_build_failed',
+			editable: true,
+			errors: prepared.errors,
+			summary: 'Workflow source imports a node module that does not exist.',
+		};
+	}
+	const fileOptions = { logger: context.logger, resourceLabel: 'Typed node module', abortSignal };
+	await writeWorkspaceFileMap(workspace, prepared.files, fileOptions);
+	const built = await compileTypeScriptWorkflowSource(
+		context,
+		filePath,
+		abortSignal,
+		NEXT_TSCONFIG_FILENAME,
+	);
+	if (built.success) {
+		await writeWorkspaceFile(
+			workspace,
+			NODE_OUTPUTS_PATH,
+			nodeOutputsDeclaration(built.workflow),
+			fileOptions,
+		);
+	}
+	const typeErrors = await typecheckWorkflowSource(context, filePath, abortSignal);
+	if (typeErrors && typeErrors.length > 0) {
+		return {
+			success: false,
+			reason: 'workflow_source_type_errors',
+			editable: true,
+			errors: built.success ? typeErrors : [...new Set([...built.errors, ...typeErrors])],
+			summary: 'Workflow source has type errors.',
+		};
+	}
+	return built;
+}
+
 export async function compileWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
@@ -503,7 +499,7 @@ export async function compileWorkflowSource(
 				result = parseWorkflowJsonSource(source);
 			} else if (isTypeScriptWorkflowSource(filePath)) {
 				result = context.nodeContractsEnabled
-					? compileTypeScriptWorkflowSourceOnHost(source)
+					? await compileNextWorkflowSource(context, filePath, source, abortSignal)
 					: await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
 			} else {
 				result = {
@@ -518,23 +514,6 @@ export async function compileWorkflowSource(
 			}
 
 			if (!result.success) return result;
-
-			if (context.nodeContractsEnabled) {
-				const { workflow, issues, contractNodes } = compileContractNodes(result.workflow);
-				const explore = context.nodeService.exploreResources?.bind(context.nodeService);
-				const resourceOutputs = explore
-					? await fetchResourceOutputs(workflow, contractNodes, explore)
-					: undefined;
-				result = {
-					...result,
-					workflow,
-					warnings: [
-						...result.warnings,
-						...issues,
-						...(await checkContractOutputReads(workflow, contractNodes, resourceOutputs)),
-					],
-				};
-			}
 
 			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
 			const credentialWarnings = await collectCredentialResolutionWarnings(

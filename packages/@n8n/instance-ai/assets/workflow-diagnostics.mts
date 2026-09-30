@@ -15,8 +15,9 @@ async function main(): Promise<void> {
 	const { API, DiagnosticCategory } = await import('typescript/unstable/async');
 	const cwd = process.cwd();
 	const configPath = path.join(cwd, `.workflow-diagnostics-${process.pid}.json`);
+	// An optional second argument names the base tsconfig (node contracts use a stricter one).
 	const config = JSON.stringify({
-		extends: './tsconfig.json',
+		extends: `./${process.argv[3] ?? 'tsconfig.json'}`,
 		files: [path.resolve(process.argv[2])],
 		include: [],
 	});

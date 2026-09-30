@@ -2941,6 +2941,12 @@ importers:
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
+      '@n8n/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
+      '@n8n/nodes-base-next':
+        specifier: workspace:*
+        version: link:../nodes-base-next
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -4577,6 +4583,9 @@ importers:
       '@n8n/node-engine-compatibility':
         specifier: workspace:*
         version: link:../@n8n/node-engine-compatibility
+      '@n8n/nodes-base-next':
+        specifier: workspace:*
+        version: link:../@n8n/nodes-base-next
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
