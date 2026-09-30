@@ -2068,6 +2068,7 @@ function openImportJsonModal() {
 
 function openDescriptionModal() {
 	if (!localConfig.value) return;
+	const targetAgentId = agentId.value;
 
 	uiStore.openModalWithData({
 		name: AGENT_DESCRIPTION_MODAL_KEY,
@@ -2075,9 +2076,10 @@ function openDescriptionModal() {
 			agentName: localConfig.value.name,
 			description: localConfig.value.description ?? '',
 			onConfirm: (description: string) => {
-				if (!localConfig.value) return;
+				// The modal outlives navigation: drop the edit if another agent is open now.
+				if (agentId.value !== targetAgentId) return;
 				// Send '' to clear: the backend keeps the stored value for omitted fields.
-				replaceConfigAndScheduleSave({ ...localConfig.value, description });
+				onConfigFieldUpdate({ description });
 			},
 		},
 	});
