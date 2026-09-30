@@ -4,7 +4,12 @@ import type {
 	WorkflowSuggestionGraph,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
-import { TransactionRunner, UserRepository } from '@n8n/db';
+import {
+	SharedWorkflowRepository,
+	TransactionRunner,
+	UserRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -47,6 +52,8 @@ export class WorkflowSuggestionService {
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinder: WorkflowFinderService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	private async getWorkflowForEditor(userId: string, workflowId: string) {
@@ -131,14 +138,18 @@ export class WorkflowSuggestionService {
 		const { baseline, payload } = prepared;
 		const { workflowId, projectId, expectedBaseline } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
-			const target = await this.suggestions.readWorkflowTarget(workflowId, ctx);
+			const workflow = await this.workflowRepository.findByIdInContext(workflowId, ctx);
+			const ownerProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+				workflowId,
+				ctx,
+			);
 			if (
-				!target.workflow ||
-				target.projectId !== projectId ||
-				target.workflow.versionId !== expectedBaseline.savedVersionId ||
-				target.workflow.activeVersionId !== expectedBaseline.publishedVersionId ||
-				(await calculateWorkflowChecksum(target.workflow)) !== expectedBaseline.checksum ||
-				!(await this.isPublished(target.workflow, ctx))
+				!workflow ||
+				ownerProject?.id !== projectId ||
+				workflow.versionId !== expectedBaseline.savedVersionId ||
+				workflow.activeVersionId !== expectedBaseline.publishedVersionId ||
+				(await calculateWorkflowChecksum(workflow)) !== expectedBaseline.checksum ||
+				!(await this.isPublished(workflow, ctx))
 			) {
 				throw new ConflictError('The workflow no longer matches the published baseline.');
 			}

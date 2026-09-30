@@ -18,7 +18,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
 
-import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 
 let suggestions: WorkflowSuggestionRepository;
@@ -63,7 +63,7 @@ beforeEach(async () => {
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).clear();
+	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
@@ -99,9 +99,7 @@ it('rolls back the suggestion and its activity when activity insertion fails', a
 		}),
 	).rejects.toThrow();
 	expect(await suggestions.count()).toBe(0);
-	expect(
-		await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).count(),
-	).toBe(0);
+	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
 });
 
 it('joins the caller transaction and rolls back both rows if finalization fails', async () => {
@@ -115,9 +113,7 @@ it('joins the caller transaction and rolls back both rows if finalization fails'
 		}),
 	).rejects.toThrow('Investigation completion failed.');
 	expect(await suggestions.count()).toBe(0);
-	expect(
-		await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).count(),
-	).toBe(0);
+	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
 });
 
 it.each([
@@ -157,8 +153,8 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	const before = await workflows.findOneByOrFail({ id: workflow.id });
 	const historyCount = await histories.count();
 	await tx.run({}, async (ctx) => {
-		const target = await suggestions.readWorkflowTarget(workflow.id, ctx);
-		expect(target.workflow?.versionId).toBe(before.versionId);
+		const currentWorkflow = await workflows.findByIdInContext(workflow.id, ctx);
+		expect(currentWorkflow?.versionId).toBe(before.versionId);
 		const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 	});
@@ -166,8 +162,8 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	expect(await histories.count()).toBe(historyCount);
 	await workflows.update(workflow.id, { settings: { executionTimeout: 45 } });
 	await tx.run({}, async (ctx) => {
-		const target = await suggestions.readWorkflowTarget(workflow.id, ctx);
-		expect(target.workflow?.settings).toEqual({ executionTimeout: 45 });
+		const currentWorkflow = await workflows.findByIdInContext(workflow.id, ctx);
+		expect(currentWorkflow?.settings).toEqual({ executionTimeout: 45 });
 	});
 });
 
@@ -184,7 +180,7 @@ it('reverts and reapplies the suggestion schema', async () => {
 	try {
 		await migration.down(runner);
 		try {
-			const table = db.getMetadata(WorkflowSuggestionActivityEntity).tablePath;
+			const table = db.getMetadata(WorkflowSuggestionActivity).tablePath;
 			expect(await runner.hasTable(table)).toBe(false);
 			expect(await runner.hasTable(suggestions.metadata.tablePath)).toBe(false);
 		} finally {

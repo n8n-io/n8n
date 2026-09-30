@@ -16,7 +16,7 @@ import { DataSource } from '@n8n/typeorm';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
@@ -33,7 +33,7 @@ beforeAll(async () => {
 	service = Container.get(WorkflowSuggestionService);
 });
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).clear();
+	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 

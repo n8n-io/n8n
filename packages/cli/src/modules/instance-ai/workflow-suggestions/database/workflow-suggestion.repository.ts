@@ -1,9 +1,7 @@
 import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
 import {
 	BaseRepository,
-	SharedWorkflow,
 	TransactionRunner,
-	WorkflowEntity,
 	isUniqueConstraintError,
 	type OperationContext,
 } from '@n8n/db';
@@ -11,7 +9,7 @@ import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 
-import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
+import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
 @Service()
@@ -59,21 +57,10 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		}
 	}
 
-	async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const workflow = await manager.findOne(WorkflowEntity, {
-			where: { id: workflowId },
-		});
-		const owner = await manager.findOne(SharedWorkflow, {
-			where: { workflowId, role: 'workflow:owner' },
-		});
-		return { workflow, projectId: owner?.projectId };
-	}
-
 	async appendSubmittedActivity(suggestionId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		await manager.save(
-			manager.create(WorkflowSuggestionActivityEntity, {
+			manager.create(WorkflowSuggestionActivity, {
 				suggestionId,
 				action: 'submitted',
 				author: 'assistant',
@@ -82,7 +69,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	}
 
 	async getActivity(suggestionId: string) {
-		return await this.managerFor({}).find(WorkflowSuggestionActivityEntity, {
+		return await this.managerFor({}).find(WorkflowSuggestionActivity, {
 			where: { suggestionId },
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
