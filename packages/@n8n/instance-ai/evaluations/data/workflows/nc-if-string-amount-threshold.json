@@ -1,0 +1,29 @@
+{
+	"complexity": "simple",
+	"tags": [
+		"build",
+		"node-contracts-poc",
+		"if-node",
+		"filter",
+		"type-validation"
+	],
+	"triggerType": "manual",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: GET the invoices from https://api.example.com/invoices (no auth). It returns a list of invoices, each with an id and an amount. Note: the API returns amount as a string, e.g. \"120.50\". Keep only the invoices with an amount greater than 100 and POST each one as JSON {\"id\": <invoice id>, \"amount\": <amount as a number>} to https://hooks.example.com/large-invoices. Drop the invoices of 100 or less."
+		}
+	],
+	"description": "The IF and Filter nodes validate types strictly by default, so a number comparison on a string amount throws. Grades that only the invoice above 100 passes the IF or Filter node, run by its own code, and that the POST sends amount as a number.",
+	"executionScenarios": [
+		{
+			"name": "large-invoices-posted-with-number-amount",
+			"description": "The IF and Filter nodes validate types strictly by default, so a number comparison on a string amount throws.",
+			"dataSetup": "GET https://api.example.com/invoices returns 200 [{ \"id\": \"i1\", \"amount\": \"120.50\" }, { \"id\": \"i2\", \"amount\": \"80.00\" }, { \"id\": \"i3\", \"amount\": \"100\" }]. The hooks endpoint returns 200 { \"ok\": true } for any POST.",
+			"successCriteria": "Exactly one POST reaches https://hooks.example.com/large-invoices with body { \"id\": \"i1\", \"amount\": 120.5 }, with amount a number. A type validation error, a POST for i2 or i3, or amount as the string '120.50' FAIL."
+		}
+	],
+	"outcomeExpectations": [
+		"The workflow converts amount to a number (or enables loose type validation) before the greater-than-100 comparison, sends only i1 on the true branch, and posts amount as a number."
+	]
+}

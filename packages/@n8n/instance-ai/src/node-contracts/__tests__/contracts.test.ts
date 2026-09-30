@@ -1,6 +1,7 @@
-import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
+import { parseWorkflowCodeToBuilder, type IDataObject, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { fetchResourceOutputs, validateContractInput, type ExploreResources } from '../build';
+import { getExpressionService } from '../expression-check';
 import { CONTRACTS } from '../contracts';
 import { toObjectParameter } from '../helpers';
 import {
@@ -89,6 +90,10 @@ describe('contract lint', () => {
 });
 
 describe('node contracts', () => {
+	beforeAll(async () => {
+		(await getExpressionService()).analyze('={{ 1 }}', { context: 'nodeParameter', nodes: {} });
+	}, 60_000);
+
 	it.each(CONTRACTS.map((contract) => [contract.id, contract] as const))(
 		'%s example is valid contract input',
 		(_id, contract) => {
@@ -351,6 +356,93 @@ describe('node contracts', () => {
 				message: expect.stringContaining("$('Normalize Customer').item.json.email"),
 			}),
 		]);
+	});
+
+	describe('IF contract', () => {
+		const order = {
+			name: 'Order',
+			type: 'set.fields',
+			parameters: {
+				fields: [
+					{ name: 'total', value: '120', type: 'number' },
+					{ name: 'label', value: 'A', type: 'string' },
+				],
+			},
+		};
+		const check = (condition: IDataObject) => ({
+			name: 'Large',
+			type: 'if.condition',
+			parameters: { conditions: [condition] },
+		});
+
+		it('compiles to an IF node with the operator metadata the runtime reads', async () => {
+			const { workflow, issues } = await build(
+				workflowOf([
+					order,
+					check({
+						type: 'number',
+						left: '={{ $json.total }}',
+						condition: { op: 'gt', value: 100 },
+					}),
+				]),
+			);
+			expect(issues).toEqual([]);
+			expect(workflow.nodes[1]).toMatchObject({
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2.2,
+				parameters: {
+					conditions: {
+						combinator: 'and',
+						options: { typeValidation: 'strict', version: 2 },
+						conditions: [
+							{
+								leftValue: '={{ $json.total }}',
+								rightValue: 100,
+								operator: { type: 'number', operation: 'gt' },
+							},
+						],
+					},
+					looseTypeValidation: false,
+				},
+			});
+		});
+
+		it('rejects a left expression of another type than the condition type', async () => {
+			const { issues } = await build(
+				workflowOf([
+					order,
+					check({ type: 'number', left: '={{ $json.label }}', condition: { op: 'gt', value: 1 } }),
+				]),
+			);
+			expect(issues).toEqual([expect.objectContaining({ code: 'CONTRACT_EXPRESSION_TYPE' })]);
+		});
+
+		it('requires a comparison value exactly for binary operators', () => {
+			const contract = CONTRACTS.find(({ id }) => id === 'if.condition');
+			if (!contract) throw new Error('missing contract');
+			const issues = (condition: IDataObject) =>
+				validateContractInput(
+					{ conditions: [{ type: 'boolean', left: true, condition }] },
+					contract.input,
+				);
+			expect(issues({ op: 'true' })).toEqual([]);
+			expect(issues({ op: 'true', value: true })).not.toEqual([]);
+			expect(issues({ op: 'equals' })).not.toEqual([]);
+		});
+
+		it('passes the upstream type through to both outputs', async () => {
+			const source = `
+const start = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } });
+const order = action('set.fields', { name: 'Order', parameters: { fields: [{ name: 'total', value: '120', type: 'number' }] } });
+const large = action('if.condition', { name: 'Large', parameters: { conditions: [{ type: 'number', left: '={{ $json.total }}', condition: { op: 'gt', value: 100 } }] } });
+const high = action('httpRequest.request', { name: 'High', parameters: { method: 'POST', url: 'https://x.test', body: { kind: 'json', json: { t: '={{ $json.total }}' } } } });
+const low = action('httpRequest.request', { name: 'Low', parameters: { method: 'POST', url: 'https://y.test', body: { kind: 'json', json: { t: '={{ $json.totl }}' } } } });
+export default workflow('w', 'W').add(start).to(order).to(large).onTrue(high).onFalse(low);`;
+			const json = parseWorkflowCodeToBuilder(source).toJSON();
+			expect(json.connections.Large.main[1]).toEqual([expect.objectContaining({ node: 'Low' })]);
+			const { issues } = await build(json);
+			expect(issues).toEqual([expect.objectContaining({ nodeName: 'Low' })]);
+		});
 	});
 
 	it('keeps reads of non-contract nodes loose', async () => {

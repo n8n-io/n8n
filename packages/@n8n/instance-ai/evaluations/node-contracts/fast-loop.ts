@@ -33,7 +33,13 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	executeFilter,
+	isFilterValue,
+	NodeHelpers,
+	Workflow,
+} from 'n8n-workflow';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -325,10 +331,15 @@ async function httpBodies(
 	);
 }
 
-function childrenOf(workflow: WorkflowResponse, nodeName: string): WorkflowNodeResponse[] {
+/** Children on all outputs of `nodeName`, or on output `outputIndex` only. */
+function childrenOf(
+	workflow: WorkflowResponse,
+	nodeName: string,
+	outputIndex?: number,
+): WorkflowNodeResponse[] {
 	const outputs = workflow.connections[nodeName];
 	const main = isRecord(outputs) && Array.isArray(outputs.main) ? outputs.main : [];
-	const names = main
+	const names = (outputIndex === undefined ? main : main.slice(outputIndex, outputIndex + 1))
 		.flatMap((branch: unknown) => (Array.isArray(branch) ? branch : []))
 		.filter(isRecord)
 		.map((connection) => String(connection.node));
@@ -342,19 +353,23 @@ const sortedJson = (value: unknown): string =>
 		isRecord(v) && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v,
 	);
 
-/** Output of a Set node for `items`, run by the node's own execute code at the saved typeVersion. */
-async function setOutput(set: WorkflowNodeResponse, sourceName: string, items: IDataObject[]) {
-	const { SetV2 } = loadDist(nodesBaseRequire, './dist/nodes/Set/v2/SetV2.node.js', ['SetV2']);
-	const setNode: unknown =
-		typeof SetV2 === 'function'
-			? Reflect.construct(SetV2, [{ displayName: 'Edit Fields', name: 'set' }])
+/** Outputs of `node` for `items`, run by the node class's own execute code at the saved typeVersion. */
+async function executeOutputs(
+	nodeClass: unknown,
+	node: WorkflowNodeResponse,
+	sourceName: string,
+	items: IDataObject[],
+): Promise<IDataObject[][]> {
+	const instance: unknown =
+		typeof nodeClass === 'function'
+			? Reflect.construct(nodeClass, [{ displayName: node.name, name: node.type }])
 			: {};
-	if (!isRecord(setNode)) throw new Error('SetV2 did not construct');
-	const parameters = withDefaults(set);
-	const once = set.executeOnce === true;
+	if (!isRecord(instance)) throw new Error(`${node.type} did not construct`);
+	const parameters = withDefaults(node);
+	const once = node.executeOnce === true;
 	const output = await withChildContext(
 		sourceName,
-		set.name,
+		node.name,
 		items,
 		async (evaluate) => {
 			const context = {
@@ -367,25 +382,52 @@ async function setOutput(set: WorkflowNodeResponse, sourceName: string, items: I
 					options?: unknown,
 				) => {
 					const raw = valueAt(parameters, name) ?? fallback;
-					return valueAt(options, 'rawExpressions') === true || !isParameterValue(raw)
-						? raw
-						: evaluate(raw, itemIndex);
+					if (valueAt(options, 'rawExpressions') === true || !isParameterValue(raw)) return raw;
+					const value = evaluate(raw, itemIndex);
+					// Core runs a filter parameter read with extractValue and returns its boolean result.
+					return valueAt(options, 'extractValue') === true && isFilterValue(value)
+						? executeFilter(value, { itemIndex })
+						: value;
 				},
 				evaluateExpression: (expression: string, itemIndex: number) =>
 					evaluate(`=${expression}`, itemIndex),
-				getNode: () => ({ ...stubNode(set.name), typeVersion: set.typeVersion ?? 1, parameters }),
+				getNode: () => ({ ...stubNode(node.name), typeVersion: node.typeVersion ?? 1, parameters }),
 				getMode: () => 'manual',
 				continueOnFail: () => false,
 				getWorkflowSettings: () => ({}),
 			};
-			return await invoke(setNode.execute, context);
+			return await invoke(instance.execute, context);
 		},
 		once,
 	);
-	const [firstOutput] = Array.isArray(output) ? output : [];
-	return (Array.isArray(firstOutput) ? firstOutput : [])
-		.map((item: unknown) => (isRecord(item) ? item.json : undefined))
-		.filter(isDataObject);
+	return (Array.isArray(output) ? output : []).map((branch: unknown) =>
+		(Array.isArray(branch) ? branch : [])
+			.map((item: unknown) => (isRecord(item) ? item.json : undefined))
+			.filter(isDataObject),
+	);
+}
+
+/** Output of a Set node for `items`, run by the node's own execute code at the saved typeVersion. */
+async function setOutput(set: WorkflowNodeResponse, sourceName: string, items: IDataObject[]) {
+	const { SetV2 } = loadDist(nodesBaseRequire, './dist/nodes/Set/v2/SetV2.node.js', ['SetV2']);
+	const [firstOutput] = await executeOutputs(SetV2, set, sourceName, items);
+	return firstOutput ?? [];
+}
+
+const FILTER_NODE_CLASSES: Record<string, [file: string, className: string]> = {
+	'n8n-nodes-base.if': ['./dist/nodes/If/V2/IfV2.node.js', 'IfV2'],
+	'n8n-nodes-base.filter': ['./dist/nodes/Filter/V2/FilterV2.node.js', 'FilterV2'],
+};
+
+const isFilterNodeV2 = (node: WorkflowNodeResponse) =>
+	node.type in FILTER_NODE_CLASSES && (node.typeVersion ?? 1) >= 2;
+
+/** Items on output 0 (IF true branch, Filter kept items), run by the node's own V2 execute code. */
+async function filterOutput(node: WorkflowNodeResponse, sourceName: string, items: IDataObject[]) {
+	const [file, className] = FILTER_NODE_CLASSES[node.type];
+	const loaded = loadDist(nodesBaseRequire, file, [className]);
+	const [kept] = await executeOutputs(loaded[className], node, sourceName, items);
+	return kept ?? [];
 }
 
 const toDataValue = (value: unknown): IDataObject[string] =>
@@ -408,7 +450,10 @@ function limitOutput(limit: WorkflowNodeResponse, items: IDataObject[]) {
 	return parameters.keep === 'lastItems' ? items.slice(-maxItems) : items.slice(0, maxItems);
 }
 
-/** Walks from `startName` through Set and Limit nodes to the first HTTP Request, carrying items along. */
+/**
+ * Walks from `startName` through Set, Limit, IF and Filter nodes to the first HTTP Request,
+ * carrying items along. After an IF or Filter it follows output 0 only; `filtered` is that output.
+ */
 async function followToHttp(
 	workflow: WorkflowResponse,
 	startName: string,
@@ -416,14 +461,17 @@ async function followToHttp(
 ) {
 	let sourceName = startName;
 	let items = startItems;
+	let outputIndex: number | undefined;
+	let filtered: IDataObject[] | undefined;
 	const path: string[] = [];
 	for (let hop = 0; hop < 5; hop++) {
-		const [child] = childrenOf(workflow, sourceName);
+		const [child] = childrenOf(workflow, sourceName, outputIndex);
 		if (!child)
 			return {
 				node: undefined,
 				sourceName,
 				items,
+				filtered,
 				path: `no HTTP Request after ${[startName, ...path].join(' → ')}`,
 			};
 		if (child.type === 'n8n-nodes-base.httpRequest')
@@ -431,24 +479,30 @@ async function followToHttp(
 				node: child,
 				sourceName,
 				items,
+				filtered,
 				path: path.length ? `via ${path.join(' → ')}:` : '',
 			};
-		if (child.type !== 'n8n-nodes-base.set' && child.type !== 'n8n-nodes-base.limit') {
+		const isFilter = isFilterNodeV2(child);
+		if (!isFilter && child.type !== 'n8n-nodes-base.set' && child.type !== 'n8n-nodes-base.limit') {
 			return {
 				node: undefined,
 				sourceName,
 				items,
-				path: `ungraded: ${child.type} between ${startName} and the POST`,
+				filtered,
+				path: `ungraded: ${child.type} v${child.typeVersion ?? 1} between ${startName} and the POST`,
 			};
 		}
-		items =
-			child.type === 'n8n-nodes-base.limit'
+		items = isFilter
+			? await filterOutput(child, sourceName, items)
+			: child.type === 'n8n-nodes-base.limit'
 				? limitOutput(child, items)
 				: await setOutput(child, sourceName, items);
+		if (isFilter) filtered = items;
+		outputIndex = isFilter ? 0 : undefined;
 		path.push(child.name);
 		sourceName = child.name;
 	}
-	return { node: undefined, sourceName, items, path: 'no HTTP Request within 5 hops' };
+	return { node: undefined, sourceName, items, filtered, path: 'no HTTP Request within 5 hops' };
 }
 
 // ── Graders ─────────────────────────────────────────────────────────────────
@@ -577,12 +631,14 @@ async function postedBodies(workflow: WorkflowResponse, startName: string, items
 		node: http,
 		sourceName,
 		items: httpInput,
+		filtered,
 		path: via,
 	} = await followToHttp(workflow, startName, items);
-	if (!http) return { via, target: undefined, bodies: [] };
+	if (!http) return { via, filtered, target: undefined, bodies: [] };
 	const parameters = withDefaults(http);
 	return {
 		via,
+		filtered,
 		target: `${asText(parameters.method)} ${asText(parameters.url).replace(/^=/, '').trim()}`,
 		bodies: await httpBodies(http, sourceName, httpInput),
 	};
@@ -924,6 +980,48 @@ const gradeGmailSendThenPost: Grader = async (workflow) => {
 	];
 };
 
+const INVOICES: IDataObject[] = [
+	{ id: 'i1', amount: '120.50' },
+	{ id: 'i2', amount: '80.00' },
+	{ id: 'i3', amount: '100' },
+];
+
+const gradeIfStringAmountThreshold: Grader = async (workflow) => {
+	const get = workflow.nodes.find(
+		(node) =>
+			node.type === 'n8n-nodes-base.httpRequest' &&
+			asText(node.parameters?.url).includes('api.example.com/invoices'),
+	);
+	if (!get) return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the invoices API' }];
+	let posted: Awaited<ReturnType<typeof postedBodies>>;
+	try {
+		posted = await postedBodies(workflow, get.name, INVOICES);
+	} catch (error) {
+		// A type validation error thrown by the IF or Filter node stops the real execution too.
+		const detail = `node throws: ${errorText(error)}`;
+		return [
+			{ name: 'filter', pass: false, detail },
+			{ name: 'reads', pass: false, detail },
+		];
+	}
+	const reads = readsCheck(
+		posted,
+		'POST https://hooks.example.com/large-invoices',
+		(bodies) => sortedJson(bodies) === sortedJson([{ id: 'i1', amount: 120.5 }]),
+	);
+	return [
+		posted.filtered
+			? {
+					name: 'filter',
+					pass: sortedJson(posted.filtered.map((item) => item.id)) === sortedJson(['i1']),
+					detail: JSON.stringify(posted.filtered),
+				}
+			: { name: 'filter', pass: false, ungraded: true, detail: `no IF or Filter node: ${posted.via}` },
+		// A missing POST (for example on the IF false branch) fails; only an unsupported node is ungraded.
+		{ ...reads, ungraded: reads.ungraded === true && posted.via.startsWith('ungraded:') },
+	];
+};
+
 const GRADERS: Record<string, Grader> = {
 	'nc-notion-filter-and-read': gradeNotionFilterAndRead,
 	'nc-sheets-lookup-first-match': gradeSheetsLookupFirstMatch,
@@ -931,6 +1029,7 @@ const GRADERS: Record<string, Grader> = {
 	'nc-gmail-send-then-post': gradeGmailSendThenPost,
 	'nc-sheets-dynamic-columns': gradeSheetsDynamicColumns,
 	'nc-set-keep-all-passthrough': gradeSetKeepAllPassthrough,
+	'nc-if-string-amount-threshold': gradeIfStringAmountThreshold,
 };
 
 async function gradeSafely(caseSlug: string, workflow: WorkflowResponse): Promise<Check[]> {
