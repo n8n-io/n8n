@@ -1,5 +1,5 @@
 import { LdapConfigurationPublicDto, UpdateLdapConfigurationPublicDto } from '@n8n/api-types';
-import { LICENSE_FEATURES, type LdapConfig } from '@n8n/constants';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -14,16 +14,11 @@ import {
 	Put,
 } from '@n8n/decorators';
 import type { Response } from 'express';
-import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
+import { redactLdapConfig } from '@/modules/ldap.ee/redact-ldap-config';
 
 const tags = ['SettingsLdap'];
-
-const toPublicLdapConfiguration = (config: LdapConfig): LdapConfigurationPublicDto => ({
-	...config,
-	bindingAdminPassword: config.bindingAdminPassword ? CREDENTIAL_BLANKING_VALUE : '',
-});
 
 @PublicApiController('/settings/ldap')
 export class LdapPublicController {
@@ -40,7 +35,7 @@ export class LdapPublicController {
 	@ApiResponse(200, LdapConfigurationPublicDto)
 	async getLdapConfiguration(): Promise<LdapConfigurationPublicDto> {
 		const config = await this.ldapService.loadConfig();
-		return toPublicLdapConfiguration(config);
+		return redactLdapConfig(config);
 	}
 
 	@Put('/')
@@ -59,6 +54,6 @@ export class LdapPublicController {
 	): Promise<LdapConfigurationPublicDto> {
 		await this.ldapService.updateConfig(body);
 		const config = await this.ldapService.loadConfig();
-		return toPublicLdapConfiguration(config);
+		return redactLdapConfig(config);
 	}
 }
