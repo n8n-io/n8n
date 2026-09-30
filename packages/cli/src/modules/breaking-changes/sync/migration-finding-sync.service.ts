@@ -86,11 +86,12 @@ export class MigrationFindingSyncService {
 
 		// Page over every workflow, not only the affected ones, so findings
 		// for workflows the scan no longer flags are marked fixed.
+		// Keyset paging: a full page means there may be more, a short page ends it.
 		const take = MigrationFindingSyncService.BATCH_SIZE;
 		let afterId: string | undefined;
-		for (;;) {
-			const workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
-			if (workflowIds.length === 0) break;
+		let workflowIds: string[];
+		do {
+			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 
 			// The scan can take long. A follower must not write, so leadership is
 			// checked again before every batch; the sync record stays unwritten.
@@ -106,9 +107,8 @@ export class MigrationFindingSyncService {
 				workflowIds.filter((id) => !failed.has(id)),
 				hitsByWorkflow,
 			);
-			if (workflowIds.length < take) break;
-			afterId = workflowIds[workflowIds.length - 1];
-		}
+			afterId = workflowIds.at(-1);
+		} while (workflowIds.length === take);
 
 		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
 		await this.syncRepository.upsertForVersion(
