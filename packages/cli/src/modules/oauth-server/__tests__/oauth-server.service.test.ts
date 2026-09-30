@@ -174,7 +174,7 @@ describe('OAuthServerService', () => {
 			beforeAll(() => {
 				const registry = new ProtectedResourceRegistry(mock<Logger>());
 				registry.register({
-					surface: 'instance-mcp',
+					surface: 'trigger',
 					id: 'form-abc',
 					isFirstParty: true,
 					displayName: 'My Form',
@@ -187,7 +187,7 @@ describe('OAuthServerService', () => {
 				// A chat trigger's resource: served under the generic webhook base URL rather
 				// than a dedicated endpoint, so it covers the client-id guard's prefix check.
 				registry.register({
-					surface: 'instance-mcp',
+					surface: 'trigger',
 					id: 'chat-abc',
 					isFirstParty: true,
 					displayName: 'My Chat',
@@ -199,7 +199,7 @@ describe('OAuthServerService', () => {
 				});
 				// A resource that exists but is not first-party (mirror of an MCP resource).
 				registry.register({
-					surface: 'instance-mcp',
+					surface: 'trigger',
 					id: 'mcp-x',
 					getResourceUrl: () => NON_FIRST_PARTY_URL,
 					getAudiences: () => [NON_FIRST_PARTY_URL],
@@ -1227,7 +1227,7 @@ describe('OAuthServerService', () => {
 				authorize: async () => true,
 			});
 			registry.register({
-				surface: 'instance-mcp',
+				surface: 'trigger',
 				id: 'form-abc',
 				getResourceUrl: () => formResourceUrl,
 				getAudiences: () => [formResourceUrl],
@@ -1907,7 +1907,7 @@ describe('OAuthServerService', () => {
 			});
 			const secondResourceUrl = 'https://n8n.example.com/webhook/wf-1/mcp';
 			multiRegistry.register({
-				surface: 'instance-mcp',
+				surface: 'trigger',
 				id: 'workflow-trigger',
 				getResourceUrl: () => secondResourceUrl,
 				getAudiences: () => [secondResourceUrl],

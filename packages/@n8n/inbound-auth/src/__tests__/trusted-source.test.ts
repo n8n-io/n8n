@@ -81,6 +81,7 @@ describe('TrustedSourceMetadataSchema', () => {
 			'a key without kty',
 			{ version: 1, documents: [{ ...oauth2Document, jwks: { keys: [{ kid: 'k1' }] } }] },
 		],
+		['two documents of the same kind', { version: 1, documents: [oauth2Document, oauth2Document] }],
 	])('rejects %s', (_label, document) => {
 		expect(TrustedSourceMetadataSchema.safeParse(document).success).toBe(false);
 	});
@@ -115,6 +116,12 @@ describe('deriveCapabilities', () => {
 		});
 
 	const registeredClient = { kind: 'registered', clientId: 'n8n' };
+	// Manual discovery with jwks-uri keys needs a jwksUri or metadataUrl to pass the config schema.
+	const manualAuthorizationEndpoint = {
+		mode: 'manual',
+		authorizationEndpoint: `${issuer}/authorize`,
+		metadataUrl: `${issuer}/.well-known/openid-configuration`,
+	};
 	const endpoints = {
 		authorization_endpoint: `${issuer}/authorize`,
 		token_endpoint: `${issuer}/token`,
@@ -179,6 +186,28 @@ describe('deriveCapabilities', () => {
 			config({}),
 			() => metadata(undefined, true),
 			[],
+		],
+		// Manual and discovered fields merge, field by field.
+		[
+			'a manual authorization endpoint completes discovered token and jwks endpoints',
+			config({ client: registeredClient, discovery: manualAuthorizationEndpoint }),
+			() => metadata({ token_endpoint: `${issuer}/token`, jwks_uri: `${issuer}/keys` }),
+			['verify-jwt', 'redirect-login'],
+		],
+		[
+			'a manual authorization endpoint with only a discovered token endpoint grants redirect-login alone',
+			config({ client: registeredClient, discovery: manualAuthorizationEndpoint }),
+			() => metadata({ token_endpoint: `${issuer}/token` }),
+			['redirect-login'],
+		],
+		[
+			'a manual jwksUri wins over a discovered one while the endpoints come from discovery',
+			config({
+				client: registeredClient,
+				discovery: { mode: 'manual', jwksUri: `${issuer}/manual-keys` },
+			}),
+			() => metadata({ ...endpoints, jwks_uri: 'https://elsewhere.example/keys' }),
+			['verify-jwt', 'redirect-login'],
 		],
 	];
 

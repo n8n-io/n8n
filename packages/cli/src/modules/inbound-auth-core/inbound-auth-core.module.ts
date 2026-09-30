@@ -43,9 +43,16 @@ class UnregisteredTrustedSourceGate extends TrustedSourceGate {
 @BackendModule({ name: 'inbound-auth-core', instanceTypes: ['main', 'webhook', 'worker'] })
 export class InboundAuthCoreModule implements ModuleInterface {
 	async init() {
-		Container.set(AuthenticationService, new UnregisteredAuthenticationService());
-		Container.set(IdentityService, new UnregisteredIdentityService());
-		Container.set(TrustedSourceGate, new UnregisteredTrustedSourceGate());
+		// A binding that already exists wins: the defaults only fill the gap.
+		if (!Container.has(AuthenticationService)) {
+			Container.set(AuthenticationService, new UnregisteredAuthenticationService());
+		}
+		if (!Container.has(IdentityService)) {
+			Container.set(IdentityService, new UnregisteredIdentityService());
+		}
+		if (!Container.has(TrustedSourceGate)) {
+			Container.set(TrustedSourceGate, new UnregisteredTrustedSourceGate());
+		}
 	}
 
 	async entities() {

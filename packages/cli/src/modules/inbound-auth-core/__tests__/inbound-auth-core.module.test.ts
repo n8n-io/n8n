@@ -3,8 +3,11 @@ import { Container } from '@n8n/di';
 import {
 	AuthenticationService,
 	IdentityService,
+	migrateToLatest,
+	TrustedSourceConfigSchema,
 	TrustedSourceGate,
 	type Extracted,
+	type TrustedSource,
 	type Verified,
 } from '@n8n/inbound-auth';
 
@@ -32,13 +35,39 @@ describe('InboundAuthCoreModule', () => {
 		});
 
 		it('binds an IdentityService that fails closed until an implementation is registered', async () => {
-			const { credential, ...rest } = extracted;
+			const source: TrustedSource = {
+				id: 'source-1',
+				name: 'Example IdP',
+				type: 'oauth2',
+				issuer: 'https://idp.example',
+				managedBy: 'admin',
+				status: 'unchecked',
+				lastError: null,
+				lastCheckedAt: null,
+				createdAt: '2026-09-30T10:00:00.000Z',
+				updatedAt: '2026-09-30T10:00:00.000Z',
+				config: migrateToLatest(
+					TrustedSourceConfigSchema.parse({
+						version: 1,
+						authentication: { type: 'oauth2' },
+						surfaces: { 'instance-mcp': {} },
+					}),
+				),
+				metadata: null,
+			};
+			const {
+				credential,
+				request: { headers: _headers, ...request },
+				...rest
+			} = extracted;
 			const verified = {
 				...rest,
+				request,
 				credentialKind: credential.kind,
+				source,
 				claims: { sub: 'alice' },
 				expiresAt: new Date(),
-			} as unknown as Verified;
+			} satisfies Verified;
 
 			const result = await Container.get(IdentityService).identify(verified);
 

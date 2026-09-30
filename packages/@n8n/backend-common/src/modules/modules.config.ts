@@ -3,9 +3,6 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { UnknownModuleError } from './errors/unknown-module.error';
 
 export const MODULE_NAMES = [
-	// First: modules initialize in list order, and this one binds the inbound-auth contracts that
-	// later modules inject. An unbound abstract class resolves to `undefined` in the container.
-	'inbound-auth-core',
 	'agents',
 	'agent-evals',
 	'insights',
@@ -43,6 +40,7 @@ export const MODULE_NAMES = [
 	'policy-infrastructure',
 	'type-availability-policies',
 	'instance-reporting',
+	'inbound-auth-core',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
