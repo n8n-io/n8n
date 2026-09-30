@@ -431,6 +431,78 @@ describe('setupSandboxWorkspace', () => {
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
 	});
 
+	it.each([
+		['a new', null],
+		['an initialized', '2024-01-01T00:00:00.000Z'],
+	])(
+		'skips the knowledge base and node-types catalog for %s workspace when node contracts are enabled',
+		async (_label, marker) => {
+			const runInSandbox: RunInSandboxMock = vi.fn();
+			runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+			const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+			readFileViaSandbox.mockResolvedValue(null);
+			const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+				runInSandbox,
+				readFileViaSandbox,
+			);
+			const writeFile = vi.fn<
+				(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+			>(async () => {});
+			const readFile = vi.fn(async (path: string) =>
+				marker !== null && path === '/sandbox/.sandbox-initialized'
+					? await Promise.resolve(marker)
+					: await Promise.reject(new Error(`ENOENT: ${path}`)),
+			);
+			const bundle: BuilderTemplatesBundle = {
+				archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
+				version: 'test-sha',
+			};
+			const context = { ...createSetupContext(bundle), nodeContractsEnabled: true };
+
+			const initialized = await setupSandboxWorkspace(
+				createLocalWorkspace(writeFile, undefined, readFile),
+				context,
+			);
+
+			expect(initialized).toBe(marker === null);
+			const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+			expect(writtenPaths.some((p) => p.includes('/knowledge-base/'))).toBe(false);
+			expect(writtenPaths).not.toContain('/sandbox/node-types/index.txt');
+			expect(context.templatesService?.getBundle).not.toHaveBeenCalled();
+			expect(context.nodeService.listSearchable).not.toHaveBeenCalled();
+			if (marker === null) {
+				expect(writtenPaths).toEqual(
+					expect.arrayContaining([
+						'/sandbox/package.json',
+						'/sandbox/build.mjs',
+						'/sandbox/.sandbox-initialized',
+					]),
+				);
+				expect(installCommandsFrom(runInSandbox)).toHaveLength(1);
+			}
+		},
+	);
+
+	it('writes the node-types catalog when node contracts are disabled', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => {});
+		const context = createSetupContext();
+
+		await setupSandboxWorkspace(createLocalWorkspace(writeFile), context);
+
+		expect(context.nodeService.listSearchable).toHaveBeenCalledTimes(1);
+		expect(writeFile.mock.calls.map(([path]) => path)).toContain('/sandbox/node-types/index.txt');
+	});
+
 	it.each(['mkdir', 'writeFile'])(
 		'returns setup failure while another %s operation is pending',
 		async (operation) => {

@@ -385,6 +385,50 @@ describe('classifyNodesForSimulation', () => {
 			source: 'deterministic',
 		});
 	});
+
+	it('classifies contract actions by their declared effect without calling the LLM', async () => {
+		const verdicts = await classify([
+			trigger,
+			{ name: 'Get Pages', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' },
+			{ name: 'Append Row', type: '@n8n/nodes-base-next.googleSheetsSheetAppend' },
+		]);
+		expect(verdictOf(verdicts, 'Get Pages')).toMatchObject({
+			verdict: 'execute',
+			reason: 'Get many database pages reads from Notion',
+			confidence: 'high',
+			source: 'deterministic',
+		});
+		expect(verdictOf(verdicts, 'Append Row')).toMatchObject({
+			verdict: 'simulate',
+			reason: 'Append row writes to Google Sheets',
+			confidence: 'high',
+			source: 'deterministic',
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('keeps mocked-credential precedence over contract action effects', async () => {
+		const verdicts = await classify(
+			[trigger, { name: 'Get Pages', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' }],
+			['Get Pages'],
+		);
+		expect(verdictOf(verdicts, 'Get Pages')).toMatchObject({
+			verdict: 'simulate',
+			reason: 'Credentials are not configured for this node',
+		});
+	});
+
+	it('sends unknown contract node types to the LLM', async () => {
+		setupAgentMock(
+			JSON.stringify({ Unknown: { verdict: 'execute', reason: 'Reads', confidence: 'high' } }),
+		);
+		const verdicts = await classify([
+			trigger,
+			{ name: 'Unknown', type: '@n8n/nodes-base-next.notARealAction' },
+		]);
+		expect(verdictOf(verdicts, 'Unknown').source).toBe('llm');
+		expect(mockCreateEvalAgent).toHaveBeenCalled();
+	});
 });
 
 describe('attached tool classification', () => {

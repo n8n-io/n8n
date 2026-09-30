@@ -1,6 +1,7 @@
 import { nodeTypeOf } from '@n8n/nodes-base-next';
 
 import {
+	catalogRowsBesideModules,
 	findNextActions,
 	nearestNextActions,
 	nextActions,
@@ -68,11 +69,37 @@ describe('next-modules', () => {
 		]);
 	});
 
+	it('lists catalog hits beside module nodes as one line each, own triggers first', () => {
+		const hits = [
+			['n8n-nodes-base.httpRequestTool', 'HTTP Request Tool'],
+			['@n8n/n8n-nodes-langchain.toolHttpRequest', 'HTTP Request Tool'],
+			['@n8n/mcp-registry.notion', 'Notion MCP'],
+			['n8n-nodes-base.oracleDatabase', 'Oracle Database'],
+			['n8n-nodes-base.webhook', 'Webhook'],
+			['n8n-nodes-base.notionTrigger', 'Notion Trigger'],
+			['n8n-nodes-base.metabase', 'Metabase'],
+		].map(([name, displayName]) => ({ name, displayName }));
+
+		expect(catalogRowsBesideModules(hits, ['notion', 'httpRequest'])).toEqual([
+			'n8n-nodes-base.notionTrigger: Notion Trigger',
+			'n8n-nodes-base.oracleDatabase: Oracle Database',
+			'n8n-nodes-base.webhook: Webhook',
+		]);
+		expect(catalogRowsBesideModules(hits.slice(0, 2), ['notion'])).toEqual([
+			'n8n-nodes-base.httpRequestTool: HTTP Request Tool',
+			'@n8n/n8n-nodes-langchain.toolHttpRequest: HTTP Request Tool',
+		]);
+	});
+
 	it.each([
 		['notion.page.getAll', ['notion.databasePage.getAll']],
 		['slack.message.send', ['httpRequest.send']],
 		['n8n-nodes-base.unknown', []],
 	])('returns the nearest actions for %s', (id, ids) => {
-		expect(nearestNextActions(id).map((action) => action.id).slice(0, ids.length)).toEqual(ids);
+		expect(
+			nearestNextActions(id)
+				.map((action) => action.id)
+				.slice(0, ids.length),
+		).toEqual(ids);
 	});
 });

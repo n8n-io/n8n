@@ -25,6 +25,7 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	actionRow,
 	actionRowsOfNode,
+	catalogRowsBesideModules,
 	nearestNextActions,
 	nextNodeIdOfNodeType,
 	nextNodeModule,
@@ -101,7 +102,8 @@ const moduleSearchAction = searchAction.extend({
 		.describe(
 			'Search node types by name or AI connection type. Use a short service name and the operation, e.g. "notion get many pages" or "http request". ' +
 				'A service with a typed node module returns it in `nodeModules`: import it and call its actions. `otherActions` lists other typed actions by id. ' +
-				'`results` lists nodes without a module: use them with `node({ type, version, parameters })`. ' +
+				'When a module covers the query, `otherNodes` lists up to 3 other catalog nodes as `<nodeType>: <displayName>`. Search one by name to get its details. ' +
+				'Otherwise `results` lists nodes without a module: use them with `node({ type, version, parameters })`. ' +
 				'To find every service a workflow needs in one call, pass `queries` instead of `query`. ' +
 				GATEWAY_SEARCH_DESCRIPTION,
 		),
@@ -388,7 +390,10 @@ async function handleSearch(
 	};
 }
 
-/** A module node replaces its catalog hits; the other hits keep their catalog rows. */
+/**
+ * A module node replaces its catalog hits. When a module covers the query, the other hits
+ * are one-line rows. Otherwise they keep their catalog rows for `node()`.
+ */
 async function searchOneWithModules(
 	context: InstanceAiContext,
 	input: SearchInput,
@@ -400,9 +405,14 @@ async function searchOneWithModules(
 	const { nodes, otherActions } = input.connectionType
 		? { nodes: [], otherActions: [] }
 		: searchNextActions(input.query ?? '', coveredNodes);
+	const otherActionsPart = otherActions.length ? { otherActions } : {};
+	if (nodes.length) {
+		const otherNodes = catalogRowsBesideModules(results, nodes);
+		return { nodes, ...otherActionsPart, ...(otherNodes.length ? { otherNodes } : {}) };
+	}
 	return {
 		nodes,
-		...(otherActions.length ? { otherActions } : {}),
+		...otherActionsPart,
 		results,
 		totalResults: results.length,
 	};

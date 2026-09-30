@@ -114,6 +114,36 @@ export function searchNextActions(query: string, coveredNodes: readonly string[]
 	return { nodes, otherActions: others.slice(0, MAX_OTHER_ACTIONS).map(actionRow) };
 }
 
+const MAX_CATALOG_ROWS = 3;
+
+const localNameOf = (nodeType: string) => nodeType.slice(nodeType.lastIndexOf('.') + 1);
+
+const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+
+/** The AI-tool variants of a module node, e.g. `notionTool`, `toolHttpRequest` or an MCP `notion`. */
+const isToolVariantOf = (nodeType: string, nodeId: string) =>
+	[nodeId, `${nodeId}Tool`, `tool${capitalize(nodeId)}`].includes(localNameOf(nodeType));
+
+const isTriggerOf = (nodeType: string, nodeId: string) =>
+	localNameOf(nodeType) === `${nodeId}Trigger`;
+
+/**
+ * One-line catalog rows for a query that module `nodes` cover. The tool variants of these
+ * nodes go, because the module replaces them. Their triggers come first, because a
+ * workflow can start with one.
+ */
+export function catalogRowsBesideModules(
+	hits: ReadonlyArray<{ name: string; displayName: string }>,
+	nodes: readonly string[],
+): string[] {
+	const kept = hits.filter((hit) => !nodes.some((nodeId) => isToolVariantOf(hit.name, nodeId)));
+	const isOwnTrigger = (hit: { name: string }) =>
+		nodes.some((nodeId) => isTriggerOf(hit.name, nodeId));
+	return [...kept.filter(isOwnTrigger), ...kept.filter((hit) => !isOwnTrigger(hit))]
+		.slice(0, MAX_CATALOG_ROWS)
+		.map((hit) => `${hit.name}: ${hit.displayName}`);
+}
+
 /**
  * Agents guess action ids from memory. For an unknown id, the actions of the same node
  * come first, then actions with the same operation name.

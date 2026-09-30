@@ -460,6 +460,8 @@ async function materializeKnowledgeBaseStep(
 	root: string,
 	context: InstanceAiContext,
 ): Promise<void> {
+	// The node-contracts build and skill do not read the legacy SDK knowledge base.
+	if (context.nodeContractsEnabled) return;
 	await setupStep('materialize-knowledge-base', async () => {
 		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
 		await materializeKnowledgeBaseIntoWorkspace({
@@ -512,13 +514,15 @@ export async function setupSandboxWorkspace(
 			files.set('build.mjs', BUILD_MJS);
 			files.set(WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker());
 
-			// Node types catalog
-			const nodeTypes = await setupStep(
-				'list-node-types',
-				async () => await context.nodeService.listSearchable(),
-			);
-			const catalogLines = nodeTypes.map(formatNodeCatalogLine);
-			files.set('node-types/index.txt', catalogLines.join('\n'));
+			// Node types catalog. Node contracts search node types on the host instead.
+			if (!context.nodeContractsEnabled) {
+				const nodeTypes = await setupStep(
+					'list-node-types',
+					async () => await context.nodeService.listSearchable(),
+				);
+				const catalogLines = nodeTypes.map(formatNodeCatalogLine);
+				files.set('node-types/index.txt', catalogLines.join('\n'));
+			}
 
 			// ── Write workspace files ──────────────────────────────────────────────
 

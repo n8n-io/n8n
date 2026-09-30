@@ -16,6 +16,7 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
+import { actions, nodeTypeOf } from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
@@ -103,6 +104,11 @@ const DESTRUCTIVE_NODE_TYPES = new Map<string, string>([
 		'Calls remote MCP tools which may have side effects',
 	],
 ]);
+
+/** Action contracts declare their effect, so their verdict needs no LLM call. */
+const CONTRACT_ACTIONS_BY_NODE_TYPE = new Map(
+	actions.map((action) => [nodeTypeOf(action), action]),
+);
 
 const CODE_NODE_TYPES = new Set([
 	'n8n-nodes-base.code',
@@ -216,6 +222,25 @@ function deterministicVerdict(
 			: node.type;
 	if (mockedNodeNames.has(node.name)) {
 		return deterministic(node.name, 'simulate', 'Credentials are not configured for this node');
+	}
+
+	const contractAction = CONTRACT_ACTIONS_BY_NODE_TYPE.get(nodeType);
+	if (contractAction) {
+		const { action, flow, node: contractNode } = contractAction;
+		if (flow.effect === 'write') {
+			return deterministic(
+				node.name,
+				'simulate',
+				`${action} writes to ${contractNode.displayName}`,
+			);
+		}
+		return deterministic(
+			node.name,
+			'execute',
+			flow.effect === 'read'
+				? `${action} reads from ${contractNode.displayName}`
+				: 'Transforms data without touching external systems',
+		);
 	}
 
 	if (isSafeNodeType(nodeType)) {

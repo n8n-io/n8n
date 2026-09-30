@@ -1245,7 +1245,8 @@ describe('nodes tool', () => {
 		type ModuleSearch = {
 			nodeModules?: Array<{ node: string; import: string; module: string }>;
 			otherActions?: string[];
-			results: Array<{ name: string }>;
+			results?: Array<{ name: string }>;
+			otherNodes?: string[];
 		};
 
 		it('inlines the module of the service the query names instead of its catalog row', async () => {
@@ -1263,7 +1264,44 @@ describe('nodes tool', () => {
 					module: expect.stringContaining('export const notion = {'),
 				},
 			]);
-			expect(result.results.map(({ name }) => name)).not.toContain('n8n-nodes-base.notion');
+			expect(result).not.toHaveProperty('results');
+		});
+
+		it('lists catalog hits beside a module as one-line rows without its tool variants', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([
+				...searchableNodes,
+				...[
+					['n8n-nodes-base.notionTool', 'Notion Tool', ['ai_tool']],
+					['@n8n/mcp-registry.notion', 'Notion MCP', ['ai_tool']],
+					['n8n-nodes-base.notionTrigger', 'Notion Trigger', ['main']],
+					['n8n-nodes-base.oracleDatabase', 'Oracle Database', ['main']],
+					[
+						'n8n-nodes-base.googleFirebaseRealtimeDatabase',
+						'Google Cloud Realtime Database',
+						['main'],
+					],
+					['n8n-nodes-base.metabase', 'Metabase', ['main']],
+				].map(([name, displayName, outputs]) => ({
+					name: name as string,
+					displayName: displayName as string,
+					description: `Consume ${displayName as string} database pages`,
+					version: 1,
+					inputs: ['main'],
+					outputs: outputs as string[],
+				})),
+			]);
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'notion get many database pages',
+				limit: 10,
+			});
+
+			expect(result.nodeModules?.map(({ node }) => node)).toEqual(['notion']);
+			expect(result).not.toHaveProperty('results');
+			expect(result.otherNodes).toHaveLength(3);
+			expect(result.otherNodes?.[0]).toBe('n8n-nodes-base.notionTrigger: Notion Trigger');
+			expect(result.otherNodes?.join('\n')).not.toMatch(/notionTool|mcp-registry/);
 		});
 
 		it('searches several services in one call and inlines each module once', async () => {
