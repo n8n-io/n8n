@@ -100,7 +100,7 @@ const sessionValue = computed(() => {
 		:header="i18n.baseText('agents.builder.budget.title')"
 		data-testid="agent-budget-panel"
 	>
-		<div :class="[shared.disabled && disabled, $style.body]">
+		<div :class="[disabled && shared.disabled, $style.body]">
 			<div data-testid="agent-budget-usage" :class="$style.usageSection">
 				<div :class="$style.usageHeader">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">

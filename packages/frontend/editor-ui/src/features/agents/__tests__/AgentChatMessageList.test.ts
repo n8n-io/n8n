@@ -115,8 +115,8 @@ vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 vi.mock('@/features/agents/components/AgentBudgetNoticeCard.vue', () => ({
 	default: {
 		template:
-			'<div data-testid="agent-budget-notice-card" :data-code="code"><button data-testid="agent-budget-notice-increase" @click="$emit(\'increase\', { field: \'sessionCostCapUsd\', amount: 10 })" /></div>',
-		props: ['code'],
+			'<div data-testid="agent-budget-notice-card" :data-code="code" :data-can-increase="String(canIncrease)" :data-pending="String(pending)"><button data-testid="agent-budget-notice-increase" @click="$emit(\'increase\', { field: \'sessionCostCapUsd\', amount: 10 })" /></div>',
+		props: ['code', 'canIncrease', 'pending'],
 		emits: ['increase'],
 	},
 }));
@@ -611,6 +611,30 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.emitted('increase-budget')?.[0]).toEqual([
 			{ field: 'sessionCostCapUsd', amount: 10 },
 		]);
+	});
+
+	it('passes the increase permission and pending state to the notice cards', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.session' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+				budgetIncreasePending: true,
+			},
+		});
+
+		const card = wrapper.get('[data-testid="agent-budget-notice-card"]');
+		expect(card.attributes('data-can-increase')).toBe('true');
+		expect(card.attributes('data-pending')).toBe('true');
 	});
 
 	it('renders external-wait notice via toolRun path for suspended integration action', () => {

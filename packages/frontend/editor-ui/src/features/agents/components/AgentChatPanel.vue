@@ -50,7 +50,7 @@ import type {
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
-import { isBudgetStopCode } from '../utils/budget-config';
+import { isBudgetStopCode, type BudgetAmountField } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 import ApprovalCard from './interactive/ApprovalCard.vue';
@@ -66,26 +66,31 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
-		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
 		budgetCards?: boolean;
+		/**
+		 * Persists a raised budget cap. Omitted when the user cannot edit the
+		 * agent (or editing is locked) — the notice cards then hide the
+		 * increase action. Resolves true once the new cap is saved.
+		 */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
 		continueSessionId: undefined,
 		newSession: false,
-		canEditAgent: true,
 		canSendToAssistant: false,
 		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
 		budgetCards: false,
+		increaseBudget: undefined,
 	},
 );
 
@@ -98,7 +103,6 @@ const emit = defineEmits<{
 	back: [];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
-	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
 }>();
 
 const locale = useI18n();
@@ -560,6 +564,8 @@ const hasBudgetStop = computed(() =>
 		message.budgetNotices?.some((notice) => isBudgetStopCode(notice.code)),
 	),
 );
+const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
+const budgetIncreasePending = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
 		isPreparingToSend.value || isSubmitting.value || isLoadingHistory.value || hasBudgetStop.value,
@@ -685,22 +691,31 @@ async function onSubmit(): Promise<SubmitResult> {
 	}
 }
 
-function onIncreaseBudget(payload: {
-	field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
-	amount: number;
-}) {
-	const cleared =
-		payload.field === 'sessionCostCapUsd'
-			? new Set(['budget.session'])
-			: new Set(['budget.monthly', 'budget.alert']);
-	messages.value = messages.value.map((message) => {
-		if (!message.budgetNotices?.some((notice) => cleared.has(notice.code))) return message;
-		return {
-			...message,
-			budgetNotices: message.budgetNotices.filter((notice) => !cleared.has(notice.code)),
-		};
-	});
-	emit('increase-budget', payload);
+/**
+ * Clears the matching notices only after the new cap is persisted — a failed
+ * or skipped save must keep the stop card up and Send blocked, because the
+ * next run would stop against the old cap again.
+ */
+async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	if (!props.increaseBudget || budgetIncreasePending.value) return;
+	budgetIncreasePending.value = true;
+	try {
+		const saved = await props.increaseBudget(payload);
+		if (!saved) return;
+		const cleared =
+			payload.field === 'sessionCostCapUsd'
+				? new Set(['budget.session'])
+				: new Set(['budget.monthly', 'budget.alert']);
+		messages.value = messages.value.map((message) => {
+			if (!message.budgetNotices?.some((notice) => cleared.has(notice.code))) return message;
+			return {
+				...message,
+				budgetNotices: message.budgetNotices.filter((notice) => !cleared.has(notice.code)),
+			};
+		});
+	} finally {
+		budgetIncreasePending.value = false;
+	}
 }
 
 function sendMessageFromOutside(message: string) {
@@ -823,6 +838,8 @@ onBeforeUnmount(() => {
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
 			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+			:can-increase-budget="canIncreaseBudget"
+			:budget-increase-pending="budgetIncreasePending"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 			@increase-budget="onIncreaseBudget"

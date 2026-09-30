@@ -8,7 +8,7 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
-import { increasedBudgetConfig, type BudgetAmountField } from '../utils/budget-config';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
 
 const props = withDefaults(
@@ -28,6 +28,8 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
 	{
 		visible: true,
@@ -35,6 +37,7 @@ const props = withDefaults(
 		layout: 'dock',
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
+		increaseBudget: undefined,
 	},
 );
 
@@ -44,7 +47,6 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
-	'update:config': [changes: Partial<AgentJsonConfig>];
 }>();
 
 const inputDraft = ref('');
@@ -56,11 +58,6 @@ function focusInput(options?: FocusOptions) {
 
 function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
-}
-
-function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
-	const update = increasedBudgetConfig(props.localConfig, payload.field, payload.amount);
-	if (update) emit('update:config', update);
 }
 
 watch(
@@ -101,7 +98,7 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 				:before-send="beforeSend"
 				:budget-cards="budgetCards"
-				@increase-budget="onIncreaseBudget"
+				:increase-budget="increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"

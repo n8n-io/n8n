@@ -107,6 +107,7 @@ function save() {
 					:model-value="alertOn"
 					:disabled="disabled || !hasAmount()"
 					size="small"
+					:aria-label="i18n.baseText('agents.builder.budget.alert.label')"
 					data-testid="agent-budget-alert-switch"
 					@update:model-value="onAlertToggle"
 				/>

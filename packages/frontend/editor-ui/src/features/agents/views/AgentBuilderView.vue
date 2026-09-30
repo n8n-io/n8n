@@ -138,6 +138,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { useFixWithAssistantCalloutDismissal } from '../composables/useFixWithAssistantCalloutDismissal';
+import { increasedBudgetConfig, type BudgetAmountField } from '../utils/budget-config';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
 const props = withDefaults(
@@ -1570,6 +1571,28 @@ async function beforePreviewSend() {
 	}
 }
 
+/**
+ * Raises a budget cap from a preview notice card. The card stays up (and
+ * keeps blocking Send) until the new cap is persisted: a failed save must
+ * not unblock the next run against the old cap. Offered only while the user
+ * can edit the agent.
+ */
+async function onPreviewIncreaseBudget(payload: {
+	field: BudgetAmountField;
+	amount: number;
+}): Promise<boolean> {
+	if (!localConfig.value || !effectiveCanEditAgent.value) return false;
+	const update = increasedBudgetConfig(localConfig.value, payload.field, payload.amount);
+	if (!update) return false;
+	onConfigFieldUpdate(update);
+	try {
+		await flushAutosave();
+	} catch {
+		return false;
+	}
+	return true;
+}
+
 // Makes the lock a write boundary rather than only a disabled UI state: drop
 // any autosave queued before the AI or another client took over this agent.
 watch(isEditingLocked, (locked) => {
@@ -2881,11 +2904,11 @@ useKeybindings({
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
 					budget-cards
+					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
-					@update:config="onConfigFieldUpdate"
 				/>
 
 				<AgentBuilderEditorColumn
@@ -2986,6 +3009,7 @@ useKeybindings({
 						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 						:before-send="beforePreviewSend"
 						budget-cards
+						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"
 						@delete-session="onDeletePreviewSession"
@@ -2995,7 +3019,6 @@ useKeybindings({
 						@session-created="markSessionCreated"
 						@send-to-assistant="onSendPreviewToAssistant"
 						@initial-consumed="taskPreviewPrompt = undefined"
-						@update:config="onConfigFieldUpdate"
 					/>
 				</N8nResizeWrapper>
 			</template>

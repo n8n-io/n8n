@@ -21,6 +21,7 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
@@ -60,6 +61,8 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
 		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
 	{
 		newSession: false,
@@ -67,6 +70,7 @@ const props = withDefaults(
 		isDeletingSession: false,
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
+		increaseBudget: undefined,
 	},
 );
 
@@ -81,7 +85,6 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
-	'update:config': [changes: Partial<AgentJsonConfig>];
 }>();
 
 const i18n = useI18n();
@@ -306,12 +309,12 @@ useKeybindings({
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
 				:budget-cards="props.budgetCards"
+				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
-				@update:config="emit('update:config', $event)"
 			/>
 		</div>
 	</aside>

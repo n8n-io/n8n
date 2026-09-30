@@ -480,7 +480,13 @@ describe('AgentPreviewDock', () => {
 });
 
 describe('AgentPreviewChatPage', () => {
-	function mountChatPage(beforeSend?: () => Promise<void> | void) {
+	function mountChatPage(
+		beforeSend?: () => Promise<void> | void,
+		increaseBudget?: (payload: {
+			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+			amount: number;
+		}) => Promise<boolean>,
+	) {
 		return shallowMount(AgentPreviewChatPage, {
 			props: {
 				initialized: true,
@@ -491,6 +497,7 @@ describe('AgentPreviewChatPage', () => {
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
 				beforeSend,
+				increaseBudget,
 			},
 		});
 	}
@@ -520,6 +527,15 @@ describe('AgentPreviewChatPage', () => {
 		const wrapper = mountChatPage(beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
+	});
+
+	it('forwards the budget increase handler to the chat panel', () => {
+		const increaseBudget = vi.fn().mockResolvedValue(true);
+		const wrapper = mountChatPage(undefined, increaseBudget);
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('increaseBudget')).toBe(
+			increaseBudget,
+		);
 	});
 
 	it('sends the initial prompt once when the chat panel is ready', async () => {

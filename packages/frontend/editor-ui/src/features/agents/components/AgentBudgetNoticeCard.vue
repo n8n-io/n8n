@@ -33,9 +33,16 @@ const COPY: Record<
 	},
 };
 
-const props = defineProps<{
-	code: BudgetNoticeCode;
-}>();
+const props = withDefaults(
+	defineProps<{
+		code: BudgetNoticeCode;
+		/** False when the user cannot edit the agent — the increase action is hidden. */
+		canIncrease?: boolean;
+		/** True while the cap increase is being saved. */
+		pending?: boolean;
+	}>(),
+	{ canIncrease: false, pending: false },
+);
 
 const emit = defineEmits<{
 	increase: [payload: { field: BudgetAmountField; amount: number }];
@@ -43,7 +50,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const dismissed = ref(false);
-const raised = ref(false);
 const amount = ref<number | undefined>();
 
 const copy = computed(() => COPY[props.code]);
@@ -57,14 +63,13 @@ function onAmount(value: number | null | undefined) {
 
 function increase() {
 	const value = amount.value;
-	if (value === undefined) return;
-	raised.value = true;
+	if (value === undefined || props.pending) return;
 	emit('increase', { field: field.value, amount: value });
 }
 </script>
 
 <template>
-	<N8nCard v-if="!raised" :class="$style.card" data-testid="agent-budget-notice-card">
+	<N8nCard :class="$style.card" data-testid="agent-budget-notice-card">
 		<div :class="$style.body">
 			<N8nText tag="p" bold :class="$style.title" data-testid="agent-budget-notice-title">
 				{{ i18n.baseText(copy.title) }}
@@ -76,12 +81,13 @@ function increase() {
 				{{ i18n.baseText(copy.dismissed) }}
 			</N8nText>
 			<template v-else>
-				<label :class="$style.amount">
+				<label v-if="canIncrease" :class="$style.amount">
 					<N8nText size="small">{{ i18n.baseText(copy.input) }}</N8nText>
 					<N8nInputNumber
 						:model-value="amount"
 						:min="0"
 						:controls="false"
+						:disabled="pending"
 						data-testid="agent-budget-notice-amount"
 						@update:model-value="onAmount"
 					/>
@@ -90,12 +96,19 @@ function increase() {
 					<N8nButton
 						variant="outline"
 						size="medium"
+						:disabled="pending"
 						data-testid="agent-budget-notice-not-now"
 						@click="dismissed = true"
 					>
 						{{ i18n.baseText('agents.chat.budget.notNow') }}
 					</N8nButton>
-					<N8nButton size="medium" data-testid="agent-budget-notice-increase" @click="increase">
+					<N8nButton
+						v-if="canIncrease"
+						size="medium"
+						:loading="pending"
+						data-testid="agent-budget-notice-increase"
+						@click="increase"
+					>
 						{{ i18n.baseText('agents.chat.budget.increase') }}
 					</N8nButton>
 				</div>

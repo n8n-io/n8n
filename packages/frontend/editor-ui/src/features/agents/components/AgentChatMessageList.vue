@@ -45,6 +45,8 @@ const props = defineProps<{
 	sessionId?: string;
 	canSendToAssistant?: boolean;
 	dismissedFixToolCallIds?: string[];
+	canIncreaseBudget?: boolean;
+	budgetIncreasePending?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -504,6 +506,8 @@ watch(
 						v-for="notice in group.budgetNotices"
 						:key="notice.id"
 						:code="notice.code"
+						:can-increase="canIncreaseBudget"
+						:pending="budgetIncreasePending"
 						@increase="emit('increase-budget', $event)"
 					/>
 					<AiThinkingBlock
@@ -624,6 +628,8 @@ watch(
 							v-for="notice in group.message.budgetNotices ?? []"
 							:key="notice.id"
 							:code="notice.code"
+							:can-increase="canIncreaseBudget"
+							:pending="budgetIncreasePending"
 							@increase="emit('increase-budget', $event)"
 						/>
 					</template>

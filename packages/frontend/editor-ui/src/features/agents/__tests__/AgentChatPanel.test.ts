@@ -197,7 +197,7 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages'],
+		props: ['messages', 'canIncreaseBudget', 'budgetIncreasePending'],
 		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
@@ -274,6 +274,10 @@ describe('AgentChatPanel', () => {
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
+			increaseBudget: (payload: {
+				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+				amount: number;
+			}) => Promise<boolean>;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -1460,7 +1464,8 @@ describe('AgentChatPanel', () => {
 				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
 			},
 		];
-		const wrapper = mountPanel();
+		const increaseBudget = vi.fn().mockResolvedValue(true);
+		const wrapper = mountPanel({ increaseBudget });
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 		chatInput.vm.$emit('update:modelValue', 'keep going');
 		await nextTick();
@@ -1474,9 +1479,58 @@ describe('AgentChatPanel', () => {
 			field: 'monthlyBudgetUsd',
 			amount: 50,
 		});
-		await nextTick();
+		await flushPromises();
+		expect(increaseBudget).toHaveBeenCalledWith({ field: 'monthlyBudgetUsd', amount: 50 });
 		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
 		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('keeps the stop card and the block when the budget increase save fails', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const increaseBudget = vi.fn().mockResolvedValue(false);
+		const wrapper = mountPanel({ increaseBudget });
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.monthly' },
+		]);
+		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('offers the increase action only when an increaseBudget handler is provided', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const readOnly = mountPanel();
+		expect(readOnly.getComponent({ name: 'AgentChatMessageList' }).props('canIncreaseBudget')).toBe(
+			false,
+		);
+
+		const editable = mountPanel({ increaseBudget: vi.fn().mockResolvedValue(true) });
+		expect(editable.getComponent({ name: 'AgentChatMessageList' }).props('canIncreaseBudget')).toBe(
+			true,
+		);
 	});
 
 	it('still allows sending when only the budget alert card is showing', async () => {

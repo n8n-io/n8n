@@ -115,4 +115,18 @@ describe('AgentBudgetPanel', () => {
 		expect(wrapper.getComponent(AgentBudgetSessionModal).props('disabled')).toBe(true);
 		expect(wrapper.getComponent(AgentBudgetMonthlyModal).props('disabled')).toBe(true);
 	});
+
+	it('applies the disabled styling to the panel body only when disabled', async () => {
+		getAgentBudgetSpend.mockReset();
+		const wrapper = mount(AgentBudgetPanel, {
+			props: { config: config(), projectId: 'project-1', agentId: 'agent-1' },
+		});
+		await flushPromises();
+
+		const body = () => wrapper.get('[data-testid="agent-budget-usage"]').element.parentElement;
+		expect(body()?.classList.contains('disabled')).toBe(false);
+
+		await wrapper.setProps({ disabled: true });
+		expect(body()?.classList.contains('disabled')).toBe(true);
+	});
 });

@@ -33,9 +33,12 @@ const N8nInputNumber = defineComponent({
 });
 
 describe('AgentBudgetNoticeCard', () => {
-	function mountCard(code: 'budget.monthly' | 'budget.session' | 'budget.alert') {
+	function mountCard(
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+		props: { canIncrease?: boolean; pending?: boolean } = {},
+	) {
 		return mount(AgentBudgetNoticeCard, {
-			props: { code },
+			props: { code, canIncrease: true, ...props },
 			global: { stubs: { N8nInputNumber } },
 		});
 	}
@@ -71,16 +74,30 @@ describe('AgentBudgetNoticeCard', () => {
 		expect(wrapper.emitted('increase')).toBeUndefined();
 	});
 
-	it('emits the new amount from Increase cap and hides the card', async () => {
+	it('emits the new amount from Increase cap and stays visible until the parent clears it', async () => {
 		const wrapper = mountCard('budget.session');
 		wrapper.getComponent({ name: 'N8nInputNumber' }).vm.$emit('update:modelValue', 12);
 		await wrapper.get('[data-testid="agent-budget-notice-increase"]').trigger('click');
 		expect(wrapper.emitted('increase')?.[0]).toEqual([{ field: 'sessionCostCapUsd', amount: 12 }]);
-		expect(wrapper.find('[data-testid="agent-budget-notice-card"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-card"]').exists()).toBe(true);
 	});
 
 	it('does not emit when the amount is empty', async () => {
 		const wrapper = mountCard('budget.monthly');
+		await wrapper.get('[data-testid="agent-budget-notice-increase"]').trigger('click');
+		expect(wrapper.emitted('increase')).toBeUndefined();
+	});
+
+	it('hides the amount input and Increase cap when the user cannot edit the agent', () => {
+		const wrapper = mountCard('budget.session', { canIncrease: false });
+		expect(wrapper.find('[data-testid="agent-budget-notice-amount"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-increase"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-budget-notice-not-now"]').exists()).toBe(true);
+	});
+
+	it('does not emit while a save is pending', async () => {
+		const wrapper = mountCard('budget.session', { pending: true });
+		wrapper.getComponent({ name: 'N8nInputNumber' }).vm.$emit('update:modelValue', 12);
 		await wrapper.get('[data-testid="agent-budget-notice-increase"]').trigger('click');
 		expect(wrapper.emitted('increase')).toBeUndefined();
 	});
