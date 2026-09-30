@@ -100,6 +100,8 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
+	private readonly trackedJobs = new Map<JobId, string>();
+
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
 	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
@@ -119,6 +121,15 @@ export class JobProcessor {
 	}
 
 	async processJob(job: Job): Promise<JobResult> {
+		this.trackedJobs.set(String(job.id), job.data.executionId);
+		try {
+			return await this.runJob(job);
+		} finally {
+			this.trackedJobs.delete(String(job.id));
+		}
+	}
+
+	private async runJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
@@ -578,7 +589,13 @@ export class JobProcessor {
 	}
 
 	getRunningJobIds(): JobId[] {
-		return Object.keys(this.runningJobs);
+		return [...new Set([...Object.keys(this.runningJobs), ...this.trackedJobs.keys()])];
+	}
+
+	getJobsInPreflight(): Array<{ jobId: JobId; executionId: string }> {
+		return [...this.trackedJobs]
+			.filter(([jobId]) => !(jobId in this.runningJobs))
+			.map(([jobId, executionId]) => ({ jobId, executionId }));
 	}
 
 	getRunningJobsSummary(): RunningJobSummary[] {
