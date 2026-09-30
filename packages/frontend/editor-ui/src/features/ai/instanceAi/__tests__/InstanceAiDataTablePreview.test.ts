@@ -178,33 +178,72 @@ describe('InstanceAiDataTablePreview', () => {
 		expect(store.fetchDataTableContent).toHaveBeenCalledTimes(1);
 	});
 
-	it('keeps the selected table when an earlier rows request finishes later', async () => {
-		const { pinia, store } = setup();
-		const { getAllByTestId, getByTestId, rerender } = renderComponent({ pinia });
-		await waitFor(() => {
+	it.each(['success', 'failure'])(
+		'keeps the selected table when an earlier rows request finishes later: %s',
+		async (result) => {
+			const { pinia, store } = setup();
+			const { getAllByTestId, getByTestId, rerender } = renderComponent({ pinia });
+			await waitFor(() => {
+				expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+			});
+
+			const earlierRows = createDeferredPromise<Rows>();
+			vi.mocked(store.fetchDataTableDetails).mockResolvedValueOnce(secondTable);
+			vi.mocked(store.fetchDataTableContent).mockReturnValueOnce(earlierRows.promise);
+			await rerender({ dataTableId: secondTable.id });
+			await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2));
+			expect(getAllByTestId('instance-ai-data-table-grid')).toHaveLength(2);
+
+			await rerender({ dataTableId: firstTable.id });
+			await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalledTimes(3));
+			await waitFor(() => expect(getAllByTestId('instance-ai-data-table-grid')).toHaveLength(1));
+			if (result === 'success') {
+				earlierRows.resolve({ data: [{ id: 2, name: 'Pencil' }], count: 1 });
+			} else {
+				earlierRows.reject(new Error('Request failed'));
+			}
+			await flushPromises();
+
 			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
-		});
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute(
+				'data-table-id',
+				firstTable.id,
+			);
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveTextContent('Notebook');
+		},
+	);
 
-		const earlierRows = createDeferredPromise<Rows>();
-		vi.mocked(store.fetchDataTableDetails).mockResolvedValueOnce(secondTable);
-		vi.mocked(store.fetchDataTableContent).mockReturnValueOnce(earlierRows.promise);
-		await rerender({ dataTableId: secondTable.id });
-		await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2));
-		expect(getAllByTestId('instance-ai-data-table-grid')).toHaveLength(2);
+	it.each(['initial load', 'tab switch'])(
+		'shows an error when the rows request fails during %s',
+		async (change) => {
+			const { pinia, store } = setup();
+			const rows = createDeferredPromise<Rows>();
+			if (change === 'initial load') {
+				vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
+			}
+			const { getByTestId, queryByTestId, findByText, rerender } = renderComponent({ pinia });
+			if (change === 'tab switch') {
+				await waitFor(() => {
+					expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute(
+						'aria-hidden',
+						'false',
+					);
+				});
+				vi.mocked(store.fetchDataTableDetails).mockResolvedValue(secondTable);
+				vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
+				await rerender({ dataTableId: secondTable.id });
+			}
+			await waitFor(() => {
+				expect(store.fetchDataTableContent).toHaveBeenCalledTimes(change === 'tab switch' ? 2 : 1);
+			});
 
-		await rerender({ dataTableId: firstTable.id });
-		await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalledTimes(3));
-		await waitFor(() => expect(getAllByTestId('instance-ai-data-table-grid')).toHaveLength(1));
-		earlierRows.resolve({ data: [{ id: 2, name: 'Pencil' }], count: 1 });
-		await flushPromises();
+			rows.reject(new Error('Request failed'));
 
-		expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
-		expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute(
-			'data-table-id',
-			firstTable.id,
-		);
-		expect(getByTestId('instance-ai-data-table-grid')).toHaveTextContent('Notebook');
-	});
+			expect(await findByText('Could not load data table')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-data-table-grid')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-data-table-loading')).not.toBeInTheDocument();
+		},
+	);
 
 	it('shows an error when the selected table cannot be loaded', async () => {
 		const { pinia, store } = setup();

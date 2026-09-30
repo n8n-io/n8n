@@ -42,6 +42,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
 	ready: [];
+	loadError: [];
 }>();
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
@@ -145,7 +146,12 @@ const initialize = async (params: GridReadyEvent) => {
 	agGrid.onGridReady(params);
 	dataTableColumns.loadColumns(props.dataTable.columns);
 	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
-	await dataTableOperations.fetchDataTableRows();
+	const loaded = await dataTableOperations.fetchDataTableRows();
+	if (!loaded) {
+		emit('loadError');
+		return;
+	}
+
 	// Empty tables do not emit AG Grid's first-data-rendered event.
 	if (!hasRecords.value) {
 		await nextTick();

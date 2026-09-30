@@ -52,7 +52,7 @@ describe('DataTableTable loading', () => {
 		const rows = createDeferredPromise<{ data: DataTableRow[]; count: number }>();
 		vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
 
-		const { container, queryByTestId, findByTestId } = renderComponent({ pinia });
+		const { container, queryByTestId, findByTestId, emitted } = renderComponent({ pinia });
 		await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalled());
 		await flushPromises();
 		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
@@ -62,5 +62,21 @@ describe('DataTableTable loading', () => {
 		expect(await findByTestId('data-table-no-rows-overlay')).toBeVisible();
 		expect(container.querySelector('.ag-header-cell[col-id="name-column"]')).toBeInTheDocument();
 		expect(container.querySelector('.ag-overlay-loading-center')).not.toBeInTheDocument();
+		expect(emitted('ready')).toHaveLength(1);
+	});
+
+	it('does not signal readiness when the initial rows request fails', async () => {
+		const pinia = createTestingPinia();
+		const store = useDataTableStore();
+		const rows = createDeferredPromise<{ data: DataTableRow[]; count: number }>();
+		vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
+		const { emitted } = renderComponent({ pinia });
+		await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalled());
+
+		rows.reject(new Error('Request failed'));
+		await flushPromises();
+
+		expect(emitted('ready')).toBeUndefined();
+		expect(emitted('loadError')).toHaveLength(1);
 	});
 });

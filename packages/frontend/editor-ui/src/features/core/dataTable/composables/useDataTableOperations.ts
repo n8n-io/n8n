@@ -233,6 +233,7 @@ export const useDataTableOperations = ({
 
 	const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 		if (
+			readOnly.value ||
 			!moveEvent.finished ||
 			moveEvent.source !== 'uiColumnMoved' ||
 			moveEvent.toIndex === undefined ||
@@ -250,10 +251,14 @@ export const useDataTableOperations = ({
 				moveEvent.column.getColId(),
 				newIndex,
 			);
-			moveGridColumn(oldIndex, newIndex);
+			if (!readOnly.value) {
+				moveGridColumn(oldIndex, newIndex);
+			}
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataTable.moveColumn.error'));
-			gridApi.value.moveColumnByIndex(moveEvent.toIndex, oldIndex + 1);
+			if (!readOnly.value) {
+				gridApi.value.moveColumnByIndex(moveEvent.toIndex, oldIndex + 1);
+			}
 		}
 	};
 
@@ -333,7 +338,7 @@ export const useDataTableOperations = ({
 		}
 	};
 
-	async function fetchDataTableRows() {
+	async function fetchDataTableRows(): Promise<boolean> {
 		try {
 			contentLoading.value = true;
 
@@ -350,8 +355,10 @@ export const useDataTableOperations = ({
 			setTotalItems(fetchedRows.count);
 			setGridData({ rowData: rowData.value });
 			handleClearSelection();
+			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataTable.fetchContent.error'));
+			return false;
 		} finally {
 			contentLoading.value = false;
 		}

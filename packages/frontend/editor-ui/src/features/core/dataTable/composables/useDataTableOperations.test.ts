@@ -339,6 +339,53 @@ describe('useDataTableOperations', () => {
 			getColId: () => colId,
 		});
 
+		it('ignores queued move events after editing is locked', async () => {
+			const readOnly = ref(false);
+			const { onColumnMoved } = useDataTableOperations({ ...params, readOnly });
+			readOnly.value = true;
+
+			await onColumnMoved({
+				finished: true,
+				source: 'uiColumnMoved',
+				toIndex: 4,
+				column: createMockColumn('col1'),
+			} as unknown as ColumnMovedEvent);
+
+			expect(dataTableStore.moveDataTableColumn).not.toHaveBeenCalled();
+			expect(params.moveGridColumn).not.toHaveBeenCalled();
+		});
+
+		it.each(['success', 'failure'])(
+			'leaves the grid unchanged when editing is locked before a move response: %s',
+			async (result) => {
+				const readOnly = ref(false);
+				const response = createDeferredPromise<boolean>();
+				vi.mocked(dataTableStore.moveDataTableColumn).mockReturnValue(response.promise);
+				const moveColumnByIndex = vi.fn();
+				params.gridApi.value = { moveColumnByIndex } as unknown as GridApi;
+				params.colDefs.value = [{ colId: 'col1', field: 'name' }];
+				const { onColumnMoved } = useDataTableOperations({ ...params, readOnly });
+
+				const move = onColumnMoved({
+					finished: true,
+					source: 'uiColumnMoved',
+					toIndex: 4,
+					column: createMockColumn('col1'),
+				} as unknown as ColumnMovedEvent);
+				expect(dataTableStore.moveDataTableColumn).toHaveBeenCalled();
+				readOnly.value = true;
+				if (result === 'success') {
+					response.resolve(true);
+				} else {
+					response.reject(new Error('Move failed'));
+				}
+				await move;
+
+				expect(params.moveGridColumn).not.toHaveBeenCalled();
+				expect(moveColumnByIndex).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should return early when event is not finished', async () => {
 			const { onColumnMoved } = useDataTableOperations(params);
 			const moveEvent = {
@@ -750,7 +797,7 @@ describe('useDataTableOperations', () => {
 				currentFilterJSON,
 			});
 
-			await fetchDataTableRows();
+			expect(await fetchDataTableRows()).toBe(true);
 
 			expect(fetchDataTableContentMock).toHaveBeenCalledWith(
 				'test',
@@ -817,7 +864,7 @@ describe('useDataTableOperations', () => {
 
 			const { fetchDataTableRows } = useDataTableOperations({ ...params, rowData });
 
-			await fetchDataTableRows();
+			expect(await fetchDataTableRows()).toBe(false);
 
 			expect(showErrorMock).toHaveBeenCalledWith(fetchError, 'dataTable.fetchContent.error');
 			expect(rowData.value).toEqual([{ id: 1 }]);

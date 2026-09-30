@@ -56,6 +56,15 @@ function showTable(key: number) {
 	isLoading.value = false;
 }
 
+function onLoadError(key: number) {
+	if (pendingTable.value?.key !== key) return;
+
+	displayedTable.value = null;
+	pendingTable.value = null;
+	isLoading.value = false;
+	fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
+}
+
 watch(
 	() => [props.dataTableId, props.projectId, props.refreshKey, isReadOnly.value] as const,
 	async ([id, projectId, , readOnly], _previous, onCleanup) => {
@@ -107,6 +116,7 @@ watch(
 				:data-table="table.dataTable"
 				:read-only="table.readOnly || (isLoading && table.key === displayedTable?.key)"
 				@ready="showTable(table.key)"
+				@load-error="onLoadError(table.key)"
 			/>
 		</div>
 
