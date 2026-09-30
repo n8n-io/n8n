@@ -1,0 +1,35 @@
+operationId: deleteDataTableColumn
+tags:
+  - DataTable
+summary: Delete a column
+description: Remove a column from a data table. This will also delete all data in the column.
+x-required-scope: dataTableColumn:delete
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the column
+    name: columnId
+    in: path
+responses:
+  '204':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

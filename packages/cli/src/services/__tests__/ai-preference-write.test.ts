@@ -5,11 +5,13 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+} from '@n8n/errors';
 import {
 	toAiPreferenceWriteRejection,
 	writeAssistantPreference,

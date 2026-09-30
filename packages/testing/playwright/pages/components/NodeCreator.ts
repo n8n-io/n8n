@@ -65,6 +65,10 @@ export class NodeCreator {
 		return this.getNodeItems().filter({ hasText: text }).first();
 	}
 
+	getRestrictedItem(text: string): Locator {
+		return this.getRoot().getByTestId('node-creator-restricted-item').filter({ hasText: text });
+	}
+
 	getCategoryItem(text: string): Locator {
 		return this.getCategoryItems().filter({ hasText: text });
 	}

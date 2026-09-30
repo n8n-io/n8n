@@ -1,5 +1,6 @@
 import type {
 	CredentialsEntity,
+	CredentialsRepository,
 	FolderRepository,
 	Project,
 	SharedWorkflow,
@@ -14,11 +15,19 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+const flags = { credSharingEnabled: false };
+vi.mock('@/constants/credential-sharing', () => ({
+	isCredSharingEnabled: () => flags.credSharingEnabled,
+}));
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
@@ -30,19 +39,24 @@ describe('EnterpriseWorkflowService', () => {
 	const projectService = mock<ProjectService>();
 	const folderRepository = mock<FolderRepository>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialsService = mock<CredentialsService>();
+	const ownershipService = mock<OwnershipService>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		flags.credSharingEnabled = false;
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
 			workflowRepository,
-			mock(), // credentialsRepository
-			mock(), // credentialsService
-			mock(), // ownershipService
+			credentialsRepository,
+			credentialsService,
+			ownershipService,
 			projectService,
 			activeWorkflowManager,
-			mock(), // credentialsFinderService
+			credentialsFinderService,
 			mock(), // enterpriseCredentialsService
 			workflowFinderService,
 			folderRepository,
@@ -250,6 +264,78 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('addCredentialsToWorkflow()', () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		const buildWorkflow = () =>
+			mock<Parameters<EnterpriseWorkflowService['addCredentialsToWorkflow']>[0]>({
+				id: 'workflow-1',
+				nodes: [{ credentials: { googlePalmApi: { id: 'cred-1', name: 'Google' } } }],
+				usedCredentials: undefined,
+			});
+
+		beforeEach(() => {
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', name: 'Google', type: 'googlePalmApi' }),
+			]);
+			ownershipService.addOwnedByAndSharedWith.mockImplementation((entity) =>
+				Object.assign(entity, { homeProject: null, sharedWithProjects: [] }),
+			);
+		});
+
+		it('describes every referenced credential regardless of access', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(workflow.usedCredentials).toMatchObject([
+				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
+			]);
+		});
+
+		it('when the flag is off, asks the project-scoped check', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				mock({ id: 'cred-1' }),
+			]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				workflowId: 'workflow-1',
+			});
+			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
+			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
+		});
+
+		it('when the flag is on, asks the identity-based check instead', async () => {
+			flags.credSharingEnabled = true;
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(user, [
+				'cred-1',
+			]);
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
+		});
+
+		it('when the flag is on, a credential the identity check rejects is unusable', async () => {
+			flags.credSharingEnabled = true;
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([
+				mock({ id: 'cred-1' }),
+			]);
+			const workflow = buildWorkflow();
+
+			await service.addCredentialsToWorkflow(workflow, user);
+
+			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: false }]);
+		});
+	});
+
 	describe('validateWorkflowCredentialUsage() - unresolved credentials', () => {
 		// Real objects, not mock<IWorkflowBase>, so the explicit null id survives.
 		const nodeWithNullCred = (id: string, name: string) =>
@@ -307,6 +393,141 @@ describe('EnterpriseWorkflowService', () => {
 			expect(() =>
 				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
 			).not.toThrow();
+		});
+	});
+
+	describe('validateWorkflowCredentialUsage() - agent node parameters', () => {
+		// The agent node keeps its credential references in the hidden
+		// `inlineAgent` parameter, not in `node.credentials`.
+		const agentNode = (id: string, inlineAgent: unknown) =>
+			({
+				id,
+				name: id,
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: { agentSource: 'inline', inlineAgent },
+			}) as unknown as INode;
+
+		const withModelCredential = (credential: string) => ({ config: { credential } });
+
+		const withToolCredential = (id: string) => ({
+			config: {
+				credential: 'cred-editor',
+				tools: [
+					{
+						type: 'node',
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequest',
+							credentials: { httpBearerAuth: { id, name: 'Token' } },
+						},
+					},
+				],
+			},
+		});
+
+		const save = (
+			newNodes: INode[],
+			previousNodes: INode[] = [],
+			allowed: string[] = ['cred-editor'],
+		) =>
+			service.validateWorkflowCredentialUsage(
+				{ nodes: newNodes } as unknown as IWorkflowBase,
+				{ nodes: previousNodes } as unknown as IWorkflowBase,
+				allowed.map((id) => mock<CredentialsEntity>({ id })),
+			);
+
+		it.each([
+			['the model credential', withModelCredential('cred-other')],
+			['a node tool credential', withToolCredential('cred-other')],
+			['a JSON-encoded parameter', JSON.stringify(withModelCredential('cred-other'))],
+			[
+				'a node tool sub-workflow',
+				{
+					config: {
+						credential: 'cred-editor',
+						tools: [
+							{
+								type: 'node',
+								node: {
+									nodeType: 'n8n-nodes-base.executeWorkflow',
+									nodeParameters: {
+										source: 'parameter',
+										workflowJson: JSON.stringify({
+											nodes: [{ credentials: { httpHeaderAuth: { id: 'cred-other', name: 'x' } } }],
+											connections: {},
+										}),
+									},
+								},
+							},
+						],
+					},
+				},
+			],
+			[
+				'a node tool that is another agent, as JSON text',
+				{
+					config: {
+						credential: 'cred-editor',
+						tools: [
+							{
+								type: 'node',
+								node: {
+									nodeType: 'n8n-nodes-base.messageAnAgentTool',
+									nodeParameters: {
+										agentSource: 'inline',
+										inlineAgent: JSON.stringify({ config: { credential: 'cred-other' } }),
+									},
+								},
+							},
+						],
+					},
+				},
+			],
+		])('rejects a new agent node that names a credential in %s', (_label, inlineAgent) => {
+			expect(() => save([agentNode('new-agent', inlineAgent)])).toThrow();
+		});
+
+		it('restores the stored agent node when the user cannot use its credential', () => {
+			const stored = agentNode('agent-1', withModelCredential('cred-other'));
+			const edited = agentNode('agent-1', {
+				config: { credential: 'cred-other', instructions: 'Summarize the input.' },
+			});
+
+			const result = save([edited], [stored]);
+
+			expect(result.nodes[0].parameters).toEqual(stored.parameters);
+		});
+
+		it('accepts an agent node whose credentials the user can use', () => {
+			expect(() => save([agentNode('new-agent', withToolCredential('cred-editor'))])).not.toThrow();
+		});
+
+		it('accepts a parameter value that is not valid JSON', () => {
+			expect(() => save([agentNode('new-agent', '{ not json')])).not.toThrow();
+		});
+
+		it('ignores a `credentialId` parameter of a node tool, which names a remote credential', () => {
+			const remoteReference = {
+				config: {
+					credential: 'cred-editor',
+					tools: [
+						{
+							type: 'node',
+							node: {
+								nodeType: 'n8n-nodes-base.n8n',
+								nodeParameters: {
+									resource: 'credential',
+									operation: 'delete',
+									credentialId: 'remote-id',
+								},
+							},
+						},
+					],
+				},
+			};
+
+			expect(() => save([agentNode('new-agent', remoteReference)])).not.toThrow();
 		});
 	});
 
@@ -406,10 +627,13 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
 
-			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith({
-				workflow,
-				targetProjectId: destinationProject.id,
-			});
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow,
+					targetProjectId: destinationProject.id,
+				},
+				{ kind: 'user', user },
+			);
 		});
 
 		it('proceeds with the transfer unchanged when the policy check clears', async () => {

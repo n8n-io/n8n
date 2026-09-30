@@ -22,9 +22,7 @@ import type {
 } from './collaboration.message';
 
 import { CollaborationState, type WriteLock } from '@/collaboration/collaboration.state';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';

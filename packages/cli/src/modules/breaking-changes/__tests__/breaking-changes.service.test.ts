@@ -5,7 +5,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { N8N_VERSION } from '../../../constants';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
@@ -218,6 +218,15 @@ describe('BreakingChangeService', () => {
 			const detectSpy = vi.spyOn(service, 'detect');
 			await expect(service.getDetectionResults('v2')).resolves.toBeDefined();
 			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should key the cache on the n8n version and the target version', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			await service.getDetectionResults('v2');
+
+			expect(cacheService.get).toHaveBeenCalledWith(`breaking-changes:results:${N8N_VERSION}:v2`);
 		});
 
 		it('should clean up ongoing detection promise after completion', async () => {

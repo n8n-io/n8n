@@ -696,6 +696,7 @@ function runTestScopedCmd(options: CliOptions): void {
 		packageName: readPackageName(packageDir),
 		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 		passthroughArgs: options.passthroughArgs,
+		collectCoverage: process.env.COVERAGE_ENABLED === 'true',
 	});
 	process.exit(exitCode);
 }

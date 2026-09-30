@@ -32,7 +32,7 @@ const {
 	},
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { browserUse: true, computerUse: true, preferences: true },
+	featureFlags: { computerUse: true, preferences: true },
 	ignorePendingConnectResult: vi.fn(),
 	instanceAiStore: {
 		runtimes: new Map<string, { appliedPreferences: unknown }>(),
@@ -97,15 +97,6 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 vi.mock('../composables/useBrowserUseConnection', () => ({
 	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
-}));
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.browserUse;
-			},
-		},
-	}),
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -175,7 +166,6 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
 		featureFlags.preferences = false;
 		instanceAiStore.runtimes.clear();

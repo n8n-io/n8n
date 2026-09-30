@@ -37,7 +37,7 @@ const MAX_PARAGRAPH_LINE_LENGTH = 100;
  * - Add optional metadata in order and omit empty optional fields.
  * - Use full ADR IDs in supersession metadata.
  * - Add the required RFC, Documentation, and Related ADRs link fields.
- * - Resolve local ADR references and allow references in external URLs.
+ * - Require full local ADR IDs, resolve them, and allow references in external URLs.
  * - Limit paragraph lines before the Links section to 100 characters.
  * - Apply structural rules to the root ADR template.
  */
@@ -369,6 +369,19 @@ export class AdrConventionsRule extends BaseRule<CodeHealthContext> {
 		const violations: Violation[] = [];
 		for (const occurrence of findAdrReferences(file)) {
 			const { reference, line, column } = occurrence;
+			if (/^ADR-\d{8}$/.test(reference)) {
+				const matches = [...ids.keys()].filter((id) => id.startsWith(`${reference}-`));
+				violations.push(
+					this.createViolation(
+						file.filePath,
+						line + 1,
+						column + 1,
+						`${reference} must use the full ADR ID.`,
+						matches.length === 1 ? `Use ${matches[0]}.` : 'Use the ADR filename without .md.',
+					),
+				);
+				continue;
+			}
 			if (ids.has(reference)) continue;
 			violations.push(
 				this.createViolation(

@@ -37,6 +37,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.graph', 'graph')
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
 			.addSelect('execution.caller_context', 'callerContext')
+			.addSelect('execution.response_expectation', 'responseExpectation')
 			.where('execution.id = :id', { id })
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
@@ -53,6 +54,14 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const result = await this.repo.update(
 			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
 			{ status, finishedAt: new Date() },
+		);
+		return result.affected === 1;
+	}
+
+	async cancelExecution(id: string): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
+			{ status: 'cancelled', finishedAt: new Date() },
 		);
 		return result.affected === 1;
 	}

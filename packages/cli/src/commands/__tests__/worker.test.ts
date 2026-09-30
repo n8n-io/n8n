@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -17,7 +18,6 @@ import type { ConcurrencyControlService } from '@/concurrency/concurrency-contro
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
@@ -33,7 +33,7 @@ import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
