@@ -3049,7 +3049,11 @@ describe('CredentialsHelper', () => {
 				source: null,
 			} as IExecuteData;
 
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: 'proj-1',
+				executionId: 'exec-1',
+				userId: 'user-1',
+			});
 
 			await helper.getDecrypted(
 				additionalData,
@@ -3060,16 +3064,69 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith({
-				credentialType: 'testApi',
-				credentialId: 'cred-policy',
-				consumer: { nodeType: 'n8n-nodes-base.slack' },
-				projectId: 'proj-1',
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				{
+					credentialType: 'testApi',
+					credentialId: 'cred-policy',
+					consumer: { nodeType: 'n8n-nodes-base.slack' },
+					projectId: 'proj-1',
+				},
+				{ kind: 'system', reason: 'execution', executionId: 'exec-1' },
+			);
+		});
+
+		test('names the user when the decrypt is outside a run, e.g. an OAuth flow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: 'user-1',
 			});
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'internal',
+				undefined,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				{ kind: 'user', user: { id: 'user-1' } },
+			);
+		});
+
+		test('uses the actor the caller names over the derived one', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: undefined,
+			});
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'internal',
+				undefined,
+				true,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				{ kind: 'system', reason: 'log-streaming' },
+			);
 		});
 
 		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: undefined });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: undefined,
+			});
 
 			await helper.getDecrypted(
 				additionalData,
@@ -3082,6 +3139,7 @@ describe('CredentialsHelper', () => {
 
 			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
 				expect.objectContaining({ consumer: null, projectId: null }),
+				{ kind: 'system', reason: 'execution' },
 			);
 		});
 

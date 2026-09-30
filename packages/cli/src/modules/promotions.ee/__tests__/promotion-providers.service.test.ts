@@ -2,9 +2,7 @@ import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';

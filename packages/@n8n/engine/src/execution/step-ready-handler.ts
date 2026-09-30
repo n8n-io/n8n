@@ -8,7 +8,7 @@ import {
 	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import type { ExecutionResponseSender } from '../response-channel';
+import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -185,8 +185,9 @@ export class StepReadyHandler {
 				mode: execution.mode,
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
+				responseExpectation: execution.responseExpectation,
 			},
-			respond: this.responseSender.emitterFor(execution.id),
+			respond: createResponseEmitter(this.responseSender, execution),
 		});
 
 		if (result.wait) validateWaitDeclaration(step.id, result.wait);

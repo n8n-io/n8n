@@ -309,6 +309,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
 	});
 
+	it('forwards draft input before the config update', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper.getComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
+	});
+
 	it('disables the evals CTA for a read-only agent', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 

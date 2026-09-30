@@ -1,4 +1,4 @@
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 
 import { PromotionConflictError } from './database/promotion-conflict.error';
 

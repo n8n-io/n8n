@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -9,7 +10,6 @@ import { WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import {
 	buildEntityPackageBuffer,
 	serializedProject,

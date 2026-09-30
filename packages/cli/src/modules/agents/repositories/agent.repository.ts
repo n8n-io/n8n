@@ -1,3 +1,4 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import {
@@ -9,6 +10,7 @@ import {
 	type EntityManager,
 	type SelectQueryBuilder,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -36,6 +38,17 @@ export type AgentSummaryFilters = {
 export class AgentRepository extends Repository<Agent> {
 	constructor(dataSource: DataSource) {
 		super(Agent, dataSource.manager);
+	}
+
+	/**
+	 * Insert-only create. `save()` on an entity whose id is already set is an
+	 * upsert, so an id minted by the client that already names a row would
+	 * update that row instead of colliding on the primary key.
+	 */
+	async insertNew(agent: Agent): Promise<void> {
+		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
+		// cannot express, so cast at this boundary.
+		await this.insert(agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
@@ -128,6 +141,33 @@ export class AgentRepository extends Repository<Agent> {
 				availableInMCP: filter.availableInMCP,
 			});
 		}
+		if (filter?.availableInChat !== undefined) {
+			// Reachability is a property of the **published** config, not the draft:
+			// publish is what moves the channel live, and a draft edit must not change
+			// what production chat serves (see `AgentRepository.isN8nChatPublished`).
+			// So this reads `activeVersion.schema.integrations`, which also makes a
+			// separate `activeVersionId IS NOT NULL` check unnecessary — an agent with
+			// no active version has no snapshot to match.
+			// The column is JSON, so the predicate walks the array with each dialect's
+			// own functions and compares each entry's `type`. A text match over the
+			// column would also hit the literal elsewhere in it, in a Telegram
+			// allowlist entry of the same name for one. The match stays in SQL (not
+			// filtered in memory, unlike `findByIntegrationCredential`) so `count` and
+			// pagination stay correct. `COALESCE` keeps a missing or null `schema` out
+			// of the JSON functions, which reject a non-array argument.
+			const isPostgres = this.manager.connection.options.type === 'postgres';
+			const publishedChannels = isPostgres
+				? 'COALESCE("activeVersion"."schema"->\'integrations\', \'[]\'::json)'
+				: 'COALESCE(json_extract("activeVersion"."schema", \'$.integrations\'), \'[]\')';
+			const carriesChannel = isPostgres
+				? `EXISTS (SELECT 1 FROM json_array_elements(${publishedChannels}) AS integration ` +
+					"WHERE integration->>'type' = :n8nChatType)"
+				: `EXISTS (SELECT 1 FROM json_each(${publishedChannels}) AS integration ` +
+					"WHERE json_extract(integration.value, '$.type') = :n8nChatType)";
+			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
+				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
+			});
+		}
 	}
 
 	private applySorting(
@@ -161,6 +201,15 @@ export class AgentRepository extends Repository<Agent> {
 			where: { id, projectId },
 			relations: { activeVersion: true },
 		});
+	}
+
+	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
+		const agent = await this.findByIdAndProjectId(id, projectId);
+		return (
+			agent?.activeVersion?.schema?.integrations?.some(
+				(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
+			) ?? false
+		);
 	}
 
 	/**

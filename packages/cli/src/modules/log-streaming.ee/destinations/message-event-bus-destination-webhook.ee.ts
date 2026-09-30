@@ -179,6 +179,8 @@ export class MessageEventBusDestinationWebhook
 				'internal',
 				undefined,
 				raw,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
 			);
 			return credentialsDecrypted;
 		}

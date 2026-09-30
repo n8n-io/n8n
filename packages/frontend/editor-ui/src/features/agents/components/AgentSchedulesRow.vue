@@ -242,6 +242,7 @@ watch(
 	align-items: center;
 	flex-wrap: wrap;
 	gap: var(--spacing--3xs);
+	flex: 1;
 	min-width: 0;
 }
 
@@ -255,7 +256,8 @@ watch(
 }
 
 .scheduleChip {
-	width: 100%;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .addButtonEmpty {

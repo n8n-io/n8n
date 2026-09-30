@@ -1,4 +1,4 @@
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, Project } from '@n8n/db';
@@ -91,7 +91,7 @@ beforeEach(() => {
 	);
 });
 
-test('should start a task runner', async () => {
+test('should start a task runner and the policy modules', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -116,6 +116,8 @@ test('should start a task runner', async () => {
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
 
+	const initModules = vi.spyOn(Container.get(ModuleRegistry), 'initModules');
+
 	const cmd = new Execute();
 	// @ts-expect-error Protected property
 	cmd.flags = { id: '123' };
@@ -128,6 +130,10 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), [
+		'policy-infrastructure',
+		'type-availability-policies',
+	]);
 });
 
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
@@ -202,6 +208,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				idleTimeout: 30,
 				lazyAcquire: false,
 				compileCache: false,
+				nativeEvaluation: false,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
@@ -228,6 +235,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		idleTimeoutMs: 30_000, // the config value is in seconds
 		lazyAcquire: false,
 		compileCache: false,
+		nativeEvaluation: false,
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));

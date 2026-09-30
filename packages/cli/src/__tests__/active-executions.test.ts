@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type { GlobalConfig } from '@n8n/config';
@@ -26,7 +27,6 @@ import { captor, mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
@@ -571,6 +571,52 @@ describe('ActiveExecutions', () => {
 			await addExecutionWithStatus('new');
 
 			expect(activeExecutions.getRunningExecutionIds()).toEqual([runningExecutionId]);
+		});
+
+		test('Should not list a running execution attached as enqueued', async () => {
+			const inProcessExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+
+			const enqueuedExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
+				isQueueJob: true,
+			});
+
+			expect(activeExecutions.getRunningExecutionIds()).toEqual([inProcessExecutionId]);
+		});
+
+		test('Should cancel only the in-process execution when one is enqueued', async () => {
+			const inProcessExecutionId = await addExecutionWithStatus('running');
+			activeExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+			const inProcessPostExecutePromise =
+				activeExecutions.getPostExecutePromise(inProcessExecutionId);
+
+			const enqueuedExecutionId = await addExecutionWithStatus('running');
+			const enqueuedWorkflowExecution = new PCancelable<IRun>((resolve) => resolve());
+			enqueuedWorkflowExecution.cancel = vi.fn();
+			activeExecutions.attachWorkflowExecution(enqueuedExecutionId, enqueuedWorkflowExecution, {
+				isQueueJob: true,
+			});
+			const enqueuedPostExecutePromise =
+				activeExecutions.getPostExecutePromise(enqueuedExecutionId);
+
+			await expect(activeExecutions.cancelRunningExecutions()).resolves.toEqual([
+				inProcessExecutionId,
+			]);
+
+			await expect(inProcessPostExecutePromise).rejects.toThrow(
+				SystemShutdownExecutionCancelledError,
+			);
+			expect(workflowExecution.cancel).toHaveBeenCalled();
+			expect(enqueuedWorkflowExecution.cancel).not.toHaveBeenCalled();
+			expect(executionRepository.cancelManyRunning).toHaveBeenCalledWith([inProcessExecutionId]);
+			expect(activeExecutions.has(enqueuedExecutionId)).toBe(true);
+
+			const outcome = await Promise.race([
+				enqueuedPostExecutePromise.then(() => 'settled').catch(() => 'settled'),
+				new Promise((resolve) => setTimeout(() => resolve('pending'), 0)),
+			]);
+			expect(outcome).toBe('pending');
 		});
 
 		test('Should cancel only the executions with a running status', async () => {
