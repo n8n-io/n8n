@@ -443,6 +443,41 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			);
 		});
 
+		it('reads the jobs once for both gauges and caches them for the metrics interval', async () => {
+			const cache = new Map<string, unknown>();
+			cacheService.get.mockImplementation(async (key: string) => cache.get(key));
+			cacheService.set.mockImplementation(async (key: string, value: unknown) => {
+				cache.set(key, value);
+			});
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([job({})]);
+			config.schedulerMetricsInterval = 20;
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).toHaveBeenCalledTimes(1);
+			expect(cacheService.set).toHaveBeenCalledExactlyOnceWith(
+				'metrics:system-tasks:durable-jobs:v1',
+				[{ task: 'prune', runnable: true, nextRunAtSeconds: NOW.getTime() / 1000 + 60 }],
+				20_000,
+			);
+		});
+
+		it('serves both gauges from the cache without reading the jobs', async () => {
+			cacheService.get.mockResolvedValue([
+				{ task: 'prune', runnable: true, nextRunAtSeconds: 1234 },
+			]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
+			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(1234);
+		});
+
 		it('keeps the last values when the job read fails', async () => {
 			scheduledJobRepository.findScheduleStatesByOwnerType.mockRejectedValue(new Error('db down'));
 			service.init();
