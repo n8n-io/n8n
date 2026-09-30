@@ -746,6 +746,71 @@ describe('useNodeHelpers()', () => {
 			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toBeDefined();
 		});
 
+		it('records the input issue when a parameter change makes an input required', () => {
+			// The NDV calls this after a parameter change, so a newly required input
+			// shows its warning without a workflow reload.
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const gatedType: INodeTypeDescription = {
+				...nodeTypeWithRequiredInput,
+				inputs: `={{ $parameter.hasOutputParser ? [{ type: "${NodeConnectionTypes.AiLanguageModel}", displayName: "Model", required: true }] : [] }}`,
+			};
+
+			mockDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockDocumentStore.setNodeIssue = vi.fn();
+			mockDocumentStore.getWorkflowObjectAccessorSnapshot = vi.fn().mockReturnValue({
+				getNode: () => node,
+				connectionsByDestinationNode: {},
+			});
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(gatedType);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Model', required: true },
+			]);
+
+			const { updateNodeInputIssuesByName } = useNodeHelpers();
+			updateNodeInputIssuesByName('Agent');
+
+			expect(mockDocumentStore.setNodeIssue).toHaveBeenCalledWith({
+				node: 'Agent',
+				type: 'input',
+				value: expect.objectContaining({
+					[NodeConnectionTypes.AiLanguageModel]: expect.anything(),
+				}),
+			});
+		});
+
+		it('clears the input issue once the required input is satisfied', () => {
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+
+			mockDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockDocumentStore.setNodeIssue = vi.fn();
+			mockDocumentStore.getWorkflowObjectAccessorSnapshot = vi.fn().mockReturnValue({
+				getNode: (name: string) =>
+					name === 'Model' ? createTestNode({ name: 'Model', type: 'model' }) : node,
+				connectionsByDestinationNode: {
+					Agent: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[{ node: 'Model', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+						],
+					},
+				},
+			});
+			mockedStore(useNodeTypesStore).getNodeType = vi
+				.fn()
+				.mockReturnValue(nodeTypeWithRequiredInput);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Model', required: true },
+			]);
+
+			const { updateNodeInputIssuesByName } = useNodeHelpers();
+			updateNodeInputIssuesByName('Agent');
+
+			expect(mockDocumentStore.setNodeIssue).toHaveBeenCalledWith({
+				node: 'Agent',
+				type: 'input',
+				value: null,
+			});
+		});
+
 		it('skips the input check when input issues are ignored', () => {
 			// The tool-config panel passes an accessor built from getNode alone and
 			// opts out of input issues. The shared check reads the connection map,
