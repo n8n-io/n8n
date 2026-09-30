@@ -184,42 +184,80 @@ type Evaluate = (
 	additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 ) => NodeParameterValueType;
 
-/** Runs `run` with an evaluator that resolves values as n8n would on `targetName`, whose single parent `sourceName` emitted `items`. */
+/** Items a node emitted; `paired[i]` is the index of the input item that produced item `i`. */
+interface Emitted {
+	items: IDataObject[];
+	paired?: number[];
+}
+
+/** One node on the walked path and the items it emitted. */
+interface PathStep extends Emitted {
+	name: string;
+}
+
+const sourceStep = (name: string, items: IDataObject[]): PathStep[] => [{ name, items }];
+
+/**
+ * Runs `run` with an evaluator that resolves values as n8n would on `targetName`, the child of the
+ * last node of `walked`. Every node of `walked` is in the run data and the chain of connections,
+ * so `$('Earlier node')` resolves.
+ */
 async function withChildContext<T>(
-	sourceName: string,
+	walked: PathStep[],
 	targetName: string,
-	items: IDataObject[],
 	run: (evaluate: Evaluate) => Promise<T> | T,
 	executeOnce = false,
 ): Promise<T> {
-	const connections: IConnections = {
-		[sourceName]: { main: [[{ node: targetName, type: 'main', index: 0 }]] },
-	};
+	const chain = [...walked.map((step) => step.name), targetName];
+	const connections: IConnections = Object.fromEntries(
+		chain
+			.slice(0, -1)
+			.map((name, index) => [
+				name,
+				{ main: [[{ node: chain[index + 1], type: 'main', index: 0 }]] },
+			]),
+	);
 	const workflow = new Workflow({
-		nodes: [stubNode(sourceName), stubNode(targetName)],
+		nodes: chain.map(stubNode),
 		connections,
 		active: false,
 		nodeTypes: stubNodeTypes,
 	});
-	const sourceOutput: INodeExecutionData[] = items.map((json) => ({
-		json,
-		pairedItem: { item: 0 },
-	}));
 	const runExecutionData: IRunExecutionData = createRunExecutionData({
 		resultData: {
-			runData: {
-				[sourceName]: [
-					{
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: [],
-						data: { main: [sourceOutput] },
-					},
-				],
-			},
+			runData: Object.fromEntries(
+				walked.map((step, index) => [
+					step.name,
+					[
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: index,
+							source:
+								index === 0
+									? []
+									: [
+											{
+												previousNode: walked[index - 1].name,
+												previousNodeOutput: 0,
+												previousNodeRun: 0,
+											},
+										],
+							data: {
+								main: [
+									step.items.map((json, item) => ({
+										json,
+										pairedItem: { item: index === 0 ? 0 : (step.paired?.[item] ?? item) },
+									})),
+								],
+							},
+						},
+					],
+				]),
+			),
 		},
 	});
+	const { name: sourceName, items } = walked[walked.length - 1];
 	const input: INodeExecutionData[] = (executeOnce ? items.slice(0, 1) : items).map(
 		(json, item) => ({ json, pairedItem: { item } }),
 	);
@@ -251,15 +289,14 @@ const errorText = (error: unknown) => (error instanceof Error ? error.message : 
 /** Resolves `value` for each of `items` on `targetName`; errors become `<error: …>` strings. */
 async function evaluateOnChild(
 	value: unknown,
-	sourceName: string,
+	walked: PathStep[],
 	targetName: string,
-	items: IDataObject[],
 	executeOnce = false,
 ): Promise<unknown[]> {
+	const { items } = walked[walked.length - 1];
 	return await withChildContext(
-		sourceName,
+		walked,
 		targetName,
-		items,
 		(evaluate) =>
 			(executeOnce ? items.slice(0, 1) : items).map((_, itemIndex) => {
 				try {
@@ -287,24 +324,20 @@ async function runtimeParameters(
 ): Promise<INodeParameters> {
 	const parameters = withDefaults(node);
 	const resolved = await withChildContext(
-		parentName(workflow, node.name),
+		sourceStep(parentName(workflow, node.name), [{}]),
 		node.name,
-		[{}],
 		(evaluate) => evaluate(parameters, 0),
 	);
 	return isNodeParameters(resolved) ? resolved : {};
 }
 
 /** The JSON body an HTTP Request node would send for each input item. */
-async function httpBodies(
-	http: WorkflowNodeResponse,
-	sourceName: string,
-	items: IDataObject[],
-): Promise<unknown[]> {
+async function httpBodies(http: WorkflowNodeResponse, walked: PathStep[]): Promise<unknown[]> {
 	const parameters = http.parameters ?? {};
 	const once = http.executeOnce === true;
+	const { items } = walked[walked.length - 1];
 	if (parameters.specifyBody === 'json') {
-		const resolved = await evaluateOnChild(parameters.jsonBody, sourceName, http.name, items, once);
+		const resolved = await evaluateOnChild(parameters.jsonBody, walked, http.name, once);
 		return resolved.map((body) => {
 			if (typeof body !== 'string') return body;
 			try {
@@ -320,9 +353,7 @@ async function httpBodies(
 		: [];
 	const pairs = (Array.isArray(bodyParameters) ? bodyParameters : []).filter(isRecord);
 	const columns = await Promise.all(
-		pairs.map(
-			async (pair) => await evaluateOnChild(pair.value, sourceName, http.name, items, once),
-		),
+		pairs.map(async (pair) => await evaluateOnChild(pair.value, walked, http.name, once)),
 	);
 	return (once ? items.slice(0, 1) : items).map((_, itemIndex) =>
 		Object.fromEntries(
@@ -350,16 +381,28 @@ const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
 
 const sortedJson = (value: unknown): string =>
 	JSON.stringify(value, (_key, v: unknown) =>
-		isRecord(v) && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v,
+		isRecord(v) && !Array.isArray(v)
+			? Object.fromEntries(Object.entries(v).sort())
+			: // Rounds away float noise such as 1.1 * 3 = 3.3000000000000003.
+				typeof v === 'number'
+				? Math.round(v * 1e9) / 1e9
+				: v,
 	);
 
-/** Outputs of `node` for `items`, run by the node class's own execute code at the saved typeVersion. */
+/** The input item index in a runtime `pairedItem` (a number, an object or an array of them). */
+function pairedIndex(pairedItem: unknown): number | undefined {
+	const first: unknown = Array.isArray(pairedItem) ? pairedItem[0] : pairedItem;
+	const index = typeof first === 'number' ? first : valueAt(first, 'item');
+	return typeof index === 'number' ? index : undefined;
+}
+
+/** Outputs of `node` after `walked`, run by the node class's own execute code at the saved typeVersion. */
 async function executeOutputs(
 	nodeClass: unknown,
 	node: WorkflowNodeResponse,
-	sourceName: string,
-	items: IDataObject[],
-): Promise<IDataObject[][]> {
+	walked: PathStep[],
+): Promise<Emitted[]> {
+	const { items } = walked[walked.length - 1];
 	const instance: unknown =
 		typeof nodeClass === 'function'
 			? Reflect.construct(nodeClass, [{ displayName: node.name, name: node.type }])
@@ -368,9 +411,8 @@ async function executeOutputs(
 	const parameters = withDefaults(node);
 	const once = node.executeOnce === true;
 	const output = await withChildContext(
-		sourceName,
+		walked,
 		node.name,
-		items,
 		async (evaluate) => {
 			const context = {
 				getInputData: () =>
@@ -400,18 +442,25 @@ async function executeOutputs(
 		},
 		once,
 	);
-	return (Array.isArray(output) ? output : []).map((branch: unknown) =>
-		(Array.isArray(branch) ? branch : [])
-			.map((item: unknown) => (isRecord(item) ? item.json : undefined))
-			.filter(isDataObject),
-	);
+	return (Array.isArray(output) ? output : []).map((branch: unknown) => {
+		const emitted = (Array.isArray(branch) ? branch : [])
+			.filter(isRecord)
+			.filter((item) => isDataObject(item.json));
+		return {
+			items: emitted.map((item) => item.json).filter(isDataObject),
+			paired: emitted.map(
+				(item, index) =>
+					pairedIndex(item.pairedItem) ?? (emitted.length === items.length ? index : 0),
+			),
+		};
+	});
 }
 
-/** Output of a Set node for `items`, run by the node's own execute code at the saved typeVersion. */
-async function setOutput(set: WorkflowNodeResponse, sourceName: string, items: IDataObject[]) {
+/** Output of a Set node after `walked`, run by the node's own execute code at the saved typeVersion. */
+async function setOutput(set: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
 	const { SetV2 } = loadDist(nodesBaseRequire, './dist/nodes/Set/v2/SetV2.node.js', ['SetV2']);
-	const [firstOutput] = await executeOutputs(SetV2, set, sourceName, items);
-	return firstOutput ?? [];
+	const [firstOutput] = await executeOutputs(SetV2, set, walked);
+	return firstOutput ?? { items: [] };
 }
 
 const FILTER_NODE_CLASSES: Record<string, [file: string, className: string]> = {
@@ -423,11 +472,11 @@ const isFilterNodeV2 = (node: WorkflowNodeResponse) =>
 	node.type in FILTER_NODE_CLASSES && (node.typeVersion ?? 1) >= 2;
 
 /** Items on output 0 (IF true branch, Filter kept items), run by the node's own V2 execute code. */
-async function filterOutput(node: WorkflowNodeResponse, sourceName: string, items: IDataObject[]) {
+async function filterOutput(node: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
 	const [file, className] = FILTER_NODE_CLASSES[node.type];
 	const loaded = loadDist(nodesBaseRequire, file, [className]);
-	const [kept] = await executeOutputs(loaded[className], node, sourceName, items);
-	return kept ?? [];
+	const [kept] = await executeOutputs(loaded[className], node, walked);
+	return kept ?? { items: [] };
 }
 
 const toDataValue = (value: unknown): IDataObject[string] =>
@@ -444,41 +493,42 @@ const toDataValue = (value: unknown): IDataObject[string] =>
 					? undefined
 					: JSON.stringify(value);
 
-function limitOutput(limit: WorkflowNodeResponse, items: IDataObject[]) {
+function limitOutput(limit: WorkflowNodeResponse, items: IDataObject[]): Emitted {
 	const parameters = withDefaults(limit);
 	const maxItems = Number(parameters.maxItems);
-	return parameters.keep === 'lastItems' ? items.slice(-maxItems) : items.slice(0, maxItems);
+	const kept = parameters.keep === 'lastItems' ? items.slice(-maxItems) : items.slice(0, maxItems);
+	const offset = parameters.keep === 'lastItems' ? items.length - kept.length : 0;
+	return { items: kept, paired: kept.map((_, index) => offset + index) };
 }
 
 /**
  * Walks from `startName` through Set, Limit, IF and Filter nodes to the first HTTP Request,
  * carrying items along. After an IF or Filter it follows output 0 only; `filtered` is that output.
+ * `walked` holds every node from `startName` to the parent of `node` with the items it emitted.
  */
 async function followToHttp(
 	workflow: WorkflowResponse,
 	startName: string,
 	startItems: IDataObject[],
 ) {
-	let sourceName = startName;
-	let items = startItems;
+	const walked = sourceStep(startName, startItems);
 	let outputIndex: number | undefined;
 	let filtered: IDataObject[] | undefined;
 	const path: string[] = [];
 	for (let hop = 0; hop < 5; hop++) {
+		const { name: sourceName, items } = walked[walked.length - 1];
 		const [child] = childrenOf(workflow, sourceName, outputIndex);
 		if (!child)
 			return {
 				node: undefined,
-				sourceName,
-				items,
+				walked,
 				filtered,
 				path: `no HTTP Request after ${[startName, ...path].join(' → ')}`,
 			};
 		if (child.type === 'n8n-nodes-base.httpRequest')
 			return {
 				node: child,
-				sourceName,
-				items,
+				walked,
 				filtered,
 				path: path.length ? `via ${path.join(' → ')}:` : '',
 			};
@@ -486,23 +536,22 @@ async function followToHttp(
 		if (!isFilter && child.type !== 'n8n-nodes-base.set' && child.type !== 'n8n-nodes-base.limit') {
 			return {
 				node: undefined,
-				sourceName,
-				items,
+				walked,
 				filtered,
 				path: `ungraded: ${child.type} v${child.typeVersion ?? 1} between ${startName} and the POST`,
 			};
 		}
-		items = isFilter
-			? await filterOutput(child, sourceName, items)
+		const emitted = isFilter
+			? await filterOutput(child, walked)
 			: child.type === 'n8n-nodes-base.limit'
 				? limitOutput(child, items)
-				: await setOutput(child, sourceName, items);
-		if (isFilter) filtered = items;
+				: await setOutput(child, walked);
+		if (isFilter) filtered = emitted.items;
 		outputIndex = isFilter ? 0 : undefined;
 		path.push(child.name);
-		sourceName = child.name;
+		walked.push({ name: child.name, ...emitted });
 	}
-	return { node: undefined, sourceName, items, filtered, path: 'no HTTP Request within 5 hops' };
+	return { node: undefined, walked, filtered, path: 'no HTTP Request within 5 hops' };
 }
 
 // ── Graders ─────────────────────────────────────────────────────────────────
@@ -599,13 +648,8 @@ const gradeNotionFilterAndRead: Grader = async (workflow) => {
 				);
 	const outputItems = (Array.isArray(items) ? items : []).filter(isDataObject);
 
-	const {
-		node: http,
-		sourceName,
-		items: httpInput,
-		path: via,
-	} = await followToHttp(workflow, notion.name, outputItems);
-	const bodies = http ? await httpBodies(http, sourceName, httpInput) : [];
+	const { node: http, walked, path: via } = await followToHttp(workflow, notion.name, outputItems);
+	const bodies = http ? await httpBodies(http, walked) : [];
 	const expectBody = (name: string) => (body: unknown) =>
 		isRecord(body) &&
 		body.name === name &&
@@ -629,8 +673,7 @@ const gradeNotionFilterAndRead: Grader = async (workflow) => {
 async function postedBodies(workflow: WorkflowResponse, startName: string, items: IDataObject[]) {
 	const {
 		node: http,
-		sourceName,
-		items: httpInput,
+		walked,
 		filtered,
 		path: via,
 	} = await followToHttp(workflow, startName, items);
@@ -640,7 +683,7 @@ async function postedBodies(workflow: WorkflowResponse, startName: string, items
 		via,
 		filtered,
 		target: `${asText(parameters.method)} ${asText(parameters.url).replace(/^=/, '').trim()}`,
-		bodies: await httpBodies(http, sourceName, httpInput),
+		bodies: await httpBodies(http, walked),
 	};
 }
 
@@ -776,7 +819,9 @@ const gradeSetKeepAllPassthrough: Grader = async (workflow) => {
 	if (!get) return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the order URL' }];
 	const set = childrenOf(workflow, get.name).find((node) => node.type === 'n8n-nodes-base.set');
 	if (!set) return [{ name: 'set-node', pass: false, detail: 'no Set node after the GET' }];
-	const [output] = await setOutput(set, get.name, [ORDER]);
+	const {
+		items: [output],
+	} = await setOutput(set, sourceStep(get.name, [ORDER]));
 	const posted = await postedBodies(workflow, get.name, [ORDER]);
 	const setParameters = withDefaults(set);
 	return [
@@ -789,7 +834,7 @@ const gradeSetKeepAllPassthrough: Grader = async (workflow) => {
 		},
 		{
 			name: 'number-type',
-			pass: output?.total_with_tax === 12,
+			pass: sortedJson(output?.total_with_tax) === sortedJson(12),
 			detail: `total_with_tax=${JSON.stringify(output?.total_with_tax)} (${typeof output?.total_with_tax})`,
 		},
 		readsCheck(
@@ -896,9 +941,8 @@ async function paginatedRequests(workflow: WorkflowResponse, http: WorkflowNodeR
 			...(pagination.limitPagesFetched === true ? { maxRequests: pagination.maxRequests } : {}),
 		};
 		const responses = await withChildContext(
-			parentName(workflow, http.name),
+			sourceStep(parentName(workflow, http.name), [{}]),
 			http.name,
-			[{}],
 			async (evaluate) =>
 				await invoke(
 					requestWithAuthenticationPaginated,
@@ -992,7 +1036,8 @@ const gradeIfStringAmountThreshold: Grader = async (workflow) => {
 			node.type === 'n8n-nodes-base.httpRequest' &&
 			asText(node.parameters?.url).includes('api.example.com/invoices'),
 	);
-	if (!get) return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the invoices API' }];
+	if (!get)
+		return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the invoices API' }];
 	let posted: Awaited<ReturnType<typeof postedBodies>>;
 	try {
 		posted = await postedBodies(workflow, get.name, INVOICES);
@@ -1016,7 +1061,12 @@ const gradeIfStringAmountThreshold: Grader = async (workflow) => {
 					pass: sortedJson(posted.filtered.map((item) => item.id)) === sortedJson(['i1']),
 					detail: JSON.stringify(posted.filtered),
 				}
-			: { name: 'filter', pass: false, ungraded: true, detail: `no IF or Filter node: ${posted.via}` },
+			: {
+					name: 'filter',
+					pass: false,
+					ungraded: true,
+					detail: `no IF or Filter node: ${posted.via}`,
+				},
 		// A missing POST (for example on the IF false branch) fails; only an unsupported node is ungraded.
 		{ ...reads, ungraded: reads.ungraded === true && posted.via.startsWith('ungraded:') },
 	];
