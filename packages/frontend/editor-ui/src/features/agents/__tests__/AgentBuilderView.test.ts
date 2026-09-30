@@ -1490,6 +1490,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant', fixEvent);
 		await flushPromises();
+		expect(handoffMock).toHaveBeenCalled();
 
 		agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
 		await nextTick();
