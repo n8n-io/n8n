@@ -53,7 +53,7 @@ responses:
                 type: object
                 properties:
                   id:
-                    type: number
+                    type: integer
                     description: The row ID (auto-generated)
                   createdAt:
                     type: string

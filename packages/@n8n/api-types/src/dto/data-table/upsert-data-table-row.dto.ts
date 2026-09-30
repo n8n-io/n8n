@@ -7,12 +7,9 @@ import {
 } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
 
-export const upsertFilterSchema = dataTableFilterSchema.refine(
-	(filter) => filter.filters.length > 0,
-	{
-		message: 'filter must not be empty',
-	},
-);
+const upsertFilterSchema = dataTableFilterSchema.refine((filter) => filter.filters.length > 0, {
+	message: 'filter must not be empty',
+});
 
 const upsertDataTableRowShape = {
 	filter: upsertFilterSchema,

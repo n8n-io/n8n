@@ -1,3 +1,5 @@
+import '../../openapi-extend';
+
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 

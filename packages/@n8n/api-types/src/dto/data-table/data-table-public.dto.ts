@@ -15,7 +15,11 @@ import {
 	updateDataTableFieldDocs,
 	upsertDataTableRowFieldDocs,
 } from './data-table-public.openapi';
-import { upsertFilterSchema } from './upsert-data-table-row.dto';
+import {
+	FilterConditionSchema,
+	dataTableFilterRecordSchema,
+	dataTableFilterTypeSchema,
+} from '../../schemas/data-table-filter.schema';
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
@@ -123,7 +127,7 @@ export class UpdateDataTableColumnPublicDto implements UpdateDataTableColumnPubl
 // schema must accept unknown keys.
 export const dataTableRowPublicSchema = z
 	.object({
-		id: z.number().openapi(dataTableRowFieldDocs.id),
+		id: z.number().int().openapi(dataTableRowFieldDocs.id),
 		createdAt: z.string().datetime().openapi(dataTableRowFieldDocs.createdAt),
 		updatedAt: z.string().datetime().openapi(dataTableRowFieldDocs.updatedAt),
 	})
@@ -153,10 +157,10 @@ export class CreateDataTableRowsPublicDto extends Z.class({
 // (which also has an `id`) to avoid the union silently stripping it down when parsed.
 const insertDataTableRowsResponseSchema = z.union([
 	z
-		.object({ success: z.literal(true), insertedRows: z.number() })
+		.object({ success: z.literal(true), insertedRows: z.number().int() })
 		.openapi({ description: "Returned when returnType is 'count'" }),
 	z
-		.array(z.object({ id: z.number() }).strict())
+		.array(z.object({ id: z.number().int() }).strict())
 		.openapi({ description: "Returned when returnType is 'id'" }),
 	z.array(dataTableRowPublicSchema).openapi({ description: "Returned when returnType is 'all'" }),
 ]);
@@ -173,8 +177,18 @@ export class InsertDataTableRowsResponsePublicDto {
 	}
 }
 
+// Unlike the internal filter schema, `condition` must not default to `eq`: the legacy public
+// upsert contract required it (eov rejected an omitted `condition` with 400), and silently
+// defaulting it would change that behavior.
+const publicUpsertFilterSchema = z
+	.object({
+		type: dataTableFilterTypeSchema.default('and'),
+		filters: z.array(dataTableFilterRecordSchema.extend({ condition: FilterConditionSchema })),
+	})
+	.refine((filter) => filter.filters.length > 0, { message: 'filter must not be empty' });
+
 export class UpsertDataTableRowPublicDto extends Z.class({
-	filter: upsertFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
+	filter: publicUpsertFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
 	data: z
 		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
 		.refine((obj) => Object.keys(obj).length > 0, { message: 'data must not be empty' })
@@ -185,7 +199,7 @@ export class UpsertDataTableRowPublicDto extends Z.class({
 
 const dataTableRowWithStatePublicSchema = z
 	.object({
-		id: z.number().nullable().openapi(dataTableRowFieldDocs.id),
+		id: z.number().int().nullable().openapi(dataTableRowFieldDocs.id),
 		createdAt: z.string().datetime().nullable().openapi(dataTableRowFieldDocs.createdAt),
 		updatedAt: z.string().datetime().nullable().openapi(dataTableRowFieldDocs.updatedAt),
 		dryRunState: z.enum(['before', 'after']).openapi({

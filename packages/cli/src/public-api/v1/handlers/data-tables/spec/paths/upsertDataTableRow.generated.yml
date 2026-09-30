@@ -77,7 +77,6 @@ requestBody:
                         - type: string
                           enum:
                             - isNotEmpty
-                      default: eq
                     value:
                       anyOf:
                         - type: string
@@ -88,8 +87,10 @@ requestBody:
                         - {}
                   required:
                     - columnName
+                    - condition
                     - value
-                default: []
+            required:
+              - filters
             description: Filter conditions to match an existing row. If no row matches, n8n inserts a new row.
           data:
             type: object
@@ -105,7 +106,7 @@ requestBody:
           returnData:
             type: boolean
             default: false
-            description: Set to true to return the upserted row. Set to false to return true on success.
+            description: Set to true to return the upserted row(s) matched by the filter. Set to false to return true on success.
           dryRun:
             type: boolean
             default: false
@@ -127,7 +128,7 @@ responses:
                 type: object
                 properties:
                   id:
-                    type: number
+                    type: integer
                     nullable: true
                     description: The row ID (auto-generated)
                   createdAt:
@@ -157,7 +158,7 @@ responses:
                 type: object
                 properties:
                   id:
-                    type: number
+                    type: integer
                     description: The row ID (auto-generated)
                   createdAt:
                     type: string
