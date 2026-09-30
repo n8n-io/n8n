@@ -73,7 +73,7 @@ export function buildChannelStatusReport(
 				...(integration.approval ? { approval: integration.approval } : {}),
 				status,
 				...(failure?.errorMessage ? { errorMessage: failure.errorMessage } : {}),
-				...(lastInboundAt ? { lastVerifiedAt: lastInboundAt.toISOString() } : {}),
+				...(lastInboundAt ? { lastInboundAt: lastInboundAt.toISOString() } : {}),
 			};
 		});
 	const draftChat = integrations?.some((integration) => integration.type === 'n8n_chat') ?? false;

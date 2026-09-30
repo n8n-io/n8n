@@ -740,12 +740,12 @@ export class AgentChatBridge {
 		if (!isCredentialAgentIntegration(this.integration)) return;
 		const now = Date.now();
 		if (now - this.lastInboundRecordedAt < INBOUND_RECORD_INTERVAL_MS) return;
-		this.lastInboundRecordedAt = now;
 		try {
 			await Container.get(AgentChannelActivityRepository).recordInbound(
 				agentChannelRef(this.agentId, this.integration),
 				new Date(now),
 			);
+			this.lastInboundRecordedAt = now;
 		} catch (error) {
 			this.logger.warn('Could not record inbound channel activity', {
 				agentId: this.agentId,

@@ -58,7 +58,7 @@ export interface AgentChannelViewProps {
 	runtimeStatus?: AgentChannelClientStatus;
 	runtimeError?: string;
 	/** ISO time the channel last received a message. */
-	lastVerifiedAt?: string;
+	lastInboundAt?: string;
 	errorMessage: string;
 	errorIsConflict: boolean;
 	savedSettings?: AgentIntegrationSettings;

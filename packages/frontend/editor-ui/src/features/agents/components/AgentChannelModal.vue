@@ -68,7 +68,7 @@ const {
 	errorMessages,
 	errorIsConflict,
 	runtimeErrors,
-	lastVerifiedAt,
+	lastInboundAt,
 	statuses: integrationStatuses,
 	isConnected: isIntegrationConnected,
 	isConfigured: isIntegrationConfigured,
@@ -558,7 +558,7 @@ watch(
 					:connected-description="integrationConnectedText(currentIntegration.type)"
 					:runtime-status="integrationStatuses[currentIntegration.type]"
 					:runtime-error="runtimeErrors[currentIntegration.type]"
-					:last-verified-at="lastVerifiedAt[currentIntegration.type]"
+					:last-inbound-at="lastInboundAt[currentIntegration.type]"
 					:error-message="
 						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
 					"

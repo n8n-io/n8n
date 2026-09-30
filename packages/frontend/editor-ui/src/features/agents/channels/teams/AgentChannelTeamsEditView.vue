@@ -32,7 +32,7 @@ defineExpose({ currentSettings, validationError });
 		<AgentChannelTeamsStatusBanner
 			:runtime-status="runtimeStatus"
 			:runtime-error="runtimeError"
-			:last-verified-at="lastVerifiedAt"
+			:last-inbound-at="lastInboundAt"
 			:is-published="isPublished"
 			@show-endpoint="showEndpoint = true"
 		/>

@@ -137,8 +137,8 @@ describe('buildChannelStatusReport', () => {
 			activity,
 		);
 
-		expect(report.integrations[0]).toMatchObject({ lastVerifiedAt: '2026-09-11T10:00:00.000Z' });
-		expect(report.integrations[1]).not.toHaveProperty('lastVerifiedAt');
+		expect(report.integrations[0]).toMatchObject({ lastInboundAt: '2026-09-11T10:00:00.000Z' });
+		expect(report.integrations[1]).not.toHaveProperty('lastInboundAt');
 	});
 
 	it('carries settings through', () => {

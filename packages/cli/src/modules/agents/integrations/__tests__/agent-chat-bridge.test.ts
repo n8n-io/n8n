@@ -421,6 +421,16 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 			expect(thread.subscribe).toHaveBeenCalled();
 		});
+
+		it('tries again on the next message after a failed write', async () => {
+			channelActivity.recordInbound.mockRejectedValueOnce(new Error('db down'));
+			const handlers = makeBridge();
+
+			await handlers.mention!(makeThread(), hi);
+			await handlers.subscribed!(makeThread(), hi);
+
+			expect(channelActivity.recordInbound).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	it.each([bufferedIntegration, streamingIntegration])(

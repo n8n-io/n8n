@@ -44,7 +44,7 @@ const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
-const lastVerifiedAt = ref<Record<string, string>>({});
+const lastInboundAt = ref<Record<string, string>>({});
 const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialModalOpen = ref(false);
 
@@ -75,7 +75,7 @@ vi.mock('../channels/registry', async () => {
 			'ensureAgentPersisted',
 			'runtimeStatus',
 			'runtimeError',
-			'lastVerifiedAt',
+			'lastInboundAt',
 		],
 		emits: ['update:modelValue', 'connect', 'connected'],
 		setup: () => {
@@ -100,7 +100,7 @@ vi.mock('../channels/registry', async () => {
 				:data-setup-kind="runtime.setupKind?.value"
 				:data-runtime-status="runtimeStatus"
 				:data-runtime-error="runtimeError"
-				:data-last-verified-at="lastVerifiedAt"
+				:data-last-inbound-at="lastInboundAt"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
@@ -184,7 +184,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		errorMessages: ref({}),
 		errorIsConflict,
 		runtimeErrors,
-		lastVerifiedAt,
+		lastInboundAt,
 		statuses,
 		isConnected: (type: string) => statuses.value[type] === 'connected',
 		isConfigured: (type: string) =>
@@ -315,7 +315,7 @@ describe('AgentChannelModal', () => {
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};
-		lastVerifiedAt.value = {};
+		lastInboundAt.value = {};
 		errorIsConflict.value = {};
 		credentialModalOpen.value = false;
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
@@ -396,14 +396,14 @@ describe('AgentChannelModal', () => {
 		statuses.value.example = 'error';
 		connectedCredentials.value.example = 'credential-old';
 		runtimeErrors.value.example = 'Credential cred-1 not found';
-		lastVerifiedAt.value.example = '2026-09-11T10:00:00.000Z';
+		lastInboundAt.value.example = '2026-09-11T10:00:00.000Z';
 		const wrapper = mountModal('example_edit');
 		await flushPromises();
 
 		expect(wrapper.get('[data-testid="platform-view"]').attributes()).toMatchObject({
 			'data-runtime-status': 'error',
 			'data-runtime-error': 'Credential cred-1 not found',
-			'data-last-verified-at': '2026-09-11T10:00:00.000Z',
+			'data-last-inbound-at': '2026-09-11T10:00:00.000Z',
 		});
 	});
 

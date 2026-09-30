@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
+import type { AgentChannelViewProps } from '../types';
 import { getTeamsSetupState } from './api';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -44,33 +45,34 @@ const renderComponent = createComponentRenderer(AgentChannelTeamsEditView, {
 	},
 });
 
-const props = (overrides: Record<string, unknown> = {}) => ({
-	mode: 'edit' as const,
-	modelValue: 'cred-1',
-	integration: {
-		type: 'teams',
-		label: 'Microsoft Teams',
-		icon: 'teams',
-		credentialTypes: ['microsoftEntraServicePrincipalApi'],
-	},
-	credentials: [],
-	credentialPermissions: { create: true },
-	credentialsLoading: false,
-	loading: false,
-	connected: true,
-	connectedDescription: '',
-	errorMessage: '',
-	errorIsConflict: false,
-	isPublished: true,
-	agentName: 'Agent',
-	projectId: 'p',
-	agentId: 'a',
-	forceNewCredential: false,
-	simpleSetup: false,
-	runtime: { load: vi.fn(), loading: { value: false } },
-	runtimeStatus: 'connected',
-	...overrides,
-});
+const props = (overrides: Record<string, unknown> = {}) =>
+	({
+		mode: 'edit' as const,
+		modelValue: 'cred-1',
+		integration: {
+			type: 'teams',
+			label: 'Microsoft Teams',
+			icon: 'teams',
+			credentialTypes: ['microsoftEntraServicePrincipalApi'],
+		},
+		credentials: [],
+		credentialPermissions: { create: true },
+		credentialsLoading: false,
+		loading: false,
+		connected: true,
+		connectedDescription: '',
+		errorMessage: '',
+		errorIsConflict: false,
+		isPublished: true,
+		agentName: 'Agent',
+		projectId: 'p',
+		agentId: 'a',
+		forceNewCredential: false,
+		simpleSetup: false,
+		runtime: { load: vi.fn(), loading: { value: false } },
+		runtimeStatus: 'connected',
+		...overrides,
+	}) as unknown as AgentChannelViewProps;
 
 const STATUS = 'agents.channels.teams.settings.status';
 
@@ -120,16 +122,32 @@ describe('AgentChannelTeamsEditView', () => {
 		expect(getByTestId('teams-status-hint')).toHaveTextContent('Credential cred-1 not found');
 	});
 
-	it('says when the channel last heard from someone', () => {
-		const lastVerifiedAt = '2026-09-11T10:00:00.000Z';
-		const { getByTestId } = renderComponent({ props: props({ lastVerifiedAt }) });
+	it('says when a running channel last heard from someone', () => {
+		const lastInboundAt = new Date().toISOString();
+		const { getByTestId } = renderComponent({ props: props({ lastInboundAt }) });
 
 		const date = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(
-			new Date(lastVerifiedAt),
+			new Date(lastInboundAt),
 		);
 		expect(getByTestId('teams-status-title')).toHaveTextContent(
 			`${STATUS}.verified ${STATUS}.connected ${date}`,
 		);
+	});
+
+	it('adds the year to a date from another year', () => {
+		const { getByTestId } = renderComponent({
+			props: props({ lastInboundAt: '2020-09-11T10:00:00.000Z' }),
+		});
+
+		expect(getByTestId('teams-status-title')).toHaveTextContent('2020');
+	});
+
+	it('does not vouch for a channel that is not running', () => {
+		const { getByTestId } = renderComponent({
+			props: props({ runtimeStatus: 'error', lastInboundAt: new Date().toISOString() }),
+		});
+
+		expect(getByTestId('teams-status-title').textContent?.trim()).toBe(`${STATUS}.error`);
 	});
 
 	it('shows no date for a channel that has not heard from anyone', () => {

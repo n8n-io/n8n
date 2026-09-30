@@ -40,7 +40,7 @@ interface AgentIntegrationStatusState {
 	 */
 	runtimeErrors: Ref<Record<string, string>>;
 	/** When a channel last received a message, from the server; configuration never knows it. */
-	lastVerifiedAt: Ref<Record<string, string>>;
+	lastInboundAt: Ref<Record<string, string>>;
 	/**
 	 * Channel types the server has actually answered for. A failed refetch must
 	 * not overwrite what the server said, but it must not protect a guess either:
@@ -73,7 +73,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			errorMessages: ref({}),
 			errorIsConflict: ref({}),
 			runtimeErrors: ref({}),
-			lastVerifiedAt: ref({}),
+			lastInboundAt: ref({}),
 			serverConfirmed: ref(new Set()),
 			fetchInFlight: null,
 		};
@@ -110,7 +110,7 @@ function applyStatus(
 	const fromServer = source === 'server';
 	const previousStatuses = { ...state.statuses.value };
 	const previousRuntimeErrors = { ...state.runtimeErrors.value };
-	const previousLastVerifiedAt = { ...state.lastVerifiedAt.value };
+	const previousLastVerifiedAt = { ...state.lastInboundAt.value };
 	// An answer of `disconnected` was about a channel that did not exist then. If
 	// configuration has one now, the seed is the fresher account of it.
 	const answeredFor = (type: string) =>
@@ -124,7 +124,7 @@ function applyStatus(
 		state.integrationSettings.value[type] = undefined;
 		state.integrationApproval.value[type] = undefined;
 		state.runtimeErrors.value[type] = '';
-		state.lastVerifiedAt.value[type] = '';
+		state.lastInboundAt.value[type] = '';
 	}
 	for (const integration of integrations) {
 		// Only `starting` is the seed guessing at runtime state, and only a guess
@@ -144,8 +144,8 @@ function applyStatus(
 		state.runtimeErrors.value[integration.type] = keepServerAnswer
 			? (previousRuntimeErrors[integration.type] ?? '')
 			: (integration.errorMessage ?? '');
-		state.lastVerifiedAt.value[integration.type] = fromServer
-			? (integration.lastVerifiedAt ?? '')
+		state.lastInboundAt.value[integration.type] = fromServer
+			? (integration.lastInboundAt ?? '')
 			: (previousLastVerifiedAt[integration.type] ?? '');
 	}
 	for (const type of integrationTypes) {
@@ -269,7 +269,6 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.integrationSettings.value[type] = undefined;
 			state.integrationApproval.value[type] = undefined;
 			state.runtimeErrors.value[type] = '';
-			state.lastVerifiedAt.value[type] = '';
 			state.serverConfirmed.value.add(type);
 			return result;
 		} finally {
@@ -312,7 +311,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		errorMessages: state.errorMessages,
 		errorIsConflict: state.errorIsConflict,
 		runtimeErrors: state.runtimeErrors,
-		lastVerifiedAt: state.lastVerifiedAt,
+		lastInboundAt: state.lastInboundAt,
 		fetchStatus,
 		connect,
 		disconnect,

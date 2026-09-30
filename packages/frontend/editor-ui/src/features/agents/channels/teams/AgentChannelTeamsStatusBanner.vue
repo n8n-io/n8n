@@ -10,10 +10,10 @@ const props = withDefaults(
 	defineProps<{
 		runtimeStatus?: AgentChannelClientStatus;
 		runtimeError?: string;
-		lastVerifiedAt?: string;
+		lastInboundAt?: string;
 		isPublished?: boolean;
 	}>(),
-	{ runtimeStatus: 'unknown', runtimeError: '', lastVerifiedAt: '', isPublished: true },
+	{ runtimeStatus: 'unknown', runtimeError: '', lastInboundAt: '', isPublished: true },
 );
 
 const emit = defineEmits<{ showEndpoint: [] }>();
@@ -59,10 +59,18 @@ const state = computed<BannerState>(() => {
 	return 'unknown';
 });
 
+// Only a running channel is vouched for by its last message; on a broken one
+// the date would read as a recent health check.
 const verifiedDate = computed(() => {
-	const date = props.lastVerifiedAt ? new Date(props.lastVerifiedAt) : null;
-	if (!date || Number.isNaN(date.getTime())) return '';
-	return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(date);
+	if (state.value !== 'connected' || !props.lastInboundAt) return '';
+	const date = new Date(props.lastInboundAt);
+	if (Number.isNaN(date.getTime())) return '';
+	const sameYear = date.getFullYear() === new Date().getFullYear();
+	return new Intl.DateTimeFormat(undefined, {
+		day: 'numeric',
+		month: 'short',
+		...(sameYear ? {} : { year: 'numeric' }),
+	}).format(date);
 });
 
 const title = computed(() => {
