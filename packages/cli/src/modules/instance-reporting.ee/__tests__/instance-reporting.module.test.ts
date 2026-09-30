@@ -95,43 +95,37 @@ describe('InstanceReportingModule', () => {
 		});
 	});
 
-	describe('init()', () => {
-		it('registers the reporting task', async () => {
+	describe('systemTasks()', () => {
+		it('returns the reporting task', async () => {
 			setUpContainer();
-			const module = new InstanceReportingModule();
-			await module.init();
 
-			expect(await module.systemTasks()).toEqual([InstanceReportingTask]);
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
 		});
 
+		it('returns no task when no receiver is configured', async () => {
+			setUpContainer({ baseUrl: '' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
+		});
+
+		it('returns no task when the instance has no license certificate', async () => {
+			setUpContainer({ licenseCert: '' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
+		});
+
+		it('returns the task with an auth token but no license certificate', async () => {
+			setUpContainer({ licenseCert: '', authToken: 'secret-token' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
+		});
+	});
+
+	describe('init()', () => {
 		it('fails when the insights module is disabled', async () => {
 			setUpContainer({ disabledModules: ['insights'] });
 
 			await expect(new InstanceReportingModule().init()).rejects.toThrow(UserError);
-		});
-
-		it('registers no task when no receiver is configured', async () => {
-			setUpContainer({ baseUrl: '' });
-
-			await new InstanceReportingModule().init();
-
-			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
-		});
-
-		it('registers no task when the instance has no license certificate', async () => {
-			setUpContainer({ licenseCert: '' });
-
-			await new InstanceReportingModule().init();
-
-			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
-		});
-
-		it('registers the task with an auth token but no license certificate', async () => {
-			setUpContainer({ licenseCert: '', authToken: 'secret-token' });
-
-			await new InstanceReportingModule().init();
-
-			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
 		});
 
 		// The route belongs to the loaded module, not to the receiver, so a client
