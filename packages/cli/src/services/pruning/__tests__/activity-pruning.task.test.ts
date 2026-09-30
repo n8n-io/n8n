@@ -15,13 +15,21 @@ describe('ActivityPruningTask', () => {
 		new ActivityPruningTask(
 			logger,
 			activityEventRepository,
-			mock<ActivityLogConfig>({ enabled: true, retentionDays: 14, maxEntries: 1_000, ...config }),
+			mock<ActivityLogConfig>({ retentionDays: 14, maxEntries: 1_000, ...config }),
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		activityEventRepository.deleteOlderThan.mockResolvedValue(0);
 		activityEventRepository.deleteBeyondNewest.mockResolvedValue(0);
+	});
+
+	it('runs durably, on any main, and on the fallback timer as soon as a leader takes over', () => {
+		expect(taskWith().placement).toEqual({
+			scope: 'cluster',
+			durable: true,
+			runOnTakeover: true,
+		});
 	});
 
 	it('applies the age cap and the count backstop, and reports what went', async () => {
@@ -37,13 +45,6 @@ describe('ActivityPruningTask', () => {
 			expect.any(AbortSignal),
 		);
 		expect(scopedLogger.debug).toHaveBeenCalledWith('Pruned 5 activity entries');
-	});
-
-	it('keeps draining the backlog after the flag is turned off', async () => {
-		await taskWith({ enabled: false }).run(new AbortController().signal);
-
-		expect(activityEventRepository.deleteOlderThan).toHaveBeenCalled();
-		expect(activityEventRepository.deleteBeyondNewest).toHaveBeenCalled();
 	});
 
 	it.each([

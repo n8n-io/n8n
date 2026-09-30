@@ -3,14 +3,15 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
@@ -28,7 +29,7 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -43,7 +44,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -54,6 +54,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
+import { McpConfig } from '../mcp.config';
 import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
@@ -72,7 +73,7 @@ const mockAiGatewayService = () =>
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
-	canvasGroupsEnabled: false,
+	instanceContextEnabled: false,
 	aiPreferencesEnabled: false,
 	...overrides,
 });
@@ -123,6 +124,7 @@ describe('McpService', () => {
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
+			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
 			mockInstance(NodeResourceExplorerService),
@@ -139,6 +141,7 @@ describe('McpService', () => {
 			eventService,
 			mockInstance(FolderService),
 			aiPreferenceService,
+			mockInstance(McpConfig),
 		);
 	});
 
@@ -177,6 +180,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
@@ -193,6 +197,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -355,7 +360,6 @@ describe('McpService', () => {
 		const buildResolutionService = (opts: {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
-			mcpCanvasGroupsEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -368,10 +372,10 @@ describe('McpService', () => {
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: {
+						...new EndpointsConfig(),
 						webhook: '/webhook',
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
-						mcpCanvasGroupsEnabled: opts.mcpCanvasGroupsEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -386,6 +390,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
@@ -402,25 +407,65 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-		it('resolves every feature with a single PostHog lookup', async () => {
+		it('resolves user flags and the instance activity flag', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				[MCP_CANVAS_GROUPS_FLAG]: true,
 			});
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'variant' },
-				canvasGroupsEnabled: true,
+				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([true, false])(
+			'uses the same instance context answer for two users: %s',
+			async (enabled) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true })
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false });
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				const service = buildResolutionService({ postHogClient });
+				const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
+
+				const results = await Promise.all([
+					service.resolveFeatureFlags(user),
+					service.resolveFeatureFlags(secondUser),
+				]);
+
+				expect(results.map((result) => result.instanceContextEnabled)).toEqual([enabled, enabled]);
+				expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				]);
+			},
+		);
+
+		it('keeps context off when its flag fails without disabling user features', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+			});
+			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
+
+			await expect(
+				buildResolutionService({ postHogClient }).resolveFeatureFlags(user),
+			).resolves.toMatchObject({
+				instanceContextEnabled: false,
+				mcpApps: { enabled: true, variant: 'variant' },
+			});
 		});
 
 		describe('MCP Apps', () => {
@@ -467,6 +512,35 @@ describe('McpService', () => {
 					mcpApps: { enabled: false, variant: 'unassigned' },
 				});
 			});
+		});
+
+		describe('instance context', () => {
+			it('enables the surface from the shared instance flag alone', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({});
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					instanceContextEnabled: true,
+				});
+			});
+
+			it.each([false, undefined, 'variant'])(
+				'keeps the surface off when the instance flag is %s',
+				async (value) => {
+					const postHogClient = mockInstance(PostHogClient);
+					postHogClient.getFeatureFlags.mockResolvedValue({
+						[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					});
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
+					const service = buildResolutionService({ postHogClient });
+
+					await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+						instanceContextEnabled: false,
+					});
+				},
+			);
 		});
 
 		describe('user preferences', () => {
@@ -516,76 +590,36 @@ describe('McpService', () => {
 			});
 		});
 
-		describe('canvas groups', () => {
-			it('enables canvas groups for users with the boolean flag set', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_CANVAS_GROUPS_FLAG]: true });
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: true,
-				});
-			});
-
-			it('keeps canvas groups disabled when the flag is missing', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: false,
-				});
-			});
-
-			it('treats non-boolean flag values as disabled', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_CANVAS_GROUPS_FLAG]: 'variant' });
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: false,
-				});
-			});
-
-			it('enables canvas groups when the operator force-enables them', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient, mcpCanvasGroupsEnabled: true });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: true,
-				});
-			});
-		});
-
 		it('still queries PostHog when only some features are env-overridden', async () => {
 			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_CANVAS_GROUPS_FLAG]: true });
+			postHogClient.getFeatureFlags.mockResolvedValue({});
 			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
-				canvasGroupsEnabled: true,
+				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it('still queries PostHog for the AI preferences flag when every other feature is env-overridden', async () => {
+		it('resolves user preferences while the instance context flag and MCP Apps are on', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			});
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,
-				mcpCanvasGroupsEnabled: true,
 			});
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
-				canvasGroupsEnabled: true,
+				instanceContextEnabled: true,
 				aiPreferencesEnabled: true,
 			});
 
@@ -1158,6 +1192,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
@@ -1174,6 +1209,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1214,6 +1250,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
@@ -1230,6 +1267,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1295,6 +1333,7 @@ describe('McpService', () => {
 					mockInstance(SharedWorkflowRepository),
 					mockInstance(ExecutionRepository),
 					mockInstance(ExecutionService),
+					mockInstance(ExecutionListService),
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
 					mockInstance(NodeResourceExplorerService),
@@ -1311,6 +1350,7 @@ describe('McpService', () => {
 					mockInstance(EventService),
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),
+					mockInstance(McpConfig),
 				);
 			};
 

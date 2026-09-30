@@ -34,8 +34,8 @@ test.describe(
 			await n8n.instanceAi.openSidebar();
 
 			// Assert specific threads instead of a count, which can include stray rows.
-			await expect(n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath)).toBeVisible();
-			await expect(n8n.instanceAi.sidebar.getThreadByHref(secondThreadPath)).toBeVisible();
+			await expect(n8n.instanceAi.sidebar.getThreadByTitle('First thread message')).toBeVisible();
+			await expect(n8n.instanceAi.sidebar.getThreadByTitle('Second thread message')).toBeVisible();
 		});
 
 		test('should switch between threads', async ({ n8n }) => {
@@ -47,7 +47,9 @@ test.describe(
 			);
 			await n8n.instanceAi.waitForResponseComplete();
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
-			const firstThreadPath = new URL(n8n.page.url()).pathname;
+			const firstThreadId = n8n.instanceAi.getCurrentThreadId();
+			const firstThreadTitle = `First switch thread ${firstThreadId}`;
+			await n8n.api.renameInstanceAiThread(firstThreadId, firstThreadTitle);
 
 			// Create second thread
 			await n8n.instanceAi.getNewThreadButton().click();
@@ -58,9 +60,11 @@ test.describe(
 				'For this thread switch test, reply with exactly: second thread ready',
 			);
 			await n8n.instanceAi.waitForResponseComplete();
+			const secondThreadId = n8n.instanceAi.getCurrentThreadId();
+			await n8n.instanceAi.gotoThread(secondThreadId);
 
 			await n8n.instanceAi.openSidebar();
-			const firstThread = n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath);
+			const firstThread = n8n.instanceAi.sidebar.getThreadByTitle(firstThreadTitle);
 			await expect(firstThread).toBeVisible({ timeout: 10_000 });
 			await firstThread.click();
 

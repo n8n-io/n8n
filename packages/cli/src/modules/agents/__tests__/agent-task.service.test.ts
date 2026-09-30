@@ -5,10 +5,10 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -151,7 +151,7 @@ describe('AgentTaskService', () => {
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
-			publisher,
+			new AgentChangePublisher(publisher, globalConfig, logger),
 			modificationTelemetry,
 			durableJobRegistrar,
 			mock<AgentUpdateBroadcaster>(),
@@ -463,6 +463,28 @@ describe('AgentTaskService', () => {
 			expect(task.timezone).toBe('Asia/Tokyo');
 			expect(txManager.save).toHaveBeenCalled();
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+		});
+
+		it('reports whether a task body changed', async () => {
+			arrangeUpdate();
+
+			const first = await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+			const second = await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+
+			expect(first).toMatchObject({ task: { name: 'Renamed task' }, changed: true });
+			expect(second).toMatchObject({ task: { name: 'Renamed task' }, changed: false });
 		});
 
 		it('moves the schedule to another timezone', async () => {

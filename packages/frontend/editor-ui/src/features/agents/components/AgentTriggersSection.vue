@@ -19,6 +19,7 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isPublished?: boolean;
+		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
@@ -31,6 +32,7 @@ const props = withDefaults(
 		connectedTriggers: () => [],
 		disabled: false,
 		isPublished: false,
+		isRunnable: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
 		taskRefs: () => [],
@@ -43,6 +45,7 @@ const emit = defineEmits<{
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'preview-task': [instructions: string];
 	'agent-changed': [];
 }>();
 
@@ -123,7 +126,6 @@ async function loadChannelDetails() {
 	}
 
 	try {
-		credentialsStore.setCredentials([]);
 		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
 		});
@@ -224,12 +226,14 @@ function handleChannelDisconnected(channelType: string) {
 			:project-id="props.projectId"
 			:agent-id="props.agentId"
 			:is-published="props.isPublished"
+			:is-runnable="props.isRunnable"
 			:reload-key="props.reloadKey"
 			:agent-unsaved="props.agentUnsaved"
 			:ensure-agent-persisted="props.ensureAgentPersisted"
 			:validation-issues="props.validationIssues"
 			@toggle-task="emit('toggle-task', $event)"
 			@tasks-changed="emit('tasks-changed')"
+			@preview-task="emit('preview-task', $event)"
 		/>
 
 		<AgentChannelModal

@@ -101,6 +101,7 @@ export interface IWorkflowDb extends IWorkflowBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
+	description?: string | null;
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
@@ -158,7 +159,7 @@ export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
 	type?: string;
-	currentUserHasAccess: boolean;
+	currentUserCanUse: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 }
@@ -339,7 +340,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 }
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount?: boolean;
+	workflowCount?: number;
 	subFolderCount?: number;
 };
 

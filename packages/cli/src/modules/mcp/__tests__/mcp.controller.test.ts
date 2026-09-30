@@ -118,7 +118,6 @@ describe('McpController', () => {
 		// when a flag matters.
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			canvasGroupsEnabled: false,
 		});
 
 		Container.set(Logger, logger);
@@ -171,7 +170,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'variant' },
-			canvasGroupsEnabled: true,
 		});
 		const res = createRes();
 
@@ -195,7 +193,6 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: true,
 			mcp_apps_variant: 'variant',
-			mcp_canvas_groups_enabled: true,
 		});
 	});
 
@@ -207,7 +204,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -240,7 +236,6 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: false,
 			mcp_apps_variant: 'unassigned',
-			mcp_canvas_groups_enabled: false,
 		});
 	});
 
@@ -357,7 +352,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'env_override' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -389,7 +383,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'variant' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -407,7 +400,7 @@ describe('McpController', () => {
 		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
+			{ mcpApps: { enabled: true, variant: 'variant' } },
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
 		);
@@ -424,7 +417,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			canvasGroupsEnabled: false,
 			aiPreferencesEnabled: true,
 		});
 		const res = createRes();
@@ -462,7 +454,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'control' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -481,7 +472,7 @@ describe('McpController', () => {
 		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
+			{ mcpApps: { enabled: false, variant: 'control' } },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
 		);

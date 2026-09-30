@@ -55,6 +55,8 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
+const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
+
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -187,13 +189,18 @@ async function toggleMCPAccess(enabled: boolean) {
 <template>
 	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
 		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
+			<N8nText
+				tag="h2"
+				:bold="!isUntitled"
+				:color="isUntitled ? 'text-light' : undefined"
+				:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
+				data-test-id="agent-card-name"
+			>
 				{{ agent.name }}
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
-					theme="tertiary"
-					bold
+					variant="outline"
 					data-test-id="agent-card-readonly-badge"
 				>
 					{{ locale.baseText('agents.list.readonly') }}
@@ -262,6 +269,10 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.untitledName {
+	font-style: italic;
 }
 
 .readonlyBadge {

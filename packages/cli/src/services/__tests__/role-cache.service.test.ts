@@ -6,7 +6,7 @@ import { staticRolesWithScope } from '@n8n/permissions';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import { RoleCacheService } from '@/services/role-cache.service';
 
 // Mock static function

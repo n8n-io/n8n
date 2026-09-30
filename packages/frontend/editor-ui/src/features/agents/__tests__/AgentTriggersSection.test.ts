@@ -1,14 +1,42 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import * as credentialsApi from '@/features/credentials/credentials.api';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 import AgentTriggersSection from '../components/AgentTriggersSection.vue';
 
-vi.mock('@/features/credentials/credentials.store', () => ({
-	useCredentialsStore: () => ({
-		setCredentials: vi.fn(),
-		fetchUsableCredentials: vi.fn().mockResolvedValue([]),
+vi.mock('@/features/credentials/credentials.api');
+vi.mock('@/features/credentials/credentials.ee.api');
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({
+		restApiContext: { baseUrl: 'http://localhost:5678', sessionId: 'test-session' },
+		baseUrl: 'http://localhost:5678',
 	}),
 }));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: vi.fn(),
+		getNodeVersions: vi.fn(() => []),
+	}),
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		isEnterpriseFeatureEnabled: { sharing: true },
+	}),
+}));
+
+const modelCredential = mock<ICredentialsResponse>({
+	id: 'model-credential',
+	name: 'Model credential',
+	type: 'openAiApi',
+});
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
@@ -76,6 +104,65 @@ function mountSection(
 describe('AgentTriggersSection', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
+		setActivePinia(createPinia());
+		vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([]);
+	});
+
+	it('preserves model credentials during channel refresh on mount and remount', async () => {
+		const credentialsStore = useCredentialsStore();
+		credentialsStore.setCredentials([modelCredential]);
+
+		for (const phase of ['mount', 'remount']) {
+			const pendingCredentials = Promise.withResolvers<ICredentialsResponse[]>();
+			vi.mocked(credentialsApi.getUsableCredentials).mockReturnValueOnce(
+				pendingCredentials.promise,
+			);
+			const wrapper = mountSection();
+			await flushPromises();
+
+			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(expect.anything(), {
+				projectId: 'project-id',
+			});
+			expect(credentialsStore.getCredentialById(modelCredential.id), phase).toEqual(
+				modelCredential,
+			);
+
+			pendingCredentials.resolve([modelCredential]);
+			await flushPromises();
+
+			expect(credentialsStore.getCredentialById(modelCredential.id)).toEqual(modelCredential);
+			wrapper.unmount();
+		}
+	});
+
+	it('preserves model credentials when the channel credential refresh fails', async () => {
+		const credentialsStore = useCredentialsStore();
+		credentialsStore.setCredentials([modelCredential]);
+		vi.mocked(credentialsApi.getUsableCredentials).mockRejectedValueOnce(
+			new Error('Credential refresh failed'),
+		);
+		const wrapper = mountSection();
+		await flushPromises();
+
+		expect(credentialsStore.getCredentialById(modelCredential.id)).toEqual(modelCredential);
+		wrapper.unmount();
+	});
+
+	it('removes a missing credential only after the channel credential refresh completes', async () => {
+		const credentialsStore = useCredentialsStore();
+		credentialsStore.setCredentials([modelCredential]);
+		const pendingCredentials = Promise.withResolvers<ICredentialsResponse[]>();
+		vi.mocked(credentialsApi.getUsableCredentials).mockReturnValueOnce(pendingCredentials.promise);
+		const wrapper = mountSection();
+		await flushPromises();
+
+		expect(credentialsStore.getCredentialById(modelCredential.id)).toEqual(modelCredential);
+
+		pendingCredentials.resolve([]);
+		await flushPromises();
+
+		expect(credentialsStore.getCredentialById(modelCredential.id)).toBeUndefined();
+		wrapper.unmount();
 	});
 
 	it('forwards persistence to the schedules row', async function forwardPersistenceToSchedules() {

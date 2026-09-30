@@ -1,0 +1,104 @@
+operationId: getDiscover
+tags:
+  - Discover
+summary: Discover available API capabilities
+description: Returns a filtered capability map based on the caller's API key scopes. Each resource includes the operations and endpoints accessible to the authenticated API key. Use query parameters to narrow the response.
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      enum:
+        - schemas
+      description: Include additional data. Use "schemas" to inline request body schemas per endpoint, eliminating the need to fetch the full OpenAPI spec.
+    required: false
+    name: include
+    in: query
+  - schema:
+      type: string
+      description: Filter to a specific resource (e.g. "workflow", "tags", "credential").
+    required: false
+    name: resource
+    in: query
+  - schema:
+      type: string
+      description: Filter to endpoints with a specific operation (e.g. "read", "create", "list").
+    required: false
+    name: operation
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                  description: The API key's active scopes
+                resources:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      operations:
+                        type: array
+                        items:
+                          type: string
+                      endpoints:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            method:
+                              type: string
+                            path:
+                              type: string
+                            operationId:
+                              type: string
+                            requestSchema:
+                              type: object
+                              description: Request body schema (only present when include=schemas and the endpoint accepts a request body).
+                          required:
+                            - method
+                            - path
+                            - operationId
+                    required:
+                      - operations
+                      - endpoints
+                filters:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      description:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                      - description
+                      - values
+                  description: Available query parameter filters. The values arrays reflect what the caller's scopes permit.
+                specUrl:
+                  type: string
+                  description: URL to the full OpenAPI specification
+              required:
+                - scopes
+                - resources
+                - filters
+                - specUrl
+          required:
+            - data
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml

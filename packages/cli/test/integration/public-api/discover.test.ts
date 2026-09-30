@@ -70,6 +70,24 @@ describe('GET /discover', () => {
 		expect(response.body.data.specUrl).toBe('/api/v1/openapi.yml');
 	});
 
+	test('should filter discover data by the API key scopes', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
+		const response = await testServer.publicApiAgentFor(scopedOwner).get('/discover');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.scopes).toEqual(['tag:list']);
+		expect(
+			response.body.data.resources.tags.endpoints.some(
+				(endpoint: { operationId: string }) => endpoint.operationId === 'getTags',
+			),
+		).toBe(true);
+		expect(
+			response.body.data.resources.tags.endpoints.some(
+				(endpoint: { operationId: string }) => endpoint.operationId === 'createTag',
+			),
+		).toBe(false);
+	});
+
 	test('should return discover data for member', async () => {
 		const response = await authMemberAgent.get('/discover');
 
@@ -149,5 +167,47 @@ describe('GET /discover', () => {
 		const response = await authOwnerAgent.get('/discover?resource=nonexistent');
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.resources).toEqual({});
+	});
+
+	test('should keep only create endpoints with ?operation=create', async () => {
+		const response = await authOwnerAgent.get('/discover?operation=create');
+		expect(response.statusCode).toBe(200);
+
+		const resources = Object.values(response.body.data.resources) as Array<{
+			operations: string[];
+		}>;
+		expect(resources.length).toBeGreaterThan(0);
+		for (const resource of resources) {
+			expect(resource.operations.map((o) => o.toLowerCase())).toEqual(['create']);
+		}
+	});
+
+	// The legacy validator also answered 400 here: a repeated parameter arrives as an array,
+	// and the parameter is declared as a string.
+	test('should return 400 for a repeated query parameter', async () => {
+		const response = await authOwnerAgent.get('/discover?resource=tags&resource=workflow');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: 'request/query/resource Expected string, received array',
+		});
+	});
+
+	test.each([
+		[
+			'an invalid include value',
+			{ include: 'invalid' },
+			'request/query/include must be equal to one of the allowed values: schemas',
+		],
+		[
+			'an unknown query parameter',
+			{ unknown: 'value' },
+			"request/query Unrecognized key(s) in object: 'unknown'",
+		],
+	])('should return 400 for %s', async (_name, query, message) => {
+		const response = await authOwnerAgent.get('/discover').query(query);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({ message });
 	});
 });

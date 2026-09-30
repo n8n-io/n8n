@@ -22,6 +22,7 @@ import {
 } from '../../../../utils/benchmark';
 import type {
 	BenchmarkDimensions,
+	CompletionCounterReader,
 	ContainerStat,
 	DiagnosticsResult,
 	PostgresMetrics,
@@ -55,6 +56,8 @@ export interface SetupContext {
 	handle: BenchmarkHandle;
 	/** Override for the PromQL completion metric. Defaults to `resolveMetricQuery(testInfo)`. */
 	metricQuery?: string;
+	/** Direct completion reader for profiles that must avoid metrics scrape latency. */
+	counterReader?: CompletionCounterReader;
 	/** Forwarded to `createWorkflowFromDefinition`. `makeUnique` defaults to true. */
 	createOptions?: CreateWorkflowOptions;
 	/**
@@ -62,7 +65,11 @@ export interface SetupContext {
 	 * and before the baseline counter is captured. Anything the warm-up
 	 * triggers won't pollute the measurement window.
 	 */
-	warmUp?: (setup: { workflowId: string; webhookPath?: string }) => Promise<void>;
+	warmUp?: (setup: {
+		workflowId: string;
+		webhookPath?: string;
+		counterReader?: CompletionCounterReader;
+	}) => Promise<void>;
 }
 
 export interface SetupResult {
@@ -72,6 +79,7 @@ export interface SetupResult {
 	webhookPath?: string;
 	baselineCounter: number;
 	metricQuery: string;
+	counterReader?: CompletionCounterReader;
 	/** Wall-clock when the workflow finished activating — useful as a fallback timer. */
 	activationStart: number;
 	/** Cumulative `pg_stat_wal` counters captured post-warm-up. Diffed at end-of-run. */
@@ -102,6 +110,13 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 			makeUnique: ctx.createOptions?.makeUnique ?? true,
 			webhookPrefix: ctx.createOptions?.webhookPrefix,
 		});
+	const counterReader =
+		ctx.api.options.workflowSettings?.engineType === 'v2'
+			? async () =>
+					await (
+						ctx.services.enginePostgres ?? ctx.services.postgres
+					).countCompletedEngineV2Executions(workflowId)
+			: ctx.counterReader;
 
 	// VictoriaMetrics needs at least one scrape before queries return data.
 	await obs.metrics.waitForMetric('n8n_version_info', {
@@ -116,10 +131,10 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 		await ctx.handle.waitForReady({ timeoutMs: 30_000 });
 	}
 	if (ctx.warmUp) {
-		await ctx.warmUp({ workflowId, webhookPath });
+		await ctx.warmUp({ workflowId, webhookPath, counterReader });
 	}
 
-	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
+	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery, counterReader);
 
 	// Best-effort: the postgres helper may not be wired or pg_stat_statements
 	// may not be available on a custom postgres image.
@@ -151,6 +166,7 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 		webhookPath,
 		baselineCounter,
 		metricQuery,
+		counterReader,
 		activationStart,
 		walBaseline,
 		dockerStatsSampler,
@@ -630,6 +646,17 @@ export async function attachReportMetrics(
 	const mainCpu = avgCpuFor('n8n-main');
 	if (mainCpu !== undefined) {
 		await attachMetric(testInfo, 'main-cpu-avg', mainCpu, '%', dimensions);
+	}
+	const mainContainers = report.containers.filter((container) =>
+		container.name.startsWith('n8n-main'),
+	);
+	if (mainContainers.length > 0) {
+		const mainMemoryMb =
+			mainContainers.reduce((sum, container) => sum + (container.memBytes ?? 0), 0) /
+			mainContainers.length /
+			1024 /
+			1024;
+		await attachMetric(testInfo, 'main-memory-mb', mainMemoryMb, 'MB', dimensions);
 	}
 	const workerCpu = avgCpuFor('n8n-worker');
 	if (workerCpu !== undefined) {

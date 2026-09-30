@@ -765,9 +765,15 @@ export async function saveMessagesToThread(
 	threadId: string,
 	resourceId: string,
 	messages: AgentDbMessage[],
+	hostMetadata?: Parameters<BuiltMemory['saveMessages']>[0]['hostMetadata'],
 ): Promise<void> {
 	await memory.saveThread({ id: threadId, resourceId });
-	await memory.saveMessages({ threadId, resourceId, messages });
+	await memory.saveMessages({
+		threadId,
+		resourceId,
+		messages,
+		...(hostMetadata && { hostMetadata }),
+	});
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {

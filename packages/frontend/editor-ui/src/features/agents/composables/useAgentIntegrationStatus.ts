@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue';
 import type {
+	AgentApproval,
 	AgentChannelRuntimeStatus,
 	AgentDisconnectIntegrationResponse,
 	AgentIntegrationConnectResponse,
@@ -27,6 +28,7 @@ interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
 	connectedCredentials: Ref<Record<string, string>>;
 	integrationSettings: Ref<Record<string, AgentIntegrationSettings | undefined>>;
+	integrationApproval: Ref<Record<string, AgentApproval | undefined>>;
 	loadingMap: Ref<Record<string, boolean>>;
 	errorMessages: Ref<Record<string, string>>;
 	errorIsConflict: Ref<Record<string, boolean>>;
@@ -63,6 +65,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			statuses: ref({}),
 			connectedCredentials: ref({}),
 			integrationSettings: ref({}),
+			integrationApproval: ref({}),
 			loadingMap: ref({}),
 			errorMessages: ref({}),
 			errorIsConflict: ref({}),
@@ -114,6 +117,7 @@ function applyStatus(
 		state.statuses.value[type] = 'disconnected';
 		state.connectedCredentials.value[type] = '';
 		state.integrationSettings.value[type] = undefined;
+		state.integrationApproval.value[type] = undefined;
 		state.runtimeErrors.value[type] = '';
 	}
 	for (const integration of integrations) {
@@ -130,6 +134,7 @@ function applyStatus(
 		state.connectedCredentials.value[integration.type] =
 			typeof integration.credentialId === 'string' ? integration.credentialId : '';
 		state.integrationSettings.value[integration.type] = integration.settings;
+		state.integrationApproval.value[integration.type] = integration.approval;
 		state.runtimeErrors.value[integration.type] = keepServerAnswer
 			? (previousRuntimeErrors[integration.type] ?? '')
 			: (integration.errorMessage ?? '');
@@ -213,6 +218,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.statuses.value[type] = result.status;
 			state.connectedCredentials.value[type] = credId;
 			state.integrationSettings.value[type] = settings;
+			state.integrationApproval.value[type] = options?.approval;
 			// The channel just started, so whatever it failed with before is history.
 			state.runtimeErrors.value[type] = '';
 			// The server answered for this channel, even though it was a mutation
@@ -252,6 +258,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
+			state.integrationApproval.value[type] = undefined;
 			state.runtimeErrors.value[type] = '';
 			state.serverConfirmed.value.add(type);
 			return result;
@@ -290,6 +297,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
 		integrationSettings: state.integrationSettings,
+		integrationApproval: state.integrationApproval,
 		loadingMap: state.loadingMap,
 		errorMessages: state.errorMessages,
 		errorIsConflict: state.errorIsConflict,

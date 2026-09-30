@@ -51,10 +51,15 @@ const mockChanges = [
 	},
 ];
 
+const COMMIT_SHA = 'a'.repeat(40);
+
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue(mockChanges);
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
+			commitSha: COMMIT_SHA,
+			changes: mockChanges,
+		});
 	});
 
 	it('should drop selections whose resource disappears after a refresh', async () => {
@@ -65,13 +70,24 @@ describe('usePromotionChanges', () => {
 		toggleSelected('wf-002');
 		expect(selectedCount.value).toBe(2);
 
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce(
-			mockChanges.filter((change) => change.id !== 'wf-001'),
-		);
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce({
+			commitSha: COMMIT_SHA,
+			changes: mockChanges.filter((change) => change.id !== 'wf-001'),
+		});
 		await fetchChanges();
 
 		expect(selectedIds.value).toEqual(new Set(['wf-002']));
 		expect(selectedCount.value).toBe(1);
+	});
+
+	it('should request the given direction and keep the commit the rows came from', async () => {
+		const { fetchChanges, commitSha } = usePromotionChanges('project-1', 'apply');
+		expect(commitSha.value).toBeNull();
+
+		await fetchChanges();
+
+		expect(promotionsApi.getPromotableChanges).toHaveBeenCalledWith({}, 'project-1', 'apply');
+		expect(commitSha.value).toBe(COMMIT_SHA);
 	});
 
 	it('should handle fetch errors', async () => {
@@ -83,6 +99,31 @@ describe('usePromotionChanges', () => {
 		expect(error.value).toBeInstanceOf(Error);
 		expect(error.value?.message).toBe('Network error');
 		expect(isLoading.value).toBe(false);
+	});
+
+	it('should stamp the last refresh on success only', async () => {
+		vi.useFakeTimers();
+		try {
+			const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
+			expect(lastRefreshedAt.value).toBeNull();
+
+			await fetchChanges();
+			const firstRefresh = lastRefreshedAt.value;
+			expect(firstRefresh).not.toBeNull();
+
+			vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(
+				new Error('Network error'),
+			);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).toBe(firstRefresh);
+
+			// Two stamps in the same millisecond would compare equal, so move the clock first.
+			vi.advanceTimersByTime(60_000);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).not.toBe(firstRefresh);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('should select only the visible rows when a search filter is active', async () => {

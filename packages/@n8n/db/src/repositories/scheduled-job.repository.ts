@@ -37,6 +37,7 @@ export type NewScheduledJob = Pick<
 	| 'maxAttempts'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
+	| 'concurrencyLimit'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
@@ -53,6 +54,7 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'maxAttempts'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
+	| 'concurrencyLimit'
 >;
 
 @Service()
@@ -268,7 +270,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	async updateRunOptions(
 		manager: EntityManager,
 		ids: number[],
-		update: Pick<ScheduledJob, 'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds'>,
+		update: Pick<
+			ScheduledJob,
+			'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds' | 'concurrencyLimit'
+		>,
 	): Promise<void> {
 		if (ids.length === 0) return;
 		await manager.update(ScheduledJob, ids, update);

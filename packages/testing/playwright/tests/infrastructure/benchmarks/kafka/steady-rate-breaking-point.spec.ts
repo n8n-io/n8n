@@ -1,15 +1,14 @@
 import { test } from '../../../../fixtures/base';
 import { benchConfig } from '../../../../playwright-projects';
-import { kafkaDriver } from '../../../../utils/benchmark';
 import type { PublishStage } from '../../../../utils/benchmark';
-import { runLoadTest } from '../harness/load-harness';
+import { runKafkaLoadTest } from '../harness/kafka-backlog-harness';
 
 const STAGES: PublishStage[] = [
-	{ ratePerSecond: 100, durationSeconds: 60 },
-	{ ratePerSecond: 200, durationSeconds: 60 },
-	{ ratePerSecond: 300, durationSeconds: 60 },
-	{ ratePerSecond: 500, durationSeconds: 60 },
-	{ ratePerSecond: 700, durationSeconds: 60 },
+	{ ratePerSecond: 10, durationSeconds: 60 },
+	{ ratePerSecond: 20, durationSeconds: 60 },
+	{ ratePerSecond: 30, durationSeconds: 60 },
+	{ ratePerSecond: 40, durationSeconds: 60 },
+	{ ratePerSecond: 50, durationSeconds: 60 },
 ];
 
 // Direct mode — no workers — so the breaking point measures a single-instance
@@ -36,19 +35,14 @@ test.describe(
 			api,
 			services,
 		}, testInfo) => {
-			const handle = await kafkaDriver.setup({
+			await runKafkaLoadTest({
 				api,
 				services,
 				scenario: { nodeCount: 30, payloadSize: '10KB', nodeOutputSize: 'noop', partitions: 3 },
-			});
-			await runLoadTest({
-				handle,
-				api,
-				services,
 				testInfo,
 				load: { type: 'staged', stages: STAGES },
-				trigger: 'kafka',
-				timeoutMs: 1_200_000,
+				timeoutMs: 600_000,
+				requireKeptUpStage: true,
 			});
 		});
 	},

@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { PolicyCleared } from '@n8n/decorators';
 
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -58,6 +59,7 @@ describe('contentImportTransport', () => {
 describe('ContentImportPolicyGate', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const gate = new ContentImportPolicyGate(policyEnforcementService, mock<Logger>());
+	const actor: PolicyActor = { kind: 'user', user: { id: 'user-1' } };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -66,7 +68,9 @@ describe('ContentImportPolicyGate', () => {
 	it('admits nothing when no check is registered', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
-		expect(await gate.refusedWorkflows([createItem('W1')], 'project-1', 'package')).toEqual([]);
+		expect(await gate.refusedWorkflows([createItem('W1')], 'project-1', 'package', actor)).toEqual(
+			[],
+		);
 		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledTimes(1);
 		expect(policyEnforcementService.enforceContentImport).not.toHaveBeenCalled();
 	});
@@ -76,7 +80,12 @@ describe('ContentImportPolicyGate', () => {
 		policyEnforcementService.enforceContentImport.mockResolvedValue(cleared);
 
 		expect(
-			await gate.refusedWorkflows([createItem('W1'), createItem('W2')], 'project-1', 'package'),
+			await gate.refusedWorkflows(
+				[createItem('W1'), createItem('W2')],
+				'project-1',
+				'package',
+				actor,
+			),
 		).toEqual([]);
 		expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(2);
 	});
@@ -85,7 +94,7 @@ describe('ContentImportPolicyGate', () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		policyEnforcementService.enforceContentImport.mockResolvedValue(cleared);
 
-		await gate.refusedWorkflows([skipItem('W1'), createItem('W2')], 'project-1', 'package');
+		await gate.refusedWorkflows([skipItem('W1'), createItem('W2')], 'project-1', 'package', actor);
 
 		expect(policyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
 	});
@@ -98,18 +107,27 @@ describe('ContentImportPolicyGate', () => {
 			[createItem('W1', 'new-id'), updateItem('W2', 'existing-id')],
 			'project-1',
 			'git-connection',
+			actor,
 		);
 
-		expect(policyEnforcementService.enforceContentImport).toHaveBeenNthCalledWith(1, {
-			workflow: { id: 'new-id', name: 'W1', nodes: [] },
-			projectId: 'project-1',
-			transport: 'git-connection',
-		});
-		expect(policyEnforcementService.enforceContentImport).toHaveBeenNthCalledWith(2, {
-			workflow: { id: 'existing-id', name: 'W2', nodes: [] },
-			projectId: 'project-1',
-			transport: 'git-connection',
-		});
+		expect(policyEnforcementService.enforceContentImport).toHaveBeenNthCalledWith(
+			1,
+			{
+				workflow: { id: 'new-id', name: 'W1', nodes: [] },
+				projectId: 'project-1',
+				transport: 'git-connection',
+			},
+			actor,
+		);
+		expect(policyEnforcementService.enforceContentImport).toHaveBeenNthCalledWith(
+			2,
+			{
+				workflow: { id: 'existing-id', name: 'W2', nodes: [] },
+				projectId: 'project-1',
+				transport: 'git-connection',
+			},
+			actor,
+		);
 	});
 
 	it('reports every refusal, not just the first', async () => {
@@ -122,6 +140,7 @@ describe('ContentImportPolicyGate', () => {
 			[createItem('W1'), createItem('W2')],
 			'project-1',
 			'package',
+			actor,
 		);
 
 		expect(refused).toEqual([
@@ -140,6 +159,7 @@ describe('ContentImportPolicyGate', () => {
 			[createItem('W1'), createItem('W2')],
 			'project-1',
 			'package',
+			actor,
 		);
 
 		expect(refused).toHaveLength(1);
@@ -151,8 +171,8 @@ describe('ContentImportPolicyGate', () => {
 		const checkFailure = new Error('check exploded');
 		policyEnforcementService.enforceContentImport.mockRejectedValue(checkFailure);
 
-		await expect(gate.refusedWorkflows([createItem('W1')], 'project-1', 'package')).rejects.toBe(
-			checkFailure,
-		);
+		await expect(
+			gate.refusedWorkflows([createItem('W1')], 'project-1', 'package', actor),
+		).rejects.toBe(checkFailure);
 	});
 });

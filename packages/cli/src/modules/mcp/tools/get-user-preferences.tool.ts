@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
 import type { AiPreferenceService } from '@/services/ai-preference.service';
@@ -19,12 +20,24 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 const DESCRIPTION = [
 	'Returns the preferences saved for this n8n instance, the caller, and their projects: node and credential choices, naming, how work is organised, and patterns to avoid.',
 	`Call this before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} and apply what it returns to every change you make for the remainder of the task, not only the first one. If a preference conflicts with something the user asks for directly, follow the user and say which preference you set aside.`,
+	'When you work inside one project, pass its `projectId` to leave the other projects out.',
 ].join('\n\n');
 
 /** A definite answer, so the assistant does not call again looking for one. */
 const NOTHING_SAVED = 'No preferences are saved for this instance, for you, or for your projects.';
 
-const inputSchema = {} satisfies z.ZodRawShape;
+const NOTHING_SAVED_FOR_PROJECT =
+	'No preferences are saved for this instance, for you, or for this project.';
+
+const inputSchema = {
+	projectId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Read one project instead of every project you can see. The instance and personal preferences are always included. Obtain the id from search_projects.',
+		),
+} satisfies z.ZodRawShape;
 
 const outputSchema = {
 	hasPreferences: z
@@ -35,6 +48,11 @@ const outputSchema = {
 	preferences: z
 		.array(
 			z.object({
+				id: z
+					.string()
+					.describe(
+						'Stable id of the preference. Name it when you update this preference, so an edit replaces the row instead of adding a second one.',
+					),
 				scope: z
 					.enum(['instance', 'user', 'project'])
 					.describe(
@@ -86,28 +104,55 @@ export const createGetUserPreferencesTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async () => {
+	handler: async ({ projectId }: { projectId?: string }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_GET_USER_PREFERENCES_TOOL_NAME,
-			parameters: {},
+			parameters: { projectId },
 		};
 
 		try {
 			// The OAuth grant decides whether this client may call the tool. No RBAC check: the
 			// service only returns rows the user may see, and their own rows need no scope.
-			const preferences = await aiPreferenceService.getApplicableAcrossProjects(user);
+			const preferences = projectId
+				? await aiPreferenceService.getApplicableForProject(user, projectId)
+				: await aiPreferenceService.getApplicableAcrossProjects(user);
 			// One source for "is there anything", so the flag and the list cannot disagree.
 			const items = flattenAiPreferences(preferences);
 			const hasPreferences = items.length > 0;
+			const text = hasPreferences
+				? renderAiPreferences(preferences)
+				: projectId
+					? NOTHING_SAVED_FOR_PROJECT
+					: NOTHING_SAVED;
 
-			telemetryPayload.results = { success: true, data: { hasPreferences } };
+			// Count, scopes and the size of the rendered text, never the text itself, which is
+			// the person's own writing. The length is what reviews the caps: the caps need a new
+			// number once the 95th percentile of a rendered block passes 8,000 characters, and
+			// this read is one of the two paths that render one today.
+			const scopes = [...new Set(items.map((item) => item.scope))];
+			const renderedLength = hasPreferences ? text.length : 0;
+			telemetryPayload.results = {
+				success: true,
+				data: {
+					hasPreferences,
+					count: items.length,
+					scopes,
+					rendered_length: renderedLength,
+				},
+			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			// The registered twin of the tool-call event: an MCP read is the one place a rendered
+			// block leaves n8n without a turn to attach it to.
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP, {
+				count: items.length,
+				scope_types: scopes,
+				rendered_length: renderedLength,
+				project_scoped: projectId !== undefined,
+			});
 
 			return {
-				content: [
-					{ type: 'text', text: hasPreferences ? renderAiPreferences(preferences) : NOTHING_SAVED },
-				],
+				content: [{ type: 'text', text }],
 				structuredContent: { hasPreferences, preferences: items },
 			};
 		} catch (error) {

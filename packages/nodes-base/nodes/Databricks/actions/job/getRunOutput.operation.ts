@@ -1,35 +1,17 @@
 import { NodeOperationError } from 'n8n-workflow';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { JOBS_ARRAY_PAGE_SIZE, JOBS_PAGES_MAX } from '../../constants';
 import {
 	databricksApiRequest,
+	fetchDatabricksPage,
 	getActiveCredentialType,
 	getHost,
 	readIdParameter,
 } from '../helpers';
 import type { DatabricksJobRun, DatabricksJobRunTask, DatabricksRunOutput } from '../interfaces';
 
-const TASK_PAGES_MAX = 20;
-
 type RunTarget = { runId: number; taskKey?: string };
-
-async function fetchRunPage(
-	context: IExecuteFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
-	host: string,
-	runId: number,
-	pageToken?: string,
-): Promise<DatabricksJobRun> {
-	const qs: IDataObject = { run_id: runId };
-	if (pageToken) qs.page_token = pageToken;
-	return await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.2/jobs/runs/get`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
-}
 
 async function resolveTargets(
 	context: IExecuteFunctions,
@@ -38,11 +20,20 @@ async function resolveTargets(
 	runId: number,
 	itemIndex: number,
 ): Promise<{ run: DatabricksJobRun; targets: RunTarget[] }> {
-	const run = await fetchRunPage(context, credentialType, host, runId);
+	const fetchPage = async (pageToken?: string) =>
+		await fetchDatabricksPage<DatabricksJobRun>(
+			context,
+			credentialType,
+			host,
+			'/api/2.2/jobs/runs/get',
+			{ run_id: runId },
+			pageToken,
+		);
+	const run = await fetchPage();
 	const tasks: DatabricksJobRunTask[] = [...(run.tasks ?? [])];
 	let pageToken = run.next_page_token;
-	for (let page = 1; pageToken && page < TASK_PAGES_MAX; page++) {
-		const next = await fetchRunPage(context, credentialType, host, runId, pageToken);
+	for (let page = 1; pageToken && page < JOBS_PAGES_MAX; page++) {
+		const next = await fetchPage(pageToken);
 		tasks.push(...(next.tasks ?? []));
 		pageToken = next.next_page_token;
 	}
@@ -52,7 +43,7 @@ async function resolveTargets(
 			`Run ${runId} has more tasks than the node can read`,
 			{
 				itemIndex,
-				description: `The node reads at most ${TASK_PAGES_MAX * 100} tasks of one run. Read the remaining outputs by their task run IDs.`,
+				description: `The node reads at most ${JOBS_PAGES_MAX * JOBS_ARRAY_PAGE_SIZE} tasks of one run. Read the remaining outputs by their task run IDs.`,
 			},
 		);
 	}

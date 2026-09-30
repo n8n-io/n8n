@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.40.0",
+  "version": "1.42.0",
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "gen:migration-index": "node scripts/generate-migration-index.mjs",
@@ -10,8 +10,8 @@
     "build:unchecked": "pnpm gen:migration-index && tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "pnpm gen:migration-index && eslint . --quiet",
-    "lint:fix": "pnpm gen:migration-index && eslint . --fix",
+    "lint": "pnpm gen:migration-index && oxlint --quiet",
+    "lint:fix": "pnpm gen:migration-index && oxlint --fix",
     "watch": "pnpm gen:migration-index && tsc -p tsconfig.build.json --watch",
     "test": "pnpm gen:migration-index && vitest run",
     "test:unit": "pnpm gen:migration-index && vitest run",
@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/express": "catalog:",
@@ -61,6 +62,8 @@
     "@vitest/coverage-v8": "catalog:",
     "express": "catalog:",
     "n8n-containers": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "testcontainers": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
     "typescript": "catalog:typescript-tooling",

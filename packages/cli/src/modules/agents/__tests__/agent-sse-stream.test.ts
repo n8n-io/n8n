@@ -3,7 +3,8 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
-import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
+import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,7 +18,9 @@ async function* toAsyncIterable<T>(items: T[]): AsyncIterable<T> {
 
 async function collectEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
 	const events: AgentSseEvent[] = [];
-	await pumpChunks(toAsyncIterable(chunks), (e) => events.push(e));
+	for await (const chunk of toAsyncIterable(chunks)) {
+		emitChunkEvents(chunk, (event) => events.push(event));
+	}
 	return events;
 }
 
@@ -32,6 +35,7 @@ function createResponse() {
 		flushHeaders: vi.fn(),
 		write: vi.fn(),
 		flush: vi.fn(),
+		end: vi.fn(),
 		socket,
 		writableEnded: false,
 		destroyed: false,
@@ -43,7 +47,7 @@ function createResponse() {
 async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
 	const { res } = createResponse();
 	const { send } = initSseStream(res);
-	await pumpChunks(toAsyncIterable(chunks), send);
+	for await (const chunk of toAsyncIterable(chunks)) emitChunkEvents(chunk, send);
 
 	const events = vi.mocked(res.write).mock.calls.flatMap(([payload]) => {
 		if (typeof payload !== 'string' || !payload.startsWith('data: ')) return [];
@@ -99,10 +103,69 @@ describe('agent-sse-stream — connection setup', () => {
 
 		expect(res.write).not.toHaveBeenCalled();
 	});
+
+	it('closes completed delivery without cancelling execution', () => {
+		vi.useFakeTimers();
+		const { res } = createResponse();
+		const { close, abortSignal } = initSseStream(res);
+
+		close();
+		res.emit('close');
+		vi.mocked(res.write).mockClear();
+		vi.advanceTimersByTime(30_000);
+
+		expect(abortSignal.aborted).toBe(false);
+		expect(res.end).toHaveBeenCalledOnce();
+		expect(res.write).not.toHaveBeenCalled();
+	});
+
+	it('sends a steered message and keeps delivery open for the next chunk', () => {
+		const { res } = createResponse();
+		const { onChunk, abortSignal, close } = initSseStream(res);
+		const event: SteeredMessageEvent = {
+			type: 'message-steered',
+			queueId: '2',
+			executionId: 'execution-1',
+			message: {
+				id: 'message-2',
+				role: 'user',
+				content: [{ type: 'text', text: 'Use the second option.' }],
+				createdAt: '2026-09-29T11:00:00.000Z',
+			},
+		};
+
+		onChunk(event);
+		onChunk({ type: 'text-delta', id: 't-1', delta: 'hello' });
+
+		expect(abortSignal.aborted).toBe(false);
+		expect(res.end).not.toHaveBeenCalled();
+		expect(res.write).toHaveBeenCalledWith(`data: ${JSON.stringify(event)}\n\n`);
+		expect(res.write).toHaveBeenCalledWith(
+			'data: {"type":"text-delta","id":"t-1","delta":"hello"}\n\n',
+		);
+		close();
+	});
+
+	it('closes delivery when an event cannot be serialized', () => {
+		const { res } = createResponse();
+		const { onChunk, abortSignal } = initSseStream(res);
+		const circular: Record<string, unknown> = {};
+		circular.self = circular;
+
+		onChunk({
+			type: 'tool-result',
+			toolCallId: 'tc-1',
+			toolName: 'lookup',
+			output: circular,
+		});
+
+		expect(abortSignal.aborted).toBe(true);
+		expect(res.end).toHaveBeenCalledOnce();
+	});
 });
 
 // ---------------------------------------------------------------------------
-// stringifyError — tested through pumpChunks / emitChunkEvents
+// stringifyError — tested through emitChunkEvents
 // ---------------------------------------------------------------------------
 
 vi.mock('n8n-workflow', () => ({
@@ -111,7 +174,7 @@ vi.mock('n8n-workflow', () => ({
 	},
 }));
 
-describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () => {
+describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {
 		const events = await collectEvents([{ type: 'error', error: new Error('something broke') }]);
 		expect(events).toEqual([{ type: 'error', message: 'something broke' }]);
@@ -201,7 +264,7 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('completes after the runtime stream closes even when a finish chunk is present', async () => {
+	it('leaves completion delivery to the caller when it receives a finish chunk', async () => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
@@ -214,7 +277,7 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('drains every suspension chunk before reporting that the run paused', async () => {
+	it('maps every suspension chunk', async () => {
 		const chunks: StreamChunk[] = [
 			{
 				type: 'tool-call-suspended',
@@ -232,11 +295,8 @@ describe('agent-sse-stream — stream completion', () => {
 			},
 			{ type: 'finish', finishReason: 'other' },
 		];
-		const events: AgentSseEvent[] = [];
+		const events = await collectEvents(chunks);
 
-		const suspended = await pumpChunks(toAsyncIterable(chunks), (event) => events.push(event));
-
-		expect(suspended).toBe(true);
 		expect(events).toEqual([
 			{
 				type: 'tool-call-suspended',

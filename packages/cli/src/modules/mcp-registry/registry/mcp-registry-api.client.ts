@@ -18,8 +18,9 @@ const STRAPI_ARRAY_LIMIT = 100;
 /** Version history:
  * 2 - introduced authType: `usesCredentials` field
  * 3 - introduced remotes[].type: `streamable-http-templated`
+ * 4 - introduced `requiredCapabilities` field
  */
-const STRAPI_API_VERSION = 3;
+const STRAPI_API_VERSION = 4;
 
 @Service()
 export class McpRegistryApiClient {

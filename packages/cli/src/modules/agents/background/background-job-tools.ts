@@ -1,14 +1,18 @@
-import type { BuiltTool, ToolContext } from '@n8n/agents';
+import type { BuiltTool, CreateDelegateSubAgentToolOptions, ToolContext } from '@n8n/agents';
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { readIntegrationMessageContext } from '../integrations/integration-message-context';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
-import type { SubAgentBackgroundRunner } from './sub-agent-background-runner';
-import type { SubAgentRunContext } from '../sub-agents/sub-agent-runner';
+import { PARENT_TASK_CANCELLED_REASON } from './sub-agent-background-state';
+import type {
+	BackgroundSubAgentRunContext,
+	SubAgentBackgroundRunner,
+} from './sub-agent-background-runner';
 
 /** Cap on the result text echoed to the model; the full text stays on the row. */
 const RESULT_ECHO_MAX_CHARS = 8000;
@@ -17,20 +21,12 @@ export interface BackgroundJobToolsOptions {
 	jobService: AgentBackgroundJobService;
 	backgroundRunner: SubAgentBackgroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
+	availableSubAgents: NonNullable<CreateDelegateSubAgentToolOptions['availableSubAgents']>;
 	projectId: string;
 	parentAgentId: string;
 	// The workspace handle is principal-scoped, not thread-scoped. The sandbox
 	// outlives the parent turn, so capture it when the tool is built.
-	runContext: Pick<
-		SubAgentRunContext,
-		| 'credentialProvider'
-		| 'runType'
-		| 'workflowToolExecutionMode'
-		| 'user'
-		| 'instrumentation'
-		| 'parentWorkspaceHandle'
-	>;
+	runContext: BackgroundSubAgentRunContext;
 }
 
 /**
@@ -67,8 +63,8 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 				'Broad research across many sources or several slow steps can indicate ' +
 				'a long task. A clearly long task can run in the background even if you have no other ' +
 				'work. If the duration is uncertain and no other background condition applies, use ' +
-				'foreground mode. Keep work that needs user input with the parent; background agents ' +
-				'cannot pause for user interaction. Pass all context the child needs. After a successful ' +
+				'foreground mode. A background child can request tool approval through this conversation. ' +
+				'Pass all context the child needs. After a successful ' +
 				'launch, continue independent work that does not overlap with the child, or end your turn ' +
 				'with a short message that work continues in the background. Completion triggers a ' +
 				'follow-up. A launch receipt does not mean the task is complete. Do not check jobs just ' +
@@ -159,6 +155,7 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 					parentThreadId,
 					parentResourceId,
 					parentSandboxPrincipalHash: sandboxScope.principalHash,
+					parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
 				},
 				{
 					projectId: options.projectId,
@@ -168,6 +165,10 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 			);
 
 			if (receipt.status === 'started') {
+				// A Stop can race the job insert. A disconnected chat does not cancel children.
+				if (ctx.abortSignal?.reason === PARENT_TASK_CANCELLED_REASON) {
+					await options.jobService.cancel(parentThreadId, receipt.jobId);
+				}
 				return {
 					status: 'started',
 					jobId: receipt.jobId,
@@ -213,7 +214,9 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 			const jobs = await jobService.listForThread(parentThreadId, input.jobIds);
 			await jobService.markMailConsumed(
 				parentThreadId,
-				jobs.filter((job) => job.status !== 'running').map((job) => job.id),
+				jobs
+					.filter((job) => job.status !== 'running' && job.status !== 'suspended')
+					.map((job) => job.id),
 			);
 			return {
 				jobs: jobs.map((job) => ({

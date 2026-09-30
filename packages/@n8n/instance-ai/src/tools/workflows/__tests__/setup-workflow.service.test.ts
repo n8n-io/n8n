@@ -12,6 +12,7 @@ import {
 	applyCredentialHints,
 	applyNodeChanges,
 	applyNodeCredentials,
+	applyNodeParameters,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
@@ -1253,262 +1254,78 @@ describe('analyzeWorkflow', () => {
 		const names = result.map((r) => r.node.name);
 		expect(names.indexOf('Webhook')).toBeLessThan(names.indexOf('Slack'));
 	});
-
-	describe('subnodeRootNode stamping for sub-nodes', () => {
-		it('stamps subnodeRootNode on every sub-node connected to an agent', async () => {
-			const agent = makeNode({
-				name: 'Agent',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-1',
-			});
-			const model = makeNode({
-				name: 'OpenAI Model',
-				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-				typeVersion: 1,
-				id: 'model-1',
-			});
-			const memory = makeNode({
-				name: 'Memory',
-				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-				typeVersion: 1,
-				id: 'memory-1',
-			});
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
-				makeWorkflowJSON([agent, model, memory], {
-					'OpenAI Model': {
-						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
-					},
-					Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
-				}),
-			);
-			(context.nodeService.getDescription as Mock).mockImplementation(async (type: string) => {
-				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
-					return await Promise.resolve({
-						group: [],
-						credentials: [{ name: 'openAiApi' }],
-					});
-				}
-				if (type === '@n8n/n8n-nodes-langchain.memoryBufferWindow') {
-					return await Promise.resolve({ group: [], credentials: [] });
-				}
-				return await Promise.resolve({ group: [], credentials: [] });
-			});
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const result = await analyzeWorkflow(context, 'wf-1');
-
-			const modelReq = result.find((r) => r.node.name === 'OpenAI Model');
-			expect(modelReq?.subnodeRootNode).toEqual({
-				name: 'Agent',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-1',
-			});
-		});
-
-		it('stamps the topmost root node for transitively nested sub-agents', async () => {
-			const agent = makeNode({
-				name: 'Agent',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-1',
-			});
-			const tool = makeNode({
-				name: 'Tool',
-				type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-				typeVersion: 1,
-				id: 'tool-1',
-			});
-			const subModel = makeNode({
-				name: 'Sub Model',
-				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-				typeVersion: 1,
-				id: 'sub-model-1',
-			});
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
-				makeWorkflowJSON([agent, tool, subModel], {
-					Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
-					'Sub Model': {
-						ai_languageModel: [[{ node: 'Tool', type: 'ai_languageModel', index: 0 }]],
-					},
-				}),
-			);
-			(context.nodeService.getDescription as Mock).mockImplementation(async (type: string) => {
-				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
-					return await Promise.resolve({
-						group: [],
-						credentials: [{ name: 'openAiApi' }],
-					});
-				}
-				return await Promise.resolve({ group: [], credentials: [] });
-			});
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const result = await analyzeWorkflow(context, 'wf-1');
-
-			const subModelReq = result.find((r) => r.node.name === 'Sub Model');
-			expect(subModelReq?.subnodeRootNode?.name).toBe('Agent');
-		});
-
-		it('keeps subnodeRootNode metadata even when the root node itself produced no setup request', async () => {
-			const agent = makeNode({
-				name: 'Agent',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-1',
-			});
-			const model = makeNode({
-				name: 'Model',
-				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-				typeVersion: 1,
-				id: 'model-1',
-			});
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
-				makeWorkflowJSON([agent, model], {
-					Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
-				}),
-			);
-			(context.nodeService.getDescription as Mock).mockImplementation(async (type: string) => {
-				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
-					return await Promise.resolve({
-						group: [],
-						credentials: [{ name: 'openAiApi' }],
-					});
-				}
-				// Agent itself returns no credentials → no setup request for it.
-				return await Promise.resolve({ group: [], credentials: [] });
-			});
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const result = await analyzeWorkflow(context, 'wf-1');
-
-			expect(result.find((r) => r.node.name === 'Agent')).toBeUndefined();
-			const modelReq = result.find((r) => r.node.name === 'Model');
-			expect(modelReq?.subnodeRootNode).toEqual({
-				name: 'Agent',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-1',
-			});
-		});
-
-		it('attaches a multi-root sub-node to the first root node in execution order', async () => {
-			const trigger = makeNode({
-				name: 'Trigger',
-				type: 'n8n-nodes-base.webhook',
-				id: 'trigger-1',
-				position: [0, 0] as [number, number],
-			});
-			const agentA = makeNode({
-				name: 'Agent A',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-a',
-				position: [200, 0] as [number, number],
-			});
-			const agentB = makeNode({
-				name: 'Agent B',
-				type: '@n8n/n8n-nodes-langchain.agent',
-				typeVersion: 1,
-				id: 'agent-b',
-				position: [400, 0] as [number, number],
-			});
-			const sharedModel = makeNode({
-				name: 'Shared Model',
-				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-				typeVersion: 1,
-				id: 'shared-1',
-			});
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
-				makeWorkflowJSON([trigger, agentA, agentB, sharedModel], {
-					Trigger: {
-						main: [
-							[
-								{ node: 'Agent A', type: 'main', index: 0 },
-								{ node: 'Agent B', type: 'main', index: 0 },
-							],
-						],
-					},
-					'Shared Model': {
-						ai_languageModel: [
-							[
-								{ node: 'Agent A', type: 'ai_languageModel', index: 0 },
-								{ node: 'Agent B', type: 'ai_languageModel', index: 0 },
-							],
-						],
-					},
-				}),
-			);
-			(context.nodeService.getDescription as Mock).mockImplementation(async (type: string) => {
-				if (type === 'n8n-nodes-base.webhook') {
-					return await Promise.resolve({
-						group: ['trigger'],
-						credentials: [],
-						webhooks: [{}],
-					});
-				}
-				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
-					return await Promise.resolve({
-						group: [],
-						credentials: [{ name: 'openAiApi' }],
-					});
-				}
-				return await Promise.resolve({ group: [], credentials: [] });
-			});
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const result = await analyzeWorkflow(context, 'wf-1');
-
-			const sharedReq = result.find((r) => r.node.name === 'Shared Model');
-			// Agent A executes first (left-most), so it claims the shared sub-node.
-			expect(sharedReq?.subnodeRootNode?.name).toBe('Agent A');
-		});
-
-		it('does not classify a sub-node by following a Main edge', async () => {
-			const trigger = makeNode({
-				name: 'Trigger',
-				type: 'n8n-nodes-base.webhook',
-				id: 'trigger-1',
-				position: [0, 0] as [number, number],
-			});
-			const httpAction = makeNode({
-				name: 'HTTP',
-				type: 'n8n-nodes-base.httpRequest',
-				id: 'http-1',
-				position: [200, 0] as [number, number],
-			});
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
-				makeWorkflowJSON([trigger, httpAction], {
-					Trigger: { main: [[{ node: 'HTTP', type: 'main', index: 0 }]] },
-				}),
-			);
-			(context.nodeService.getDescription as Mock).mockImplementation(async (type: string) => {
-				if (type === 'n8n-nodes-base.webhook') {
-					return await Promise.resolve({
-						group: ['trigger'],
-						credentials: [],
-						webhooks: [{}],
-					});
-				}
-				return await Promise.resolve({
-					group: [],
-					credentials: [{ name: 'httpBasicAuth' }],
-				});
-			});
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const result = await analyzeWorkflow(context, 'wf-1');
-
-			const httpReq = result.find((r) => r.node.name === 'HTTP');
-			expect(httpReq?.subnodeRootNode).toBeUndefined();
-		});
-	});
 });
 
 // ---------------------------------------------------------------------------
 // applyNodeChanges
 // ---------------------------------------------------------------------------
+
+describe.each([
+	{
+		name: 'applyNodeCredentials',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeCredentials(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
+	},
+	{
+		name: 'applyNodeParameters',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeParameters(context, 'wf-1', { Slack: { channel: 'updated' } }),
+	},
+	{
+		name: 'applyNodeChanges',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
+	},
+])('$name save state', ({ apply }) => {
+	function setup() {
+		const context = createMockContext();
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		vi.mocked(context.credentialService.get).mockResolvedValue({
+			id: 'cred-1',
+			name: 'My Slack',
+			type: 'slackApi',
+		});
+		return context;
+	}
+
+	it.each([
+		{ activeVersionId: null, live: 'unpublished' },
+		{ activeVersionId: 'v-live', live: 'stale' },
+	])('returns the saved revision with $live state', async ({ activeVersionId, live }) => {
+		const context = setup();
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId,
+			checksum: 'saved-checksum',
+		} as never);
+
+		const result = await apply(context);
+
+		expect(result).toMatchObject({
+			applied: ['Slack'],
+			failed: [],
+			publishState: { savedVersionId: 'v-saved', activeVersionId, live },
+		});
+		expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not report a revision when saving fails', async () => {
+		const context = setup();
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
+			new Error('Save failed'),
+		);
+
+		const result = await apply(context);
+
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result).not.toHaveProperty('publishState');
+		expect(result).not.toHaveProperty('publishStateNote');
+	});
+});
 
 describe('applyNodeChanges', () => {
 	let context: InstanceAiContext;
@@ -1544,6 +1361,33 @@ describe('applyNodeChanges', () => {
 		expect(result.failed).toHaveLength(0);
 		// Single save for both changes
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports the saved revision when only some requested nodes exist', async () => {
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId: 'v-live',
+			checksum: 'saved-checksum',
+		} as never);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			Slack: { channel: 'updated' },
+			Missing: { channel: 'updated' },
+		});
+
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toEqual([
+			{ nodeName: 'Missing', error: 'Node "Missing" was not found in the workflow' },
+		]);
+		expect(result.publishState).toEqual({
+			live: 'stale',
+			savedVersionId: 'v-saved',
+			activeVersionId: 'v-live',
+		});
 	});
 
 	it('reports failures when credential is not found', async () => {
