@@ -15,6 +15,7 @@ import type {
 	BreakingChangeService,
 } from '../../breaking-changes.service';
 import type { MigrationFinding } from '../../database/entities/migration-finding.entity';
+import type { MigrationFindingSync } from '../../database/entities/migration-finding-sync.entity';
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type { MigrationFindingRepository } from '../../database/repositories/migration-finding.repository';
 import type { IBreakingChangeRule } from '../../types';
@@ -413,5 +414,58 @@ describe('MigrationFindingSyncService', () => {
 		await service.sync(TARGET_VERSION);
 
 		expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
+	});
+
+	describe('syncIfStale', () => {
+		function syncRecord(ruleIds: string[]): MigrationFindingSync {
+			return {
+				targetVersion: TARGET_VERSION,
+				syncedAt: new Date(),
+				ruleSetFingerprint: computeRuleSetFingerprint(ruleIds),
+			} as MigrationFindingSync;
+		}
+
+		it('syncs when there is no sync record', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(null);
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+		});
+
+		it('syncs when the stored fingerprint differs from the current rule set', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a']));
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('does not sync when the fingerprint matches the current rule set', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-b', 'rule-a']));
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).not.toHaveBeenCalled();
+			expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+		});
+
+		it('reads the record for the requested version', async () => {
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a', 'rule-b']));
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(syncRepository.getForVersion).toHaveBeenCalledWith(TARGET_VERSION, expect.anything());
+		});
 	});
 });

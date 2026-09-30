@@ -20,7 +20,7 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
 
 /**
  * Brings the `migration_finding` table in step with a fresh detection scan.
- * Nothing calls it yet; a later change schedules it and serves the report from the table.
+ * The report routes read from the table, so they call this first.
  */
 @Service()
 export class MigrationFindingSyncService {
@@ -41,6 +41,24 @@ export class MigrationFindingSyncService {
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
+	}
+
+	/**
+	 * Syncs when the table has never been filled for the version, or when the
+	 * registered rule set changed since the last sync (for example after an upgrade).
+	 * A follower never writes, so on a follower this is a no-op and the table
+	 * shows the last leader sync.
+	 */
+	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<void> {
+		const record = await this.syncRepository.getForVersion(targetVersion, {});
+		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
+		if (record?.ruleSetFingerprint === computeRuleSetFingerprint(ruleIds)) return;
+
+		this.logger.debug('Migration finding table is stale, syncing', {
+			targetVersion,
+			reason: record ? 'rule set changed' : 'never synced',
+		});
+		await this.sync(targetVersion);
 	}
 
 	async sync(targetVersion: BreakingChangeVersion): Promise<void> {

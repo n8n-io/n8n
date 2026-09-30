@@ -52,8 +52,8 @@ const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedA
 
 /**
  * Reads the migration report from the `migration_finding` table and shapes it into the
- * current response types. Nothing serves it yet; the routes switch over in a later change.
- * It never writes: the sync service brings the table up to date.
+ * current response types. The overview route serves it; the per-rule route switches over
+ * in a later change. It never writes: the controller runs the sync service first.
  */
 @Service()
 export class MigrationFindingQueryService {
