@@ -10,13 +10,14 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-eval-review';
 import { useRelativeTimestamp } from '@/features/agents/utils/relative-time';
+import { isDataTableDataset, toCaseSource } from '@/features/agents/utils/agentEvalCases.utils';
 import AgentAnswerCard from '@/features/agents/components/AgentAnswerCard.vue';
 
 const props = defineProps<{
@@ -40,24 +41,37 @@ const toast = useToast();
 const store = useAgentEvalsStore();
 const formatRelative = useRelativeTimestamp();
 
-type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
+type Phase =
+	| 'generating-preview'
+	| 'awaiting-confirmation'
+	| 'awaiting-sample-input'
+	| 'generating-suite'
+	| 'suite-ready';
 // Skips straight to the confirmation state when the builder already ran an
 // equivalent test — there is nothing to generate or wait on.
 const phase = ref<Phase>(props.initialCase ? 'awaiting-confirmation' : 'generating-preview');
 const previewRunId = ref<string | null>(null);
 const suiteCases = ref<AgentEvalDraftCase[]>([]);
+const sampleInput = ref('');
+// Cleared once the user submits their own sample, so the display switches
+// over to that new run instead of sticking with the builder's original test.
+const useInitialCase = ref(Boolean(props.initialCase));
 
 const previewResult = computed(() =>
 	previewRunId.value ? store.getReview(previewRunId.value).results[0] : undefined,
 );
-const previewInput = computed(
-	() => props.initialCase?.message ?? readCaseRequest(previewResult.value?.input),
+const previewInput = computed(() =>
+	useInitialCase.value
+		? (props.initialCase?.message ?? '')
+		: readCaseRequest(previewResult.value?.input),
 );
-const previewOutput = computed(
-	() => props.initialCase?.response ?? readAgentAnswer(previewResult.value?.output ?? null),
+const previewOutput = computed(() =>
+	useInitialCase.value
+		? (props.initialCase?.response ?? '')
+		: readAgentAnswer(previewResult.value?.output ?? null),
 );
 const previewAnsweredAt = computed(() => {
-	if (props.initialCase) return null;
+	if (useInitialCase.value) return null;
 	const result = previewResult.value;
 	const timestamp = result?.completedAt ?? result?.runAt ?? result?.createdAt;
 	return timestamp ? formatRelative(timestamp) : null;
@@ -87,12 +101,38 @@ function failAndDismiss(error: unknown) {
 	emit('dismiss');
 }
 
-async function generatePreviewCase() {
-	if (props.initialCase) return;
+// Overwrites the freshly generated case's request with the user's own text,
+// keeping its AI-authored grading criteria — there is no endpoint to create a
+// dataset from a literal input directly, and the criteria isn't shown or used
+// anywhere in this panel, only the request and its answer are.
+async function applyCustomInput(
+	projectId: string,
+	agentId: string,
+	datasetId: string,
+	input: string,
+) {
+	const dataset = store.getDatasets(agentId).find((d) => d.id === datasetId);
+	const source = dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
+	if (!source) return;
+	const cases = await store.fetchCases(projectId, source);
+	if (!isMounted) return;
+	const existing = cases[0];
+	if (!existing) return;
+	await store.updateCase(projectId, source, existing.rowId, {
+		input,
+		whatToCheck: existing.whatToCheck,
+	});
+}
+
+async function runGeneratedPreview(customInput?: string) {
 	try {
 		const { projectId, agentId } = props.target;
 		const result = await store.generateDraftCases(projectId, agentId, { count: 1 });
 		if (!isMounted) return;
+		if (customInput) {
+			await applyCustomInput(projectId, agentId, result.datasetId, customInput);
+			if (!isMounted) return;
+		}
 		const run = await store.startRun(projectId, agentId, result.datasetId);
 		if (!isMounted) return;
 		previewRunId.value = run.id;
@@ -104,6 +144,11 @@ async function generatePreviewCase() {
 	} catch (error) {
 		failAndDismiss(error);
 	}
+}
+
+function generatePreviewCase() {
+	if (props.initialCase) return;
+	return runGeneratedPreview();
 }
 
 // Reactive rather than a promise chain: `startPollingRun` self-schedules and
@@ -177,6 +222,21 @@ async function onConfirm() {
 }
 
 function onNeedsWork() {
+	if (phase.value !== 'awaiting-confirmation') return;
+	sampleInput.value = '';
+	phase.value = 'awaiting-sample-input';
+}
+
+async function onSubmitSampleInput() {
+	const value = sampleInput.value.trim();
+	if (!value || phase.value !== 'awaiting-sample-input') return;
+	useInitialCase.value = false;
+	previewRunId.value = null;
+	phase.value = 'generating-preview';
+	await runGeneratedPreview(value);
+}
+
+function onDontCreateEvals() {
 	emit('dismiss');
 }
 
@@ -211,12 +271,12 @@ function onOpenEvals() {
 				:answered-at="previewAnsweredAt"
 				:source="previewOutput ?? ''"
 			/>
-			<N8nText bold color="text-dark">
+			<N8nText bold color="text-dark" :class="$style.confirmQuestion">
 				{{ i18n.baseText('instanceAi.testAgentPreview.confirmQuestion') }}
 			</N8nText>
 			<div :class="$style.options">
 				<N8nButton
-					variant="solid"
+					variant="outline"
 					size="small"
 					data-test-id="instance-ai-test-agent-preview-looks-good"
 					@click="onConfirm"
@@ -224,12 +284,43 @@ function onOpenEvals() {
 					{{ i18n.baseText('instanceAi.testAgentPreview.looksGood') }}
 				</N8nButton>
 				<N8nButton
-					variant="outline"
+					variant="ghost"
 					size="small"
 					data-test-id="instance-ai-test-agent-preview-needs-work"
 					@click="onNeedsWork"
 				>
 					{{ i18n.baseText('instanceAi.testAgentPreview.needsWork') }}
+				</N8nButton>
+			</div>
+		</template>
+
+		<template v-else-if="phase === 'awaiting-sample-input'">
+			<N8nInput
+				v-model="sampleInput"
+				type="textarea"
+				:autosize="{ minRows: 1, maxRows: 6 }"
+				:placeholder="i18n.baseText('instanceAi.testAgentPreview.sampleInputPlaceholder')"
+				data-test-id="instance-ai-test-agent-preview-sample-input"
+				@keydown.meta.enter="onSubmitSampleInput"
+				@keydown.ctrl.enter="onSubmitSampleInput"
+			/>
+			<div :class="$style.options">
+				<N8nButton
+					variant="solid"
+					size="small"
+					:disabled="!sampleInput.trim()"
+					data-test-id="instance-ai-test-agent-preview-submit-sample"
+					@click="onSubmitSampleInput"
+				>
+					{{ i18n.baseText('instanceAi.testAgentPreview.submit') }}
+				</N8nButton>
+				<N8nButton
+					variant="outline"
+					size="small"
+					data-test-id="instance-ai-test-agent-preview-dont-create-evals"
+					@click="onDontCreateEvals"
+				>
+					{{ i18n.baseText('instanceAi.testAgentPreview.dontCreateEvals') }}
 				</N8nButton>
 			</div>
 		</template>
@@ -313,6 +404,11 @@ function onOpenEvals() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.confirmQuestion {
+	font-size: var(--font-size--lg);
+	font-weight: bold;
 }
 
 // The input is a quoted pill rather than a response card — flatter than

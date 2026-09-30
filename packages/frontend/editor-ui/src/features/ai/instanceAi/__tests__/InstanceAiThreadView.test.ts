@@ -2546,6 +2546,7 @@ describe('InstanceAiThreadView', () => {
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
+			await user.click(await findByTestId('instance-ai-test-agent-preview-dont-create-evals'));
 
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],
