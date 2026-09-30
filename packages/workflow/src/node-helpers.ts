@@ -1246,9 +1246,14 @@ export function getNodeInputs(
 	nodeTypeData: INodeTypeDescription,
 	options: {
 		/**
-		 * Surface a failed `inputs` expression instead of reporting no inputs.
-		 * Swallowing suits rendering; callers judging validity need the error,
-		 * since an empty list otherwise reads as "requires nothing".
+		 * Surface a broken `inputs` expression instead of reporting no inputs.
+		 * Swallowing suits rendering; a caller judging validity wants the error.
+		 *
+		 * Only a thrown error counts. An expression that evaluates but yields a
+		 * non-list is left alone: that is almost always an unconfigured node
+		 * (the LangChain Code node maps over an empty `Inputs` collection), and
+		 * the engine reads the same case as "no inputs" and runs. Failing here
+		 * would block publishing a workflow the runtime is happy with.
 		 */
 		throwOnExpressionError?: boolean;
 	} = {},
@@ -1259,28 +1264,12 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
-		const resolved = workflow.expression.getSimpleParameterValue(
+		return (workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		);
-
-		// The engine swallows a runtime error inside an expression and yields
-		// `null`, which would otherwise read as "this node needs no inputs".
-		// Only syntax errors reach the catch below, so callers judging validity
-		// need anything that is not a list treated as unresolved. Scoped to an
-		// actual expression: a type that declares no `inputs` at all has nothing
-		// to resolve and genuinely requires nothing.
-		if (
-			options.throwOnExpressionError &&
-			typeof nodeTypeData.inputs === 'string' &&
-			!Array.isArray(resolved)
-		) {
-			throw new UnexpectedError('the inputs expression did not resolve to a list');
-		}
-
-		return (resolved || []) as NodeConnectionType[];
+		) || []) as NodeConnectionType[];
 	} catch (e) {
 		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);

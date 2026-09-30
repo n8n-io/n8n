@@ -746,6 +746,35 @@ describe('useNodeHelpers()', () => {
 			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toBeDefined();
 		});
 
+		it('reports both unconnected inputs when they share a connection type', () => {
+			// An agent with a fallback declares Chat Model and Fallback Model, both
+			// `ai_languageModel`. Keyed by type, so one must not hide the other.
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const workflow = {
+				getNode: () => node,
+				connectionsByDestinationNode: {},
+			} as unknown as Workflow;
+
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Chat Model', required: true },
+				{
+					type: NodeConnectionTypes.AiLanguageModel,
+					displayName: 'Fallback Model',
+					required: true,
+				},
+			]);
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithRequiredInput, node, workflow, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+			]);
+
+			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toHaveLength(2);
+		});
+
 		it('records the input issue when a parameter change makes an input required', () => {
 			// The NDV calls this after a parameter change, so a newly required input
 			// shows its warning without a workflow reload.

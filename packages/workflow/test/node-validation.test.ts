@@ -488,9 +488,12 @@ describe('node-validation', () => {
 			).toThrow('boom');
 		});
 
-		// The engine swallows a runtime error inside an expression and returns
-		// `null` rather than throwing, so `throwOnExpressionError` alone would
-		// not have caught it.
+		// An expression that evaluates to a non-list is the normal state of an
+		// unconfigured node: the LangChain Code node maps over its `Inputs`
+		// collection, which is empty by default, and the engine swallows the
+		// resulting TypeError into `null`. The engine then reads that as "no
+		// inputs" and runs, so neither caller may treat it as an error — doing
+		// so blocks publishing a workflow the runtime is happy with.
 		describe('when the expression resolves to no list at all', () => {
 			const unresolved = {
 				expression: { getSimpleParameterValue: () => null },
@@ -498,15 +501,15 @@ describe('node-validation', () => {
 				connectionsByDestinationNode: {},
 			} as unknown as WorkflowForInputValidation;
 
-			it('surfaces it as unresolved when asked to', () => {
-				expect(() =>
+			it('reports nothing even when asked to surface expression errors', () => {
+				expect(
 					getUnconnectedRequiredInputs(unresolved, parser, description, {
 						throwOnExpressionError: true,
 					}),
-				).toThrow('did not resolve to a list');
+				).toEqual([]);
 			});
 
-			it('still reports nothing when swallowing suits the caller', () => {
+			it('reports nothing when swallowing suits the caller', () => {
 				expect(getUnconnectedRequiredInputs(unresolved, parser, description)).toEqual([]);
 			});
 		});

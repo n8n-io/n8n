@@ -2281,12 +2281,25 @@ describe('WorkflowValidationService', () => {
 				} as unknown as INodeTypeDescription,
 			} as INodeType;
 
-			/** Same shape, but the expression cannot be evaluated. */
+			/**
+			 * Same shape, but the expression hits a runtime error. Mirrors the
+			 * LangChain Code node, which maps over its `Inputs` collection — empty
+			 * by default, so the map throws on `undefined`.
+			 */
 			const brokenParserType = {
 				description: {
 					...gatedParserType.description,
 					name: 'brokenParser',
-					inputs: '={{ $parameter.nothing.here }}',
+					inputs: '={{ $parameter.inputs.input.map((i) => ({ type: i.type })) }}',
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			/** Same shape, but the expression cannot be parsed at all. */
+			const malformedParserType = {
+				description: {
+					...gatedParserType.description,
+					name: 'malformedParser',
+					inputs: '={{ ( }}',
 				} as unknown as INodeTypeDescription,
 			} as INodeType;
 
@@ -2295,6 +2308,7 @@ describe('WorkflowValidationService', () => {
 					if (type === 'trigger') return triggerType;
 					if (type === 'gatedParser') return gatedParserType;
 					if (type === 'brokenParser') return brokenParserType;
+					if (type === 'malformedParser') return malformedParserType;
 					if (type === 'agent') return agentType;
 					return modelType;
 				});
@@ -2324,11 +2338,30 @@ describe('WorkflowValidationService', () => {
 				expect(parser.parameters).toEqual({});
 			});
 
-			it('reports an input it could not determine instead of treating it as absent', async () => {
-				// A swallowed expression error would read as "requires nothing" and
-				// let a broken workflow publish.
+			it('reads a runtime error in the expression the way the engine does', async () => {
+				// The engine swallows it and runs the node with no inputs, so refusing
+				// to publish here would block a workflow the runtime is happy with.
+				// The real case is the LangChain Code node, which maps over its
+				// `Inputs` collection — empty by default.
 				const result = await service.validateRequiredInputsConnected(
 					[node('Trigger', 'trigger'), node('Parser', 'brokenParser'), node('Agent', 'agent')],
+					{
+						...startedAt('Agent'),
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('reports an input it could not determine instead of treating it as absent', async () => {
+				// An unparseable expression is a bug in the node type, not a state a
+				// user can configure, so it is worth surfacing.
+				const result = await service.validateRequiredInputsConnected(
+					[node('Trigger', 'trigger'), node('Parser', 'malformedParser'), node('Agent', 'agent')],
 					{
 						...startedAt('Agent'),
 						Parser: {

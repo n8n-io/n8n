@@ -407,7 +407,11 @@ export function useNodeHelpers() {
 				: [];
 
 		unconnected.forEach((input) => {
+			// Accumulate: a node can leave two inputs of one type unconnected, e.g.
+			// an agent's Chat Model and Fallback Model are both `ai_languageModel`.
+			// Assigning would drop all but the last.
 			foundIssues[input.type] = [
+				...(foundIssues[input.type] ?? []),
 				i18n.baseText('nodeIssues.input.missing', {
 					interpolate: { inputName: input.displayName || input.type },
 				}),
