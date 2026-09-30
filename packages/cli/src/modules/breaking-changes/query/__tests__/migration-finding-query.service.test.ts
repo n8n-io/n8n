@@ -394,7 +394,7 @@ describe('MigrationFindingQueryService', () => {
 				},
 				totalWorkflows: 2,
 				shouldCache: false,
-				failedWorkflowIds: [],
+				failedChecks: [],
 			});
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule');
