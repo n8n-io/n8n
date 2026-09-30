@@ -351,7 +351,7 @@ pnpm test:local:instance-ai --grep "preview" --headed
 vars over the generic `test:local:isolated` runner, which provides random free
 ports, a throwaway `N8N_USER_FOLDER` (so `~/.n8n` is never touched), and
 process-group cleanup. See the
-[Playwright README](../../../testing/playwright/README.md) for full details on
+[Playwright README](../../../quality/testing/playwright/README.md) for full details on
 `test:local:isolated`.
 
 > **Cost note:** Each run makes real Anthropic calls. Scope with `--grep` or

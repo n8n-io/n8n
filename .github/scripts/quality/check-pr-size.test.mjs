@@ -209,6 +209,11 @@ describe('countFilteredAdditions', () => {
 			{ filename: 'packages/quality/testing/playwright/tests/workflow.spec.ts', additions: 100 },
 			{ filename: 'packages/quality/testing/playwright/pages/CanvasPage.ts', additions: 100 },
 			{ filename: 'packages/quality/policy/code-health/src/cli.ts', additions: 100 },
+			{ filename: 'packages/quality/environments/containers/service-stack.ts', additions: 100 },
+			{
+				filename: 'packages/quality/efficiency/microbenchmarks/benchmarks/bench-options.ts',
+				additions: 100,
+			},
 			{ filename: 'packages/quality/efficiency/scale/benchmark/src/commands/list.ts', additions: 100 },
 			{ filename: 'pnpm-lock.yaml', additions: 500 },
 		];
