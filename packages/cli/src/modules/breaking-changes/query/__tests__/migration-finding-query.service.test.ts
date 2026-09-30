@@ -154,7 +154,7 @@ describe('MigrationFindingQueryService', () => {
 	});
 
 	describe('getLightReport', () => {
-		it('lists every registered workflow rule with its metadata and the open count from the table', async () => {
+		it('lists each workflow rule with open findings, with its metadata and count from the table', async () => {
 			findingRepository.countOpenByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
 			workflowRepository.count.mockResolvedValue(10);
 
