@@ -77,7 +77,17 @@ export async function getSupabaseProjects(this: ILoadOptionsFunctions) {
 	return await supabaseManagementApiRequest<SupabaseProject[]>(this, '/projects');
 }
 
-async function getProjectSecretKey(
+const projectSecretKeyCache = new Map<string, Promise<string>>();
+
+function getProjectSecretKeyCacheKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+) {
+	const credentialId = context.getNode().credentials?.supabaseOAuth2Api?.id;
+	return typeof credentialId === 'string' ? `${credentialId}:${projectRef}` : undefined;
+}
+
+async function resolveProjectSecretKey(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
 	projectRef: string,
 ) {
@@ -112,6 +122,40 @@ async function getProjectSecretKey(
 	}
 
 	return createdKey.api_key;
+}
+
+async function getProjectSecretKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+) {
+	const cacheKey = getProjectSecretKeyCacheKey(context, projectRef);
+	if (!cacheKey) return await resolveProjectSecretKey(context, projectRef);
+
+	const cached = projectSecretKeyCache.get(cacheKey);
+	if (cached) return await cached;
+
+	const request = resolveProjectSecretKey(context, projectRef);
+	projectSecretKeyCache.set(cacheKey, request);
+	try {
+		return await request;
+	} catch (error) {
+		if (projectSecretKeyCache.get(cacheKey) === request) projectSecretKeyCache.delete(cacheKey);
+		throw error;
+	}
+}
+
+async function invalidateProjectSecretKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+	projectKey: string,
+) {
+	const cacheKey = getProjectSecretKeyCacheKey(context, projectRef);
+	if (!cacheKey) return;
+
+	const cached = projectSecretKeyCache.get(cacheKey);
+	if (cached && (await cached) === projectKey && projectSecretKeyCache.get(cacheKey) === cached) {
+		projectSecretKeyCache.delete(cacheKey);
+	}
 }
 
 export function getSchemaHeader(
@@ -161,9 +205,10 @@ export async function supabaseApiRequest(
 	const credentialType = getCredentialType(this);
 	let host: string;
 	let projectKey: string | undefined;
+	let projectRef: string | undefined;
 
 	if (credentialType === 'supabaseOAuth2Api') {
-		const projectRef = getProjectRef(this);
+		projectRef = getProjectRef(this);
 		host = `https://${projectRef}.supabase.co`;
 		projectKey = await getProjectSecretKey(this, projectRef);
 	} else {
@@ -195,7 +240,20 @@ export async function supabaseApiRequest(
 		}
 		// TODO: these are deprecated
 		if (credentialType === 'supabaseOAuth2Api') {
-			return await this.helpers.request(options);
+			try {
+				return await this.helpers.request(options);
+			} catch (error) {
+				if (error.statusCode !== 401 || !projectRef || !projectKey) throw error;
+
+				await invalidateProjectSecretKey(this, projectRef, projectKey);
+				projectKey = await getProjectSecretKey(this, projectRef);
+				options.headers = {
+					...options.headers,
+					apikey: projectKey,
+					Authorization: `Bearer ${projectKey}`,
+				};
+				return await this.helpers.request(options);
+			}
 		}
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
