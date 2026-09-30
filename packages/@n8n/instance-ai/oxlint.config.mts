@@ -20,7 +20,7 @@ export default defineConfig({
 	extends: [backendConfig],
 	options: { typeAware: true },
 	ignorePatterns: [
-		'scripts/**',
+		'scripts/**/*.cjs',
 		'skills/**/*.mjs',
 		'.data/**',
 		'evaluations/.data/**',

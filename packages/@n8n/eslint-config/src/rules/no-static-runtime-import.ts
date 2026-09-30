@@ -1,4 +1,4 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
 
 type Options = [{ paths: Array<{ name: string; message: string }> }];
 type MessageIds = 'restrictedImport';
@@ -37,6 +37,23 @@ export const NoStaticRuntimeImportRule = ESLintUtils.RuleCreator.withoutDocs<Opt
 	defaultOptions: [{ paths: [] }],
 	create(context, [options]) {
 		const restrictedPaths = new Map(options.paths.map(({ name, message }) => [name, message]));
+		const reportRestrictedExport = (
+			node: TSESTree.ExportAllDeclaration | TSESTree.ExportNamedDeclaration,
+		) => {
+			if (!node.source || node.exportKind === 'type') return;
+
+			const message = restrictedPaths.get(node.source.value);
+			if (!message) return;
+
+			if (node.type === 'ExportNamedDeclaration') {
+				const hasRuntimeSpecifier = node.specifiers.some(
+					(specifier) => specifier.exportKind !== 'type',
+				);
+				if (node.specifiers.length > 0 && !hasRuntimeSpecifier) return;
+			}
+
+			context.report({ node: node.source, messageId: 'restrictedImport', data: { message } });
+		};
 
 		return {
 			ImportDeclaration(node) {
@@ -50,6 +67,8 @@ export const NoStaticRuntimeImportRule = ESLintUtils.RuleCreator.withoutDocs<Opt
 
 				context.report({ node: node.source, messageId: 'restrictedImport', data: { message } });
 			},
+			ExportAllDeclaration: reportRestrictedExport,
+			ExportNamedDeclaration: reportRestrictedExport,
 		};
 	},
 });

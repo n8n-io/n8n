@@ -12,6 +12,9 @@ ruleTester.run('no-static-runtime-import', NoStaticRuntimeImportRule, {
 		{ code: "import { type Client } from 'heavy-sdk';", options },
 		{ code: "const { Client } = await import('heavy-sdk');", options },
 		{ code: "import { Client } from 'other-sdk';", options },
+		{ code: "export type { Client } from 'heavy-sdk';", options },
+		{ code: "export { type Client } from 'heavy-sdk';", options },
+		{ code: "export type * from 'heavy-sdk';", options },
 	],
 	invalid: [
 		{
@@ -26,6 +29,16 @@ ruleTester.run('no-static-runtime-import', NoStaticRuntimeImportRule, {
 		},
 		{
 			code: "import 'heavy-sdk';",
+			options,
+			errors: [{ messageId: 'restrictedImport' }],
+		},
+		{
+			code: "export { Client } from 'heavy-sdk';",
+			options,
+			errors: [{ messageId: 'restrictedImport' }],
+		},
+		{
+			code: "export * from 'heavy-sdk';",
 			options,
 			errors: [{ messageId: 'restrictedImport' }],
 		},
