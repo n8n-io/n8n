@@ -16,13 +16,13 @@ import {
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';

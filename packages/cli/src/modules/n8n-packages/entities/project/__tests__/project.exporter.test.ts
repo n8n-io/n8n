@@ -1,8 +1,8 @@
+import type { FolderFinderService } from '@n8n/backend-services';
 import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

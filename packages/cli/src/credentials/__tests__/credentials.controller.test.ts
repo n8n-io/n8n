@@ -1,6 +1,5 @@
-import type { Response } from 'express';
-import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
-import type { PostHogClient } from '@/posthog';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { MockInstance } from 'vitest';
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
@@ -26,7 +25,6 @@ import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';

@@ -6,6 +6,7 @@ import {
 	InstanceAiMcpCreateConnectionRequestDto,
 	InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
+import { CredentialsFinderService, NotFoundError } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -19,8 +20,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 

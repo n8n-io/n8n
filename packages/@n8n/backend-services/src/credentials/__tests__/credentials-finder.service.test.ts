@@ -1,5 +1,3 @@
-import { RoleService } from '@n8n/backend-services';
-import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -19,23 +17,23 @@ import {
 	PROJECT_VIEWER_ROLE_SLUG,
 	type Scope,
 } from '@n8n/permissions';
+import type { CredentialSharingRole, ProjectRole } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '../credentials-finder.service';
+import { RoleService } from '../../services/role.service';
 
 describe('CredentialsFinderService', () => {
-	const roleService = mockInstance(RoleService);
-	const credentialsRepository = mockInstance(CredentialsRepository);
-	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
+	const roleService = mock<RoleService>();
+	const credentialsRepository = mock<CredentialsRepository>();
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	Container.set(RoleService, roleService);
+	Container.set(CredentialsRepository, credentialsRepository);
+	Container.set(SharedCredentialsRepository, sharedCredentialsRepository);
 	const credentialsFinderService = Container.get(CredentialsFinderService);
-
-	beforeAll(() => {
-		Container.set(RoleService, roleService);
-		Container.set(CredentialsRepository, credentialsRepository);
-		Container.set(SharedCredentialsRepository, sharedCredentialsRepository);
-	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -46,7 +44,7 @@ describe('CredentialsFinderService', () => {
 		// @ts-expect-error override readonly manager for test
 		credentialsRepository.manager = {
 			find: vi.fn().mockResolvedValue([]),
-		} as any;
+		} as unknown as EntityManager;
 
 		// Default mock implementation for all tests
 		roleService.rolesWithScope.mockImplementation(async (namespace) => {
@@ -692,7 +690,7 @@ describe('CredentialsFinderService', () => {
 		});
 
 		test('should support transaction manager', async () => {
-			const mockTrx = mock<any>();
+			const mockTrx = mock<EntityManager>();
 			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
 
 			await credentialsFinderService.findAllCredentialsForUser(
@@ -777,7 +775,7 @@ describe('CredentialsFinderService', () => {
 					mock<SharedCredentials>({
 						credentialsId: 'global-no-proj',
 						role: 'credential:user',
-						projectId: undefined as any,
+						projectId: undefined as unknown as string,
 					}),
 				],
 			});
@@ -849,9 +847,8 @@ describe('CredentialsFinderService', () => {
 		});
 
 		test('should use transaction manager for fetching global credentials', async () => {
-			const mockTrx = mock<any>();
-			const mockFind = vi.fn().mockResolvedValueOnce([]);
-			mockTrx.find = mockFind;
+			const mockTrx = mock<EntityManager>();
+			mockTrx.find.mockResolvedValueOnce([]);
 
 			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
 
@@ -862,7 +859,7 @@ describe('CredentialsFinderService', () => {
 				{ includeGlobalCredentials: true },
 			);
 
-			expect(mockFind).toHaveBeenCalledWith(CredentialsEntity, {
+			expect(mockTrx.find).toHaveBeenCalledWith(CredentialsEntity, {
 				where: { isGlobal: true, usageScope: 'project' },
 				relations: { shared: true },
 			});
@@ -1268,8 +1265,8 @@ describe('CredentialsFinderService', () => {
 		});
 
 		test('should use direct roles when provided', async () => {
-			const projectRoles = ['custom:project-admin'] as any;
-			const credentialRoles = ['custom:cred-viewer'] as any;
+			const projectRoles = ['custom:project-admin'] as unknown as ProjectRole[];
+			const credentialRoles = ['custom:cred-viewer'] as unknown as CredentialSharingRole[];
 			sharedCredentialsRepository.findCredentialsByRoles.mockResolvedValueOnce([mockSharings[0]]);
 
 			const result = await credentialsFinderService.getCredentialIdsByUserAndRole(userIds, {
@@ -1288,7 +1285,7 @@ describe('CredentialsFinderService', () => {
 		});
 
 		test('should support transaction manager', async () => {
-			const mockTrx = mock<any>();
+			const mockTrx = mock<EntityManager>();
 			sharedCredentialsRepository.findCredentialsByRoles.mockResolvedValueOnce([]);
 
 			await credentialsFinderService.getCredentialIdsByUserAndRole(

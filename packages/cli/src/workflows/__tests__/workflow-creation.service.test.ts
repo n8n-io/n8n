@@ -1,4 +1,6 @@
 import type { Logger, LicenseState } from '@n8n/backend-common';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type {
 	EntityManager,
 	Folder,
@@ -13,8 +15,6 @@ import type { PolicyCleared } from '@n8n/decorators';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';

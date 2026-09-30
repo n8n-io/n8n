@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { FolderFinderService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -16,7 +17,6 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { searchWorkflows } from '@/modules/mcp/tools/search-workflows.tool';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createFolder } from '@test-integration/db/folders';
 import { LicenseMocker } from '@test-integration/license';

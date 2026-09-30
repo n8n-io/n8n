@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, CredentialsFinderService, ForbiddenError } from '@n8n/backend-services';
 import { CredentialsRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
@@ -28,8 +29,6 @@ import {
 	findDisplayedProperty,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { withExpressionIsolate } from '@/utils';
