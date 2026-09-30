@@ -61,6 +61,7 @@ type SimpleNode =
 	| { kind: 'root'; name: '$json' | '$parameter' }
 	| { kind: 'undefined' }
 	| { kind: 'member'; object: SimpleNode; key: string | number; optional: boolean }
+	| { kind: 'chain'; expression: SimpleNode }
 	| { kind: 'unary'; op: UnaryOp; argument: SimpleNode }
 	| { kind: 'binary'; op: BinaryOp; left: SimpleNode; right: SimpleNode }
 	| { kind: 'logical'; op: LogicalOp; left: SimpleNode; right: SimpleNode }
@@ -248,6 +249,16 @@ function parseCall(node: Record<string, unknown>): SimpleNode | null {
 	return { kind: 'call', receiver, method, args, optional };
 }
 
+// The wrapper esprima puts around every optional chain. It is the boundary an
+// optional hop short-circuits to: `a?.b.c` yields undefined for a missing
+// `a`, while `(a?.b).c` throws. Parentheses end the chain in the AST too.
+function parseChain(node: Record<string, unknown>): SimpleNode | null {
+	const expression = parseSimple(node.expression);
+	if (expression === null) return null;
+
+	return { kind: 'chain', expression };
+}
+
 function parseBranches(node: Record<string, unknown>): SimpleNode | null {
 	const test = parseSimple(node.test);
 	const consequent = parseSimple(node.consequent);
@@ -300,9 +311,7 @@ function parseSimple(node: unknown): SimpleNode | null {
 		case 'MemberExpression':
 			return parseMember(node);
 		case 'ChainExpression':
-			// Optionality is carried per member/call node, so the wrapper is
-			// transparent in the grammar.
-			return parseSimple(node.expression);
+			return parseChain(node);
 		case 'UnaryExpression':
 			return parseUnary(node);
 		case 'BinaryExpression':
@@ -334,6 +343,10 @@ function parseSimple(node: unknown): SimpleNode | null {
 // nested `$parameter` expression, or a getter on a data object. Expressions
 // are pure and workflow data is JSON, so the only cost is the repeated work.
 class EngineFallbackError extends Error {}
+
+// Thrown by an optional member/call on a nullish receiver and caught by the
+// enclosing chain node, which yields undefined for the whole chain.
+const chainShortCircuit = Symbol('chainShortCircuit');
 
 // Property lookup on a non-nullish primitive is well-defined and side-effect
 // free, so primitives are indexable here even though the predicate's type
@@ -386,12 +399,8 @@ function evalMember(
 ): unknown {
 	const object = evalNode(node.object, data);
 
-	// Optionality is checked per node instead of short-circuiting the whole
-	// chain. Equivalent here because keys are static (no side effects to
-	// skip) and the chunk-level catch maps the resulting TypeError to the same
-	// observable value the engine produces.
 	if (node.optional && (object === null || object === undefined)) {
-		return undefined;
+		throw chainShortCircuit;
 	}
 
 	if (!isIndexable(object)) {
@@ -475,7 +484,7 @@ function evalCall(
 	const receiverMissing = receiver === null || receiver === undefined;
 
 	if (node.optional && receiverMissing) {
-		return undefined;
+		throw chainShortCircuit;
 	}
 
 	if (receiverMissing) {
@@ -496,6 +505,19 @@ function evalCall(
 	preflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args) as unknown);
+}
+
+function evalChain(
+	node: Extract<SimpleNode, { kind: 'chain' }>,
+	data: IWorkflowDataProxyData,
+): unknown {
+	try {
+		return evalNode(node.expression, data);
+	} catch (error) {
+		if (error === chainShortCircuit) return undefined;
+
+		throw error;
+	}
 }
 
 function evalUnary(
@@ -555,6 +577,8 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 			return undefined;
 		case 'member':
 			return evalMember(node, data);
+		case 'chain':
+			return evalChain(node, data);
 		case 'unary':
 			return evalUnary(node, data);
 		case 'binary':

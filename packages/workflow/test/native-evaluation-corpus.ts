@@ -37,6 +37,12 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.names }}',
 	'={{ $json.item.my_object?.addresses?.primary }}',
 	'={{ $json.item.missing?.deep }}',
+	// A missing optional hop short-circuits the whole chain, so the enclosing
+	// fallback still applies. Parentheses end the chain: the outer read throws.
+	'={{ $json.item.missing?.deep.deeper ?? true }}',
+	"={{ $json.item.missing?.deep.deeper.toUpperCase() || 'fallback' }}",
+	'={{ ($json.item.missing?.deep).deeper ?? true }}',
+	'={{ $json.item.my_object?.addresses.primary ?? true }}',
 	'={{ $json.item.name.length }}',
 	'={{ $parameter["value1"] }}',
 	"={{ $parameter['missing'] || 'GET' }}",
