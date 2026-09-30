@@ -196,8 +196,14 @@ export class ActiveExecutions {
 	 * Attaches an execution
 	 */
 
-	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
+	attachWorkflowExecution(
+		executionId: string,
+		workflowExecution: PCancelable<IRun>,
+		options?: { isQueueJob?: boolean },
+	) {
+		const execution = this.getExecutionOrFail(executionId);
+		execution.workflowExecution = workflowExecution;
+		execution.isQueueJob = options?.isQueueJob;
 	}
 
 	attachResponsePromise(
@@ -320,8 +326,11 @@ export class ActiveExecutions {
 	}
 
 	getRunningExecutionIds(): string[] {
+		// An enqueued execution runs as a Bull job, which the queue drain tracks, so this only returns executions this process runs outside the queue.
 		return Object.keys(this.activeExecutions).filter(
-			(executionId) => this.activeExecutions[executionId].status === 'running',
+			(executionId) =>
+				this.activeExecutions[executionId].status === 'running' &&
+				!this.activeExecutions[executionId].isQueueJob,
 		);
 	}
 

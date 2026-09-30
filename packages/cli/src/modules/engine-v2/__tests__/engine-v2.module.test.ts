@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';

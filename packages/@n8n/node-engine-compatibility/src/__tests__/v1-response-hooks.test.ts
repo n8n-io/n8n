@@ -2,6 +2,7 @@ import {
 	noopResponseEmitter,
 	type JsonValue,
 	type ResponseEmitter,
+	type ResponseExpectation,
 	type StepExecutionRequest,
 } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY, ExecutionLifecycleHooks } from 'n8n-core';
@@ -10,13 +11,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { attachResponseHooks } from '../v1-response-hooks';
 
-const newRequest = () => {
-	// Builds the payload like an emitter for a caller that expects a step
-	// response, so a test can read what the node sent.
+const newRequest = (responseExpectation: ResponseExpectation = { kind: 'stepResponse' }) => {
+	// Builds the payload like an emitter that accepts it, so a test can read
+	// what the node sent.
 	const sent: JsonValue[] = [];
+	const chunks: JsonValue[] = [];
 	const respond: ResponseEmitter = {
 		send: vi.fn((build: () => JsonValue) => {
 			sent.push(build());
+			return { ok: true as const, result: undefined };
+		}),
+		chunk: vi.fn((build: () => JsonValue) => {
+			chunks.push(build());
 			return { ok: true as const, result: undefined };
 		}),
 	};
@@ -28,11 +34,12 @@ const newRequest = () => {
 			mode: 'production',
 			iteration: 0,
 			callerContext: { hostMode: 'webhook' },
+			responseExpectation,
 		},
 		respond,
 	} as unknown as StepExecutionRequest;
 
-	return { request, respond, sent };
+	return { request, respond, sent, chunks };
 };
 
 const newAdditionalData = () => ({}) as IWorkflowExecuteAdditionalData;
@@ -79,7 +86,7 @@ describe('attachResponseHooks', () => {
 
 	it('does not build a payload the emitter drops', async () => {
 		// Like the engine's emitter for a caller that expects no step response.
-		const respond: ResponseEmitter = { send: noopResponseEmitter.send };
+		const respond: ResponseEmitter = noopResponseEmitter;
 		const { request } = newRequest();
 		const additionalData = newAdditionalData();
 		attachResponseHooks(additionalData, { ...request, respond });
@@ -137,6 +144,58 @@ describe('attachResponseHooks', () => {
 
 			expect(sent).toContainEqual(response);
 		});
+	});
+
+	it.each(['none', 'runEnd', 'stream'] as const)(
+		'registers no response handler when the caller expects %s',
+		async (kind) => {
+			const { request, respond } = newRequest({ kind });
+			const additionalData = newAdditionalData();
+
+			attachResponseHooks(additionalData, request);
+			await additionalData.hooks?.runHook('sendResponse', [{ body: { ok: true } }]);
+
+			expect(additionalData.hooks?.handlers.sendResponse).toHaveLength(0);
+			expect(respond.send).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['none', 'runEnd', 'stepResponse'] as const)(
+		'leaves streaming off when the caller expects %s',
+		(kind) => {
+			const additionalData = newAdditionalData();
+
+			attachResponseHooks(additionalData, newRequest({ kind }).request);
+
+			// `isStreaming()` reads both. On for every run, the Respond node would
+			// stream instead of answering, and `responseNode` would never reply.
+			expect(additionalData.streamingEnabled).toBeUndefined();
+			expect(additionalData.hooks?.handlers.sendChunk).toHaveLength(0);
+		},
+	);
+
+	it('carries chunks once the caller expects a stream', async () => {
+		const { request, chunks } = newRequest({ kind: 'stream' });
+		const additionalData = newAdditionalData();
+
+		attachResponseHooks(additionalData, request);
+		await additionalData.hooks?.runHook('sendChunk', [{ type: 'item', content: 'hi' }]);
+
+		expect(additionalData.streamingEnabled).toBe(true);
+		expect(chunks).toEqual([{ type: 'item', content: 'hi' }]);
+	});
+
+	it('surfaces chunk errors from the response channel', async () => {
+		const { request, respond } = newRequest({ kind: 'stream' });
+		const error = new Error('Chunk failed');
+		vi.mocked(respond.chunk).mockReturnValue({ ok: false, error });
+		const additionalData = newAdditionalData();
+
+		attachResponseHooks(additionalData, request);
+
+		await expect(
+			additionalData.hooks?.runHook('sendChunk', [{ type: 'item', content: 'hi' }]),
+		).rejects.toBe(error);
 	});
 
 	it.each([

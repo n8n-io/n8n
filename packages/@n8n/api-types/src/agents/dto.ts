@@ -55,6 +55,7 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		availableInMCP: z.boolean().optional(),
+		availableInChat: z.boolean().optional(),
 	})
 	.strict();
 
@@ -229,6 +230,7 @@ const agentChatMessageShape = {
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
 	sessionId: z.string().min(1).optional(),
+	messageId: z.string().uuid().optional(),
 	newSession: z.literal(true).optional(),
 	attachments: z
 		.array(agentChatAttachmentSchema)
@@ -241,6 +243,10 @@ const agentChatMessageSchema = z
 	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
 		message: 'Message text or at least one attachment is required',
 		path: ['message'],
+	})
+	.refine((value) => !value.messageId || !!value.sessionId, {
+		message: 'A session ID is required with a message ID',
+		path: ['sessionId'],
 	});
 
 /**
@@ -265,6 +271,10 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+export class AgentChatQueueSteerDto extends Z.class({
+	executionId: z.string().min(1).max(36),
 }) {}
 
 export class AgentChatResumeDto extends Z.class({

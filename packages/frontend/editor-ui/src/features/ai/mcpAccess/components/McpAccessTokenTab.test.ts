@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import McpAccessTokenTab from './McpAccessTokenTab.vue';
 

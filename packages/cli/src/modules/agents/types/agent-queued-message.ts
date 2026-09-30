@@ -18,6 +18,7 @@ interface QueuedMessageInput {
 export interface QueuedPreviewMessage extends QueuedMessageInput {
 	kind: 'preview';
 	userId: string;
+	messageId?: string;
 }
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {

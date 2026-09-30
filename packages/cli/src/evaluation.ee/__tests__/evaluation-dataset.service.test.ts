@@ -7,6 +7,7 @@ import type { IConnections, IRunData } from 'n8n-workflow';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -20,6 +21,7 @@ const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 describe('EvaluationDatasetService', () => {
 	let configRepository: Mocked<EvaluationConfigRepository>;
 	let executionPersistence: Mocked<ExecutionPersistence>;
+	let executionRedactionServiceProxy: Mocked<ExecutionRedactionServiceProxy>;
 	let dataTableService: Mocked<DataTableService>;
 	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 	let service: EvaluationDatasetService;
@@ -61,6 +63,19 @@ describe('EvaluationDatasetService', () => {
 		return [{ data: { main: [[{ json }]] } }];
 	}
 
+	/** Mimics `FullItemRedactionStrategy`: clears every item's `json` in place. */
+	function clearRunDataJson(runData: IRunData) {
+		for (const taskDataList of Object.values(runData)) {
+			for (const taskData of taskDataList) {
+				const items = taskData.data?.main?.[0];
+				if (!items) continue;
+				for (const item of items) {
+					if (item) item.json = {};
+				}
+			}
+		}
+	}
+
 	function makeExecution(options: {
 		status?: string;
 		mode?: string;
@@ -97,17 +112,25 @@ describe('EvaluationDatasetService', () => {
 		vi.resetAllMocks();
 		configRepository = mock<EvaluationConfigRepository>();
 		executionPersistence = mock<ExecutionPersistence>();
+		executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 		dataTableService = mock<DataTableService>();
 		instanceWriteAccess = mock<InstanceWriteAccessService>();
 		service = new EvaluationDatasetService(
 			configRepository,
 			executionPersistence,
+			executionRedactionServiceProxy,
 			dataTableService,
 			instanceWriteAccess,
 		);
 
 		configRepository.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
 		mockExecution(makeExecution({}));
+		// Pass-through by default, matching the proxy's behaviour when no
+		// redaction strategy applies (mirrors ExecutionRedactionServiceProxy with
+		// no ExecutionRedaction registered).
+		executionRedactionServiceProxy.processExecution.mockImplementation(
+			async (execution) => execution,
+		);
 		dataTableService.getProjectIdForDataTable.mockResolvedValue(PROJECT_ID);
 		dataTableService.getColumns.mockResolvedValue(makeColumns());
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
@@ -279,6 +302,28 @@ describe('EvaluationDatasetService', () => {
 			});
 		});
 
+		it('routes the loaded execution through redaction, for the requesting user, before extracting fields', async () => {
+			await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
+
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'success' }),
+				{ user },
+			);
+		});
+
+		it('never surfaces fields that redaction clears (e.g. a private-credential execution owned by someone else)', async () => {
+			executionRedactionServiceProxy.processExecution.mockImplementation(async (execution) => {
+				const exec = execution as unknown as IExecutionResponse;
+				clearRunDataJson(exec.data.resultData.runData as IRunData);
+				return exec;
+			});
+
+			const result = await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
+
+			expect(result.fields.inputs).toEqual([]);
+			expect(result.fields.outputs).toEqual([]);
+		});
+
 		it('enforces read access on the data table for the user', async () => {
 			await service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID);
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
@@ -346,6 +391,41 @@ describe('EvaluationDatasetService', () => {
 				'id',
 			);
 			expect(result).toEqual([{ id: 7 }]);
+		});
+
+		it('routes the loaded execution through redaction, for the requesting user, before extracting fields', async () => {
+			const dto: AddDatasetRowDto = {
+				executionId: EXECUTION_ID,
+				mapping: { question: { source: 'input', field: 'question' } },
+			};
+
+			await service.addRow(user, WORKFLOW_ID, CONFIG_ID, dto);
+
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'success' }),
+				{ user },
+			);
+		});
+
+		it('does not persist a value that redaction cleared (e.g. a private-credential execution owned by someone else)', async () => {
+			executionRedactionServiceProxy.processExecution.mockImplementation(async (execution) => {
+				const exec = execution as unknown as IExecutionResponse;
+				clearRunDataJson(exec.data.resultData.runData as IRunData);
+				return exec;
+			});
+			const dto: AddDatasetRowDto = {
+				executionId: EXECUTION_ID,
+				mapping: { question: { source: 'input', field: 'question' } },
+			};
+
+			await service.addRow(user, WORKFLOW_ID, CONFIG_ID, dto);
+
+			expect(dataTableService.insertRows).toHaveBeenCalledWith(
+				DATA_TABLE_ID,
+				PROJECT_ID,
+				[{}],
+				'id',
+			);
 		});
 
 		it('skips columns whose mapped field is no longer present on the execution', async () => {
