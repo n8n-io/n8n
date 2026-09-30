@@ -33,7 +33,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
@@ -62,7 +61,6 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
@@ -178,6 +176,7 @@ const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 interface PermissionGroup {
 	id: string;
 	labelKey: BaseTextKey;
+	descriptionKey?: BaseTextKey;
 	keys: Array<keyof InstanceAiPermissions>;
 }
 
@@ -229,6 +228,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'mcp',
 		labelKey: 'settings.n8nAgent.permissions.group.mcp',
+		descriptionKey: 'settings.n8nAgent.permissions.group.mcpDescription',
 		keys: ['mcpRead', 'mcpWrite'],
 	},
 ];
@@ -660,7 +660,6 @@ function openAiUsageSettings() {
 			<DefaultEditorSetting />
 
 			<N8nSettingsSection
-				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
@@ -729,7 +728,6 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						v-if="isBrowserUseEnabled"
 						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
@@ -791,6 +789,14 @@ function openAiUsageSettings() {
 						</template>
 						<template #expanded>
 							<div :class="$style.permissionList">
+								<N8nText
+									v-if="group.descriptionKey"
+									:class="$style.permissionDescription"
+									size="small"
+									color="text-light"
+								>
+									{{ i18n.baseText(group.descriptionKey) }}
+								</N8nText>
 								<div v-for="key in group.keys" :key="key" :class="$style.permissionRow">
 									<N8nText size="small" color="text-dark">
 										{{ i18n.baseText(`settings.n8nAgent.permissions.${key}` as BaseTextKey) }}
@@ -912,6 +918,10 @@ function openAiUsageSettings() {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
+}
+
+.permissionDescription {
+	padding-bottom: var(--spacing--2xs);
 }
 
 .permissionRow {

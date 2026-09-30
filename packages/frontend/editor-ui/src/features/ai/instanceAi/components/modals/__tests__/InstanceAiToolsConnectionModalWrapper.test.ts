@@ -13,7 +13,7 @@ import type {
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
-const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
+const featureFlags = vi.hoisted(() => ({ computerUse: false }));
 const confirmRemoveMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -26,16 +26,6 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 		isFeatureEnabled: {
 			get value() {
 				return featureFlags.computerUse;
-			},
-		},
-	}),
-}));
-
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.browserUse;
 			},
 		},
 	}),
@@ -296,7 +286,6 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 describe('InstanceAiToolsConnectionModalWrapper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.browserUse = false;
 		featureFlags.computerUse = false;
 		modalListeners = {};
 		modalProps = {};
@@ -625,7 +614,6 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('tracks opening built-in connection details', () => {
-		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
 		renderComponent();
 		const serviceItems = (modalProps.items as ServiceConnectionItem[]).filter(

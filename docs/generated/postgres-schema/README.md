@@ -19,12 +19,12 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 22 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 23 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_message_queue](public.agent_message_queue.md) | 7 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -129,6 +129,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
+| [public.trusted_source](public.trusted_source.md) | 12 |  | BASE TABLE |
+| [public.trusted_source_identity](public.trusted_source_identity.md) | 8 |  | BASE TABLE |
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
 | [public.type_availability_policy_scope](public.type_availability_policy_scope.md) | 8 |  | BASE TABLE |
@@ -207,6 +209,7 @@ erDiagram
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
+"public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -350,6 +353,8 @@ erDiagram
 "public.test_run" }o--o| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE SET NULL"
 "public.test_run" }o--o| "public.evaluation_collection" : "FOREIGN KEY (#quot;collectionId#quot;) REFERENCES evaluation_collection(id) ON DELETE SET NULL"
 "public.trusted_key" }o--|| "public.trusted_key_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES trusted_key_source(id) ON DELETE CASCADE"
+"public.trusted_source_identity" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.trusted_source_identity" }o--|| "public.trusted_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES trusted_source(id) ON DELETE CASCADE"
 "public.type_availability_policy_attachment" }o--|| "public.type_availability_policy" : "FOREIGN KEY (#quot;policyId#quot;) REFERENCES type_availability_policy(id) ON DELETE RESTRICT"
 "public.type_availability_policy_attachment" }o--|| "public.type_availability_policy_scope" : "FOREIGN KEY (#quot;scopeId#quot;) REFERENCES type_availability_policy_scope(id) ON DELETE CASCADE"
 "public.type_availability_policy_scope" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -530,6 +535,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -610,6 +616,8 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
@@ -1600,6 +1608,30 @@ erDiagram
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
+}
+"public.trusted_source" {
+  text config
+  integer configVersion
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar issuer
+  timestamp_3__with_time_zone lastCheckedAt
+  text lastError
+  varchar_16_ managedBy
+  varchar_128_ name
+  varchar_16_ status
+  varchar_32_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.trusted_source_identity" {
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastSeenAt
+  varchar_32_ provenance
+  varchar_36_ sourceId FK
+  varchar_16_ status
+  varchar subject
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
 }
 "public.type_availability_policy" {
   timestamp_3__with_time_zone createdAt

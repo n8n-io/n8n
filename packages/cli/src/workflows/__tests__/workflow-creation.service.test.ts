@@ -526,11 +526,14 @@ describe('WorkflowCreationService', () => {
 				projectId: 'project-1',
 			});
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: null, name: 'My workflow', nodes: [] },
-				storedWorkflow: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: null, name: 'My workflow', nodes: [] },
+					storedWorkflow: null,
+					projectId: 'project-1',
+				},
+				expect.anything(),
+			);
 		});
 
 		it("falls back to the user's personal project when no project is given", async () => {
@@ -543,6 +546,7 @@ describe('WorkflowCreationService', () => {
 
 			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: 'personal-project' }),
+				expect.anything(),
 			);
 		});
 

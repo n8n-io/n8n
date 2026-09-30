@@ -356,6 +356,7 @@ export class EvalThreadRestoreService {
 	async restoreWorkflows(
 		workflows: InstanceAiEvalSeedWorkflow[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
 		allowedCredentialIds?: Set<string>,
 		folderIdMap: Map<string, string> = new Map(),
@@ -366,6 +367,7 @@ export class EvalThreadRestoreService {
 				const isNew = await this.createWorkflowPinnedToId(
 					workflow,
 					projectId,
+					user,
 					dataTableIdMap,
 					allowedCredentialIds,
 					folderIdMap,
@@ -469,6 +471,7 @@ export class EvalThreadRestoreService {
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string>,
 		allowedCredentialIds: Set<string> | undefined,
 		folderIdMap: Map<string, string>,
@@ -538,7 +541,7 @@ export class EvalThreadRestoreService {
 			versionId: randomUUID(),
 			parentFolder: parentFolderId === null ? null : { id: parentFolderId },
 		});
-		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId);
+		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId, user);
 
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
@@ -614,13 +617,17 @@ export class EvalThreadRestoreService {
 		entity: WorkflowEntity,
 		stored: PolicedWorkflow | null,
 		projectId: string,
+		user: User,
 	): Promise<PolicyCleared<'workflowSave'>> {
 		try {
-			return await this.policyEnforcementService.enforceWorkflowSave({
-				workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
-				storedWorkflow: stored,
-				projectId,
-			});
+			return await this.policyEnforcementService.enforceWorkflowSave(
+				{
+					workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
+					storedWorkflow: stored,
+					projectId,
+				},
+				{ kind: 'user', user },
+			);
 		} catch (error) {
 			if (error instanceof PolicyViolationError && hasViolations(error.violations)) {
 				throw new PolicyViolationError(

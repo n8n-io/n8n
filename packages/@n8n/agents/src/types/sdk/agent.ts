@@ -7,7 +7,7 @@ import type {
 } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
-import type { AgentMessage, ContentMetadata } from './message';
+import type { AgentDbMessage, AgentMessage, ContentMetadata } from './message';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
@@ -90,6 +90,8 @@ export interface AgentResult {
 
 export type StreamChunk = ContentMetadata &
 	(
+		| { type: 'input-boundary'; acknowledge: () => void }
+		| { type: 'input'; message: AgentDbMessage }
 		| { type: 'start-step' }
 		| { type: 'finish-step' }
 		| { type: 'text-start'; id: string }
@@ -184,7 +186,40 @@ export interface AgentExecutionCounter {
 	incrementTokenCount(tokenCount: number): void;
 }
 
+/**
+ * Kind of background model call whose cost is added to the session total
+ * outside the main agent loop. Title generation, observation-log
+ * observer/reflector, and episodic-memory model calls all bill here.
+ */
+export type SideCallTask = 'title' | 'observer' | 'reflector' | 'episodic';
+
+/**
+ * Reported after a side-call model turn completes, so the host can add the
+ * estimated USD cost to the execution and thread totals. The `reportId` is
+ * minted once per call so hosts can dedupe idempotently.
+ */
+export interface SideCallUsageReport {
+	task: SideCallTask;
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	model: string;
+	usage: TokenUsage;
+	/** Estimated cost in USD, computed from models.dev pricing. */
+	cost: number;
+	/** Stable per-LLM-call id, generated once at the call site for idempotent billing. */
+	reportId: string;
+}
+
+export interface AgentInputBoundary {
+	/** Current turn messages, ready for durable storage. */
+	messages: AgentDbMessage[];
+	lastCreatedAt: number;
+	completing: boolean;
+	canContinue: boolean;
+}
+
 export interface ExecutionOptions {
+	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>;
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
@@ -224,6 +259,14 @@ export interface ExecutionOptions {
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	/**
+	 * Reported after a side-call model turn (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) completes, so the host
+	 * can add the estimated USD cost to the execution and thread totals. The
+	 * runtime computes the cost via the model catalog; the host only adds it.
+	 * Best-effort: a host failure here must not break the run.
+	 */
+	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/** @deprecated Use `onStepEnd` instead. */

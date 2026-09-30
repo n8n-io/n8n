@@ -1,5 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -33,7 +34,6 @@ import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';

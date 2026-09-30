@@ -16,6 +16,7 @@ import type {
 import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -25,12 +26,10 @@ import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OAuthClient } from './database/entities/oauth-client.entity';

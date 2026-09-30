@@ -11,6 +11,7 @@ import {
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -192,6 +193,10 @@ function allSortRank(item: ToolConnectionItem): number {
 	return 2;
 }
 
+function isRestrictedItem(item: ToolConnectionItem): boolean {
+	return item.kind === 'node' && item.restriction !== undefined;
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
@@ -231,9 +236,9 @@ type CategoryListRow = {
 type ListRow = FlattenedRow | CategoryListRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
-	itemsForCategory(activeCategory.value)
-		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${item.id}`, item })),
+	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
+		(item) => ({ key: `item:${item.id}`, item }),
+	),
 );
 
 /** Categories only worth a tab once they hold something. */

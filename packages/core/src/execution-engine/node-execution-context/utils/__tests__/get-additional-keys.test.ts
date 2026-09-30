@@ -77,7 +77,7 @@ describe('getAdditionalKeys', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null, { isCredential: true });
 
 		expect(result.$secrets).toBeDefined();
-		expect((result.$secrets?.provider1 as IDataObject).secret1).toEqual('secret-value');
+		expect((result.$secrets!.provider1 as IDataObject).secret1).toEqual('secret-value');
 	});
 
 	it('should return undefined $secrets by default', () => {

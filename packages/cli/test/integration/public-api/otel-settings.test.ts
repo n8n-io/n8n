@@ -74,6 +74,18 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(typeof response.body.exporterEndpoint).toBe('string');
 		});
 
+		it('returns saved settings with masked exporter headers', async () => {
+			await testServer.publicApiAgentFor(owner).put('/settings/otel').send(validSettings);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toStrictEqual({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
+		});
+
 		it('exposes exactly the fields the UI configures, and nothing more', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
 
@@ -109,6 +121,17 @@ describe('OpenTelemetry settings in Public API', () => {
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/settings/otel');
 
 			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('rejects an unknown query parameter with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/otel')
+				.query({ unexpected: 'value' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('unexpected');
 		});
 	});
 

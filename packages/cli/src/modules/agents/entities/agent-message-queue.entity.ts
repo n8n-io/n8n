@@ -18,6 +18,10 @@ import type { AgentQueueDispatch } from '../types/agent-queued-message';
 @Entity({ name: 'agent_message_queue' })
 @Index(['threadId', 'id'])
 @Index(['threadId'], { unique: true, where: '"executionId" IS NOT NULL' })
+@Index(['steeringExecutionId', 'steeringOrder'], {
+	unique: true,
+	where: '"steeringExecutionId" IS NOT NULL',
+})
 export class AgentMessageQueue extends WithTimestamps {
 	@Generated()
 	@PrimaryColumn({
@@ -63,4 +67,19 @@ export class AgentMessageQueue extends WithTimestamps {
 		comment: 'Current execution; NULL means pending',
 	})
 	executionId: string | null;
+
+	@ManyToOne(() => AgentExecution, { nullable: true, onDelete: 'NO ACTION' })
+	@JoinColumn({ name: 'steeringExecutionId' })
+	steeringExecution: Relation<AgentExecution> | null;
+
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Execution reserved to consume this input',
+	})
+	steeringExecutionId: string | null;
+
+	@Column({ type: 'int', nullable: true, comment: 'Acceptance order among outstanding steers' })
+	steeringOrder: number | null;
 }

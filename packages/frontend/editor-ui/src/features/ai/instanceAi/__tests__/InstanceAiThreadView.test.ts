@@ -17,10 +17,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
-import {
-	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
-	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
-} from '@/app/constants';
+import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	InstanceAiAgentNode,
@@ -54,6 +51,8 @@ const mockThreadAreaSizeState = vi.hoisted(() => ({
 	width: { value: 1600 } as Ref<number>,
 }));
 
+// The stored tabs of each thread, kept across renders like the backend keeps them.
+const storedThreadTabs = vi.hoisted(() => new Map<string, unknown>());
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const routerPushSpy = vi.hoisted(() => vi.fn());
 const routerReplaceSpy = vi.hoisted(() => vi.fn());
@@ -79,6 +78,17 @@ Object.defineProperty(globalThis, 'localStorage', {
 		}),
 	},
 });
+
+vi.mock('../instanceAi.memory.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../instanceAi.memory.api')>()),
+	fetchThreadTabs: vi.fn(async (_context: unknown, threadId: string) => ({
+		state: storedThreadTabs.get(threadId) ?? null,
+	})),
+	saveThreadTabs: vi.fn(async (_context: unknown, threadId: string, state: unknown) => {
+		storedThreadTabs.set(threadId, state);
+		return { state };
+	}),
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
@@ -413,6 +423,7 @@ describe('InstanceAiThreadView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		storedThreadTabs.clear();
 		// Default `stubActions: true` — every store action becomes a no-op spy.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
@@ -713,6 +724,8 @@ describe('InstanceAiThreadView', () => {
 			seedSetupArtifacts();
 			thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
 			const { getByTestId, container } = renderView({ props: { threadId: 'thread-1' } });
+			// The handed-off workflow opens once the stored tabs load.
+			await flushPromises();
 			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-1');
 			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-1');
 
@@ -1827,7 +1840,12 @@ describe('InstanceAiThreadView', () => {
 		thread.producedArtifacts = new Map([
 			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
 		]) as typeof thread.producedArtifacts;
-		localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('thread-1'), 'true');
+		storedThreadTabs.set('thread-1', {
+			tabs: [{ type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
+			closedTabs: [],
+			activeTab: { type: 'workflow', id: 'workflow-1' },
+			previewOpen: true,
+		});
 
 		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2249,9 +2267,6 @@ describe('InstanceAiThreadView', () => {
 		expect(firstRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
-		expect(localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('thread-1'))).toBe(
-			'false',
-		);
 
 		store.threads = [
 			{
@@ -2277,7 +2292,9 @@ describe('InstanceAiThreadView', () => {
 			],
 		]) as typeof thread.producedArtifacts;
 
+		// Unmounting saves the pending tab change, so the refresh loads the closed preview.
 		firstRender.unmount();
+		expect(storedThreadTabs.get('thread-1')).toMatchObject({ previewOpen: false });
 		const refreshedRender = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(refreshedRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();

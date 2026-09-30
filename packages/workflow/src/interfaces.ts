@@ -3779,11 +3779,15 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
-	 * Only engine v2 reads this. The caller mints the data-plane execution id
-	 * when it has to wait for the run's answer, so it can subscribe before the
-	 * run starts.
+	 * Only engine v2 reads this. A caller that waits for the run's answer sets
+	 * it. The caller mints the data-plane execution id, so it can subscribe
+	 * before the run starts. `responseMode` tells the engine which answer the
+	 * caller waits for. Without this field, nobody waits for an answer.
 	 */
-	engineExecutionId?: string;
+	engineV2Response?: {
+		executionId: string;
+		responseMode: 'lastNode' | 'responseNode';
+	};
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support

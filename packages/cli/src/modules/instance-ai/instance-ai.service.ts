@@ -39,6 +39,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -153,7 +154,6 @@ import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
@@ -170,7 +170,6 @@ import {
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
