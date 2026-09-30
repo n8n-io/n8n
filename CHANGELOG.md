@@ -1,3 +1,18 @@
+## [2.42.1](https://github.com/n8n-io/n8n/compare/n8n@2.42.0...n8n@2.42.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **API:** Emit valid schemas for untyped values in the Public API spec ([#39917](https://github.com/n8n-io/n8n/issues/39917)) ([ed56d85](https://github.com/n8n-io/n8n/commit/ed56d85f441c0eb287bc7c739f109d5c69a347a6))
+* **API:** Return an execution when its stored trace context is incomplete ([#39836](https://github.com/n8n-io/n8n/issues/39836)) ([e710744](https://github.com/n8n-io/n8n/commit/e710744967605e2d3ace8a8e1b8f2f85569026e1))
+* **editor:** Show remaining credits on Assistant banner for Cloud UBB ([#39911](https://github.com/n8n-io/n8n/issues/39911)) ([14b6bfd](https://github.com/n8n-io/n8n/commit/14b6bfd6763f270122e0c75423d05a031d605c69))
+
+
+### Features
+
+* **editor:** Show n8n logo on canvas in canvas-only mode ([#39914](https://github.com/n8n-io/n8n/issues/39914)) ([10140d1](https://github.com/n8n-io/n8n/commit/10140d19ddf99995aa4506d82f96dd47a93ed083))
+
+
 # [2.42.0](https://github.com/n8n-io/n8n/compare/n8n@2.41.0...n8n@2.42.0) (2026-09-29)
 
 
