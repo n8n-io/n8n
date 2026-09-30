@@ -3778,11 +3778,14 @@ describe('createWorkflowAdapter', () => {
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith({
-			workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
-			storedWorkflow: null,
-			projectId: 'team-project-id',
-		});
+		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+			{
+				workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
+				storedWorkflow: null,
+				projectId: 'team-project-id',
+			},
+			{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+		);
 		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalledWith(
 			{ policyCleared: cleared },
 			expect.any(Function),

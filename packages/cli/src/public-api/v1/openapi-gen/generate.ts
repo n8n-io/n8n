@@ -15,6 +15,7 @@ import {
 	type NamedResponseDto,
 	type SchemaResolver,
 } from './decorator-routes';
+import { stripUntypedNullable } from './untyped-nullable';
 
 const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
 const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
@@ -88,6 +89,10 @@ export function buildArtifactsFromRegistry(
 		openapi: '3.0.0',
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
+
+	// zod-to-openapi emits `z.unknown()`/`z.any()` as `{ nullable: true }` with no `type` which
+	// express-openapi-validator rejects at schema-compile time once bundled.
+	stripUntypedNullable(document);
 
 	const artifacts: GeneratedArtifact[] = [];
 

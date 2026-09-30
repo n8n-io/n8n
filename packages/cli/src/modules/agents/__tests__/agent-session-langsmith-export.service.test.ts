@@ -233,6 +233,27 @@ describe('AgentSessionLangSmithExportService', () => {
 		);
 	});
 
+	it('exports additional input from its canonical message reference', async () => {
+		const message = {
+			id: 'steered',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'Use the newer file' }],
+		};
+		const { service } = setupSession(
+			makeExecution({
+				inputMessages: [message],
+				timeline: [{ type: 'input', messageId: message.id, timestamp: 100 }],
+			}),
+		);
+		await service.exportSession(input);
+		expect(submittedRuns()).toContainEqual(
+			expect.objectContaining({
+				name: 'Additional user input',
+				inputs: { message },
+			}),
+		);
+	});
+
 	it('checks the caller for each child before sending a trace', async () => {
 		const { service, agentExecutionService, threadRepository } = setup();
 		agentExecutionService.getThreadDetail

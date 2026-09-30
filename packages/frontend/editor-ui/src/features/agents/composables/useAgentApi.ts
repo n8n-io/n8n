@@ -5,6 +5,8 @@ import type {
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
+	AgentChatQueueSteerDto,
+	AgentChatResumeDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -546,6 +548,21 @@ export const getAgentBackgroundJobs = async (
 	);
 };
 
+export const resumeAgentBackgroundJob = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	payload: AgentChatResumeDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
+		payload,
+	);
+};
+
 export const getAgentChatQueue = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -586,6 +603,22 @@ export const removeAgentQueuedMessage = async (
 		context,
 		'DELETE',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+	);
+};
+
+export const steerAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueSteerDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
+		payload,
 	);
 };
 

@@ -1,4 +1,5 @@
 import type {
+	AgentActor,
 	AgentIntegrationConfig,
 	CreateSlackManagerCredentialResponse,
 	InstallSlackManagedAppResponse,
@@ -20,7 +21,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { SlackMethodsService } from './slack-methods.service';
 import {
@@ -63,6 +64,7 @@ export interface GetManagedSetupStateOptions {
 export interface InstallManagedSlackAppOptions extends GetManagedSetupStateOptions {
 	managerCredentialId: string;
 	workspaceId: string;
+	modifiedBy?: AgentActor;
 }
 
 export interface FinalizeSlackManagerCredentialOptions extends GetManagedSetupStateOptions {
@@ -249,7 +251,12 @@ export class SlackManagedSetupService {
 			type: manager.credential.type,
 			data: manager.rawData,
 		});
-		await this.credentialsService.update(options.credentialId, encrypted, manager.rawData);
+		await this.credentialsService.update(
+			options.credentialId,
+			encrypted,
+			{ kind: 'user', user: options.user },
+			manager.rawData,
+		);
 	}
 
 	async installApp(
@@ -362,6 +369,58 @@ export class SlackManagedSetupService {
 			bot.managedAppId,
 			updatedManifest,
 		);
+	}
+
+	/**
+	 * True when n8n built the Slack app behind this bot credential for this
+	 * Agent, so the app sends its events to the Agent's request URL. A credential
+	 * that n8n built for another Agent, or a credential from any other Slack app,
+	 * returns false.
+	 */
+	async isAppConfiguredForAgent(credentialId: string, agent: Agent, user: User): Promise<boolean> {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!credential || credential.type !== SLACK_CREDENTIAL_TYPE) return false;
+		const data = await this.credentialsService.decrypt(credential, true);
+		const agentId = stringProperty(data, 'agentId');
+		if (agentId) return agentId === agent.id;
+		return await this.managedAppSendsEventsTo(data, agent, user);
+	}
+
+	/**
+	 * Managed credentials made before n8n recorded the Agent ID only know their
+	 * app, so read the app's request URL from Slack instead.
+	 */
+	private async managedAppSendsEventsTo(
+		data: ICredentialDataDecryptedObject,
+		agent: Agent,
+		user: User,
+	): Promise<boolean> {
+		const managedAppId = stringProperty(data, 'managedAppId');
+		const managerCredentialId = stringProperty(data, 'managerCredentialId');
+		if (!managedAppId || !managerCredentialId) return false;
+		try {
+			const manager = await this.getManagerCredentialContext(
+				managerCredentialId,
+				agent.projectId,
+				user,
+			);
+			const manifest = await this.exportManagedAppManifest(manager, managedAppId);
+			const settings = childRecord(manifest, 'settings');
+			const eventSubscriptions = settings
+				? childRecord(settings, 'event_subscriptions')
+				: undefined;
+			return (
+				stringProperty(eventSubscriptions, 'request_url') ===
+				this.methods.webhookUrl(agent.projectId, agent.id)
+			);
+		} catch {
+			// The manager credential is gone or not usable here, so n8n cannot confirm the app.
+			return false;
+		}
 	}
 
 	async deleteAppForCredential(
@@ -750,6 +809,7 @@ export class SlackManagedSetupService {
 			options.user,
 			botAccessToken,
 			session,
+			options.modifiedBy,
 		);
 		return { status: 'connected', appId: session.appId, credentialId };
 	}
@@ -925,7 +985,12 @@ export class SlackManagedSetupService {
 			type: manager.credential.type,
 			data: updatedData,
 		});
-		await this.credentialsService.update(manager.credential.id, encrypted, updatedData);
+		await this.credentialsService.update(
+			manager.credential.id,
+			encrypted,
+			{ kind: 'system', reason: 'integration' },
+			updatedData,
+		);
 		manager.oauthTokenData = oauthTokenData;
 		manager.accessToken = refreshedAccessToken;
 	}

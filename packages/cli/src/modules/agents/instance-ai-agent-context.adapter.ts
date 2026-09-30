@@ -54,7 +54,7 @@ const toSessionDetailSummary = (detail: ThreadDetail): AgentSessionSummary => {
 		0,
 	);
 	const latestStatus = detail.executions.at(-1)?.status;
-	const status = toSessionStatus(latestStatus, failureCount > 0);
+	const status = toSessionStatus(latestStatus);
 
 	return {
 		threadId: detail.thread.id,

@@ -45,7 +45,7 @@ import {
 import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 
@@ -105,14 +105,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() => settingsStore.moduleSettings?.['instance-ai']?.mcpConnectionsAvailable === true,
 	);
 
-	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
 	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
 
 	const isComputerUseAvailable = computed(
 		() => isComputerUseFeatureEnabled.value && !isLocalGatewayDisabledByAdmin.value,
 	);
 	const isBrowserUseAvailable = computed(
-		() => isBrowserUseFeatureEnabled.value && isBrowserUseEnabledByAdmin.value,
+		() => isBrowserUseSupportedOnDevice() && isBrowserUseEnabledByAdmin.value,
 	);
 
 	/**

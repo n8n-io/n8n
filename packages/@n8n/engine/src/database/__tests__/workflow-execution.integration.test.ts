@@ -1,4 +1,4 @@
-import type { DataSource } from '@n8n/typeorm';
+import type { DataSource, Repository } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -43,6 +43,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: {},
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'stepResponse' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -58,6 +59,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(found.mode).toBe('production');
 		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
 		expect(found.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(found.responseExpectation).toEqual({ kind: 'stepResponse' });
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);
@@ -75,6 +77,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
 			finishedAt,
 		});
 		await repo.save(created);
@@ -110,6 +113,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -125,6 +129,7 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
 		});
 	});
 
@@ -155,6 +160,7 @@ describe('workflow_execution table (integration)', () => {
 				workflow: {},
 				triggerOutputs: null,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 				finishedAt: null,
 			}),
 		);
@@ -168,6 +174,7 @@ describe('workflow_execution table (integration)', () => {
 				workflow: {},
 				triggerOutputs: null,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 				finishedAt: new Date(),
 			}),
 		);
@@ -191,6 +198,7 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				responseExpectation: { kind: 'none' },
 				finishedAt: null,
 			}),
 		);
@@ -218,6 +226,7 @@ describe('workflow_execution table (integration)', () => {
 					graph: { nodes: [], edges: [] },
 					workflow: {},
 					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
 					finishedAt,
 				}),
 			);
@@ -226,6 +235,37 @@ describe('workflow_execution table (integration)', () => {
 
 			expect(finished).toBe(false);
 			const row = await repo.findOneOrFail({ where: { id: created.id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
+	it.each<ExecutionStatus>(['queued', 'running', 'waiting'])(
+		'TypeOrmExecutionStore.cancelExecution ends a %j execution',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status, finishedAt: null });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			expect(cancelled).toBe(true);
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe('cancelled');
+			expect(row.finishedAt).toBeInstanceOf(Date);
+		},
+	);
+
+	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
+		'TypeOrmExecutionStore.cancelExecution leaves a %j execution alone',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
+			const { id } = await saveExecution(repo, { status, finishedAt });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			expect(cancelled).toBe(false);
+			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(status);
 			expect(row.finishedAt).toEqual(finishedAt);
 		},
@@ -245,6 +285,7 @@ describe('workflow_execution table (integration)', () => {
 					graph: { nodes: [], edges: [] },
 					workflow: {},
 					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
 					finishedAt: null,
 				}),
 			);
@@ -309,3 +350,22 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 });
+
+async function saveExecution(
+	repo: Repository<WorkflowExecution>,
+	fields: { status: ExecutionStatus; finishedAt: Date | null },
+): Promise<WorkflowExecution> {
+	return await repo.save(
+		repo.create({
+			id: generateId(),
+			workflowId: 'wf-7',
+			mode: 'production',
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: null,
+			...fields,
+		}),
+	);
+}
