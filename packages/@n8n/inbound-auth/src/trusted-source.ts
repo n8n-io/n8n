@@ -49,7 +49,15 @@ export type DiscoveryDocument = z.infer<typeof DiscoveryDocumentSchema>;
 
 export const TrustedSourceMetadataSchema = z.object({
 	version: z.literal(1),
-	documents: z.array(DiscoveryDocumentSchema),
+	// One document per protocol: readers take the first match, so a duplicate could shadow it.
+	documents: z
+		.array(DiscoveryDocumentSchema)
+		.refine(
+			(documents) => new Set(documents.map((document) => document.kind)).size === documents.length,
+			{
+				message: 'one document per kind',
+			},
+		),
 });
 export type TrustedSourceMetadata = z.infer<typeof TrustedSourceMetadataSchema>;
 

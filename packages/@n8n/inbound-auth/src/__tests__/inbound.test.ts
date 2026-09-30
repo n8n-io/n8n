@@ -104,12 +104,15 @@ describe('Verified', () => {
 	it('has no field that can hold the token', () => {
 		type HoldsCredential = 'credential' extends keyof Verified ? true : false;
 		type HoldsToken = 'token' extends keyof Verified ? true : false;
+		type HoldsHeaders = 'headers' extends keyof Verified['request'] ? true : false;
 
 		// Assigning `false` fails to compile if either key exists on the type.
 		const holdsCredential: HoldsCredential = false;
 		const holdsToken: HoldsToken = false;
+		const holdsHeaders: HoldsHeaders = false;
 
 		expect(holdsCredential).toBe(false);
 		expect(holdsToken).toBe(false);
+		expect(holdsHeaders).toBe(false);
 	});
 });

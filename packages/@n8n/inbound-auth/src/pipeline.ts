@@ -23,8 +23,12 @@ export type Credential = { kind: 'bearer'; token: string };
 
 export type Extracted = Inbound & { credential: Credential };
 
-/** The token does not travel past authentication, so no later step can leak it. */
-export type Verified = Omit<Extracted, 'credential'> & {
+/**
+ * The token does not travel past authentication, so no later step can leak it. The request
+ * headers stop here as well, because the credential arrived in one of them.
+ */
+export type Verified = Omit<Extracted, 'credential' | 'request'> & {
+	request: Omit<Inbound['request'], 'headers'>;
 	credentialKind: Credential['kind'];
 	source: TrustedSource;
 	claims: Readonly<Record<string, unknown>>;

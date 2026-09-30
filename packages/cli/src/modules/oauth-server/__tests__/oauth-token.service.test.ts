@@ -777,7 +777,7 @@ describe('OAuthTokenService', () => {
 				isDefault: true,
 			});
 			multiResourceRegistry.register({
-				surface: 'instance-mcp',
+				surface: 'trigger',
 				id: 'workflow-trigger',
 				getResourceUrl: () => RESOURCE_B_URL,
 				getAudiences: () => [RESOURCE_B_URL],
