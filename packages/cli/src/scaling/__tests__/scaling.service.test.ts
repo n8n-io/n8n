@@ -135,6 +135,7 @@ describe('ScalingService', () => {
 		activeExecutions.getRunningExecutionIds.mockReturnValue([]);
 		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
 		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
+		jobProcessor.getJobsInPreflight.mockReturnValue([]);
 		globalConfig.generic.gracefulShutdownTimeout = 30;
 
 		scalingService = new ScalingService(
@@ -336,6 +337,40 @@ describe('ScalingService', () => {
 			);
 			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
 		});
+
+		it('should warn once when a job reaches the worker after shutdown began', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+			jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+			await scalingService.stop();
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			await processFn(job);
+
+			expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('123'),
+				expect.objectContaining({ executionId: '123', jobId: '1' }),
+			);
+		});
+
+		it('should process a job that reaches the worker before shutdown without warning', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			await processFn(job);
+
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+			expect(jobProcessor.processJob).toHaveBeenCalledWith(job);
+		});
 	});
 
 	describe('stop', () => {
@@ -397,6 +432,23 @@ describe('ScalingService', () => {
 				expect(scopedLogger.info).toHaveBeenCalledWith(
 					'Waiting for 1 active executions to finish... (execution IDs: exec-1)',
 					{ executionIds: ['exec-1'] },
+				);
+			});
+
+			it('should log the execution IDs of jobs still in preflight while draining', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValueOnce(['1']).mockReturnValue([]);
+				jobProcessor.getJobsInPreflight.mockReturnValue([{ jobId: '1', executionId: 'exec-1' }]);
+
+				const stopped = scalingService.stop();
+				await vi.advanceTimersByTimeAsync(500);
+				await stopped;
+
+				expect(scopedLogger.info.mock.calls.map(([message]) => message)).toContainEqual(
+					expect.stringContaining('exec-1'),
 				);
 			});
 

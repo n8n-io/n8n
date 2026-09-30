@@ -33,7 +33,7 @@ import {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 import type { Mock, MockedClass, MockInstance } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CredentialsHelper } from '@/credentials-helper';
@@ -260,6 +260,82 @@ describe('JobProcessor', () => {
 		await expect(jobProcessor.processJob(job)).rejects.toThrow('workflow run rejected');
 
 		expect(jobProcessor.getRunningJobIds()).toEqual([]);
+	});
+
+	describe('jobs in preflight', () => {
+		const createJobProcessor = (executionPersistence: ExecutionPersistence) =>
+			new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+		const createPendingExecution = (executionPersistence: MockProxy<ExecutionPersistence>) => {
+			let resolveExecution: (execution: IExecutionResponse) => void = () => {};
+			executionPersistence.findSingleExecution.mockReturnValue(
+				new Promise<IExecutionResponse>((resolve) => (resolveExecution = resolve)),
+			);
+			return () => resolveExecution(mock<IExecutionResponse>({ status: 'crashed' }));
+		};
+
+		it('should report a job as running while its execution is still being loaded', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			const settleExecution = createPendingExecution(executionPersistence);
+			const jobProcessor = createJobProcessor(executionPersistence);
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			const processing = jobProcessor.processJob(job);
+
+			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+
+			settleExecution();
+			await processing;
+		});
+
+		it('should stop tracking a job when loading its execution fails', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockRejectedValue(new Error('database unavailable'));
+			const jobProcessor = createJobProcessor(executionPersistence);
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			await expect(jobProcessor.processJob(job)).rejects.toThrow('database unavailable');
+
+			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
+			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
+		});
+
+		it('should list a job in preflight but not in the running jobs summary', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			const settleExecution = createPendingExecution(executionPersistence);
+			const jobProcessor = createJobProcessor(executionPersistence);
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			const processing = jobProcessor.processJob(job);
+
+			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
+			expect(jobProcessor.getJobsInPreflight()).toEqual([
+				{ jobId: 'job-1', executionId: 'exec-1' },
+			]);
+
+			settleExecution();
+			await processing;
+		});
 	});
 
 	it('should send job-finished with success=false when execution has errors', async () => {
