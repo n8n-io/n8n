@@ -332,7 +332,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		);
 	});
 
-	it('generates the rest of the suite and shows a confirmation on "Looks good"', async () => {
+	it('generates a batch of examples and shows the examples panel on "Looks good"', async () => {
 		const store = useAgentEvalsStore();
 		vi.spyOn(store, 'generateDraftCases')
 			.mockResolvedValueOnce({
@@ -348,7 +348,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 					{ input: 'c', whatToCheck: 'd' },
 				],
 			});
-		vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
+		const startRun = vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'run-1' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
 		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
 		vi.spyOn(store, 'getReview').mockReturnValue({
@@ -372,20 +372,21 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
 
 		expect(emitted().confirm).toEqual([[]]);
-		expect(await findByTestId('instance-ai-test-agent-preview-suite-ready')).toBeInTheDocument();
-		expect(store.generateDraftCases).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {});
+		expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
+		expect(store.generateDraftCases).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {
+			count: 10,
+		});
 
-		// One card for the already-answered preview case, one per freshly
-		// generated (unrun) case — the latter show only their question.
-		const cases = await findAllByTestId('instance-ai-test-agent-preview-case');
-		expect(cases).toHaveLength(3);
-		expect(within(cases[0]).getByText('x')).toBeInTheDocument();
-		expect(within(cases[0]).getByText('y')).toBeInTheDocument();
-		expect(within(cases[1]).getByText('a')).toBeInTheDocument();
-		expect(within(cases[2]).getByText('c')).toBeInTheDocument();
+		// Default slider value is 2, so only 2 of the generated examples show.
+		const examples = await findAllByTestId('instance-ai-test-agent-examples-example');
+		expect(examples).toHaveLength(2);
+		expect(within(examples[0]).getByText('a')).toBeInTheDocument();
+		expect(within(examples[1]).getByText('c')).toBeInTheDocument();
 
-		await user.click(getByTestId('instance-ai-test-agent-preview-open-evals'));
-		expect(emitted()['open-evals']).toEqual([[]]);
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		await waitFor(() => expect(emitted()['open-evals']).toEqual([[]]));
+		expect(startRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2');
 	});
 
 	it('dismisses with a toast when generation fails', async () => {

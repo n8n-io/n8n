@@ -1168,6 +1168,17 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.ENTITY_UNAUTHORIZED,
 		component: EntityUnAuthorised,
 	},
+	// SCRATCH / LOCAL-ONLY: dev-mode-only harness route, not for commit. See
+	// TestAgentPreviewPlayground.vue's own header comment.
+	...(import.meta.env.DEV
+		? [
+				{
+					path: '/dev/test-agent-preview',
+					name: 'DevTestAgentPreviewPlayground',
+					component: async () => await import('@/app/dev/TestAgentPreviewPlayground.vue'),
+				},
+			]
+		: []),
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,

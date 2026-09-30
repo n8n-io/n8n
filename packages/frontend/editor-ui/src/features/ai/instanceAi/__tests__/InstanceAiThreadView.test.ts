@@ -2573,7 +2573,7 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('requests the evals focus without regenerating when opening the suite from "View in Evals tab"', async () => {
+		it('requests the evals focus after starting a run from "Check your agent"', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
@@ -2588,9 +2588,12 @@ describe('InstanceAiThreadView', () => {
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			await user.click(await findByTestId('instance-ai-test-agent-preview-looks-good'));
-			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals'));
+			await user.click(await findByTestId('instance-ai-test-agent-examples-check-agent'));
 
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
+			await vi.waitFor(() => {
+				expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
+			});
+			expect(evalsStore.startRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2');
 		});
 
 		it('keeps the preview panel visible through generation even though it populates the dataset cache', async () => {

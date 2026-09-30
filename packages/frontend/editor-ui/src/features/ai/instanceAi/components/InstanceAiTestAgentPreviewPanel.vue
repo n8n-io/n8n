@@ -16,9 +16,9 @@ import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-eval-review';
-import { useRelativeTimestamp } from '@/features/agents/utils/relative-time';
 import { isDataTableDataset, toCaseSource } from '@/features/agents/utils/agentEvalCases.utils';
-import AgentAnswerCard from '@/features/agents/components/AgentAnswerCard.vue';
+import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
+import InstanceAiTestAgentExamplesPanel from './InstanceAiTestAgentExamplesPanel.vue';
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
@@ -39,7 +39,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
-const formatRelative = useRelativeTimestamp();
 
 type Phase =
 	| 'generating-preview'
@@ -52,6 +51,8 @@ type Phase =
 const phase = ref<Phase>(props.initialCase ? 'awaiting-confirmation' : 'generating-preview');
 const previewRunId = ref<string | null>(null);
 const suiteCases = ref<AgentEvalDraftCase[]>([]);
+const suiteDatasetId = ref<string | null>(null);
+const addingExample = ref(false);
 const sampleInput = ref('');
 // Cleared once the user submits their own sample, so the display switches
 // over to that new run instead of sticking with the builder's original test.
@@ -70,25 +71,6 @@ const previewOutput = computed(() =>
 		? (props.initialCase?.response ?? '')
 		: readAgentAnswer(previewResult.value?.output ?? null),
 );
-const previewAnsweredAt = computed(() => {
-	if (useInitialCase.value) return null;
-	const result = previewResult.value;
-	const timestamp = result?.completedAt ?? result?.runAt ?? result?.createdAt;
-	return timestamp ? formatRelative(timestamp) : null;
-});
-
-// The previewed case already has a real answer from its own run; the rest of
-// the suite is generated as fresh drafts and isn't run here, so they show
-// only their question until the user runs them from the Evals tab.
-const suiteDisplayCases = computed(() => [
-	{ input: previewInput.value, output: previewOutput.value, answeredAt: previewAnsweredAt.value },
-	...suiteCases.value.map((draftCase) => ({
-		input: draftCase.input,
-		output: null as string | null,
-		answeredAt: null as string | null,
-	})),
-]);
-
 // Not reactive by design — nothing templates off it. It only guards async
 // continuations against acting after the panel is gone, since the store's
 // poll timer is a single global watcher: a stale continuation calling
@@ -191,15 +173,6 @@ onBeforeUnmount(() => {
 	store.stopPollingRun();
 });
 
-/**
- * Intentionally a no-op today. Wiring this to `store.startRun(projectId,
- * agentId, datasetId)` is the one change needed to auto-run the generated
- * suite once product wants that behavior.
- */
-function maybeAutoRunGeneratedCases(_projectId: string, _agentId: string, _datasetId: string) {
-	return;
-}
-
 async function onConfirm() {
 	// Guards against a double-click firing generation twice before Vue removes
 	// the button: the phase flip is synchronous, so a second call sees
@@ -209,16 +182,46 @@ async function onConfirm() {
 	phase.value = 'generating-suite';
 	try {
 		const { projectId, agentId } = props.target;
-		// Explicit `{}` (rather than omitting the argument) so call-site assertions
-		// in tests can match on a stable arity.
-		const result = await store.generateDraftCases(projectId, agentId, {});
+		// Fetches a full batch of 10 up front — the examples panel's slider
+		// only trims how many are displayed, no repeated generation calls as
+		// the user drags it.
+		const result = await store.generateDraftCases(projectId, agentId, { count: 10 });
 		if (!isMounted) return;
 		suiteCases.value = result.cases;
-		maybeAutoRunGeneratedCases(projectId, agentId, result.datasetId);
+		suiteDatasetId.value = result.datasetId;
 		phase.value = 'suite-ready';
 	} catch (error) {
 		failAndDismiss(error);
 	}
+}
+
+async function onAddExample(input: string) {
+	if (!suiteDatasetId.value) return;
+	const { projectId, agentId } = props.target;
+	const dataset = store.getDatasets(agentId).find((d) => d.id === suiteDatasetId.value);
+	const source = dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
+	if (!source) return;
+	addingExample.value = true;
+	try {
+		const created = await store.createCase(projectId, source, { input, whatToCheck: '' });
+		if (!isMounted || !created) return;
+		suiteCases.value = [
+			...suiteCases.value,
+			{ input: created.input, whatToCheck: created.whatToCheck },
+		];
+	} finally {
+		if (isMounted) addingExample.value = false;
+	}
+}
+
+// `count` (the slider's current value) isn't used yet — `startRun` always runs
+// every row in the dataset. Running only the first N is a real gap, left for
+// when partial-dataset runs are needed.
+async function onCheckAgent(_count: number) {
+	if (!suiteDatasetId.value) return;
+	const { projectId, agentId } = props.target;
+	await store.startRun(projectId, agentId, suiteDatasetId.value);
+	emit('open-evals');
 }
 
 function onNeedsWork() {
@@ -239,10 +242,6 @@ async function onSubmitSampleInput() {
 function onDontCreateEvals() {
 	emit('dismiss');
 }
-
-function onOpenEvals() {
-	emit('open-evals');
-}
 </script>
 
 <template>
@@ -259,18 +258,16 @@ function onOpenEvals() {
 		<template v-else-if="phase === 'awaiting-confirmation'">
 			<N8nCard data-test-id="instance-ai-test-agent-preview-input" :class="$style.inputCard">
 				<template #header>
-					<N8nText step="xs" color="text-base" :class="$style.header">
-						{{ i18n.baseText('instanceAi.testAgentPreview.eyebrow') }}
+					<N8nText step="md" color="text-dark" :class="$style.title">
+						{{ i18n.baseText('instanceAi.testAgentPreview.title') }}
 					</N8nText>
 				</template>
-				<N8nText color="text-dark" :class="$style.title">{{ previewInput }}</N8nText>
+				<N8nText color="text-dark" :class="$style.subtitle">{{
+					i18n.baseText('instanceAi.testAgentPreview.subtitle')
+				}}</N8nText>
 			</N8nCard>
-			<AgentAnswerCard
-				data-test-id="instance-ai-test-agent-preview-output"
-				:label="i18n.baseText('instanceAi.testAgentPreview.agentLabel')"
-				:answered-at="previewAnsweredAt"
-				:source="previewOutput ?? ''"
-			/>
+			<EvalInitialSample :preview-input="previewInput" :preview-output="previewOutput ?? ''" />
+
 			<N8nText bold color="text-dark" :class="$style.confirmQuestion">
 				{{ i18n.baseText('instanceAi.testAgentPreview.confirmQuestion') }}
 			</N8nText>
@@ -284,7 +281,7 @@ function onOpenEvals() {
 					{{ i18n.baseText('instanceAi.testAgentPreview.looksGood') }}
 				</N8nButton>
 				<N8nButton
-					variant="ghost"
+					variant="outline"
 					size="small"
 					data-test-id="instance-ai-test-agent-preview-needs-work"
 					@click="onNeedsWork"
@@ -338,42 +335,14 @@ function onOpenEvals() {
 		</template>
 
 		<template v-else-if="phase === 'suite-ready'">
-			<N8nText color="text-dark" data-test-id="instance-ai-test-agent-preview-suite-ready">
-				{{
-					i18n.baseText('agents.builder.agentEvals.generated', {
-						adjustToNumber: suiteCases.length,
-						interpolate: { count: String(suiteCases.length) },
-					})
-				}}
-			</N8nText>
-			<div :class="$style.caseList">
-				<N8nCard
-					v-for="(displayCase, index) in suiteDisplayCases"
-					:key="index"
-					data-test-id="instance-ai-test-agent-preview-case"
-				>
-					<template #header>
-						<N8nText step="xs" color="text-base">
-							{{ i18n.baseText('instanceAi.testAgentPreview.eyebrow') }}
-						</N8nText>
-					</template>
-					<N8nText color="text-dark">{{ displayCase.input }}</N8nText>
-					<AgentAnswerCard
-						v-if="displayCase.output"
-						:label="i18n.baseText('instanceAi.testAgentPreview.agentLabel')"
-						:answered-at="displayCase.answeredAt"
-						:source="displayCase.output"
-					/>
-				</N8nCard>
-			</div>
-			<N8nButton
-				variant="outline"
-				size="small"
-				data-test-id="instance-ai-test-agent-preview-open-evals"
-				@click="onOpenEvals"
-			>
-				{{ i18n.baseText('instanceAi.testAgentPreview.viewInEvals') }}
-			</N8nButton>
+			<InstanceAiTestAgentExamplesPanel
+				:preview-input="previewInput"
+				:preview-output="previewOutput ?? ''"
+				:examples="suiteCases"
+				:adding-example="addingExample"
+				@add-example="onAddExample"
+				@check-agent="onCheckAgent"
+			/>
 		</template>
 	</div>
 </template>
@@ -391,13 +360,14 @@ function onOpenEvals() {
 	border-radius: var(--radius--lg);
 }
 
-.header {
-	color: var(--text-color--subtler);
+.title {
+	font-weight: bold;
+	margin-bottom: var(--spacing--4xs);
 }
 
-.title {
-	margin-top: var(--spacing--4xs);
-	font-size: var(--font-size--md);
+.subtitle {
+	color: var(--text-color--subtler);
+	margin-bottom: var(--spacing--4xs);
 }
 
 .loadingRow {
@@ -407,7 +377,6 @@ function onOpenEvals() {
 }
 
 .confirmQuestion {
-	font-size: var(--font-size--lg);
 	font-weight: bold;
 }
 
@@ -416,13 +385,6 @@ function onOpenEvals() {
 .inputCard {
 	border: none;
 	padding: 0;
-}
-
-.caseList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	width: 100%;
 }
 
 .options {
