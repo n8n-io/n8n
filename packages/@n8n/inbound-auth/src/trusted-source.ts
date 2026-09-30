@@ -24,7 +24,11 @@ const JwkSchema = z
 	})
 	.passthrough();
 
-const Oauth2DiscoverySchema = z
+/**
+ * RFC 8414 fields. OpenID Connect Discovery documents carry the same core fields plus OIDC ones,
+ * so one schema reads both. Only what the pipeline reads is typed; the rest passes through.
+ */
+const AuthorizationServerMetadataSchema = z
 	.object({
 		issuer: z.string().min(1),
 		jwks_uri: HttpsUrl.optional(),
@@ -32,31 +36,39 @@ const Oauth2DiscoverySchema = z
 		token_endpoint: HttpsUrl.optional(),
 	})
 	.passthrough();
+export type AuthorizationServerMetadata = z.infer<typeof AuthorizationServerMetadataSchema>;
+
+const fetchedAt = z.string().datetime();
 
 /**
- * One discovered document per protocol, discriminated on `kind`. A future SAML metadata document
- * is a new member here, not a new column.
+ * One document per protocol artifact, discriminated on `kind`. OpenID Connect Discovery and
+ * RFC 8414 metadata are two documents at two URLs; an issuer may serve either or both. The JWKS
+ * is its own document because it comes from one URL with its own lifetime. A future SAML metadata
+ * document is a new member here, not a new column.
  */
 export const DiscoveryDocumentSchema = z.discriminatedUnion('kind', [
 	z.object({
-		kind: z.literal('oauth2'),
-		fetchedAt: z.string().datetime(),
-		discovery: Oauth2DiscoverySchema.optional(),
-		jwks: z.object({ keys: z.array(JwkSchema) }).optional(),
+		kind: z.literal('openid-configuration'),
+		fetchedAt,
+		document: AuthorizationServerMetadataSchema,
 	}),
+	z.object({
+		kind: z.literal('oauth2-authorization-server'),
+		fetchedAt,
+		document: AuthorizationServerMetadataSchema,
+	}),
+	z.object({ kind: z.literal('jwks'), fetchedAt, url: HttpsUrl, keys: z.array(JwkSchema) }),
 ]);
 export type DiscoveryDocument = z.infer<typeof DiscoveryDocumentSchema>;
 
 export const TrustedSourceMetadataSchema = z.object({
 	version: z.literal(1),
-	// One document per protocol: readers take the first match, so a duplicate could shadow it.
+	// One document per kind: readers take the first match, so a duplicate could shadow it.
 	documents: z
 		.array(DiscoveryDocumentSchema)
 		.refine(
 			(documents) => new Set(documents.map((document) => document.kind)).size === documents.length,
-			{
-				message: 'one document per kind',
-			},
+			{ message: 'one document per kind' },
 		),
 });
 export type TrustedSourceMetadata = z.infer<typeof TrustedSourceMetadataSchema>;
@@ -92,13 +104,20 @@ export function deriveCapabilities(
 	const { authentication } = config;
 	if (authentication.type !== 'oauth2') return capabilities;
 
-	const discovered = metadata?.documents.find((document) => document.kind === 'oauth2')?.discovery;
 	const manual = authentication.discovery.mode === 'manual' ? authentication.discovery : undefined;
+	const metadataOf = (kind: 'openid-configuration' | 'oauth2-authorization-server') =>
+		metadata?.documents.find(
+			(document): document is Extract<DiscoveryDocument, { kind: typeof kind }> =>
+				document.kind === kind,
+		)?.document;
+	const oidc = metadataOf('openid-configuration');
+	const oauth2 = metadataOf('oauth2-authorization-server');
 
-	// Manual endpoints win over discovered ones, field by field.
-	const jwksUri = manual?.jwksUri ?? discovered?.jwks_uri;
-	const authorizationEndpoint = manual?.authorizationEndpoint ?? discovered?.authorization_endpoint;
-	const tokenEndpoint = manual?.tokenEndpoint ?? discovered?.token_endpoint;
+	// Field by field: manual config wins, then the OIDC document, then the RFC 8414 document.
+	const jwksUri = manual?.jwksUri ?? oidc?.jwks_uri ?? oauth2?.jwks_uri;
+	const authorizationEndpoint =
+		manual?.authorizationEndpoint ?? oidc?.authorization_endpoint ?? oauth2?.authorization_endpoint;
+	const tokenEndpoint = manual?.tokenEndpoint ?? oidc?.token_endpoint ?? oauth2?.token_endpoint;
 
 	if (authentication.keys.kind === 'local-keystore' || jwksUri) capabilities.add('verify-jwt');
 	if (authentication.client && authorizationEndpoint && tokenEndpoint) {
