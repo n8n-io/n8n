@@ -27,6 +27,7 @@ const user = mock<User>({ id: 'user-1' });
 const jwtService = new JwtService(
 	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 	mock<GlobalConfig>({ userManagement: { jwtSecret: 'test-jwt-secret' } }),
+	mock(),
 );
 
 describe('TeamsSetupService', () => {
