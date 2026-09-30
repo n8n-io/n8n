@@ -70,6 +70,13 @@ export type SelectProps<M extends boolean = false> = Omit<
 	/** The distance in pixels from the trigger. @defaultValue 4 */
 	sideOffset?: number;
 
+	/**
+	 * Preferred alignment of the dropdown against the trigger.
+	 * Use `end` to line the menu up with the trigger's end edge (the right edge in LTR).
+	 * @defaultValue 'start'
+	 */
+	align?: SelectContentProps['align'];
+
 	/** Additional CSS class(es) applied to the dropdown content container (portaled). */
 	contentClass?: string;
 };
