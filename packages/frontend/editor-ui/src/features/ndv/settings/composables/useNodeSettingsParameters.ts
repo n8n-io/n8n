@@ -5,7 +5,9 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
+	type INodeTypeDescription,
 	type NodeParameterValue,
+	type NodeParameterValueType,
 	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
@@ -18,6 +20,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
+	removeMismatchedOptionValues,
 	setValue,
 	updateDynamicConnections,
 	updateParameterByPath,
@@ -56,6 +59,170 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 	};
 };
 
+/**
+ * Declarations that share a name also share one stored value, which carries over when
+ * another of them becomes visible. A value only fits declarations of the same shape.
+ * `options` and `string` both hold plain strings, so they share one.
+ */
+export function getParameterValueShape(parameter: INodeProperties): string {
+	const type = parameter.type === 'options' ? 'string' : parameter.type;
+	const list = parameter.typeOptions?.multipleValues === true ? '[]' : '';
+	// getNodeParameters strips the "=" of these, which would break a carried expression
+	const expression = parameter.noDataExpression === true ? '!expr' : '';
+	return `${type}${list}${expression}`;
+}
+
+const PLAIN_PARAMETER_TYPES = new Set<INodeProperties['type']>([
+	'string',
+	'number',
+	'boolean',
+	'options',
+	'dateTime',
+	'color',
+]);
+
+export function isObjectInPlainParameter(parameter: INodeProperties, value: unknown): boolean {
+	return (
+		PLAIN_PARAMETER_TYPES.has(parameter.type) &&
+		typeof value === 'object' &&
+		value !== null &&
+		!Array.isArray(value)
+	);
+}
+
+const mixedShapeDeclarationsCache = new WeakMap<
+	INodeProperties[],
+	Map<string, INodeProperties[]>
+>();
+
+function getMixedShapeDeclarations(properties: INodeProperties[]) {
+	const cached = mixedShapeDeclarationsCache.get(properties);
+	if (cached) return cached;
+
+	const byName = new Map<string, INodeProperties[]>();
+	for (const property of properties) {
+		byName.set(property.name, [...(byName.get(property.name) ?? []), property]);
+	}
+	const mixed = new Map(
+		[...byName].filter(
+			([, declarations]) => new Set(declarations.map(getParameterValueShape)).size > 1,
+		),
+	);
+	mixedShapeDeclarationsCache.set(properties, mixed);
+	return mixed;
+}
+
+// The same resolution getNodeParameters does internally for its display checks
+function getDisplayValues(nodeType: INodeTypeDescription, values: INodeParameters, node: INode) {
+	return (
+		NodeHelpers.getNodeParameters(nodeType.properties, values, true, true, node, nodeType, {
+			onlySimpleTypes: true,
+			dataIsResolved: true,
+		}) ?? {}
+	);
+}
+
+function getVisibleDeclaration(
+	declarations: INodeProperties[],
+	displayValues: INodeParameters,
+	node: INode,
+	nodeType: INodeTypeDescription,
+): { declaration: INodeProperties; shape: string } | undefined {
+	const visible = declarations.filter((declaration) =>
+		NodeHelpers.displayParameter(displayValues, declaration, node, nodeType),
+	);
+	const shapes = new Set(visible.map(getParameterValueShape));
+	return shapes.size === 1 ? { declaration: visible[0], shape: [...shapes][0] } : undefined;
+}
+
+// Editor session memory only, never saved with the workflow
+const valuesByShape = new Map<string, NodeParameterValueType>();
+
+const stashKey = (nodeId: string, name: string, shape: string) =>
+	JSON.stringify([nodeId, name, shape]);
+
+function stashValue(
+	nodeId: string,
+	name: string,
+	shape: string,
+	value: NodeParameterValueType | undefined,
+) {
+	const key = stashKey(nodeId, name, shape);
+	if (value === undefined) {
+		valuesByShape.delete(key);
+	} else {
+		valuesByShape.set(key, deepCopy(value));
+	}
+}
+
+function getStashedValue(nodeId: string, name: string, shape: string) {
+	const value = valuesByShape.get(stashKey(nodeId, name, shape));
+	return value === undefined ? undefined : deepCopy(value);
+}
+
+/**
+ * When a change makes a declaration of another shape visible under the same name, the
+ * old value is stashed under its shape, and the new declaration gets back the value it
+ * held before or its default.
+ */
+function swapValuesByShape(
+	nodeType: INodeTypeDescription,
+	node: INode,
+	parameters: INodeParameters,
+	changedPath: string,
+): INodeParameters | undefined {
+	const declarations = getMixedShapeDeclarations(nodeType.properties);
+	if (declarations.size === 0) return undefined;
+
+	const changedName = changedPath.split(/[.[]/)[0];
+	const before = getDisplayValues(nodeType, node.parameters, node);
+	const after = getDisplayValues(nodeType, parameters, node);
+	const swaps = [...declarations].flatMap(([name, candidates]) => {
+		if (name === changedName) return [];
+		const from = getVisibleDeclaration(candidates, before, node, nodeType);
+		const to = getVisibleDeclaration(candidates, after, node, nodeType);
+		return from && to && from.shape !== to.shape ? [{ name, from, to }] : [];
+	});
+	if (swaps.length === 0) return undefined;
+
+	return swaps.reduce<INodeParameters>((patched, { name, from, to }) => {
+		const previous = node.parameters[name];
+		// A value that already does not fit its declaration is not worth restoring
+		const fits = !isObjectInPlainParameter(from.declaration, previous);
+		stashValue(node.id, name, from.shape, fits ? previous : undefined);
+
+		const { [name]: _replaced, ...rest } = patched;
+		const restored = getStashedValue(node.id, name, to.shape);
+		return restored === undefined ? rest : { ...rest, [name]: restored };
+	}, parameters);
+}
+
+/**
+ * A debounced write can land after the change that made a declaration of another shape
+ * visible. Such a value belongs to the declaration that emitted it, so it is stashed
+ * instead of written.
+ */
+function stashLateWriteOfOtherShape(
+	nodeType: INodeTypeDescription,
+	node: INode,
+	parameterData: IUpdateInformation & { name: `parameters.${string}` },
+	value: NodeParameterValue,
+): boolean {
+	const name = parameterData.name.slice('parameters.'.length);
+	const { valueShape } = parameterData;
+	if (!valueShape || /[.[]/.test(name)) return false;
+
+	const candidates = getMixedShapeDeclarations(nodeType.properties).get(name);
+	if (!candidates) return false;
+
+	const displayValues = getDisplayValues(nodeType, node.parameters, node);
+	const visible = getVisibleDeclaration(candidates, displayValues, node, nodeType);
+	if (!visible || visible.shape === valueShape) return false;
+
+	stashValue(node.id, name, valueShape, value);
+	return true;
+}
+
 export function useNodeSettingsParameters() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
@@ -77,6 +244,10 @@ export function useNodeSettingsParameters() {
 	) {
 		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeTypeDescription) {
+			return;
+		}
+
+		if (stashLateWriteOfOtherShape(nodeTypeDescription, node, parameterData, newValue)) {
 			return;
 		}
 
@@ -103,6 +274,19 @@ export function useNodeSettingsParameters() {
 			nodeTypeDescription,
 			node.typeVersion,
 		);
+
+		const swapped =
+			nodeParameters && swapValuesByShape(nodeTypeDescription, node, nodeParameters, parameterPath);
+		if (swapped) {
+			nodeParameters = swapped;
+			// A restored option can be missing from the options of the now visible declaration
+			if (newValue !== undefined) {
+				removeMismatchedOptionValues(nodeTypeDescription, node.typeVersion, nodeParameters, {
+					name: parameterPath,
+					value: newValue,
+				});
+			}
+		}
 
 		// Get the parameters with the now new defaults according to the
 		// from the user actually defined parameters
