@@ -23,13 +23,13 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { ElDatePicker } from 'element-plus';
 import {
 	N8nButton,
+	N8nSelect2,
 	N8nCopyInput,
 	N8nInput,
 	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+
 const EXPIRATION_OPTIONS = {
 	'7_DAYS': 7,
 	'30_DAYS': 30,
@@ -337,6 +337,16 @@ const onSelect = (value: number) => {
 	showExpirationDateSelector.value = false;
 };
 
+const expirationItems = computed(() =>
+	Object.keys(EXPIRATION_OPTIONS).map((key) => {
+		const value = EXPIRATION_OPTIONS[key];
+		return {
+			value,
+			label: getExpirationOptionLabel(value),
+		};
+	}),
+);
+
 async function handleEnterKey(event: KeyboardEvent) {
 	if (event.key === 'Enter') {
 		if (isReadOnly.value) return;
@@ -399,26 +409,13 @@ async function handleEnterKey(event: KeyboardEvent) {
 							:label="i18n.baseText('settings.api.view.modal.form.expiration')"
 							color="text-dark"
 						>
-							<N8nSelect
+							<N8nSelect2
 								v-model="expirationDaysFromNow"
+								:items="expirationItems"
 								size="large"
-								filterable
-								readonly
 								data-test-id="expiration-select"
 								@update:model-value="onSelect"
-							>
-								<N8nOption
-									v-for="key in Object.keys(EXPIRATION_OPTIONS)"
-									:key="key"
-									:value="EXPIRATION_OPTIONS[key as keyof typeof EXPIRATION_OPTIONS]"
-									:label="
-										getExpirationOptionLabel(
-											EXPIRATION_OPTIONS[key as keyof typeof EXPIRATION_OPTIONS],
-										)
-									"
-								>
-								</N8nOption>
-							</N8nSelect>
+							/>
 						</N8nInputLabel>
 						<ElDatePicker
 							v-if="showExpirationDateSelector"
