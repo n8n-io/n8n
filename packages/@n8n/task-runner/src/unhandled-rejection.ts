@@ -18,9 +18,11 @@ function describeKind(reason: object): string {
 	return 'Object';
 }
 
-function extractFrames(stack: string): string[] {
+function extractFrames(stack: string, header: string): string[] {
+	if (!stack.startsWith(header)) return [];
+	if (stack.length > header.length && stack[header.length] !== '\n') return [];
 	const frames: string[] = [];
-	let start = 0;
+	let start = header.length + 1;
 	while (start < stack.length && frames.length < MAX_FRAMES) {
 		const newline = stack.indexOf('\n', start);
 		const end = newline === -1 ? stack.length : newline;
@@ -32,10 +34,15 @@ function extractFrames(stack: string): string[] {
 }
 
 function describeError(error: Error): string {
-	const name = (typeof error.name === 'string' ? error.name : 'Error').slice(0, MAX_NAME_LENGTH);
-	// The message is never logged, since it can hold request data.
-	const frames = typeof error.stack === 'string' ? extractFrames(error.stack) : [];
-	return [name, ...frames].join('\n');
+	const name = typeof error.name === 'string' ? error.name : 'Error';
+	const message: unknown = error.message;
+	const stack: unknown = error.stack;
+	// The message is never logged, since it can hold request data; it only locates where the frames start.
+	const frames =
+		typeof stack === 'string' && typeof message === 'string'
+			? extractFrames(stack, message === '' ? name : `${name}: ${message}`)
+			: [];
+	return [name.slice(0, MAX_NAME_LENGTH), ...frames].join('\n');
 }
 
 function describeObject(reason: object): string {

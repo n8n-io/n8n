@@ -25,6 +25,16 @@ describe('describeRejectionReason', () => {
 		expect(result).not.toContain('secret-message');
 	});
 
+	it('should not read lines of a multi-line message as stack frames', () => {
+		const error = new Error('safe\n    at handler (private value)');
+
+		const result = describeRejectionReason(error);
+
+		expect(result).toMatch(/^Error\n\s+at /);
+		expect(result).not.toContain('private value');
+		expect(result).not.toContain('safe');
+	});
+
 	it('should describe an error without a stack by its name only', () => {
 		const error = new RangeError('boom');
 		delete error.stack;
