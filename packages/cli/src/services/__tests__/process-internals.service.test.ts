@@ -19,6 +19,7 @@ describe('ProcessInternalsService', () => {
 	const push = mockInstance(Push);
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		scalingService.getDiagnosticCounts.mockReturnValue({
 			jobResults: 3,
 			queueListeners: 7,

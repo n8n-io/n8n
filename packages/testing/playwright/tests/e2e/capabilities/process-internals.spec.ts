@@ -5,6 +5,7 @@ import { test, expect } from '../../../fixtures/base';
 import {
 	collectProcessGarbage,
 	diffProcessInternals,
+	probeMissingHeapSnapshot,
 	readProcessInternals,
 } from '../../../utils/process-internals';
 
@@ -48,8 +49,9 @@ test.describe(
 
 				// A cheap probe that the snapshot routes are mounted: taking a real
 				// snapshot pauses the process and is left to soak and memory suites.
-				const missing = await fetch(`${target.url}/rest/e2e/heap-snapshot/missing.heapsnapshot`);
+				const missing = await probeMissingHeapSnapshot(target);
 				expect(missing.status, target.name).toBe(404);
+				expect(missing.body, target.name).toContain('Snapshot not found');
 			}
 		});
 

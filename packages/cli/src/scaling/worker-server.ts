@@ -90,7 +90,7 @@ export class WorkerServer {
 	}
 
 	async init(endpointsConfig: WorkerServerEndpointsConfig) {
-		assert(Object.values(endpointsConfig).some((e) => e));
+		assert(inE2ETests || Object.values(endpointsConfig).some((e) => e));
 
 		this.endpointsConfig = endpointsConfig;
 

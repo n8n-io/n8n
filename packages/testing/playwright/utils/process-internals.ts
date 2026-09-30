@@ -43,6 +43,12 @@ export async function collectProcessGarbage(target: N8NProcessUrl): Promise<bool
 	return (await callE2ERoute<{ success: boolean }>(target, 'gc', 'POST')).success;
 }
 
+/** Probes the snapshot download route without taking a heap snapshot. */
+export async function probeMissingHeapSnapshot(target: N8NProcessUrl) {
+	const response = await fetch(`${target.url}/rest/e2e/heap-snapshot/missing.heapsnapshot`);
+	return { status: response.status, body: await response.text() };
+}
+
 /** Pairs readings by process name and returns only the collection sizes that changed. */
 export function diffProcessInternals(
 	before: ProcessInternalsReading[],
