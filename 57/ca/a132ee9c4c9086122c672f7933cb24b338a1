@@ -1,0 +1,67 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_dfa36d0187acfd 1134-1159
+  s_101038ccbc858a::t_5b4d1600d6fcad 1408-1425
+  s_101038ccbc858a::t_e12df05fe01b72 853-863
+  s_101038ccbc858a::t_08769349679dac 986
+  s_101038ccbc858a::t_ef2c26edf2ea6b 971
+  s_101038ccbc858a::t_7043a7675cfc61 1260-1276
+  s_101038ccbc858a::t_e63434c6fd8e3e 1572-1573,1575-1583,1585,1628-1629
+  s_101038ccbc858a::t_585a8ef5232fc8 1443-1473
+  s_101038ccbc858a::t_4535d70e33a8e4 1767-1815
+  s_101038ccbc858a::t_675ec896b134a8 1592-1598,1600-1609
+  s_101038ccbc858a::t_aa0c0d95839a2d 1277-1307
+  s_101038ccbc858a::t_64ccaf1d877974 1599
+  s_101038ccbc858a::t_d1369e7c89f60d 1591,1610-1627
+  s_101038ccbc858a::t_3ffa952b4e9647 1628-1629
+  s_101038ccbc858a::t_0ce6e50916d8eb 1725-1764
+  s_101038ccbc858a::t_aa615670df686d 1571,1574,1584,1586-1588
+packages/@n8n/api-types/src/dto/index.ts
+  s_101038ccbc858a::t_a4db565a4bfda0 425,434-435,439-440
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_101038ccbc858a::t_8423fdd992ff51 163-197
+  s_101038ccbc858a::t_1b037ab6b5c43e 158-159
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_101038ccbc858a::t_b7992157678718 528-555,557-617,619-623
+  s_101038ccbc858a::t_8aeac125dfbeb8 2,12-13,19-20
+  s_101038ccbc858a::t_59c8e083463ba3 522
+  s_101038ccbc858a::t_5eca7ff1284b88 158-163
+  s_101038ccbc858a::t_c42f9b6d901223 155-157
+  s_101038ccbc858a::t_6791fafb672ca1 556
+  s_101038ccbc858a::t_f5873c13c21b83 618
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_e712bce16dadd2 3,7,16,19
+  s_101038ccbc858a::t_1ac1798ea7c038 322-325,328
+  s_101038ccbc858a::t_d2d06563c57ae6 241-242,244-251,252-286,288-295,306-308,309-310,319-320,321,326-327,329-345
+  s_101038ccbc858a::t_a56cf91e0efae3 181-197,200
+  s_101038ccbc858a::t_85d7336ebdccdb 243
+  s_101038ccbc858a::t_60b62a30ce8689 22,25
+  s_101038ccbc858a::t_48648f13b6581d 287,296-305,311-318
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/clearDataTableRows.generated.yml
+  s_101038ccbc858a::t_ff8a294ae8bbf8 1-24,27-29,31-37
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
+  s_101038ccbc858a::t_21d8983675746e 1-27,33-37,43-114
+  s_101038ccbc858a::t_13f97b7ab60dfb 28-32,38-42
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  s_101038ccbc858a::t_0f2b7d56fcd198 1-14,16-73,74-85,87-114,118-181
+  s_101038ccbc858a::t_01bd0c63491e55 86
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_101038ccbc858a::t_54165f16ef60aa 95-103
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  s_101038ccbc858a::t_8c3162a34739c3 86,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "57caa132ee9c4c9086122c672f7933cb24b338a1",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
