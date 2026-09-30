@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  s_3ee4700369edb0::t_82bde92824c8e0 1,9
+  s_3ee4700369edb0::t_2ffb9253061800 118-123
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/__tests__/AgentChannelN8nChatView.test.ts
+  s_3ee4700369edb0::t_e1ea4042b66ebd 39
+  s_3ee4700369edb0::t_6c01e01d5aa6a3 1-3,5-38,40-107,111-115
+  ai_agent 108-110
+  s_3ee4700369edb0::t_3165d61097e46f 4
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue
+  s_3ee4700369edb0::t_0af54df71a6f46 1-23,27-30,32-70
+  ai_agent 24-26
+  s_3ee4700369edb0::t_6f041e8397865e 31
+packages/frontend/editor-ui/src/features/agents/channels/registry.test.ts
+  s_3ee4700369edb0::t_d4a137e1ec4a00 67-80
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_3ee4700369edb0::t_124ef46aa3493d 26
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3ee4700369edb0::t_c20cb69865eff6 8896-8905
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65ddeb57c03cbeacd58686f3bac443586e00fcce",
+  "prompts": {},
+  "sessions": {
+    "s_3ee4700369edb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7da616ef-d7d8-46e7-b647-0d6f7197e3e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
