@@ -13,7 +13,6 @@ import {
 	extractAgentPreviewHandoffContext,
 	extractAiPreferencesBlock,
 	extractThreadArtifactsBlock,
-	threadArtifactsBlockListsTabs,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	withPastConversations,
@@ -773,52 +772,14 @@ describe('extractThreadArtifactsBlock', () => {
 	});
 });
 
-describe('threadArtifactsBlockListsTabs', () => {
-	const digest = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
-
-	it('is true for a block that lists tabs, also in the older format', () => {
-		expect(threadArtifactsBlockListsTabs(buildThreadArtifactsBlock({ artifacts: [digest] }))).toBe(
-			true,
-		);
-		expect(
-			threadArtifactsBlockListsTabs(
-				'<thread-artifacts>\nArtifacts the user can see in this conversation’s preview:\n  - Workflow "Digest" (id: `wf-1`)\n</thread-artifacts>',
-			),
-		).toBe(true);
-	});
-
-	it('is false for a block without a tab list', () => {
-		expect(
-			threadArtifactsBlockListsTabs(
-				buildThreadArtifactsBlock({ artifacts: [] }, [
-					{ type: 'workflow', id: 'wf-9', name: 'Handed off' },
-				]),
-			),
-		).toBe(false);
-		expect(threadArtifactsBlockListsTabs(buildThreadArtifactsBlock({ artifacts: [] }))).toBe(false);
-	});
-
-	it('is false when only a resource name looks like the header', () => {
-		const block = buildThreadArtifactsBlock(undefined, [
-			{
-				type: 'workflow',
-				id: 'wf-1',
-				name: 'Tabs the user has open in this conversation’s preview, as of this message:',
-			},
-		]);
-
-		expect(threadArtifactsBlockListsTabs(block)).toBe(false);
-	});
-});
-
 describe('buildThreadArtifactsBlock', () => {
 	it('returns empty when the client sent no tabs', () => {
 		expect(buildThreadArtifactsBlock(undefined)).toBe('');
 	});
 
-	it('says the user closed every tab when the client sent an empty list', () => {
+	it('says the user has no tabs open when the client sent an empty list', () => {
 		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe(
-			'<thread-artifacts>\nThe user has closed every tab in this conversation’s preview.\n</thread-artifacts>',
+			'<thread-artifacts>\nThe user has no tabs open in this conversation’s preview.\n</thread-artifacts>',
 		);
 	});
 

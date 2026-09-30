@@ -40,7 +40,7 @@ function toThreadArtifact(
  * and names only.
  *
  * With `openTabs`, the index is the tabs the user has open, in tab order. An
- * empty list tells the agent the user closed every tab. Without it, for a
+ * empty list tells the agent no tabs are open. Without it, for a
  * client that has no tab bar, the index is every artifact the thread produced.
  */
 export function buildThreadArtifactsContext(

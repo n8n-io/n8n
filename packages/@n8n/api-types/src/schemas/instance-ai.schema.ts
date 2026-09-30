@@ -1650,7 +1650,7 @@ export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSc
 
 /**
  * The tabs open in the thread view, plus which tab is focused when the preview is open.
- * An empty list means the user closed every tab.
+ * An empty list means no tabs are open.
  */
 export const instanceAiThreadArtifactsContextSchema = z.object({
 	artifacts: z.array(instanceAiThreadArtifactSchema).max(20),

@@ -259,19 +259,6 @@ export function extractAiPreferencesBlock(stored: string): string | undefined {
 
 const PREVIEW_TABS_HEADER =
 	'Tabs the user has open in this conversation’s preview, as of this message:';
-/** The tab list header of blocks stored before the tabs could be closed. */
-const LEGACY_PREVIEW_TABS_HEADER = 'Artifacts the user can see in this conversation’s preview:';
-
-/**
- * Whether a stored thread artifacts block lists preview tabs. A block can carry
- * only an editor hand-off, and then it lists no tabs.
- */
-export function threadArtifactsBlockListsTabs(block: string): boolean {
-	// A whole-line match, so a resource named like the header does not count.
-	return block
-		.split('\n')
-		.some((line) => line === PREVIEW_TABS_HEADER || line === LEGACY_PREVIEW_TABS_HEADER);
-}
 
 /** Matches the service-written thread artifacts block inside one `<thread-context>` block. */
 const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>/;
@@ -559,9 +546,10 @@ export function buildThreadArtifactsBlock(
 		`${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`),
 	);
 	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) {
-		// An empty list that the client sent means the user closed every tab.
+		// An empty list that the client sent means no tabs are open. The wording holds
+		// whether the user closed tabs or never had any.
 		return context
-			? `${THREAD_ARTIFACTS_OPEN_TAG}\nThe user has closed every tab in this conversation’s preview.\n${THREAD_ARTIFACTS_CLOSE_TAG}`
+			? `${THREAD_ARTIFACTS_OPEN_TAG}\nThe user has no tabs open in this conversation’s preview.\n${THREAD_ARTIFACTS_CLOSE_TAG}`
 			: '';
 	}
 

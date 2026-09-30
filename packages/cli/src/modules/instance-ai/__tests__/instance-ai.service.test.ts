@@ -6670,26 +6670,42 @@ describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
 		);
 	});
 
-	it('says every tab closed only when an earlier block listed tabs', async () => {
+	it('says no tabs are open once, then not again while nothing changes', async () => {
 		const service = createService();
-		expect(await resolve(service, { artifacts: [] })).toBe('');
+		const noTabs = await resolve(service, { artifacts: [] });
+		expect(noTabs).toContain('The user has no tabs open in this conversation’s preview.');
 
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(noTabs)]);
+		expect(await resolve(service, { artifacts: [] })).toBe('');
+	});
+
+	it('says no tabs are open after a block that listed tabs or only an editor hand-off', async () => {
+		const service = createService();
 		service.agentMemory.getMessages.mockResolvedValue([
 			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
 		]);
-		expect(await resolve(service, { artifacts: [] })).toContain(
-			'The user has closed every tab in this conversation’s preview.',
-		);
-	});
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 
-	it('does not say every tab closed after an editor hand-off that listed no tabs', async () => {
-		const service = createService();
 		const handoffOnly = buildThreadArtifactsBlock({ artifacts: [] }, [
 			{ type: 'workflow' as const, id: 'wf-9', name: 'Handed off' },
 		]);
 		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(handoffOnly)]);
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+	});
 
-		expect(await resolve(service, { artifacts: [] })).toBe('');
+	it('says no tabs are open when the block that listed tabs was compacted out of the replay window', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+		]);
+		service.agentMemory.getCursor.mockResolvedValue({
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+			lastObservedMessageId: 'message-1',
+		});
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
+
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 	});
 
 	it('always sends a block that carries an editor hand-off', async () => {
@@ -6720,7 +6736,7 @@ describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
 		const service = createService();
 		service.agentMemory.getMessages.mockRejectedValue(new Error('database is locked'));
 
-		expect(await resolve(service, { artifacts: [] })).toContain('closed every tab');
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 		expect(service.logger.warn).toHaveBeenCalled();
 	});
 });
