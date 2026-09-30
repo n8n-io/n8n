@@ -13,11 +13,18 @@
  * time. Repeat `--arm` with the same name to add instances (lanes) to an arm; lanes run in
  * parallel, capped by --concurrency.
  *
+ * Each build also records `diagnostics`: model steps, model vs tool time, per-tool durations,
+ * build-workflow outcomes and extra-step counts, from the run's events. Per-step tokens and
+ * model time come from the run debug buffer, which an instance keeps only with
+ * N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true (orchestrator steps only). `--server-log <path>` adds
+ * sandbox phase times from that instance's log.
+ *
  * Usage (instances need N8N_METRICS=true for token counts):
  *   pnpm exec tsx evaluations/node-contracts/fast-loop.ts --case all \
  *     --arm off=http://localhost:5701 --arm off=http://localhost:5703 \
  *     --arm on=http://localhost:5702 --arm on=http://localhost:5704 --iterations 3
- *   pnpm exec tsx evaluations/node-contracts/fast-loop.ts --grade <results.json | workflow.json> [--case <slug>]
+ *   pnpm exec tsx evaluations/node-contracts/fast-loop.ts --grade <results.json | workflow.json> [--case <slug>] \
+ *     [--instance-db <database.sqlite> ...] [--server-log <n8n.log>]
  */
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -40,6 +47,7 @@ import {
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -50,6 +58,7 @@ import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '.
 import { buildWorkflow } from '../harness/build-workflow';
 import { createLogger } from '../harness/logger';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import type { CapturedEvent, CapturedToolCall } from '../types';
 
 interface Check {
 	name: string;
@@ -1185,6 +1194,393 @@ async function gradeSafely(caseSlug: string, workflow: WorkflowResponse): Promis
 	}
 }
 
+// ── Build diagnostics ───────────────────────────────────────────────────────
+
+interface StepDiagnostics {
+	inputTokens?: number;
+	outputTokens?: number;
+	cacheReadTokens?: number;
+	cacheWriteTokens?: number;
+	modelMs?: number;
+}
+
+interface BuildCallDiagnostics {
+	success: boolean;
+	reason?: string;
+	tscErrorCodes: string[];
+	claimLevel?: string;
+	simulatedNodes?: number;
+}
+
+interface BuildDiagnostics {
+	/** `run-debug`: steps carry usage and model time. `events`: steps are counted only. */
+	stepSource: 'run-debug' | 'events';
+	steps: StepDiagnostics[];
+	modelMs: number;
+	toolMs: number;
+	tools: Array<{ name: string; ms: number; failed?: boolean }>;
+	buildCalls: BuildCallDiagnostics[];
+	firstBuildPassed?: boolean;
+	extraSteps: {
+		typeDefinitionAfterSearch: number;
+		verifyBuiltWorkflow: number;
+		workspace: number;
+		toolSearch: number;
+	};
+	sandboxPhases?: Array<{ phase: string; atMs: number }>;
+}
+
+const numberOrUndefined = (value: unknown) => (typeof value === 'number' ? value : undefined);
+const stringOrUndefined = (value: unknown) => (typeof value === 'string' ? value : undefined);
+
+/** Uses the server's event time: the SSE capture time adds client delay. */
+const withServerTime = (events: CapturedEvent[]): CapturedEvent[] =>
+	events.map((event) => ({
+		...event,
+		timestamp: numberOrUndefined(event.data.ts) ?? event.timestamp,
+	}));
+
+const stepFromRunDebug = (output: unknown): StepDiagnostics => ({
+	inputTokens: numberOrUndefined(valueAt(output, 'usage.inputTokens')),
+	outputTokens: numberOrUndefined(valueAt(output, 'usage.outputTokens')),
+	cacheReadTokens: numberOrUndefined(valueAt(output, 'usage.inputTokenDetails.cacheReadTokens')),
+	cacheWriteTokens: numberOrUndefined(valueAt(output, 'usage.inputTokenDetails.cacheWriteTokens')),
+	modelMs: numberOrUndefined(valueAt(output, 'performance.responseTimeMs')),
+});
+
+/** Empty when the instance runs without N8N_INSTANCE_AI_RUN_DEBUG_ENABLED (the routes answer 404). */
+async function runDebugSteps(client: N8nClient, threadId: string): Promise<StepDiagnostics[]> {
+	try {
+		const { runs } = await client.listThreadDebugRuns(threadId, 30_000);
+		const records = await Promise.all(
+			runs.map(async (run) => await client.getRunDebug(run.runId, 30_000)),
+		);
+		return records.flatMap((record) => record.steps.map((step) => stepFromRunDebug(step.output)));
+	} catch {
+		return [];
+	}
+}
+
+/** Total length of the union of the intervals. */
+const unionMs = (intervals: Array<[number, number]>) =>
+	[...intervals]
+		.sort((a, b) => a[0] - b[0])
+		.reduce(
+			(acc, [start, end]) =>
+				end <= acc.end ? acc : { end, total: acc.total + end - Math.max(start, acc.end) },
+			{ end: -Infinity, total: 0 },
+		).total;
+
+/** Pairs each end event with the start event of the same key. */
+function intervals(
+	events: CapturedEvent[],
+	startTypes: string[],
+	endTypes: string[],
+	key: (event: CapturedEvent) => unknown,
+): Array<[number, number]> {
+	const starts = new Map(
+		events.filter((event) => startTypes.includes(event.type)).map((e) => [key(e), e.timestamp]),
+	);
+	return events
+		.filter((event) => endTypes.includes(event.type))
+		.flatMap((event) => {
+			const start = starts.get(key(event));
+			return start === undefined ? [] : [[start, event.timestamp]];
+		});
+}
+
+function buildCallDiagnostics(call: CapturedToolCall): BuildCallDiagnostics {
+	const errors = valueAt(call.result, 'errors');
+	const simulated = valueAt(call.result, 'verification.claim.simulatedNodes');
+	return {
+		success: !call.error && valueAt(call.result, 'success') === true,
+		reason:
+			stringOrUndefined(valueAt(call.result, 'remediation.reason')) ??
+			stringOrUndefined(valueAt(call.result, 'verification.remediation.reason')) ??
+			call.error?.slice(0, 120),
+		tscErrorCodes: (Array.isArray(errors) ? errors : []).flatMap((error) =>
+			typeof error === 'string'
+				? [...error.matchAll(/error (TS\d+)/g)].flatMap((match) => (match[1] ? [match[1]] : []))
+				: [],
+		),
+		claimLevel: stringOrUndefined(valueAt(call.result, 'verification.claim.level')),
+		simulatedNodes: Array.isArray(simulated) ? simulated.length : undefined,
+	};
+}
+
+/** Log message fragments that mark sandbox phases, by short label. */
+const SANDBOX_PHASES: Record<string, string> = {
+	kb: 'Materialized knowledge base',
+	pack: 'Packed workspace package',
+	link: 'Linked workspace packages',
+	save: 'Updating versionId',
+	classify: 'Classified workflow nodes for verification simulation',
+};
+
+const timeOfDayMs = (line: string) => {
+	const match = line.match(/^(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+	return match
+		? ((Number(match[1]) * 60 + Number(match[2])) * 60 + Number(match[3])) * 1000 + Number(match[4])
+		: undefined;
+};
+
+function sandboxPhases(logLines: string[], threadId: string, runStart: number, runEnd: number) {
+	// Log lines carry only the local time of day. Search back from the thread's last mention so
+	// that other days and other instances' threads do not match.
+	const lastMention = logLines.findLastIndex((line) => line.includes(threadId));
+	if (lastMention < 0) return undefined;
+	const dayStart = new Date(runStart).setHours(0, 0, 0, 0);
+	const [from, to] = [runStart - dayStart, runEnd - dayStart];
+	const windowStart =
+		logLines.slice(0, lastMention).findLastIndex((line) => (timeOfDayMs(line) ?? from) < from) + 1;
+	return logLines.slice(windowStart, lastMention + 1).flatMap((line) => {
+		const at = timeOfDayMs(line);
+		const phase = Object.keys(SANDBOX_PHASES).find((label) =>
+			line.includes(SANDBOX_PHASES[label] ?? label),
+		);
+		return phase && at !== undefined && at <= to ? [{ phase, atMs: at - from }] : [];
+	});
+}
+
+function buildDiagnostics(
+	events: CapturedEvent[],
+	runDebug: StepDiagnostics[],
+	threadId: string,
+	logLines?: string[],
+): BuildDiagnostics {
+	const toolCallIdOf = (event: CapturedEvent) => valueAt(event.data, 'payload.toolCallId');
+	// A tool call with invalid input has only tool-input-start and tool-error events.
+	const inputStartNames = new Map(
+		events
+			.filter((event) => event.type === 'tool-input-start')
+			.map((event) => [
+				toolCallIdOf(event),
+				stringOrUndefined(valueAt(event.data, 'payload.toolName')),
+			]),
+	);
+	const toolCalls = extractOutcomeFromEvents(events)
+		.toolCalls.filter(
+			(call, index, all) =>
+				all.findIndex((other) => other.toolCallId === call.toolCallId) === index,
+		)
+		.map((call) => ({
+			...call,
+			toolName: call.toolName || (inputStartNames.get(call.toolCallId) ?? '?'),
+		}));
+	const runIntervals = intervals(events, ['run-start'], ['run-finish'], (e) => e.data.runId);
+	const toolMs = unionMs(
+		intervals(events, ['tool-call'], ['tool-result', 'tool-error'], toolCallIdOf),
+	);
+	const responseIds = new Set(events.flatMap((e) => stringOrUndefined(e.data.responseId) ?? []));
+	const steps = runDebug.length
+		? runDebug
+		: Array.from({ length: responseIds.size }, (): StepDiagnostics => ({}));
+	const nodeActions = toolCalls.filter((c) => c.toolName === 'nodes').map((c) => c.args.action);
+	const firstSearch = nodeActions.indexOf('search');
+	const countTools = (match: (name: string) => boolean) =>
+		toolCalls.filter((call) => match(call.toolName)).length;
+	const buildCalls = toolCalls
+		.filter((call) => call.toolName === 'build-workflow')
+		.map(buildCallDiagnostics);
+	const runStart = Math.min(...runIntervals.map(([start]) => start));
+	const runEnd = Math.max(...runIntervals.map(([, end]) => end));
+	return {
+		stepSource: runDebug.length ? 'run-debug' : 'events',
+		steps,
+		modelMs: runDebug.length
+			? runDebug.reduce((total, step) => total + (step.modelMs ?? 0), 0)
+			: // Without the debug buffer, run time outside tool calls counts as model time.
+				Math.max(0, unionMs(runIntervals) - toolMs),
+		toolMs,
+		tools: toolCalls.map((call) => ({
+			name: call.toolName,
+			ms: call.durationMs,
+			...(call.error ? { failed: true } : {}),
+		})),
+		buildCalls,
+		firstBuildPassed: buildCalls[0]?.success,
+		extraSteps: {
+			typeDefinitionAfterSearch:
+				firstSearch < 0
+					? 0
+					: nodeActions.slice(firstSearch).filter((action) => action === 'type-definition').length,
+			verifyBuiltWorkflow: countTools((name) => name === 'verify-built-workflow'),
+			workspace: countTools((name) => name.startsWith('workspace_')),
+			toolSearch: countTools((name) => name === 'load_tool' || name === 'search_tools'),
+		},
+		sandboxPhases:
+			logLines && runIntervals.length
+				? sandboxPhases(logLines, threadId, runStart, runEnd)
+				: undefined,
+	};
+}
+
+/** Events of a thread from an instance database, for results.json files without diagnostics. */
+function databaseEvents(databasePaths: string[], threadId: string): CapturedEvent[] {
+	if (!/^[\w-]+$/.test(threadId)) return [];
+	const query = `select type, payload, createdAt from instance_ai_events where threadId = '${threadId}' order by seq`;
+	return databasePaths.flatMap((databasePath) => {
+		const output = execFileSync('sqlite3', ['-json', databasePath, query], { encoding: 'utf8' });
+		const rows: unknown = output.trim() ? JSON.parse(output) : [];
+		return (Array.isArray(rows) ? rows : []).filter(isRecord).flatMap((row) => {
+			const data: unknown = typeof row.payload === 'string' ? JSON.parse(row.payload) : undefined;
+			return isRecord(data) && typeof row.type === 'string'
+				? [
+						{
+							type: row.type,
+							data,
+							timestamp:
+								numberOrUndefined(data.ts) ??
+								Date.parse(`${String(row.createdAt).replace(' ', 'T')}Z`),
+						},
+					]
+				: [];
+		});
+	});
+}
+
+const isBuildDiagnostics = (value: unknown): value is BuildDiagnostics =>
+	isRecord(value) &&
+	Array.isArray(value.steps) &&
+	Array.isArray(value.buildCalls) &&
+	Array.isArray(value.tools) &&
+	typeof value.modelMs === 'number' &&
+	isRecord(value.extraSteps);
+
+interface DiagnosticsRow {
+	label: string;
+	arm: string;
+	pass: boolean;
+	tokens?: { input: number; output: number; cost: number };
+	diagnostics?: BuildDiagnostics;
+}
+
+const sumKnown = (values: Array<number | undefined>) =>
+	values.some((value) => value !== undefined)
+		? values.reduce<number>((total, value) => total + (value ?? 0), 0)
+		: undefined;
+
+const median = (values: Array<number | undefined>) => {
+	const known = values.filter((value) => value !== undefined).sort((a, b) => a - b);
+	const middle = Math.floor(known.length / 2);
+	return known.length % 2
+		? known[middle]
+		: known.length
+			? ((known[middle - 1] ?? 0) + (known[middle] ?? 0)) / 2
+			: undefined;
+};
+
+/** Table columns after `pass`, with decimal digits. `first build ok` goes after `build calls`. */
+const COLUMNS: Array<[name: string, digits: number]> = [
+	['steps', 0],
+	['in k', 1],
+	['out k', 1],
+	['cacheRead k', 1],
+	['cacheWrite k', 1],
+	['$', 3],
+	['model s', 1],
+	['tool s', 1],
+	['build calls', 0],
+	['tsc errors', 0],
+	['extra steps', 0],
+];
+const FIRST_BUILD_COLUMN = 9;
+
+/** Values in COLUMNS order; token totals come from /metrics, cache tokens from run-debug steps. */
+function diagnosticsColumns({ tokens, diagnostics: d }: DiagnosticsRow): Array<number | undefined> {
+	const steps = d?.steps ?? [];
+	const stepSum = (key: 'cacheReadTokens' | 'cacheWriteTokens') => {
+		const total = sumKnown(steps.map((step) => step[key]));
+		return total === undefined ? undefined : total / 1000;
+	};
+	return [
+		d && steps.length,
+		tokens && tokens.input / 1000,
+		tokens && tokens.output / 1000,
+		stepSum('cacheReadTokens'),
+		stepSum('cacheWriteTokens'),
+		tokens?.cost,
+		d && d.modelMs / 1000,
+		d && d.toolMs / 1000,
+		d?.buildCalls.length,
+		d?.buildCalls.reduce((total, call) => total + call.tscErrorCodes.length, 0),
+		d && Object.values(d.extraSteps).reduce((total, count) => total + count, 0),
+	];
+}
+
+const cell = (value: number | undefined, digits = 0) =>
+	value === undefined ? '-' : value.toFixed(digits);
+
+function tableRow(label: string, pass: string, values: Array<number | undefined>, firstOk: string) {
+	const cells = values.map((value, index) => cell(value, COLUMNS[index]?.[1]));
+	return `| ${[label, pass, ...cells.slice(0, FIRST_BUILD_COLUMN), firstOk, ...cells.slice(FIRST_BUILD_COLUMN)].join(' | ')} |`;
+}
+
+function diagnosticsDetail({ diagnostics: d }: DiagnosticsRow) {
+	if (!d) return '   no diagnostics (pass --instance-db for older results)';
+	const stepText = d.steps
+		.map(
+			(step, index) =>
+				`${index + 1}: in ${cell(step.inputTokens)} out ${cell(step.outputTokens)} ` +
+				`cr ${cell(step.cacheReadTokens)} cw ${cell(step.cacheWriteTokens)} ${cell(step.modelMs)}ms`,
+		)
+		.join('; ');
+	const buildText = d.buildCalls
+		.map(
+			(call) =>
+				`${call.success ? 'ok' : 'fail'}${call.reason ? ` ${call.reason}` : ''}` +
+				`${call.tscErrorCodes.length ? ` [${call.tscErrorCodes.join(',')}]` : ''}` +
+				`${call.claimLevel ? ` claim=${call.claimLevel}` : ''}` +
+				`${call.simulatedNodes !== undefined ? ` simulated=${call.simulatedNodes}` : ''}`,
+		)
+		.join(' | ');
+	const phaseText = d.sandboxPhases
+		?.map((phase) => `${phase.phase}@${(phase.atMs / 1000).toFixed(1)}s`)
+		.join(' ');
+	return [
+		`   steps (${d.stepSource}): ${d.stepSource === 'run-debug' ? stepText : d.steps.length}`,
+		`   tools: ${d.tools.map((tool) => `${tool.name}${tool.failed ? '(failed)' : ''} ${(tool.ms / 1000).toFixed(1)}s`).join(', ')}`,
+		`   builds: ${buildText || '-'}`,
+		`   extra: ${Object.entries(d.extraSteps)
+			.map(([name, count]) => `${name}=${count}`)
+			.join(' ')}`,
+		...(phaseText === undefined ? [] : [`   sandbox phases: ${phaseText || '-'}`]),
+	].join('\n');
+}
+
+function printDiagnostics(rows: DiagnosticsRow[]) {
+	console.log('\nBuild diagnostics');
+	for (const row of rows) console.log(`[${row.label}]\n${diagnosticsDetail(row)}`);
+	const names = COLUMNS.map(([name]) => name);
+	const header = ['build', 'pass', ...names.slice(0, FIRST_BUILD_COLUMN), 'first build ok'];
+	console.log(`\n| ${[...header, ...names.slice(FIRST_BUILD_COLUMN)].join(' | ')} |`);
+	console.log(`|${'---|'.repeat(names.length + 3)}`);
+	for (const row of rows) {
+		const firstOk = row.diagnostics?.firstBuildPassed;
+		console.log(
+			tableRow(
+				row.label,
+				row.pass ? 'PASS' : 'FAIL',
+				diagnosticsColumns(row),
+				firstOk === undefined ? '-' : firstOk ? 'yes' : 'no',
+			),
+		);
+	}
+	for (const arm of [...new Set(rows.map((row) => row.arm))]) {
+		const armRows = rows.filter((row) => row.arm === arm);
+		const columns = armRows.map(diagnosticsColumns);
+		const firstOks = armRows.flatMap((row) => row.diagnostics?.firstBuildPassed ?? []);
+		console.log(
+			tableRow(
+				`median ${arm}`,
+				`${armRows.filter((row) => row.pass).length}/${armRows.length}`,
+				COLUMNS.map((_, index) => median(columns.map((values) => values[index]))),
+				firstOks.length ? `${firstOks.filter(Boolean).length}/${firstOks.length}` : '-',
+			),
+		);
+	}
+}
+
 // ── Runner ──────────────────────────────────────────────────────────────────
 
 interface Arm {
@@ -1218,6 +1614,7 @@ function parseArgs(argv: string[]) {
 		arms,
 		iterations: Number(value('--iterations') ?? 3),
 		concurrency: Number(value('--concurrency') ?? 4),
+		serverLog: value('--server-log'),
 		out:
 			value('--out') ??
 			path.join('/tmp', 'node-contracts-fast-loop', new Date().toISOString().replace(/[:.]/g, '-')),
@@ -1256,6 +1653,7 @@ async function runBuild(
 	session: ArmSession,
 	testCase: WorkflowTestCaseWithFile,
 	iteration: number,
+	serverLog?: string,
 ) {
 	const started = Date.now();
 	const before = await scrapeTokens(session.arm.baseUrl);
@@ -1271,9 +1669,16 @@ async function runBuild(
 	});
 	const after = await scrapeTokens(session.arm.baseUrl);
 	const seconds = Math.round((Date.now() - started) / 1000);
-	const toolCalls = extractOutcomeFromEvents(build.events ?? []).toolCalls.map(
-		(call) => call.toolName,
-	);
+	const events = withServerTime(build.events ?? []);
+	const toolCalls = extractOutcomeFromEvents(events).toolCalls.map((call) => call.toolName);
+	const diagnostics = build.threadId
+		? buildDiagnostics(
+				events,
+				await runDebugSteps(session.client, build.threadId),
+				build.threadId,
+				serverLog ? readFileSync(serverLog, 'utf8').split('\n') : undefined,
+			)
+		: undefined;
 	const workflow = build.workflowJsons[0];
 	const checks = workflow
 		? await gradeSafely(testCase.fileSlug, workflow)
@@ -1294,6 +1699,7 @@ async function runBuild(
 		},
 		workflowId: build.workflowId,
 		threadId: build.threadId,
+		diagnostics,
 		workflow,
 	};
 	console.log(
@@ -1350,10 +1756,45 @@ function printSummary(builds: BuildRecord[], cases: string[], arms: Arm[]) {
 	}
 }
 
-/** `--grade <file> [--case <slug>]` regrades a saved workflow JSON, or every build in a results.json. */
-async function gradeFile(caseSlugs: string[], file: string) {
+/** Diagnostics saved in the build, else computed from the instance database and server log. */
+function savedBuildDiagnostics(
+	build: Record<string, unknown>,
+	options: { databasePaths: string[]; logLines?: string[] },
+): BuildDiagnostics | undefined {
+	if (isBuildDiagnostics(build.diagnostics)) return build.diagnostics;
+	const threadId = stringOrUndefined(build.threadId);
+	const events = threadId ? databaseEvents(options.databasePaths, threadId) : [];
+	return threadId && events.length
+		? buildDiagnostics(events, [], threadId, options.logLines)
+		: undefined;
+}
+
+const savedTokens = (tokens: unknown) =>
+	isRecord(tokens)
+		? {
+				input: numberOrUndefined(tokens.input) ?? 0,
+				output: numberOrUndefined(tokens.output) ?? 0,
+				cost: numberOrUndefined(tokens.cost) ?? 0,
+			}
+		: undefined;
+
+/**
+ * `--grade <file> [--case <slug>]` regrades a saved workflow JSON, or every build in a results.json.
+ * For a results.json it also prints build diagnostics; `--instance-db` and `--server-log` fill them
+ * in for builds saved without diagnostics.
+ */
+async function gradeFile(
+	caseSlugs: string[],
+	file: string,
+	options: { databasePaths: string[]; logLines?: string[] },
+) {
 	const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
-	const targets = isWorkflowResponse(parsed)
+	const targets: Array<{
+		label: string;
+		caseSlug: string;
+		workflow: WorkflowResponse;
+		build?: Record<string, unknown>;
+	}> = isWorkflowResponse(parsed)
 		? caseSlugs.map((caseSlug) => ({
 				label: `${caseSlug} ${path.basename(file)}`,
 				caseSlug,
@@ -1374,20 +1815,35 @@ async function gradeFile(caseSlugs: string[], file: string) {
 									label: `${caseSlug} ${String(build.arm)} #${String(build.iteration)}`,
 									caseSlug,
 									workflow: build.workflow,
+									build,
 								},
 							]
 						: [];
 				});
 	if (targets.length === 0) throw new Error(`Nothing to grade in ${file}; pass --case <slug>`);
-	for (const { label, caseSlug, workflow } of targets) {
-		const checks = await gradeSafely(caseSlug, workflow);
-		console.log(`[${label}] ${buildPasses(checks) ? 'PASS' : 'FAIL'}`);
+	const rows = await targets.reduce<Promise<DiagnosticsRow[]>>(async (previous, target) => {
+		const done = await previous;
+		const checks = await gradeSafely(target.caseSlug, target.workflow);
+		console.log(`[${target.label}] ${buildPasses(checks) ? 'PASS' : 'FAIL'}`);
 		for (const check of checks) {
 			console.log(
 				`   ${check.ungraded ? '? ' : check.pass ? 'ok' : 'x '} ${check.name}: ${check.detail.slice(0, 300)}`,
 			);
 		}
-	}
+		return target.build
+			? [
+					...done,
+					{
+						label: target.label,
+						arm: String(target.build.arm),
+						pass: buildPasses(checks),
+						tokens: savedTokens(target.build.tokens),
+						diagnostics: savedBuildDiagnostics(target.build, options),
+					},
+				]
+			: done;
+	}, Promise.resolve([]));
+	if (rows.length) printDiagnostics(rows);
 }
 
 function isWorkflowResponse(value: unknown): value is WorkflowResponse {
@@ -1398,7 +1854,11 @@ async function main() {
 	const argv = process.argv.slice(2);
 	const gradeTarget = flagValues(argv, '--grade')[0];
 	if (gradeTarget) {
-		await gradeFile(expandCases(flagValues(argv, '--case')), gradeTarget);
+		const serverLog = flagValues(argv, '--server-log')[0];
+		await gradeFile(expandCases(flagValues(argv, '--case')), gradeTarget, {
+			databasePaths: flagValues(argv, '--instance-db'),
+			logLines: serverLog ? readFileSync(serverLog, 'utf8').split('\n') : undefined,
+		});
 		return;
 	}
 	const args = parseArgs(argv);
@@ -1425,12 +1885,20 @@ async function main() {
 	const drain = async (session: ArmSession): Promise<BuildRecord[]> => {
 		const job = queues.get(session.arm.name)?.shift();
 		if (!job) return [];
-		const build = await limit(async () => await runBuild(session, job.testCase, job.iteration));
+		const build = await limit(
+			async () => await runBuild(session, job.testCase, job.iteration, args.serverLog),
+		);
 		return [build, ...(await drain(session))];
 	};
 	const builds = (await Promise.all(sessions.map(drain))).flat();
 	writeFileSync(path.join(args.out, 'results.json'), JSON.stringify(builds, null, 2));
 	printSummary(builds, args.cases, args.arms);
+	printDiagnostics(
+		builds.map((build) => ({
+			label: `${build.case} ${build.arm} #${build.iteration}`,
+			...build,
+		})),
+	);
 	console.log(`\nResults: ${path.join(args.out, 'results.json')}`);
 }
 
