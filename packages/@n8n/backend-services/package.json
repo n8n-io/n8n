@@ -35,7 +35,8 @@
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
     "ioredis": "5.3.2",
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "@n8n/errors": "workspace:*"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
