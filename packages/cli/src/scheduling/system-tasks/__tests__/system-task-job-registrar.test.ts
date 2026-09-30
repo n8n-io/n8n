@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
@@ -27,7 +28,7 @@ const task = (over: Partial<SystemTask> = {}): SystemTask => ({
 	name: 'prune-executions',
 	schedule: { kind: 'interval', intervalSeconds: 60 },
 	effects: 'idempotent',
-	durable: true,
+	placement: { scope: 'cluster', durable: true },
 	run: async () => {},
 	...over,
 });
@@ -57,8 +58,16 @@ describe('systemTaskProvisionRequest', () => {
 		expect(request().payload).toEqual({ n8nVersion: N8N_VERSION });
 	});
 
-	it('seeds an interval task one interval past now', () => {
-		expect(request().desired[0]?.firstRunAt).toEqual(new Date('2026-01-05T09:01:00.000Z'));
+	it('seeds an interval task at now', () => {
+		expect(request().desired[0]?.firstRunAt).toEqual(NOW);
+	});
+
+	it('seeds a cron task at its next fire', () => {
+		const { desired } = request({
+			schedule: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: 'UTC' },
+		});
+
+		expect(desired[0]?.firstRunAt).toEqual(new Date('2026-01-06T09:00:00.000Z'));
 	});
 
 	it('seeds a task with no timezone of its own in the instance timezone', () => {
@@ -84,11 +93,10 @@ describe('systemTaskProvisionRequest', () => {
 		expect(desired[0]?.schedule).toEqual(schedule);
 	});
 
-	it('stores a fractional interval rounded to whole seconds and seeds from the rounded cadence', () => {
+	it('stores a fractional interval rounded to whole seconds', () => {
 		const { desired } = request({ schedule: { kind: 'interval', intervalSeconds: 89.6 } });
 
 		expect(desired[0]?.schedule).toEqual({ kind: 'interval', intervalSeconds: 90 });
-		expect(desired[0]?.firstRunAt).toEqual(new Date('2026-01-05T09:01:30.000Z'));
 	});
 
 	it('coalesces and retries idempotent work', () => {
@@ -141,6 +149,7 @@ describe('SystemTaskJobRegistrar', () => {
 		jobs.findPayloadsByOwnerType.mockResolvedValue([]);
 		const owner = new SystemTaskScheduledJobOwner(jobs);
 		const errorReporter = mock<ErrorReporter>();
+		const eventService = mock<EventService>();
 		const registrar = new SystemTaskJobRegistrar(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			jobs,
@@ -148,8 +157,9 @@ describe('SystemTaskJobRegistrar', () => {
 			owner,
 			mock<GlobalConfig>({ generic: { timezone: 'UTC' } }),
 			errorReporter,
+			eventService,
 		);
-		return { registrar, durableJobProvisioner, jobs, owner, errorReporter, logger };
+		return { registrar, durableJobProvisioner, jobs, owner, errorReporter, logger, eventService };
 	}
 
 	beforeEach(() => {
@@ -162,7 +172,7 @@ describe('SystemTaskJobRegistrar', () => {
 	});
 
 	describe('provision', () => {
-		it('provisions the one job of a task, owned by the task and seeded from now', async () => {
+		it('provisions the one job of a task, owned by the task and seeded at now', async () => {
 			const { registrar, durableJobProvisioner } = setup();
 
 			await registrar.provision(task());
@@ -175,7 +185,7 @@ describe('SystemTaskJobRegistrar', () => {
 					{
 						name: 'system:prune-executions',
 						schedule: { kind: 'interval', intervalSeconds: 60 },
-						firstRunAt: new Date('2026-01-05T09:01:00.000Z'),
+						firstRunAt: NOW,
 					},
 				],
 				misfirePolicy: 'coalesce',
@@ -199,6 +209,21 @@ describe('SystemTaskJobRegistrar', () => {
 			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('will not run'), {
 				name: 'prune-executions',
 				error,
+			});
+		});
+
+		it('emits a scheduling failure for a task it cannot provision, and nothing for one it can', async () => {
+			const { registrar, durableJobProvisioner, eventService } = setup();
+
+			await registrar.provision(task());
+			expect(eventService.emit).not.toHaveBeenCalled();
+
+			durableJobProvisioner.provision.mockRejectedValueOnce(new Error('connection lost'));
+			await registrar.provision(task());
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('system-task-scheduling-failed', {
+				name: 'prune-executions',
+				mode: 'durable',
 			});
 		});
 
@@ -252,6 +277,22 @@ describe('SystemTaskJobRegistrar', () => {
 				error,
 			});
 			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('emits a failed provision check when the store cannot be read, and nothing when it can', async () => {
+			const { registrar, jobs, eventService } = setup();
+
+			jobs.existsRunnableByOwner.mockResolvedValueOnce(false);
+			await registrar.isProvisioned('prune-executions');
+			expect(eventService.emit).not.toHaveBeenCalled();
+
+			jobs.existsRunnableByOwner.mockRejectedValueOnce(new Error('connection lost'));
+			await registrar.isProvisioned('prune-executions');
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'system-task-provision-check-failed',
+				{ name: 'prune-executions' },
+			);
 		});
 	});
 

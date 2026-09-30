@@ -49,6 +49,28 @@ beforeEach(() => {
 });
 
 describe('EvalTestCaseSchema', () => {
+	it.each([
+		{ description: undefined, expected: undefined },
+		{ description: null, expected: null },
+		{ description: ' \n ', expected: null },
+		{ description: ' Production reports ', expected: 'Production reports' },
+	])('normalizes credential description $description', ({ description, expected }) => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			credentials: [{ type: 'slackApi', description }],
+		});
+		expect(parsed.credentials?.[0].description).toBe(expected);
+	});
+
+	it('rejects a credential description above the storage limit', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				credentials: [{ type: 'slackApi', description: '🔑'.repeat(257) }],
+			}),
+		).toThrow();
+	});
+
 	it('accepts a minimal valid fixture', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.executionScenarios).toHaveLength(1);
@@ -150,6 +172,77 @@ describe('EvalTestCaseSchema', () => {
 		const seed = inlineSeedOf(parsed);
 		expect(seed.projects).toEqual([{ name: 'Foobar' }]);
 		expect(seed.messages).toEqual([]);
+	});
+
+	it('accepts a fixture-only inline seed that carries just a folder', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: { mode: 'inline', folders: [{ id: 'odwFolder0001', name: 'ODW' }] },
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(seed.folders).toEqual([{ id: 'odwFolder0001', name: 'ODW' }]);
+	});
+
+	// Folder references span two arrays, so only the case can check them. A stale
+	// reference would otherwise be refused mid-run by the restore.
+	it('rejects a workflow placed in a folder the seed does not declare', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+					workflows: [
+						{
+							id: 'odwSignal1Wf',
+							name: 'Odds Watch - 1',
+							nodes: [],
+							connections: {},
+							parentFolderId: 'nopeFolder001',
+						},
+					],
+				},
+			}),
+		).toThrow(/nopeFolder001/);
+	});
+
+	it('rejects two folders sharing an id', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [
+						{ id: 'odwFolder0001', name: 'ODW' },
+						{ id: 'odwFolder0001', name: 'Other' },
+					],
+				},
+			}),
+		).toThrow(/Duplicate seed folder id/);
+	});
+
+	it('rejects a folder whose parent is undeclared, and a parent cycle', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [{ id: 'odwArchive001', name: 'Archive', parentFolderId: 'missingFolder1' }],
+				},
+			}),
+		).toThrow(/missingFolder1/);
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [
+						{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+						{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+					],
+				},
+			}),
+		).toThrow(/cycle/);
 	});
 
 	it('rejects an unknown seed mode', () => {
@@ -405,6 +498,29 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.conversation?.[0].attach).toEqual({ workflow: 'wf12345678' });
 	});
 
+	it('accepts an Agent attach on the opening turn naming a seeded Agent', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [
+				{ role: 'user', text: 'why is this Agent failing?', attach: { agent: 'agent12345678' } },
+			],
+			seed: {
+				mode: 'inline',
+				agents: [
+					{
+						id: 'agent12345678',
+						config: {
+							name: 'Notion research',
+							model: 'anthropic/claude-sonnet-4-5',
+							instructions: 'Research company notes.',
+						},
+					},
+				],
+			},
+		});
+		expect(parsed.conversation?.[0].attach).toEqual({ agent: 'agent12345678' });
+	});
+
 	// An attachment models the user opening the assistant with a workflow already in
 	// front of them, so the turn it rides has to BE the user's. An assistant-first
 	// opener carrying one would be graded against a transcript that never happened.
@@ -455,6 +571,28 @@ describe('EvalTestCaseSchema', () => {
 				},
 			}),
 		).toThrow(/must be the id of a workflow the inline seed declares/);
+	});
+
+	it('rejects an Agent attach naming an Agent the seed does not declare', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: 'why?', attach: { agent: 'not-in-the-seed' } }],
+				seed: {
+					mode: 'inline',
+					agents: [
+						{
+							id: 'agent12345678',
+							config: {
+								name: 'Notion research',
+								model: 'anthropic/claude-sonnet-4-5',
+								instructions: 'Research company notes.',
+							},
+						},
+					],
+				},
+			}),
+		).toThrow(/must be the id of an Agent the inline seed declares/);
 	});
 
 	it('rejects an empty opening turn that carries no attach', () => {

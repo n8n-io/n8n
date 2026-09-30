@@ -75,6 +75,25 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 	}
 
 	/**
+	 * Like `findScopeById`, scoped by `kind` as well as id — a caller that only knows a scope
+	 * id (from a prior `getEffectivePolicy`/`setDefaultAction` call under its own kind) must not
+	 * reach a scope of a different kind, the same protection `findByIdAndKind` gives policy
+	 * documents. See `findScopeById` for `forUpdate`.
+	 */
+	async findScopeByIdAndKind(
+		id: string,
+		kind: string,
+		ctx: OperationContext,
+		forUpdate = false,
+	): Promise<TypeAvailabilityPolicyScope | null> {
+		const manager = this.managerFor(ctx);
+		return await manager.findOne(TypeAvailabilityPolicyScope, {
+			where: { id, kind },
+			...(forUpdate ? this.forUpdateLock(manager) : {}),
+		});
+	}
+
+	/**
 	 * Locks every named scope row, in id order, and returns the ids that exist.
 	 *
 	 * Every write path that touches both a scope and a policy document must lock the scope

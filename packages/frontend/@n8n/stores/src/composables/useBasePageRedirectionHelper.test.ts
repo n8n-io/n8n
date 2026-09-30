@@ -32,6 +32,17 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 	};
 });
 
+let mockAssistantTopUpEligible = false;
+vi.mock('./useAssistantTopUpEligibility', () => ({
+	useAssistantTopUpEligibility: () => ({
+		isEligible: {
+			get value() {
+				return mockAssistantTopUpEligible;
+			},
+		},
+	}),
+}));
+
 /** Only `deployment.type` steers this composable; the rest of the settings object is stubbed. */
 const settingsFor = (type: string) =>
 	mock<FrontendSettings>({
@@ -41,6 +52,7 @@ const settingsFor = (type: string) =>
 describe('useBasePageRedirectionHelper', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockAssistantTopUpEligible = false;
 	});
 
 	beforeEach(() => {
@@ -209,6 +221,58 @@ describe('useBasePageRedirectionHelper', () => {
 			expect(location.href).toBe(expectation);
 		},
 	);
+
+	// Cloud UBB top-up eligible accounts land on the assistant usage page instead
+	// of the plan-change page — but only when the source is an assistant CTA.
+	describe('goToUpgrade with assistant top-up eligibility', () => {
+		beforeEach(() => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
+			usersStore.currentUserId = '1';
+			settingsStore.setSettings(settingsFor('cloud'));
+		});
+
+		test.each(['ai-builder-sidebar', 'instance-ai'] as const)(
+			'routes "%s" to the assistant usage page when top-up is eligible',
+			async (source) => {
+				mockAssistantTopUpEligible = true;
+
+				await pageRedirectionHelper.goToUpgrade(source, 'upgrade-builder', 'redirect');
+
+				expect(location.href).toBe(
+					`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+						'/manage/assistant',
+					)}&utm_campaign=upgrade-builder&source=${source}`,
+				);
+			},
+		);
+
+		test.each(['ai-builder-sidebar', 'instance-ai'] as const)(
+			'routes "%s" to the plan-change page when top-up is not eligible',
+			async (source) => {
+				mockAssistantTopUpEligible = false;
+
+				await pageRedirectionHelper.goToUpgrade(source, 'upgrade-builder', 'redirect');
+
+				expect(location.href).toBe(
+					`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+						'/account/change-plan',
+					)}&utm_campaign=upgrade-builder&source=${source}`,
+				);
+			},
+		);
+
+		test('leaves non-assistant sources on the plan-change page even when top-up is eligible', async () => {
+			mockAssistantTopUpEligible = true;
+
+			await pageRedirectionHelper.goToUpgrade('advanced-permissions', 'upgrade-api', 'redirect');
+
+			expect(location.href).toBe(
+				`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+					'/account/change-plan',
+				)}&utm_campaign=upgrade-api&source=advanced-permissions`,
+			);
+		});
+	});
 
 	describe('goToUpgrade with an injected guard', () => {
 		beforeEach(() => {

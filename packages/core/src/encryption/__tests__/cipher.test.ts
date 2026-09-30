@@ -3,49 +3,27 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
 
+import { CipherAes256CBC } from '../aes-256-cbc';
+import { CipherAes256GCM } from '../aes-256-gcm';
 import { Cipher } from '../cipher';
 import { EncryptionKeyProxy, type IEncryptionKeyProvider } from '../encryption-key-proxy';
 
 describe('Cipher', () => {
 	mockInstance(InstanceSettings, { encryptionKey: 'test_key' });
 	const cipher = Container.get(Cipher);
+	const cbc = new CipherAes256CBC();
+	const gcm = new CipherAes256GCM();
 
 	// Decrypts CBC ciphertext with the given key, normalizing a padding-validation
 	// throw into a sentinel. Used to assert wrong-key decryption never recovers the
 	// original plaintext without relying on the flaky ~255/256 chance that CBC throws.
 	const decryptWithCbcKey = (ciphertext: string, key: string): string => {
 		try {
-			return cipher.decryptWithKey(ciphertext, key, 'aes-256-cbc');
+			return cbc.decrypt(ciphertext, key);
 		} catch {
 			return '\0__decryption-threw__';
 		}
 	};
-
-	describe('encrypt', () => {
-		it('should encrypt strings', () => {
-			const encrypted = cipher.encrypt('random-string');
-			const decrypted = cipher.decrypt(encrypted);
-			expect(decrypted).toEqual('random-string');
-		});
-
-		it('should encrypt objects', () => {
-			const encrypted = cipher.encrypt({ key: 'value' });
-			const decrypted = cipher.decrypt(encrypted);
-			expect(decrypted).toEqual('{"key":"value"}');
-		});
-	});
-
-	describe('decrypt', () => {
-		it('should decrypt string', () => {
-			const decrypted = cipher.decrypt('U2FsdGVkX194VEoX27o3+y5jUd1JTTmVwkOKjVhB6Jg=');
-			expect(decrypted).toEqual('random-string');
-		});
-
-		it('should not try to decrypt if the input is shorter than 16 bytes', () => {
-			const decrypted = cipher.decrypt('U2FsdGVkX194VEo');
-			expect(decrypted).toEqual('');
-		});
-	});
 
 	describe('encryptWithInstanceKey / decryptWithInstanceKey', () => {
 		it('should roundtrip strings using the instance key regardless of custom args', () => {
@@ -58,9 +36,19 @@ describe('Cipher', () => {
 			expect(cipher.decryptWithInstanceKey(encrypted)).toEqual('{"key":"value"}');
 		});
 
+		it('should decrypt ciphertext from earlier releases', () => {
+			expect(cipher.decryptWithInstanceKey('U2FsdGVkX194VEoX27o3+y5jUd1JTTmVwkOKjVhB6Jg=')).toEqual(
+				'random-string',
+			);
+		});
+
+		it('should return an empty string for input shorter than the CBC header', () => {
+			expect(cipher.decryptWithInstanceKey('U2FsdGVkX194VEo')).toEqual('');
+		});
+
 		it('should produce ciphertext that is interoperable with decryptWithKey(instance-key)', () => {
 			const encrypted = cipher.encryptWithInstanceKey('random-string');
-			expect(cipher.decryptWithKey(encrypted, 'test_key', 'aes-256-cbc')).toEqual('random-string');
+			expect(cbc.decrypt(encrypted, 'test_key')).toEqual('random-string');
 		});
 
 		it('should not recover the plaintext with a non-instance key', () => {
@@ -86,35 +74,29 @@ describe('Cipher', () => {
 		});
 	});
 
-	describe('encryptWithKey', () => {
+	describe('AES-256-CBC', () => {
 		it('should roundtrip with decryptWithKey using the same key', () => {
-			const encrypted = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
-			const decrypted = cipher.decryptWithKey(encrypted, 'explicit-key', 'aes-256-cbc');
+			const encrypted = cbc.encrypt('random-string', 'explicit-key');
+			const decrypted = cbc.decrypt(encrypted, 'explicit-key');
 			expect(decrypted).toEqual('random-string');
 		});
 
 		it('should produce different ciphertexts for the same plaintext on successive calls', () => {
-			const first = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
-			const second = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
+			const first = cbc.encrypt('random-string', 'explicit-key');
+			const second = cbc.encrypt('random-string', 'explicit-key');
 			expect(first).not.toEqual(second);
 		});
 
 		it('should not recover the plaintext with a different key', () => {
-			const encrypted = cipher.encryptWithKey('random-string', 'key-a', 'aes-256-cbc');
+			const encrypted = cbc.encrypt('random-string', 'key-a');
 			// Unauthenticated CBC cannot reliably detect a wrong key: decryption
 			// either throws on padding validation or yields garbage, but it must
 			// never return the original plaintext.
 			expect(decryptWithCbcKey(encrypted, 'key-b')).not.toEqual('random-string');
 		});
-
-		it('should be interoperable with legacy encrypt when given the same key', () => {
-			const encrypted = cipher.encrypt('random-string', 'shared-key');
-			const decrypted = cipher.decryptWithKey(encrypted, 'shared-key', 'aes-256-cbc');
-			expect(decrypted).toEqual('random-string');
-		});
 	});
 
-	describe('encryptWithKey / decryptWithKey — aes-256-gcm', () => {
+	describe('AES-256-GCM', () => {
 		const gcmKey = '11'.repeat(32);
 		const otherGcmKey = '22'.repeat(32);
 
@@ -125,25 +107,25 @@ describe('Cipher', () => {
 		const CIPHERTEXT_OFFSET = 49;
 
 		it('should roundtrip with decryptWithKey using the same key', () => {
-			const encrypted = cipher.encryptWithKey('random-string', gcmKey, 'aes-256-gcm');
-			const decrypted = cipher.decryptWithKey(encrypted, gcmKey, 'aes-256-gcm');
+			const encrypted = gcm.encrypt('random-string', gcmKey);
+			const decrypted = gcm.decrypt(encrypted, gcmKey);
 			expect(decrypted).toEqual('random-string');
 		});
 
 		it('should roundtrip an empty string', () => {
-			const encrypted = cipher.encryptWithKey('', gcmKey, 'aes-256-gcm');
-			expect(cipher.decryptWithKey(encrypted, gcmKey, 'aes-256-gcm')).toEqual('');
+			const encrypted = gcm.encrypt('', gcmKey);
+			expect(gcm.decrypt(encrypted, gcmKey)).toEqual('');
 		});
 
 		it('should produce different ciphertexts for the same plaintext on successive calls', () => {
-			const first = cipher.encryptWithKey('random-string', gcmKey, 'aes-256-gcm');
-			const second = cipher.encryptWithKey('random-string', gcmKey, 'aes-256-gcm');
+			const first = gcm.encrypt('random-string', gcmKey);
+			const second = gcm.encrypt('random-string', gcmKey);
 			expect(first).not.toEqual(second);
 		});
 
 		it('should fail to decrypt with a different key', () => {
-			const encrypted = cipher.encryptWithKey('random-string', gcmKey, 'aes-256-gcm');
-			expect(() => cipher.decryptWithKey(encrypted, otherGcmKey, 'aes-256-gcm')).toThrow();
+			const encrypted = gcm.encrypt('random-string', gcmKey);
+			expect(() => gcm.decrypt(encrypted, otherGcmKey)).toThrow();
 		});
 
 		it.each([
@@ -151,48 +133,42 @@ describe('Cipher', () => {
 			{ region: 'auth tag', offset: AUTH_TAG_OFFSET + 7 },
 			{ region: 'ciphertext body', offset: CIPHERTEXT_OFFSET + 1 },
 		])('should throw when the $region has been tampered with', ({ offset }) => {
-			const encrypted = cipher.encryptWithKey('some-longer-plaintext', gcmKey, 'aes-256-gcm');
+			const encrypted = gcm.encrypt('some-longer-plaintext', gcmKey);
 			const buf = Buffer.from(encrypted, 'base64');
 			buf[offset] = buf[offset] ^ 0x01;
 			const tampered = buf.toString('base64');
-			expect(() => cipher.decryptWithKey(tampered, gcmKey, 'aes-256-gcm')).toThrow();
+			expect(() => gcm.decrypt(tampered, gcmKey)).toThrow();
 		});
 
 		it('should throw when a CBC ciphertext is fed into the GCM decryption path', () => {
-			const cbcCiphertext = cipher.encryptWithKey('random-string', gcmKey, 'aes-256-cbc');
-			expect(() => cipher.decryptWithKey(cbcCiphertext, gcmKey, 'aes-256-gcm')).toThrow();
+			const cbcCiphertext = cbc.encrypt('random-string', gcmKey);
+			expect(() => gcm.decrypt(cbcCiphertext, gcmKey)).toThrow();
 		});
 
 		it('should throw before any cipher operation when the key is not 32 bytes', () => {
 			const shortKey = '00'.repeat(31);
 			const expectedError = 'GCM key must be exactly 32 bytes (64 hex characters)';
-			expect(() => cipher.encryptWithKey('random-string', shortKey, 'aes-256-gcm')).toThrow(
-				expectedError,
-			);
-			expect(() => cipher.decryptWithKey('irrelevant', shortKey, 'aes-256-gcm')).toThrow(
-				expectedError,
-			);
+			expect(() => gcm.encrypt('random-string', shortKey)).toThrow(expectedError);
+			expect(() => gcm.decrypt('irrelevant', shortKey)).toThrow(expectedError);
 		});
 
 		it('should throw when ciphertext is shorter than the minimum header size', () => {
 			// version(1) || salt(32) || truncated tag(4) = 37 bytes, below the 49-byte minimum
 			const truncated = Buffer.concat([Buffer.from([0x01]), Buffer.alloc(32), Buffer.alloc(4)]);
-			expect(() =>
-				cipher.decryptWithKey(truncated.toString('base64'), gcmKey, 'aes-256-gcm'),
-			).toThrow('GCM ciphertext too short');
-		});
-
-		it('should throw when given an empty ciphertext', () => {
-			expect(() => cipher.decryptWithKey('', gcmKey, 'aes-256-gcm')).toThrow(
+			expect(() => gcm.decrypt(truncated.toString('base64'), gcmKey)).toThrow(
 				'GCM ciphertext too short',
 			);
 		});
 
+		it('should throw when given an empty ciphertext', () => {
+			expect(() => gcm.decrypt('', gcmKey)).toThrow('GCM ciphertext too short');
+		});
+
 		it('should throw when ciphertext has an unsupported version byte', () => {
-			const encrypted = cipher.encryptWithKey('random-string', gcmKey, 'aes-256-gcm');
+			const encrypted = gcm.encrypt('random-string', gcmKey);
 			const buf = Buffer.from(encrypted, 'base64');
 			buf[VERSION_OFFSET] = 0xff;
-			expect(() => cipher.decryptWithKey(buf.toString('base64'), gcmKey, 'aes-256-gcm')).toThrow(
+			expect(() => gcm.decrypt(buf.toString('base64'), gcmKey)).toThrow(
 				'Unsupported GCM ciphertext version',
 			);
 		});
@@ -230,7 +206,7 @@ describe('Cipher', () => {
 			expect(encrypted.startsWith(`${keyId}:`)).toBe(true);
 
 			const ciphertext = encrypted.slice(keyId.length + 1);
-			const decrypted = cipher.decryptWithKey(ciphertext, plaintextDataKey, 'aes-256-gcm');
+			const decrypted = gcm.decrypt(ciphertext, plaintextDataKey);
 			expect(decrypted).toEqual('hello');
 		});
 
@@ -272,7 +248,7 @@ describe('Cipher', () => {
 		it('should decrypt using the keyId from the prefix when the provider is registered', async () => {
 			const keyId = 'test-uuid-5678';
 			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
-			const ciphertext = cipher.encryptWithKey('world', plaintextDataKey, 'aes-256-gcm');
+			const ciphertext = gcm.encrypt('world', plaintextDataKey);
 			const prefixed = `${keyId}:${ciphertext}`;
 
 			withProvider({
@@ -314,7 +290,7 @@ describe('Cipher', () => {
 			}));
 			withProvider({ getKeyById, getLegacyKey });
 
-			const legacyCiphertext = cipher.encryptWithKey('legacy-data', instanceKey, 'aes-256-cbc');
+			const legacyCiphertext = cbc.encrypt('legacy-data', instanceKey);
 
 			const decrypted = await cipher.decryptV2(legacyCiphertext);
 			expect(decrypted).toEqual('legacy-data');
@@ -346,7 +322,7 @@ describe('Cipher', () => {
 			it('should emit key-lookup (prefixed) and decrypt events for prefixed data', async () => {
 				const keyId = 'test-uuid-9012';
 				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
-				const ciphertext = cipher.encryptWithKey('metric', plaintextDataKey, 'aes-256-gcm');
+				const ciphertext = gcm.encrypt('metric', plaintextDataKey);
 				withProvider({
 					getKeyById: async (id: string) =>
 						id === keyId
@@ -377,7 +353,7 @@ describe('Cipher', () => {
 						format: 'no-prefix',
 					}),
 				});
-				const legacyCiphertext = cipher.encryptWithKey('legacy-metric', instanceKey, 'aes-256-cbc');
+				const legacyCiphertext = cbc.encrypt('legacy-metric', instanceKey);
 				const emitSpy = vi.spyOn(cipher.events, 'emit');
 
 				await cipher.decryptV2(legacyCiphertext);
@@ -441,7 +417,7 @@ describe('Cipher', () => {
 			it('should not let a throwing metrics listener break a successful decrypt', async () => {
 				const keyId = 'test-uuid-listener';
 				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
-				const ciphertext = cipher.encryptWithKey('safe', plaintextDataKey, 'aes-256-gcm');
+				const ciphertext = gcm.encrypt('safe', plaintextDataKey);
 				withProvider({
 					getKeyById: async (id: string) =>
 						id === keyId

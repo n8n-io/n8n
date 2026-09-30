@@ -27,6 +27,7 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
+import type { TriggerTime } from './cron';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -255,6 +256,11 @@ export interface IRequestOptionsSimplifiedAuth {
 export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
+
+export interface IGetDecryptedCredentialsOptions {
+	credentialUsage?: 'trigger';
+}
+
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
@@ -303,6 +309,7 @@ export abstract class ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	abstract updateCredentials(
@@ -1144,6 +1151,7 @@ export type Cron = {
 	expression: CronExpression;
 	recurrence?: CronRecurrenceRule;
 	source?: CronSource;
+	triggerTime?: TriggerTime;
 };
 
 export interface SchedulingFunctions {
@@ -1342,7 +1350,14 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
-		putExecutionToWait(waitTill: Date): Promise<void>;
+		/**
+		 * Pauses the execution until `waitTill`.
+		 *
+		 * Set `acceptsResumeRequest` to `false` when only the deadline can end the wait.
+		 * The engine then keeps a short wait in the process, so the wait does not survive
+		 * a restart. Without the option the engine suspends and persists the execution.
+		 */
+		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;
 		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
 		isConsoleOutputRedacted(): boolean;
@@ -2051,6 +2066,12 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	// When true, values mapped to string-typed schema fields are always cast to
+	// string during validation, and the `convertFieldsToString` field stored in the
+	// resource mapper value is ignored. That stored field predates this option and
+	// was never user-editable: the UI wrote it unconditionally, so only
+	// programmatic authors could produce a differing value.
+	alwaysConvertFieldsToString?: boolean;
 	allowEmptyValues?: boolean;
 	// When true, a cached schema that is detected to be structurally incomplete
 	// (e.g. authored by an AI builder rather than loaded from the source) is
@@ -3457,6 +3478,8 @@ export interface RelatedAgentRun {
 	 * resume on the runtime they started on.
 	 */
 	previewChat?: boolean;
+	/** The published n8n Chat channel owns this run. */
+	publishedN8nChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
@@ -3755,6 +3778,16 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	/**
+	 * Only engine v2 reads this. A caller that waits for the run's answer sets
+	 * it. The caller mints the data-plane execution id, so it can subscribe
+	 * before the run starts. `responseMode` tells the engine which answer the
+	 * caller waits for. Without this field, nobody waits for an answer.
+	 */
+	engineV2Response?: {
+		executionId: string;
+		responseMode: 'lastNode' | 'responseNode';
+	};
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support
@@ -4249,7 +4282,7 @@ export interface ExecutionSummary {
 	};
 	usedPrivateCredentials?: boolean;
 	annotation?: {
-		vote: AnnotationVote;
+		vote?: AnnotationVote | null;
 		tags: Array<{
 			id: string;
 			name: string;

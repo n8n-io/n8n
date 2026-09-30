@@ -1,3 +1,4 @@
+import type { NodeTypeAvailability } from '@n8n/api-types';
 import type { InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
@@ -62,6 +63,8 @@ export interface BaseConnectionItem {
 export interface NodeConnectionItem extends BaseConnectionItem {
 	kind: 'node';
 	nodeTypeName: string;
+	/** Set when a node type policy blocks this type. */
+	restriction?: NodeTypeAvailability;
 }
 
 export interface WorkflowConnectionItem extends BaseConnectionItem {
@@ -127,9 +130,8 @@ export type ToolConnectionItem =
 	| ServiceConnectionItem;
 
 /**
- * One tab in the modal. Consumers declare the subset they support; `agents` and
- * `data` have no supplier yet and are reserved for folding the sub-agent and
- * vector-store pickers in later.
+ * One tab in the modal. Consumers declare the subset they support. `data` has
+ * no supplier yet and is reserved for folding the vector-store picker in later.
  */
 export type ToolCategoryKey =
 	| 'all'

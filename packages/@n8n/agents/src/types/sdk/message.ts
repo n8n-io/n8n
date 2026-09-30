@@ -133,6 +133,13 @@ export type ContentToolCall = ContentMetadata & {
 	input: JSONValue;
 
 	providerExecuted?: boolean;
+
+	/**
+	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
+	 * skill body can re-anchor to this result on a later turn instead of falling
+	 * back to the system prompt. Metadata only — never sent to the model.
+	 */
+	activatedSkillIds?: string[];
 } & (
 		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }

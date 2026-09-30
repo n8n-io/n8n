@@ -3,7 +3,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import { assertUserCanUseDestinationCredentials } from '../destination-credentials-access';
 

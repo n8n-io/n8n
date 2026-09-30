@@ -7,7 +7,8 @@ import ToolSettingsModal from './ToolSettingsModal.vue';
 import type { INode } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent, onMounted, ref } from 'vue';
+
+import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -50,26 +51,6 @@ function createMockNode(overrides: Partial<INode> = {}): INode {
 		parameters: {},
 		...overrides,
 	};
-}
-
-function createToolSettingsStub(emitValid: boolean) {
-	return defineComponent({
-		props: ['initialNode', 'existingToolNames'],
-		emits: ['update:valid', 'update:node-name'],
-		setup(props, { emit, expose }) {
-			expose({
-				node: ref(props.initialNode),
-				handleChangeName: vi.fn(),
-				nodeTypeDescription: ref(null),
-			});
-			onMounted(() => {
-				emit('update:valid', emitValid);
-				emit('update:node-name', props.initialNode?.name ?? '');
-			});
-			return {};
-		},
-		template: '<div data-test-id="tool-settings-content" />',
-	});
 }
 
 const ElDialogStub = {

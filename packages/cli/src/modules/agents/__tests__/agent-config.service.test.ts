@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -6,7 +7,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -255,30 +255,33 @@ describe('AgentConfigService', () => {
 			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
-		it('accepts the current config hash, returns the new hash and notifies other readers', async () => {
-			const { service, agentRepository, agentUpdateBroadcaster } = makeService();
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			const currentConfig = composeJsonConfig(agent);
-			if (!currentConfig) throw new Error('Expected the agent to have a config');
-			const baseConfigHash = getAgentConfigHash(currentConfig);
+		it.each(['user', 'builder', 'mcp'] as const)(
+			'notifies other readers of a %s config update with the current hash',
+			async (source) => {
+				const { service, agentRepository, agentUpdateBroadcaster } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const currentConfig = composeJsonConfig(agent);
+				if (!currentConfig) throw new Error('Expected the agent to have a config');
+				const baseConfigHash = getAgentConfigHash(currentConfig);
 
-			const result = await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, instructions: 'Keep the latest work' },
-				user,
-				{ ...byUser, baseConfigHash, pushRef: 'writer-push-ref' },
-			);
+				const result = await service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'Keep the latest work' },
+					user,
+					{ baseConfigHash, modifiedBy: source, pushRef: 'writer-push-ref' },
+				);
 
-			expect(result.config.instructions).toBe('Keep the latest work');
-			expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
-			expect(result.configHash).not.toBe(baseConfigHash);
-			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-				{ projectId, agentId },
-				'writer-push-ref',
-			);
-		});
+				expect(result.config.instructions).toBe('Keep the latest work');
+				expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
+				expect(result.configHash).not.toBe(baseConfigHash);
+				expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+					{ projectId, agentId, source },
+					'writer-push-ref',
+				);
+			},
+		);
 
 		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
 			const { service, agentRepository } = makeService();
@@ -419,6 +422,29 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('persists n8n Chat as a draft channel', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-cred' }] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }, { type: 'n8n_chat' }],
+				},
+				user,
+				fencedOn(agent),
+			);
+			expect(agent.integrations).toEqual([
+				{ type: 'slack', credentialId: '' },
+				{ type: 'n8n_chat', credentialId: '' },
+			]);
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0];
+			expect(saved?.integrations).toEqual(agent.integrations);
+			expect(composeJsonConfig(agent)?.integrations).toEqual(agent.integrations);
 		});
 
 		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {

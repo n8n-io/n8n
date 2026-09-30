@@ -11,6 +11,19 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	})),
 }));
 
+// The merged layout reads the thread id from the route and asks the Instance AI
+// store whether an onboarding thread hides the sidebar. Neither matters here.
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = (await importOriginal()) as object;
+	return {
+		...actual,
+		useRoute: () => ({ params: {}, query: {}, meta: {}, name: 'instance-ai' }),
+	};
+});
+vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
+	useInstanceAiStore: vi.fn(() => ({ isOnboardingChromeHidden: () => false })),
+}));
+
 const renderComponent = createComponentRenderer(InstanceAiLayout, {
 	global: {
 		stubs: {

@@ -10,6 +10,7 @@ import type {
 import type { DesiredJob, ProvisionSummary, ScheduleDefinition } from '@n8n/scheduler';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Tracing } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
@@ -54,6 +55,7 @@ const jobRow = ({ payload = {}, ...over }: Partial<ScheduledJob> = {}): Schedule
 			maxAttempts: 5,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 90,
+			concurrencyLimit: null,
 			...over,
 		}),
 		{ payload },
@@ -140,6 +142,19 @@ describe('DurableJobProvisioner', () => {
 			maxAttempts,
 		});
 
+	const provisionWithConcurrencyLimit = async (
+		concurrencyLimit: number | null | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			concurrencyLimit,
+		});
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		// Run the callback with our manager, standing in for a real transaction.
@@ -190,6 +205,7 @@ describe('DurableJobProvisioner', () => {
 					maxAttempts: 5,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
+					concurrencyLimit: null,
 				},
 			]);
 			expect(summary.inserted).toEqual([{ id: 100, name: 'wf:node:0' }]);
@@ -257,6 +273,7 @@ describe('DurableJobProvisioner', () => {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			// The schedule is untouched, so the job keeps its queued tasks.
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
@@ -292,6 +309,7 @@ describe('DurableJobProvisioner', () => {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 		});
 
@@ -351,6 +369,7 @@ describe('DurableJobProvisioner', () => {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [10]);
 			expect(summary.redefined).toEqual([{ id: 10, name: 'wf:node:0' }]);
@@ -645,6 +664,7 @@ describe('DurableJobProvisioner', () => {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
+				concurrencyLimit: null,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 60);
 		});
@@ -660,6 +680,7 @@ describe('DurableJobProvisioner', () => {
 				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
+				concurrencyLimit: null,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 300);
 		});
@@ -709,6 +730,7 @@ describe('DurableJobProvisioner', () => {
 				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			// The grace is unchanged, so queued tasks keep their deadline.
@@ -722,6 +744,95 @@ describe('DurableJobProvisioner', () => {
 
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
+	});
+
+	describe('concurrency limit resolution', () => {
+		it('stamps a request-supplied limit onto the inserted row', async () => {
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: 2 }),
+			]);
+		});
+
+		it('leaves the inserted row unlimited when the request omits a limit', async () => {
+			await provisionWithConcurrencyLimit(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: null }),
+			]);
+		});
+
+		it("writes a request-supplied limit onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithConcurrencyLimit(2, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ concurrencyLimit: 2 }),
+			);
+		});
+
+		it('reconciles the limit of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 1 })]);
+
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: 2,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+		});
+
+		it('lifts the limit of a job the request no longer limits', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 2 })]);
+
+			await provisionWithConcurrencyLimit(undefined);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(
+				manager,
+				[10],
+				expect.objectContaining({ concurrencyLimit: null }),
+			);
+		});
+
+		it('leaves a job already stored at the requested limit out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 2 })]);
+
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+
+		it('stores the largest limit the column holds', async () => {
+			await provisionWithConcurrencyLimit(2_147_483_647);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: 2_147_483_647 }),
+			]);
+		});
+
+		// 2_147_483_648 overflows the column on Postgres while SQLite would take it.
+		it.each([0, -1, 1.5, Number.NaN, 2_147_483_648])(
+			'rejects a limit of %s',
+			async (concurrencyLimit) => {
+				await expect(provisionWithConcurrencyLimit(concurrencyLimit)).rejects.toThrow(UserError);
+
+				expect(jobs.insertMany).not.toHaveBeenCalled();
+				expect(dataSource.transaction).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('seeding a freshly provisioned job', () => {
@@ -927,6 +1038,7 @@ describe('DurableJobProvisioner', () => {
 					maxAttempts: 5,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
+					concurrencyLimit: null,
 					...columns,
 				},
 			]);

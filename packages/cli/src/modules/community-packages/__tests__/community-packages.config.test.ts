@@ -1,3 +1,4 @@
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '../community-packages.config';
@@ -40,5 +41,9 @@ describe('CommunityPackagesConfig', () => {
 		process.env.N8N_COMMUNITY_PACKAGES_ENABLED = 'false';
 
 		expect(Container.get(CommunityPackagesConfig).enabled).toBe(false);
+	});
+
+	it('exposes the supported nodes API version', () => {
+		expect(Container.get(CommunityPackagesConfig).nodesApiVersion).toBe(N8N_NODES_API_VERSION);
 	});
 });

@@ -2,6 +2,7 @@ import { RuleRunner } from '@n8n/rules-engine';
 import type { RuleSettingsMap } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from './context.js';
+import { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
@@ -14,6 +15,7 @@ import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
+export { AdrConventionsRule } from './rules/adr-conventions.rule.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
@@ -27,6 +29,11 @@ export type { SubpathSpec } from './rules/subpath-purity.rule.js';
 export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
+	'adr-conventions': {
+		enabled: true,
+		severity: 'error',
+		options: { allowedOwners: ['Catalysts'] },
+	},
 	'catalog-violations': {
 		enabled: true,
 		severity: 'error',
@@ -35,7 +42,8 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'workflow-pr-target-safety': {
 		enabled: true,
 		severity: 'error',
-		options: { allowedWorkflows: ['ci-cla-check.yml'] },
+		// ci-owners-required-reviews.yml checks out master only, never PR code.
+		options: { allowedWorkflows: ['ci-cla-check.yml', 'ci-owners-required-reviews.yml'] },
 	},
 	'migration-timestamp': {
 		enabled: true,
@@ -139,6 +147,7 @@ function mergeSettings(defaults: RuleSettingsMap, overrides?: RuleSettingsMap): 
 
 export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<CodeHealthContext> {
 	const runner = new RuleRunner<CodeHealthContext>();
+	runner.registerRule(new AdrConventionsRule());
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
 	runner.registerRule(new MigrationTimestampRule());

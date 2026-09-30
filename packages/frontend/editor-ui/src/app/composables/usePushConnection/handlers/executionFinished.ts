@@ -25,6 +25,14 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import {
+	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+	dismissWorkflowErrorNudge,
+	releaseWorkflowErrorNudge,
+	useSurfaceAssistantOnWorkflowError,
+} from '@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError';
+// EOF Experiment cleanup
 import {
 	SampleTemplates,
 	isTutorialTemplateId,
@@ -34,6 +42,8 @@ import {
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 } from '@/features/execution/executions/executions.utils';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
@@ -108,6 +118,10 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	if (!belongsToThisDocument) {
 		return;
 	}
+
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	dismissWorkflowErrorNudge();
+	// EOF Experiment cleanup
 
 	// A run using an n8n-managed credential consumes credits; invalidate the wallet
 	// cache so any balance pill reflects them. Gated on managed credentials so
@@ -442,7 +456,30 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 			});
 
-			toast.showMessage({ title, message, type: 'error', duration: 0 });
+			const { showPolicyViolationToast } = usePolicyViolationToast();
+			const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.executeTitle');
+			const violations = getPolicyViolations(execution.data.resultData.error);
+
+			if (violations) {
+				showPolicyViolationToast(violations, policyTitle, 'execute', documentId);
+			} else {
+				toast.showMessage({
+					title,
+					message,
+					type: 'error',
+					duration: 0,
+					// Experiment cleanup (119_surface_assistant_on_workflow_error)
+					customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+					onClose: () => releaseWorkflowErrorNudge(execution.id),
+					// EOF Experiment cleanup
+				});
+				// Experiment cleanup (119_surface_assistant_on_workflow_error)
+				useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(
+					execution.id,
+					execution.workflowId ?? execution.workflowData.id,
+				);
+				// EOF Experiment cleanup
+			}
 		}
 
 		useBuilderStore().incrementManualExecutionStats('error');

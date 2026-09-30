@@ -11,12 +11,14 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from '@n8n/backend-services';
+
 import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -298,12 +300,17 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
+			workflowsGroupsWithManyBoundariesEnabled:
+				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
+			granularCredentialSharing: isCredSharingEnabled(),
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 				setup: false,
+				cloudUbbEnabled: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -433,7 +440,7 @@ export class FrontendService {
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
-			canvasOnly: this.globalConfig.canvasOnly,
+			canvasOnly: this.globalConfig.canvasOnly.enabled,
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,
 			},
@@ -579,6 +586,8 @@ export class FrontendService {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
+			this.settings.aiAssistant.cloudUbbEnabled =
+				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
 		}
 
 		if (isAskAiEnabled) {

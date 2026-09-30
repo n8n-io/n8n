@@ -5,10 +5,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 
-import {
-	createValidateWorkflowCodeTool,
-	type ValidateWorkflowCodeToolOptions,
-} from '../tools/workflow-builder/validate-workflow-code.tool';
+import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted.
 const { mockParseAndValidate, mockStripImportStatements } = vi.hoisted(() => ({
@@ -64,8 +61,7 @@ describe('validate-workflow-code MCP tool', () => {
 		}) as typeof nodeTypes.getByNameAndVersion);
 	});
 
-	const createTool = (options?: ValidateWorkflowCodeToolOptions) =>
-		createValidateWorkflowCodeTool(user, telemetry, nodeTypes, options);
+	const createTool = () => createValidateWorkflowCodeTool(user, telemetry, nodeTypes);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and readOnlyHint=true', () => {
@@ -274,7 +270,7 @@ describe('validate-workflow-code MCP tool', () => {
 		});
 	});
 
-	describe('canvas groups (102_mcp_canvas_groups)', () => {
+	describe('canvas groups', () => {
 		const makeGroupedWorkflow = (
 			nodeGroups: Array<{ id: string; name: string; nodeIds: string[] }>,
 		) => ({
@@ -333,29 +329,13 @@ describe('validate-workflow-code MCP tool', () => {
 			}) as typeof nodeTypes.getByNameAndVersion);
 		});
 
-		test('flag off: groups are not validated and output/telemetry are unchanged', async () => {
-			mockParseAndValidate.mockResolvedValue({
-				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }]),
-				warnings: [],
-			});
-
-			const tool = createTool();
-			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
-
-			const response = parseResult(result);
-			expect(response.valid).toBe(true);
-			expect(response).not.toHaveProperty('warnings');
-			// Telemetry payload is byte-identical to the pre-flag shape.
-			expect(trackedData()).toEqual({ nodeCount: 3, warningCount: 0 });
-		});
-
-		test('flag on: a valid group produces no errors and is counted in telemetry', async () => {
+		test('a valid group produces no errors and is counted in telemetry', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]),
 				warnings: [],
 			});
 
-			const tool = createTool({ canvasGroupsEnabled: true });
+			const tool = createTool();
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);
@@ -368,13 +348,13 @@ describe('validate-workflow-code MCP tool', () => {
 			});
 		});
 
-		test('flag on: group violations fail validation with the save-path message', async () => {
+		test('group violations fail validation with the save-path message', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }]),
 				warnings: [],
 			});
 
-			const tool = createTool({ canvasGroupsEnabled: true });
+			const tool = createTool();
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);
@@ -394,7 +374,7 @@ describe('validate-workflow-code MCP tool', () => {
 			});
 		});
 
-		test('flag on: all group violations are reported as errors, one entry each', async () => {
+		test('all group violations are reported as errors, one entry each', async () => {
 			const sdkWarning = { code: 'deprecated', message: 'Node X is deprecated' };
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([
@@ -404,7 +384,7 @@ describe('validate-workflow-code MCP tool', () => {
 				warnings: [sdkWarning],
 			});
 
-			const tool = createTool({ canvasGroupsEnabled: true });
+			const tool = createTool();
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);
@@ -429,7 +409,7 @@ describe('validate-workflow-code MCP tool', () => {
 			});
 		});
 
-		test('flag on: connections under unsafe object keys are skipped, not assigned', async () => {
+		test('connections under unsafe object keys are skipped, not assigned', async () => {
 			// Built via JSON.parse: an object literal with a "__proto__" key would
 			// invoke the prototype setter instead of creating an own property.
 			// Both entries would be boundary-crossing ai_languageModel connections
@@ -448,7 +428,7 @@ describe('validate-workflow-code MCP tool', () => {
 				warnings: [],
 			});
 
-			const tool = createTool({ canvasGroupsEnabled: true });
+			const tool = createTool();
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);
@@ -462,13 +442,13 @@ describe('validate-workflow-code MCP tool', () => {
 			});
 		});
 
-		test('flag on: workflows without groups report groupCount 0', async () => {
+		test('workflows without groups report groupCount 0', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([]),
 				warnings: [],
 			});
 
-			const tool = createTool({ canvasGroupsEnabled: true });
+			const tool = createTool();
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);

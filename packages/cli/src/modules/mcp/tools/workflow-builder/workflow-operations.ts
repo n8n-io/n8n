@@ -105,7 +105,7 @@ export const workflowSettingsObjectSchema = z.object({
 	callerPolicy: z
 		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z
@@ -1234,16 +1234,13 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
  *
  * The function never mutates the input.
  *
- * With `{ canvasGroupsEnabled: true }`, a failing operation of a type in
- * `NON_FATAL_OPERATION_TYPES` does not abort the batch — it is skipped and recorded
- * in the result's `skippedOperations` instead, and the remaining operations still
- * apply. With the flag off (or omitted), every operation is fatal, matching the
- * historical behavior exactly.
+ * A failing operation of a type in `NON_FATAL_OPERATION_TYPES` does not abort
+ * the batch — it is skipped and recorded in the result's `skippedOperations`
+ * instead, and the remaining operations still apply.
  */
 export function applyOperations(
 	input: WorkflowSlice,
 	operations: PartialUpdateOperation[],
-	options: { canvasGroupsEnabled?: boolean } = {},
 ): ApplyOperationsResult {
 	const skippedOperations: SkippedOperation[] = [];
 
@@ -1268,7 +1265,7 @@ export function applyOperations(
 
 		const error = handler(op, ctx, i);
 		if (error) {
-			if (options.canvasGroupsEnabled && NON_FATAL_OPERATION_TYPES.has(op.type)) {
+			if (NON_FATAL_OPERATION_TYPES.has(op.type)) {
 				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
 				continue;
 			}

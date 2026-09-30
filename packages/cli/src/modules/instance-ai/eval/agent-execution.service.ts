@@ -283,6 +283,7 @@ export class EvalAgentExecutionService {
 			this.credentialsService,
 			projectId,
 			user,
+			agentId,
 		);
 
 		let agent: RuntimeAgent;

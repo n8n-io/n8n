@@ -22,8 +22,7 @@ export class DataTableComposer {
 		source: 'empty-state' | 'header-dropdown',
 		fromDataTableTab: boolean = true,
 	) {
-		await this.n8n.projectComposer.createProject(projectName);
-		const { projectId } = await this.n8n.projectComposer.createProject();
+		const { projectId } = await this.n8n.projectComposer.createProject(projectName);
 
 		if (fromDataTableTab) {
 			await this.n8n.navigate.toDatatables(projectId);

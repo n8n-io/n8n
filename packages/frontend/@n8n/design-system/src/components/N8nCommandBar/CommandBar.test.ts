@@ -148,6 +148,30 @@ describe('components', () => {
 			);
 		});
 
+		it('does not run a disabled item on click or Enter, and stays open', async () => {
+			const onCreate = vi.fn();
+			const items = createSampleItems().map((it) =>
+				it.id === 'create' ? { ...it, handler: onCreate, disabled: true } : it,
+			);
+
+			render(N8nCommandBar, { props: { items } });
+			await openCommandBar();
+
+			const item = screen.getByText('Create new workflow');
+			expect(item.closest('[aria-disabled="true"]')).not.toBeNull();
+
+			await fireEvent.click(item);
+			expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument();
+
+			// Filter so the disabled item is the highlighted one, then press Enter on it.
+			const input = screen.getByPlaceholderText('Type a command...');
+			await fireEvent.update(input, 'Create new');
+			await fireEvent.keyDown(input, { key: 'Enter' });
+
+			expect(onCreate).not.toHaveBeenCalled();
+			expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument();
+		});
+
 		it('closes when clicking outside the command bar', async () => {
 			render(N8nCommandBar, { props: { items: createSampleItems() } });
 			await openCommandBar();

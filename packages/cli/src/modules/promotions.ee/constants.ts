@@ -4,6 +4,9 @@ export const PROMOTION_KEY_COMMENT = 'n8n promotions';
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
+/** Default commit message for a project-scoped selective promote, used when the client sends none. */
+export const PROMOTE_SELECTION_COMMIT_MESSAGE = 'Promote a selection of project changes';
+
 export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
 
 /**
@@ -36,3 +39,5 @@ export const HTTP_LOW_SPEED_TIME_SECONDS = 30;
 // this long, so clone() always rejects and its cleanup path runs. Clone is run
 // with --progress so a healthy transfer keeps feeding this timer.
 export const GIT_COMMAND_STALL_TIMEOUT_MS = 60_000;
+
+export const GIT_READ_CONCURRENCY = 4;

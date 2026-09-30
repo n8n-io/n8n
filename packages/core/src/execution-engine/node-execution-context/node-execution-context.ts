@@ -7,6 +7,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IGetNodeParameterOptions,
 	INode,
 	INodeCredentialDescription,
@@ -271,6 +272,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support signed resume URLs yet');
+		}
+
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
 		if (typeof executionId !== 'string') {
@@ -326,6 +331,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		executeData?: IExecuteData,
 		connectionInputData?: INodeExecutionData[],
 		itemIndex?: number,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
@@ -344,6 +350,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 					type,
 					mode,
 					executeData,
+					undefined,
+					undefined,
+					options,
 				)) as T;
 			}
 		}
@@ -471,6 +480,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			executeData,
 			false,
 			expressionResolveValues,
+			options,
 		);
 
 		return decryptedDataObject as T;
@@ -484,8 +494,15 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	 */
 	protected async _getRunlessCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
+		options?: IGetDecryptedCredentialsOptions,
 	) {
-		return await this._getCredentials<T>(type, { data: {}, node: this.node, source: null });
+		return await this._getCredentials<T>(
+			type,
+			{ data: {}, node: this.node, source: null },
+			undefined,
+			undefined,
+			options,
+		);
 	}
 
 	@Memoized

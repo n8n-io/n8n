@@ -352,3 +352,47 @@ describe('ThinkingBlock', () => {
 		expect(getByText('deep thoughts')).toBeInTheDocument();
 	});
 });
+
+describe('collapsed subline label', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+	});
+
+	const contextEntry = (
+		injection: Extract<InstanceAiTimelineEntry, { type: 'instance-context' }>['injection'],
+	): InstanceAiTimelineEntry => ({ type: 'instance-context', runId: 'run-1', injection });
+
+	const sublineFor = (entry: InstanceAiTimelineEntry) =>
+		renderComponent({
+			props: { agentNode: makeAgentNode({ timeline: [entry] }), entries: [entry], active: true },
+		}).getByTestId('thinking-block-subline').textContent ?? '';
+
+	it('names what the turn was handed rather than repeating the header', () => {
+		const subline = sublineFor(
+			contextEntry({
+				state: 'injected',
+				isUpdate: false,
+				legs: { inventory: 8, events: 0, runs: 0 },
+				chars: 400,
+			}),
+		);
+
+		expect(subline).toContain('Read instance context');
+		expect(subline).toContain('8 workflows');
+	});
+
+	// The label must preserve the result state, including older empty-result rows.
+	it('does not claim a read on a turn that was handed nothing', () => {
+		const subline = sublineFor(contextEntry({ state: 'absent', reason: 'empty' }));
+
+		expect(subline).toContain('No instance context to read');
+		expect(subline).not.toContain('Read instance context');
+	});
+
+	it('says the read failed rather than calling it a read', () => {
+		const subline = sublineFor(contextEntry({ state: 'absent', reason: 'failed' }));
+
+		expect(subline).toContain('could not be read');
+		expect(subline).not.toContain('Read instance context');
+	});
+});

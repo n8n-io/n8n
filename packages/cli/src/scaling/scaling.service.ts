@@ -1,10 +1,11 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, UnexpectedError } from 'n8n-workflow';
@@ -13,7 +14,6 @@ import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
@@ -33,7 +33,7 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
-import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-response-relay';
+import { WebhookResponseRelay } from './webhook-response-relay';
 
 const DRAIN_POLL_INTERVAL_MS = 500;
 
@@ -98,7 +98,7 @@ export class ScalingService {
 		if (this.queueByName.size > 0) return;
 
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis-client.service.js');
+		const { RedisClientService } = await import('@n8n/backend-services');
 
 		const service = Container.get(RedisClientService);
 
@@ -502,7 +502,7 @@ export class ScalingService {
 					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
 					break;
 				case 'respond-to-webhook': {
-					const decodedResponse = decodeRelayedWebhookResponse(msg.response);
+					const decodedResponse = decodeBufferBody(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				}
@@ -522,8 +522,11 @@ export class ScalingService {
 					 * We track the result received via `job-finished` message,
 					 * because `removeOnComplete: true` prevents `job.finished()`
 					 * from returning a value that is no longer in Redis.
+					 *
+					 * Bull broadcasts this message to every main and webhook process,
+					 * but only the process that enqueued the job ever pops the result.
 					 */
-					if (msg.version === 2) {
+					if (msg.version === 2 && this.activeExecutions.has(msg.executionId)) {
 						this.jobResults.set(msg.executionId, {
 							success: msg.success,
 							error: msg.error,
@@ -642,7 +645,7 @@ export class ScalingService {
 					// it. So the stored body is left in place, and execution pruning
 					// reclaims it. Restoring under this guard only spares the mains that
 					// would discard the body a read of the whole thing.
-					const decoded = decodeRelayedWebhookResponse(response);
+					const decoded = decodeBufferBody(response);
 					const toolResult = await this.webhookResponseRelay.restoreOffloadedBody(decoded, {
 						reclaim: false,
 						context: { executionId },
@@ -780,7 +783,7 @@ export class ScalingService {
 			return waitMs;
 		}
 
-		await this.executionCrashService.markAsCrashed(danglingIds);
+		await this.executionCrashService.markAsCrashed(danglingIds, 'queue-recovery');
 
 		this.logger.info('Completed queue recovery check, recovered dangling executions', {
 			danglingIds,

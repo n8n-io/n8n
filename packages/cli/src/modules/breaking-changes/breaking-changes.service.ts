@@ -13,7 +13,7 @@ import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
@@ -23,6 +23,7 @@ import type {
 	IBreakingChangeInstanceRule,
 	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
+	WorkflowDetectionReport,
 } from './types';
 import { N8N_VERSION } from '../../constants';
 
@@ -76,7 +77,7 @@ export class BreakingChangeService {
 						ruleId: rule.id,
 						ruleTitle: rule.getMetadata().title,
 						ruleDescription: rule.getMetadata().description,
-						ruleSeverity: rule.getMetadata().severity,
+						ruleImpact: rule.getMetadata().impact,
 						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
@@ -84,7 +85,6 @@ export class BreakingChangeService {
 					});
 				}
 			} catch (error) {
-				console.log('error', error);
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
 		}
@@ -105,7 +105,7 @@ export class BreakingChangeService {
 					ruleId: rule.id,
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
-					ruleSeverity: rule.getMetadata().severity,
+					ruleImpact: rule.getMetadata().impact,
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
@@ -154,7 +154,7 @@ export class BreakingChangeService {
 					ruleId: rule.id,
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
-					ruleSeverity: rule.getMetadata().severity,
+					ruleImpact: rule.getMetadata().impact,
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
@@ -185,7 +185,7 @@ export class BreakingChangeService {
 
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'settings', 'updatedAt'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
@@ -227,7 +227,13 @@ export class BreakingChangeService {
 				workflowMetadataMap.set(workflow.id, workflowMetadata);
 
 				for (const rule of workflowLevelRules) {
-					const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					let result: WorkflowDetectionReport;
+					try {
+						result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					} catch (error) {
+						this.reportRuleError(error, rule.id, workflow.id);
+						continue;
+					}
 					if (result.isAffected) {
 						const affectedWorkflow: BreakingChangeAffectedWorkflow = {
 							id: workflow.id,
@@ -244,7 +250,11 @@ export class BreakingChangeService {
 				}
 
 				for (const rule of batchRules) {
-					await rule.collectWorkflowData(workflow, nodesGroupedByType);
+					try {
+						await rule.collectWorkflowData(workflow, nodesGroupedByType);
+					} catch (error) {
+						this.reportRuleError(error, rule.id, workflow.id);
+					}
 				}
 			}
 		}
@@ -261,7 +271,7 @@ export class BreakingChangeService {
 	async refreshDetectionResults(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		await this.cacheService.delete(`${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`);
+		await this.cacheService.delete(this.getCacheKey(targetVersion));
 		return await this.getDetectionResults(targetVersion);
 	}
 
@@ -275,38 +285,43 @@ export class BreakingChangeService {
 			return await existingDetection;
 		}
 
-		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
-
-		// Start a new detection and store the promise
-		const detectionPromise: Promise<BreakingChangeReportResult> = new Promise((resolve) => {
-			void (async () => {
-				// Check cache first
-				const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
-				if (cachedResult) {
-					this.logger.debug('Using cached breaking change detection results', {
-						targetVersion,
-					});
-					return resolve(cachedResult);
-				}
-
-				// Perform detection
-				const detectionResult = await this.detect(targetVersion);
-				return resolve(detectionResult);
-			})();
-		});
+		const detectionPromise = this.detectWithCache(targetVersion);
 		this.ongoingDetections.set(targetVersion, detectionPromise);
 
 		try {
-			const result = await detectionPromise;
-			// Store in cache if detection took significant time
-			if (result.shouldCache) {
-				await this.cacheService.set(cacheKey, result);
-			}
-			return result;
+			return await detectionPromise;
 		} finally {
-			// Clean up the promise after completion (success or failure)
 			this.ongoingDetections.delete(targetVersion);
 		}
+	}
+
+	// The rule set changes with every release, so a report from an older build is stale.
+	// The n8n version in the key rotates the entry on deploy; the old key ages out by TTL.
+	private getCacheKey(targetVersion: BreakingChangeVersion): string {
+		return `${BreakingChangeService.CACHE_KEY_PREFIX}${N8N_VERSION}:${targetVersion}`;
+	}
+
+	private async detectWithCache(
+		targetVersion: BreakingChangeVersion,
+	): Promise<BreakingChangeReportResult> {
+		const cacheKey = this.getCacheKey(targetVersion);
+
+		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
+		if (cachedResult) {
+			this.logger.debug('Using cached breaking change detection results', { targetVersion });
+			return cachedResult;
+		}
+
+		const result = await this.detect(targetVersion);
+		if (result.shouldCache) {
+			await this.cacheService.set(cacheKey, result);
+		}
+		return result;
+	}
+
+	private reportRuleError(error: unknown, ruleId: string, workflowId: string) {
+		this.logger.warn('Breaking change rule failed for workflow, skipping', { ruleId, workflowId });
+		this.errorReporter.error(error, { extra: { ruleId, workflowId } });
 	}
 
 	private shouldCacheDetection(durationMs: number): boolean {

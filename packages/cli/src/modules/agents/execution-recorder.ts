@@ -11,7 +11,7 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
-import type { ToolRegistry } from './tool-registry';
+import type { ToolRegistry, ToolRegistryEntry } from './tool-registry';
 
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
@@ -203,7 +203,7 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 export interface ToolCallDetails {
 	toolName: string;
 	displayName?: string;
-	kind: 'tool' | 'workflow' | 'node';
+	kind: ToolRegistryEntry['kind'];
 	input: unknown;
 	node?: {
 		type: string;
@@ -262,12 +262,13 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'input'; messageId: string; timestamp: number }
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
-			kind: 'tool' | 'workflow' | 'node';
+			kind: ToolRegistryEntry['kind'];
 			name: string;
 			toolCallId: string;
 			input: unknown;
@@ -329,7 +330,9 @@ export class ExecutionRecorder {
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
 		backgroundJobSignal?: AgentBackgroundJobSignal,
+		startedAt: Date = new Date(),
 	) {
+		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
 		if (backgroundJobSignal) {
 			this.timeline.push({
@@ -377,9 +380,20 @@ export class ExecutionRecorder {
 
 	private error: string | null = null;
 
-	private readonly startTime = Date.now();
+	private readonly startTime: number;
 
 	private childTraceChars = new Map<string, number>();
+
+	/** Record additional input only after its transaction commits. */
+	recordInputs(events: Array<Extract<TimelineEvent, { type: 'input' }>>): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		for (const event of events) {
+			if (this.timeline.some((item) => item.type === 'input' && item.messageId === event.messageId))
+				continue;
+			this.appendCompletedEvent(event);
+		}
+	}
 
 	/** Record the human response that caused a suspended tool call to resume. */
 	recordHitlResponse(toolCallId: string, response: unknown): void {
@@ -447,6 +461,7 @@ export class ExecutionRecorder {
 				}
 				entry.childTrace ??= emptyChildTrace();
 				applyForwardedChildChunk(entry.childTrace, inner);
+				this.scheduleTimelineSnapshot();
 				break;
 			}
 			case 'tool-result':
@@ -508,6 +523,8 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		clearTimeout(this.timelineSnapshotTimer);
+		this.timelineSnapshotTimer = undefined;
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
 		return {
@@ -589,6 +606,8 @@ export class ExecutionRecorder {
 					timestamp: this.reasoningStartTime,
 					endTime: now,
 				});
+			} else {
+				this.emitTimelineSnapshot();
 			}
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();

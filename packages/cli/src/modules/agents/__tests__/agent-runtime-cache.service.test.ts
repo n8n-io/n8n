@@ -9,6 +9,7 @@ import { OperationalError } from 'n8n-workflow';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
@@ -62,8 +63,7 @@ function makeService({
 	const service = new AgentRuntimeCacheService(
 		mockLogger(),
 		agentRepository,
-		publisher,
-		globalConfig,
+		new AgentChangePublisher(publisher, globalConfig, mockLogger()),
 		reconstructionService,
 		credentialsService,
 		sandboxRuntimeService,
@@ -510,8 +510,9 @@ describe('AgentRuntimeCacheService', () => {
 		const first = service.getRuntime({ agentId, projectId });
 		const second = service.getRuntime({ agentId, projectId });
 
-		await Promise.resolve();
-		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() =>
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1),
+		);
 
 		resolveRuntime(runtime);
 		const [firstRuntime, secondRuntime] = await Promise.all([first, second]);
@@ -620,6 +621,51 @@ describe('AgentRuntimeCacheService', () => {
 			'integrated',
 			undefined,
 			{},
+		);
+	});
+
+	it('keeps production n8n Chat on published instructions with project-scoped tools', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent({
+			schema: {
+				name: 'Draft',
+				model: 'openai:gpt-4o',
+				instructions: 'Draft instructions',
+			},
+			activeVersion: {
+				schema: {
+					name: 'Published',
+					model: 'openai:gpt-4o',
+					instructions: 'Published instructions',
+				},
+				tools: {},
+				skills: {},
+			} as Agent['activeVersion'],
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+		await service.getRuntime({
+			agentId,
+			projectId,
+			usePublishedVersion: true,
+			integrationType: 'n8n_chat',
+			attributionUserId: 'user-1',
+			allowBackgroundTasks: false,
+		});
+
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
+			expect.objectContaining({
+				schema: expect.objectContaining({ instructions: 'Published instructions' }),
+			}),
+			expect.anything(),
+			'production',
+			'n8n_chat',
+			undefined,
+			undefined,
+			'integrated',
+			undefined,
+			{ previewChat: undefined, allowBackgroundTasks: false, attributionUserId: 'user-1' },
 		);
 	});
 

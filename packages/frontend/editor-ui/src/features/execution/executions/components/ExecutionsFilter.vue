@@ -235,7 +235,7 @@ onBeforeMount(() => {
 			>
 				<template v-if="!!countSelectedFilterProps" #default>
 					<N8nBadge
-						theme="primary"
+						variant="primary"
 						class="mr-4xs"
 						data-test-id="execution-filter-badge"
 						:class="$style.filterBadge"

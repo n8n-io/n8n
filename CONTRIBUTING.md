@@ -84,7 +84,7 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 [pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
 
 ```bash
-npm i -g pnpm@12.3.4
+npm i -g pnpm@12.4.2
 ```
 
 The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.

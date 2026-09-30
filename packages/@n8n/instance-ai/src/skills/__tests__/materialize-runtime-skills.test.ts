@@ -1,4 +1,5 @@
 import {
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	createSkillLoadTool,
 	type RuntimeSkillLinkedFiles,
@@ -356,7 +357,6 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 	});
 
 	it('warns when materialized skill files exceed the load_skill output limit', async () => {
-		const runtimeSkillMaxOutputBytes = 64 * 1024;
 		const source: RuntimeSkillSource = {
 			registry: {
 				schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
@@ -376,7 +376,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 					id: 'large-skill',
 					name: 'large-skill',
 					description: 'Large skill',
-					instructions: 'x'.repeat(runtimeSkillMaxOutputBytes + 1),
+					instructions: 'x'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1),
 				}),
 		};
 		const { workspace } = createMockWorkspace();
@@ -399,7 +399,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const [message, meta] = limitWarnCall!;
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
 		expect(meta?.skill).toBe('large-skill');
-		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+		expect(meta?.maxBytes).toBe(RUNTIME_SKILL_MAX_OUTPUT_BYTES);
 	});
 });
 

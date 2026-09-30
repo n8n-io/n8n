@@ -6,20 +6,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import AgentTaskModal from '../components/AgentTaskModal.vue';
 import { formatScheduleDateTime } from '../utils/scheduleBuilder';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 // Components use `data-testid`; the global setup configures `data-test-id`.
 configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
-			options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.builder.tasks.schedule.summary') {
+				return `${options?.interpolate?.description} · ${options?.interpolate?.execution}`;
+			}
+			return options?.interpolate?.occurrence ? `${key} ${options.interpolate.occurrence}` : key;
+		},
 	};
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
@@ -49,23 +53,10 @@ function setBrowserTimezone(timeZone: string): void {
 const createAgentTaskSpy = vi.fn();
 const updateAgentTaskSpy = vi.fn();
 const deleteAgentTaskSpy = vi.fn();
-const runAgentTaskSpy = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentTask: (...args: unknown[]) => createAgentTaskSpy(...args),
 	deleteAgentTask: (...args: unknown[]) => deleteAgentTaskSpy(...args),
-	runAgentTask: (...args: unknown[]) => runAgentTaskSpy(...args),
 	updateAgentTask: (...args: unknown[]) => updateAgentTaskSpy(...args),
-}));
-
-const showMessageSpy = vi.fn();
-const showErrorSpy = vi.fn();
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: showMessageSpy, showError: showErrorSpy }),
-}));
-
-const confirmSpy = vi.fn();
-vi.mock('../composables/useAgentConfirmationModal', () => ({
-	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirmSpy }),
 }));
 
 const MODAL_NAME = 'AgentTaskModal';
@@ -128,23 +119,28 @@ const N8nFormInputStub = defineComponent({
 
 // Modal + Select/Option use filename-inferred names (no N8n prefix).
 const stubs = {
-	Modal: {
-		props: ['name', 'width'],
-		template:
-			'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
-	},
+	AgentModal: AgentModalTestStub,
 	N8nHeading: { template: '<h2><slot /></h2>' },
 	N8nText: { template: '<span v-bind="$attrs"><slot /></span>' },
 	N8nTooltip: { template: '<span><slot /></span>' },
 	N8nIcon: { template: '<span />' },
 	N8nButton: {
 		props: ['disabled', 'loading'],
+		emits: ['click'],
 		template:
 			'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
 	N8nSwitch2: {
 		props: ['modelValue'],
-		template: '<button v-bind="$attrs" @click="$emit(\'update:modelValue\', !modelValue)" />',
+		emits: ['update:modelValue'],
+		template:
+			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	},
+	AgentPreviewButton: {
+		props: ['isRunnable', 'testId', 'validationIssues', 'variant'],
+		emits: ['open-preview'],
+		template:
+			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -155,9 +151,9 @@ const stubs = {
 	FormInput: N8nFormInputStub,
 	// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
 	MarkdownEditor: {
-		props: ['modelValue'],
+		props: ['modelValue', 'showToolbar'],
 		template:
-			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<textarea v-bind="$attrs" :value="modelValue" :data-show-toolbar="showToolbar" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
 	Select: {
 		props: ['modelValue'],
@@ -208,7 +204,6 @@ describe('AgentTaskModal', () => {
 		uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
-		confirmSpy.mockResolvedValue(MODAL_CONFIRM);
 	});
 
 	afterEach(() => {
@@ -220,7 +215,11 @@ describe('AgentTaskModal', () => {
 		createAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId, onSaved } = renderModal();
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		expect(getByTestId('agent-task-objective-input')).toHaveAttribute(
+			'data-show-toolbar',
+			'floating',
+		);
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -244,7 +243,7 @@ describe('AgentTaskModal', () => {
 		createAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId } = renderModal({ isPublished: false });
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -269,7 +268,7 @@ describe('AgentTaskModal', () => {
 			ensureAgentPersisted,
 		});
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -300,7 +299,7 @@ describe('AgentTaskModal', () => {
 			ensureAgentPersisted,
 		});
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
@@ -325,7 +324,7 @@ describe('AgentTaskModal', () => {
 	it('does not save when objective exceeds the maximum length', async () => {
 		const { getByTestId, getByText } = renderModal();
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'My Task');
 		await fireEvent.update(
 			getByTestId('agent-task-objective-input'),
 			'x'.repeat(AGENT_TASK_OBJECTIVE_MAX_LENGTH + 1),
@@ -364,7 +363,7 @@ describe('AgentTaskModal', () => {
 		updateAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId } = renderModal({ task: makeTask() });
 
-		await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Renamed');
 		await fireEvent.click(getByTestId('agent-task-save'));
 
 		await waitFor(() => expect(updateAgentTaskSpy).toHaveBeenCalled());
@@ -377,17 +376,30 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('toggles an existing task through the modal callback', async () => {
+	it('pauses and unpauses an existing task with the inline toggle', async () => {
 		const onToggle = vi.fn();
-		const { getByTestId } = renderModal({
+		const { getByTestId, getByText, queryByText } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
 			onToggle,
 		});
 
+		expect(getByTestId('agent-task-pause-control')).toHaveTextContent('agents.builder.tasks.pause');
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
+		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+
 		await fireEvent.click(getByTestId('agent-task-toggle'));
 
 		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'true');
+		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
+		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-task-toggle'));
+
+		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
+		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
+		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 	});
 
 	describe('schedule timezone', () => {
@@ -416,13 +428,18 @@ describe('AgentTaskModal', () => {
 			).toBeInTheDocument();
 		}
 
-		it('previews a new task in the timezone its author is reading', () => {
+		it('previews the next execution after a new task schedule changes', async () => {
 			setBrowserTimezone('Asia/Tokyo');
 
-			const { getByText } = renderModal();
+			const { getByTestId, getByText, queryByText } = renderModal();
 
-			// 13:00 UTC is 22:00 in Tokyo, so the default 09:00 cron fires next morning.
-			expectNextRun(getByText, '2026-01-02T00:00:00.000Z', 'Asia/Tokyo');
+			expect(
+				queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/),
+			).not.toBeInTheDocument();
+
+			await fireEvent.update(getByTestId('agent-task-frequency'), 'weekly');
+
+			expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
 		});
 
 		it("previews an existing task in the task's own timezone", () => {
@@ -434,6 +451,16 @@ describe('AgentTaskModal', () => {
 
 			// 08:00 Tokyo on 2 Jan, in Tokyo time — not the viewer's, not the instance's.
 			expectNextRun(getByText, '2026-01-01T23:00:00.000Z', 'Asia/Tokyo');
+		});
+
+		it('uses the localized custom schedule summary', () => {
+			const { getByText } = renderModal({
+				task: makeTask({ cronExpression: '*/15 * * * *', timezone: 'UTC' }),
+			});
+
+			expect(
+				getByText(/Every 15 minutes · agents\.builder\.tasks\.schedule\.nextOccurrence/),
+			).toBeInTheDocument();
 		});
 
 		it('previews a task saved without a timezone in the instance timezone', () => {
@@ -453,7 +480,7 @@ describe('AgentTaskModal', () => {
 
 			const { getByTestId } = renderModal({ task: makeTask({ timezone: null }) });
 
-			await fireEvent.update(getByTestId('agent-task-name-input'), 'Renamed');
+			await fireEvent.update(getByTestId('agent-modal-title-input'), 'Renamed');
 			await fireEvent.click(getByTestId('agent-task-save'));
 
 			// Editing anything else must not pin the task, or a later change to the
@@ -497,20 +524,46 @@ describe('AgentTaskModal', () => {
 		});
 	});
 
-	it('runs an existing task and shows a success toast', async () => {
-		runAgentTaskSpy.mockResolvedValue({ success: true });
+	it('opens Preview with the trimmed task objective', async () => {
+		const onPreview = vi.fn();
 		const { getByTestId } = renderModal({
-			task: makeTask(),
+			task: makeTask({ objective: '  Test these instructions  ' }),
 			taskState: { enabled: true },
+			isRunnable: true,
+			onPreview,
 		});
 
-		await fireEvent.click(getByTestId('agent-task-run'));
+		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		await waitFor(() => expect(runAgentTaskSpy).toHaveBeenCalledWith({}, 'p1', 'a1', 'task-9'));
-		expect(showMessageSpy).toHaveBeenCalled();
+		expect(onPreview).toHaveBeenCalledWith('Test these instructions');
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('deletes an existing task after confirmation', async () => {
+	it('keeps Preview disabled when the agent is not runnable', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({ task: makeTask(), isRunnable: false, onPreview });
+
+		expect(getByTestId('agent-task-preview')).toBeDisabled();
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).not.toHaveBeenCalled();
+	});
+
+	it('does not open Preview when the objective is invalid', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({
+			task: makeTask({ objective: '' }),
+			isRunnable: true,
+			onPreview,
+		});
+
+		await fireEvent.click(getByTestId('agent-task-preview'));
+
+		expect(onPreview).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+	});
+
+	it('removes an existing task immediately', async () => {
 		deleteAgentTaskSpy.mockResolvedValue({ success: true });
 		const { getByTestId, onSaved } = renderModal({
 			task: makeTask(),
@@ -524,21 +577,41 @@ describe('AgentTaskModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('keeps task actions in the header for existing tasks only', async () => {
+	it('shows the edit-only controls for existing tasks', async () => {
 		const { getByTestId, rerender, queryByTestId } = renderModal({
 			task: makeTask(),
 			taskState: { enabled: true },
+			isRunnable: true,
 		});
 
-		expect(getByTestId('agent-task-toggle')).toBeTruthy();
-		expect(getByTestId('agent-task-run')).toBeTruthy();
+		expect(getByTestId('agent-task-delete')).toHaveTextContent('agents.builder.tasks.delete');
+		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
+		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
+		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
+		expect(getByTestId('agent-task-preview')).toHaveAttribute('data-variant', 'ghost');
+		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');
+		expect(
+			Array.from(getByTestId('agent-modal-footer-actions').querySelectorAll('button')).map(
+				(button) => button.dataset.testid,
+			),
+		).toEqual(['agent-task-preview', 'agent-modal-cancel', 'agent-task-save']);
+		expect(queryByTestId('agent-task-run')).not.toBeInTheDocument();
 
 		await rerender({
 			modalName: MODAL_NAME,
-			data: { projectId: 'p1', agentId: 'a1', isPublished: true, onSaved: vi.fn() },
+			data: {
+				projectId: 'p1',
+				agentId: 'a1',
+				isPublished: true,
+				isRunnable: true,
+				onSaved: vi.fn(),
+			},
 		});
 
 		expect(queryByTestId('agent-task-toggle')).toBeNull();
-		expect(queryByTestId('agent-task-run')).toBeNull();
+		expect(queryByTestId('agent-task-pause-control')).toBeNull();
+		expect(queryByTestId('agent-task-delete')).toBeNull();
+		expect(getByTestId('agent-task-preview')).toBeInTheDocument();
+		expect(getByTestId('agent-task-save')).toBeInTheDocument();
 	});
 });

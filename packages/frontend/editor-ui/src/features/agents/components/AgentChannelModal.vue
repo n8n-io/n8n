@@ -1,19 +1,9 @@
 <script setup lang="ts">
+import type { AgentApproval } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import {
-	N8nButton,
-	N8nDialog,
-	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
-	N8nIcon,
-	N8nIconButton,
-	updatedIconSet,
-	type IconName,
-} from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { FocusScope } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import {
 	agentChannelPlatforms,
@@ -28,7 +18,10 @@ import type {
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
+import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 export type ChannelView = AgentChannelView;
 
@@ -58,11 +51,13 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
 	connectedCredentials,
 	integrationSettings,
+	integrationApproval,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -76,9 +71,11 @@ const {
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const currentView = ref<ChannelView>(props.view);
+const openedFromList = ref(props.view === 'list');
 const viewSession = ref(0);
 const credentialIdAtEditOpen = ref('');
 const channelActionInFlight = ref(false);
+const saveAttempted = ref(false);
 const pendingDisconnect = ref<{
 	channelType: string;
 	credentialId: string;
@@ -109,6 +106,46 @@ const currentIntegration = computed(() => {
 	if (!selectedChannelType.value) return null;
 	return catalog.value?.find((i) => i.type === selectedChannelType.value) ?? null;
 });
+
+/** The channel whose setup view is on screen, so the close event fires once per start. */
+let trackedSetupType: string | null = null;
+
+function endSetupTracking(completed: boolean) {
+	if (!trackedSetupType) return;
+	agentTelemetry.trackClosedChannelSetup({
+		agentId: props.agentId,
+		channelType: trackedSetupType,
+		completed,
+	});
+	trackedSetupType = null;
+}
+
+watch(
+	// The template renders the setup view only once the catalog knows the channel.
+	() =>
+		props.open && isSetupMode.value && currentIntegration.value ? selectedChannelType.value : null,
+	(channelType) => {
+		if (channelType === trackedSetupType) return;
+		endSetupTracking(false);
+		if (!channelType) return;
+		trackedSetupType = channelType;
+		agentTelemetry.trackStartedChannelSetup({ agentId: props.agentId, channelType });
+	},
+	{ immediate: true },
+);
+
+onUnmounted(() => endSetupTracking(false));
+
+function trackSetupFailure(channelType: string, stage: 'persist' | 'before_save' | 'connect') {
+	// Only setup feeds the funnel; a failed save from the edit view is not part of it.
+	if (!isSetupMode.value) return;
+	agentTelemetry.trackFailedToConnectChannel({
+		agentId: props.agentId,
+		channelType,
+		stage,
+		conflict: stage === 'connect' && (errorIsConflict.value[channelType] ?? false),
+	});
+}
 
 const {
 	selectedCredentials,
@@ -179,6 +216,10 @@ const currentPlatform = computed(() =>
 );
 const currentRuntime = computed(() => runtimeFor(selectedChannelType.value ?? 'unknown'));
 const channelViewRef = ref<AgentChannelViewExpose>();
+/** Pending approval edit for the channel being edited, seeded from what is saved. */
+const channelApproval = ref<AgentApproval | undefined>();
+const channelApprovalValid = ref(true);
+const approvableActions = computed(() => currentIntegration.value?.approvableActions ?? []);
 const channelViewLoading = computed(() => channelViewRef.value?.loading === true);
 /**
  * Persisting the Agent and setting the channel up are one action from here: the
@@ -217,9 +258,9 @@ const headerContentComponent = computed(() => {
 	}
 	return undefined;
 });
-const canClose = computed(() => !actionInFlight.value);
 function prepareChannelEdit(channelType: string | null) {
 	captureConnectedCredential(channelType);
+	channelApproval.value = channelType ? integrationApproval.value[channelType] : undefined;
 	if (!channelType) return;
 	clearIntegrationError(channelType);
 	if (credentialIdAtEditOpen.value) {
@@ -240,27 +281,15 @@ const showFooterActions = computed(() => isEditMode.value && selectedChannelType
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
-const canSaveChannelConfig = computed(() => {
-	return (
-		selectedChannelType.value !== null &&
-		currentChannelCredentialId.value.length > 0 &&
-		!channelViewLoading.value &&
-		!channelViewRef.value?.validationError
-	);
-});
-
-function isIconName(icon: string): icon is IconName {
-	return icon in updatedIconSet;
-}
-
 const headerText = computed(() => {
 	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
 	if (channel && !isListMode) {
-		return channel;
+		return currentIntegration.value?.label ?? channel;
 	}
 	return i18n.baseText('agents.channels.modal.title');
 });
+const currentStep = computed(() => (currentView.value === 'list' ? 'list' : 'configure'));
 
 function isConnected(channelType: string): boolean {
 	return isIntegrationConnected(channelType);
@@ -296,22 +325,23 @@ function connectAction(channelType: string) {
 
 function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
+	openedFromList.value = true;
+	saveAttempted.value = false;
 	currentView.value = `${channelType}_setup`;
 }
 
 function goToEdit(channelType: string) {
 	prepareChannelEdit(channelType);
+	openedFromList.value = true;
+	saveAttempted.value = false;
 	currentView.value = `${channelType}_edit`;
 }
 
 function goBackToList() {
 	if (actionInFlight.value) return;
-	captureConnectedCredential(null);
+	prepareChannelEdit(null);
+	saveAttempted.value = false;
 	currentView.value = 'list';
-}
-
-function handleListDisconnect(channelType: string) {
-	requestDisconnect(channelType, connectedCredentials.value[channelType] ?? '', false);
 }
 
 /**
@@ -321,11 +351,6 @@ function handleListDisconnect(channelType: string) {
  */
 function completeAndClose() {
 	emit('update:open', false);
-}
-
-function closeModal() {
-	if (actionInFlight.value) return;
-	completeAndClose();
 }
 
 function handleModalOpenUpdate(isOpen: boolean) {
@@ -366,10 +391,12 @@ async function runBeforeSave(): Promise<boolean> {
 
 async function saveChannelConfig() {
 	if (actionInFlight.value) return;
+	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelViewRef.value?.validationError) return;
+	if (!channelApprovalValid.value) return;
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
@@ -383,19 +410,29 @@ async function saveChannelConfig() {
 
 	channelActionInFlight.value = true;
 	try {
-		if (!(await persistAgent())) return;
-		if (!(await runBeforeSave())) return;
+		if (!(await persistAgent())) {
+			trackSetupFailure(channelType, 'persist');
+			return;
+		}
+		if (!(await runBeforeSave())) {
+			trackSetupFailure(channelType, 'before_save');
+			return;
+		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			// Only the edit view shows the approval control, so only it may carry one.
+			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
 		// exposes that failure to the setup view.
+		trackSetupFailure(channelType, 'connect');
 		return;
 	} finally {
 		channelActionInFlight.value = false;
 	}
 
+	endSetupTracking(true);
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	completeAndClose();
@@ -404,6 +441,7 @@ async function saveChannelConfig() {
 function handlePlatformConnected() {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
+	endSetupTracking(true);
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	completeAndClose();
@@ -514,6 +552,8 @@ watch(
 		if (isOpen) {
 			viewSession.value += 1;
 			void loadChannelState();
+			openedFromList.value = props.view === 'list';
+			saveAttempted.value = false;
 			currentView.value = props.view;
 		} else {
 			captureConnectedCredential(null);
@@ -524,173 +564,125 @@ watch(
 </script>
 
 <template>
-	<N8nDialog
+	<AgentModalMultiStep
 		:open="open"
-		size="2xlarge"
+		:step="currentStep"
+		:title="headerText"
+		:show-back="currentView !== 'list' && openedFromList"
+		:show-footer="showFooterActions"
+		:busy="actionInFlight"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
-		:show-close-button="false"
 		@interact-outside="handleInteractOutside"
 		@update:open="handleModalOpenUpdate"
+		@back="goBackToList"
 	>
-		<FocusScope
-			v-if="credentialModalOpen"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
-			<span hidden aria-hidden="true" />
-		</FocusScope>
-
-		<N8nDialogHeader :class="$style.customHeader">
-			<Transition name="channel-header-fade" mode="out-in">
-				<div v-if="currentView === 'list'" key="list" :class="$style.headerContent">
-					<div :class="$style.headerTitle">
-						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
-					</div>
-				</div>
-				<div v-else :key="currentView" :class="$style.headerContent">
-					<N8nIconButton
-						variant="ghost"
-						size="small"
-						icon-size="medium"
-						icon="arrow-left"
-						:disabled="actionInFlight"
-						:class="$style.backButton"
-						data-testid="agent-channel-back"
-						@click="goBackToList"
-					>
-						<template #icon>
-							<N8nIcon icon="arrow-left" size="small" />
-						</template>
-					</N8nIconButton>
-					<div :class="$style.headerTitle">
-						<N8nIcon
-							v-if="currentIntegration?.icon && isIconName(currentIntegration.icon)"
-							:icon="currentIntegration.icon"
-							size="large"
-						/>
-						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
-					</div>
-					<div :class="$style.headerActions">
-						<component
-							:is="headerContentComponent"
-							v-if="headerContentComponent"
-							:runtime="currentRuntime"
-							:disabled="headerContentDisabled"
-						/>
-					</div>
-				</div>
-			</Transition>
-			<N8nIconButton
-				variant="ghost"
-				size="small"
-				icon-size="medium"
-				icon="x"
-				:class="$style.closeButton"
-				aria-label="Close dialog"
-				data-test-id="dialog-close-button"
-				:disabled="!canClose"
-				@click="closeModal"
+		<template #headerActions>
+			<component
+				:is="headerContentComponent"
+				v-if="headerContentComponent"
+				:runtime="currentRuntime"
+				:disabled="headerContentDisabled"
 			/>
-		</N8nDialogHeader>
+		</template>
 
 		<div data-testid="agent-channel-modal" :class="$style.container">
-			<Transition name="channel-view-fade" mode="out-in">
-				<div v-if="currentView === 'list'" key="list" :class="$style.listView">
-					<ul :class="$style.channelList">
-						<AgentChannelListItem
-							v-for="integration in catalog"
-							:key="integration.type"
-							:integration="integration"
-							:configured="isConfigured(integration.type)"
-							:connected="isConnected(integration.type)"
-							:not-running="hasRuntimeError(integration.type)"
-							:runtime-error="runtimeErrors[integration.type]"
-							:loading="listLoading"
-							:connect-action="connectAction(integration.type)"
-							@setup="goToSetup"
-							@edit="goToEdit"
-							@disconnect="handleListDisconnect"
-						/>
-					</ul>
-				</div>
-
-				<div
-					v-else-if="currentIntegration"
-					:key="`${isSetupMode ? 'setup' : 'edit'}-${currentView}`"
-					:class="isSetupMode ? $style.setupView : $style.editView"
-				>
-					<component
-						:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
-						:key="viewSession"
-						ref="channelViewRef"
-						v-model="selectedCredentials[currentIntegration.type]"
-						:mode="isSetupMode ? 'setup' : 'edit'"
-						:integration="currentIntegration"
-						:credentials="getCredentials(currentIntegration.type)"
-						:credential-permissions="credentialPermissions"
-						:credentials-loading="credentialsLoading"
-						:loading="isLoading(currentIntegration.type)"
-						:connected="isConfigured(currentIntegration.type)"
-						:connected-description="integrationConnectedText(currentIntegration.type)"
-						:error-message="
-							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
-						"
-						:error-is-conflict="errorIsConflict[currentIntegration.type]"
-						:saved-settings="integrationSettings[currentIntegration.type]"
-						:is-published="isPublished"
-						:agent-name="agentId"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:force-new-credential="false"
-						:simple-setup="simpleSetup"
-						:runtime="currentRuntime"
-						@create="createCredential"
-						@edit="editCredential"
-						@connect="saveChannelConfig"
-						@connected="handlePlatformConnected"
+			<div v-show="currentView === 'list'" key="list" :class="$style.listView">
+				<ul :class="$style.channelList">
+					<AgentChannelListItem
+						v-for="integration in catalog"
+						:key="integration.type"
+						:integration="integration"
+						:configured="isConfigured(integration.type)"
+						:connected="isConnected(integration.type)"
+						:not-running="hasRuntimeError(integration.type)"
+						:runtime-error="runtimeErrors[integration.type]"
+						:loading="listLoading"
+						:connect-action="connectAction(integration.type)"
+						@setup="goToSetup"
+						@edit="goToEdit"
 					/>
-				</div>
-			</Transition>
+				</ul>
+			</div>
+
+			<div
+				v-if="currentView !== 'list' && currentIntegration"
+				:key="`${isSetupMode ? 'setup' : 'edit'}-${currentView}`"
+				:class="isSetupMode ? $style.setupView : $style.editView"
+			>
+				<component
+					:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
+					:key="viewSession"
+					ref="channelViewRef"
+					v-model="selectedCredentials[currentIntegration.type]"
+					:mode="isSetupMode ? 'setup' : 'edit'"
+					:integration="currentIntegration"
+					:credentials="getCredentials(currentIntegration.type)"
+					:credential-permissions="credentialPermissions"
+					:credentials-loading="credentialsLoading"
+					:loading="isLoading(currentIntegration.type)"
+					:connected="isConfigured(currentIntegration.type)"
+					:connected-description="integrationConnectedText(currentIntegration.type)"
+					:error-message="
+						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+					"
+					:error-is-conflict="errorIsConflict[currentIntegration.type]"
+					:saved-settings="integrationSettings[currentIntegration.type]"
+					:is-published="isPublished"
+					:agent-name="agentId"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:force-new-credential="false"
+					:simple-setup="simpleSetup"
+					:runtime="currentRuntime"
+					@create="createCredential"
+					@edit="editCredential"
+					@connect="saveChannelConfig"
+					@connected="handlePlatformConnected"
+				/>
+				<N8nText
+					v-if="saveAttempted && !currentChannelCredentialId"
+					size="small"
+					color="danger"
+					data-testid="agent-channel-credential-required"
+				>
+					{{ i18n.baseText('agents.channels.modal.credentialRequired' as BaseTextKey) }}
+				</N8nText>
+
+				<AgentChannelApprovalSetting
+					v-if="isEditMode && approvableActions.length > 0"
+					v-model="channelApproval"
+					:actions="approvableActions"
+					@update:valid="channelApprovalValid = $event"
+				/>
+			</div>
 		</div>
 
-		<Transition name="channel-footer-fade">
-			<N8nDialogFooter v-if="showFooterActions" :class="$style.customFooter">
-				<div :class="$style.footer">
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
-						:disabled="actionInFlight || !selectedChannelType"
-						data-testid="agent-channel-remove-channel"
-						@click="removeCurrentChannel"
-					>
-						{{ i18n.baseText('agents.channels.modal.removeChannel') }}
-					</N8nButton>
-					<div :class="$style.footerActions">
-						<N8nButton
-							variant="outline"
-							size="medium"
-							:disabled="actionInFlight"
-							@click="closeModal"
-						>
-							{{ i18n.baseText('generic.cancel') }}
-						</N8nButton>
-						<N8nButton
-							variant="solid"
-							size="medium"
-							:loading="actionInFlight"
-							:disabled="!canSaveChannelConfig || actionInFlight"
-							data-testid="agent-channel-save-channel-config"
-							@click="saveChannelConfig"
-						>
-							{{ i18n.baseText('generic.save') }}
-						</N8nButton>
-					</div>
-				</div>
-			</N8nDialogFooter>
-		</Transition>
+		<template v-if="showFooterActions" #footerLeft>
+			<N8nButton
+				variant="ghost"
+				size="medium"
+				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
+				:disabled="actionInFlight || !selectedChannelType"
+				data-testid="agent-channel-remove-channel"
+				@click="removeCurrentChannel"
+			>
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.channels.modal.removeChannel') }}
+			</N8nButton>
+		</template>
+		<template v-if="showFooterActions" #footerActions>
+			<N8nButton
+				variant="solid"
+				size="medium"
+				:loading="actionInFlight"
+				:disabled="!channelApprovalValid || actionInFlight"
+				data-testid="agent-channel-save-channel-config"
+				@click="saveChannelConfig"
+			>
+				{{ i18n.baseText('generic.save') }}
+			</N8nButton>
+		</template>
 		<component
 			:is="disconnectConfirmationComponent"
 			v-if="pendingDisconnect && disconnectConfirmationComponent"
@@ -699,66 +691,14 @@ watch(
 			@cancel="pendingDisconnect = null"
 			@confirm="confirmDisconnect"
 		/>
-	</N8nDialog>
+	</AgentModalMultiStep>
 </template>
 
-<style lang="scss">
-body:has([data-testid='agent-channel-modal'])
-	.el-overlay:has([data-test-id='editCredential-modal']) {
-	pointer-events: auto;
-}
-</style>
-
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/motion';
-
 .container {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	min-height: var(--height--5xl);
-	aspect-ratio: 4/3;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	margin-bottom: calc(var(--spacing--lg) * -1);
-	scrollbar-color: transparent transparent;
-}
-
-.customHeader {
-	flex-direction: row;
-	align-items: center;
-	gap: var(--spacing--md);
-	padding-inline: var(--spacing--lg);
-	padding-bottom: var(--spacing--md);
-	height: var(--height--2xl);
-	border-bottom: var(--border);
-	margin-inline: calc(var(--spacing--lg) * -1);
-}
-
-.headerContent {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--md);
-	flex: 1;
-	min-width: 0;
-}
-
-.headerTitle {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	text-transform: capitalize;
-}
-
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	margin-left: auto;
-}
-
-.closeButton {
-	flex-shrink: 0;
 }
 
 .listView {
@@ -769,7 +709,7 @@ body:has([data-testid='agent-channel-modal'])
 .channelList {
 	display: flex;
 	flex-direction: column;
-	padding-block: var(--spacing--xs);
+	padding-bottom: var(--spacing--xs);
 }
 
 .setupView,
@@ -777,56 +717,5 @@ body:has([data-testid='agent-channel-modal'])
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--md) 0;
-}
-
-.customFooter {
-	position: absolute;
-	inset-inline: 0;
-	bottom: 0;
-	padding: var(--spacing--md) var(--spacing--lg);
-	border-top: var(--border);
-	background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	width: 100%;
-	gap: var(--spacing--2xs);
-	height: var(--height--md);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-:global(.channel-view-fade-enter-active) {
-	--animation--fade-in--duration: var(--duration--snappy);
-	--animation--fade-in--translate: 0;
-	@include motion.fade-in;
-}
-
-:global(.channel-view-fade-leave-active) {
-	--animation--fade-out--duration: var(--duration--snappy);
-
-	@include motion.fade-out;
-}
-
-:global(.channel-header-fade-enter-active),
-:global(.channel-footer-fade-enter-active) {
-	--animation--fade-in--duration: var(--duration--snappy);
-	--animation--fade-in--translate: 0;
-
-	@include motion.fade-in;
-}
-
-:global(.channel-header-fade-leave-active),
-:global(.channel-footer-fade-leave-active) {
-	--animation--fade-out--duration: var(--duration--snappy);
-
-	@include motion.fade-out;
 }
 </style>

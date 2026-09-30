@@ -21,6 +21,7 @@ import {
 	toTagSummary,
 	workflowDetailsOutputSchema,
 } from './schemas';
+import { trackAndRethrowToolError } from './tool-error.utils';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
@@ -154,13 +155,7 @@ export const createWorkflowDetailsTool = (
 					structuredContent: payload,
 				};
 			} catch (error) {
-				// Track failed execution
-				telemetryPayload.results = {
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				throw error;
+				trackAndRethrowToolError(telemetry, telemetryPayload, error);
 			}
 		},
 	};

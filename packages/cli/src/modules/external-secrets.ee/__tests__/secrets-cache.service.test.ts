@@ -1,8 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
-import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from '../constants';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 
@@ -11,6 +12,7 @@ describe('SecretsCache', () => {
 	let registry: ExternalSecretsProviderRegistry;
 	let dummyProvider: DummyProvider;
 	let anotherProvider: AnotherDummyProvider;
+	const config = Container.get(ExternalSecretsConfig);
 
 	const providerSettings = {
 		connected: true,
@@ -20,7 +22,7 @@ describe('SecretsCache', () => {
 
 	beforeEach(async () => {
 		registry = new ExternalSecretsProviderRegistry();
-		cache = new ExternalSecretsSecretsCache(mockLogger(), registry);
+		cache = new ExternalSecretsSecretsCache(mockLogger(), registry, config);
 
 		dummyProvider = new DummyProvider();
 		await dummyProvider.init(providerSettings);
@@ -55,6 +57,38 @@ describe('SecretsCache', () => {
 			await expect(cache.refreshProvider('dummy', dummyProvider)).resolves.not.toThrow();
 		});
 
+		it('should join a running update instead of starting a second one', async () => {
+			let finish!: () => void;
+			const updateSpy = vi
+				.spyOn(dummyProvider, 'update')
+				.mockImplementation(async () => await new Promise<void>((r) => (finish = r)));
+
+			const first = cache.updateProvider('dummy', dummyProvider);
+			const second = cache.updateProvider('dummy', dummyProvider);
+			finish();
+			await Promise.all([first, second]);
+
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not join the pull of another instance under the same name', async () => {
+			const replacement = new DummyProvider();
+			await replacement.init(providerSettings);
+			await replacement.connect();
+			let finish!: () => void;
+			vi.spyOn(dummyProvider, 'update').mockImplementation(
+				async () => await new Promise<void>((r) => (finish = r)),
+			);
+			const replacementUpdate = vi.spyOn(replacement, 'update');
+
+			const first = cache.updateProvider('dummy', dummyProvider);
+			await cache.updateProvider('dummy', replacement);
+			finish();
+			await first;
+
+			expect(replacementUpdate).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not hang when update exceeds refresh timeout', async () => {
 			vi.useFakeTimers();
 			try {
@@ -63,7 +97,7 @@ describe('SecretsCache', () => {
 				);
 
 				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
-				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
 
 				await expect(refreshPromise).resolves.toBeUndefined();
 			} finally {

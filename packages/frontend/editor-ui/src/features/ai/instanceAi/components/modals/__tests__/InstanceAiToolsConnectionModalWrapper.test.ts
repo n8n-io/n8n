@@ -12,15 +12,11 @@ import type {
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
-const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
+const featureFlags = vi.hoisted(() => ({ computerUse: false }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	i18n: { baseText: (key: string) => key },
-}));
-
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({ isFeatureEnabled: { value: true } }),
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -28,16 +24,6 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 		isFeatureEnabled: {
 			get value() {
 				return featureFlags.computerUse;
-			},
-		},
-	}),
-}));
-
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.browserUse;
 			},
 		},
 	}),
@@ -118,7 +104,7 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
-		settings: { mcpAccessEnabled: true },
+		isMcpAvailable: true,
 		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
 		isGatewayConnected: false,
@@ -279,7 +265,6 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 describe('InstanceAiToolsConnectionModalWrapper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.browserUse = false;
 		featureFlags.computerUse = false;
 		modalListeners = {};
 		modalProps = {};
@@ -510,7 +495,6 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('tracks opening built-in connection details', () => {
-		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
 		renderComponent();
 		const serviceItems = (modalProps.items as ServiceConnectionItem[]).filter(

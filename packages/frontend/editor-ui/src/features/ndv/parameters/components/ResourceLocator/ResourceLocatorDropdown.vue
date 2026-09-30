@@ -51,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	'update:modelValue': [value: INodeParameterResourceLocator['value']];
+	'update:show': [value: boolean];
 	loadMore: [];
 	filter: [filter: string];
 	addResourceClick: [];
@@ -149,7 +150,10 @@ function openUrl(event: MouseEvent, url: string) {
 }
 
 function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'ArrowDown') {
+	if (e.key === 'Escape') {
+		e.stopPropagation();
+		emit('update:show', false);
+	} else if (e.key === 'ArrowDown') {
 		// hoverIndex 0 is reserved for the "add new resource" item
 		if (hoverIndex.value < sortedResources.value.length) {
 			hoverIndex.value++;
@@ -372,7 +376,7 @@ watch(
 							:is-hovered="showHoverUrl && hoverIndex === i + 1"
 						></slot>
 						<span v-if="result.isArchived" :class="$style.badgesContainer">
-							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+							<N8nBadge class="ml-3xs" variant="outline" data-test-id="workflow-archived-tag">
 								{{ i18n.baseText('workflows.item.archived') }}
 							</N8nBadge>
 						</span>

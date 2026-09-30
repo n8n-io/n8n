@@ -64,7 +64,12 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		return this.activation;
 	}
 
+	override getExecutionContext() {
+		// Trigger contexts have no run data, so preserve context established by the entry point.
+		return super.getExecutionContext() ?? this.additionalData.executionContext;
+	}
+
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getRunlessCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type, { credentialUsage: 'trigger' });
 	}
 }

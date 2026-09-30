@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
-import type { OAuthClientResponseDto } from '@n8n/api-types';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
@@ -17,19 +16,21 @@ import {
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useUsersStore } from '@n8n/stores/users.store';
+import { useOAuthClientRevoke } from '@/features/ai/mcpAccess/composables/useOAuthClientRevoke';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 const i18n = useI18n();
 const toast = useToast();
 const mcp = useMcp();
+const route = useRoute();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const mcpStore = useMCPStore();
-const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
 
 const oAuthClientsLoading = ref(false);
-const revokeClient = ref<OAuthClientResponseDto | null>(null);
-const revoking = ref(false);
+const { revokeClient, revoking, isRevokingForOther, requestRevoke, cancelRevoke, confirmRevoke } =
+	useOAuthClientRevoke();
 
 const fetchoAuthCLients = async () => {
 	try {
@@ -45,6 +46,12 @@ const fetchoAuthCLients = async () => {
 };
 
 const onOwnershipChange = async (ownership: 'mine' | 'all') => {
+	// Reflect the tab in the URL right away (replace keeps history clean /
+	// back-button safe). Written before the fetch: the tab is the user's choice,
+	// not the fetch result, so a slow earlier fetch can't stamp a stale tab later.
+	if (route.query.tab !== ownership) {
+		void router.replace({ query: { ...route.query, tab: ownership } });
+	}
 	try {
 		oAuthClientsLoading.value = true;
 		await mcpStore.setOAuthClientsOwnership(ownership);
@@ -58,6 +65,17 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 			oAuthClientsLoading.value = false;
 		}, LOADING_INDICATOR_TIMEOUT);
 	}
+};
+
+/**
+ * `?tab=all` deep-links to everyone's clients (the overview sends managers here
+ * when they have none of their own). Only honoured for `mcp:manage` holders: the
+ * endpoint rejects the instance-wide list for anyone else.
+ */
+const requestedOwnership = (): 'mine' | 'all' | undefined => {
+	if (route.query.tab === 'all') return rbacStore.hasScope('mcp:manage') ? 'all' : 'mine';
+	if (route.query.tab === 'mine') return 'mine';
+	return undefined;
 };
 
 const onClientsFiltersChange = async (filters: OAuthClientFilters) => {
@@ -76,40 +94,6 @@ const onClientsOptionsChange = async (options: { page: number; itemsPerPage: num
 	}
 };
 
-const onRevokeRequest = (client: OAuthClientResponseDto) => {
-	revokeClient.value = client;
-};
-
-/** An admin revoking someone else's grant rather than their own. */
-const isRevokingForOther = (client: OAuthClientResponseDto) =>
-	!!client.owner && client.owner.id !== usersStore.currentUser?.id;
-
-const onRevokeConfirm = async () => {
-	const client = revokeClient.value;
-	if (!client) return;
-	try {
-		revoking.value = true;
-		await mcpStore.removeOAuthClient(client.id, client.owner?.id);
-		mcp.trackClientAccessRevoked({
-			clientId: client.id,
-			clientName: client.name,
-			revokedForOther: isRevokingForOther(client),
-		});
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
-			message: i18n.baseText('settings.mcp.oAuthClients.revoke.success.message', {
-				interpolate: { name: client.name },
-			}),
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
-	} finally {
-		revoking.value = false;
-		revokeClient.value = null;
-	}
-};
-
 const onBack = () => {
 	void router.push({ name: MCP_SETTINGS_VIEW });
 };
@@ -118,6 +102,11 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp.connectedClients.title'));
 	if (!mcpStore.mcpAccessEnabled) {
 		await router.replace({ name: MCP_SETTINGS_VIEW });
+		return;
+	}
+	const ownership = requestedOwnership();
+	if (ownership && ownership !== mcpStore.oauthClientsOwnership) {
+		await onOwnershipChange(ownership);
 		return;
 	}
 	await fetchoAuthCLients();
@@ -143,7 +132,7 @@ onMounted(async () => {
 				:clients="mcpStore.oauthClients"
 				:scope-tools="mcpStore.oauthClientScopeTools"
 				:loading="oAuthClientsLoading"
-				@revoke-client="onRevokeRequest"
+				@revoke-client="requestRevoke"
 				@update:ownership="onOwnershipChange"
 				@update:filters="onClientsFiltersChange"
 				@update:options="onClientsOptionsChange"
@@ -156,9 +145,9 @@ onMounted(async () => {
 			:open="!!revokeClient"
 			:loading="revoking"
 			:revoking-for-other="!!revokeClient && isRevokingForOther(revokeClient)"
-			@confirm="onRevokeConfirm"
-			@cancel="revokeClient = null"
-			@update:open="revokeClient = null"
+			@confirm="confirmRevoke"
+			@cancel="cancelRevoke"
+			@update:open="cancelRevoke"
 		/>
 	</N8nSettingsLayout>
 </template>

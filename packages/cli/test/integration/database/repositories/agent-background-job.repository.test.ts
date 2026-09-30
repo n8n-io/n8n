@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
@@ -109,22 +110,38 @@ describe('AgentBackgroundJobRepository', () => {
 		});
 	});
 
-	it('returns unconsumed settled rows of one thread, oldest settlement first', async () => {
+	it('orders wakeable rows of one thread and consumes only settled rows', async () => {
 		const olderId = uuid();
 		const newerId = uuid();
-		await insertJob({ id: newerId, parentThreadId: 'thread-1', settledAt: new Date() });
+		const suspendedId = uuid();
+		await insertJob({
+			id: newerId,
+			parentThreadId: 'thread-1',
+			settledAt: new Date('2026-09-01T10:02:00Z'),
+		});
 		await insertJob({
 			id: olderId,
 			parentThreadId: 'thread-1',
-			settledAt: new Date(Date.now() - 60_000),
+			settledAt: new Date('2026-09-01T10:00:00Z'),
+		});
+		await insertJob({
+			id: suspendedId,
+			parentThreadId: 'thread-1',
+			status: 'suspended',
+			settledAt: null,
+			updatedAt: new Date('2026-09-01T10:01:00Z'),
 		});
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', notifiedAt: new Date() });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', status: 'running', settledAt: null });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
 
-		const pending = await repository.findWakeableUnconsumedSettled('thread-1');
+		const pending = await repository.findWakeableUnconsumed('thread-1');
+		const pendingIds = pending.map((job) => job.id);
+		expect(pendingIds).toEqual([olderId, suspendedId, newerId]);
 
-		expect(pending.map((job) => job.id)).toEqual([olderId, newerId]);
+		await repository.markMailConsumed('thread-1', pendingIds);
+		const remaining = await repository.findWakeableUnconsumed('thread-1');
+		expect(remaining.map((job) => job.id)).toEqual([suspendedId]);
 	});
 
 	it('consumes only selected settled rows from the requested thread', async () => {
@@ -188,7 +205,7 @@ describe('AgentBackgroundJobRepository', () => {
 
 		const threadIds = await repository.findThreadsWithUnconsumedMail();
 		expect(threadIds.sort()).toEqual(['thread-1', 'thread-2']);
-		const [job] = await repository.findWakeableUnconsumedSettled('thread-1');
+		const [job] = await repository.findWakeableUnconsumed('thread-1');
 		expect(job?.parentResourceId).toHaveLength(255);
 	});
 
@@ -242,13 +259,13 @@ describe('AgentBackgroundJobRepository', () => {
 				logger,
 				agentsConfig,
 				mock<AgentExecutionUpdateBroadcaster>(),
+				checkpointStorage,
 			);
 			const wakeService = new AgentWakeService(
 				repository,
-				executionRepository,
+				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,
 				userRepository,
-				checkpointStorage,
 				mock<ChatIntegrationRegistry>(),
 				orchestrator,
 				lockService,

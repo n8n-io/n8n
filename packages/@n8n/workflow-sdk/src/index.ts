@@ -154,6 +154,11 @@ export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
 // Validation
 export {
+	containsExpression,
+	isSensitiveHeader,
+	isCredentialFieldName,
+} from './workflow-builder/validation-helpers';
+export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,

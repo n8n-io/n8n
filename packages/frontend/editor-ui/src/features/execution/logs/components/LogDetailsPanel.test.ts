@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import LogDetailsPanel from './LogDetailsPanel.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
@@ -164,10 +165,9 @@ describe('LogDetailsPanel', () => {
 			isHeaderClickable: true,
 		});
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: 0 }));
-		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
+		await startResize(rendered.getByTestId('resize-handle'), { width: 500 }, { clientX: 500 });
+		await moveResize({ clientX: 0 });
+		await fireEvent.mouseUp(window);
 
 		expect(rendered.emitted()).toEqual({ toggleInputOpen: [[false]] });
 	});
@@ -182,10 +182,9 @@ describe('LogDetailsPanel', () => {
 			isHeaderClickable: true,
 		});
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1000, clientY: 0 }));
-		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 1000, clientY: 0 }));
+		await startResize(rendered.getByTestId('resize-handle'), { width: 500 }, { clientX: 500 });
+		await moveResize({ clientX: 1000 });
+		await fireEvent.mouseUp(window);
 
 		expect(rendered.emitted()).toEqual({ toggleOutputOpen: [[false]] });
 	});
