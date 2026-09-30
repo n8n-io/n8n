@@ -926,10 +926,11 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
+# <suite> is the slug the driver chose (e.g. baseline)
 # preview first — no writes:
-pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite <suite> --dry-run --changed
 # then push (drop --dry-run):
-pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite <suite> --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional

@@ -113,9 +113,10 @@ they point to.
 ## Ask for the target suite first
 
 Follow "Ask for the target suite first" in
-[create-instance-ai-eval](../create-instance-ai-eval/SKILL.md). Ask it after the
-LangTracer preflight and before you source or draft anything. Ask it in
-autonomous mode too. Ask it in the same message as the autonomy question.
+[create-instance-ai-eval](../create-instance-ai-eval/SKILL.md). Do it after the
+LangTracer preflight and before you source or draft anything. If the request
+already names a suite, state it and do not ask. Otherwise ask, in autonomous
+mode too, in the same message as the autonomy question.
 
 For Agent cases, recommend
 [Instance AI capabilities — agents](https://lang-tracer.n8n-maintenance.workers.dev/suites/10)
