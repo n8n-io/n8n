@@ -129,7 +129,7 @@ const buildFunctionBody = (expr: ExpressionKind) => {
 	]);
 };
 
-type ParsedCode = ExpressionCode & { parsed: types.namedTypes.File };
+export type ParsedCode = ExpressionCode & { parsed: types.namedTypes.File };
 
 // This replaces any actual new lines with \n's. This only happens in
 // template strings.
