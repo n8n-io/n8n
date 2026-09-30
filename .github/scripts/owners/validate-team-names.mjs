@@ -1,5 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { GROUPS_FILE, parseGroupsContent, parseOwnersFile, teamHandleToSlug } from './owners.mjs';
+import {
+	GROUPS_FILE,
+	OWNERS_FILE,
+	parseGroupsContent,
+	parseOwnersContent,
+	parseOwnersFile,
+	teamHandleToSlug,
+} from './owners.mjs';
 
 const ORG = 'n8n-io';
 const API_URL = process.env.GITHUB_API_URL ?? 'https://api.github.com';
@@ -58,7 +65,12 @@ export function findMissingTeamSlugs(availableTeamSlugs, owners = parseOwnersFil
 }
 
 async function main() {
-	const missing = findMissingTeamSlugs(await fetchTeamSlugs());
+	const groups = parseGroupsContent(readFileSync(process.env.GROUPS_FILE ?? GROUPS_FILE, 'utf8'));
+	const owners = parseOwnersContent(
+		readFileSync(process.env.OWNERS_FILE ?? OWNERS_FILE, 'utf8'),
+		groups,
+	);
+	const missing = findMissingTeamSlugs(await fetchTeamSlugs(), owners, groups);
 	if (missing.length > 0) {
 		throw new Error(`OWNERS references GitHub teams that do not exist: ${missing.join(', ')}`);
 	}

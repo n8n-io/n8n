@@ -41,14 +41,26 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: read
           permission-members: read
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+
+      - name: Read proposed ownership files
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/contents/OWNERS?ref=${HEAD_SHA}" \
+            --jq .content | base64 --decode > "${RUNNER_TEMP}/OWNERS"
+          gh api "repos/${GITHUB_REPOSITORY}/contents/GROUPS.json?ref=${HEAD_SHA}" \
+            --jq .content | base64 --decode > "${RUNNER_TEMP}/GROUPS.json"
 
       - name: Validate team names
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          OWNERS_FILE: ${{ runner.temp }}/OWNERS
+          GROUPS_FILE: ${{ runner.temp }}/GROUPS.json
         run: node .github/scripts/owners/validate-team-names.mjs
