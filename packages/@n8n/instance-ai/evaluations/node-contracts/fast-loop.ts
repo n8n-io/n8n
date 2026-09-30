@@ -668,11 +668,14 @@ async function nextNotionFilter(
 	notion: WorkflowNodeResponse,
 ): Promise<unknown> {
 	const requests: unknown[] = [];
+	const respond = async (options: unknown) => {
+		requests.push(options);
+		return await Promise.resolve({ results: [] });
+	};
 	const helpers = {
-		httpRequest: async (options: unknown) => {
-			requests.push(options);
-			return await Promise.resolve({ results: [] });
-		},
+		httpRequest: respond,
+		httpRequestWithAuthentication: async (_credentialType: string, options: unknown) =>
+			await respond(options),
 	};
 	try {
 		await executeOutputs(notion, sourceStep(parentName(workflow, notion.name), [{}]), helpers);
