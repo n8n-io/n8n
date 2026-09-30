@@ -26,12 +26,12 @@ describe('fetchTeamSlugs', () => {
 describe('findMissingTeamSlugs', () => {
 	it('finds missing teams from direct, bare, and nested group references', () => {
 		const owners = [
-			{ team: '@n8n-io/direct-team', teams: undefined },
-			{ team: '@n8n-io/core-experience', teams: ['@n8n-io/adore', '@n8n-io/ai-trust', '@n8n-io/agents'] },
+			{ owner: '@n8n-io/direct-team', teams: ['@n8n-io/direct-team'] },
+			{ owner: 'core-experience', teams: ['@n8n-io/adore', '@n8n-io/ai-trust', '@n8n-io/agents'] },
 		];
 		const groups = new Map([
-			['ai', ['ai-trust', 'agents']],
-			['core-experience', ['adore', 'ai']],
+			['ai', ['@n8n-io/ai-trust', '@n8n-io/agents']],
+			['core-experience', ['@n8n-io/adore', '@n8n-io/ai-trust', '@n8n-io/agents']],
 		]);
 
 		assert.deepEqual(

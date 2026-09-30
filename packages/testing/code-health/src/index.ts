@@ -42,14 +42,8 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'workflow-pr-target-safety': {
 		enabled: true,
 		severity: 'error',
-		// Each allowlisted workflow uses trusted base code only, never PR code.
-		options: {
-			allowedWorkflows: [
-				'ci-cla-check.yml',
-				'ci-owners-required-reviews.yml',
-				'ci-owners-team-names.yml',
-			],
-		},
+		// ci-owners-required-reviews.yml checks out master only, never PR code.
+		options: { allowedWorkflows: ['ci-cla-check.yml', 'ci-owners-required-reviews.yml'] },
 	},
 	'migration-timestamp': {
 		enabled: true,

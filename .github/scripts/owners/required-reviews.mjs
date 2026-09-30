@@ -29,7 +29,7 @@ import {
 	readPrLabels,
 	setCommitStatus,
 } from '../github-helpers.mjs';
-import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
+import { parseOwnersFile, resolveReviewRequirements, teamHandleToSlug } from './owners.mjs';
 
 export const STATUS_CONTEXT = 'Required Reviews';
 export const LARGE_SCALE_CHANGE_LABEL = 'large-scale-change';
@@ -228,56 +228,35 @@ function statusTargetUrl() {
  */
 async function evaluateRequiredReviews(pullRequestNumber) {
 	const changedFiles = await getChangedFiles(pullRequestNumber);
-	const requiredTeams = resolveRequiredTeams(changedFiles, parseOwnersFile());
-	const requiredGroups = requiredTeams.requiredGroups ?? [];
-	const groupTeams = new Set(requiredGroups.flatMap((group) => group.teams));
-	const directTeams = requiredTeams.directTeams ?? new Set();
+	const requirements = resolveReviewRequirements(changedFiles, parseOwnersFile());
 
 	/** @type { string[] } */
 	const missingTeams = [];
 
-	if (requiredTeams.size > 0) {
+	if (requirements.length > 0) {
 		const approvers = collectApprovers(await getPrReviews(pullRequestNumber));
 		console.log(`Current approvals: ${[...approvers].join(', ') || '(none)'}`);
 
-		for (const [team, files] of requiredTeams) {
-			if (groupTeams.has(team) && !directTeams.has(team)) continue;
-			const slug = teamHandleToSlug(team);
-			// Per-approver membership checks instead of fetching the roster:
-			// approvers are few, teams can be large.
-			const teamApprovers = [];
-			for (const login of approvers) {
-				if (await isTeamMember(slug, login)) teamApprovers.push(login);
-			}
-			const verdict = teamApprovers.length > 0 ? `approved by ${teamApprovers.join(', ')}` : 'approval missing';
-
-			console.log(`${team}: ${verdict} — owns ${files.length} changed file(s):`);
-			for (const file of files) console.log(`  - ${file}`);
-
-			if (teamApprovers.length === 0) missingTeams.push(team);
-		}
-
-		for (const { group, teams, files } of requiredGroups) {
-			const groupApprovers = [];
+		for (const { owner, teams, files } of requirements) {
+			const requirementApprovers = [];
 			for (const login of approvers) {
 				for (const team of teams) {
 					if (await isTeamMember(teamHandleToSlug(team), login)) {
-						groupApprovers.push(login);
+						requirementApprovers.push(login);
 						break;
 					}
 				}
 			}
-			const verdict = groupApprovers.length > 0 ? `approved by ${groupApprovers.join(', ')}` : 'approval missing';
-			console.log(`${group}: ${verdict} — owns ${files.length} changed file(s):`);
+			const verdict = requirementApprovers.length > 0 ? `approved by ${requirementApprovers.join(', ')}` : 'approval missing';
+			console.log(`${owner}: ${verdict} — owns ${files.length} changed file(s):`);
 			for (const file of files) console.log(`  - ${file}`);
-			if (groupApprovers.length === 0) missingTeams.push(group);
+			if (requirementApprovers.length === 0) missingTeams.push(owner);
 		}
 	} else {
 		console.log('No changed file matches a `required` OWNERS entry.');
 	}
 
-	const requiredCount = requiredTeams.size - [...groupTeams].filter((team) => !directTeams.has(team)).length + requiredGroups.length;
-	return buildStatus(missingTeams, requiredCount);
+	return buildStatus(missingTeams, requirements.length);
 }
 
 export async function run() {

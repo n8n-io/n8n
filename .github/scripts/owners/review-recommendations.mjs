@@ -17,7 +17,7 @@ import {
 	assignOwnership,
 	ownershipsToAllocations,
 	parseOwnersFile,
-	resolveRequiredTeams,
+	resolveReviewRequirements,
 } from './owners.mjs';
 
 /** @typedef {import('./owners.mjs').Allocation} Allocation */
@@ -197,32 +197,22 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
  * assigns reviewers according to the team's own review settings (assignment
  * algorithm, excluded members), which the API does not let us read.
  *
- * @param { Map<string, string[]> } requiredTeamFiles Required team handle -> files that triggered the requirement.
+ * @param { import('./owners.mjs').ReviewRequirement[] } requirements
  * @returns { string | null }
  */
-export function buildRequiredReviewsSection(requiredTeamFiles) {
-	if (requiredTeamFiles.size === 0) return null;
+export function buildRequiredReviewsSection(requirements) {
+	if (requirements.length === 0) return null;
 
-	const requiredGroups = requiredTeamFiles.requiredGroups ?? [];
-	const directTeamSet = requiredTeamFiles.directTeams ?? new Set(requiredTeamFiles.keys());
-	const directTeams = [...directTeamSet]
-		.map((team) => [team, requiredTeamFiles.get(team)])
-		.filter(([, files]) => files);
-	const requiredCount = directTeams.length + requiredGroups.length;
-	const plural = requiredCount > 1;
-	const requirementText = requiredGroups.length > 0
-		? 'A member of each required team and a member of one team from each required group must approve this PR before it can merge:'
-		: 'A member of each of these teams must approve this PR before it can merge:';
+	const plural = requirements.length > 1;
 
 	return [
 		'### Required reviews',
 		'',
-		`Some changed files have a \`required\` owner in \`OWNERS\`. ${requirementText}`,
+		'Some changed files have a `required` owner in `OWNERS`. Each row is one requirement. A member of any listed team can approve it:',
 		'',
-		'| Team | Files |',
-		'| --- | ---: |',
-		...directTeams.map(([team, files]) => `| ${team} | ${files.length} |`),
-		...requiredGroups.map(({ group, teams, files }) => `| ${group} (one of: ${teams.join(', ')}) | ${files.length} |`),
+		'| Owner | Approving teams | Files |',
+		'| --- | --- | ---: |',
+		...requirements.map(({ owner, teams, files }) => `| ${owner} | ${teams.join(', ')} | ${files.length} |`),
 		'',
 		`Request a review from the team${plural ? 's' : ''} — GitHub assigns reviewers according to the team's review settings. The \`Auto-assign reviewers\` label does this for all owning teams.`,
 	].join('\n');
@@ -284,8 +274,8 @@ export async function run(pullRequestNumber) {
 	const topAllocations = sortedAllocations.slice(0, 3);
 	const otherAllocations = sortedAllocations.slice(3);
 
-	const requiredTeamFiles = resolveRequiredTeams(changedFiles, owners);
-	const requiredSection = buildRequiredReviewsSection(requiredTeamFiles);
+	const requirements = resolveReviewRequirements(changedFiles, owners);
+	const requiredSection = buildRequiredReviewsSection(requirements);
 
 	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations, requiredSection);
 

@@ -47,19 +47,14 @@ export function findMissingTeamSlugs(availableTeamSlugs, owners = parseOwnersFil
 	const referencedSlugs = new Set();
 
 	for (const entry of owners) {
-		for (const team of entry.teams ?? [entry.team]) {
+		for (const team of entry.teams) {
 			referencedSlugs.add(teamHandleToSlug(team));
 		}
 	}
 
-	const addGroupMembers = (members) => {
-		for (const member of members) {
-			const nestedMembers = groups.get(member);
-			if (nestedMembers) addGroupMembers(nestedMembers);
-			else referencedSlugs.add(teamHandleToSlug(member));
-		}
-	};
-	for (const members of groups.values()) addGroupMembers(members);
+	for (const teams of groups.values()) {
+		for (const team of teams) referencedSlugs.add(teamHandleToSlug(team));
+	}
 
 	return [...referencedSlugs].filter((slug) => !availableTeamSlugs.has(slug)).sort();
 }
