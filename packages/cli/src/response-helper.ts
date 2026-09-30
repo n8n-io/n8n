@@ -1,8 +1,7 @@
+import { inDevelopment, Logger } from '@n8n/backend-common';
 import {
 	classifyHttpError,
-	inDevelopment,
 	isResponseError,
-	Logger,
 	serializeInternalRestError,
 } from '@n8n/backend-services';
 import { isUniqueConstraintError, type User } from '@n8n/db';
