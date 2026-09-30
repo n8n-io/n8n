@@ -10,7 +10,6 @@ export class SupabaseOAuth2Api implements ICredentialType {
 	documentationUrl = 'supabase';
 
 	properties: INodeProperties[] = [
-		// TODO: Add notice about scopes?
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',
