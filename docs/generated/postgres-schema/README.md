@@ -10,6 +10,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 19 |  | BASE TABLE |
+| [public.agent_channel_activity](public.agent_channel_activity.md) | 6 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
@@ -184,6 +185,7 @@ erDiagram
 "public.activity_event" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.activity_event" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_channel_activity" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_channel_status" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_chat_attachments" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -431,6 +433,14 @@ erDiagram
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId
+}
+"public.agent_channel_activity" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId
+  varchar_64_ integrationType
+  timestamp_3__with_time_zone lastInboundAt
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_channel_status" {
   varchar_36_ agentId FK
