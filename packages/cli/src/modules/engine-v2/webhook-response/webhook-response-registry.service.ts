@@ -6,7 +6,7 @@ import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
-import type { ResponseStream } from '@/services/streaming-webhook-response-heartbeat';
+import type { ResponseStream } from '@/webhooks/streaming-webhook-response-heartbeat';
 
 import type {
 	ExecutionResponseReceiver,

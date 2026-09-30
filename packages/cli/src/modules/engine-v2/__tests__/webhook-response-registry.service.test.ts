@@ -11,7 +11,7 @@ import {
 	MAX_PENDING_WEBHOOKS,
 	SUBSCRIBE_TIMEOUT_MS,
 } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
-import type { ResponseStream } from '@/services/streaming-webhook-response-heartbeat';
+import type { ResponseStream } from '@/webhooks/streaming-webhook-response-heartbeat';
 
 const TIMEOUT_MS = 50_000;
 

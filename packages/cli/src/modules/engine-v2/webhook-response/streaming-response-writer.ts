@@ -4,7 +4,7 @@ import type { StructuredChunk } from 'n8n-workflow';
 import {
 	type ResponseStream,
 	StreamingWebhookResponseHeartbeat,
-} from '@/services/streaming-webhook-response-heartbeat';
+} from '@/webhooks/streaming-webhook-response-heartbeat';
 
 import type { WebhookRunOutcome } from './webhook-outcome';
 
