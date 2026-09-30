@@ -10,6 +10,8 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { BreakingChangeMigrationService } from '../breaking-changes.migration.service';
 import { BreakingChangesController } from '../breaking-changes.controller';
+import type { RuleRegistry } from '../breaking-changes.rule-registry.service';
+import type { IBreakingChangeRule } from '../types';
 import type { MigrationFindingQueryService } from '../query/migration-finding-query.service';
 import type { MigrationFindingSyncService } from '../sync/migration-finding-sync.service';
 
@@ -48,13 +50,20 @@ describe('BreakingChangesController', () => {
 	let migrationService: MockProxy<BreakingChangeMigrationService>;
 	let syncService: MockProxy<MigrationFindingSyncService>;
 	let queryService: MockProxy<MigrationFindingQueryService>;
+	let ruleRegistry: MockProxy<RuleRegistry>;
 	let controller: BreakingChangesController;
 
 	beforeEach(() => {
 		migrationService = mock<BreakingChangeMigrationService>();
 		syncService = mock<MigrationFindingSyncService>();
 		queryService = mock<MigrationFindingQueryService>();
-		controller = new BreakingChangesController(migrationService, syncService, queryService);
+		ruleRegistry = mock<RuleRegistry>();
+		controller = new BreakingChangesController(
+			migrationService,
+			syncService,
+			queryService,
+			ruleRegistry,
+		);
 	});
 
 	describe('GET /report', () => {
@@ -121,8 +130,17 @@ describe('BreakingChangesController', () => {
 	});
 
 	describe('GET /report/:ruleId', () => {
-		it('syncs when stale, then returns the query service result unchanged', async () => {
-			const expected = ruleResult('removed-nodes-v2');
+		function registerRule(ruleId: string, version: 'v2' | 'v3') {
+			const rule = mock<IBreakingChangeRule>();
+			rule.getMetadata.mockReturnValue({ version } as ReturnType<
+				IBreakingChangeRule['getMetadata']
+			>);
+			ruleRegistry.getRule.calledWith(ruleId).mockReturnValue(rule);
+		}
+
+		it("syncs the rule's version when stale, then returns the query service result unchanged", async () => {
+			registerRule('removed-nodes-v3', 'v3');
+			const expected = ruleResult('removed-nodes-v3');
 			const callOrder: string[] = [];
 			syncService.syncIfStale.mockImplementation(async () => {
 				callOrder.push('syncIfStale');
@@ -132,21 +150,33 @@ describe('BreakingChangesController', () => {
 				return expected;
 			});
 
-			const result = await controller.getDetectionReportForRule(req, res, 'removed-nodes-v2');
+			const result = await controller.getDetectionReportForRule(req, res, 'removed-nodes-v3');
 
 			expect(result).toBe(expected);
-			expect(syncService.syncIfStale).toHaveBeenCalledWith('v2');
-			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v2', 'removed-nodes-v2');
+			expect(syncService.syncIfStale).toHaveBeenCalledWith('v3');
+			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v3', 'removed-nodes-v3');
 			expect(callOrder).toEqual(['syncIfStale', 'getRuleFindings']);
 			expect(syncService.sync).not.toHaveBeenCalled();
 		});
 
-		it('propagates the not-found error from the query service for an unknown rule', async () => {
-			const error = new NotFoundError("Breaking change rule with ID 'unknown' not found.");
-			queryService.getRuleFindings.mockRejectedValue(error);
+		it('uses v2 for a v2 rule', async () => {
+			registerRule('removed-nodes-v2', 'v2');
+			queryService.getRuleFindings.mockResolvedValue(ruleResult('removed-nodes-v2'));
 
-			await expect(controller.getDetectionReportForRule(req, res, 'unknown')).rejects.toBe(error);
+			await controller.getDetectionReportForRule(req, res, 'removed-nodes-v2');
+
 			expect(syncService.syncIfStale).toHaveBeenCalledWith('v2');
+			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v2', 'removed-nodes-v2');
+		});
+
+		it('rejects an unknown rule with not-found before syncing or reading', async () => {
+			ruleRegistry.getRule.mockReturnValue(undefined);
+
+			await expect(
+				controller.getDetectionReportForRule(req, res, 'unknown'),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+			expect(queryService.getRuleFindings).not.toHaveBeenCalled();
 		});
 	});
 });

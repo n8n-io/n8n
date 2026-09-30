@@ -7,9 +7,11 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/errors';
 import { Response } from 'express';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
+import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { MigrationFindingQueryService } from './query/migration-finding-query.service';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
 
@@ -22,6 +24,7 @@ export class BreakingChangesController {
 		private readonly migrationService: BreakingChangeMigrationService,
 		private readonly syncService: MigrationFindingSyncService,
 		private readonly queryService: MigrationFindingQueryService,
+		private readonly ruleRegistry: RuleRegistry,
 	) {}
 
 	/**
@@ -65,8 +68,14 @@ export class BreakingChangesController {
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 	): Promise<BreakingChangeWorkflowRuleResult> {
-		await this.syncService.syncIfStale(DEFAULT_TARGET_VERSION);
-		return await this.queryService.getRuleFindings(DEFAULT_TARGET_VERSION, ruleId);
+		// The page names the rule but not the version, so the rule decides.
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule) {
+			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
+		}
+		const version = rule.getMetadata().version;
+		await this.syncService.syncIfStale(version);
+		return await this.queryService.getRuleFindings(version, ruleId);
 	}
 
 	/**
