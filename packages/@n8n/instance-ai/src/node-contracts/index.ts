@@ -94,6 +94,24 @@ function groupIdentical(entries: ReadonlyArray<readonly [string, unknown]>) {
 /** Outputs render as the TS types that `CONTRACT_EXPRESSION_TYPE` checks against. */
 const outputType = (schema: JsonSchema) => schemaToTs(schema, { hints: true });
 
+/** Fields that every branch declares with the same schema render once, as `shared`. */
+function sharedFields(schema: JsonSchema): string[] {
+	const [first, ...others] = schema.oneOf ?? [];
+	if (!first || others.length === 0) return [];
+	return Object.entries(first.properties ?? {})
+		.filter(([name]) => name !== schema.discriminator?.propertyName)
+		.filter(([name, field]) =>
+			others.every((branch) => JSON.stringify(branch.properties?.[name]) === JSON.stringify(field)),
+		)
+		.map(([name]) => name);
+}
+
+/** True when a selectable variant branch declares the output shape. */
+function hasOutputVariant(schema: JsonSchema): boolean {
+	if (schema.oneOf?.some((branch) => branch['x-n8n-output'])) return true;
+	return Object.values(schema.properties ?? {}).some(hasOutputVariant);
+}
+
 function stripOutput({ 'x-n8n-output': _output, ...rest }: JsonSchema): JsonSchema {
 	return rest;
 }
@@ -116,15 +134,30 @@ function viewSchema(
 				...(chosen['x-n8n-output'] ? { output: outputType(chosen['x-n8n-output']) } : {}),
 			};
 		}
+		const renderField = (name: string, field: JsonSchema) =>
+			isStructured(field)
+				? viewSchema(field, selections, joinPath(path, name))
+				: compactField(field);
+		const shared = sharedFields(schema);
 		return {
 			discriminator: schema.discriminator.propertyName,
 			...(schema.default !== undefined ? { default: schema.default } : {}),
 			...(schema['x-n8n-hint'] ? { 'x-n8n-hint': schema['x-n8n-hint'] } : {}),
+			...(shared.length
+				? {
+						shared: Object.fromEntries(
+							shared.map((name) => [
+								name,
+								renderField(name, schema.oneOf?.[0]?.properties?.[name] ?? {}),
+							]),
+						),
+					}
+				: {}),
 			variants: groupIdentical(
 				schema.oneOf.map((branch) => {
 					const tag = String(branchTag(branch, schema));
 					const fields = Object.entries(branch.properties ?? {}).filter(
-						([name]) => name !== schema.discriminator?.propertyName,
+						([name]) => name !== schema.discriminator?.propertyName && !shared.includes(name),
 					);
 					return [
 						tag,
@@ -133,12 +166,7 @@ function viewSchema(
 							...(fields.length
 								? {
 										fields: Object.fromEntries(
-											fields.map(([name, field]) => [
-												name,
-												isStructured(field)
-													? viewSchema(field, selections, joinPath(path, name))
-													: compactField(field),
-											]),
+											fields.map(([name, field]) => [name, renderField(name, field)]),
 										),
 									}
 								: {}),
@@ -202,9 +230,11 @@ export function contractView(contract: ActionContract, selections: Record<string
 		credentials: contract.credentials,
 		usage: `action('${contract.id}', {\n  name: '…',\n  parameters: ${parameters}${credentials}\n})`,
 		input: viewSchema(contract.input, selections, ''),
-		output: contract.deriveOutput
-			? `Derived from parameters at build time. Base: ${outputType(contract.output)}`
-			: `${outputType(contract.output)} (a variant's output replaces it)`,
+		output: hasOutputVariant(contract.input)
+			? 'The selected variant output. Fields named in parameters are typed at build time.'
+			: contract.deriveOutput
+				? `Derived from parameters at build time. Base: ${outputType(contract.output)}`
+				: outputType(contract.output),
 	};
 }
 
