@@ -218,7 +218,9 @@ export class AuthService {
 
 			if (token) {
 				try {
-					const payload = this.jwtService.verify<unknown>(token, { algorithms: ['HS256'] });
+					const payload = this.jwtService.verify<unknown>('session', token, {
+						algorithms: ['HS256'],
+					});
 					if (this.isAuthJwtPayload(payload)) {
 						next();
 						return;

@@ -530,7 +530,7 @@ describe('AuthService', () => {
 		const next = vi.fn() as NextFunction;
 
 		const tokenWithPayload = (payload: object, options: jwt.SignOptions = { expiresIn: '1h' }) =>
-			jwtService.sign(payload, options);
+			jwtService.sign('session', payload, options);
 
 		it('should 404 if no cookie is set', () => {
 			const req = mockReq();
