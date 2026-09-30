@@ -44,8 +44,8 @@ const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
-const lastInboundAt = ref<Record<string, string>>({});
 const errorIsConflict = ref<Record<string, boolean>>({});
+const platformSaveLabel = ref<string | undefined>();
 const credentialModalOpen = ref(false);
 
 vi.mock('@n8n/i18n', () => ({
@@ -67,16 +67,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
-		props: [
-			'modelValue',
-			'mode',
-			'isPublished',
-			'runtime',
-			'ensureAgentPersisted',
-			'runtimeStatus',
-			'runtimeError',
-			'lastInboundAt',
-		],
+		props: ['modelValue', 'mode', 'isPublished', 'runtime', 'ensureAgentPersisted'],
 		emits: ['update:modelValue', 'connect', 'connected'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
@@ -86,6 +77,7 @@ vi.mock('../channels/registry', async () => {
 				currentSettings: { accessMode: 'all' },
 				validationError: null,
 				beforeSave: mocks.beforeSave,
+				saveLabel: platformSaveLabel,
 				loading,
 				startOwnFlow: () => {
 					loading.value = true;
@@ -98,9 +90,6 @@ vi.mock('../channels/registry', async () => {
 				:data-mode="mode"
 				:data-published="isPublished"
 				:data-setup-kind="runtime.setupKind?.value"
-				:data-runtime-status="runtimeStatus"
-				:data-runtime-error="runtimeError"
-				:data-last-inbound-at="lastInboundAt"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
@@ -184,8 +173,6 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		errorMessages: ref({}),
 		errorIsConflict,
 		runtimeErrors,
-		lastInboundAt,
-		statuses,
 		isConnected: (type: string) => statuses.value[type] === 'connected',
 		isConfigured: (type: string) =>
 			['configured', 'starting', 'connected', 'error'].includes(
@@ -315,8 +302,8 @@ describe('AgentChannelModal', () => {
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};
-		lastInboundAt.value = {};
 		errorIsConflict.value = {};
+		platformSaveLabel.value = undefined;
 		credentialModalOpen.value = false;
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
 			statuses.value[type] = 'connected';
@@ -389,21 +376,6 @@ describe('AgentChannelModal', () => {
 			'data-connected': 'false',
 			'data-not-running': 'true',
 			'data-runtime-error': 'Credential cred-1 not found',
-		});
-	});
-
-	it('tells the settings view how the running channel is doing', async () => {
-		statuses.value.example = 'error';
-		connectedCredentials.value.example = 'credential-old';
-		runtimeErrors.value.example = 'Credential cred-1 not found';
-		lastInboundAt.value.example = '2026-09-11T10:00:00.000Z';
-		const wrapper = mountModal('example_edit');
-		await flushPromises();
-
-		expect(wrapper.get('[data-testid="platform-view"]').attributes()).toMatchObject({
-			'data-runtime-status': 'error',
-			'data-runtime-error': 'Credential cred-1 not found',
-			'data-last-inbound-at': '2026-09-11T10:00:00.000Z',
 		});
 	});
 
@@ -550,6 +522,20 @@ describe('AgentChannelModal', () => {
 			release();
 			await flushPromises();
 		});
+	});
+
+	it('lets the platform say what saving does', async () => {
+		connectedCredentials.value.example = 'credential-old';
+		statuses.value.example = 'connected';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+		const save = () => wrapper.get('[data-testid="agent-channel-save-channel-config"]');
+		expect(save().text()).toBe('generic.save');
+
+		platformSaveLabel.value = 'Save and download package';
+		await flushPromises();
+
+		expect(save().text()).toBe('Save and download package');
 	});
 
 	it('surfaces a failed pre-save step instead of connecting', async () => {

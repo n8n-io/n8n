@@ -10,7 +10,6 @@ import type { QueuedIntegrationMessage } from '../../types/agent-queued-message'
 import { mock } from 'vitest-mock-extended';
 import { deepCopy, UserError, type Logger } from 'n8n-workflow';
 
-import { AgentChannelActivityRepository } from '../../repositories/agent-channel-activity.repository';
 import {
 	AgentResourceRepository,
 	type ChatSessionGeneration,
@@ -286,7 +285,6 @@ class RestrictedTestIntegration extends AgentChatIntegration {
 
 describe('AgentChatBridge — consumeStream', () => {
 	let registry: ChatIntegrationRegistry;
-	let channelActivity: ReturnType<typeof mock<AgentChannelActivityRepository>>;
 	const componentMapper = mock<ComponentMapper>();
 	const logger = mock<Logger>();
 
@@ -357,8 +355,6 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
-		channelActivity = mock<AgentChannelActivityRepository>();
-		Container.set(AgentChannelActivityRepository, channelActivity);
 		mockSessionGenerations();
 	});
 
@@ -366,71 +362,6 @@ describe('AgentChatBridge — consumeStream', () => {
 		vi.useRealTimers();
 		Container.reset();
 		vi.clearAllMocks();
-	});
-
-	describe('inbound activity', () => {
-		function makeBridge() {
-			const { bot, handlers } = makeBot();
-			makeQueuedBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				makeAgentExecutor([finishChunk]) as never,
-				componentMapper,
-				logger,
-				'project-1',
-				streamingIntegration,
-			);
-			return handlers;
-		}
-		const hi = { text: 'hi', author: { userId: 'u1', userName: 'user1' } };
-
-		it('records when the channel last received a message', async () => {
-			const handlers = makeBridge();
-
-			await handlers.mention!(makeThread(), hi);
-
-			expect(channelActivity.recordInbound).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', integrationType: 'test-streaming', credentialId: 'cred-1' },
-				expect.any(Date),
-			);
-		});
-
-		it('records at most once every few minutes', async () => {
-			vi.useFakeTimers({ toFake: ['Date'] });
-			const handlers = makeBridge();
-
-			await handlers.mention!(makeThread(), hi);
-			await handlers.subscribed!(makeThread(), hi);
-			expect(channelActivity.recordInbound).toHaveBeenCalledOnce();
-
-			vi.setSystemTime(Date.now() + 5 * 60 * 1000);
-			await handlers.subscribed!(makeThread(), hi);
-			expect(channelActivity.recordInbound).toHaveBeenCalledTimes(2);
-		});
-
-		it('still answers when recording fails', async () => {
-			channelActivity.recordInbound.mockRejectedValue(new Error('db down'));
-			const handlers = makeBridge();
-			const thread = makeThread();
-
-			await handlers.mention!(thread, hi);
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not record inbound channel activity',
-				expect.objectContaining({ error: 'db down' }),
-			);
-			expect(thread.subscribe).toHaveBeenCalled();
-		});
-
-		it('tries again on the next message after a failed write', async () => {
-			channelActivity.recordInbound.mockRejectedValueOnce(new Error('db down'));
-			const handlers = makeBridge();
-
-			await handlers.mention!(makeThread(), hi);
-			await handlers.subscribed!(makeThread(), hi);
-
-			expect(channelActivity.recordInbound).toHaveBeenCalledTimes(2);
-		});
 	});
 
 	it.each([bufferedIntegration, streamingIntegration])(

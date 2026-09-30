@@ -1,6 +1,5 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
-import type { AgentChannelActivity } from '../../entities/agent-channel-activity.entity';
 import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
 import { buildChannelStatusReport } from '../channel-status-report';
 
@@ -120,25 +119,6 @@ describe('buildChannelStatusReport', () => {
 
 		expect(report.integrations[0].status).toBe('connected');
 		expect(report.status).toBe('connected');
-	});
-
-	it('says when a channel last received a message', () => {
-		const lastInboundAt = new Date('2026-09-11T10:00:00.000Z');
-		const activity = [
-			{ agentId: 'agent-1', integrationType: 'slack', credentialId: 'cred-slack', lastInboundAt },
-		] as AgentChannelActivity[];
-
-		const report = buildChannelStatusReport(
-			[slack, telegram],
-			PUBLISHED,
-			[row(slack, 'main-a'), row(telegram, 'main-a')],
-			isLive,
-			[],
-			activity,
-		);
-
-		expect(report.integrations[0]).toMatchObject({ lastInboundAt: '2026-09-11T10:00:00.000Z' });
-		expect(report.integrations[1]).not.toHaveProperty('lastInboundAt');
 	});
 
 	it('carries settings through', () => {

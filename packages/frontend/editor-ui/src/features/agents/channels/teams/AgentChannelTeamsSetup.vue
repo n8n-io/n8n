@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
-import {
-	N8nButton,
-	N8nCopyInput,
-	N8nIcon,
-	N8nInput,
-	N8nStepper,
-	N8nText,
-} from '@n8n/design-system';
-import { TEAMS_DESCRIPTION_MAX, TEAMS_DISPLAY_NAME_MAX } from '@n8n/api-types';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
 import type {
 	AgentJsonConfig,
 	AgentTeamsIntegrationSettings,
@@ -26,7 +18,6 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import AgentChannelTeamsAvailability, {
 	type TeamsAvailability,
 } from './AgentChannelTeamsAvailability.vue';
-import AgentChannelTeamsConversation from './AgentChannelTeamsConversation.vue';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
@@ -94,19 +85,15 @@ const availability = ref<TeamsAvailability>({
 
 const displayName = ref(props.savedSettings?.displayName ?? '');
 const description = ref(props.savedSettings?.description ?? '');
-const sessionIdleTimeoutMinutes = ref<number | null>(
-	props.savedSettings?.sessionIdleTimeoutMinutes ?? null,
-);
 
 /**
- * Shown as placeholders rather than written into the fields. Filling them in
- * would save them as overrides on the first connect, and the Teams app would
- * then keep the agent's old name after a rename.
+ * Kept apart from the saved overrides rather than written into them. Saving
+ * them as overrides would keep the agent's old name in Teams after a rename.
  */
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
 
-// What the manifest would carry right now, including edits not yet saved.
+// What the manifest carries: a saved override, otherwise the agent's own.
 const effectiveDisplayName = computed(() => displayName.value.trim() || defaultDisplayName.value);
 const effectiveDescription = computed(() => description.value.trim() || defaultDescription.value);
 
@@ -150,29 +137,23 @@ let latestSetupState = 0;
  * Tracked per field, so an edit to one does not stop the others adopting
  * settings that arrive afterwards.
  */
-const touched = ref(
-	new Set<'availability' | 'displayName' | 'description' | 'sessionIdleTimeoutMinutes'>(),
-);
+const touched = ref(new Set<'availability'>());
 
 function editAvailability(value: TeamsAvailability) {
 	availability.value = value;
 	touched.value.add('availability');
 }
 
-function editDisplayName(value: string) {
-	displayName.value = value;
-	touched.value.add('displayName');
-}
-
-function editDescription(value: string) {
-	description.value = value;
-	touched.value.add('description');
-}
-
-function editSessionIdleTimeout(value: number | null) {
-	sessionIdleTimeoutMinutes.value = value;
-	touched.value.add('sessionIdleTimeoutMinutes');
-}
+// Availability is carried by the manifest, so a change needs a new package.
+const availabilityChanged = computed(() => {
+	const saved = props.savedSettings;
+	return (
+		availability.value.teamChannels !== (saved?.teamChannels ?? false) ||
+		availability.value.groupChats !== (saved?.groupChats ?? false) ||
+		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
+		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false)
+	);
+});
 
 /**
  * Saving is gated on the credential actually reaching Microsoft. Without this
@@ -353,11 +334,8 @@ watch(
 				readAllGroupMessages: saved.readAllGroupMessages ?? false,
 			};
 		}
-		if (!touched.value.has('displayName')) displayName.value = saved.displayName ?? '';
-		if (!touched.value.has('description')) description.value = saved.description ?? '';
-		if (!touched.value.has('sessionIdleTimeoutMinutes')) {
-			sessionIdleTimeoutMinutes.value = saved.sessionIdleTimeoutMinutes ?? null;
-		}
+		displayName.value = saved.displayName ?? '';
+		description.value = saved.description ?? '';
 	},
 );
 
@@ -408,13 +386,36 @@ const currentSettings = computed(() => {
 	return {
 		...rest,
 		...availability.value,
-		sessionIdleTimeoutMinutes: sessionIdleTimeoutMinutes.value,
 		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
 		...(description.value.trim() ? { description: description.value.trim() } : {}),
 	};
 });
 
-defineExpose({ credentialId, validationError: null, currentSettings, messagingEndpointUrl });
+async function downloadFromSettings(): Promise<boolean> {
+	const downloaded = await downloadPackage();
+	if (downloaded) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
+		});
+	}
+	return downloaded;
+}
+
+// Teams only picks up a manifest change from a new package, so saving one
+// without it would leave the app and n8n disagreeing.
+const saveLabel = computed(() =>
+	props.mode === 'edit' && availabilityChanged.value
+		? i18n.baseText('agents.channels.teams.settings.saveAndDownload')
+		: undefined,
+);
+
+async function beforeSave() {
+	if (props.mode !== 'edit' || !availabilityChanged.value) return;
+	if (!(await downloadFromSettings())) throw new Error(downloadError.value);
+}
+
+defineExpose({ credentialId, validationError: null, currentSettings, saveLabel, beforeSave });
 </script>
 
 <template>
@@ -670,52 +671,42 @@ defineExpose({ credentialId, validationError: null, currentSettings, messagingEn
 		</N8nStepper>
 
 		<div v-else :class="$style.formContent">
-			<section :class="$style.group" data-testid="teams-app-group">
-				<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
-					{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
+			<div :class="$style.field" data-testid="teams-availability-field">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.teams.settings.availabilityLabel') }}
 				</N8nText>
+				<AgentChannelTeamsAvailability
+					:model-value="availability"
+					start-collapsed
+					@update:model-value="editAvailability"
+				/>
+				<N8nText
+					size="small"
+					:class="availabilityChanged ? undefined : $style.hint"
+					data-testid="teams-update-notice"
+				>
+					{{
+						i18n.baseText(
+							availabilityChanged
+								? 'agents.channels.teams.settings.updateNoticeChanged'
+								: 'agents.channels.teams.settings.updateNotice',
+						)
+					}}
+				</N8nText>
+			</div>
 
-				<div :class="$style.field" data-testid="teams-display-name">
-					<label for="teams-display-name">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.channels.teams.settings.displayName') }}
-						</N8nText>
-					</label>
-					<N8nInput
-						id="teams-display-name"
-						:model-value="displayName"
-						@update:model-value="editDisplayName"
-						size="large"
-						:maxlength="TEAMS_DISPLAY_NAME_MAX"
-						:placeholder="defaultDisplayName"
-						show-word-limit
-					/>
-				</div>
-
-				<div :class="$style.field" data-testid="teams-description">
-					<label for="teams-description">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.channels.teams.settings.description') }}
-						</N8nText>
-					</label>
-					<N8nInput
-						id="teams-description"
-						:model-value="description"
-						@update:model-value="editDescription"
-						size="large"
-						:maxlength="TEAMS_DESCRIPTION_MAX"
-						:placeholder="defaultDescription"
-						show-word-limit
-					/>
-				</div>
-
+			<div :class="$style.field" data-testid="teams-identity-field">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
+				</N8nText>
 				<AgentChannelTeamsIdentityCard
 					:name="effectiveDisplayName"
 					:description="effectiveDescription"
 					:personalisation="personalisation"
+					:tooltip="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
 					:ready="canDownloadPackage"
 					:loading="downloading"
-					@download="downloadPackage"
+					@download="downloadFromSettings"
 				/>
 				<N8nText
 					v-if="downloadError"
@@ -725,38 +716,21 @@ defineExpose({ credentialId, validationError: null, currentSettings, messagingEn
 				>
 					{{ downloadError }}
 				</N8nText>
-
-				<AgentChannelTeamsAvailability
-					:model-value="availability"
-					start-collapsed
-					@update:model-value="editAvailability"
-				/>
-			</section>
-
-			<section :class="$style.group" data-testid="teams-runtime-group">
-				<N8nText size="small" :class="$style.hint" data-testid="teams-runtime-notice">
-					{{ i18n.baseText('agents.channels.teams.settings.runtimeNotice') }}
-				</N8nText>
-				<AgentChannelTeamsConversation
-					:idle-timeout-minutes="sessionIdleTimeoutMinutes"
-					@update:idle-timeout-minutes="editSessionIdleTimeout"
-				/>
-			</section>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .teamsSetup,
-.formContent,
-.group {
+.formContent {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 }
 
 .formContent {
-	gap: var(--spacing--lg);
+	gap: var(--spacing--md);
 }
 
 .stepContent {

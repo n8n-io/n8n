@@ -10,8 +10,6 @@ import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { AgentChannelActivity } from '../entities/agent-channel-activity.entity';
-import type { AgentChannelActivityRepository } from '../repositories/agent-channel-activity.repository';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -29,7 +27,6 @@ function makeController({
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
-	channelActivityRepository = mock<AgentChannelActivityRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	collaborationService = mock<CollaborationService>(),
 }: {
@@ -38,12 +35,10 @@ function makeController({
 	agentRepository?: Mocked<AgentRepository>;
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
-	channelActivityRepository?: Mocked<AgentChannelActivityRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
-	channelActivityRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
 
 	return {
@@ -53,7 +48,6 @@ function makeController({
 			agentRepository,
 			chatIntegrationRegistry,
 			channelStatusRepository,
-			channelActivityRepository,
 			statusReporter,
 			collaborationService,
 		),
@@ -61,7 +55,6 @@ function makeController({
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
-		channelActivityRepository,
 		statusReporter,
 		collaborationService,
 	};
@@ -474,31 +467,6 @@ describe('AgentIntegrationsController channel status', () => {
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
 		]);
-	});
-
-	it('says when a channel last received a message', async () => {
-		const { controller, agentRepository, channelActivityRepository } = makeController();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
-		channelActivityRepository.findByAgentId.mockResolvedValue([
-			{
-				agentId: publishedAgent.id,
-				integrationType: slack.type,
-				credentialId: slack.credentialId,
-				lastInboundAt: new Date('2026-09-11T10:00:00.000Z'),
-			} as AgentChannelActivity,
-		]);
-
-		const response = await controller.integrationStatus(
-			{ params: { projectId: publishedAgent.projectId } } as never,
-			undefined as never,
-			publishedAgent.id,
-		);
-
-		expect(channelActivityRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id);
-		expect(response.integrations[0]).toMatchObject({
-			type: slack.type,
-			lastInboundAt: '2026-09-11T10:00:00.000Z',
-		});
 	});
 
 	it('reports draft and active n8n Chat availability separately', async () => {

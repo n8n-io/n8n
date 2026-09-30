@@ -9,7 +9,6 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
-	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
 	type AgentMessageAuthor,
 } from '@n8n/api-types';
@@ -36,9 +35,7 @@ import type {
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
-import { AgentChannelActivityRepository } from '../repositories/agent-channel-activity.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
-import { agentChannelRef } from '../utils/agent-channel';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentSessionMode } from '../utils/agent-thread-access';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
@@ -75,8 +72,6 @@ import { type InternalThread, toInternalThreadId } from './types';
 import { rateLimitMessageFromError } from './channel-rate-limit';
 
 const RESET_SESSION_COMMAND = '/new';
-
-const INBOUND_RECORD_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Lock key prefix for the per-conversation session state, shared across mains. */
 const SESSION_LOCK_KEY_PREFIX = 'agents:chat-session-generation';
@@ -220,9 +215,6 @@ export class AgentChatBridge {
 	private readonly streamConsumer: AgentChatStreamConsumer;
 
 	private readonly hitlResumeHandler: AgentChatHitlResumeHandler;
-
-	/** Last time an inbound message was recorded, to bound writes on a busy channel. */
-	private lastInboundRecordedAt = 0;
 
 	constructor(
 		private readonly chat: Chat,
@@ -727,32 +719,11 @@ export class AgentChatBridge {
 	): Promise<void> {
 		const inbound = await this.readInboundMessage(message);
 		if (!inbound) return;
-		void this.recordInbound();
 		if (isResetCommand(inbound)) {
 			await this.resetSession(thread);
 			return;
 		}
 		await this.runTurn(thread, message, inbound, options);
-	}
-
-	/** Feeds the "verified" date in the channel settings; never blocks or fails a turn. */
-	private async recordInbound(): Promise<void> {
-		if (!isCredentialAgentIntegration(this.integration)) return;
-		const now = Date.now();
-		if (now - this.lastInboundRecordedAt < INBOUND_RECORD_INTERVAL_MS) return;
-		try {
-			await Container.get(AgentChannelActivityRepository).recordInbound(
-				agentChannelRef(this.agentId, this.integration),
-				new Date(now),
-			);
-			this.lastInboundRecordedAt = now;
-		} catch (error) {
-			this.logger.warn('Could not record inbound channel activity', {
-				agentId: this.agentId,
-				integrationType: this.integration.type,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 
 	private async readInboundMessage(message: Message): Promise<InboundMessage | null> {

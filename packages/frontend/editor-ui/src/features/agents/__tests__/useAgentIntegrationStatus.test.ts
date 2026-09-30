@@ -72,32 +72,6 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.runtimeErrors.value.telegram).toBe('Credential cred-telegram not found');
 	});
 
-	it('keeps when a channel was last verified across a configuration re-seed', async () => {
-		apiMocks.getIntegrationStatus.mockResolvedValue({
-			status: 'connected',
-			integrations: [
-				{
-					type: 'teams',
-					credentialId: 'cred-teams',
-					status: 'connected',
-					lastInboundAt: '2026-09-11T10:00:00.000Z',
-				},
-			],
-		});
-		const status = useAgentIntegrationStatus(projectId, agentId);
-		await status.fetchStatus(['teams']);
-		expect(status.lastInboundAt.value.teams).toBe('2026-09-11T10:00:00.000Z');
-
-		syncAgentIntegrationStatusCache(
-			projectId,
-			agentId,
-			['teams'],
-			[{ type: 'teams', credentialId: 'cred-teams', status: 'starting' }],
-		);
-
-		expect(status.lastInboundAt.value.teams).toBe('2026-09-11T10:00:00.000Z');
-	});
-
 	it('drops a stale runtime error once the channel starts', async () => {
 		const status = useAgentIntegrationStatus(projectId, agentId);
 		apiMocks.getIntegrationStatus.mockResolvedValue({

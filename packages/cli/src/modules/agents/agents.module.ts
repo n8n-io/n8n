@@ -232,7 +232,6 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
 		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
-		const { AgentChannelActivity } = await import('./entities/agent-channel-activity.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
@@ -279,7 +278,6 @@ export class AgentsModule implements ModuleInterface {
 			AgentChatAttachment,
 			AgentChatSubscription,
 			AgentChannelStatus,
-			AgentChannelActivity,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
