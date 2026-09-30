@@ -115,13 +115,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
 	/**
-	 * Budget notices attached by streams that already ended, keyed by execution
-	 * id (or message id before `done`). The history read that follows `done`
-	 * consumes them once; a later refresh must not reinsert a stop card and
-	 * block Send again.
+	 * Budget notices attached by streams that already ended, bucketed by the
+	 * target (project, agent, session) that produced them, then keyed by
+	 * execution id (or message id before `done`). The history read that
+	 * follows `done` consumes its own target's bucket once; a later refresh
+	 * must not reinsert a stop card and block Send again, and a refresh for
+	 * another target must not inherit it.
 	 */
-	const pendingBudgetNotices = new Map<string, NonNullable<ChatMessage['budgetNotices']>>();
-	const pendingBudgetNoticeSources = new Map<string, ChatMessage>();
+	const pendingBudgetNotices = new Map<
+		string,
+		Map<string, { notices: NonNullable<ChatMessage['budgetNotices']>; source: ChatMessage }>
+	>();
 	let queueVersion = 0;
 	let submissionVersion = 0;
 	const activeExecutionId = ref<string | null>(null);
@@ -561,12 +565,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (notices.some((notice) => notice.code === code)) return;
 		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
 		const key = session.executionId ?? msg.id;
-		const pending = pendingBudgetNotices.get(key) ?? [];
-		if (!pending.some((notice) => notice.code === code)) {
-			pending.push({ id: crypto.randomUUID(), code });
+		let forTarget = pendingBudgetNotices.get(session.target);
+		if (!forTarget) {
+			forTarget = new Map();
+			pendingBudgetNotices.set(session.target, forTarget);
 		}
-		pendingBudgetNotices.set(key, pending);
-		pendingBudgetNoticeSources.set(key, msg);
+		const entry = forTarget.get(key) ?? { notices: [], source: msg };
+		if (!entry.notices.some((notice) => notice.code === code)) {
+			entry.notices.push({ id: crypto.randomUUID(), code });
+		}
+		forTarget.set(key, entry);
 	}
 
 	/**
@@ -576,14 +584,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * assistant text has no persisted message to land on.
 	 */
 	function restoreBudgetNotices(next: ChatMessage[]): ChatMessage[] {
-		if (pendingBudgetNotices.size === 0) return next;
+		// Consume only this target's bucket: the first refresh after `done`
+		// restores the notices, and later refreshes must not bring a dismissed
+		// card back. Buckets of other agents or sessions stay untouched.
+		const forTarget = pendingBudgetNotices.get(targetKey());
+		if (!forTarget || forTarget.size === 0) return next;
+		pendingBudgetNotices.delete(targetKey());
 
-		// Consume the pending notices: the first refresh after `done` restores
-		// them, and later refreshes must not bring a dismissed card back.
-		const pending = new Map(pendingBudgetNotices);
-		const sources = new Map(pendingBudgetNoticeSources);
-		pendingBudgetNotices.clear();
-		pendingBudgetNoticeSources.clear();
+		const pending = new Map([...forTarget].map(([key, entry]) => [key, entry.notices]));
+		const sources = new Map([...forTarget].map(([key, entry]) => [key, entry.source]));
 
 		const restored = next.map((message) => ({ ...message }));
 		for (let index = restored.length - 1; index >= 0; index--) {
@@ -1110,13 +1119,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					}
 					// Notices attached before `accepted` are keyed by message id; rekey
 					// them so the history refresh can match the persisted turn.
-					for (const msg of session.minted) {
-						const notices = pendingBudgetNotices.get(msg.id);
-						if (!notices) continue;
-						pendingBudgetNotices.delete(msg.id);
-						pendingBudgetNotices.set(event.executionId, notices);
-						pendingBudgetNoticeSources.delete(msg.id);
-						pendingBudgetNoticeSources.set(event.executionId, msg);
+					const forTarget = pendingBudgetNotices.get(session.target);
+					if (forTarget) {
+						for (const msg of session.minted) {
+							const entry = forTarget.get(msg.id);
+							if (!entry) continue;
+							forTarget.delete(msg.id);
+							forTarget.set(event.executionId, entry);
+						}
 					}
 				}
 				session.terminalEventReceived = true;

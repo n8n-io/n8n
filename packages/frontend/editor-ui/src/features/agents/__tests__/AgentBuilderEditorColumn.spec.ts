@@ -431,6 +431,15 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
+		const budgetPanel = wrapper.findComponent({ name: 'AgentBudgetPanel' });
+		expect(budgetPanel.exists()).toBe(true);
+		expect(budgetPanel.props('config')).toMatchObject({
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+		});
+		expect(budgetPanel.props('disabled')).toBe(false);
+		expect(budgetPanel.props('projectId')).toBe('project-1');
+		expect(budgetPanel.props('agentId')).toBe('agent-1');
 		const subAgentsPanel = wrapper.findComponent({ name: 'AgentSubAgentsPanel' });
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
@@ -440,10 +449,25 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
+		// Usage and limits sits above sub-agents.
+		expect(
+			budgetPanel.element.compareDocumentPosition(subAgentsPanel.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
+	});
+
+	it('forwards a budget panel config update to the host', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+		await flushPromises();
+
+		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
+		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

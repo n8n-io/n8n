@@ -37,9 +37,10 @@ vi.mock('@n8n/i18n', () => ({
 function config(budget?: AgentJsonConfig['config']): AgentJsonConfig {
 	return {
 		name: 'Agent',
-		model: { provider: 'openai', model: 'gpt-4o-mini' },
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test agent',
 		...(budget ? { config: budget } : {}),
-	} as AgentJsonConfig;
+	};
 }
 
 describe('AgentBudgetPanel', () => {

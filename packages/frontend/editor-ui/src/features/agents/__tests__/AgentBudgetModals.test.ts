@@ -29,7 +29,8 @@ const AgentModalStub = defineComponent({
 function config(): AgentJsonConfig {
 	return {
 		name: 'Agent',
-		model: { provider: 'openai', model: 'gpt-4o-mini' },
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test agent',
 		config: {
 			reasoning: 'low',
 			guardrails: {
@@ -41,7 +42,7 @@ function config(): AgentJsonConfig {
 				},
 			},
 		},
-	} as AgentJsonConfig;
+	};
 }
 
 describe('AgentBudgetMonthlyModal', () => {

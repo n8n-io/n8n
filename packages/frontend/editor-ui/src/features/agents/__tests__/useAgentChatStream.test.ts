@@ -1325,6 +1325,87 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(after?.budgetNotices).toBeUndefined();
 	});
 
+	it('does not restore a budget stop card into another session’s transcript', async () => {
+		const threadId = ref('thread-1');
+		const firstRefresh = Promise.withResolvers<AgentChatMessagesResponse>();
+		const secondRefresh = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock
+			.mockReturnValueOnce(firstRefresh.promise)
+			.mockReturnValueOnce(secondRefresh.promise)
+			.mockResolvedValue({
+				messages: [
+					{
+						id: 'user-1',
+						role: 'user',
+						content: [{ type: 'text', text: 'hi' }],
+						executionId: 'exec-1',
+					},
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: [{ type: 'text', text: 'partial' }],
+						executionId: 'exec-1',
+					},
+				],
+				openSuspensions: [],
+			});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const hook = scope.run(() =>
+			useAgentChatStream({
+				projectId: ref('p1'),
+				agentId: ref('a1'),
+				continueSessionId: threadId,
+				budgetCards: true,
+			}),
+		)!;
+
+		await hook.sendMessage('hi');
+		await flushPromises();
+		// The post-done history read for thread-1 is in flight but unresolved.
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		threadId.value = 'thread-2';
+		await flushPromises();
+		// The in-flight read holds the refresh queue; the switch queues another.
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		// The stale read for thread-1 resolves after the switch and is dropped.
+		firstRefresh.resolve({ messages: [], openSuspensions: [] });
+		await flushPromises();
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(2);
+
+		secondRefresh.resolve({
+			messages: [
+				{
+					id: 'user-2',
+					role: 'user',
+					content: [{ type: 'text', text: 'other' }],
+					executionId: 'exec-2',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['other']);
+		expect(hook.messages.value.some((message) => message.budgetNotices?.length)).toBe(false);
+
+		// Back on thread-1, the stop card restores onto its own persisted turn.
+		threadId.value = 'thread-1';
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
 	it('attaches a budget stop card on a guardrail finish chunk', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'partial' },
