@@ -922,6 +922,35 @@ describe('InstanceAiMcpRegistryService', () => {
 			);
 		});
 
+		it('uses submitted tool permissions for a new connection', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				instanceAiSettingsService,
+			} = createService();
+			const toolPermissions = {
+				categories: { read: 'always_allow' as const, write: 'blocked' as const },
+				tools: { delete: 'require_approval' as const },
+			};
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolPermissions,
+			});
+
+			expect(connectionRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ toolPermissions }),
+			);
+			expect(instanceAiSettingsService.getMcpToolPermissions).not.toHaveBeenCalled();
+		});
+
 		it('creates a connection and returns it with the resolved credential and server', async () => {
 			const {
 				service,

@@ -34,4 +34,13 @@ describe('useLatestFetch', () => {
 		expect(checkers[2]()).toBe(false);
 		expect(checkers[3]()).toBe(true);
 	});
+
+	it('should invalidate the current checker without starting another fetch', () => {
+		const { invalidate, next } = useLatestFetch();
+		const isCurrent = next();
+
+		invalidate();
+
+		expect(isCurrent()).toBe(false);
+	});
 });
