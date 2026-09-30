@@ -850,6 +850,17 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		testWithAPIKey('get', '/data-tables/123/rows', 'abcXYZ'),
 	);
 
+	test('should reject reading rows without dataTableRow:read', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.get(`/data-tables/${dataTable.id}/rows`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('should return 404 for non-existing data table', async () => {
 		const nonExistentId = 'abcd1234efgh5678'; // Valid nanoid format but doesn't exist
 		const response = await authOwnerAgent.get(`/data-tables/${nonExistentId}/rows`);
@@ -1120,6 +1131,32 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		testWithAPIKey('post', '/data-tables/123/rows', 'abcXYZ'),
 	);
 
+	test('should reject inserting rows without dataTableRow:create', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent
+			.post(`/data-tables/${dataTable.id}/rows`)
+			.send({ data: [{ name: 'Alice' }] });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678'; // Valid nanoid format but doesn't exist
+		const response = await authOwnerAgent
+			.post(`/data-tables/${nonExistentId}/rows`)
+			.send({ data: [{ name: 'Alice' }] });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${nonExistentId}'`,
+		);
+	});
+
 	test('should insert rows with returnType count', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
@@ -1319,6 +1356,24 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		'should fail due to invalid API Key',
 		testWithAPIKey('post', '/data-tables/123/rows/upsert', 'abcXYZ'),
 	);
+
+	test('should reject upsert without dataTableRow:upsert', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'email', type: 'string' }],
+			data: [{ email: 'test@example.com' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'email', condition: 'eq', value: 'test@example.com' }],
+			},
+			data: { email: 'updated@example.com' },
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
 
 	test('should reject a filter entry missing condition', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
