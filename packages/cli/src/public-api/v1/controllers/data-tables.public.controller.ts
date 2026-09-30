@@ -1,4 +1,5 @@
 import {
+	ClearDataTableRowsResponsePublicDto,
 	columnIdParamSchema,
 	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
@@ -8,11 +9,15 @@ import {
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	DataTableRowListPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	DeleteDataTableRowsResponsePublicDto,
 	InsertDataTableRowsResponsePublicDto,
 	PublicApiListDataTableQueryDto,
 	PublicApiListDataTableRowsQueryDto,
 	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpdateDataTableRowPublicDto,
+	UpdateDataTableRowResponsePublicDto,
 	UpsertDataTableRowPublicDto,
 	UpsertDataTableRowResponsePublicDto,
 	dataTableIdParamSchema,
@@ -501,6 +506,110 @@ export class DataTablesPublicController {
 				dataTableId,
 				projectId,
 				{ filter, data },
+				returnData,
+				dryRun,
+			);
+
+			return typeof result === 'boolean'
+				? result
+				: result.map((row) =>
+						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
+					);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Patch('/:dataTableId/rows/update')
+	@ApiKeyScope('dataTableRow:update')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Update rows in a data table')
+	@ApiDescription('Update rows matching filter conditions in a data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, UpdateDataTableRowResponsePublicDto)
+	@ApiErrorResponse(404)
+	async updateDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: UpdateDataTableRowPublicDto,
+	) {
+		const { filter, data, returnData, dryRun } = body;
+
+		try {
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const result = await this.dataTableService.updateRows(
+				dataTableId,
+				projectId,
+				{ filter, data },
+				returnData,
+				dryRun,
+			);
+
+			return typeof result === 'boolean'
+				? result
+				: result.map((row) =>
+						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
+					);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/rows/clear')
+	@ApiKeyScope('dataTableRow:delete')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Clear all rows from a data table')
+	@ApiDescription(
+		'Permanently delete all rows from a data table. The table structure is retained. This ' +
+			'action cannot be undone.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ClearDataTableRowsResponsePublicDto)
+	@ApiErrorResponse(404)
+	async clearDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+	): Promise<ClearDataTableRowsResponsePublicDto> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			return await this.dataTableService.clearRows(dataTableId, projectId);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/rows/delete')
+	@ApiKeyScope('dataTableRow:delete')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Delete rows from a data table')
+	@ApiDescription(
+		'Delete rows matching filter conditions from a data table. Filter is required to prevent ' +
+			'accidental deletion of all data.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DeleteDataTableRowsResponsePublicDto)
+	@ApiErrorResponse(404)
+	async deleteDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: DeleteDataTableRowsPublicQueryDto,
+	) {
+		const { filter, returnData, dryRun } = query;
+
+		try {
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const result = await this.dataTableService.deleteRows(
+				dataTableId,
+				projectId,
+				{ filter },
 				returnData,
 				dryRun,
 			);

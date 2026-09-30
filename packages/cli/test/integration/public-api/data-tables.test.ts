@@ -1257,6 +1257,23 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 		testWithAPIKey('patch', '/data-tables/123/rows/update', 'abcXYZ'),
 	);
 
+	test('should reject a filter entry missing condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'pending' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'status', value: 'pending' }],
+			},
+			data: { status: 'completed' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should update rows with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
@@ -1488,6 +1505,24 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		'should fail due to invalid API Key',
 		testWithAPIKey('delete', '/data-tables/123/rows/delete', 'abcXYZ'),
 	);
+
+	test('should reject a filter entry missing condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', value: 'old' }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter });
+
+		expect(response.statusCode).toBe(400);
+	});
 
 	test('should delete rows with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {

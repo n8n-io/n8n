@@ -1,5 +1,4 @@
 import type {
-	UpdateDataTableRowDto,
 	PublicCreateDestination,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
@@ -113,27 +112,6 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
-}
-
-// ----------------------------------
-//           /data-tables
-// ----------------------------------
-
-export declare namespace DataTableRequest {
-	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type DeleteRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			filter?: string;
-			returnData?: string | boolean;
-			dryRun?: string | boolean;
-		}
-	>;
 }
 
 // ----------------------------------
