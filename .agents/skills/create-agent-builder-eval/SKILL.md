@@ -187,9 +187,19 @@ Follow "A red is signal" in the general skill. For Agent cases, add this:
 1. Classify the red as a product gap, a harness limitation, or non-determinism.
 2. Keep a product-gap red. Start the case `description` with
    `Capability-gap finding:`.
-3. **Propose a Linear ticket for the agents team.** Propose it. Do not create it
-   unless the driver says go. Follow "Capability gap → propose a Linear ticket" in
-   the general skill. Also check whether the gap already has a ticket.
+3. **Propose a Linear ticket for the Agent team.** The Linear team is named
+   `Agent`. Propose the ticket. Do not create it unless the driver says go.
+   Follow "Capability gap → propose a Linear ticket" in the general skill. Also
+   check whether the gap already has a ticket.
+   - Write the ticket in English. Use Simplified Technical English, as
+     [AGENTS.md](../../../AGENTS.md) requires. Translate the user's words. Do
+     not paste them.
+   - This repository is public. Keep customer names, company names, and real
+     URLs out of the ticket. Describe the use case in neutral words.
+   - Link the LangTracer case and the source thread. Do not copy raw user
+     messages or agent instructions from the thread.
+   - Say if the gap is reproduced. Write "Not yet reproduced. Based on trace
+     analysis" when no case has reproduced it.
 4. **Check the builder's own guidance for the gap.** Read the files that steer
    Agent Builder:
    `packages/cli/src/modules/agents/builder/agents-builder-prompts.ts`,
