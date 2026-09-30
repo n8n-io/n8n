@@ -1,0 +1,303 @@
+import * as acorn from 'acorn';
+
+/** What a lambda's first parameter reads at runtime: the current item or the paginated response. */
+export type LambdaRoot = '$json' | '$response';
+
+/** `js` is the rewritten body, for embedding; `expression` is the n8n parameter value. */
+export type LambdaResult =
+	| { ok: true; js: string; expression: string }
+	| { ok: false; error: string };
+
+/** JavaScript globals that n8n expressions can also use. */
+const GLOBALS = new Set([
+	'JSON',
+	'Math',
+	'Number',
+	'String',
+	'Boolean',
+	'Array',
+	'Object',
+	'Date',
+	'RegExp',
+	'parseInt',
+	'parseFloat',
+	'isNaN',
+	'isFinite',
+	'encodeURIComponent',
+	'decodeURIComponent',
+	'encodeURI',
+	'decodeURI',
+	'undefined',
+	'NaN',
+	'Infinity',
+]);
+
+/** `$.<key>` in a lambda compiles to this n8n expression text. */
+const BUILTINS: Record<string, string> = {
+	now: '$now',
+	today: '$today',
+	execution: '$execution',
+	workflow: '$workflow',
+	vars: '$vars',
+	date: 'DateTime.fromISO',
+};
+
+interface Replacement {
+	start: number;
+	end: number;
+	text: string;
+}
+
+interface Params {
+	item?: string;
+	/** Destructured item fields: local name → field name. */
+	fields: ReadonlyMap<string, string>;
+	dollar?: string;
+}
+
+const isAstNode = (value: unknown): value is acorn.AnyNode =>
+	typeof value === 'object' &&
+	value !== null &&
+	'type' in value &&
+	typeof value.type === 'string' &&
+	'start' in value &&
+	typeof value.start === 'number';
+
+const childNodes = (node: acorn.AnyNode): acorn.AnyNode[] =>
+	Object.values(node).flatMap((value: unknown) =>
+		Array.isArray(value) ? value.filter(isAstNode) : isAstNode(value) ? [value] : [],
+	);
+
+function patternNames(pattern: acorn.AnyNode): string[] {
+	switch (pattern.type) {
+		case 'Identifier':
+			return [pattern.name];
+		case 'ObjectPattern':
+			return pattern.properties.flatMap((property) =>
+				property.type === 'RestElement' ? patternNames(property) : patternNames(property.value),
+			);
+		case 'ArrayPattern':
+			return pattern.elements.flatMap((element) => (element ? patternNames(element) : []));
+		case 'RestElement':
+			return patternNames(pattern.argument);
+		case 'AssignmentPattern':
+			return patternNames(pattern.left);
+		default:
+			return [];
+	}
+}
+
+function blockDeclarations(block: acorn.BlockStatement): string[] {
+	return block.body.flatMap((statement) =>
+		statement.type === 'VariableDeclaration'
+			? statement.declarations.flatMap((declaration) => patternNames(declaration.id))
+			: [],
+	);
+}
+
+function readParams(params: acorn.Pattern[]): Params | string {
+	const [item, dollar, ...rest] = params;
+	if (rest.length > 0) return 'A lambda takes at most two parameters: (item, $)';
+	if (dollar && dollar.type !== 'Identifier')
+		return 'Do not destructure $; write $.now or $("Node")';
+	const base = { dollar: dollar?.type === 'Identifier' ? dollar.name : undefined };
+	if (!item) return { ...base, fields: new Map() };
+	if (item.type === 'Identifier') return { ...base, item: item.name, fields: new Map() };
+	if (item.type !== 'ObjectPattern') return 'Name the item parameter or destructure its fields';
+	const fields = item.properties.flatMap((property) =>
+		property.type === 'Property' &&
+		!property.computed &&
+		property.key.type === 'Identifier' &&
+		property.value.type === 'Identifier'
+			? [[property.value.name, property.key.name] as const]
+			: [],
+	);
+	if (fields.length !== item.properties.length) return 'Destructure item fields by plain name only';
+	return { ...base, fields: new Map(fields) };
+}
+
+class LambdaCompiler {
+	readonly replacements: Replacement[] = [];
+
+	readonly errors: string[] = [];
+
+	constructor(
+		private readonly params: Params,
+		private readonly root: LambdaRoot,
+		private readonly nodeNames: ReadonlySet<string>,
+	) {}
+
+	private referenceText(name: string): string | undefined {
+		if (name === this.params.item) return this.root;
+		const field = this.params.fields.get(name);
+		return field === undefined ? undefined : `${this.root}.${field}`;
+	}
+
+	private dollarCall(node: acorn.CallExpression): boolean {
+		if (node.callee.type !== 'Identifier' || node.callee.name !== this.params.dollar) return false;
+		const [arg] = node.arguments;
+		if (node.arguments.length !== 1 || arg?.type !== 'Literal' || typeof arg.value !== 'string') {
+			this.errors.push('$() takes one node name as a string literal, e.g. $("Get tasks")');
+			return true;
+		}
+		if (!this.nodeNames.has(arg.value)) {
+			this.errors.push(`$("${arg.value}") names no node in this workflow`);
+			return true;
+		}
+		this.replacements.push({
+			start: node.start,
+			end: node.end,
+			text: `$(${JSON.stringify(arg.value)}).item.json`,
+		});
+		return true;
+	}
+
+	private dollarMember(node: acorn.MemberExpression): boolean {
+		if (node.object.type !== 'Identifier' || node.object.name !== this.params.dollar) return false;
+		const key = !node.computed && node.property.type === 'Identifier' ? node.property.name : '';
+		const text = BUILTINS[key];
+		if (text === undefined) {
+			this.errors.push(`$.${key} does not exist; use ${Object.keys(BUILTINS).join(', ')}`);
+			return true;
+		}
+		this.replacements.push({ start: node.start, end: node.end, text });
+		return true;
+	}
+
+	private identifier(node: acorn.Identifier, scope: ReadonlySet<string>) {
+		if (scope.has(node.name)) return;
+		const text = this.referenceText(node.name);
+		if (text !== undefined) {
+			this.replacements.push({ start: node.start, end: node.end, text });
+		} else if (node.name === this.params.dollar) {
+			this.errors.push('Use $ as $("Node") or $.now; it is not a value');
+		} else if (!GLOBALS.has(node.name)) {
+			this.errors.push(
+				`The lambda reads "${node.name}", which n8n cannot see at runtime. Inline the value or read it with $("Node")`,
+			);
+		}
+	}
+
+	visit(node: acorn.AnyNode, scope: ReadonlySet<string>): void {
+		switch (node.type) {
+			case 'Identifier':
+				return this.identifier(node, scope);
+			case 'CallExpression':
+				if (this.dollarCall(node)) return;
+				break;
+			case 'MemberExpression':
+				if (this.dollarMember(node)) return;
+				this.visit(node.object, scope);
+				if (node.computed) this.visit(node.property, scope);
+				return;
+			case 'Property':
+				if (node.computed) this.visit(node.key, scope);
+				if (node.shorthand && node.value.type === 'Identifier' && !scope.has(node.value.name)) {
+					const text = this.referenceText(node.value.name);
+					if (text !== undefined) {
+						this.replacements.push({
+							start: node.start,
+							end: node.end,
+							text: `${node.value.name}: ${text}`,
+						});
+						return;
+					}
+				}
+				return this.visit(node.value, scope);
+			case 'ArrowFunctionExpression':
+			case 'FunctionExpression': {
+				const inner = new Set([...scope, ...node.params.flatMap(patternNames)]);
+				return this.visit(node.body, inner);
+			}
+			case 'BlockStatement': {
+				const inner = new Set([...scope, ...blockDeclarations(node)]);
+				for (const child of node.body) this.visit(child, inner);
+				return;
+			}
+			case 'VariableDeclarator':
+				if (node.init) this.visit(node.init, scope);
+				return;
+			case 'LabeledStatement':
+			case 'BreakStatement':
+			case 'ContinueStatement':
+				return;
+			default:
+				break;
+		}
+		for (const child of childNodes(node)) this.visit(child, scope);
+	}
+
+	rewrite(source: string, node: acorn.AnyNode): string {
+		const inside = this.replacements
+			.filter(({ start, end }) => start >= node.start && end <= node.end)
+			.sort((a, b) => b.start - a.start);
+		const text = inside.reduce(
+			(acc, { start, end, text: replacement }) =>
+				acc.slice(0, start - node.start) + replacement + acc.slice(end - node.start),
+			source.slice(node.start, node.end),
+		);
+		return text;
+	}
+}
+
+function parseFunction(source: string): acorn.ArrowFunctionExpression | acorn.FunctionExpression {
+	const expression = acorn.parseExpressionAt(source, 0, { ecmaVersion: 'latest' });
+	if (expression.type === 'ArrowFunctionExpression' || expression.type === 'FunctionExpression') {
+		return expression;
+	}
+	throw new Error('not a function expression');
+}
+
+function bodyExpression(fn: acorn.Function): acorn.Expression | undefined {
+	if (fn.body.type !== 'BlockStatement') return fn.body;
+	const [only] = fn.body.body;
+	return fn.body.body.length === 1 && only?.type === 'ReturnStatement' && only.argument
+		? only.argument
+		: undefined;
+}
+
+/**
+ * Compile a lambda to an n8n expression. A template literal body becomes mixed text
+ * (`=Hi {{ $json.name }}`); any other body becomes `={{ … }}`. The lambda runs per item in
+ * n8n, so it may read only its parameters and JavaScript globals.
+ */
+export function compileLambda(
+	fn: (...args: never[]) => unknown,
+	nodeNames: ReadonlySet<string>,
+	root: LambdaRoot = '$json',
+): LambdaResult {
+	const source = fn.toString();
+	const parsed = (() => {
+		try {
+			return parseFunction(source);
+		} catch {
+			return undefined;
+		}
+	})();
+	if (!parsed) return { ok: false, error: 'Write the lambda as an arrow function: (item) => …' };
+	if (parsed.async || parsed.generator) {
+		return { ok: false, error: 'A lambda cannot be async or a generator' };
+	}
+	const params = readParams(parsed.params);
+	if (typeof params === 'string') return { ok: false, error: params };
+	const body = bodyExpression(parsed);
+	if (!body) return { ok: false, error: 'Give the lambda one expression body: (item) => …' };
+
+	const compiler = new LambdaCompiler(params, root, nodeNames);
+	compiler.visit(body, new Set());
+	if (compiler.errors.length > 0) return { ok: false, error: compiler.errors.join('; ') };
+
+	const rewritten = compiler.rewrite(source, body);
+	const js = body.type === 'ObjectExpression' ? `(${rewritten})` : rewritten;
+	if (body.type === 'TemplateLiteral') {
+		const text = body.quasis
+			.map((quasi, index) => {
+				const expression = body.expressions[index];
+				const literal = quasi.value.cooked ?? quasi.value.raw;
+				return expression ? `${literal}{{ ${compiler.rewrite(source, expression)} }}` : literal;
+			})
+			.join('');
+		return { ok: true, js, expression: `=${text}` };
+	}
+	return { ok: true, js, expression: `={{ ${js} }}` };
+}
