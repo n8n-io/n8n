@@ -14,7 +14,7 @@
 | payload | json |  | false |  |  | Original workflow snapshot, candidate nodes and connections, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
 | publication | json |  | true |  |  | Last observed publication status for the applied version |
-| resultKind | varchar(16) |  | true |  |  | Outcome supplied by the investigation; null does not permit Apply |
+| resultKind | varchar(16) |  | false |  |  | Investigation outcome; only fix_ready permits Apply |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Target workflow |
@@ -36,6 +36,7 @@
 | workflow_suggestion_id_not_null | n | NOT NULL id |
 | workflow_suggestion_payload_not_null | n | NOT NULL payload |
 | workflow_suggestion_projectId_not_null | n | NOT NULL "projectId" |
+| workflow_suggestion_resultKind_not_null | n | NOT NULL "resultKind" |
 | workflow_suggestion_state_not_null | n | NOT NULL state |
 | workflow_suggestion_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_suggestion_workflowId_not_null | n | NOT NULL "workflowId" |

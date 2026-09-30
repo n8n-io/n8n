@@ -68,7 +68,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		baseline: WorkflowSuggestionBaseline,
 		payload: WorkflowSuggestionContent,
 		ctx: OperationContext,
-		resultKind: WorkflowSuggestion['resultKind'] = null,
+		resultKind: WorkflowSuggestion['resultKind'],
 	) {
 		const manager = this.managerFor(ctx);
 		const suggestion = manager.create(WorkflowSuggestion, {

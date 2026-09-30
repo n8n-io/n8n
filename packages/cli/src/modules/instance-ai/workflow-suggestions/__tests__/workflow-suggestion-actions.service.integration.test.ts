@@ -73,7 +73,7 @@ afterEach(async () => {
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
-async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fix_ready') {
+async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const user = await createUser();
 	const workflow = await createWorkflowWithHistory({}, user);
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId, active: true });
@@ -96,12 +96,12 @@ async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fi
 	const prepared = await suggestionService.prepareSuggestion(baseline, {
 		graph,
 		explanation: 'Update the workflow graph.',
-		resultKind: resultKind ?? undefined,
+		resultKind,
 	});
 	return { user, workflow, original, project, graph, prepared };
 }
 
-async function fixture(resultKind: 'fix_ready' | 'needs_you' | null = 'fix_ready') {
+async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const { user, workflow, original, project, graph, prepared } = await prepareFixture(resultKind);
 	const suggestion = await suggestionService.createSuggestion(prepared);
 	const act = async (action: Parameters<WorkflowSuggestionActionsService['act']>[4]) =>
@@ -176,21 +176,18 @@ it('returns the committed application when an after-update hook fails', async ()
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 });
 
-it.each(['needs_you', null] as const)(
-	'rejects applying a result with outcome %s',
-	async (outcome) => {
-		const { original, suggestion, act } = await fixture(outcome);
-		const beforeHistory = await history.countBy({ workflowId: original.id });
+it('rejects applying a Needs attention result', async () => {
+	const { original, suggestion, act } = await fixture('needs_you');
+	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-		await expect(act('open-in-editor')).rejects.toThrow();
+	await expect(act('open-in-editor')).rejects.toThrow();
 
-		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
-		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
-			state: 'pending',
-		});
-	},
-);
+	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		state: 'pending',
+	});
+});
 
 it('discards a proposal without saving its graph or changing its stored content', async () => {
 	const { original, suggestion, act } = await fixture();
@@ -641,7 +638,7 @@ it('preserves activity when the review schema is reverted and reapplied', async 
 	}
 
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
-		resultKind: null,
+		resultKind: 'needs_you',
 		appliedVersion: null,
 		publication: null,
 	});
@@ -654,6 +651,7 @@ it('preserves activity when the review schema is reverted and reapplied', async 
 	await expect(
 		suggestions.update(suggestion.id, { resultKind: 'invalid' as never }),
 	).rejects.toThrow();
+	await expect(suggestions.update(suggestion.id, { resultKind: null as never })).rejects.toThrow();
 });
 
 it('keeps human activity when its actor is deleted', async () => {

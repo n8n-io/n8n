@@ -98,6 +98,7 @@ beforeEach(async () => {
 		backgroundUserId: baseline.backgroundUserId,
 		expectedBaseline: baseline.expectedBaseline,
 		state: 'pending',
+		resultKind: 'fix_ready',
 		closedReason: null,
 		payload: {
 			original: structuredClone(baseline.original),
@@ -155,6 +156,7 @@ it.each(['unpublished', 'saved changes', 'archived', 'publishing'] as const)(
 it('stores the exact final graph and activity in the caller transaction', async () => {
 	const errorContext = { summary: 'A node failed', evidenceReference: 'evidence-1' };
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
 		graph,
 		explanation: '  Prepared fix  ',
 		errorContext,
@@ -172,7 +174,7 @@ it('stores the exact final graph and activity in the caller transaction', async 
 			errorContext,
 		},
 		ctx,
-		null,
+		'fix_ready',
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
 	expect(suggestions.readWorkflowTarget).toHaveBeenCalledWith(workflow.id, ctx);
@@ -180,10 +182,25 @@ it('stores the exact final graph and activity in the caller transaction', async 
 	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, ctx);
 });
 
+it.each([undefined, null, 'invalid'])(
+	'rejects outcome %s before preparing a suggestion',
+	async (resultKind) => {
+		await expect(
+			service.prepareSuggestion(baseline, {
+				graph,
+				explanation: 'Fix',
+				resultKind: resultKind as never,
+			}),
+		).rejects.toMatchObject({ issues: [expect.objectContaining({ path: ['resultKind'] })] });
+		expect(suggestions.createPending).not.toHaveBeenCalled();
+	},
+);
+
 it('keeps prepared content separate from later changes to the input', async () => {
 	const candidate = structuredClone(graph);
 	const original = structuredClone(baseline.original);
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
 		graph: candidate,
 		explanation: 'Fix',
 	});
@@ -238,7 +255,11 @@ it.each<{ problem: string; candidate: WorkflowSuggestionGraph }>([
 	},
 ])('rejects a $problem', async ({ candidate }) => {
 	await expect(
-		service.prepareSuggestion(baseline, { graph: candidate, explanation: 'Fix' }),
+		service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
+			graph: candidate,
+			explanation: 'Fix',
+		}),
 	).rejects.toThrow('structure');
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
@@ -249,6 +270,7 @@ it('does not assign node IDs or webhook IDs during preparation', async () => {
 		nodes: [{ ...graph.nodes[0], id: '', type: 'n8n-nodes-base.webhook' }],
 	};
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
 		graph: candidate,
 		explanation: 'Fix',
 	});
@@ -258,7 +280,7 @@ it('does not assign node IDs or webhook IDs during preparation', async () => {
 it.each([
 	{ state: 'missing', credentials: undefined },
 	{ state: 'unresolved', credentials: { httpBasicAuth: { id: 'unavailable', name: 'Service' } } },
-])('stores $state credentials for review without a readiness result', async ({ credentials }) => {
+])('stores $state credentials for Needs attention', async ({ credentials }) => {
 	const candidate = {
 		...graph,
 		nodes: [
@@ -271,6 +293,7 @@ it.each([
 		],
 	};
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'needs_you',
 		graph: candidate,
 		explanation: 'Fix',
 	});
@@ -279,7 +302,7 @@ it.each([
 		baseline,
 		expect.objectContaining({ candidate }),
 		ctx,
-		null,
+		'needs_you',
 	);
 	expect(prepared.payload).not.toHaveProperty('validation');
 });
@@ -287,6 +310,7 @@ it.each([
 it('rejects unsupported graph fields', async () => {
 	await expect(
 		service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
 			graph: { ...graph, settings: {} } as WorkflowSuggestionGraph,
 			explanation: 'Fix',
 		}),
@@ -295,13 +319,16 @@ it('rejects unsupported graph fields', async () => {
 });
 
 it.each([' ', 'x'.repeat(20_001)])('rejects an invalid explanation', async (explanation) => {
-	await expect(service.prepareSuggestion(baseline, { graph, explanation })).rejects.toThrow();
+	await expect(
+		service.prepareSuggestion(baseline, { resultKind: 'fix_ready', graph, explanation }),
+	).rejects.toThrow();
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
 it('rejects a graph with no changes', async () => {
 	await expect(
 		service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
 			graph: { nodes: [], connections: {} },
 			explanation: 'Fix',
 		}),
@@ -311,16 +338,20 @@ it('rejects a graph with no changes', async () => {
 
 it('rejects changes to the captured original snapshot', async () => {
 	baseline.original.settings!.executionTimeout = 60;
-	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
-		'captured workflow baseline',
-	);
+	await expect(
+		service.prepareSuggestion(baseline, { resultKind: 'fix_ready', graph, explanation: 'Fix' }),
+	).rejects.toThrow('captured workflow baseline');
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
 it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] as const)(
 	'rejects a %s change after final preparation without saving a suggestion',
 	async (change) => {
-		const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Fix' });
+		const prepared = await service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
+			graph,
+			explanation: 'Fix',
+		});
 		if (change === 'settings') workflow.settings = { executionTimeout: 60 };
 		if (change === 'version') workflow.versionId = 'new';
 		if (change === 'published') workflow.activeVersionId = 'new';
@@ -352,7 +383,7 @@ it.each(['missing', 'disabled', 'no edit access'] as const)(
 		else finder.findWorkflowForUser.mockResolvedValue(null);
 		await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
 		await expect(
-			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+			service.prepareSuggestion(baseline, { resultKind: 'fix_ready', graph, explanation: 'Fix' }),
 		).rejects.toThrow('edit access');
 		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 			'edit access',

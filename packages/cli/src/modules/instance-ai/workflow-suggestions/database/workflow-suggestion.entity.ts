@@ -53,8 +53,8 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	@DateTimeColumn({ nullable: true })
 	closedAt: Date | null;
 
-	@Column({ type: 'varchar', length: 16, nullable: true })
-	resultKind: 'fix_ready' | 'needs_you' | null;
+	@Column({ type: 'varchar', length: 16 })
+	resultKind: 'fix_ready' | 'needs_you';
 
 	@JsonColumn({ nullable: true })
 	appliedVersion: WorkflowSuggestionAppliedVersion | null;

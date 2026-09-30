@@ -25,7 +25,7 @@ const suggestionInputSchema = z
 	.object({
 		graph: z.object({ nodes: z.array(z.unknown()), connections: z.record(z.unknown()) }).strict(),
 		explanation: z.string().trim().min(1).max(20_000),
-		resultKind: z.enum(['fix_ready', 'needs_you']).optional(),
+		resultKind: z.enum(['fix_ready', 'needs_you']),
 		errorContext: z
 			.object({
 				summary: z.string().max(4000),
@@ -40,7 +40,7 @@ const suggestionInputSchema = z
 export type PreparedWorkflowSuggestion = {
 	baseline: WorkflowSuggestionBaseline;
 	payload: WorkflowSuggestionContent;
-	resultKind?: WorkflowSuggestion['resultKind'];
+	resultKind: WorkflowSuggestion['resultKind'];
 };
 
 @Service()
@@ -117,7 +117,7 @@ export class WorkflowSuggestionService {
 			graph: WorkflowSuggestionGraph;
 			explanation: string;
 			errorContext?: WorkflowSuggestionContent['errorContext'];
-			resultKind?: 'fix_ready' | 'needs_you';
+			resultKind: 'fix_ready' | 'needs_you';
 		},
 	): Promise<PreparedWorkflowSuggestion> {
 		const { explanation, errorContext, resultKind } = suggestionInputSchema.parse(input);
@@ -182,7 +182,7 @@ export class WorkflowSuggestionService {
 				baseline,
 				payload,
 				ctx,
-				prepared.resultKind ?? null,
+				prepared.resultKind,
 			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;
@@ -276,7 +276,7 @@ export class WorkflowSuggestionService {
 			expectedBaseline: suggestion.expectedBaseline,
 			state: suggestion.state,
 			closedReason: suggestion.closedReason,
-			resultKind: suggestion.resultKind ?? null,
+			resultKind: suggestion.resultKind,
 			appliedVersion: suggestion.appliedVersion ?? null,
 			publication: suggestion.publication ?? null,
 			author: 'assistant',

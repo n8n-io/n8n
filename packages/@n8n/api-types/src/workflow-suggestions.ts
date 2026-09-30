@@ -63,7 +63,7 @@ export type WorkflowSuggestionProposalDetail = {
 	expectedBaseline: WorkflowSuggestionBaseline['expectedBaseline'];
 	state: 'pending' | 'closed';
 	closedReason: 'outdated' | 'applied' | 'discarded' | null;
-	resultKind: 'fix_ready' | 'needs_you' | null;
+	resultKind: 'fix_ready' | 'needs_you';
 	appliedVersion: WorkflowSuggestionAppliedVersion | null;
 	publication: WorkflowSuggestionPublication | null;
 	author: 'assistant';

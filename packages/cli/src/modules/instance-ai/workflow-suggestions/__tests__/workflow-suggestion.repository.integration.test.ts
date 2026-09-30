@@ -48,7 +48,7 @@ const payload = (): WorkflowSuggestionContent => ({
 });
 const saveProposal = async () =>
 	await tx.run({}, async (ctx) => {
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+		const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		return suggestion;
 	});
@@ -96,7 +96,7 @@ it('allows a new proposal after the previous proposal closes', async () => {
 it('rolls back the suggestion and its activity when activity insertion fails', async () => {
 	await expect(
 		tx.run({}, async (ctx) => {
-			const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+			const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		}),
@@ -111,7 +111,7 @@ it('joins the caller transaction and rolls back both rows if finalization fails'
 	await expect(
 		tx.run({}, async (ctx) => {
 			await tx.run(ctx, async (ctx) => {
-				const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+				const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
 				await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			});
 			throw new Error('Investigation completion failed.');
@@ -148,7 +148,11 @@ it.each([
 		expect(await suggestions.findOneBy({ id: suggestion.id })).toBeNull();
 		expect(await suggestions.getActivity(suggestion.id)).toHaveLength(0);
 		await expect(
-			tx.run({}, async (ctx) => await suggestions.createPending(originalBaseline, payload(), ctx)),
+			tx.run(
+				{},
+				async (ctx) =>
+					await suggestions.createPending(originalBaseline, payload(), ctx, 'fix_ready'),
+			),
 		).rejects.toThrow(/foreign key/i);
 		expect(await suggestions.count()).toBe(0);
 	},
@@ -162,7 +166,7 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	await tx.run({}, async (ctx) => {
 		const target = await suggestions.readWorkflowTarget(workflow.id, ctx);
 		expect(target.workflow?.versionId).toBe(before.versionId);
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx);
+		const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 	});
 	expect(await workflows.findOneByOrFail({ id: workflow.id })).toEqual(before);
