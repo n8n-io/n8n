@@ -596,17 +596,167 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
 		});
 
-		it('keeps the endpoint URL tucked away here too', async () => {
-			const { getByTestId, container } = renderComponent({ props: settingsProps() });
+		it('leaves the endpoint URL to the status menu', async () => {
+			const { queryByTestId, container } = renderComponent({ props: settingsProps() });
 
-			await waitFor(() => expect(getByTestId('teams-show-endpoint')).toBeVisible());
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			expect(queryByTestId('teams-show-endpoint')).toBeNull();
 			expect(container.querySelector('#teams-messaging-endpoint-url')).toBeNull();
+		});
 
-			await fireEvent.click(getByTestId('teams-show-endpoint'));
+		it('says which settings update the app and which apply right away', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() =>
-				expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(ENDPOINT),
+				expect(
+					within(getByTestId('teams-app-group')).getByTestId('teams-update-notice'),
+				).toHaveTextContent('agents.channels.teams.settings.updateNotice'),
 			);
+			expect(
+				within(getByTestId('teams-app-group')).getByTestId('teams-availability'),
+			).toBeVisible();
+			expect(
+				within(getByTestId('teams-runtime-group')).getByTestId('teams-runtime-notice'),
+			).toHaveTextContent('agents.channels.teams.settings.runtimeNotice');
+			expect(
+				within(getByTestId('teams-runtime-group')).getByTestId('teams-conversation'),
+			).toBeVisible();
+		});
+
+		it('previews the app with the name and description being typed', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() =>
+				expect(getByTestId('teams-identity-name')).toHaveTextContent(DEFAULT_NAME),
+			);
+			expect(getByTestId('teams-identity-description')).toHaveTextContent(DEFAULT_DESCRIPTION);
+
+			await fireEvent.update(getByTestId('teams-display-name').querySelector('input')!, 'Helpdesk');
+			await fireEvent.update(
+				getByTestId('teams-description').querySelector('input')!,
+				'Answers IT questions',
+			);
+
+			expect(getByTestId('teams-identity-name')).toHaveTextContent('Helpdesk');
+			expect(getByTestId('teams-identity-description')).toHaveTextContent('Answers IT questions');
+
+			// Cleared, the field falls back to the agent again.
+			await fireEvent.update(getByTestId('teams-display-name').querySelector('input')!, '');
+			expect(getByTestId('teams-identity-name')).toHaveTextContent(DEFAULT_NAME);
+		});
+
+		it('only downloads the package here, with the unsaved changes', async () => {
+			withBot();
+			vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
+			const { getByTestId, emitted, queryByTestId } = renderComponent({
+				props: settingsProps({ savedSettings: { displayName: 'Old' } }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.update(getByTestId('teams-display-name').querySelector('input')!, 'New');
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() => expect(saveAs).toHaveBeenCalled());
+			expect(fetchTeamsAppPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				'p',
+				'a',
+				'cred-1',
+				expect.objectContaining({ displayName: 'New' }),
+			);
+			expect(emitted().connect).toBeUndefined();
+			expect(queryByTestId('teams-stale-download')).toBeNull();
+		});
+
+		describe('conversation', () => {
+			const CONVERSATION_TITLE = 'agents.channels.teams.settings.conversation.title';
+			const conversationSummary = (getByTestId: (id: string) => HTMLElement) =>
+				within(getByTestId('teams-conversation'));
+
+			// The package request carries the same settings the modal saves.
+			const settingsSent = async (getByTestId: (id: string) => HTMLElement) => {
+				await fireEvent.click(getByTestId('teams-download-package'));
+				await waitFor(() => expect(fetchTeamsAppPackage).toHaveBeenCalled());
+				return vi.mocked(fetchTeamsAppPackage).mock.calls.at(-1)?.[4];
+			};
+
+			beforeEach(() => {
+				withBot();
+				vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
+			});
+
+			it('starts collapsed, saying sessions never reset', async () => {
+				const { getByTestId, queryByTestId } = renderComponent({ props: settingsProps() });
+
+				await waitFor(() =>
+					expect(
+						conversationSummary(getByTestId).getByText(
+							'agents.channels.teams.settings.conversation.neverResets',
+						),
+					).toBeVisible(),
+				);
+				expect(queryByTestId('session-idle-timeout-toggle')).toBeNull();
+			});
+
+			it('summarises a saved timeout in the largest whole unit', async () => {
+				const { getByTestId } = renderComponent({
+					props: settingsProps({ savedSettings: { sessionIdleTimeoutMinutes: 1440 } }),
+				});
+
+				await waitFor(() =>
+					expect(
+						conversationSummary(getByTestId).getByText(
+							'agents.channels.teams.settings.conversation.resetsAfter agents.channels.teams.settings.conversation.days 1',
+						),
+					).toBeVisible(),
+				);
+			});
+
+			it('saves a timeout turned on, and saves it as off once turned off', async () => {
+				const { getByTestId } = renderComponent({ props: settingsProps() });
+
+				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+				await fireEvent.click(
+					within(getByTestId('teams-conversation')).getByLabelText(`Toggle ${CONVERSATION_TITLE}`),
+				);
+				await fireEvent.click(getByTestId('session-idle-timeout-toggle'));
+				expect(await settingsSent(getByTestId)).toMatchObject({ sessionIdleTimeoutMinutes: 1440 });
+
+				await fireEvent.click(getByTestId('session-idle-timeout-toggle'));
+				expect(await settingsSent(getByTestId)).toMatchObject({ sessionIdleTimeoutMinutes: null });
+			});
+
+			it('sends every saved setting back unchanged', async () => {
+				const { getByTestId } = renderComponent({
+					props: settingsProps({
+						savedSettings: {
+							displayName: 'Support',
+							teamChannels: true,
+							readAllChannelMessages: true,
+							sessionIdleTimeoutMinutes: 30,
+						},
+					}),
+				});
+
+				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+
+				expect(await settingsSent(getByTestId)).toEqual(
+					expect.objectContaining({
+						displayName: 'Support',
+						teamChannels: true,
+						readAllChannelMessages: true,
+						sessionIdleTimeoutMinutes: 30,
+					}),
+				);
+			});
+		});
+
+		it('keeps the package unavailable until the credential has a bot', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			expect(getByTestId('teams-download-package')).toBeDisabled();
 		});
 
 		it('does not spend a Microsoft token request on a check nothing here reads', async () => {

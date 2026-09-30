@@ -8,7 +8,6 @@ import {
 	N8nInput,
 	N8nStepper,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import { TEAMS_DESCRIPTION_MAX, TEAMS_DISPLAY_NAME_MAX } from '@n8n/api-types';
 import type {
@@ -22,12 +21,13 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PermissionsRecord } from '@n8n/permissions';
-import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 import AgentChannelTeamsAvailability, {
 	type TeamsAvailability,
 } from './AgentChannelTeamsAvailability.vue';
+import AgentChannelTeamsConversation from './AgentChannelTeamsConversation.vue';
+import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
@@ -94,6 +94,9 @@ const availability = ref<TeamsAvailability>({
 
 const displayName = ref(props.savedSettings?.displayName ?? '');
 const description = ref(props.savedSettings?.description ?? '');
+const sessionIdleTimeoutMinutes = ref<number | null>(
+	props.savedSettings?.sessionIdleTimeoutMinutes ?? null,
+);
 
 /**
  * Shown as placeholders rather than written into the fields. Filling them in
@@ -102,6 +105,10 @@ const description = ref(props.savedSettings?.description ?? '');
  */
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
+
+// What the manifest would carry right now, including edits not yet saved.
+const effectiveDisplayName = computed(() => displayName.value.trim() || defaultDisplayName.value);
+const effectiveDescription = computed(() => description.value.trim() || defaultDescription.value);
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -143,7 +150,9 @@ let latestSetupState = 0;
  * Tracked per field, so an edit to one does not stop the others adopting
  * settings that arrive afterwards.
  */
-const touched = ref(new Set<'availability' | 'displayName' | 'description'>());
+const touched = ref(
+	new Set<'availability' | 'displayName' | 'description' | 'sessionIdleTimeoutMinutes'>(),
+);
 
 function editAvailability(value: TeamsAvailability) {
 	availability.value = value;
@@ -158,6 +167,11 @@ function editDisplayName(value: string) {
 function editDescription(value: string) {
 	description.value = value;
 	touched.value.add('description');
+}
+
+function editSessionIdleTimeout(value: number | null) {
+	sessionIdleTimeoutMinutes.value = value;
+	touched.value.add('sessionIdleTimeoutMinutes');
 }
 
 /**
@@ -341,6 +355,9 @@ watch(
 		}
 		if (!touched.value.has('displayName')) displayName.value = saved.displayName ?? '';
 		if (!touched.value.has('description')) description.value = saved.description ?? '';
+		if (!touched.value.has('sessionIdleTimeoutMinutes')) {
+			sessionIdleTimeoutMinutes.value = saved.sessionIdleTimeoutMinutes ?? null;
+		}
 	},
 );
 
@@ -391,12 +408,13 @@ const currentSettings = computed(() => {
 	return {
 		...rest,
 		...availability.value,
+		sessionIdleTimeoutMinutes: sessionIdleTimeoutMinutes.value,
 		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
 		...(description.value.trim() ? { description: description.value.trim() } : {}),
 	};
 });
 
-defineExpose({ credentialId, validationError: null, currentSettings });
+defineExpose({ credentialId, validationError: null, currentSettings, messagingEndpointUrl });
 </script>
 
 <template>
@@ -583,36 +601,15 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
 						</N8nText>
 
-						<div
-							:class="[$style.identity, ready ? $style.identityReady : $style.locked]"
-							data-testid="teams-identity"
-						>
-							<AgentPersonalisationIcon :personalisation="personalisation" :size="36" />
-							<div :class="$style.identityText">
-								<N8nText size="small" bold>
-									{{ defaultDisplayName }}
-									<N8nTooltip
-										:content="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
-									>
-										<N8nIcon icon="info" size="xsmall" :class="$style.hint" />
-									</N8nTooltip>
-								</N8nText>
-								<N8nText size="small" :class="$style.hint">
-									{{ defaultDescription }}
-								</N8nText>
-							</div>
-							<N8nButton
-								variant="outline"
-								size="medium"
-								:disabled="!ready || loading"
-								:loading="downloading || loading"
-								data-testid="teams-download-package"
-								@click="downloadAndConnect"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-								<N8nIcon icon="download" size="medium" />
-							</N8nButton>
-						</div>
+						<AgentChannelTeamsIdentityCard
+							:name="defaultDisplayName"
+							:description="defaultDescription"
+							:personalisation="personalisation"
+							:tooltip="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
+							:ready="ready"
+							:loading="downloading || loading"
+							@download="downloadAndConnect"
+						/>
 
 						<N8nText
 							v-if="staleDownload"
@@ -673,99 +670,93 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 		</N8nStepper>
 
 		<div v-else :class="$style.formContent">
-			<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
-				{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
-			</N8nText>
+			<section :class="$style.group" data-testid="teams-app-group">
+				<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
+					{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
+				</N8nText>
 
-			<div :class="$style.field" data-testid="teams-display-name">
-				<label for="teams-display-name">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.settings.displayName') }}
-					</N8nText>
-				</label>
-				<N8nInput
-					id="teams-display-name"
-					:model-value="displayName"
-					@update:model-value="editDisplayName"
-					size="large"
-					:maxlength="TEAMS_DISPLAY_NAME_MAX"
-					:placeholder="defaultDisplayName"
-					show-word-limit
+				<div :class="$style.field" data-testid="teams-display-name">
+					<label for="teams-display-name">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agents.channels.teams.settings.displayName') }}
+						</N8nText>
+					</label>
+					<N8nInput
+						id="teams-display-name"
+						:model-value="displayName"
+						@update:model-value="editDisplayName"
+						size="large"
+						:maxlength="TEAMS_DISPLAY_NAME_MAX"
+						:placeholder="defaultDisplayName"
+						show-word-limit
+					/>
+				</div>
+
+				<div :class="$style.field" data-testid="teams-description">
+					<label for="teams-description">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agents.channels.teams.settings.description') }}
+						</N8nText>
+					</label>
+					<N8nInput
+						id="teams-description"
+						:model-value="description"
+						@update:model-value="editDescription"
+						size="large"
+						:maxlength="TEAMS_DESCRIPTION_MAX"
+						:placeholder="defaultDescription"
+						show-word-limit
+					/>
+				</div>
+
+				<AgentChannelTeamsIdentityCard
+					:name="effectiveDisplayName"
+					:description="effectiveDescription"
+					:personalisation="personalisation"
+					:ready="canDownloadPackage"
+					:loading="downloading"
+					@download="downloadPackage"
 				/>
-			</div>
+				<N8nText
+					v-if="downloadError"
+					size="small"
+					:class="$style.error"
+					data-testid="teams-download-error"
+				>
+					{{ downloadError }}
+				</N8nText>
 
-			<div :class="$style.field" data-testid="teams-description">
-				<label for="teams-description">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.settings.description') }}
-					</N8nText>
-				</label>
-				<N8nInput
-					id="teams-description"
-					:model-value="description"
-					@update:model-value="editDescription"
-					size="large"
-					:maxlength="TEAMS_DESCRIPTION_MAX"
-					:placeholder="defaultDescription"
-					show-word-limit
+				<AgentChannelTeamsAvailability
+					:model-value="availability"
+					start-collapsed
+					@update:model-value="editAvailability"
 				/>
-			</div>
+			</section>
 
-			<AgentChannelTeamsAvailability
-				:model-value="availability"
-				start-collapsed
-				@update:model-value="editAvailability"
-			/>
-
-			<N8nButton
-				v-if="canDownloadPackage"
-				variant="subtle"
-				size="small"
-				icon="download"
-				:loading="downloading"
-				data-testid="teams-download-package"
-				@click="downloadPackage"
-			>
-				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-			</N8nButton>
-			<N8nText v-if="downloadError" size="small" :class="$style.error">
-				{{ downloadError }}
-			</N8nText>
-
-			<N8nButton
-				v-if="!showEndpoint"
-				variant="ghost"
-				size="small"
-				data-testid="teams-show-endpoint"
-				@click="showEndpoint = true"
-			>
-				{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
-			</N8nButton>
-			<div v-else :class="$style.field" data-testid="teams-endpoint-field">
-				<label for="teams-messaging-endpoint-url">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
-					</N8nText>
-				</label>
-				<N8nCopyInput
-					id="teams-messaging-endpoint-url"
-					:value="messagingEndpointUrl"
-					size="large"
-					:class="$style.urlInput"
-					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
+			<section :class="$style.group" data-testid="teams-runtime-group">
+				<N8nText size="small" :class="$style.hint" data-testid="teams-runtime-notice">
+					{{ i18n.baseText('agents.channels.teams.settings.runtimeNotice') }}
+				</N8nText>
+				<AgentChannelTeamsConversation
+					:idle-timeout-minutes="sessionIdleTimeoutMinutes"
+					@update:idle-timeout-minutes="editSessionIdleTimeout"
 				/>
-			</div>
+			</section>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .teamsSetup,
-.formContent {
+.formContent,
+.group {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.formContent {
+	gap: var(--spacing--lg);
 }
 
 .stepContent {
@@ -813,35 +804,6 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
-}
-
-.identity {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	width: 100%;
-	padding: var(--spacing--xs);
-	/* Matches the availability panel above it. */
-	border: var(--border-width, 1px) solid var(--border-color--subtle);
-	border-radius: var(--radius--xs);
-}
-
-/*
- * One step off the modal in both themes. The semantic tokens are relative to
- * the page, and the dark modal is lighter than the dark page surface.
- */
-.identityReady {
-	background: light-dark(var(--color--neutral-50), var(--color--white-alpha-50));
-	/* The dark fill matches the subtle border, which would hide it. */
-	border-color: light-dark(var(--border-color--subtle), var(--border-color));
-}
-
-.identityText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
 }
 
 .urlInput {
