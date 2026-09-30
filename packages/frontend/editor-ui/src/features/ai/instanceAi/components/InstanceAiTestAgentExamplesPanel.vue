@@ -9,8 +9,7 @@ import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
-import AgentAvatar from '@/features/agents/components/AgentAvatar.vue';
+import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
 const props = defineProps<{
 	previewInput: string;
@@ -26,8 +25,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-
-const tryExpanded = ref(false);
 
 // `examples` grows when the user adds their own (the parent appends the
 // created case) — freeze the generated batch size at mount so the slider and
@@ -54,10 +51,6 @@ const addOwnInputStyle = {
 	'--input--color--background': 'transparent',
 };
 
-function toggleTryExpanded() {
-	tryExpanded.value = !tryExpanded.value;
-}
-
 function submitOwnExample() {
 	const value = ownInput.value.trim();
 	if (!value) return;
@@ -77,30 +70,13 @@ function onCheckYourAgent() {
 
 <template>
 	<div :class="$style.root">
-		<div :class="$style.tryRow">
-			<span :class="$style.iconWrapSuccess">
-				<AgentAvatar kind="pass" size="sm" />
-			</span>
-			<N8nText color="text-light" size="small">{{
-				i18n.baseText('instanceAi.testAgentPreview.yourTry')
-			}}</N8nText>
-			<N8nText color="text-dark" :class="$style.tryInput" size="small">{{ previewInput }}</N8nText>
-			<button
-				type="button"
-				:class="$style.expandToggle"
-				data-test-id="instance-ai-test-agent-examples-try-toggle"
-				@click="toggleTryExpanded"
-			>
-				<N8nIcon :icon="tryExpanded ? 'chevron-up' : 'chevron-down'" size="small" />
-			</button>
-		</div>
-		<div
-			v-if="tryExpanded"
-			:class="$style.tryPlaceholder"
-			data-test-id="instance-ai-test-agent-examples-try-placeholder"
-		>
-			<EvalInitialSample :preview-input="previewInput" :preview-output="previewOutput ?? ''" />
-		</div>
+		<AgentEvalTryRow
+			status="pass"
+			:input="previewInput"
+			:output="previewOutput"
+			:label="i18n.baseText('instanceAi.testAgentPreview.yourTry')"
+			test-id="instance-ai-test-agent-examples-try"
+		/>
 
 		<N8nText color="text-light" size="small">
 			{{ i18n.baseText('instanceAi.testAgentPreview.savedAsFirstCheck') }}
@@ -134,28 +110,22 @@ function onCheckYourAgent() {
 		</div>
 
 		<div :class="$style.exampleList">
-			<div
+			<AgentEvalTryRow
 				v-for="(example, index) in visibleExamples"
 				:key="index"
-				:class="$style.exampleRow"
-				data-test-id="instance-ai-test-agent-examples-example"
-			>
-				<span :class="$style.iconWrap">
-					<AgentAvatar kind="idle" size="sm" />
-				</span>
-				<N8nText :class="$style.exampleText" size="small">{{ example.input }}</N8nText>
-			</div>
-			<div
+				status="idle"
+				:input="example.input"
+				:output="null"
+				test-id="instance-ai-test-agent-examples-example"
+			/>
+			<AgentEvalTryRow
 				v-for="(example, index) in ownExamples"
 				:key="`own-${index}`"
-				:class="$style.exampleRow"
-				data-test-id="instance-ai-test-agent-examples-own-example"
-			>
-				<span :class="$style.iconWrap">
-					<AgentAvatar kind="idle" size="sm" />
-				</span>
-				<N8nText :class="$style.exampleText" size="small">{{ example }}</N8nText>
-			</div>
+				status="idle"
+				:input="example"
+				:output="null"
+				test-id="instance-ai-test-agent-examples-own-example"
+			/>
 		</div>
 
 		<div :class="$style.addOwnForm">
@@ -200,35 +170,8 @@ function onCheckYourAgent() {
 	width: 100%;
 }
 
-.tryRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	border: var(--border);
-	padding: var(--spacing--3xs);
-	border-radius: var(--radius--lg);
-}
-
 .checkMoreExamplesHint {
 	font-weight: bolder;
-}
-
-.tryInput {
-	flex: 1;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-
-.expandToggle {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	background: none;
-	border: none;
-	cursor: pointer;
-	color: var(--text-color--subtler);
 }
 
 .divider {
@@ -298,41 +241,6 @@ function onCheckYourAgent() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
-}
-
-.exampleRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	border: var(--border);
-	padding: var(--spacing--3xs);
-	border-radius: var(--radius--lg);
-}
-
-.exampleText {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	border-radius: var(--radius--2xs);
-}
-
-.iconWrap,
-.iconWrapSuccess {
-	width: 20px;
-	height: 20px;
-	display: flex;
-	flex-shrink: 0;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--4xs);
-	background-color: var(--background--subtle);
-	border: var(--border);
-	border-radius: var(--radius);
-}
-
-.iconWrapSuccess {
-	border-color: var(--color--success);
-	background-color: var(--color--success--tint-2);
 }
 
 .addOwn {
