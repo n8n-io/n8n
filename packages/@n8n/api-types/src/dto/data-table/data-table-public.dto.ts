@@ -177,10 +177,6 @@ export class InsertDataTableRowsResponsePublicDto {
 	}
 }
 
-// express-openapi-validator gave upsert/update's filter a fixed condition enum on the request
-// body (eq, neq, like, ilike, gt, gte, lt, lte), rejecting isEmpty/isNotEmpty with 400 even though
-// the shared internal filter schema already accepts them. Keep that narrower enum here so the
-// public contract for these two endpoints doesn't silently widen.
 const legacyFilterConditionSchema = z.union([
 	z.literal('eq'),
 	z.literal('neq'),
@@ -252,8 +248,6 @@ export class UpdateDataTableRowPublicDto extends Z.class({
 	dryRun: z.boolean().optional().default(false).openapi(updateDataTableRowFieldDocs.dryRun),
 }) {}
 
-// Same response shape family as upsert: a plain row when returnData is true, a before/after pair
-// per row when dryRun is true, or a bare boolean otherwise.
 const updateDataTableRowResponseSchema = z.union([
 	z.boolean().openapi({ description: 'Returned when returnData is false and dryRun is false' }),
 	z.array(dataTableRowWithStatePublicSchema).openapi({
@@ -276,9 +270,6 @@ export class UpdateDataTableRowResponsePublicDto {
 	}
 }
 
-// Delete's filter was only ever an opaque query string under express-openapi-validator (no
-// nested schema), so it was never enum-gated the way upsert/update's request body was. Keep the
-// full condition set here.
 const publicDeleteFilterSchema = z.object({
 	type: dataTableFilterTypeSchema.default('and'),
 	filters: z
@@ -323,8 +314,6 @@ export class DeleteDataTableRowsPublicQueryDto extends Z.class({
 	dryRun: booleanQueryValidator.openapi(deleteDataTableRowsQueryDocs.dryRun),
 }) {}
 
-// Same response shape family as update/upsert: a plain row when returnData is true, a before/after
-// pair per row when dryRun is true, or a bare boolean otherwise.
 const deleteDataTableRowsResponseSchema = z.union([
 	z.boolean().openapi({ description: 'Returned when returnData is false and dryRun is false' }),
 	z.array(dataTableRowWithStatePublicSchema).openapi({

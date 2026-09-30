@@ -152,6 +152,15 @@ const isRowWithState = (
 	row: DataTableRowReturn | DataTableRowReturnWithState,
 ): row is DataTableRowReturnWithState => Object.hasOwn(row, 'dryRunState');
 
+const toMutateRowsResponsePublic = (
+	result: boolean | DataTableRowReturn[] | DataTableRowReturnWithState[],
+) =>
+	typeof result === 'boolean'
+		? result
+		: result.map((row) =>
+				isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
+			);
+
 @PublicApiController('/data-tables')
 export class DataTablesPublicController {
 	constructor(
@@ -510,11 +519,7 @@ export class DataTablesPublicController {
 				dryRun,
 			);
 
-			return typeof result === 'boolean'
-				? result
-				: result.map((row) =>
-						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
-					);
+			return toMutateRowsResponsePublic(result);
 		} catch (error) {
 			return handleError(error);
 		}
@@ -548,11 +553,7 @@ export class DataTablesPublicController {
 				dryRun,
 			);
 
-			return typeof result === 'boolean'
-				? result
-				: result.map((row) =>
-						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
-					);
+			return toMutateRowsResponsePublic(result);
 		} catch (error) {
 			return handleError(error);
 		}
@@ -614,11 +615,7 @@ export class DataTablesPublicController {
 				dryRun,
 			);
 
-			return typeof result === 'boolean'
-				? result
-				: result.map((row) =>
-						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
-					);
+			return toMutateRowsResponsePublic(result);
 		} catch (error) {
 			return handleError(error);
 		}
