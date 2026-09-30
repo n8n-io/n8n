@@ -20,7 +20,7 @@ Run this check before sourcing, drafting, or writing an eval. Run it from
 `packages/@n8n/instance-ai`:
 
 ```bash
-pnpm exec dotenvx run -f ../../../.env.local -- \
+pnpm exec dotenvx run -f ../../../.env.eval -- \
   sh -c 'test -n "${LANGTRACER_URL:-}" && test -n "${LANGTRACER_API_KEY:-}"'
 ```
 
@@ -28,7 +28,7 @@ If the check fails, stop before creating an eval file. Ask the user to:
 
 1. Generate a key on the
    [LangTracer API page](https://lang-tracer.n8n-maintenance.workers.dev/account?section=api).
-2. Add these variables to the repository root `.env.local` file:
+2. Add these variables to the repository root `.env.eval` file:
 
    ```env
    LANGTRACER_URL=https://lang-tracer.n8n-maintenance.workers.dev
@@ -313,10 +313,10 @@ credential such as `EVAL_OPENAI_API_KEY`. A build-only case does not need one.
 7. Push it to `agents`.
 
 ```bash
-pnpm exec dotenvx run -f ../../../.env.local -- \
+pnpm exec dotenvx run -f ../../../.env.eval -- \
   pnpm eval:langtracer-push --suite agents --dry-run --changed
 
-pnpm exec dotenvx run -f ../../../.env.local -- \
+pnpm exec dotenvx run -f ../../../.env.eval -- \
   pnpm eval:langtracer-push --suite agents --changed
 ```
 
