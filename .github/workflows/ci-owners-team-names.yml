@@ -1,7 +1,7 @@
 name: 'CI: Validate OWNERS team names'
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - 'OWNERS'
       - 'GROUPS.json'
@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   reject-fork-changes:
@@ -16,17 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
       - name: Reject protected ownership file changes
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          protected=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- OWNERS GROUPS.json)
+          protected=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | select(.filename == "OWNERS" or .filename == "GROUPS.json") | .filename')
           if [ -n "$protected" ]; then
             echo "Fork PRs cannot modify OWNERS or GROUPS.json:"
             echo "$protected"
@@ -38,11 +35,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-members: read
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - name: Validate team names
         env:
-          GITHUB_TOKEN: ${{ secrets.N8N_ORG_READ_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: node .github/scripts/owners/validate-team-names.mjs
