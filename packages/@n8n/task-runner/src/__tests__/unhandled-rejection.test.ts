@@ -25,11 +25,21 @@ describe('describeRejectionReason', () => {
 		expect(result).toMatch(/\n\s+at /);
 	});
 
-	it('should describe an object with a message and no stack as name and message', () => {
-		expect(describeRejectionReason({ name: 'CustomError', message: 'boom' })).toBe(
-			'CustomError: boom',
-		);
-		expect(describeRejectionReason({ message: 'boom' })).toBe('Error: boom');
+	it('should describe an error-like object that is not an error by its type name only', () => {
+		const named = describeRejectionReason({ name: 'CustomError', message: 'boom' });
+		const unnamed = describeRejectionReason({ message: 'boom' });
+
+		expect(named).toBe('Object');
+		expect(unnamed).toBe('Object');
+		expect(named).not.toContain('boom');
+		expect(unnamed).not.toContain('boom');
+	});
+
+	it('should describe an error without a stack as name and message', () => {
+		const error = new RangeError('boom');
+		delete error.stack;
+
+		expect(describeRejectionReason(error)).toBe('RangeError: boom');
 	});
 
 	it('should describe a plain object by its type name only', () => {

@@ -1,4 +1,5 @@
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
+import { types } from 'node:util';
 
 const MAX_REASON_LENGTH = 1000;
 const LOG_PREFIX = 'Unhandled promise rejection in task runner, continuing.';
@@ -13,14 +14,10 @@ function describeKind(reason: object): string {
 }
 
 function describeObject(reason: object): string {
-	// Duck-typed, since an error from the vm sandbox fails `instanceof Error`.
-	if ('stack' in reason && typeof reason.stack === 'string') {
-		return reason.stack;
-	}
-
-	if ('message' in reason && typeof reason.message === 'string') {
-		const name = 'name' in reason && typeof reason.name === 'string' ? reason.name : 'Error';
-		return `${name}: ${reason.message}`;
+	// `isNativeError` detects vm sandbox errors without running user code; a plain object's `message` can hold request data.
+	if (types.isNativeError(reason)) {
+		if (typeof reason.stack === 'string') return reason.stack;
+		return `${reason.name}: ${reason.message}`;
 	}
 
 	const kind = describeKind(reason);
