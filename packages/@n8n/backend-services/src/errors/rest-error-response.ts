@@ -1,6 +1,6 @@
 import { isWorkflowPublishBlockedDetails } from '@n8n/api-types';
 
-import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
+import { RestErrorKind, type RestErrorDescriptor } from './rest-error-classifier';
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 
@@ -12,12 +12,12 @@ export type InternalRestErrorBody = {
 	meta?: Record<string, unknown>;
 };
 
-export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
+export function serializePublicApiError(descriptor: RestErrorDescriptor): {
 	status: number;
 	body: { message: string };
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.responseError: {
+		case RestErrorKind.responseError: {
 			const body: { message: string } & Record<string, unknown> = {
 				message: descriptor.message,
 			};
@@ -50,18 +50,18 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 				},
 			};
 		}
-		case HttpErrorKind.userError:
+		case RestErrorKind.userError:
 			return {
 				status: 400,
 				body: { message: descriptor.message },
 			};
-		case HttpErrorKind.unexpectedError:
-		case HttpErrorKind.serverError:
+		case RestErrorKind.unexpectedError:
+		case RestErrorKind.serverError:
 			return {
 				status: 500,
 				body: { message: GENERIC_PUBLIC_MESSAGE },
 			};
-		case HttpErrorKind.httpError:
+		case RestErrorKind.httpError:
 			return {
 				status: descriptor.status,
 				body: { message: descriptor.message },
@@ -69,12 +69,12 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 	}
 }
 
-export function serializeInternalRestError(descriptor: HttpErrorDescriptor): {
+export function serializeInternalRestError(descriptor: RestErrorDescriptor): {
 	status: number;
 	body: InternalRestErrorBody;
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.responseError: {
+		case RestErrorKind.responseError: {
 			const body: InternalRestErrorBody = {
 				code: descriptor.code,
 				message: descriptor.message,
@@ -87,18 +87,18 @@ export function serializeInternalRestError(descriptor: HttpErrorDescriptor): {
 			}
 			return { status: descriptor.status, body };
 		}
-		case HttpErrorKind.userError:
+		case RestErrorKind.userError:
 			return {
 				status: 400,
 				body: { code: 0, message: descriptor.message },
 			};
-		case HttpErrorKind.unexpectedError:
-		case HttpErrorKind.serverError:
+		case RestErrorKind.unexpectedError:
+		case RestErrorKind.serverError:
 			return {
 				status: 500,
 				body: { code: 0, message: descriptor.message },
 			};
-		case HttpErrorKind.httpError:
+		case RestErrorKind.httpError:
 			return {
 				status: descriptor.status,
 				body: { code: 0, message: descriptor.message },

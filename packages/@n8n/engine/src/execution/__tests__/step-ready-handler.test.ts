@@ -88,8 +88,8 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		finishExecution: vi.fn().mockResolvedValue(true),
-		cancelExecution: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(null),
+		cancelExecution: vi.fn().mockResolvedValue(null),
 		refreshLiveStatus: vi.fn(),
 	};
 }
@@ -175,9 +175,10 @@ describe('StepReadyHandler', () => {
 				mode: 'production',
 				iteration: 0,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 			},
 			// The step can answer the caller while it runs.
-			respond: { send: expect.any(Function) },
+			respond: { send: expect.any(Function), chunk: expect.any(Function) },
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -206,17 +207,19 @@ describe('StepReadyHandler', () => {
 	});
 
 	it.each([
-		['stepResponse', true],
-		['runEnd', false],
-		['none', false],
+		['stepResponse', 'response'],
+		['stream', 'chunk'],
+		['runEnd', undefined],
+		['none', undefined],
 	] as const)(
 		'gives the step an emitter that obeys the stored expectation %s',
-		async (kind, sends) => {
+		async (kind, sentType) => {
 			const responseSender: ExecutionResponseSender = { send: vi.fn(), stop: vi.fn() };
 			const executor: IStepExecutor = {
 				execute: vi.fn(async (request) => {
 					await Promise.resolve();
 					request.respond.send(() => ({ ok: true }));
+					request.respond.chunk(() => ({ ok: true }));
 					return { outputs: [[{ json: { ok: true } }]] };
 				}),
 			};
@@ -231,9 +234,14 @@ describe('StepReadyHandler', () => {
 
 			await handler.handle(event);
 
-			if (sends) {
+			expect(executor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					context: expect.objectContaining({ responseExpectation: { kind } }) as unknown,
+				}),
+			);
+			if (sentType) {
 				expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
-					type: 'response',
+					type: sentType,
 					executionId: 'exec-1',
 					payload: { ok: true },
 				});

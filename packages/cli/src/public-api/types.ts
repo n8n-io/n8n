@@ -3,7 +3,6 @@ import type {
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
-	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
@@ -192,7 +191,6 @@ export declare namespace SsoSamlRequest {
 // ----------------------------------
 
 export declare namespace OtelSettingsRequest {
-	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }
 
