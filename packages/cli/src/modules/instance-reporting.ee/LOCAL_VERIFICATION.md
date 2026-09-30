@@ -49,7 +49,7 @@ export N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES=1
 export N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS=5
 
 export N8N_LOG_LEVEL=debug
-export N8N_LOG_SCOPES=instance-reporting
+export N8N_LOG_SCOPES=instance-reporting,system-tasks
 
 pnpm dev
 ```
