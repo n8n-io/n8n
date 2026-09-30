@@ -275,6 +275,17 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		tabs.saveTabs(tabId);
 	}
 
+	/** Open a tab for a resource the user picked, and show it. */
+	function openTab(tab: ArtifactTab) {
+		tabs.openTab(tab);
+		selectTab(tab.id);
+	}
+
+	function reorderTab(tabId: string, toIndex: number) {
+		tabs.moveTab(tabId, toIndex);
+		tabs.saveTabs(activeTabId.value);
+	}
+
 	function closeTab(tabId: string) {
 		const nextTabId = tabs.closeTab(tabId);
 		if (activeTabId.value === tabId) {
@@ -582,6 +593,8 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		isPreviewVisible,
 		workflowRefreshKey,
 		selectTab,
+		openTab,
+		reorderTab,
 		closeTab,
 		closePreview,
 		openWorkflowPreview,

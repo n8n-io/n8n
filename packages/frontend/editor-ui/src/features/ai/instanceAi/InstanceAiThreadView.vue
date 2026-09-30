@@ -959,7 +959,10 @@ function handleNewThreadClick() {
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
+							:project-id="thread.projectId"
 							@close-tab="preview.closeTab"
+							@open-tab="preview.openTab"
+							@reorder-tab="preview.reorderTab"
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview

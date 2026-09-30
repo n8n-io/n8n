@@ -165,11 +165,6 @@ const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'blocked',
 ];
 
-const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
-	'require_approval',
-	'always_allow',
-];
-
 const PREFERENCE_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = ['always_allow', 'blocked'];
 
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
@@ -181,6 +176,7 @@ const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 interface PermissionGroup {
 	id: string;
 	labelKey: BaseTextKey;
+	descriptionKey?: BaseTextKey;
 	keys: Array<keyof InstanceAiPermissions>;
 }
 
@@ -232,7 +228,8 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'mcp',
 		labelKey: 'settings.n8nAgent.permissions.group.mcp',
-		keys: ['executeMcpTool'],
+		descriptionKey: 'settings.n8nAgent.permissions.group.mcpDescription',
+		keys: ['mcpRead', 'mcpWrite'],
 	},
 ];
 
@@ -271,7 +268,6 @@ function groupSummary(group: PermissionGroup) {
 }
 
 function permissionOptionsFor(key: keyof InstanceAiPermissions) {
-	if (key === 'executeMcpTool') return MCP_TOOL_PERMISSION_OPTIONS;
 	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
 	return PERMISSION_OPTIONS;
 }
@@ -793,6 +789,14 @@ function openAiUsageSettings() {
 						</template>
 						<template #expanded>
 							<div :class="$style.permissionList">
+								<N8nText
+									v-if="group.descriptionKey"
+									:class="$style.permissionDescription"
+									size="small"
+									color="text-light"
+								>
+									{{ i18n.baseText(group.descriptionKey) }}
+								</N8nText>
 								<div v-for="key in group.keys" :key="key" :class="$style.permissionRow">
 									<N8nText size="small" color="text-dark">
 										{{ i18n.baseText(`settings.n8nAgent.permissions.${key}` as BaseTextKey) }}
@@ -914,6 +918,10 @@ function openAiUsageSettings() {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
+}
+
+.permissionDescription {
+	padding-bottom: var(--spacing--2xs);
 }
 
 .permissionRow {
