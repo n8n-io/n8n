@@ -3084,6 +3084,9 @@ importers:
 
   packages/@n8n/inbound-auth:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
