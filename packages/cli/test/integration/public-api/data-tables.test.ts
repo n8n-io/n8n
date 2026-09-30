@@ -850,6 +850,17 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		testWithAPIKey('get', '/data-tables/123/rows', 'abcXYZ'),
 	);
 
+	test('should reject reading rows without dataTableRow:read', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.get(`/data-tables/${dataTable.id}/rows`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('should return 404 for non-existing data table', async () => {
 		const nonExistentId = 'abcd1234efgh5678'; // Valid nanoid format but doesn't exist
 		const response = await authOwnerAgent.get(`/data-tables/${nonExistentId}/rows`);
@@ -876,15 +887,25 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toHaveLength(2);
-		expect(response.body.nextCursor).toBeNull();
-
-		const row = response.body.data[0];
-		expect(row).toHaveProperty('id');
-		expect(row).toHaveProperty('name');
-		expect(row).toHaveProperty('age');
-		expect(row).toHaveProperty('createdAt');
-		expect(row).toHaveProperty('updatedAt');
+		expect(response.body).toStrictEqual({
+			data: [
+				{
+					id: expect.any(Number),
+					name: 'Alice',
+					age: 30,
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: expect.any(Number),
+					name: 'Bob',
+					age: 25,
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+			],
+			nextCursor: null,
+		});
 	});
 
 	test('should sort rows by column ascending', async () => {
@@ -946,7 +967,9 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			.query({ sortBy: 'invalid_format' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Invalid sort format, expected <columnName>:<asc/desc>');
+		expect(response.body.message).toBe(
+			'request/query/sortBy Invalid sort format, expected <columnName>:<asc/desc>',
+		);
 	});
 
 	test('should reject invalid sort direction', async () => {
@@ -960,7 +983,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			.query({ sortBy: 'name:invalid' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Invalid sort direction');
+		expect(response.body.message).toBe('request/query/sortBy Invalid sort direction');
 	});
 
 	test('should reject an unknown sort column', async () => {
@@ -1108,6 +1131,32 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		testWithAPIKey('post', '/data-tables/123/rows', 'abcXYZ'),
 	);
 
+	test('should reject inserting rows without dataTableRow:create', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent
+			.post(`/data-tables/${dataTable.id}/rows`)
+			.send({ data: [{ name: 'Alice' }] });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678'; // Valid nanoid format but doesn't exist
+		const response = await authOwnerAgent
+			.post(`/data-tables/${nonExistentId}/rows`)
+			.send({ data: [{ name: 'Alice' }] });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${nonExistentId}'`,
+		);
+	});
+
 	test('should insert rows with returnType count', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
@@ -1165,13 +1214,22 @@ describe('POST /data-tables/:dataTableId/rows', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body).toHaveLength(2);
-		expect(response.body[0]).toHaveProperty('id');
-		expect(response.body[0]).toHaveProperty('name', 'Alice');
-		expect(response.body[0]).toHaveProperty('age', 30);
-		expect(response.body[1]).toHaveProperty('name', 'Bob');
-		expect(response.body[1]).toHaveProperty('age', 25);
+		expect(response.body).toStrictEqual([
+			{
+				id: expect.any(Number),
+				name: 'Alice',
+				age: 30,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			{
+				id: expect.any(Number),
+				name: 'Bob',
+				age: 25,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 
 	test('should use default returnType when not provided', async () => {
@@ -1299,6 +1357,41 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		testWithAPIKey('post', '/data-tables/123/rows/upsert', 'abcXYZ'),
 	);
 
+	test('should reject upsert without dataTableRow:upsert', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'email', type: 'string' }],
+			data: [{ email: 'test@example.com' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'email', condition: 'eq', value: 'test@example.com' }],
+			},
+			data: { email: 'updated@example.com' },
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject a filter entry missing condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'email', type: 'string' }],
+			data: [{ email: 'test@example.com' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'email', value: 'test@example.com' }],
+			},
+			data: { email: 'updated@example.com' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should upsert row with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
@@ -1340,10 +1433,15 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(response.body)).toBe(true);
-		expect(response.body).toHaveLength(1);
-		expect(response.body[0]).toHaveProperty('email', 'existing@example.com');
-		expect(response.body[0]).toHaveProperty('status', 'updated');
+		expect(response.body).toStrictEqual([
+			{
+				id: expect.any(Number),
+				email: 'existing@example.com',
+				status: 'updated',
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+		]);
 	});
 
 	test('should preview upsert with dryRun true', async () => {
