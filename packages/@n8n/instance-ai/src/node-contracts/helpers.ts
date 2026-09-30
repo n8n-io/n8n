@@ -157,7 +157,8 @@ function patternKey(pattern: string): string {
 function valueTypesComment(valueTypes: Record<string, JsonSchema>): string {
 	const groups = new Map<string, string[]>();
 	for (const [name, schema] of Object.entries(valueTypes)) {
-		const type = schemaToTs(schema);
+		const hint = schema['x-n8n-hint'];
+		const type = hint ? `${schemaToTs(schema)} (${hint})` : schemaToTs(schema);
 		groups.set(type, [...(groups.get(type) ?? []), name]);
 	}
 	const rows = [...groups].map(([type, names]) => `${names.join(' | ')}: ${type}`);

@@ -567,7 +567,7 @@ export default workflow('w', 'W').add(start).to(order).to(large).onTrue(high).on
 		const notion = CONTRACTS.find(({ id }) => id === 'notion.databasePage.getAll');
 		const view = JSON.stringify(notion && contractView(notion));
 
-		expect(view).toContain('people | multi_select | relation | files: Array<string>');
+		expect(view).toContain('people: Array<string> (one email per person, never a name)');
 		expect(view).toContain('date: { \\"start\\": string; \\"end\\": string | null;');
 		expect(view).toContain('[key: `property_');
 	});
