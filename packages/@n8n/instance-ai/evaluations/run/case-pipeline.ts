@@ -23,6 +23,7 @@ import {
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
+import { selectScenarioWorkflowId } from '../harness/scenario-execution';
 import {
 	scenariosRequireSerialSeeding,
 	workflowDeduplicates,
@@ -63,6 +64,16 @@ export interface CasePipeline {
 	 *  finalizes and persists every OTHER row's completed results. */
 	runRow: (inputs: ScenarioRowInputs) => Promise<TargetOutput>;
 }
+
+/** The queue decision re-runs the routing the scenario will make; only the run itself logs it. */
+const SILENT_LOGGER: EvalLogger = {
+	info() {},
+	verbose() {},
+	success() {},
+	warn() {},
+	error() {},
+	isVerbose: false,
+};
 
 export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const {
@@ -595,14 +606,30 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// Scenarios of one case share tables by name, so seeded rows must not
 		// interleave — the retired direct loop ran them at concurrency 1; rows now
 		// arrive independently, so the gate is a per-build-key chain instead.
-		// The same chain covers Remove Duplicates: its keys live per workflow and the
-		// eval resets them around every run, so a parallel scenario would see or lose them.
-		const serial =
-			scenariosRequireSerialSeeding(authoredScenarios) ||
-			workflowDeduplicates(build.workflowJsons[0]);
-		return serial
-			? await withSerialSeeding(cacheKey, runWorkflowScenario)
-			: await runWorkflowScenario();
+		// Remove Duplicates keeps its keys per WORKFLOW on the backend, and the eval
+		// resets them around every run, so a deduping scenario queues on the backend
+		// and the workflow it will actually run: a sibling entry point, or a prebuilt
+		// id that several iterations share. With no workflow JSON to read, it queues.
+		const targetWorkflowId = selectScenarioWorkflowId(
+			scenario,
+			workflowId,
+			build.workflowJsons,
+			SILENT_LOGGER,
+		);
+		const target = build.workflowJsons.find((wf) => wf?.id === targetWorkflowId);
+		const dedupes = target
+			? workflowDeduplicates(target)
+			: build.workflowJsons.length === 0 || build.workflowJsons.some(workflowDeduplicates);
+		const runQueued = dedupes
+			? async () =>
+					await withSerialSeeding(
+						`${builtOnLane.runner.baseUrl}:${targetWorkflowId}`,
+						runWorkflowScenario,
+					)
+			: runWorkflowScenario;
+		return scenariosRequireSerialSeeding(authoredScenarios)
+			? await withSerialSeeding(cacheKey, runQueued)
+			: await runQueued();
 	};
 
 	return { runRow };

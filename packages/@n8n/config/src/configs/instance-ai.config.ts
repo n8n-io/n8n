@@ -118,6 +118,14 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
+	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
+	 * instance an eval pointed at a real workflow must leave its history alone.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
+	evalInstance: boolean = false;
+
+	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
 	 * `0` disables auto-stop (the sandbox stays running).
 	 */
