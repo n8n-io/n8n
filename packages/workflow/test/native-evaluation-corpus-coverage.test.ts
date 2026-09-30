@@ -25,6 +25,40 @@ import { ALL_CORPORA } from './native-evaluation-corpus';
 
 const SKIP_KEYS = new Set(['loc', 'range', 'tokens', 'comments', 'start', 'end']);
 
+type AstRecord = Record<string, unknown>;
+
+function literalFeatures(o: AstRecord, feats: Set<string>): void {
+	const value = o.value;
+	feats.add(value === null ? 'lit:null' : `lit:${typeof value}`);
+	const raw = typeof o.raw === 'string' ? o.raw : '';
+	if (typeof value === 'number') {
+		if (/^0[xX]/.test(raw)) feats.add('num:hex');
+		if (/^0[oO]/.test(raw)) feats.add('num:octal');
+		if (/^0[bB]/.test(raw)) feats.add('num:binary');
+		if (/[eE]/.test(raw)) feats.add('num:exp');
+		if (raw.includes('_')) feats.add('num:sep');
+		if (raw.includes('.')) feats.add('num:float');
+	}
+	if (typeof value === 'string' && raw.includes('\\')) feats.add('lit:str:escape');
+}
+
+function memberFeature(o: AstRecord): string {
+	const property = o.property as AstRecord | undefined;
+	let kind = 'dot';
+	if (o.computed === true) {
+		if (property?.type !== 'Literal') kind = 'cdyn';
+		else kind = typeof property.value === 'number' ? 'cnum' : 'cstr';
+	}
+	return `member:${kind}${o.optional === true ? '?' : ''}`;
+}
+
+function callFeature(o: AstRecord): string {
+	const callee = o.callee as { property?: { type?: string; name?: unknown } } | undefined;
+	const method = callee?.property?.type === 'Identifier' ? String(callee.property.name) : '?';
+	const arity = Array.isArray(o.arguments) ? o.arguments.length : 0;
+	return `call:${method}:${arity}${o.optional === true ? '?' : ''}`;
+}
+
 function walk(node: unknown, feats: Set<string>): void {
 	if (Array.isArray(node)) {
 		for (const child of node) walk(child, feats);
@@ -32,7 +66,7 @@ function walk(node: unknown, feats: Set<string>): void {
 	}
 	if (node === null || typeof node !== 'object') return;
 
-	const o = node as Record<string, unknown>;
+	const o = node as AstRecord;
 
 	switch (o.type) {
 		case 'Identifier':
@@ -41,34 +75,12 @@ function walk(node: unknown, feats: Set<string>): void {
 				feats.add(`id:${String(o.name)}`);
 			}
 			break;
-		case 'Literal': {
-			const value = o.value;
-			feats.add(value === null ? 'lit:null' : `lit:${typeof value}`);
-			const raw = typeof o.raw === 'string' ? o.raw : '';
-			if (typeof value === 'number') {
-				if (/^0[xX]/.test(raw)) feats.add('num:hex');
-				if (/^0[oO]/.test(raw)) feats.add('num:octal');
-				if (/^0[bB]/.test(raw)) feats.add('num:binary');
-				if (/[eE]/.test(raw)) feats.add('num:exp');
-				if (raw.includes('_')) feats.add('num:sep');
-				if (raw.includes('.')) feats.add('num:float');
-			}
-			if (typeof value === 'string' && raw.includes('\\')) feats.add('lit:str:escape');
+		case 'Literal':
+			literalFeatures(o, feats);
 			break;
-		}
-		case 'MemberExpression': {
-			const property = o.property as Record<string, unknown> | undefined;
-			const kind =
-				o.computed === true
-					? property?.type === 'Literal'
-						? typeof property.value === 'number'
-							? 'cnum'
-							: 'cstr'
-						: 'cdyn'
-					: 'dot';
-			feats.add(`member:${kind}${o.optional === true ? '?' : ''}`);
+		case 'MemberExpression':
+			feats.add(memberFeature(o));
 			break;
-		}
 		case 'UnaryExpression':
 			feats.add(`unary:${String(o.operator)}`);
 			break;
@@ -81,14 +93,9 @@ function walk(node: unknown, feats: Set<string>): void {
 		case 'ConditionalExpression':
 			feats.add('ternary');
 			break;
-		case 'CallExpression': {
-			const callee = o.callee as { property?: { type?: string; name?: unknown } } | undefined;
-			const method = callee?.property?.type === 'Identifier' ? String(callee.property.name) : '?';
-			feats.add(
-				`call:${method}:${Array.isArray(o.arguments) ? o.arguments.length : 0}${o.optional === true ? '?' : ''}`,
-			);
+		case 'CallExpression':
+			feats.add(callFeature(o));
 			break;
-		}
 		default:
 			break;
 	}
