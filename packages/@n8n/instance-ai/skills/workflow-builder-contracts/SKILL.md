@@ -30,24 +30,18 @@ visible output until the final step, unless blocked.
 3. Call `build-workflow` with a stable `filePath`
    (e.g. `src/workflows/main.workflow.ts`) and the complete source as
    `sourceCode`.
-4. The build runs `tsc` and returns errors as `file:line`. Fix all of them.
-   Pass the full source again, or edit the file with
-   `workspace_str_replace_file` and build with `filePath` only.
+4. Fix every `file:line` error. Pass the full source again, or edit the file
+   with `workspace_str_replace_file` and build with `filePath` only.
 5. If the result has `postBuildFlow.required: true`, follow
    `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
 make the smallest change, and build with the returned `filePath`.
 
-## Imports and actions
+## Imports
 
 Import the flow API from `@n8n/workflow-sdk/next` and each module from
-`@n8n/nodes/<id>` with the `import` line that search returns. Typed actions:
-`notion.databasePage.getAll`, `httpRequest.get`, `httpRequest.send`,
-`googleSheets.sheet.read`, `googleSheets.sheet.append`,
-`googleSheets.sheet.appendOrUpdate`, `gmail.message.send`,
-`gmail.message.getAll`, `gmail.message.get`, `googleGemini.text.message`.
-Every action takes `name` and its input fields in one object.
+`@n8n/nodes/<id>` with the `import` line that search returns.
 
 ```ts
 import { workflow, manual } from '@n8n/workflow-sdk/next';

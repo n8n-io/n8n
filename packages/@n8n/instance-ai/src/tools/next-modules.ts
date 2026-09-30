@@ -144,27 +144,44 @@ const MAX_OTHER_ACTIONS = 3;
 /**
  * One search query: the nodes whose module the query names, the ids of their actions that
  * the query names, and one-line rows for other matching actions. `coveredNodes` are module
- * nodes that the catalog search found.
+ * nodes that the catalog search found. `coversQuery` is true when the named modules match
+ * every query word.
  * When the query names a module, other actions match only generic words such as "get",
  * so they are not listed.
  */
 export function searchNextActions(query: string, coveredNodes: readonly string[] = []) {
 	const terms = termsOf(query);
 	const matches = findNextActions(query);
-	const nodes = [
-		...new Set(
-			matches
-				.filter((action) => terms.some((term) => hits(term, nodeWords(action))))
-				.map((action) => action.node.id),
-		),
-	];
+	const named = [...new Set(matches.map((action) => action.node.id))].map((nodeId) => ({
+		nodeId,
+		terms: terms.filter((term) => actionsOfNode(nodeId).some((a) => hits(term, nodeWords(a)))),
+	}));
+	// "google sheets" names googleSheets, not also googleGemini through "google" alone.
+	const nodes = named
+		.filter(
+			({ terms: own }) =>
+				own.length &&
+				!named.some(
+					(other) =>
+						other.terms.length > own.length && own.every((term) => other.terms.includes(term)),
+				),
+		)
+		.map(({ nodeId }) => nodeId);
 	const others = nodes.length
 		? []
 		: [...new Set([...matches, ...coveredNodes.flatMap(actionsOfNode)])];
+	const moduleActions = nodes.flatMap(actionsOfNode);
 	return {
 		nodes,
 		actions: nodes.flatMap((nodeId) => actionsNamedBy(nodeId, terms).map(({ id }) => id)),
 		otherActions: others.slice(0, MAX_OTHER_ACTIONS).map(actionRow),
+		coversQuery:
+			nodes.length > 0 &&
+			terms.every((term) =>
+				moduleActions.some(
+					(action) => hits(term, nodeWords(action)) || hits(term, actionWords(action)),
+				),
+			),
 	};
 }
 

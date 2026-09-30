@@ -20,6 +20,7 @@ import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-
 import {
 	autoImportMissingSdkSymbols,
 	buildWorkflowInputSchema,
+	buildWorkflowInputSchemaWithFolderPlacement,
 	createBuildWorkflowTool,
 } from '../build-workflow.tool';
 import { prepareWorkflowSetup } from '../prepare-workflow-setup';
@@ -290,6 +291,68 @@ describe('createBuildWorkflowTool', () => {
 			'Workspace-relative path to the TypeScript SDK workflow source file',
 		);
 		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
+	});
+
+	describe('model-facing text', () => {
+		const modelText = (overrides: Partial<InstanceAiContext>) => {
+			const tool = createBuildWorkflowTool(makeContext({ overrides }).context) as unknown as {
+				description: string;
+				inputSchema: { shape: Record<string, { description?: string }> };
+			};
+			const fields = Object.fromEntries(
+				Object.entries(tool.inputSchema.shape).map(([key, field]) => [key, field.description]),
+			);
+			return { tool, description: tool.description, fields };
+		};
+
+		it('keeps the text unchanged while node contracts are off', () => {
+			const off = modelText({});
+
+			expect(off.tool.inputSchema).toBe(buildWorkflowInputSchema);
+			expect(off.description).toBe(
+				'Build and save a workflow from workflow source. Load `workflow-builder` via `load_skill` before calling this tool. When the workflow creates or writes Data Tables, also load `data-table-manager` first. Use TypeScript SDK .workflow.ts source for new and existing workflows. Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
+			);
+			expect(off.fields).toEqual({
+				filePath:
+					'Workspace-relative path to the TypeScript SDK workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts.',
+				sourceCode:
+					'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				workflowId:
+					'Real n8n workflow id from a prior build-workflow or workflows() tool result, used to bind this file on the first update. Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
+				name: 'Workflow name (required for new workflows)',
+				approvalSummary:
+					'Always provide a short, plain-language summary for the approval card. Describe the concrete changes or effects of this call, including affected nodes or external actions. Use the same language as the user. Use one line. Do not repeat the workflow name or ID. Do not include unrelated future actions. For example: "Add a Slack notification after the payment check". For a live execution, describe what it will do, not just "test the workflow".',
+				workItemId: 'Optional workflow-loop work item ID when repairing a workflow.',
+				isSupportingWorkflow:
+					'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
+				preferNewCredentials:
+					'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user explicitly asked ("create a new Slack credential") or needs to enter a replacement for a credential whose secret is invalid or rotated, never as a default. Those slots are left unresolved instead of being filled from an existing credential or Gateway credits, so credential setup can offer to create one. Pass the same list to workflows(action="setup").',
+				executionIntent:
+					'How the user intends to use this workflow. Pass `one-off` when the user wants a concrete effect once (an export, migration, backfill, or cleanup) and the workflow is only the vehicle — verification becomes an optional pre-flight and completion is a live run whose output was read back (see the one-off-operations skill). Omit or pass `reusable` for anything the user may run again.',
+				groupingDecision:
+					'Only for a canvas that will exceed the top-level ceiling with no node group: pass `not_warranted` together with `groupingReason` to say why no valid group can hold the remaining nodes. Never pass it to skip the grouping decision.',
+				groupingReason:
+					'Required with `groupingDecision: not_warranted`: why these nodes cannot form a valid group.',
+			});
+			expect(modelText({ folderExplorationEnabled: true }).tool.inputSchema).toBe(
+				buildWorkflowInputSchemaWithFolderPlacement,
+			);
+		});
+
+		it('shortens every text while node contracts are on', () => {
+			for (const folderExplorationEnabled of [false, true]) {
+				const off = modelText({ folderExplorationEnabled });
+				const on = modelText({ folderExplorationEnabled, nodeContractsEnabled: true });
+
+				expect(on.description.length).toBeLessThan(off.description.length);
+				expect(on.description).toContain('load_skill');
+				expect(on.description).toContain('data-table-manager');
+				expect(Object.keys(on.fields)).toEqual(Object.keys(off.fields));
+				for (const [key, text] of Object.entries(on.fields)) {
+					expect(text?.length).toBeLessThan(off.fields[key]?.length ?? 0);
+				}
+			}
+		});
 	});
 
 	describe('publish state', () => {

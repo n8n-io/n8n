@@ -407,12 +407,13 @@ async function searchOneWithModules(
 	const catalog = await handleSearch(context, input, cache);
 	const coveredNodes = catalog.results.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
 	const results = catalog.results.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
-	const { nodes, actions, otherActions } = input.connectionType
-		? { nodes: [], actions: [], otherActions: [] }
+	const { nodes, actions, otherActions, coversQuery } = input.connectionType
+		? { nodes: [], actions: [], otherActions: [], coversQuery: false }
 		: searchNextActions(input.query ?? '', coveredNodes);
 	const otherActionsPart = otherActions.length ? { otherActions } : {};
 	if (nodes.length) {
-		const otherNodes = catalogRowsBesideModules(results, nodes);
+		// Other catalog hits of a query that the modules match fully are noise.
+		const otherNodes = coversQuery ? [] : catalogRowsBesideModules(results, nodes);
 		return { nodes, actions, ...otherActionsPart, ...(otherNodes.length ? { otherNodes } : {}) };
 	}
 	return {

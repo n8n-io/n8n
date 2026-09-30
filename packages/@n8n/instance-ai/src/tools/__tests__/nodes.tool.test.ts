@@ -1292,17 +1292,20 @@ describe('nodes tool', () => {
 					outputs: outputs as string[],
 				})),
 			]);
-			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
-				action: 'search',
-				query: 'notion get many database pages',
-				limit: 10,
-			});
+			const search = async (query: string) =>
+				await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+					action: 'search',
+					query,
+					limit: 10,
+				});
+			const result = await search('notion database trigger');
 
 			expect(result.nodeModules?.map(({ node }) => node)).toEqual(['notion']);
 			expect(result).not.toHaveProperty('results');
 			expect(result.otherNodes).toHaveLength(3);
 			expect(result.otherNodes?.[0]).toBe('n8n-nodes-base.notionTrigger: Notion Trigger');
 			expect(result.otherNodes?.join('\n')).not.toMatch(/notionTool|mcp-registry/);
+			expect(await search('notion get many database pages')).not.toHaveProperty('otherNodes');
 		});
 
 		it('searches several services in one call and inlines each module once', async () => {

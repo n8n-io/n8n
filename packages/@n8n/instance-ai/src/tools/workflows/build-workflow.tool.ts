@@ -253,7 +253,57 @@ export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSch
 	})
 	.strict();
 
+// Node contracts: the skill and the typed modules carry the build rules. The fields go on every step, so they stay short.
+const fields = buildWorkflowInputSchema.shape;
+const buildWorkflowContractsInputSchema = buildWorkflowInputSchema
+	.extend({
+		filePath: fields.filePath.describe(
+			'Workspace-relative path, e.g. src/workflows/main.workflow.ts',
+		),
+		sourceCode: fields.sourceCode.describe(
+			'Full source to write to filePath. Omit to build the file as it is.',
+		),
+		workflowId: fields.workflowId.describe(
+			'ID from a build-workflow or workflows() result. Pass it once to bind this file to an existing workflow. Omit to create a new workflow. Never invent one.',
+		),
+		name: fields.name.describe('Omit to use the name in the source'),
+		approvalSummary: fields.approvalSummary.describe(
+			'One line for the approval card, in the language of the user: what this call changes. Do not repeat the workflow name or ID.',
+		),
+		workItemId: fields.workItemId.describe('Work item ID when you repair a workflow'),
+		isSupportingWorkflow: fields.isSupportingWorkflow.describe(
+			'True for a sub-workflow that the main workflow calls. It completes a planned task only when the task is marked isSupportingWorkflow.',
+		),
+		preferNewCredentials: fields.preferNewCredentials.describe(
+			'Credential types, e.g. ["slackApi"], that get a new credential instead of a stored one. Pass only when the user asks for a new credential or a stored secret is invalid. Pass the same list to workflows(action="setup").',
+		),
+		executionIntent: fields.executionIntent.describe(
+			'`one-off` when the workflow only carries out one effect (export, migration, backfill, cleanup): finish with a live run and read its output. Omit for workflows the user may run again.',
+		),
+		groupingDecision: fields.groupingDecision.describe(
+			'`not_warranted`, with `groupingReason`, only when no valid node group can hold the nodes above the top-level ceiling',
+		),
+		groupingReason: fields.groupingReason.describe('Why no valid node group can hold the nodes'),
+	})
+	.strict();
+
+const buildWorkflowContractsInputSchemaWithFolderPlacement = buildWorkflowContractsInputSchema
+	.extend({
+		folderPath: z
+			.string()
+			.optional()
+			.describe(
+				'Folder for a NEW workflow, as the user named it, e.g. "Clients/Acme". Pass it when the user named a folder or the related workflows live there. An unknown folder fails the build and lists the real folders. To move a workflow, use `workspace(action="move-workflow-to-folder")`.',
+			),
+	})
+	.strict();
+
 function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
+	if (context.nodeContractsEnabled) {
+		return context.folderExplorationEnabled === true
+			? buildWorkflowContractsInputSchemaWithFolderPlacement
+			: buildWorkflowContractsInputSchema;
+	}
 	return context.folderExplorationEnabled === true
 		? buildWorkflowInputSchemaWithFolderPlacement
 		: buildWorkflowInputSchema;
@@ -619,20 +669,19 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
-	const sourceGuidance = context.nodeContractsEnabled
-		? 'Write `@n8n/workflow-sdk/next` source. Pass the full source as `sourceCode` (the tool writes filePath), or edit filePath with `workspace_str_replace_file` and pass filePath. ' +
-			'The tool builds in the sandbox and type-checks with `tsc --strict`; it returns each error with file:line.'
-		: 'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+	const description = context.nodeContractsEnabled
+		? 'Build and save a workflow from `@n8n/workflow-sdk/next` source. ' +
+			'Load `workflow-builder` via `load_skill` first. ' +
+			'When the workflow writes Data Tables, also load `data-table-manager` first.'
+		: 'Build and save a workflow from workflow source. ' +
+			'Load `workflow-builder` via `load_skill` before calling this tool. ' +
+			'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
+			'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
+			'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 			'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).';
 
 	return new Tool('build-workflow')
-		.description(
-			'Build and save a workflow from workflow source. ' +
-				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
-				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
-				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				sourceGuidance,
-		)
+		.description(description)
 		.input(pickBuildWorkflowInputSchema(context))
 		.output(pickBuildWorkflowOutputSchema(context))
 		.suspend(confirmationSuspendSchema)

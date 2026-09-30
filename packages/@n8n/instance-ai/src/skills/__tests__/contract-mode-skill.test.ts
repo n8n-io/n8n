@@ -1,4 +1,3 @@
-import { actions } from '@n8n/nodes-base-next';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -8,10 +7,6 @@ const skill = readFileSync(
 );
 
 describe('contract-mode skill', () => {
-	it('lists every nodes-base-next action', () => {
-		expect(actions.map(({ id }) => id).filter((id) => !skill.includes(`\`${id}\``))).toEqual([]);
-	});
-
 	it('imports the flow API and the node modules of the new SDK', () => {
 		expect(skill).toContain("from '@n8n/workflow-sdk/next'");
 		expect(skill).toContain("import { notion } from '@n8n/nodes/notion'");
@@ -26,6 +21,6 @@ describe('contract-mode skill', () => {
 	});
 
 	it('stays small', () => {
-		expect(Buffer.byteLength(skill)).toBeLessThan(6_000);
+		expect(Buffer.byteLength(skill)).toBeLessThan(5_000);
 	});
 });

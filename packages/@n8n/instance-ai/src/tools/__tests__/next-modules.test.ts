@@ -60,6 +60,7 @@ describe('next-modules', () => {
 			nodes: ['httpRequest'],
 			actions: ['httpRequest.get', 'httpRequest.send'],
 			otherActions: [],
+			coversQuery: true,
 		});
 		const slack = searchNextActions('slack send');
 		expect(slack.nodes).toEqual([]);
@@ -73,7 +74,18 @@ describe('next-modules', () => {
 			nodes: ['notion'],
 			actions: ['notion.databasePage.getAll'],
 			otherActions: [],
+			coversQuery: true,
 		});
+	});
+
+	it('covers a query only when the named modules match every query word', () => {
+		expect(searchNextActions('notion database trigger').coversQuery).toBe(false);
+		expect(searchNextActions('slack').coversQuery).toBe(false);
+	});
+
+	it('names only the node that matches the most node words', () => {
+		expect(searchNextActions('google sheets append row').nodes).toEqual(['googleSheets']);
+		expect(searchNextActions('notion and google sheets').nodes).toEqual(['googleSheets', 'notion']);
 	});
 
 	it.each([
@@ -85,9 +97,7 @@ describe('next-modules', () => {
 		],
 		['gmail', ['gmail.message.send', 'gmail.message.getAll', 'gmail.message.get']],
 	])('names the actions of %s that the query singles out', (query, ids) => {
-		expect(searchNextActions(query).actions.filter((id) => !id.startsWith('googleGemini'))).toEqual(
-			ids,
-		);
+		expect(searchNextActions(query).actions).toEqual(ids);
 	});
 
 	it('shows types only for the shown actions and one line for each other action', () => {
@@ -95,7 +105,7 @@ describe('next-modules', () => {
 
 		expect(view?.import).toBe("import { gmail } from '@n8n/nodes/gmail';");
 		expect(view?.module).toContain('export type GmailMessageSendInput<I, C> = {');
-		expect(view?.module).toContain('\t\tsend: <In, Ctx, const N extends string>(');
+		expect(view?.module).toContain('  send: <In, Ctx, const N extends string>(');
 		expect(view?.module).not.toContain('export type GmailMessageGetAllInput');
 		expect(view?.module).toContain(
 			'// gmail.message.getAll(config: GmailMessageGetAllInput) — Get many messages (read, 1:N)\n',
