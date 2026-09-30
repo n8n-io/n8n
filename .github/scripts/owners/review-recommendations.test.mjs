@@ -347,6 +347,28 @@ describe('buildRequiredReviewsSection', () => {
 		assert.match(singular, /Request a review from the team —/);
 		assert.match(plural, /Request a review from the teams —/);
 	});
+
+	it('renders required groups with OR semantics and keeps direct requirements', () => {
+		const requiredTeamFiles = new Map([
+			['@n8n-io/ai-trust', ['ai.ts']],
+			['@n8n-io/agents', ['ai.ts']],
+			['@n8n-io/qa-dx', ['ci.yml']],
+		]);
+		requiredTeamFiles.requiredGroups = [
+			{
+				group: '@n8n-io/ai',
+				teams: ['@n8n-io/ai-trust', '@n8n-io/agents'],
+				files: ['ai.ts'],
+			},
+		];
+		requiredTeamFiles.directTeams = new Set(['@n8n-io/qa-dx']);
+
+		const section = buildRequiredReviewsSection(requiredTeamFiles);
+
+		assert.match(section, /one team from each required group/);
+		assert.match(section, /@n8n-io\/ai \(one of: @n8n-io\/ai-trust, @n8n-io\/agents\)/);
+		assert.match(section, /@n8n-io\/qa-dx/);
+	});
 });
 
 describe('run', () => {

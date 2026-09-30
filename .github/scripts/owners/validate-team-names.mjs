@@ -36,8 +36,7 @@ export async function fetchTeamSlugs(fetchImpl = fetch) {
  * @param {Set<string>} availableTeamSlugs
  * @returns {string[]}
  */
-export function findMissingTeamSlugs(availableTeamSlugs) {
-	const owners = parseOwnersFile();
+export function findMissingTeamSlugs(availableTeamSlugs, owners = parseOwnersFile(), groups = parseGroupsContent(readFileSync(GROUPS_FILE, 'utf8'))) {
 	const referencedSlugs = new Set();
 
 	for (const entry of owners) {
@@ -46,7 +45,6 @@ export function findMissingTeamSlugs(availableTeamSlugs) {
 		}
 	}
 
-	const groups = parseGroupsContent(readFileSync(GROUPS_FILE, 'utf8'));
 	const addGroupMembers = (members) => {
 		for (const member of members) {
 			const nestedMembers = groups.get(member);

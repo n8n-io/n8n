@@ -204,8 +204,10 @@ export function buildRequiredReviewsSection(requiredTeamFiles) {
 	if (requiredTeamFiles.size === 0) return null;
 
 	const requiredGroups = requiredTeamFiles.requiredGroups ?? [];
-	const groupedTeams = new Set(requiredGroups.flatMap((group) => group.teams));
-	const directTeams = [...requiredTeamFiles].filter(([team]) => !groupedTeams.has(team));
+	const directTeamSet = requiredTeamFiles.directTeams ?? new Set(requiredTeamFiles.keys());
+	const directTeams = [...directTeamSet]
+		.map((team) => [team, requiredTeamFiles.get(team)])
+		.filter(([, files]) => files);
 	const requiredCount = directTeams.length + requiredGroups.length;
 	const plural = requiredCount > 1;
 	const requirementText = requiredGroups.length > 0

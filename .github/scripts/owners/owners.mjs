@@ -350,7 +350,7 @@ export function resolveRequiredTeams(files, entries) {
 			);
 			if (group) group.files.push(file);
 			else requiredGroups.push({ group: entry.team, teams: entry.teams, files: [file] });
-		} else directTeams.add(entry.team);
+		} else directTeams.add(entry.teams?.[0] ?? entry.team);
 	}
 
 	teamToFiles.requiredGroups = requiredGroups;

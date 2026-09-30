@@ -5,12 +5,14 @@ on:
     paths:
       - 'OWNERS'
       - 'GROUPS.json'
+      - '.github/scripts/owners/**'
 
 permissions:
   contents: read
 
 jobs:
   validate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
