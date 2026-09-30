@@ -1,13 +1,13 @@
-import { classifyHttpError } from '@n8n/backend-services';
+import { classifyRestError } from '@n8n/backend-services';
 import { serializeInternalRestError, serializePublicApiError } from '@n8n/backend-services';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
-describe('http-error-serializers', () => {
+describe('rest-error-response', () => {
 	it('serializePublicApiError: does not expose internal-only response error meta', () => {
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new LicenseEulaRequiredError('License activation requires EULA acceptance', {
 				eulaUrl: 'https://n8n.io/legal/eula/',
 			}),
@@ -27,7 +27,7 @@ describe('http-error-serializers', () => {
 	});
 
 	it('returns review details publicly while keeping editor-only validation metadata internal', () => {
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new WorkflowPublishBlockedError({
 				reason: 'changes_requested',
 				workflowReviewRequestId: 'review-1',
@@ -65,7 +65,7 @@ describe('http-error-serializers', () => {
 				usedByWorkflows: ['wf-1'],
 			},
 		];
-		const descriptor = classifyHttpError(toImportBlockedError(issues));
+		const descriptor = classifyRestError(toImportBlockedError(issues));
 
 		const result = serializePublicApiError(descriptor);
 		expect(result.status).toBe(422);
@@ -87,7 +87,7 @@ describe('http-error-serializers', () => {
 				usedByWorkflows: ['wf-1'],
 			},
 		];
-		const descriptor = classifyHttpError(toImportBlockedError(issues));
+		const descriptor = classifyRestError(toImportBlockedError(issues));
 
 		const result = serializePublicApiError(descriptor);
 		expect(result.status).toBe(409);
@@ -104,7 +104,7 @@ describe('http-error-serializers', () => {
 				subjectType: 'nodeType',
 			},
 		];
-		const descriptor = classifyHttpError(new PolicyViolationError([violations[0]]));
+		const descriptor = classifyRestError(new PolicyViolationError([violations[0]]));
 
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 403,

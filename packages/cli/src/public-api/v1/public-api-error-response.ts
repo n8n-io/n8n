@@ -1,9 +1,9 @@
 import type { Response } from 'express';
 
 import {
-	classifyHttpError,
+	classifyRestError,
 	serializePublicApiError,
-	type HttpErrorClassifierContext,
+	type RestErrorClassifierContext,
 } from '@n8n/backend-services';
 
 /**
@@ -13,9 +13,9 @@ import {
 export function sendPublicApiErrorResponse(
 	res: Response,
 	error: Error,
-	context?: HttpErrorClassifierContext,
+	context?: RestErrorClassifierContext,
 ): void {
-	const descriptor = classifyHttpError(error, context);
+	const descriptor = classifyRestError(error, context);
 	const { status, body } = serializePublicApiError(descriptor);
 	res.status(status).json(body);
 }

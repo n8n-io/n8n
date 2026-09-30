@@ -1,6 +1,6 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import {
-	classifyHttpError,
+	classifyRestError,
 	isResponseError,
 	serializeInternalRestError,
 } from '@n8n/backend-services';
@@ -80,7 +80,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 		}
 	}
 
-	const descriptor = classifyHttpError(error);
+	const descriptor = classifyRestError(error);
 	const { status, body: response } = serializeInternalRestError(descriptor);
 
 	if (error instanceof NodeApiError) {

@@ -5,14 +5,14 @@ export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
 export { UrlService } from './services/url.service';
 export {
-	classifyHttpError,
+	classifyRestError,
 	isResponseError,
-	type HttpErrorClassifierContext,
-	type HttpErrorDescriptor,
-	HttpErrorKind,
-} from './errors/http-error-classifier';
+	type RestErrorClassifierContext,
+	type RestErrorDescriptor,
+	RestErrorKind,
+} from './errors/rest-error-classifier';
 export {
 	serializeInternalRestError,
 	serializePublicApiError,
 	type InternalRestErrorBody,
-} from './errors/http-error-serializers';
+} from './errors/rest-error-response';

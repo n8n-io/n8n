@@ -2,12 +2,12 @@ import type { SourceControlledFile } from '@n8n/api-types';
 
 import { ConflictError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 
-import { classifyHttpError } from '../http-error-classifier';
-import { serializeInternalRestError, serializePublicApiError } from '../http-error-serializers';
+import { classifyRestError } from '../rest-error-classifier';
+import { serializeInternalRestError, serializePublicApiError } from '../rest-error-response';
 
-describe('http-error-serializers', () => {
+describe('rest-error-response', () => {
 	it('serializes a ResponseError with a minimal public message', () => {
-		const descriptor = classifyHttpError(new NotFoundError('x'));
+		const descriptor = classifyRestError(new NotFoundError('x'));
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 404,
 			body: { message: 'x' },
@@ -15,7 +15,7 @@ describe('http-error-serializers', () => {
 	});
 
 	it('serializes a ResponseError with its code for internal requests', () => {
-		const descriptor = classifyHttpError(new NotFoundError('x'));
+		const descriptor = classifyRestError(new NotFoundError('x'));
 		expect(serializeInternalRestError(descriptor)).toEqual({
 			status: 404,
 			body: {
@@ -38,7 +38,7 @@ describe('http-error-serializers', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			},
 		];
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new ConflictError(
 				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
 				undefined,
@@ -64,7 +64,7 @@ describe('http-error-serializers', () => {
 	});
 
 	it('maps UserError to 400', () => {
-		const descriptor = classifyHttpError(new UserError('bad input'));
+		const descriptor = classifyRestError(new UserError('bad input'));
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 400,
 			body: { message: 'bad input' },
@@ -76,7 +76,7 @@ describe('http-error-serializers', () => {
 	});
 
 	it('sanitizes UnexpectedError for public responses', () => {
-		const descriptor = classifyHttpError(new UnexpectedError('secret'));
+		const descriptor = classifyRestError(new UnexpectedError('secret'));
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 500,
 			body: { message: 'Internal server error' },

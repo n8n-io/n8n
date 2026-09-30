@@ -8,13 +8,13 @@ import {
 	UserError,
 } from '@n8n/errors';
 
-import { classifyHttpError, HttpErrorKind, isResponseError } from '../http-error-classifier';
+import { classifyRestError, RestErrorKind, isResponseError } from '../rest-error-classifier';
 
-describe('classifyHttpError', () => {
+describe('classifyRestError', () => {
 	it('tags ResponseError with kind responseError and http fields', () => {
-		const d = classifyHttpError(new NotFoundError('missing'));
+		const d = classifyRestError(new NotFoundError('missing'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.responseError,
+			kind: RestErrorKind.responseError,
 			status: 404,
 			message: 'missing',
 			code: 404,
@@ -22,34 +22,34 @@ describe('classifyHttpError', () => {
 	});
 
 	it('tags UserError without HTTP status (serializers assign status)', () => {
-		const d = classifyHttpError(new UserError('bad input'));
+		const d = classifyRestError(new UserError('bad input'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.userError,
+			kind: RestErrorKind.userError,
 			message: 'bad input',
 		});
 	});
 
 	it('tags n8n UnexpectedError', () => {
-		const d = classifyHttpError(new UnexpectedError('internal bug'));
+		const d = classifyRestError(new UnexpectedError('internal bug'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.unexpectedError,
+			kind: RestErrorKind.unexpectedError,
 			message: 'internal bug',
 		});
 	});
 
 	it('tags OperationalError as generic serverError', () => {
-		const d = classifyHttpError(new OperationalError('temporarily down'));
+		const d = classifyRestError(new OperationalError('temporarily down'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.serverError,
+			kind: RestErrorKind.serverError,
 			message: 'temporarily down',
 		});
 	});
 
 	it('tags express-openapi-validator HttpError', () => {
 		const httpError = new BadRequest({ path: '/x', message: 'schema failed' });
-		const d = classifyHttpError(httpError);
+		const d = classifyRestError(httpError);
 		expect(d).toEqual({
-			kind: HttpErrorKind.httpError,
+			kind: RestErrorKind.httpError,
 			status: 400,
 			message: 'schema failed',
 		});
@@ -61,9 +61,9 @@ describe('classifyHttpError', () => {
 				path: '/x',
 				message: "'X-N8N-API-KEY' header required",
 			});
-			const d = classifyHttpError(unauthorizedError);
+			const d = classifyRestError(unauthorizedError);
 			expect(d).toEqual({
-				kind: HttpErrorKind.httpError,
+				kind: RestErrorKind.httpError,
 				status: 401,
 				message: "'X-N8N-API-KEY' header required",
 			});
@@ -74,9 +74,9 @@ describe('classifyHttpError', () => {
 				path: '/x',
 				message: "'X-N8N-API-KEY' header required",
 			});
-			const d = classifyHttpError(unauthorizedError, { hasSessionCookie: true });
+			const d = classifyRestError(unauthorizedError, { hasSessionCookie: true });
 			expect(d).toEqual({
-				kind: HttpErrorKind.httpError,
+				kind: RestErrorKind.httpError,
 				status: 401,
 				message: 'Unauthorized',
 			});
@@ -86,9 +86,9 @@ describe('classifyHttpError', () => {
 	it('does not classify an unrelated error with an HTTP error class name', () => {
 		class NotFound extends Error {}
 
-		const d = classifyHttpError(new NotFound('internal error'));
+		const d = classifyRestError(new NotFound('internal error'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.serverError,
+			kind: RestErrorKind.serverError,
 			message: 'internal error',
 		});
 	});
@@ -112,25 +112,25 @@ describe('classifyHttpError', () => {
 		}[className];
 		const error = new CrossPackageError('validator error');
 
-		expect(classifyHttpError(error)).toEqual({
-			kind: HttpErrorKind.httpError,
+		expect(classifyRestError(error)).toEqual({
+			kind: RestErrorKind.httpError,
 			status,
 			message: 'validator error',
 		});
 	});
 
 	it('tags plain Error as serverError', () => {
-		const d = classifyHttpError(new Error('plain'));
+		const d = classifyRestError(new Error('plain'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.serverError,
+			kind: RestErrorKind.serverError,
 			message: 'plain',
 		});
 	});
 
 	it('matches BadRequestError fields', () => {
-		const d = classifyHttpError(new BadRequestError('invalid'));
+		const d = classifyRestError(new BadRequestError('invalid'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.responseError,
+			kind: RestErrorKind.responseError,
 			status: 400,
 			message: 'invalid',
 			code: 400,

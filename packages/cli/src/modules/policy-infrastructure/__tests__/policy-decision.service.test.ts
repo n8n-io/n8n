@@ -17,7 +17,7 @@ import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { classifyHttpError, serializeInternalRestError } from '@n8n/backend-services';
+import { classifyRestError, serializeInternalRestError } from '@n8n/backend-services';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -704,7 +704,7 @@ describe('PolicyDecisionService', () => {
 			const error = await proxy
 				.enforceWorkflowSave(saveContext, unattended)
 				.catch((e: unknown) => e);
-			const { status, body } = serializeInternalRestError(classifyHttpError(error as Error));
+			const { status, body } = serializeInternalRestError(classifyRestError(error as Error));
 
 			expect(status).toBe(503);
 			expect(JSON.stringify(body)).not.toContain('policy store');

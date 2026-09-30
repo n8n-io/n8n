@@ -2,7 +2,7 @@ import { HttpError, Unauthorized } from 'express-openapi-validator/dist/framewor
 
 import { ResponseError, UnexpectedError, UserError } from '@n8n/errors';
 
-export const enum HttpErrorKind {
+export const enum RestErrorKind {
 	responseError = 'responseError',
 	userError = 'userError',
 	unexpectedError = 'unexpectedError',
@@ -10,9 +10,9 @@ export const enum HttpErrorKind {
 	serverError = 'serverError',
 }
 
-export type HttpErrorDescriptor =
+export type RestErrorDescriptor =
 	| {
-			kind: HttpErrorKind.responseError;
+			kind: RestErrorKind.responseError;
 			status: number;
 			message: string;
 			code: number;
@@ -20,20 +20,20 @@ export type HttpErrorDescriptor =
 			meta?: Record<string, unknown>;
 	  }
 	| {
-			kind: HttpErrorKind.userError;
+			kind: RestErrorKind.userError;
 			message: string;
 	  }
 	| {
-			kind: HttpErrorKind.unexpectedError;
+			kind: RestErrorKind.unexpectedError;
 			message: string;
 	  }
 	| {
-			kind: HttpErrorKind.httpError;
+			kind: RestErrorKind.httpError;
 			status: number;
 			message: string;
 	  }
 	| {
-			kind: HttpErrorKind.serverError;
+			kind: RestErrorKind.serverError;
 			message: string;
 	  };
 
@@ -54,18 +54,18 @@ export function isResponseError(error: Error): error is ResponseError {
 	return false;
 }
 
-export type HttpErrorClassifierContext = {
+export type RestErrorClassifierContext = {
 	/** Whether the request carried a session cookie, regardless of whether it was valid. */
 	hasSessionCookie?: boolean;
 };
 
-export function classifyHttpError(
+export function classifyRestError(
 	error: Error,
-	context?: HttpErrorClassifierContext,
-): HttpErrorDescriptor {
+	context?: RestErrorClassifierContext,
+): RestErrorDescriptor {
 	if (isResponseError(error)) {
-		const descriptor: HttpErrorDescriptor & { kind: HttpErrorKind.responseError } = {
-			kind: HttpErrorKind.responseError,
+		const descriptor: RestErrorDescriptor & { kind: RestErrorKind.responseError } = {
+			kind: RestErrorKind.responseError,
 			status: error.httpStatusCode,
 			message: error.message ?? 'Unknown error',
 			code: error.errorCode,
@@ -80,17 +80,17 @@ export function classifyHttpError(
 	}
 
 	if (error instanceof UserError) {
-		return { kind: HttpErrorKind.userError, message: error.message };
+		return { kind: RestErrorKind.userError, message: error.message };
 	}
 
 	if (error instanceof UnexpectedError) {
-		return { kind: HttpErrorKind.unexpectedError, message: error.message };
+		return { kind: RestErrorKind.unexpectedError, message: error.message };
 	}
 
 	// Replacing express-openapi-validator's 'api key header required' error message
 	// for requests that contained a session cookie.
 	if (isHttpErrorInstance(error, Unauthorized, ['Unauthorized']) && context?.hasSessionCookie) {
-		return { kind: HttpErrorKind.httpError, status: 401, message: 'Unauthorized' };
+		return { kind: RestErrorKind.httpError, status: 401, message: 'Unauthorized' };
 	}
 
 	if (
@@ -108,13 +108,13 @@ export function classifyHttpError(
 		])
 	) {
 		return {
-			kind: HttpErrorKind.httpError,
+			kind: RestErrorKind.httpError,
 			status: error.status || 400,
 			message: error.message || 'Bad request',
 		};
 	}
 
-	return { kind: HttpErrorKind.serverError, message: error.message ?? 'Unknown error' };
+	return { kind: RestErrorKind.serverError, message: error.message ?? 'Unknown error' };
 }
 
 function isHttpErrorInstance<T extends Error>(

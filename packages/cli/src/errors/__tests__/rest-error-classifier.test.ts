@@ -1,5 +1,5 @@
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { classifyHttpError, HttpErrorKind } from '@n8n/backend-services';
+import { classifyRestError, RestErrorKind } from '@n8n/backend-services';
 import {
 	BadRequest,
 	Forbidden,
@@ -12,17 +12,17 @@ import {
 	UnsupportedMediaType,
 } from 'express-openapi-validator/dist/framework/types';
 
-describe('classifyHttpError', () => {
+describe('classifyRestError', () => {
 	it('includes meta for LicenseEulaRequiredError', () => {
 		const eulaUrl = 'https://n8n.io/legal/eula/';
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new LicenseEulaRequiredError('License activation requires EULA acceptance', {
 				eulaUrl,
 			}),
 		);
 
-		expect(descriptor.kind).toBe(HttpErrorKind.responseError);
-		if (descriptor.kind === HttpErrorKind.responseError) {
+		expect(descriptor.kind).toBe(RestErrorKind.responseError);
+		if (descriptor.kind === RestErrorKind.responseError) {
 			expect(descriptor.status).toBe(400);
 			expect(descriptor.meta).toEqual({ eulaUrl });
 		}
@@ -41,8 +41,8 @@ describe('classifyHttpError', () => {
 	])('classifies a %s from the CLI validator package', (ErrorClass, status) => {
 		const error = new ErrorClass({ path: '/x', message: 'validator error' });
 
-		expect(classifyHttpError(error)).toEqual({
-			kind: HttpErrorKind.httpError,
+		expect(classifyRestError(error)).toEqual({
+			kind: RestErrorKind.httpError,
 			status,
 			message: 'validator error',
 		});
