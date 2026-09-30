@@ -6,14 +6,11 @@ import {
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Time } from '@n8n/constants';
 import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-
-import { CacheService } from '@n8n/backend-services';
 
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
@@ -36,9 +33,11 @@ export interface FailedRuleCheck {
 
 /**
  * Result of one full scan. `failedChecks` lists the rule checks that threw, so the report
- * is incomplete for those pairs. The public report type does not carry this field.
+ * is incomplete for those pairs. The public report type does not carry this field, and the
+ * scan does not decide caching: the finding table replaced the report cache.
  */
-export interface BreakingChangeDetectionResult extends BreakingChangeReportResult {
+export interface BreakingChangeDetectionResult
+	extends Omit<BreakingChangeReportResult, 'shouldCache'> {
 	failedChecks: FailedRuleCheck[];
 }
 
@@ -58,12 +57,6 @@ interface WorkflowMetadata {
 @Service()
 export class BreakingChangeService {
 	private readonly batchSize = 100;
-	private static readonly REPORT_DURATION_CACHE_THRESHOLD = Time.seconds.toMilliseconds * 2;
-	private static readonly CACHE_KEY_PREFIX = 'breaking-changes:results:';
-	private readonly ongoingDetections = new Map<
-		BreakingChangeVersion,
-		Promise<BreakingChangeReportResult>
-	>();
 	/** In-flight full scans per version, so concurrent callers share one run. */
 	private readonly ongoingScans = new Map<
 		BreakingChangeVersion,
@@ -80,7 +73,6 @@ export class BreakingChangeService {
 		private readonly migrationRegistry: MigrationRegistry,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
-		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
@@ -298,23 +290,6 @@ export class BreakingChangeService {
 		return { results: regularResults.concat(batchResults), failedChecks };
 	}
 
-	async refreshDetectionResults(
-		targetVersion: BreakingChangeVersion,
-	): Promise<BreakingChangeReportResult> {
-		await this.cacheService.delete(this.getCacheKey(targetVersion));
-		return await this.getDetectionResults(targetVersion);
-	}
-
-	async getDetectionResults(
-		targetVersion: BreakingChangeVersion,
-	): Promise<BreakingChangeReportResult> {
-		return await this.shareInFlight(
-			this.ongoingDetections,
-			targetVersion,
-			async () => await this.detectWithCache(targetVersion),
-		);
-	}
-
 	/** Joins the promise already in `inFlight` for the version, or starts and registers a new one. */
 	private async shareInFlight<T>(
 		inFlight: Map<BreakingChangeVersion, Promise<T>>,
@@ -323,7 +298,7 @@ export class BreakingChangeService {
 	): Promise<T> {
 		const existing = inFlight.get(targetVersion);
 		if (existing) {
-			this.logger.debug('Reusing ongoing detection', { targetVersion });
+			this.logger.debug('Reusing ongoing scan', { targetVersion });
 			return await existing;
 		}
 
@@ -336,39 +311,9 @@ export class BreakingChangeService {
 		}
 	}
 
-	// The rule set changes with every release, so a report from an older build is stale.
-	// The n8n version in the key rotates the entry on deploy; the old key ages out by TTL.
-	private getCacheKey(targetVersion: BreakingChangeVersion): string {
-		return `${BreakingChangeService.CACHE_KEY_PREFIX}${N8N_VERSION}:${targetVersion}`;
-	}
-
-	private async detectWithCache(
-		targetVersion: BreakingChangeVersion,
-	): Promise<BreakingChangeReportResult> {
-		const cacheKey = this.getCacheKey(targetVersion);
-
-		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
-		if (cachedResult) {
-			this.logger.debug('Using cached breaking change detection results', { targetVersion });
-			return cachedResult;
-		}
-
-		// The public report type has no `failedChecks`, so the field is dropped here.
-		const { report, totalWorkflows, shouldCache } = await this.detect(targetVersion);
-		const result: BreakingChangeReportResult = { report, totalWorkflows, shouldCache };
-		if (result.shouldCache) {
-			await this.cacheService.set(cacheKey, result);
-		}
-		return result;
-	}
-
 	private reportRuleError(error: unknown, ruleId: string, workflowId: string) {
 		this.logger.warn('Breaking change rule failed for workflow, skipping', { ruleId, workflowId });
 		this.errorReporter.error(error, { extra: { ruleId, workflowId } });
-	}
-
-	private shouldCacheDetection(durationMs: number): boolean {
-		return durationMs > BreakingChangeService.REPORT_DURATION_CACHE_THRESHOLD;
 	}
 
 	/** Runs a full, uncached scan. Concurrent calls for one version share a single scan. */
@@ -473,23 +418,8 @@ export class BreakingChangeService {
 		return {
 			report,
 			totalWorkflows,
-			shouldCache: this.shouldCacheDetection(duration),
 			failedChecks: workflowScan.failedChecks,
 		};
-	}
-
-	async getDetectionReportForRule(
-		ruleId: string,
-	): Promise<BreakingChangeInstanceRuleResult | BreakingChangeWorkflowRuleResult | undefined> {
-		const rule = this.ruleRegistry.getRule(ruleId);
-		if (!rule) {
-			return undefined;
-		}
-
-		if ('detectWorkflow' in rule || 'collectWorkflowData' in rule) {
-			return await this.detectRule(rule.getMetadata().version, rule);
-		}
-		return (await this.getAllInstanceRulesResults([rule]))[0];
 	}
 
 	private createDetectionReport(
