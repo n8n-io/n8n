@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExecutionStatus, IExecuteResponsePromiseData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 
 import { JOB_WAIT_RECHECK_INTERVAL_MS } from './constants';
 import type { Job, JobFinishedProps, JobId } from './scaling.types';
