@@ -71,12 +71,6 @@ requestBody:
                         - type: string
                           enum:
                             - lte
-                        - type: string
-                          enum:
-                            - isEmpty
-                        - type: string
-                          enum:
-                            - isNotEmpty
                     value:
                       anyOf:
                         - type: string
@@ -89,6 +83,7 @@ requestBody:
                     - columnName
                     - condition
                     - value
+                minItems: 1
             required:
               - filters
             description: Filter conditions to match rows for update.

@@ -177,15 +177,30 @@ export class InsertDataTableRowsResponsePublicDto {
 	}
 }
 
-const publicRowFilterSchema = z
-	.object({
-		type: dataTableFilterTypeSchema.default('and'),
-		filters: z.array(dataTableFilterRecordSchema.extend({ condition: FilterConditionSchema })),
-	})
-	.refine((filter) => filter.filters.length > 0, { message: 'filter must not be empty' });
+// express-openapi-validator gave upsert/update's filter a fixed condition enum on the request
+// body (eq, neq, like, ilike, gt, gte, lt, lte), rejecting isEmpty/isNotEmpty with 400 even though
+// the shared internal filter schema already accepts them. Keep that narrower enum here so the
+// public contract for these two endpoints doesn't silently widen.
+const legacyFilterConditionSchema = z.union([
+	z.literal('eq'),
+	z.literal('neq'),
+	z.literal('like'),
+	z.literal('ilike'),
+	z.literal('gt'),
+	z.literal('gte'),
+	z.literal('lt'),
+	z.literal('lte'),
+]);
+
+const publicUpsertUpdateFilterSchema = z.object({
+	type: dataTableFilterTypeSchema.default('and'),
+	filters: z
+		.array(dataTableFilterRecordSchema.extend({ condition: legacyFilterConditionSchema }))
+		.min(1, 'filter must not be empty'),
+});
 
 export class UpsertDataTableRowPublicDto extends Z.class({
-	filter: publicRowFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
+	filter: publicUpsertUpdateFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
 	data: z
 		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
 		.refine((obj) => Object.keys(obj).length > 0, { message: 'data must not be empty' })
@@ -228,7 +243,7 @@ export class UpsertDataTableRowResponsePublicDto {
 }
 
 export class UpdateDataTableRowPublicDto extends Z.class({
-	filter: publicRowFilterSchema.openapi(updateDataTableRowFieldDocs.filter),
+	filter: publicUpsertUpdateFilterSchema.openapi(updateDataTableRowFieldDocs.filter),
 	data: z
 		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
 		.refine((obj) => Object.keys(obj).length > 0, { message: 'data must not be empty' })
@@ -261,6 +276,16 @@ export class UpdateDataTableRowResponsePublicDto {
 	}
 }
 
+// Delete's filter was only ever an opaque query string under express-openapi-validator (no
+// nested schema), so it was never enum-gated the way upsert/update's request body was. Keep the
+// full condition set here.
+const publicDeleteFilterSchema = z.object({
+	type: dataTableFilterTypeSchema.default('and'),
+	filters: z
+		.array(dataTableFilterRecordSchema.extend({ condition: FilterConditionSchema }))
+		.min(1, 'filter must not be empty'),
+});
+
 const publicRowFilterQueryValidator = z.string().transform((val, ctx) => {
 	let parsed: unknown;
 	try {
@@ -274,7 +299,7 @@ const publicRowFilterQueryValidator = z.string().transform((val, ctx) => {
 		return z.NEVER;
 	}
 
-	const result = publicRowFilterSchema.safeParse(parsed);
+	const result = publicDeleteFilterSchema.safeParse(parsed);
 	if (!result.success) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,

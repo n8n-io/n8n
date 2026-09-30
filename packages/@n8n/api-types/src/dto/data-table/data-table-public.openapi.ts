@@ -155,8 +155,8 @@ export const upsertDataTableRowFieldDocs = {
 	data: { description: 'Column values for the row' },
 	returnData: {
 		description:
-			'Set to true to return the upserted row(s) matched by the filter. Set to false to return ' +
-			'true on success.',
+			'Set to true to return the upserted row(s): the matching rows if updated, or the new ' +
+			'row if one was inserted. Set to false to return true on success.',
 	},
 	dryRun: { description: 'Set to true to preview the change without saving it.' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
