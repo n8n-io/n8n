@@ -144,6 +144,19 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		},
 	},
 	{
+		// Hidden: keeps the corrected spelling from being stripped before execution.
+		displayName: 'Recipients (Corrected Key)',
+		name: 'recipients',
+		type: 'hidden',
+		displayOptions: {
+			show: {
+				resource: ['email'],
+				operation: ['send'],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		placeholder: 'Add Field',
@@ -212,6 +225,13 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				},
 			},
 			{
+				// Hidden: keeps the corrected spelling from being stripped before execution.
+				displayName: 'Recipients BCC (Corrected Key)',
+				name: 'recipientsBCC',
+				type: 'hidden',
+				default: {},
+			},
+			{
 				displayName: 'Recipients CC',
 				name: 'receipientsCC',
 				placeholder: 'Add CC',
@@ -236,6 +256,13 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						preSend: [BrevoNode.Validators.validateAndCompileCCEmails],
 					},
 				},
+			},
+			{
+				// Hidden: keeps the corrected spelling from being stripped before execution.
+				displayName: 'Recipients CC (Corrected Key)',
+				name: 'recipientsCC',
+				type: 'hidden',
+				default: {},
 			},
 			{
 				displayName: 'Email Tags',
@@ -343,6 +370,19 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
 			},
 		},
+	},
+	{
+		// Hidden: keeps the corrected spelling from being stripped before execution.
+		displayName: 'Recipients (Corrected Key)',
+		name: 'recipients',
+		type: 'hidden',
+		displayOptions: {
+			show: {
+				resource: ['email'],
+				operation: ['sendTemplate'],
+			},
+		},
+		default: '',
 	},
 	{
 		displayName: 'Additional Fields',

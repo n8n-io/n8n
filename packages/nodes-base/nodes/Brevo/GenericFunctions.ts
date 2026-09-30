@@ -192,9 +192,9 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const ccData = this.getNodeParameter(
-				'additionalFields.receipientsCC.receipientCc',
-			) as JsonObject;
+			// Prefer the corrected spelling; fall back to the legacy misspelled key.
+			const ccData = (this.getNodeParameter('additionalFields.recipientsCC.recipientCc', null) ??
+				this.getNodeParameter('additionalFields.receipientsCC.receipientCc')) as JsonObject;
 			const { cc } = ccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ cc: cc as string });
@@ -207,9 +207,9 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const bccData = this.getNodeParameter(
-				'additionalFields.receipientsBCC.receipientBcc',
-			) as JsonObject;
+			// Prefer the corrected spelling; fall back to the legacy misspelled key.
+			const bccData = (this.getNodeParameter('additionalFields.recipientsBCC.recipientBcc', null) ??
+				this.getNodeParameter('additionalFields.receipientsBCC.receipientBcc')) as JsonObject;
 			const { bcc } = bccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ bcc: bcc as string });
@@ -222,7 +222,9 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const to = this.getNodeParameter('receipients') as string;
+			// Prefer the corrected spelling; fall back to the legacy misspelled key.
+			const to = (this.getNodeParameter('recipients', '') ||
+				this.getNodeParameter('receipients')) as string;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ to });
 			Object.assign(body!, data);

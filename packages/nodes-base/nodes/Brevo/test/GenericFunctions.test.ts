@@ -80,6 +80,124 @@ describe('Brevo - email validation', () => {
 	});
 });
 
+function makeParamContext(params: Record<string, unknown>): IExecuteSingleFunctions {
+	const getNodeParameter = vi.fn((name: string, fallback?: unknown) =>
+		name in params ? params[name] : fallback,
+	);
+	return { getNodeParameter } as unknown as IExecuteSingleFunctions;
+}
+
+describe('Brevo - recipients/CC/BCC spelling fallback (NODE-5367)', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('validateAndCompileRecipientEmails reads the legacy "receipients" key when only that is present', async () => {
+		const context = makeParamContext({ receipients: 'legacy@example.com' });
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'legacy@example.com' }),
+		);
+	});
+
+	it('validateAndCompileRecipientEmails falls back to the legacy key when "recipients" is present but empty (its declared default)', async () => {
+		// Hidden fields default to '', so an empty string must still fall
+		// through to the legacy key.
+		const context = makeParamContext({ recipients: '', receipients: 'legacy@example.com' });
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'legacy@example.com' }),
+		);
+	});
+
+	it('validateAndCompileRecipientEmails reads the corrected "recipients" key when the legacy key was renamed away', async () => {
+		const context = makeParamContext({ recipients: 'renamed@example.com' });
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'renamed@example.com' }),
+		);
+	});
+
+	it('validateAndCompileRecipientEmails prefers "recipients" over the legacy key when both are present', async () => {
+		const context = makeParamContext({
+			recipients: 'renamed@example.com',
+			receipients: 'legacy@example.com',
+		});
+
+		await BrevoNode.Validators.validateAndCompileRecipientEmails.call(context, {
+			url: '',
+			body: {},
+		});
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'renamed@example.com' }),
+		);
+	});
+
+	it('validateAndCompileCCEmails reads the legacy nested CC path when only that is present', async () => {
+		const context = makeParamContext({
+			'additionalFields.receipientsCC.receipientCc': { cc: 'legacy-cc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ cc: 'legacy-cc@example.com' }),
+		);
+	});
+
+	it('validateAndCompileCCEmails reads the corrected nested CC path when the legacy path was renamed away', async () => {
+		const context = makeParamContext({
+			'additionalFields.recipientsCC.recipientCc': { cc: 'renamed-cc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ cc: 'renamed-cc@example.com' }),
+		);
+	});
+
+	it('validateAndCompileBCCEmails reads the legacy nested BCC path when only that is present', async () => {
+		const context = makeParamContext({
+			'additionalFields.receipientsBCC.receipientBcc': { bcc: 'legacy-bcc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileBCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ bcc: 'legacy-bcc@example.com' }),
+		);
+	});
+
+	it('validateAndCompileBCCEmails reads the corrected nested BCC path when the legacy path was renamed away', async () => {
+		const context = makeParamContext({
+			'additionalFields.recipientsBCC.recipientBcc': { bcc: 'renamed-bcc@example.com' },
+		});
+
+		await BrevoNode.Validators.validateAndCompileBCCEmails.call(context, { url: '', body: {} });
+
+		expect(mailComposerOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ bcc: 'renamed-bcc@example.com' }),
+		);
+	});
+});
+
 describe('Brevo - validateAndCompileAttachmentsData', () => {
 	const validate = BrevoNode.Validators.validateAndCompileAttachmentsData;
 
