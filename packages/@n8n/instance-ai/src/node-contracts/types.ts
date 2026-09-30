@@ -13,6 +13,8 @@ export interface JsonSchema {
 	default?: unknown;
 	format?: string;
 	minLength?: number;
+	/** The value must match this regular expression (a resource shape, e.g. an ID format). */
+	pattern?: string;
 	minItems?: number;
 	properties?: Record<string, JsonSchema>;
 	required?: readonly string[];

@@ -1,6 +1,11 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { toEngineConnections, type IDataObject, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	getParentNodes,
+	mapConnectionsByDestination,
+	NodeConnectionTypes,
+	safeRegex,
+} from 'n8n-workflow';
 
 import { getContract } from './contracts';
 import { getExpressionService } from './expression-check';
@@ -90,6 +95,11 @@ export function validateContractInput(value: unknown, schema: JsonSchema, path =
 		}
 		if (typeof current === 'string' && node.minLength && current.length < node.minLength) {
 			issues.push(`${at}: must not be empty`);
+		}
+		if (typeof current === 'string' && node.pattern && !safeRegex.test(node.pattern, current)) {
+			issues.push(
+				`${at}: ${JSON.stringify(current)} is not ${node['x-n8n-hint'] ?? `a match for ${node.pattern}`}`,
+			);
 		}
 		if (Array.isArray(current)) {
 			if (node.minItems && current.length < node.minItems) {

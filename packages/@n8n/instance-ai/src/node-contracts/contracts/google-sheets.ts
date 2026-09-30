@@ -20,15 +20,32 @@ const spreadsheet = variant('mode', {
 		hint: 'User picks the file at setup; do not invent IDs',
 		properties: { name: str('File name from the request, shown at setup') },
 	},
-	id: { properties: { id: str() }, required: ['id'] },
-	url: { properties: { url: str() }, required: ['url'] },
+	id: {
+		properties: {
+			id: str('a spreadsheet ID, not a URL', { pattern: '^[a-zA-Z0-9\\-_]{2,}$' }),
+		},
+		required: ['id'],
+	},
+	url: {
+		properties: {
+			// GOOGLE_DRIVE_FILE_URL_REGEX in nodes-base Google/constants.ts
+			url: str('a Google Sheets URL', {
+				pattern:
+					'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+			}),
+		},
+		required: ['url'],
+	},
 });
 
 const sheet = variant(
 	'mode',
 	{
 		name: { properties: { name: str('Exact tab name the user gave') }, required: ['name'] },
-		id: { properties: { id: str('Numeric gid') }, required: ['id'] },
+		id: {
+			properties: { id: str('a numeric sheet gid', { pattern: '^(gid=)?[0-9]+$' }) },
+			required: ['id'],
+		},
 	},
 	{ 'x-n8n-hint': 'Never assume "Sheet1"; ask when the tab name is unknown' },
 );

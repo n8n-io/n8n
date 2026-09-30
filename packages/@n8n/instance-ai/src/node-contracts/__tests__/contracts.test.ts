@@ -167,7 +167,7 @@ describe('node contracts', () => {
 			name: 'Tasks',
 			type: 'notion.databasePage.getAll',
 			parameters: {
-				database: { mode: 'id', id: 'abc' },
+				database: { mode: 'id', id: '5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e' },
 				filter: {
 					mode: 'conditions',
 					match: 'all',
@@ -275,7 +275,7 @@ describe('node contracts', () => {
 			name: 'Tasks',
 			type: 'notion.databasePage.getAll',
 			parameters: {
-				database: { mode: 'id', id: 'abc' },
+				database: { mode: 'id', id: '5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e' },
 				paging: { mode: 'all' },
 				output: { mode: 'simplified' },
 			},
@@ -443,6 +443,33 @@ export default workflow('w', 'W').add(start).to(order).to(large).onTrue(high).on
 			const { issues } = await build(json);
 			expect(issues).toEqual([expect.objectContaining({ nodeName: 'Low' })]);
 		});
+	});
+
+	it('rejects a resource value of the wrong kind', () => {
+		const contract = (id: string) => {
+			const found = CONTRACTS.find((candidate) => candidate.id === id);
+			if (!found) throw new Error(`missing ${id}`);
+			return found;
+		};
+		const notion = contract('notion.databasePage.getAll');
+		const sheets = contract('googleSheets.sheet.read');
+		const notionIssues = (id: string) =>
+			validateContractInput({ ...notion.example, database: { mode: 'id', id } }, notion.input);
+		const sheetsIssues = (id: string) =>
+			validateContractInput(
+				{ spreadsheet: { mode: 'id', id }, sheet: { mode: 'name', name: 'Leads' } },
+				sheets.input,
+			);
+
+		expect(notionIssues('5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e')).toEqual([]);
+		expect(notionIssues('https://www.notion.so/team/5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e')).toEqual([
+			expect.stringContaining('is not a Notion ID'),
+		]);
+		expect(notionIssues('={{ $json.databaseId }}')).toEqual([]);
+		expect(sheetsIssues('1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789')).toEqual([]);
+		expect(sheetsIssues('https://docs.google.com/spreadsheets/d/1AbC/edit')).toEqual([
+			expect.stringContaining('is not a spreadsheet ID, not a URL'),
+		]);
 	});
 
 	it('keeps reads of non-contract nodes loose', async () => {

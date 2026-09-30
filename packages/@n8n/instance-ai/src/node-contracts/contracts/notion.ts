@@ -3,6 +3,15 @@ import type { ActionContract, ContractInput, JsonSchema, ResourceField } from '.
 
 const CREDENTIALS = ['notionApi', 'notionOAuth2Api'];
 
+/** Resource shapes, from nodes-base Notion/shared/constants.ts. */
+const NOTION_ID_PATTERN = '[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}';
+const NOTION_ID = str('a Notion ID: 32 hex digits, dashes optional', {
+	pattern: `^${NOTION_ID_PATTERN}`,
+});
+const NOTION_PAGE_URL = str('a Notion page URL', {
+	pattern: `^(?:https|http)://(?:www\\.notion\\.(?:so|com)|app\\.notion\\.com)/(?:p/)?(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9_-]{1,}-)?${NOTION_ID_PATTERN}`,
+});
+
 const TEXT_CONDITIONS = [
 	'equals',
 	'does_not_equal',
@@ -340,7 +349,7 @@ export const notionGetManyPages: ActionContract = {
 					hint: 'User picks the database at setup; do not invent IDs',
 					properties: { name: str('Name from the request, shown at setup') },
 				},
-				id: { properties: { id: str('Data source ID the user gave') }, required: ['id'] },
+				id: { properties: { id: NOTION_ID }, required: ['id'] },
 			}),
 			filter: variant(
 				'mode',
@@ -448,8 +457,8 @@ export const notionGetPage: ActionContract = {
 	input: obj(
 		{
 			page: variant('mode', {
-				url: { properties: { url: str() }, required: ['url'] },
-				id: { properties: { id: str() }, required: ['id'] },
+				url: { properties: { url: NOTION_PAGE_URL }, required: ['url'] },
+				id: { properties: { id: NOTION_ID }, required: ['id'] },
 			}),
 			output: outputMode,
 		},
