@@ -962,6 +962,7 @@ function handleNewThreadClick() {
 							:project-id="thread.projectId"
 							@close-tab="preview.closeTab"
 							@open-tab="preview.openTab"
+							@reorder-tab="preview.reorderTab"
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview

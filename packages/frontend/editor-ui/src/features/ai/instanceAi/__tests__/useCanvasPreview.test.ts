@@ -1378,6 +1378,54 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 
+		test('reorders the tabs and keeps the active tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			registerWorkflow(ctx.thread, 'wf-3');
+			ctx.selectTab('wf-2');
+
+			ctx.reorderTab('wf-3', 0);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-3', 'wf-1', 'wf-2']);
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('saves the new order and the active tab after a reorder', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({
+					tabsStorage: { load: vi.fn().mockResolvedValue(null), save },
+				});
+				await flushPromises();
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				registerWorkflow(ctx.thread, 'wf-3');
+				ctx.selectTab('wf-2');
+				// Let the save from the selection finish, so only the reorder can save below.
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+				save.mockClear();
+
+				ctx.reorderTab('wf-3', 0);
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).toHaveBeenCalledTimes(1);
+				expect(save).toHaveBeenCalledWith({
+					tabs: [
+						{ type: 'workflow', id: 'wf-3', name: 'Workflow wf-3' },
+						{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+						{ type: 'workflow', id: 'wf-2', name: 'Workflow wf-2' },
+					],
+					closedTabs: [],
+					activeTab: { type: 'workflow', id: 'wf-2' },
+					previewOpen: true,
+				});
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		test('shows a resource picked from the project in a new tab', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
