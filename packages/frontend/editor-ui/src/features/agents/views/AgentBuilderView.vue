@@ -136,6 +136,7 @@ import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
+import { useFixWithAssistantCalloutDismissal } from '../composables/useFixWithAssistantCalloutDismissal';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
 const props = withDefaults(
@@ -326,12 +327,14 @@ const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiP
 const queuedAiHandoff = ref<{
 	context: InstanceAiHandoffContext;
 	initialDraft?: PendingComposerDraft;
+	onAccepted?: () => void;
 } | null>(null);
 watch(aiPanelRef, (panel) => {
 	if (!panel || !queuedAiHandoff.value) return;
-	const { context, initialDraft } = queuedAiHandoff.value;
+	const { context, initialDraft, onAccepted } = queuedAiHandoff.value;
 	queuedAiHandoff.value = null;
-	panel.handoff(context, initialDraft);
+	const handed = panel.handoff(context, initialDraft);
+	if (handed) onAccepted?.();
 });
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 type SidePanel = 'assistant' | 'preview';
@@ -505,9 +508,25 @@ watch(
 	{ immediate: true },
 );
 
+// Assigned once `effectiveSessionId` exists. Clicks happen after setup.
+let trackAcceptedFixHandoff: (
+	sessionId: string,
+	agentId: string,
+	toolCallIds: string[],
+) => void = () => {};
+
 async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
+	const targetAgentId = agentId.value;
+	const acceptFixHandoff = () => {
+		if (!event || !('failures' in event) || event.failures.length === 0) return;
+		trackAcceptedFixHandoff(
+			threadId,
+			targetAgentId,
+			event.failures.map((failure) => failure.toolCallId),
+		);
+	};
 	const session = currentSession.value;
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
@@ -552,7 +571,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	if (isArtifactMode.value) {
 		// The host closes the dock — only it knows whether the hand-off went
 		// through (it refuses one while its composer holds a draft).
-		emit('assistant-handoff', params);
+		emit('assistant-handoff', { ...params, onAccepted: acceptFixHandoff });
 		return;
 	}
 
@@ -572,6 +591,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	if (aiPanelRef.value) {
 		const handed = aiPanelRef.value.handoff(context, params.initialDraft);
 		if (!handed) return;
+		acceptFixHandoff();
 		// Close the preview once the assistant has the request: coming back to an
 		// open preview chat beside the assistant reads as two places to ask.
 		closePreviewDock();
@@ -579,7 +599,11 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 		// Standalone preview route: the panel isn't mounted here. Queue the
 		// hand-off and close the dock — on this route that navigates back to
 		// the builder, which mounts the panel and applies the queue.
-		queuedAiHandoff.value = { context, initialDraft: params.initialDraft };
+		queuedAiHandoff.value = {
+			context,
+			initialDraft: params.initialDraft,
+			onAccepted: acceptFixHandoff,
+		};
 		closePreviewDock();
 	}
 
@@ -659,6 +683,9 @@ const {
 	projectId,
 	agentId,
 });
+const { dismissedToolCallIds: dismissedFixToolCallIds, trackAcceptedFixHandoff: trackFixHandoff } =
+	useFixWithAssistantCalloutDismissal(effectiveSessionId);
+trackAcceptedFixHandoff = trackFixHandoff;
 const previewSessionsLoading = computed(
 	() => sessionsStore.loading || sessionsStore.previewLoading,
 );
@@ -2817,6 +2844,7 @@ useKeybindings({
 					:effective-session-id="effectiveSessionId"
 					:new-session="currentSessionIsEphemeral"
 					:can-send-to-assistant="instanceAiAvailable"
+					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
@@ -2919,6 +2947,7 @@ useKeybindings({
 						:can-delete-session="canDeletePreviewSession"
 						:is-deleting-session="isDeletingSession"
 						:can-send-to-assistant="instanceAiAvailable"
+						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 						:before-send="beforePreviewSend"
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"
