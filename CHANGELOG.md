@@ -1,3 +1,11 @@
+## [1.123.83](https://github.com/n8n-io/n8n/compare/n8n@1.123.82...n8n@1.123.83) (2026-09-30)
+
+
+### Bug Fixes
+
+* Pin cjs-module-lexer 2.2.0 to address review finding ([76e467d](https://github.com/n8n-io/n8n/commit/76e467dc14c2522432aa692f824d80a5d5f70c59))
+
+
 ## [1.123.82](https://github.com/n8n-io/n8n/compare/n8n@1.123.81...n8n@1.123.82) (2026-09-25)
 
 
