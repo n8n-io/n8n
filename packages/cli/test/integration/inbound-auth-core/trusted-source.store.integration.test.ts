@@ -2,7 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
-import { trustedSourceConfigSchemaFor, type SurfaceId } from '@n8n/inbound-auth';
+import {
+	trustedSourceConfigSchemaFor,
+	type SurfaceId,
+	type TrustedSourceConfigInput,
+} from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 
@@ -26,7 +30,7 @@ let bindings: Repository<TrustedSourceIdentityEntity>;
 
 const minimalConfig = (
 	surfaces: Partial<Record<SurfaceId, { audiences?: string[] }>> = { 'public-api': {} },
-) => ({
+): TrustedSourceConfigInput => ({
 	version: 1,
 	authentication: { type: 'oauth2' },
 	surfaces,
@@ -90,6 +94,9 @@ afterAll(async () => {
 describe('TrustedSourceStore (integration)', () => {
 	describe('create', () => {
 		it('persists an encrypted, defaulted admin source and returns the runtime shape', async () => {
+			// Prime the list, so the test fails if `create` stops invalidating it.
+			expect(await store.listBySurface('public-api')).toEqual([]);
+
 			const source = await store.create({
 				name: 'Acme',
 				issuer: 'https://acme.example.com',
@@ -123,6 +130,7 @@ describe('TrustedSourceStore (integration)', () => {
 				updatedAt: row.updatedAt.toISOString(),
 			});
 			expect(source.config.authentication.clockSkewSeconds).toBe(60);
+			expect(ids(await store.listBySurface('public-api'))).toEqual([source.id]);
 		});
 
 		it('refuses a system-only field on an admin source and inserts nothing', async () => {
@@ -225,6 +233,8 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.getByIssuer(bad.issuer)).toBeUndefined();
 			expect(ids(await store.listBySurface('public-api'))).toEqual([good.id]);
 
+			// One warning per read path; the good row never warns.
+			expect(warn).toHaveBeenCalledTimes(3);
 			expect(warn).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ id: bad.id }),

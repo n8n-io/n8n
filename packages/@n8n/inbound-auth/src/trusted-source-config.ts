@@ -150,6 +150,7 @@ export const TrustedSourceConfigV1Schema = z.object({
 });
 export type TrustedSourceConfigV1 = z.infer<typeof TrustedSourceConfigV1Schema>;
 export type TrustedSourceConfigV1Input = z.input<typeof TrustedSourceConfigV1Schema>;
+export type TrustedSourceConfigInput = z.input<typeof TrustedSourceConfigSchema>;
 
 const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
 	code: z.ZodIssueCode.custom,

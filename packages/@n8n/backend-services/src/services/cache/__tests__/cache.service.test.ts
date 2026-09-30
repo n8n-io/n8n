@@ -162,6 +162,15 @@ for (const backend of ['memory', 'redis'] as const) {
 				await expect(promise).resolves.toBe('refreshValue');
 			});
 
+			test('should honor ttl on a refreshed value', async () => {
+				const promise = cacheService.get('key', { refreshFn: createRefreshFn(), ttl: 100 });
+				await expect(promise).resolves.toBe('refreshValue');
+
+				await sleep(200);
+
+				await expect(cacheService.get('key')).resolves.toBeUndefined();
+			});
+
 			test('should handle non-ASCII key', async () => {
 				const nonAsciiKey = 'ԱԲԳ';
 				await cacheService.set(nonAsciiKey, 'value');

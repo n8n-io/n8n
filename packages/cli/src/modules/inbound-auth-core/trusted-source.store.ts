@@ -5,6 +5,7 @@ import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
 	type SurfaceId,
+	type TrustedSourceConfigInput,
 	type TrustedSourceConfigLatest,
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -44,8 +45,12 @@ export type TrustedSource = {
 	config: TrustedSourceConfigLatest;
 };
 
-/** `config` is validated by the store, so it is `unknown` at this boundary. */
-export type CreateTrustedSourceInput = { name: string; issuer: string; config: unknown };
+/** The store still validates `config`: the admin-vs-system rules depend on the row, not the type. */
+export type CreateTrustedSourceInput = {
+	name: string;
+	issuer: string;
+	config: TrustedSourceConfigInput;
+};
 export type UpdateTrustedSourceInput = Partial<CreateTrustedSourceInput>;
 
 export class SystemTrustedSourceModificationError extends UserError {
@@ -97,8 +102,9 @@ export class TrustedSourceStore {
 	}
 
 	async create(input: CreateTrustedSourceInput): Promise<TrustedSource> {
-		// Persist the parsed output, not the raw input: a later default change must not alter stored rows.
-		const config = trustedSourceConfigSchemaFor('admin').parse(input.config);
+		// Persist the parsed, migrated output, not the raw input: stored rows hold the latest version
+		// with defaults filled in, so a later default change must not alter them.
+		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config));
 		const row = await this.trustedSourceRepository.insertRow({
 			name: input.name,
 			issuer: input.issuer,
@@ -111,7 +117,7 @@ export class TrustedSourceStore {
 			config: await this.cipher.encryptV2(config),
 		});
 		await this.invalidateCache(row);
-		return this.toRuntime(row, migrateToLatest(config));
+		return this.toRuntime(row, config);
 	}
 
 	async update(
@@ -124,7 +130,9 @@ export class TrustedSourceStore {
 		if (input.name !== undefined) changes.name = input.name;
 		if (input.issuer !== undefined) changes.issuer = input.issuer;
 		if (input.config !== undefined) {
-			const config = trustedSourceConfigSchemaFor(row.managedBy).parse(input.config);
+			const config = migrateToLatest(
+				trustedSourceConfigSchemaFor(row.managedBy).parse(input.config),
+			);
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
 		}
