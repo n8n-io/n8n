@@ -3,6 +3,7 @@ import type {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 } from '@n8n/api-types';
+import type { APIResponse } from '@playwright/test';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -110,6 +111,19 @@ export class CredentialApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	/** Like {@link createCredential}, but returns the raw response — for asserting a refused create. */
+	async createCredentialRaw(credential: CreateCredentialDto): Promise<APIResponse> {
+		return await this.api.request.post('/rest/credentials', { data: credential });
+	}
+
+	/** Sends the whole payload the editor route needs, and returns the raw response. */
+	async updateCredentialRaw(
+		credentialId: string,
+		credential: CreateCredentialDto,
+	): Promise<APIResponse> {
+		return await this.api.request.patch(`/rest/credentials/${credentialId}`, { data: credential });
 	}
 
 	/**

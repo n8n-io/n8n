@@ -3,6 +3,7 @@ import type {
 	ExecutionOptions,
 	ResumeOptions,
 	RunOptions,
+	SideCallUsageReport,
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
@@ -16,6 +17,8 @@ import { AgentExecutionRecordingError } from './agent-execution-recording.error'
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentMessageSteeringService } from './agent-message-steering.service';
+import type { AgentExecutionStreamChunk, SteeredMessageEvent } from './types/agent-steering';
 import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
 import {
 	AgentExecutionService,
@@ -25,7 +28,9 @@ import {
 import { buildToolCallDetails, ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
 import { streamAgentChunks } from './utils/agent-stream';
+import { MAX_ITERATIONS_STOPPED_MESSAGE } from './utils/fatal-session-outcome';
 import { createAttributionTracker } from './utils/mcp-attribution';
+import { bindExecutionInput } from './utils/execution-input';
 
 type RecordingContext = Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>;
 
@@ -53,13 +58,15 @@ interface ExecuteTurnConfig {
 	includeHitlToolDetails?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	previewChat?: boolean;
+	productionN8nChat?: boolean;
 	automaticPreviewContinuation?: boolean;
-	onExecutionStarted?: (executionId: string, sessionId: string) => void;
+	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
 }
 
 interface TurnExecutionState {
+	steeredMessages: Map<string, SteeredMessageEvent>;
 	executionId?: string;
 	executionStarted: boolean;
 	executionError?: unknown;
@@ -96,7 +103,7 @@ function getMaxIterationsChunks(): StreamChunk[] {
 		{
 			type: 'text-delta',
 			id,
-			delta: 'The agent has reached the maximum number of iterations and has stopped.',
+			delta: MAX_ITERATIONS_STOPPED_MESSAGE,
 		},
 		{ type: 'text-end', id },
 	];
@@ -109,16 +116,18 @@ export class AgentTurnExecutionService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
+		private readonly steering: AgentMessageSteeringService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
 		return await this.agentExecutionService.getSessionMode(threadId);
 	}
 
-	async *execute(config: ExecuteTurnConfig): AsyncGenerator<StreamChunk> {
+	async *execute(config: ExecuteTurnConfig): AsyncGenerator<AgentExecutionStreamChunk> {
 		let turn: AgentTurnRequest | undefined;
 		let previewControl: PreviewExecutionControl | undefined;
 		const state: TurnExecutionState = {
+			steeredMessages: new Map(),
 			executionStarted: false,
 			receivedFinish: false,
 			executionId: config.admittedExecution?.executionId,
@@ -134,7 +143,7 @@ export class AgentTurnExecutionService {
 		try {
 			turn = await config.prepare();
 			const preparedTurn = turn;
-			if (config.previewChat) {
+			if (config.previewChat || config.productionN8nChat) {
 				previewControl = this.createPreviewExecutionControl(preparedTurn);
 				preparedTurn.options.abortSignal = previewControl.controller.signal;
 			}
@@ -205,10 +214,22 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-	): AsyncGenerator<StreamChunk> {
+	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
 		for await (const value of streamAgentChunks(stream)) {
+			if (value.type === 'input-boundary') {
+				value.acknowledge();
+				continue;
+			}
+			if (value.type === 'input') {
+				const event = state.steeredMessages.get(value.message.id);
+				if (event) {
+					state.steeredMessages.delete(value.message.id);
+					yield event;
+				}
+				continue;
+			}
 			const chunk = config.includeHitlToolDetails
 				? withApprovalToolDetails(value, config.toolRegistry)
 				: value;
@@ -238,7 +259,7 @@ export class AgentTurnExecutionService {
 	): Promise<void> {
 		const finalize = async () =>
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
-		if (config.previewChat) {
+		if (config.previewChat || config.productionN8nChat) {
 			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
 		} else {
 			await finalize();
@@ -303,7 +324,7 @@ export class AgentTurnExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 		executionError?: unknown,
-	): Promise<string> {
+	): Promise<AgentExecutionAdmission> {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (cause) {
@@ -363,7 +384,7 @@ export class AgentTurnExecutionService {
 				params: { ...params, record: recorder.getMessageRecord() },
 			});
 		};
-		const executionId = await recordStart();
+		const { executionId } = await recordStart();
 		try {
 			await recordFailure(executionId);
 		} finally {
@@ -378,11 +399,10 @@ export class AgentTurnExecutionService {
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
-		const executionId =
-			config.admittedExecution?.executionId ??
-			(await this.recordTurnStart(turn, config, recorder, state));
-		state.executionId = executionId;
-		return await this.startAcceptedTurn(executionId, turn, config, recorder, state, previewControl);
+		const admission =
+			config.admittedExecution ?? (await this.recordTurnStart(turn, config, recorder, state));
+		state.executionId = admission.executionId;
+		return await this.startAcceptedTurn(admission, turn, config, recorder, state, previewControl);
 	}
 
 	private async recordTurnStart(
@@ -390,11 +410,12 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-	): Promise<string> {
+	): Promise<AgentExecutionAdmission> {
 		turn.options.abortSignal?.throwIfAborted();
-		const id = await this.startExecution(
+		const admission = await this.startExecution(
 			{
 				...turn.recording,
+				previewChat: config.previewChat,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
 				allowSuspendedPredecessor: config.automaticPreviewContinuation,
 				...(config.backgroundJobSignal
@@ -403,19 +424,21 @@ export class AgentTurnExecutionService {
 			},
 			recorder.startedAt,
 		);
-		state.executionId = id;
+		state.executionId = admission.executionId;
 		turn.options.abortSignal?.throwIfAborted();
-		return id;
+		return admission;
 	}
 
 	private async startAcceptedTurn(
-		executionId: string,
+		admission: AgentExecutionAdmission,
 		turn: AgentTurnRequest,
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 		previewControl?: PreviewExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
+		const { executionId, inputMessageIds } = admission;
+		if (turn.type === 'start') turn.input = bindExecutionInput(turn.input, inputMessageIds);
 		const executionSignal = this.agentExecutionService.getAbortSignal(executionId);
 		turn.options.abortSignal = turn.options.abortSignal
 			? AbortSignal.any([turn.options.abortSignal, executionSignal])
@@ -431,17 +454,43 @@ export class AgentTurnExecutionService {
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
 		}
+		if (config.previewChat && previewControl) {
+			turn.options.onInputBoundary = async (boundary) => {
+				const result = await this.steering.consume(
+					{ ...config.context, executionId, userId: previewControl.userId },
+					boundary,
+					recorder,
+					turn.options.abortSignal!,
+				);
+				if (result.stopped) previewControl.controller.abort();
+				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
+				return result.messages;
+			};
+		}
 		if (previewControl) {
 			this.chatExecutionService.register(
-				{ ...config.context, userId: previewControl.userId, executionId },
+				{
+					...config.context,
+					userId: previewControl.userId,
+					executionId,
+					...(config.productionN8nChat ? { productionN8nChat: true } : {}),
+				},
 				previewControl.controller,
 			);
 			previewControl.detachRequest();
 		}
-		config.onExecutionStarted?.(executionId, config.context.threadId);
+		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();
 		await config.onAdmitted?.();
 		turn.options.abortSignal?.throwIfAborted();
+		// Forward side-call model costs (title generation, observation-log
+		// observer/reflector, episodic-memory model calls) onto this execution
+		// row and its thread. The SDK prices each call; the host only adds the
+		// cost. Best-effort and idempotent per reportId.
+		const threadId = config.context.threadId;
+		turn.options.onSideCallUsage = (report: SideCallUsageReport) => {
+			void this.agentExecutionService.recordSideCallUsage(executionId, threadId, report);
+		};
 		return await this.startTurn(turn, config, recorder, state);
 	}
 

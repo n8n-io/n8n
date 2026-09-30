@@ -3,6 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 import { OperationalError, type Logger } from 'n8n-workflow';
 
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
@@ -38,6 +39,8 @@ interface AgentChatStreamConsumerOptions {
 	 * tools returning a `silent` field must not mute the reply.
 	 */
 	isIntegrationActionTool?: (toolName: string) => boolean;
+	/** Text after the first streamed run is buffered and posted on its own. */
+	singleStreamedRunPerTurn?: boolean;
 }
 
 interface ConsumeStreamOptions {
@@ -90,7 +93,7 @@ export class AgentChatStreamConsumer {
 	constructor(private readonly options: AgentChatStreamConsumerOptions) {}
 
 	async consume(
-		stream: AsyncGenerator<StreamChunk>,
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
@@ -109,6 +112,14 @@ export class AgentChatStreamConsumer {
 			end: null,
 		};
 		let streamingPost: Promise<unknown> | null = null;
+		/** Text the platform is not yet known to have rendered. */
+		let pendingText = '';
+		let streamingStopped = false;
+		/** Only a platform that can stop streaming mid-turn re-reads the text. */
+		const retainText = this.options.singleStreamedRunPerTurn === true;
+		/** Set when the post failed, so the retained text is posted instead. */
+		let streamingPostRejected = false;
+		let streamingPostError: unknown;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -155,8 +166,11 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
-			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
-				await this.options.postErrorToThread(thread, postError);
+			streamingPostRejected = false;
+			streamingPostError = undefined;
+			streamingPost = thread.post(iterable).catch((postError: unknown) => {
+				streamingPostRejected = true;
+				streamingPostError = postError;
 				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
 					error: postError instanceof Error ? postError.message : String(postError),
 				});
@@ -170,13 +184,28 @@ export class AgentChatStreamConsumer {
 				textStream.yield = null;
 			}
 			if (streamingPost) {
-				await streamingPost;
+				const post = streamingPost;
 				streamingPost = null;
+				if (this.options.singleStreamedRunPerTurn) streamingStopped = true;
+				await post;
+				// A post that rejected left the reply unsent — on a post-and-edit
+				// platform the user is looking at a placeholder. Post the retained
+				// text below instead of dropping it, and fall back to telling the
+				// user only when there is no text to deliver.
+				if (!streamingPostRejected) {
+					pendingText = '';
+				} else if (!pendingText.trim()) {
+					await this.options.postErrorToThread(thread, streamingPostError);
+				}
 			}
+			const text = pendingText;
+			pendingText = '';
+			if (text.trim()) await this.postBufferedText(thread, text);
 		};
 
 		// Don't start streaming post eagerly — wait for first text delta
 		const ensureStreamingPost = () => {
+			if (streamingStopped) return;
 			if (!streamingPost) startStreamingPost();
 		};
 		const responseLifecycle = this.createResponseLifecycle({
@@ -192,7 +221,11 @@ export class AgentChatStreamConsumer {
 					case 'text-delta': {
 						if (responseState.suppressText) break;
 						const { delta } = chunk;
+						// Opening on whitespace alone posts a placeholder that the
+						// platform then has nothing to replace it with.
+						if (!delta.trim() && !responseState.hasVisibleResponse) break;
 						await responseLifecycle.startStreamingResponse();
+						if (retainText) pendingText += delta;
 						textStream.yield?.(delta);
 						if (delta.trim()) responseState.hasVisibleResponse = true;
 						break;
@@ -219,7 +252,12 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'tool-result':
 						this.noteToolResult(chunk, responseState);
-						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
+						if (this.isSilentOutcome(chunk)) {
+							responseState.suppressText = true;
+							// Whatever already reached the platform cannot be recalled, but
+							// text still pending can be dropped.
+							pendingText = '';
+						}
 						break;
 					default:
 						// Ignore non-user-visible chunks (reasoning, finish,
@@ -230,6 +268,26 @@ export class AgentChatStreamConsumer {
 			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
 		} finally {
 			await responseLifecycle.finish();
+		}
+	}
+
+	/**
+	 * `{ markdown }` matches what Chat SDK's streaming path sends, so the adapter
+	 * applies its markdown parse mode. A raw string renders as plain text.
+	 */
+	private async postBufferedText(
+		thread: Thread<unknown, unknown>,
+		text: string,
+		throwOnDeliveryError = false,
+	): Promise<void> {
+		try {
+			await thread.post({ markdown: text });
+		} catch (postError: unknown) {
+			this.options.logger.error('[AgentChatBridge] Buffered post failed', {
+				error: postError instanceof Error ? postError.message : String(postError),
+			});
+			if (throwOnDeliveryError) throw postError;
+			await this.options.postErrorToThread(thread, postError);
 		}
 	}
 
@@ -321,7 +379,7 @@ export class AgentChatStreamConsumer {
 	}
 
 	private async consumeBuffered(
-		stream: AsyncGenerator<StreamChunk>,
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
@@ -335,21 +393,8 @@ export class AgentChatStreamConsumer {
 			const text = buffer;
 			buffer = '';
 			if (!text.trim()) return;
-			try {
-				await responseLifecycle.startDiscreteResponse();
-				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
-				// so the platform adapter applies its markdown parse-mode (Telegram:
-				// sendMessage with parse_mode=Markdown). A raw string bypasses that
-				// and renders as plain text, so we post the buffered message the same
-				// shape the streaming path uses under the hood.
-				await thread.post({ markdown: text });
-			} catch (postError: unknown) {
-				this.options.logger.error('[AgentChatBridge] Buffered post failed', {
-					error: postError instanceof Error ? postError.message : String(postError),
-				});
-				if (options.throwOnDeliveryError) throw postError;
-				await this.options.postErrorToThread(thread, postError);
-			}
+			await responseLifecycle.startDiscreteResponse();
+			await this.postBufferedText(thread, text, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
 

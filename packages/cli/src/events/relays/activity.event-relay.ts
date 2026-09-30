@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
@@ -11,7 +12,6 @@ import type { ActivityEventInput } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 import { PostHogClient } from '@/posthog';

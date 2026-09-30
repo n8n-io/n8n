@@ -2,17 +2,15 @@ import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import SettingsMCPWorkflowsView from '@/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
-import {
-	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 
@@ -41,7 +39,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
-let uiStore: MockedStore<typeof useUIStore>;
+const modalOpeners = { openModal: vi.fn(), openModalWithData: vi.fn() };
 
 const createComponent = createComponentRenderer(SettingsMCPWorkflowsView, {
 	global: {
@@ -49,7 +47,12 @@ const createComponent = createComponentRenderer(SettingsMCPWorkflowsView, {
 			WorkflowsTable: {
 				inheritAttrs: true,
 				template:
-					'<div><button data-test-id="workflows-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button><button data-test-id="workflows-table-page-size-50" @click="$emit(\'update:options\', { page: 3, itemsPerPage: 50, sortBy: [] })">Page size 50</button><button data-test-id="workflows-table-bulk-remove" @click="$emit(\'bulkRemoveMcpAccess\', [\'wf-1\', \'wf-2\'])">Bulk remove</button>Workflows Table</div>',
+					"<div><button data-test-id=\"workflows-table-page-2\" @click=\"$emit('update:options', { page: 1, itemsPerPage: 10, sortBy: [] })\">Page 2</button><button data-test-id=\"workflows-table-page-size-50\" @click=\"$emit('update:options', { page: 3, itemsPerPage: 50, sortBy: [] })\">Page size 50</button><button data-test-id=\"workflows-table-bulk-remove\" @click=\"$emit('bulkRemoveMcpAccess', ['wf-1', 'wf-2'])\">Bulk remove</button><button data-test-id=\"workflows-table-edit-description\" @click=\"$emit('updateDescription', { id: '1', name: 'Workflow 1', description: 'Old' })\">Edit description</button>Workflows Table</div>",
+			},
+			MCPConnectWorkflowsModal: {
+				props: ['open', 'enableMcpAccess'],
+				template:
+					'<div v-if="open" data-test-id="mcp-connect-workflows-dialog-stub"><button data-test-id="stub-enable-access" @click="enableMcpAccess([\'wf-1\', \'wf-2\'])">Enable</button></div>',
 			},
 		},
 	},
@@ -62,7 +65,7 @@ describe('SettingsMCPWorkflowsView', () => {
 		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
-		uiStore = mockedStore(useUIStore);
+		capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 
 		settingsStore.settings = {
 			enterprise: {},
@@ -83,6 +86,7 @@ describe('SettingsMCPWorkflowsView', () => {
 	});
 
 	afterEach(() => {
+		capabilityRegistry.clear();
 		vi.clearAllMocks();
 	});
 
@@ -176,14 +180,7 @@ describe('SettingsMCPWorkflowsView', () => {
 			});
 			await userEvent.click(getByTestId('mcp-connect-workflows-header-button'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-					data: expect.objectContaining({
-						onEnableMcpAccess: expect.any(Function),
-					}),
-				}),
-			);
+			expect(getByTestId('mcp-connect-workflows-dialog-stub')).toBeInTheDocument();
 		});
 	});
 
@@ -210,19 +207,17 @@ describe('SettingsMCPWorkflowsView', () => {
 				expect(getByTestId('mcp-connect-workflows-header-button')).toBeVisible();
 			});
 			await userEvent.click(getByTestId('mcp-connect-workflows-header-button'));
-
-			const modalCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0] as unknown as {
-				data: { onEnableMcpAccess: (workflowIds: string[]) => Promise<void> };
-			};
 			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
 
-			await modalCall.data.onEnableMcpAccess(['wf-1', 'wf-2']);
+			await userEvent.click(getByTestId('stub-enable-access'));
 
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
+			});
 			expect(mcpStore.toggleWorkflowsMcpAccess).toHaveBeenCalledWith(
 				{ workflowIds: ['wf-1', 'wf-2'] },
 				true,
 			);
-			expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 		});
 
 		it('should remove MCP access for bulk-selected workflows and refresh the table', async () => {
@@ -240,6 +235,25 @@ describe('SettingsMCPWorkflowsView', () => {
 			});
 			await waitFor(() => {
 				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('Edit description', () => {
+		it('should open the workflow description modal through the modal openers capability', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByTestId('workflows-table-edit-description'));
+
+			expect(modalOpeners.openModalWithData).toHaveBeenCalledWith({
+				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+				data: expect.objectContaining({
+					workflowId: '1',
+					workflowName: 'Workflow 1',
+					workflowDescription: 'Old',
+					onSave: expect.any(Function),
+				}),
 			});
 		});
 	});

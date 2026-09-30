@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowPublishHistoryRepository } from '@n8n/db';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as credentialSharing from '@/constants/credential-sharing';
@@ -73,6 +74,50 @@ describe('WorkflowPublisherService', () => {
 			'Failed to resolve the publishing user for a triggered execution',
 			{ workflowId, error: 'connection lost' },
 		);
+	});
+
+	// A wait resume and bootup recovery rebuild the run from the stored row, where
+	// the acting user is not a field. Without deriving it again, the run comes back
+	// unattributed and a credential only its publisher may use is refused halfway.
+	describe('findActingUserIdForRestart', () => {
+		it('prefers the user a manual run recorded', async () => {
+			await expect(
+				service.findActingUserIdForRestart({
+					workflowData: { id: workflowId, versionId: 'version-9' },
+					data: { manualData: { userId: 'the-clicker' } },
+				}),
+			).resolves.toBe('the-clicker');
+
+			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the publisher of the version being run', async () => {
+			publishHistoryRepository.findPublisherUserId.mockResolvedValue('the-publisher');
+
+			await expect(
+				service.findActingUserIdForRestart({
+					workflowData: { id: workflowId, versionId: 'version-9' },
+					data: {},
+				}),
+			).resolves.toBe('the-publisher');
+
+			expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(
+				workflowId,
+				'version-9',
+			);
+		});
+
+		it('returns nothing for an execution with no workflow id to ask about', async () => {
+			await expect(
+				service.findActingUserIdForRestart({
+					// An unsaved workflow: `IWorkflowBase.id` is optional.
+					workflowData: { versionId: 'version-9' } as IWorkflowBase,
+					data: {},
+				}),
+			).resolves.toBeUndefined();
+
+			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
+		});
 	});
 
 	// The single gate for this behaviour, so every call site stays unconditional.

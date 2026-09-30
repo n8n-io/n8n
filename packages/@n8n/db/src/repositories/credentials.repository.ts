@@ -1,11 +1,12 @@
-import { assertClearedFor, credentialContentSubject } from '@n8n/decorators';
+import { assertClearedFor, credentialContentSubject, credentialSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	CredentialsEntity,
@@ -35,6 +36,13 @@ export class CredentialIdConflictError extends UserError {
 }
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
+
+/**
+ * An import payload the clearance can bind to: `type` is what the subject hashes, and `id` is
+ * concrete rather than the function form a `QueryDeepPartialEntity` would otherwise allow.
+ */
+type UpsertableCredentialContent = QueryDeepPartialEntity<CredentialsEntity> &
+	Pick<CredentialsEntity, 'type'> & { id?: string };
 
 export type CredentialSharingRelation =
 	| 'shared'
@@ -236,6 +244,32 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	): Promise<void> {
 		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
 		await this.managerFor(ctx).update(CredentialsEntity, id, content);
+	}
+
+	/**
+	 * Persists an imported credential row, gated on a clearance for `contentImport`. Binds to the
+	 * id when there is one, else to the type hash, same as `WorkflowRepository`.
+	 */
+	async upsertImportedContent(
+		content: UpsertableCredentialContent,
+		ctx: OperationContext,
+	): Promise<string> {
+		assertClearedFor(
+			ctx.policyCleared,
+			'contentImport',
+			credentialSubject({ id: content.id ?? null, type: content.type }),
+		);
+
+		// A plain object skips the entity's `@BeforeInsert` id generation, and the column has no default.
+		const row = { ...content, id: content.id ?? generateNanoId() };
+		const result = await this.managerFor(ctx).upsert(CredentialsEntity, row, ['id']);
+		const id = result.identifiers.at(0)?.id;
+
+		if (typeof id !== 'string') {
+			throw new UnexpectedError('Upsert of an imported credential returned no id');
+		}
+
+		return id;
 	}
 
 	async saveInstanceCredential(

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -13,7 +14,6 @@ import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { jsonParse, type INode } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';

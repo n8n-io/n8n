@@ -5,6 +5,8 @@ import type {
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
+	AgentChatQueueSteerDto,
+	AgentChatResumeDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -146,10 +148,9 @@ export const duplicateAgent = async (
 	// time (and break the source's channel). Blank to drafts so the builder
 	// opens the copy with a "connect a channel" chip instead.
 	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = configResponse.config;
-	const draftIntegrations = (sourceIntegrations ?? []).map((integration) => ({
-		...integration,
-		credentialId: '',
-	}));
+	const draftIntegrations = (sourceIntegrations ?? []).map((integration) =>
+		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
+	);
 	return await createAgent(context, projectId, name, {
 		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,
@@ -547,6 +548,21 @@ export const getAgentBackgroundJobs = async (
 	);
 };
 
+export const resumeAgentBackgroundJob = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	payload: AgentChatResumeDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
+		payload,
+	);
+};
+
 export const getAgentChatQueue = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -587,6 +603,22 @@ export const removeAgentQueuedMessage = async (
 		context,
 		'DELETE',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+	);
+};
+
+export const steerAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueSteerDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
+		payload,
 	);
 };
 

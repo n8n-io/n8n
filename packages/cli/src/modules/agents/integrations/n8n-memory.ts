@@ -11,7 +11,6 @@ import {
 	supersededLifecycleState,
 	uniqueStrings,
 	type AgentDbMessage,
-	type AgentMessage,
 	type BuiltEpisodicMemoryCaptureStore,
 	type BuiltEpisodicMemoryStore,
 	type BuiltMemory,
@@ -40,12 +39,11 @@ import {
 	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
-	stripHydratedFileData,
 } from '@n8n/agents';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
-import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
+import { In, IsNull, Like } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -70,6 +68,7 @@ import { AgentObservationLockRepository } from '../repositories/agent-observatio
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import {
 	episodicMemoryWriteScopeId,
 	isIntegrationMemoryResourceId,
@@ -258,68 +257,26 @@ export class N8nMemoryImpl
 		// isolated by resource, including when the resource id is an empty string.
 		const filterByResource =
 			opts?.resourceId !== undefined && !isIntegrationMemoryResourceId(opts.resourceId);
-		const where: FindOptionsWhere<AgentMessageEntity> = {
-			threadId,
-			...(opts?.before && { createdAt: LessThan(opts.before) }),
-			...(filterByResource && { resourceId: opts.resourceId }),
-		};
-
-		const entities = await this.messageRepository.find({
-			where,
-			order: { createdAt: opts?.limit !== undefined ? 'DESC' : 'ASC' },
-			...(opts?.limit !== undefined && { take: opts.limit }),
-		});
-		if (opts?.limit !== undefined) {
-			entities.reverse();
-		}
+		const entities = await this.messageRepository.findRuntimeMessages(
+			{ threadId, ...(filterByResource && { resourceId: opts?.resourceId }) },
+			opts,
+		);
 
 		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
-	async saveMessages(args: {
-		threadId: string;
-		resourceId: string;
-		messages: AgentDbMessage[];
-	}): Promise<void> {
-		if (args.messages.length === 0) return;
-
-		// Upsert by id — bulk INSERT … ON CONFLICT (id) DO UPDATE avoids the
-		// per-row SELECT that save() performs. createdAt is passed explicitly so
-		// the column is preserved on conflict; updatedAt is set manually because
-		// the @BeforeUpdate hook does not fire during upsert.
-		const now = new Date();
-		const entities = args.messages.map((message) => {
-			const dbMsg = stripHydratedFileData(message);
-			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
-			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
-			return {
-				id: dbMsg.id,
-				threadId: args.threadId,
-				resourceId: args.resourceId,
-				role,
-				type: type ?? null,
-				content: dbMsg as unknown as Record<string, unknown>,
-				createdAt: dbMsg.createdAt,
-				updatedAt: now,
-			} as QueryDeepPartialEntity<AgentMessageEntity>;
+	async saveMessages(args: Parameters<BuiltMemory['saveMessages']>[0]): Promise<void> {
+		const executionId = args.hostMetadata?.[EXECUTION_METADATA_KEY];
+		await this.messageRepository.saveRuntimeMessages({
+			threadId: args.threadId,
+			resourceId: args.resourceId,
+			messages: args.messages,
+			...(typeof executionId === 'string' && { executionId }),
 		});
-
-		await this.messageRepository.upsert(entities, ['id']);
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
-		if (messageIds.length === 0) return;
-		await this.messageRepository.delete(messageIds);
-	}
-
-	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
-		// Mirrors `getMessages`: explicit `!== undefined` check so that a falsy
-		// (empty-string) `resourceId` cannot accidentally delete every user's
-		// messages on a shared thread.
-		await this.messageRepository.delete({
-			threadId,
-			...(resourceId !== undefined && { resourceId }),
-		});
+		await this.messageRepository.discardRuntimeInput(messageIds);
 	}
 
 	// ── Observation log ──────────────────────────────────────────────────
@@ -377,24 +334,10 @@ export class N8nMemoryImpl
 		observationScopeId: string,
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]> {
-		const baseWhere: FindOptionsWhere<AgentMessageEntity> = {
-			threadId: observationScopeId,
-		};
-		const where: Array<FindOptionsWhere<AgentMessageEntity>> = opts?.since
-			? [
-					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
-					{
-						...baseWhere,
-						createdAt: Equal(opts.since.sinceCreatedAt),
-						id: MoreThan(opts.since.sinceMessageId),
-					},
-				]
-			: [baseWhere];
-
-		const entities = await this.messageRepository.find({
-			where,
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		const entities = await this.messageRepository.findRuntimeMessages(
+			{ threadId: observationScopeId },
+			opts,
+		);
 		return entities.map((e) => this.toAgentDbMessage(e));
 	}
 
@@ -1009,10 +952,11 @@ export class N8nMemoryImpl
 	// ── Helpers ──────────────────────────────────────────────────────────
 
 	private toAgentDbMessage(entity: AgentMessageEntity): AgentDbMessage {
-		const msg = entity.content as AgentMessage & { id?: string; createdAt?: Date };
-		msg.id = entity.id;
-		msg.createdAt = entity.createdAt;
-		return msg as AgentDbMessage;
+		return {
+			...(entity.modelContent ?? entity.content),
+			id: entity.id,
+			createdAt: entity.modelContextAt ?? entity.createdAt,
+		};
 	}
 
 	private toObservationLogEntry(entity: AgentObservationEntity): ObservationLogEntry {

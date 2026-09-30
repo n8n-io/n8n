@@ -25,6 +25,7 @@ nodelinter.config.json
 !.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
+.build/
 .stryker-tmp/
 **/reports/mutation/
 *.tsbuildinfo
@@ -38,6 +39,7 @@ build.log
 tcr-dry.log
 .agent-setup/
 .agent-recordings/
+.vitest-profile/
 .pi-subagents/
 sbom-source.cdx.json
 *.junit.xml

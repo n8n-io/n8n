@@ -2,7 +2,7 @@
 import MarkdownIt from 'markdown-it';
 import type { Token } from 'markdown-it';
 
-const ADR_REFERENCE = /\bADR-\d{8}-[a-z0-9]+(?:-[a-z0-9]+)*\b/g;
+const ADR_REFERENCE = /\bADR-\d{8}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?\b/g;
 const HAS_ADR_REFERENCE = /\bADR-\d{8}-[a-z0-9]+(?:-[a-z0-9]+)*\b/;
 export const REQUIRED_SECTIONS = [
 	'## Context',

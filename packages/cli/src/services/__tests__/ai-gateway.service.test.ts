@@ -9,11 +9,11 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
