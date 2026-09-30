@@ -165,7 +165,9 @@ export declare namespace LogStreamingRequest {
 export declare namespace OtelSettingsRequest {
 	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
+}
 
+// ----------------------------------
 //        /settings/sso/saml
 // ----------------------------------
 
