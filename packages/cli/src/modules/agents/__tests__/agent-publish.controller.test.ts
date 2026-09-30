@@ -2,7 +2,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { LockedError } from '@n8n/errors';
 
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';

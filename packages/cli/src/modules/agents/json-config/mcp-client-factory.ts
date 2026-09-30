@@ -8,11 +8,7 @@ import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import {
-	getMcpAuthHeaders,
-	isMcpOAuth2Authentication,
-	OperationalError,
-} from 'n8n-workflow';
+import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import {
@@ -113,6 +109,7 @@ export async function buildMcpClientForServer(
 		onConnectionFailed,
 		onToolCallSettled,
 	} = deps;
+	const { toolPermissions } = server;
 	const { McpClient } = await import('@n8n/agents');
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
@@ -197,7 +194,9 @@ export async function buildMcpClientForServer(
 		url,
 		transport: runtimeTransport,
 		fetch: authFetch,
-		configureTools: (tools) => compileMcpToolPermissions(server.toolPermissions, tools),
+		...(toolPermissions !== undefined && {
+			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
+		}),
 		...(onToolCallSettled !== undefined && { onToolCallSettled }),
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,

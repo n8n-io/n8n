@@ -54,6 +54,7 @@ vi.mock('../instanceAi.mcp.api', () => ({
 	fetchMcpConnections: (...args: unknown[]) => mockFetchMcpConnections(...args),
 	fetchAllMcpConnectionTools: (...args: unknown[]) => mockFetchAllMcpConnectionTools(...args),
 	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
+	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
 	deleteMcpConnection: (...args: unknown[]) => mockDeleteMcpConnection(...args),

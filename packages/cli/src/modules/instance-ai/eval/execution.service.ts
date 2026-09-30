@@ -73,6 +73,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -91,6 +92,18 @@ const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 interface RunBudget {
 	totalMs: number;
 	deadlineAt: number;
+}
+
+/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
+function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
+	const locator = node.parameters?.dataTableId as
+		| { mode?: unknown; value?: unknown }
+		| string
+		| undefined;
+	const value = typeof locator === 'string' ? locator : locator?.value;
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	const byName = typeof locator !== 'string' && locator?.mode === 'name';
+	return { mode: byName ? 'name' : 'id', value };
 }
 
 // ---------------------------------------------------------------------------
@@ -195,7 +208,13 @@ export class EvalExecutionService {
 		const timings = new EvalTimings();
 		let hints: MockHints;
 		try {
-			hints = await this.analyzeWorkflow(workflowEntity, timings, options.scenarioHints, unpinSet);
+			hints = await this.analyzeWorkflow(
+				workflowEntity,
+				timings,
+				options.scenarioHints,
+				unpinSet,
+				options.seededDataTableIds,
+			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return this.errorResult(
@@ -239,6 +258,7 @@ export class EvalExecutionService {
 		timings: EvalTimings,
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
+		seededDataTableIds?: string[],
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -278,7 +298,11 @@ export class EvalExecutionService {
 		);
 
 		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet);
+		const liveReads = await this.liveDataTableReads(workflowEntity, seededDataTableIds);
+		if (liveReads.size > 0) {
+			this.logger.debug(`[EvalMock] Reading seeded Data Tables live: ${[...liveReads].join(', ')}`);
+		}
+		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet, liveReads);
 		const bypassNodeNames = bypassNodes.map((n) => n.name);
 
 		if (bypassNodeNames.length > 0) {
@@ -400,32 +424,13 @@ export class EvalExecutionService {
 		let projectId: string | undefined;
 		for (const node of readNodes) {
 			try {
-				const locator = node.parameters?.dataTableId as
-					| { mode?: unknown; value?: unknown }
-					| string
-					| undefined;
-				const locatorValue = typeof locator === 'string' ? locator : locator?.value;
-				if (typeof locatorValue !== 'string' || locatorValue.length === 0) continue;
-
 				projectId ??= (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
-
-				// `name` mode carries a table name, not an id (the node runtime resolves
-				// it via `resolveDataTableId`) — passing it straight to an id lookup
-				// dropped named tables to prompt-only generation. Exact name match only;
-				// a near-miss still degrades gracefully below.
-				let tableId = locatorValue;
-				if ((typeof locator === 'string' ? 'id' : locator?.mode) === 'name') {
-					const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
-						locatorValue,
-					]);
-					const resolved = matches.at(0)?.id;
-					if (!resolved) {
-						this.logger.warn(
-							`[EvalMock] No Data Table named "${locatorValue}" for node "${node.name}" — pinned rows fall back to prompt-only generation`,
-						);
-						continue;
-					}
-					tableId = resolved;
+				const tableId = await this.resolveDataTableNodeId(node, projectId);
+				if (!tableId) {
+					this.logger.warn(
+						`[EvalMock] No Data Table found for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+					);
+					continue;
 				}
 
 				const columns = await this.dataTableService.getColumns(tableId, projectId);
@@ -439,6 +444,52 @@ export class EvalExecutionService {
 		}
 
 		return Object.keys(columnsByNode).length > 0 ? columnsByNode : undefined;
+	}
+
+	/** Data Table reads bound to a table the caller reseeded for this scenario. That
+	 *  table holds the scenario's rows, so the read runs live and also sees the
+	 *  writes the run makes before it. */
+	private async liveDataTableReads(
+		workflowEntity: IWorkflowBase,
+		seededDataTableIds: string[] | undefined,
+	): Promise<Set<string>> {
+		const live = new Set<string>();
+		if (!seededDataTableIds?.length) return live;
+		const seeded = new Set(seededDataTableIds);
+		// The node resolves a `name` locator case-insensitively at run time
+		// (`LOWER(name) LIKE LOWER(:name)`), so the seeded tables are matched the
+		// same way, or a read spelt in another case would stay pinned.
+		const seededByLowerName = new Map<string, string>();
+		for (const table of await this.dataTableService.findDataTablesByIds(seededDataTableIds)) {
+			seededByLowerName.set(table.name.toLowerCase(), table.id);
+		}
+		for (const node of workflowEntity.nodes) {
+			if (!isDataTableRead(node)) continue;
+			const locator = dataTableLocator(node);
+			if (!locator) continue;
+			const tableId =
+				locator.mode === 'name'
+					? seededByLowerName.get(locator.value.toLowerCase())
+					: locator.value;
+			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
+		}
+		return live;
+	}
+
+	/** The table a Data Table node binds, for the column shapes. `name` mode is
+	 *  looked up in the project the way the node does, case-insensitively. */
+	private async resolveDataTableNodeId(
+		node: INode,
+		projectId: string,
+	): Promise<string | undefined> {
+		const locator = dataTableLocator(node);
+		if (!locator) return undefined;
+		if (locator.mode !== 'name') return locator.value;
+		const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
+			locator.value,
+		]);
+		const wanted = locator.value.toLowerCase();
+		return (matches.find((m) => m.name.toLowerCase() === wanted) ?? matches.at(0))?.id;
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────

@@ -104,6 +104,7 @@ async function handleRemove() {
 				ref="credentialPicker"
 				:item="content.headerItem"
 				:adapter="content.credentialAdapter"
+				:show-connected-icon="Boolean(data.onRemove)"
 				@select-credential="
 					(authType, credentialId) => content?.selectCredential(authType, credentialId)
 				"

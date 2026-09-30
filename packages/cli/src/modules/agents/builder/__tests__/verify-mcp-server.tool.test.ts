@@ -36,6 +36,7 @@ function makeMcpClient(overrides: Partial<McpClient> = {}): McpClient {
 	return {
 		listTools: vi.fn().mockResolvedValue([]),
 		close: vi.fn().mockResolvedValue(undefined),
+		getConnectionFailures: vi.fn().mockReturnValue([]),
 		...overrides,
 	} as unknown as McpClient;
 }
@@ -94,8 +95,39 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(result).toEqual({
 			ok: true,
 			tools: [
-				{ name: 'echo', description: 'Echo the input' },
-				{ name: 'add', description: 'Add two numbers' },
+				{ name: 'echo', description: 'Echo the input', category: 'write' },
+				{ name: 'add', description: 'Add two numbers', category: 'write' },
+			],
+		});
+	});
+
+	it('classifies tools from their MCP annotations', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([
+				{
+					name: 'ambiguous_lookup',
+					description: 'Inspect data',
+					mcpAnnotations: { readOnlyHint: true },
+				},
+				{
+					name: 'search_records',
+					description: 'Mutate data',
+					mcpAnnotations: { destructiveHint: true },
+				},
+			]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const result = await buildVerifyMcpServerTool(makeDeps()).handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			tools: [
+				{ name: 'ambiguous_lookup', description: 'Inspect data', category: 'read' },
+				{ name: 'search_records', description: 'Mutate data', category: 'write' },
 			],
 		});
 	});
@@ -120,7 +152,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'list_issues', description: 'List issues' }],
+			tools: [{ name: 'list_issues', description: 'List issues', category: 'read' }],
 		});
 	});
 
@@ -138,7 +170,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'silent-tool', description: '' }],
+			tools: [{ name: 'silent-tool', description: '', category: 'write' }],
 		});
 	});
 
@@ -155,6 +187,20 @@ describe('buildVerifyMcpServerTool', () => {
 		);
 
 		expect(result).toEqual({ ok: false, error: 'connection timeout' });
+	});
+
+	it('returns the recorded connection failure instead of a false success', async () => {
+		const mcpClient = makeMcpClient({
+			getConnectionFailures: vi.fn().mockReturnValue([{ error: 'authentication failed' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const result = await buildVerifyMcpServerTool(makeDeps()).handler!(
+			{ name: 'my-server', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({ ok: false, error: 'authentication failed' });
 	});
 
 	it('returns { ok: false, error } with stringified non-Error rejections', async () => {
@@ -336,7 +382,7 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(applyCredentialToMcpServer).toHaveBeenCalledWith('notion', 'cred-42');
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'echo', description: 'Echo the input' }],
+			tools: [{ name: 'echo', description: 'Echo the input', category: 'write' }],
 			credentialApplied: true,
 			configMutated: true,
 			agentId: 'agent-1',
@@ -367,7 +413,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'echo', description: 'Echo the input' }],
+			tools: [{ name: 'echo', description: 'Echo the input', category: 'write' }],
 		});
 	});
 
@@ -395,7 +441,7 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			tools: [{ name: 'echo', description: 'Echo the input' }],
+			tools: [{ name: 'echo', description: 'Echo the input', category: 'write' }],
 			credentialApplied: false,
 		});
 	});

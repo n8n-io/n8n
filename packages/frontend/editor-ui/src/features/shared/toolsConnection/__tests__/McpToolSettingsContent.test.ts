@@ -190,6 +190,23 @@ describe('McpToolSettingsContent', () => {
 		]);
 	});
 
+	it('hides approval choices when the host cannot suspend tool calls', async () => {
+		const { getByRole, getByTestId, queryByRole } = renderComponent({
+			props: {
+				item: item({
+					settings: { categories: { read: 'always_allow', write: 'always_allow' } },
+				}),
+				supportsApproval: false,
+			},
+		});
+
+		await fireEvent.click(getByTestId('tools-connection-permission-read'));
+
+		expect(queryByRole('menuitem', { name: 'Ask first' })).not.toBeInTheDocument();
+		expect(getByRole('menuitem', { name: 'Allow' })).toBeInTheDocument();
+		expect(getByRole('menuitem', { name: 'Block' })).toBeInTheDocument();
+	});
+
 	it('disables permission changes and offers reconnect for authentication failures', async () => {
 		const disconnected = item({
 			status: 'disconnected',
@@ -225,6 +242,23 @@ describe('McpToolSettingsContent', () => {
 		});
 
 		expect(getByText(/server isn't responding/i)).toBeVisible();
+		await fireEvent.click(getByTestId('tools-connection-recovery'));
+
+		expect(emitted().retry).toEqual([[]]);
+		expect(emitted().reconnect).toBeUndefined();
+	});
+
+	it('offers retry for unclassified failures', async () => {
+		const { emitted, getByTestId, getByText } = renderComponent({
+			props: {
+				item: item({
+					status: 'disconnected',
+					connectionFailureReason: 'unknown',
+				}),
+			},
+		});
+
+		expect(getByText('Connection failed. Check the server settings and try again.')).toBeVisible();
 		await fireEvent.click(getByTestId('tools-connection-recovery'));
 
 		expect(emitted().retry).toEqual([[]]);

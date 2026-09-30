@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { shallowMount } from '@vue/test-utils';
 import { DropdownMenuContent } from 'reka-ui';
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, shallowRef, type Ref } from 'vue';
 
 import type {
 	DropdownMenuExposed,
@@ -29,11 +29,14 @@ async function getDropdownContent() {
 	return { dropdown };
 }
 
-function renderExternalDropdown(items: DropdownMenuItemProps[] = createItems(3)) {
+function renderExternalDropdown(
+	items: DropdownMenuItemProps[] | Ref<DropdownMenuItemProps[]> = createItems(3),
+) {
 	const dropdownRef = ref<DropdownMenuExposed | null>(null);
 	const textareaRef = ref<HTMLTextAreaElement | null>(null);
 	const isOpen = ref(true);
 	const selected: string[] = [];
+	const submenuToggles: Array<[string, boolean]> = [];
 
 	const Host = defineComponent({
 		components: { DropdownMenu },
@@ -41,8 +44,19 @@ function renderExternalDropdown(items: DropdownMenuItemProps[] = createItems(3))
 			const handleKeydown = (event: KeyboardEvent) => {
 				dropdownRef.value?.handleExternalKeydown(event);
 			};
+			const handleSubmenuToggle = (itemId: string, open: boolean) => {
+				submenuToggles.push([itemId, open]);
+			};
 
-			return { dropdownRef, textareaRef, isOpen, items, selected, handleKeydown };
+			return {
+				dropdownRef,
+				textareaRef,
+				isOpen,
+				items,
+				selected,
+				handleKeydown,
+				handleSubmenuToggle,
+			};
 		},
 		template: `
 			<div>
@@ -55,13 +69,14 @@ function renderExternalDropdown(items: DropdownMenuItemProps[] = createItems(3))
 					searchable
 					search-mode="external"
 					@select="selected.push($event)"
+					@submenu:toggle="handleSubmenuToggle"
 				/>
 				<button>After menu</button>
 			</div>
 		`,
 	});
 
-	return { ...render(Host), dropdownRef, textareaRef, isOpen, selected };
+	return { ...render(Host), dropdownRef, textareaRef, isOpen, selected, submenuToggles };
 }
 
 describe('N8nDropdownMenu', () => {
@@ -1040,9 +1055,13 @@ describe('N8nDropdownMenu', () => {
 			await userEvent.keyboard('{ArrowDown}{ArrowRight}');
 			await waitFor(() => expect(document.querySelectorAll('[role="menu"]')).toHaveLength(2));
 
-			await userEvent.keyboard('{ArrowDown}');
+			// Opening from the keyboard moves the highlight to the first child.
 			const child = wrapper.getByText('Child').closest('[role="menuitem"]');
 			expect(child).toHaveAttribute('data-virtual-highlighted');
+			expect(wrapper.getByText('Parent').closest('[role="menuitem"]')).not.toHaveAttribute(
+				'data-virtual-highlighted',
+			);
+			expect(textarea).toHaveAttribute('aria-activedescendant', child?.id);
 			expect(document.activeElement).toBe(textarea);
 
 			await userEvent.keyboard('{ArrowLeft}');
@@ -1053,6 +1072,83 @@ describe('N8nDropdownMenu', () => {
 
 			await userEvent.keyboard('{Enter}');
 			expect(wrapper.selected).toEqual(['parent']);
+		});
+
+		it('should highlight the first child that arrives after opening a sub-menu with ArrowRight', async () => {
+			const items = shallowRef<DropdownMenuItemProps[]>([
+				{
+					id: 'parent',
+					label: 'Parent',
+					selectable: true,
+					children: [{ id: 'loading', label: 'Loading…', disabled: true }],
+				},
+			]);
+			const wrapper = renderExternalDropdown(items);
+			const textarea = wrapper.container.querySelector('textarea')!;
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{ArrowDown}{ArrowRight}');
+			await waitFor(() => expect(document.querySelectorAll('[role="menu"]')).toHaveLength(2));
+			expect(document.querySelector('[data-virtual-highlighted]')).toBeNull();
+
+			items.value = [
+				{
+					id: 'parent',
+					label: 'Parent',
+					selectable: true,
+					children: [
+						{ id: 'child-1', label: 'Child 1' },
+						{ id: 'child-2', label: 'Child 2' },
+					],
+				},
+			];
+
+			const child = await wrapper.findByText('Child 1');
+			await waitFor(() =>
+				expect(child.closest('[role="menuitem"]')).toHaveAttribute('data-virtual-highlighted'),
+			);
+			expect(document.activeElement).toBe(textarea);
+		});
+
+		it('should not highlight a child when a sub-menu opens from the chevron', async () => {
+			const wrapper = renderExternalDropdown([
+				{
+					id: 'parent',
+					label: 'Parent',
+					selectable: true,
+					children: [{ id: 'child', label: 'Child' }],
+				},
+			]);
+			const textarea = wrapper.container.querySelector('textarea')!;
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.click(document.querySelector('[data-sub-menu-action="open"]')!);
+			await waitFor(() => expect(document.querySelectorAll('[role="menu"]')).toHaveLength(2));
+
+			expect(wrapper.getByText('Child').closest('[role="menuitem"]')).not.toHaveAttribute(
+				'data-virtual-highlighted',
+			);
+		});
+
+		it('should report one submenu:toggle for one chevron click', async () => {
+			const { submenuToggles } = renderExternalDropdown([
+				{
+					id: 'parent',
+					label: 'Parent',
+					selectable: true,
+					children: [{ id: 'child', label: 'Child' }],
+				},
+			]);
+			await waitFor(() => expect(document.activeElement).toBe(document.querySelector('textarea')));
+
+			await userEvent.click(document.querySelector('[data-sub-menu-action="open"]')!);
+			await waitFor(() => expect(document.querySelectorAll('[role="menu"]')).toHaveLength(2));
+			// The pointer crossed the row on its way to the chevron, and Reka's
+			// sub-trigger schedules its own open 100ms after that without checking
+			// whether the item opened itself in the meantime. Outlast that timer.
+			await new Promise((resolve) => setTimeout(resolve, 200));
+
+			expect(submenuToggles).toEqual([['parent', true]]);
 		});
 
 		it('should close on Escape and restore textarea focus', async () => {

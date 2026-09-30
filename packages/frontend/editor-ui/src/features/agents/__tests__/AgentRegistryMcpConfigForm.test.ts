@@ -5,26 +5,29 @@ import type {
 	McpServerConnectionItem,
 	McpToolSettings,
 } from '@/features/shared/toolsConnection/types';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 
 import AgentRegistryMcpConfigForm from '../components/AgentRegistryMcpConfigForm.vue';
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
 
 const saveMock = vi.hoisted(() => vi.fn());
 const useAgentRegistryMcpConfigMock = vi.hoisted(() => vi.fn());
+const confirmRemove = vi.hoisted(() => vi.fn());
+const baseTextMock = vi.hoisted(() => vi.fn((key: string) => key));
 
 vi.mock('../composables/useAgentRegistryMcpConfig', () => ({
-	MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS: 1,
+	MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS: 1_000,
 	DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS: 60_000,
 	MAX_AGENT_MCP_CONNECTION_TIMEOUT_MS: 120_000,
 	useAgentRegistryMcpConfig: useAgentRegistryMcpConfigMock,
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
+	useMessage: () => ({ confirm: confirmRemove }),
 }));
 
 vi.mock('@n8n/i18n', () => {
-	const i18n = { baseText: (key: string) => key };
+	const i18n = { baseText: baseTextMock };
 	return { useI18n: () => i18n };
 });
 
@@ -69,7 +72,7 @@ const permissions: McpToolSettings = {
 
 function makeItem(
 	status: McpServerConnectionItem['status'],
-	connectionTimeoutMs: number,
+	connectionTimeoutMs?: number,
 ): McpServerConnectionItem {
 	return {
 		id: 'registry-config:github',
@@ -77,7 +80,10 @@ function makeItem(
 		title: 'GitHub',
 		status,
 		availableTools: [],
-		settings: { ...permissions, connectionTimeoutMs },
+		settings: {
+			...permissions,
+			...(connectionTimeoutMs === undefined ? {} : { connectionTimeoutMs }),
+		},
 	};
 }
 
@@ -85,14 +91,17 @@ function mountForm({
 	connectionTimeoutMs,
 	status = 'connected',
 	isNew = false,
+	onRemove,
+	itemAvailable = true,
 }: {
 	connectionTimeoutMs?: number;
 	status?: McpServerConnectionItem['status'];
 	isNew?: boolean;
+	onRemove?: () => void;
+	itemAvailable?: boolean;
 } = {}) {
-	const resolvedTimeout = connectionTimeoutMs ?? 60_000;
 	useAgentRegistryMcpConfigMock.mockReturnValue({
-		item: ref(makeItem(status, resolvedTimeout)),
+		item: ref(itemAvailable ? makeItem(status, connectionTimeoutMs) : null),
 		title: ref('github'),
 		save: saveMock,
 		changeTitle: vi.fn(),
@@ -113,6 +122,7 @@ function mountForm({
 		},
 		isNew,
 		onConfirm: vi.fn(),
+		onRemove,
 	};
 
 	return mount(AgentRegistryMcpConfigForm, {
@@ -142,27 +152,41 @@ function confirm(wrapper: ReturnType<typeof mountForm>): boolean {
 	).confirm();
 }
 
+async function remove(wrapper: ReturnType<typeof mountForm>): Promise<boolean> {
+	return await (
+		wrapper.vm as unknown as {
+			remove: () => Promise<boolean>;
+		}
+	).remove();
+}
+
 describe('AgentRegistryMcpConfigForm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		saveMock.mockReturnValue(true);
+		confirmRemove.mockResolvedValue(MODAL_CANCEL);
 	});
 
-	it('defaults a new server timeout to 60,000 ms', () => {
+	it('shows the default timeout in seconds', () => {
 		const wrapper = mountForm({ isNew: true });
 
-		expect(timeoutInput(wrapper).element.value).toBe('60000');
+		expect(timeoutInput(wrapper).element.value).toBe('60');
+		expect(timeoutInput(wrapper).attributes()).toMatchObject({
+			min: '1',
+			max: '120',
+			step: '1',
+		});
 	});
 
-	it('shows the existing timeout when editing a server', () => {
+	it('converts an existing millisecond timeout to seconds', () => {
 		const wrapper = mountForm({ connectionTimeoutMs: 45_000 });
 
-		expect(timeoutInput(wrapper).element.value).toBe('45000');
+		expect(timeoutInput(wrapper).element.value).toBe('45');
 	});
 
-	it('passes an edited timeout to the save flow', async () => {
+	it('converts an edited timeout back to milliseconds for the save flow', async () => {
 		const wrapper = mountForm({ connectionTimeoutMs: 45_000 });
-		await timeoutInput(wrapper).setValue('90000');
+		await timeoutInput(wrapper).setValue('90');
 
 		expect(confirm(wrapper)).toBe(true);
 		expect(saveMock).toHaveBeenCalledWith({
@@ -171,15 +195,21 @@ describe('AgentRegistryMcpConfigForm', () => {
 		});
 	});
 
-	it.each(['', '0', '120001', '1.5'])('rejects invalid timeout value %j', async (value) => {
+	it.each(['', '0', '121', '1.5'])('rejects invalid timeout value %j', async (value) => {
 		const wrapper = mountForm();
 		await timeoutInput(wrapper).setValue(value);
 
 		expect(confirm(wrapper)).toBe(false);
 		expect(saveMock).not.toHaveBeenCalled();
 		await wrapper.vm.$nextTick();
-		expect(wrapper.get('[data-testid="agent-mcp-timeout-error"]').text()).toBe(
-			'agents.toolConfig.mcp.timeout.validation',
+		const error = wrapper.get('[data-testid="agent-mcp-timeout-error"]');
+		expect(error.text()).toBe('agents.toolConfig.mcp.timeout.validation');
+		expect(baseTextMock).toHaveBeenCalledWith('agents.toolConfig.mcp.timeout.validation', {
+			interpolate: { min: 1, max: 120 },
+		});
+		expect(error.attributes('id')).toBe('agent-mcp-connection-timeout-error');
+		expect(timeoutInput(wrapper).attributes('aria-describedby')).toBe(
+			'agent-mcp-connection-timeout-help agent-mcp-connection-timeout-error',
 		);
 	});
 
@@ -189,5 +219,42 @@ describe('AgentRegistryMcpConfigForm', () => {
 		expect(timeoutInput(wrapper).element).toBeDisabled();
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.label');
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.help');
+	});
+
+	it('disables save while the registry configuration is unavailable', () => {
+		const wrapper = mountForm({ itemAvailable: false });
+
+		expect((wrapper.vm as unknown as { saveDisabled: boolean }).saveDisabled).toBe(true);
+	});
+
+	it('keeps the server when removal is cancelled', async () => {
+		const onRemove = vi.fn();
+		const wrapper = mountForm({ onRemove });
+
+		await expect(remove(wrapper)).resolves.toBe(false);
+		expect(confirmRemove).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.description',
+			expect.objectContaining({
+				confirmButtonText: 'tools.connection.settings.removeConfirm.confirmButton',
+			}),
+		);
+		expect(baseTextMock).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.description',
+			{ interpolate: { item: 'tool', service: 'github' } },
+		);
+		expect(baseTextMock).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.confirmButton',
+			{ interpolate: { item: 'tool' } },
+		);
+		expect(onRemove).not.toHaveBeenCalled();
+	});
+
+	it('removes the server after confirmation', async () => {
+		confirmRemove.mockResolvedValue(MODAL_CONFIRM);
+		const onRemove = vi.fn();
+		const wrapper = mountForm({ onRemove });
+
+		await expect(remove(wrapper)).resolves.toBe(true);
+		expect(onRemove).toHaveBeenCalledOnce();
 	});
 });

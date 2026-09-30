@@ -5,8 +5,7 @@ import {
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { McpConnectionDiscoveryService } from './mcp-connection-discovery.service';
 import { toMcpRegistryServerResponse } from './mcp-registry-response';
@@ -20,7 +19,7 @@ export class McpRegistryController {
 	) {}
 
 	@Get('/servers')
-	@GlobalScope('mcp:discover')
+	@GlobalScope('mcp:oauth')
 	async listServers(): Promise<McpRegistryServerResponse[]> {
 		const servers = await this.service.getAll({ includeDeprecated: false });
 		return servers.flatMap((server) => {
@@ -30,7 +29,7 @@ export class McpRegistryController {
 	}
 
 	@Post('/discover')
-	@GlobalScope('mcp:discover')
+	@GlobalScope('mcp:oauth')
 	async discover(req: AuthenticatedRequest): Promise<McpRegistryDiscoveryResponse> {
 		const payload = mcpRegistryDiscoveryRequestSchema.safeParse(req.body);
 		if (!payload.success) throw new BadRequestError('Invalid MCP discovery request');

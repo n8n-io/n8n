@@ -6,8 +6,7 @@ import type { AssignableProjectRole } from '@n8n/permissions';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, type EventService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 import { createAdmin, createMember } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';

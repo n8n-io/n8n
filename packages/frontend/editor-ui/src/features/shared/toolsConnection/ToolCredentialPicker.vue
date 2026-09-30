@@ -17,10 +17,12 @@ const props = withDefaults(
 		connectVariant?: 'solid' | 'outline';
 		teleported?: boolean;
 		adapter?: ToolConnectionCredentialAdapter | null;
+		showConnectedIcon?: boolean;
 	}>(),
 	{
 		connectVariant: 'solid',
 		teleported: false,
+		showConnectedIcon: true,
 	},
 );
 
@@ -181,7 +183,13 @@ function editCredential(credentialId: string) {
 				:class="$style.statusPill"
 				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
-				<N8nIcon icon="check" :size="12" :class="$style.statusIconConnected" aria-hidden="true" />
+				<N8nIcon
+					v-if="showConnectedIcon"
+					icon="check"
+					:size="12"
+					:class="$style.statusIconConnected"
+					aria-hidden="true"
+				/>
 				<span :class="$style.statusLabel" :title="statusLabel">{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>

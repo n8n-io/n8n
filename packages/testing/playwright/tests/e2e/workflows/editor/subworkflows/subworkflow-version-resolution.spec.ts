@@ -125,7 +125,9 @@ test.describe(
 			expect(executionDetails.data).toContain('draft-version');
 		});
 
-		test('production execution should use published version of sub-workflow', async ({ api }) => {
+		test('production execution should use published version of sub-workflow @engine:v2-pending', async ({
+			api,
+		}) => {
 			const childFilePath = resolveFromRoot('workflows', 'subworkflow-version-child.json');
 			const childDefinition = JSON.parse(readFileSync(childFilePath, 'utf8')) as IWorkflowBase;
 			const childAssignmentsParam = childDefinition.nodes[1].parameters.assignments;

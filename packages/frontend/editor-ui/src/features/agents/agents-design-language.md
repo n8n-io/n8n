@@ -1,8 +1,7 @@
 # Agent design language
 
-This document is the source of truth for Agent-only interface patterns in this
-module. It starts with modal patterns. Add other reusable Agent patterns as the
-interface develops.
+This document defines reusable Agent interface patterns in this module. Add
+patterns as the interface develops.
 
 ## Scope
 
@@ -11,6 +10,20 @@ interface develops.
 - Do not add or change a global Design System primitive for an Agent-only need.
 - Put all user-facing text in i18n.
 - Test responsive layouts at 375 by 667 pixels and in light and dark themes.
+
+## Breadcrumbs
+
+Show the project icon before the project name in Agent builder and session
+timeline breadcrumbs. Use the same icon as the owning project. Show the user
+icon for a personal project.
+
+## Narrow builder panels
+
+Keep a chip and its adjacent add action inside the available row width. Truncate
+the chip text before the action moves outside the panel.
+
+Show session details on separate lines when the session list is narrow. Keep the
+title, origin, date, token count, and actions visible without overlap.
 
 ## Modal patterns
 
@@ -33,10 +46,10 @@ design work.
 | Area       | Rule                                                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
+| Header     | Do not add a bottom divider. Put Back on the left and Close on the right.                                                     |
 | Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.    |
 | Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
+| Footer     | Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.               |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
@@ -48,8 +61,9 @@ Use `full` only when the user explicitly asks for the extra workspace.
 Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
 when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
-scrollbars on MCP, node, or workflow configuration content. A picker can use a
-stable minimum height. A configuration step must use its natural height.
+scrollbars on MCP, node, or workflow configuration content. Keep the Agent modal
+body at a stable height so expanding content scrolls without shifting the
+dialog.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
@@ -175,3 +189,25 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Preview composer queue
+
+Use one action on the right. Show Stop when a turn can be stopped and the
+composer has no text or attachments. Otherwise, show Send. Keep file and voice
+input available during a turn.
+Stack the background task card above the composer. Attach pending messages to
+the top of the composer. Use a subtle background and dividers between messages.
+Use muted gray for queue text and icons. Use the same gray for all queue icons.
+Give text more contrast than icons. Keep text contrast at least 4.5:1.
+Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
+Keep the first two messages visible.
+Put the third and later messages in a collapsed activity group. Show the number
+of additional pending messages in its header. Keep messages in queue order when
+expanded.
+Keep pending messages out of the conversation until processing starts. Give each
+message a Remove action. Hide an empty queue section. Removal discards the
+message. It does not restore the composer draft.
+
+Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
+
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary FIFO processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.

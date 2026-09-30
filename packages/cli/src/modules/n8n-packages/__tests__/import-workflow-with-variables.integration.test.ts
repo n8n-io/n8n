@@ -11,8 +11,7 @@ import { VariablesRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { type ConflictError, ForbiddenError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createMember, createOwner } from '@test-integration/db/users';

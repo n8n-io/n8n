@@ -15,7 +15,6 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
-	N8nTooltip,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
@@ -36,6 +35,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -45,6 +45,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useKeybindings } from '@/app/composables/useKeybindings';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
@@ -263,8 +265,7 @@ const isPreviewActive = computed(function isPreviewActive() {
 // Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
 // Default open for a pending agent so a new agent lands with the assistant
 // already showing; closed otherwise. Persisted per agent, like the preview dock.
-// null = no preference yet, so the default is derived instead of stored — see
-// `InstanceAiThreadView`'s `persistedArtifactPreviewOpen` for the same pattern.
+// null = no preference yet, so the default is derived instead of stored.
 const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
 	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
 });
@@ -732,15 +733,7 @@ function syncAgentIdentityFromConfig(c: AgentJsonConfig) {
 	};
 }
 
-const projectName = computed<string | null>(() => {
-	if (projectsStore.personalProject?.id === projectId.value) {
-		return locale.baseText('projects.menu.personal');
-	}
-	const current = projectsStore.currentProject;
-	if (current && current.id === projectId.value) return current.name ?? null;
-	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
-	return match?.name ?? null;
-});
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 // A fetch/mutation captures its target agent + project at call time. By the
 // time an awaited call resolves the user may have switched to a different agent
@@ -2624,6 +2617,17 @@ function onSwitchAgent(nextAgentId: string) {
 		query: isStandalonePreview.value ? {} : query,
 	});
 }
+
+useKeybindings({
+	ctrl_j: {
+		disabled: function isAiPanelShortcutDisabled() {
+			return !instanceAiAvailable.value;
+		},
+		run: toggleAiPanel,
+		/** Enables closing with command whilst panel input is focused */
+		allowInInputs: true,
+	},
+});
 </script>
 
 <template>
@@ -2649,6 +2653,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-id="projectId"
 			:agent-id="agentId"
 			:project-name="projectName"
+			:project-icon="projectIcon"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="beforeRevertToPublished"
@@ -2671,7 +2676,10 @@ function onSwitchAgent(nextAgentId: string) {
 			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
 			:class="$style.aiToggleBar"
 		>
-			<N8nTooltip :content="locale.baseText('agents.builder.header.editWithAi')">
+			<KeyboardShortcutTooltip
+				:label="locale.baseText('agents.builder.header.editWithAi')"
+				:shortcut="{ metaKey: true, keys: ['J'] }"
+			>
 				<N8nButton
 					variant="subtle"
 					size="medium"
@@ -2685,7 +2693,7 @@ function onSwitchAgent(nextAgentId: string) {
 						<N8nAssistantIcon size="large" />
 					</template>
 				</N8nButton>
-			</N8nTooltip>
+			</KeyboardShortcutTooltip>
 		</div>
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill
@@ -2733,6 +2741,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:width="renderedSidePanelWidths.ai"
 					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
 					:max-width="720"
+					:default-width="460"
 					:supported-directions="['right']"
 					@resize="onAiPanelResize"
 				>

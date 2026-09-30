@@ -143,6 +143,68 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(modalData.data.mcpServer?.name).toBe('srv');
 	});
 
+	it('updates and removes only the selected registry MCP server', () => {
+		const github: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.test',
+			authentication: 'githubOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+		const notion: AgentJsonMcpServerConfig = {
+			name: 'notion',
+			url: 'https://mcp.notion.test',
+			authentication: 'notionMcpOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+		};
+		const { actions, scheduleConfigUpdate } = makeActions({ mcpServers: [github, notion] });
+
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				kind: string;
+				onConfirm: (server: AgentJsonMcpServerConfig) => void;
+				onRemove: () => void;
+			};
+		};
+		const updated = { ...github, description: 'Updated' };
+
+		expect(modalData.data.kind).toBe('registryMcpServer');
+		modalData.data.onConfirm(updated);
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+			mcpServers: [updated, notion],
+		});
+
+		modalData.data.onRemove();
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ mcpServers: [notion] });
+	});
+
+	it('drops registry MCP callbacks that land after an agent switch', () => {
+		const server: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.test',
+			authentication: 'githubOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+		const { actions, scheduleConfigUpdate, agentId } = makeActions({ mcpServers: [server] });
+
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				onConfirm: (updated: AgentJsonMcpServerConfig) => void;
+				onRemove: () => void;
+			};
+		};
+		agentId.value = 'agent-2';
+
+		modalData.data.onConfirm({ ...server, description: 'Stale edit' });
+		modalData.data.onRemove();
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+
 	it('drops a skill-modal confirm that lands after an agent switch', () => {
 		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
 		const { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId } = makeActions({

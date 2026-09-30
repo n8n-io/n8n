@@ -96,19 +96,36 @@ describe('hydrateFileParts', () => {
 		expect(store.load).toHaveBeenCalledWith(block.fileRef, { threadId: 'thread-1' });
 	});
 
-	it('hydrates only the newest parts up to the count cap', async () => {
+	it('keeps only the newest parts within the count cap across hydration calls', async () => {
 		const blocks = Array.from({ length: MAX_HYDRATED_FILE_PARTS + 2 }, (_, index) =>
 			refFileBlock({ fileRef: { id: `att-${index}`, sizeBytes: 1 } }),
 		);
 		const store: BuiltFileStore = { load: vi.fn().mockResolvedValue(bytes) };
 
+		await hydrateFileParts([userMessage(blocks.slice(0, MAX_HYDRATED_FILE_PARTS))], store);
 		await hydrateFileParts([userMessage(blocks)], store);
 
-		expect(store.load).toHaveBeenCalledTimes(MAX_HYDRATED_FILE_PARTS);
+		expect(store.load).toHaveBeenCalledTimes(MAX_HYDRATED_FILE_PARTS + 2);
 		expect(blocks[0].data).toBeUndefined();
 		expect(blocks[1].data).toBeUndefined();
 		expect(blocks.at(-1)!.data).toBe(bytes);
 	});
+
+	it.each([bytes, bytes.buffer, 'AQID'])(
+		'charges already-loaded data against the byte budget (%s)',
+		async (data) => {
+			const old = refFileBlock({ data });
+			const newest = refFileBlock({ fileRef: { id: 'att-new' } });
+			const large = new Uint8Array(MAX_HYDRATED_FILE_BYTES - 2);
+			const store: BuiltFileStore = { load: vi.fn().mockResolvedValue(large) };
+
+			await hydrateFileParts([userMessage([old, newest])], store);
+
+			expect(old.data).toBeUndefined();
+			expect(old.fileRef?.id).toBe('att-1');
+			expect(newest.data).toBe(large);
+		},
+	);
 
 	it('spends the byte budget newest-first and skips parts that would exceed it', async () => {
 		const oldSmall = refFileBlock({ fileRef: { id: 'att-old', sizeBytes: 3 } });

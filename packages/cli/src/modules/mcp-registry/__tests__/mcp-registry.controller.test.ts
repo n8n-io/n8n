@@ -1,3 +1,8 @@
+import type { McpRegistryDiscoveryResponse } from '@n8n/api-types';
+import type { AuthenticatedRequest, User } from '@n8n/db';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
@@ -13,10 +18,23 @@ describe('McpRegistryController', () => {
 	const service = mock<McpRegistryService>();
 	const discoveryService = mock<McpConnectionDiscoveryService>();
 	const controller = new McpRegistryController(service, discoveryService);
+	const routes = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+		McpRegistryController as never,
+	).routes;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each(['listServers', 'discover'])(
+		'%s requires the existing MCP OAuth scope',
+		(handlerName) => {
+			expect(routes.get(handlerName)?.accessScope).toEqual({
+				scope: 'mcp:oauth',
+				globalOnly: true,
+			});
+		},
+	);
 
 	describe('listServers', () => {
 		it('returns active servers projected to the public response shape', async () => {
@@ -57,6 +75,48 @@ describe('McpRegistryController', () => {
 			const result = await controller.listServers();
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('discover', () => {
+		it('validates and delegates a discovery request for the authenticated user', async () => {
+			const user = mock<User>();
+			const response: McpRegistryDiscoveryResponse = {
+				status: 'connected',
+				connection: {
+					url: 'https://mcp.example.com',
+					transport: 'streamableHttp',
+					authentication: 'githubMcpOAuth2Api',
+					credentialId: 'credential-1',
+				},
+				tools: [{ name: 'list_repositories', category: 'read' }],
+			};
+			discoveryService.discover.mockResolvedValue(response);
+
+			await expect(
+				controller.discover(
+					mock<AuthenticatedRequest>({
+						user,
+						body: { slug: ' github ', credentialId: ' cred-1 ' },
+					}),
+				),
+			).resolves.toEqual(response);
+			expect(discoveryService.discover).toHaveBeenCalledWith(user, {
+				slug: 'github',
+				credentialId: 'cred-1',
+			});
+		});
+
+		it.each([
+			{},
+			{ slug: '', credentialId: 'credential-1' },
+			{ slug: 'github', credentialId: '' },
+			{ slug: 'github', credentialId: 'credential-1', extra: true },
+		])('rejects an invalid discovery request without connecting: %o', async (body) => {
+			await expect(
+				controller.discover(mock<AuthenticatedRequest>({ body })),
+			).rejects.toBeInstanceOf(BadRequestError);
+			expect(discoveryService.discover).not.toHaveBeenCalled();
 		});
 	});
 });
