@@ -39,6 +39,12 @@ const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 /** Longer than the HTTP timeout, so a stopped main does not hold a report forever. */
 const SEND_CLAIM_TIMEOUT_MS = 2 * Time.minutes.toMilliseconds;
 
+/**
+ * How long yesterday's slot stays due. Longer than the pass interval, so a slot
+ * late in the UTC day is still sent after midnight.
+ */
+const SLOT_GRACE_MS = Time.hours.toMilliseconds;
+
 /** The receiver rejects the payload itself, which a pending report resends unchanged. */
 const PAYLOAD_REJECTED_STATUSES = new Set([400, 413]);
 
@@ -54,6 +60,8 @@ type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
 export interface DueReportWork {
 	expiredReport: InstanceMonitoringReport | null;
 	reportDue: boolean;
+	/** The slot a new report is created for, or `null` when no slot is due. */
+	slot: Date | null;
 }
 
 const SKIP_MESSAGES: Record<SkipReason, string> = {
@@ -104,7 +112,8 @@ export class InstanceReportingService {
 	 * The work due at `now`, from the report time and the stored report rows.
 	 * A pending report inside its slot is due once its retry delay has elapsed.
 	 * A new slot expires the pending report, even during the retry delay. Then a
-	 * report is due once today's slot has passed, unless today is settled.
+	 * report is due for the latest slot at or before `now`, unless the day of
+	 * that slot is settled. Yesterday's slot counts only within its grace.
 	 */
 	async findDueWork(now: Date): Promise<DueReportWork> {
 		const reportTime = await this.settingsService.getReportTime();
@@ -120,17 +129,17 @@ export class InstanceReportingService {
 			}
 		}
 
-		let work: DueReportWork = { expiredReport: null, reportDue: false };
+		let work: DueReportWork = { expiredReport: null, reportDue: false, slot: null };
 		if (pending?.status !== 'sending') {
 			const current =
 				pending && now.getTime() < slotOn(reportTime, pending.createdAt) + Time.days.toMilliseconds
 					? pending
 					: null;
+			const slot = dueSlot(reportTime, now);
 			const reportDue = current
 				? !isInRetryDelay(current, retryNow)
-				: now.getTime() >= slotOn(reportTime, now) &&
-					!(await this.reportRepository.hasSettledToday(now));
-			work = { expiredReport: current ? null : pending, reportDue };
+				: slot !== null && !(await this.reportRepository.hasSettledToday(slot));
+			work = { expiredReport: current ? null : pending, reportDue, slot };
 		}
 
 		return work;
@@ -138,7 +147,7 @@ export class InstanceReportingService {
 
 	/** Skip the report whose slot passed at `now`, then send the report due at `now`, if any. */
 	async sendDueReport(now: Date): Promise<void> {
-		const { expiredReport, reportDue } = await this.findDueWork(now);
+		const { expiredReport, reportDue, slot } = await this.findDueWork(now);
 
 		if (expiredReport) {
 			await this.skip(
@@ -149,7 +158,7 @@ export class InstanceReportingService {
 			);
 		}
 		if (reportDue) {
-			await this.sendReport();
+			await this.sendReport(slot);
 		}
 	}
 
@@ -176,9 +185,13 @@ export class InstanceReportingService {
 	 *
 	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
 	 *
+	 * A new report is created for the UTC day of `slot` and ends on the day before
+	 * it, also when it is sent after midnight. Without a pending report and a
+	 * `slot`, nothing is sent.
+	 *
 	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
 	 */
-	async sendReport(): Promise<void> {
+	async sendReport(slot: Date | null): Promise<void> {
 		const licenseCert = this.config.instanceReportingAuthToken
 			? undefined
 			: await this.license.loadCertStr();
@@ -187,7 +200,7 @@ export class InstanceReportingService {
 				'Skipping the instance report because this instance has no license certificate.',
 			);
 		} else {
-			const report = await this.findOrCreateReport();
+			const report = await this.findOrCreateReport(slot);
 			if (report?.status === 'pending' && report.attempts >= MAX_ATTEMPTS) {
 				// Recover a stop between recording the last failure and settling the row.
 				await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
@@ -200,14 +213,16 @@ export class InstanceReportingService {
 		}
 	}
 
-	private async findOrCreateReport(): Promise<InstanceMonitoringReport | null> {
+	private async findOrCreateReport(slot: Date | null): Promise<InstanceMonitoringReport | null> {
 		let report = await this.reportRepository.findPending();
-		if (!report) {
-			const now = new Date();
-			const days = await this.missedDays(now);
+		if (!report && slot) {
+			const days = await this.missedDays(slot);
 			if (days.length > 0) {
 				// `null` when a concurrent pass created the row. That pass sends it.
-				report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
+				report = await this.reportRepository.createPending(
+					await this.collectDataPoints(days),
+					slot,
+				);
 			}
 		}
 		return report;
@@ -399,6 +414,16 @@ export class InstanceReportingService {
 function slotOn(reportTime: string, day: Date): number {
 	const [hour, minute] = reportTime.split(':').map(Number);
 	return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour, minute);
+}
+
+/** The latest slot at or before `now`, or `null` once yesterday's slot is past its grace. */
+function dueSlot(reportTime: string, now: Date): Date | null {
+	const today = slotOn(reportTime, now);
+	const yesterday = today - Time.days.toMilliseconds;
+	if (now.getTime() >= today) {
+		return new Date(today);
+	}
+	return now.getTime() - yesterday < SLOT_GRACE_MS ? new Date(yesterday) : null;
 }
 
 function isInRetryDelay(report: InstanceMonitoringReport, now: Date): boolean {

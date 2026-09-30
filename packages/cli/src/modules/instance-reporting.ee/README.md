@@ -88,7 +88,10 @@ and where the logic lives.
 `InstanceReportingTask` checks the stored report time every 15 minutes. Changes
 to that time apply on the next pass without a restart or a schedule update. A
 report can start up to 15 minutes after its UTC slot. A pass sends a new report
-only after the slot, unless the day is settled.
+for the latest slot at or before its time, unless the day of that slot is
+settled. Yesterday's slot stays due for one hour, so a slot late in the UTC day
+is sent after midnight. That report is still dated by its slot and ends on the
+day before it.
 
 With `N8N_SCHEDULER_ENABLED` and `N8N_SCHEDULER_SYSTEM_TASKS_ENABLED` enabled,
 any main can claim the durable task. With either flag disabled, the shared

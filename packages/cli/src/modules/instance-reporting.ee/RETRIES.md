@@ -34,7 +34,7 @@ flowchart TD
     P -- no --> N["Return"]
     P -- yes --> R["Resend stored batch, even after midnight"]
     Q1b -- yes --> SK["Mark it skipped"] --> Q2
-    Q1 -- no --> Q2{"Reached today's report time?"}
+    Q1 -- no --> Q2{"Today's slot passed, or yesterday's within one hour?"}
     Q2 -- no --> N
     Q2 -- yes --> Q3{"Day settled?"}
     Q3 -- yes --> N
