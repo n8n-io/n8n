@@ -3,7 +3,7 @@ import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import type { IWorkflowBase, Workflow } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type IWorkflowBase, type Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -300,6 +300,113 @@ describe('WaitingWebhooks', () => {
 
 			/* Assert */
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('token stripping on resume', () => {
+		const EXAMPLE_HOST = 'example.com';
+		const resumeUrlPath = '/webhook-waiting/execution-id?foo=bar';
+		const resumeToken = generateUrlSignature(
+			prepareUrlForSigning(new URL(resumeUrlPath, `http://${EXAMPLE_HOST}`)),
+			SIGNING_SECRET,
+		);
+
+		const buildExecution = () =>
+			mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					validateSignature: true,
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									id: 'send-and-wait-node-id',
+									name: 'SendAndWaitNode',
+									type: 'n8n-nodes-base.wait',
+									parameters: { operation: SEND_AND_WAIT_OPERATION },
+									typeVersion: 1,
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						lastNodeExecuted: 'SendAndWaitNode',
+						runData: {
+							SendAndWaitNode: [{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] }],
+						},
+						error: undefined,
+					},
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'send-and-wait-node-id',
+							name: 'SendAndWaitNode',
+							type: 'n8n-nodes-base.wait',
+							parameters: { operation: SEND_AND_WAIT_OPERATION },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+
+		it('removes the token from the request query and url before the node runs', async () => {
+			/* Arrange */
+			executionRepository.findSingleExecution.mockResolvedValue(buildExecution());
+			webhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'GET',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'GET',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const executeWebhookSpy = jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return undefined;
+					},
+				);
+
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: undefined },
+				method: 'GET',
+				url: `/webhook-waiting/execution-id?foo=bar&${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}`,
+				host: EXAMPLE_HOST,
+				headers: { host: EXAMPLE_HOST },
+			});
+			req.query = { foo: 'bar', [WAITING_TOKEN_QUERY_PARAM]: resumeToken };
+
+			/* Act */
+			await waitingWebhooks.executeWebhook(req, mock<express.Response>());
+
+			/* Assert */
+			expect(executeWebhookSpy).toHaveBeenCalled();
+			const [, , , , , , , , calledReq] = executeWebhookSpy.mock.calls[0];
+			expect((calledReq as express.Request).query).not.toHaveProperty(WAITING_TOKEN_QUERY_PARAM);
+			expect((calledReq as express.Request).query).toEqual({ foo: 'bar' });
+			expect((calledReq as express.Request).url).not.toContain(resumeToken);
+			expect((calledReq as express.Request).url).toBe(resumeUrlPath);
 		});
 	});
 

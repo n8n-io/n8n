@@ -108,6 +108,11 @@ describe('SourceControlImportService', () => {
 
 			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
+			expect(globMock).toHaveBeenCalledWith('*.json', {
+				cwd: '/mock/n8n/git/workflows',
+				absolute: true,
+				followSymbolicLinks: false,
+			});
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual(
@@ -641,6 +646,11 @@ describe('SourceControlImportService', () => {
 			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
 
 			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+			expect(globMock).toHaveBeenCalledWith('*.json', {
+				cwd: '/mock/n8n/git/credential_stubs',
+				absolute: true,
+				followSymbolicLinks: false,
+			});
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual(
@@ -752,6 +762,11 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteVariablesFromFile();
 
 			expect(result).toEqual(mockVariablesData);
+			expect(globMock).toHaveBeenCalledWith('variable_stubs.json', {
+				cwd: '/mock/n8n/git',
+				absolute: true,
+				followSymbolicLinks: false,
+			});
 		});
 
 		it('should return empty array if no variables file found', async () => {
@@ -778,6 +793,11 @@ describe('SourceControlImportService', () => {
 
 			expect(result.tags).toEqual(mockTagsData.tags);
 			expect(result.mappings).toEqual(mockTagsData.mappings);
+			expect(globMock).toHaveBeenCalledWith('tags.json', {
+				cwd: '/mock/n8n/git',
+				absolute: true,
+				followSymbolicLinks: false,
+			});
 		});
 
 		it('should return empty tags and mappings if no file found', async () => {
@@ -866,6 +886,11 @@ describe('SourceControlImportService', () => {
 				const result = await service.getRemoteFoldersAndMappingsFromFile(globalAdminContext);
 
 				expect(result.folders).toEqual(mockFoldersData.folders);
+				expect(globMock).toHaveBeenCalledWith('folders.json', {
+					cwd: '/mock/n8n/git',
+					absolute: true,
+					followSymbolicLinks: false,
+				});
 			});
 
 			it('should return empty folders and mappings if no file found', async () => {
@@ -1238,6 +1263,11 @@ describe('SourceControlImportService', () => {
 				const result = await service.getRemoteProjectsFromFiles(globalAdminContext);
 
 				// ASSERT
+				expect(globMock).toHaveBeenCalledWith('*.json', {
+					cwd: '/mock/n8n/git/projects',
+					absolute: true,
+					followSymbolicLinks: false,
+				});
 				expect(fsReadFile).toHaveBeenCalledTimes(2);
 				expect(fsReadFile).toHaveBeenCalledWith(`${mockProjectData1.id}.json`, {
 					encoding: 'utf8',

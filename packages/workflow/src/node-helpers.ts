@@ -6,7 +6,11 @@ import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
-import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from './constants';
 import { isExpression } from './expressions/expression-helpers';
 import { NodeConnectionTypes } from './interfaces';
 import { safeRegex } from './safe-regex';
@@ -1640,7 +1644,11 @@ export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INod
 }
 
 export function isNodeWithWorkflowSelector(node: INode) {
-	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+	return [
+		EXECUTE_WORKFLOW_NODE_TYPE,
+		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+		RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	].includes(node.type);
 }
 
 /**

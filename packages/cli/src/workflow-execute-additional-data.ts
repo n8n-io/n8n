@@ -134,9 +134,9 @@ export async function getWorkflowData(
 	} else {
 		workflowData = workflowInfo.code ?? null;
 		if (workflowData) {
-			if (!workflowData.id) {
-				workflowData.id = parentWorkflowId;
-			}
+			// An inline sub-workflow is part of the parent that embeds it, not a
+			// workflow of its own, so it runs under the parent workflow's id.
+			workflowData.id = parentWorkflowId;
 			workflowData.settings ??= parentWorkflowSettings;
 		}
 	}

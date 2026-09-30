@@ -62,9 +62,13 @@ export class WebhookService {
 			cachedStaticWebhook = undefined;
 		}
 
-		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
+		if (cachedStaticWebhook) {
+			const entity = this.webhookRepository.create(cachedStaticWebhook);
+			// The cache key is the request path, so a stored entry can hold a dynamic row.
+			return entity.isDynamic ? null : entity;
+		}
 
-		const dbStaticWebhook = await this.findStaticWebhook(method, path);
+		const dbStaticWebhook = await this.findStaticWebhookInDb(method, path);
 
 		if (dbStaticWebhook) {
 			try {
@@ -83,8 +87,9 @@ export class WebhookService {
 	/**
 	 * Find a matching webhook with zero dynamic path segments, e.g. `<uuid>` or `user/profile`.
 	 */
-	private async findStaticWebhook(method: Method, path: string) {
-		return await this.webhookRepository.findOneBy({ webhookPath: path, method });
+	private async findStaticWebhookInDb(method: Method, path: string) {
+		const webhook = await this.webhookRepository.findOneBy({ webhookPath: path, method });
+		return webhook?.isDynamic ? null : webhook;
 	}
 
 	/**

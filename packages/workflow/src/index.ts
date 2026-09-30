@@ -50,6 +50,7 @@ export {
 	randomInt,
 	randomString,
 	isSafeObjectProperty,
+	isUsableObjectKey,
 	setSafeObjectProperty,
 	isDomainAllowed,
 	getCredentialAllowedDomains,

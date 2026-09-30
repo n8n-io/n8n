@@ -126,6 +126,18 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 	}
 
+	/**
+	 * Removes the waiting token from the request's query so it never reaches
+	 * the resumed node's own output data.
+	 */
+	private stripTokenFromRequest(req: express.Request) {
+		delete req.query[WAITING_TOKEN_QUERY_PARAM];
+
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		url.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+		req.url = `${url.pathname}${url.search}`;
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -150,6 +162,8 @@ export class WaitingWebhooks implements IWebhookManager {
 				res.status(401).json({ error: 'Invalid token' });
 				return { noWebhookResponse: true };
 			}
+
+			this.stripTokenFromRequest(req);
 		}
 
 		if (!execution) {

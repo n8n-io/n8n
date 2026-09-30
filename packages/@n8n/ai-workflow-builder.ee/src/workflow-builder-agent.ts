@@ -43,6 +43,7 @@ import {
 } from './utils/stream-processor';
 import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
+import { sanitizeWorkflowForBuilder } from './utils/workflow-sanitization';
 import { WorkflowState } from './workflow-state';
 
 /**
@@ -459,12 +460,13 @@ export class WorkflowBuilderAgent {
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
-		return (
-			(payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
-				nodes: [],
-				connections: {},
-			}
-		);
+		const currentWorkflow = payload.workflowContext?.currentWorkflow as SimpleWorkflow | undefined;
+
+		if (!currentWorkflow) {
+			return { nodes: [], connections: {}, name: '' };
+		}
+
+		return sanitizeWorkflowForBuilder(currentWorkflow);
 	}
 
 	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
