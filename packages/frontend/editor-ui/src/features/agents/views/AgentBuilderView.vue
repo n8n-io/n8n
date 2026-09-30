@@ -2959,6 +2959,14 @@ useKeybindings({
 	max-width: 100%;
 	z-index: 1;
 	pointer-events: none;
+
+	&:has([data-preview-layout='fullpage']) {
+		width: 100%;
+
+		[data-dir='left'] {
+			display: none;
+		}
+	}
 }
 
 .previewResizeOpen {
