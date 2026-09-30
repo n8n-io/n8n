@@ -93,6 +93,32 @@ describe('classifyHttpError', () => {
 		});
 	});
 
+	it.each([
+		['HttpError', 400],
+		['NotFound', 404],
+		['NotAcceptable', 406],
+		['MethodNotAllowed', 405],
+		['BadRequest', 400],
+		['RequestEntityTooLarge', 413],
+		['InternalServerError', 500],
+		['UnsupportedMediaType', 415],
+		['Unauthorized', 401],
+		['Forbidden', 403],
+	])('recognizes a validator %s error from another package instance', (className, status) => {
+		const CrossPackageError = {
+			[className]: class extends Error {
+				readonly status = status;
+			},
+		}[className];
+		const error = new CrossPackageError('validator error');
+
+		expect(classifyHttpError(error)).toEqual({
+			kind: HttpErrorKind.httpError,
+			status,
+			message: 'validator error',
+		});
+	});
+
 	it('tags plain Error as serverError', () => {
 		const d = classifyHttpError(new Error('plain'));
 		expect(d).toEqual({

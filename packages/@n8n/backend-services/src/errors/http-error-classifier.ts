@@ -96,14 +96,15 @@ export function classifyHttpError(
 	if (
 		isHttpErrorInstance(error, HttpError, [
 			'HttpError',
-			'BadRequest',
-			'Unauthorized',
-			'Forbidden',
 			'NotFound',
 			'NotAcceptable',
-			'NotAllowed',
+			'MethodNotAllowed',
+			'BadRequest',
+			'RequestEntityTooLarge',
+			'InternalServerError',
 			'UnsupportedMediaType',
-			'UnprocessableEntity',
+			'Unauthorized',
+			'Forbidden',
 		])
 	) {
 		return {
