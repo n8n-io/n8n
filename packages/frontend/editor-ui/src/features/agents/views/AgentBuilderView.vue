@@ -119,7 +119,6 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
-import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -2952,12 +2951,6 @@ useKeybindings({
 			@switch-agent="onSwitchAgent"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
-		<AgentSetupTasks
-			v-if="!isStandalonePreview"
-			:tasks="setupTasks"
-			:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
-			@action="onSetupTaskAction"
-		/>
 		<div
 			v-if="
 				!isArtifactMode &&
@@ -3113,6 +3106,8 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="setupTasks"
+					:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 					:main-tab-options="visibleMainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3142,6 +3137,7 @@ useKeybindings({
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
+					@setup-task-action="onSetupTaskAction"
 					@tasks-changed="() => onConfigUpdated()"
 					@preview-task="onPreviewTask"
 					@agent-changed="refreshAgentAfterIntegrationChange"
