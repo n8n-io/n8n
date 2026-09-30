@@ -257,14 +257,28 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// WhatsApp list messages allow far more entries — convert the overflow
 		// into a `select` so the action stays completable from WhatsApp, instead
 		// of dropping the options behind unreachable text.
+		const overflowOptions = buttons.map((b) => ({
+			label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
+			value: b.value ?? b.label ?? '',
+		}));
+
+		// Merge into an existing select instead of pushing a second one:
+		// WhatsApp's list message only supports one set of rows, so the
+		// second select's options would be silently dropped.
+		const existingSelect = components.find((c) => c.type === 'select' || c.type === 'radio_select');
+		if (existingSelect) {
+			return components
+				.filter((c) => c.type !== 'button')
+				.map((c) =>
+					c === existingSelect ? { ...c, options: [...(c.options ?? []), ...overflowOptions] } : c,
+				);
+		}
+
 		const normalized = components.filter((c) => c.type !== 'button');
 		normalized.push({
 			type: 'select',
 			label: 'Choose an option',
-			options: buttons.map((b) => ({
-				label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
-				value: b.value ?? b.label ?? '',
-			})),
+			options: overflowOptions,
 		});
 		return normalized;
 	}

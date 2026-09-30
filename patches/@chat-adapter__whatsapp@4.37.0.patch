@@ -1,66 +1,70 @@
 diff --git a/dist/index.js b/dist/index.js
-index ab5a27df2d1cde5530b33d24d6e30dc67e5be84d..83acb7b02aeddb9cfa6a9d002e61202ba57ba93b 100644
+index ab5a27df2d1cde5530b33d24d6e30dc67e5be84d..eb45a05f7d412a7541325cb28e1ca10e5649b547 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -25,6 +25,13 @@ var MAX_REPLY_BUTTONS = 3;
  var MAX_BUTTON_TITLE_LENGTH = 20;
  var MAX_BODY_LENGTH = 1024;
  var MAX_HEADER_LENGTH = 60;
-+// n8n patch (upstream: TODO file issue against vercel/chat) — WhatsApp Cloud
-+// API's own limits on interactive list messages (the `select`/`radio_select`
-+// case below).
++// n8n patch (upstream: TODO file issue against vercel/chat) — WhatsApp's own
++// limits on interactive list messages.
 +var MAX_LIST_ROWS = 10;
 +var MAX_LIST_ROW_TITLE_LENGTH = 24;
 +var MAX_LIST_ROW_DESCRIPTION_LENGTH = 72;
 +var MAX_LIST_BUTTON_LABEL_LENGTH = 20;
++var MAX_LIST_ROW_ID_LENGTH = 200;
  function encodeWhatsAppCallbackData(actionId, value) {
    const payload = { a: actionId };
    if (typeof value === "string") {
-@@ -78,6 +85,35 @@ function cardToWhatsApp(card, options) {
+@@ -78,6 +85,42 @@ function cardToWhatsApp(card, options) {
        }
      };
    }
-+  // n8n patch (upstream: TODO file issue against vercel/chat) — see
-+  // extractSelect above. Builds a real WhatsApp interactive list message
-+  // (sections/rows) instead of falling through to broken plain text.
++  // n8n patch (upstream: TODO file issue against vercel/chat) — builds a
++  // real WhatsApp list message instead of falling through to broken text.
 +  const actionSelect = actions ? extractSelect(actions) : null;
 +  if (actionSelect) {
-+    const bodyText = [buildBodyText(card), ...cardLinkButtonLines(card)].filter(Boolean).join("\n");
-+    return {
-+      type: "interactive",
-+      interactive: {
-+        type: "list",
-+        ...buildInteractiveEnvelope(
-+          card,
-+          bodyText || "Please choose an option"
-+        ),
-+        action: {
-+          button: truncate(actionSelect.label || "Choose an option", MAX_LIST_BUTTON_LABEL_LENGTH),
-+          sections: [
-+            {
-+              rows: actionSelect.options.slice(0, MAX_LIST_ROWS).map((opt) => ({
-+                id: encodeWhatsAppCallbackData(actionSelect.id, opt.value),
-+                title: truncate(opt.label, MAX_LIST_ROW_TITLE_LENGTH),
-+                ...(opt.description ? { description: truncate(opt.description, MAX_LIST_ROW_DESCRIPTION_LENGTH) } : {})
-+              }))
-+            }
-+          ]
++    // A long value can push a row's encoded id past MAX_LIST_ROW_ID_LENGTH,
++    // and Meta rejects the whole send if any row is invalid. Drop the row
++    // rather than truncate it, which would resume the wrong option.
++    const rows = actionSelect.options.slice(0, MAX_LIST_ROWS).map((opt) => ({
++      id: encodeWhatsAppCallbackData(actionSelect.id, opt.value),
++      title: truncate(opt.label, MAX_LIST_ROW_TITLE_LENGTH),
++      ...(opt.description ? { description: truncate(opt.description, MAX_LIST_ROW_DESCRIPTION_LENGTH) } : {})
++    })).filter((row) => {
++      if (row.id.length <= MAX_LIST_ROW_ID_LENGTH) return true;
++      console.warn(
++        `[WhatsAppAdapter] Dropping list option "${row.title}" — its encoded callback id exceeds WhatsApp's ${MAX_LIST_ROW_ID_LENGTH}-character row id limit.`
++      );
++      return false;
++    });
++    if (rows.length > 0) {
++      const bodyText = [buildBodyText(card), ...cardLinkButtonLines(card)].filter(Boolean).join("\n");
++      return {
++        type: "interactive",
++        interactive: {
++          type: "list",
++          ...buildInteractiveEnvelope(
++            card,
++            bodyText || "Please choose an option"
++          ),
++          action: {
++            button: truncate(actionSelect.label || "Choose an option", MAX_LIST_BUTTON_LABEL_LENGTH),
++            sections: [{ rows }]
++          }
 +        }
-+      }
-+    };
++      };
++    }
 +  }
    if (options?.allowCtaUrl !== false) {
      const ctaLink = findPromotableCtaLink(card);
      if (ctaLink) {
-@@ -219,6 +255,20 @@ function extractReplyButtons(actions) {
+@@ -219,6 +262,17 @@ function extractReplyButtons(actions) {
    }
    return buttons.slice(0, MAX_REPLY_BUTTONS);
  }
 +// n8n patch (upstream: TODO file issue against vercel/chat) — mirrors
-+// extractReplyButtons above, but for a `select`/`radio_select` actions child.
-+// Before this, an actions child with no `button` children (i.e. exactly this
-+// case) fell through cardToWhatsApp's button/CTA checks all the way to plain
-+// text, so the select never became a real interactive message.
++// extractReplyButtons above, for a `select`/`radio_select` actions child.
 +function extractSelect(actions) {
 +  const select = actions.children.find(
 +    (child) => child.type === "select" || child.type === "radio_select"

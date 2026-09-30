@@ -268,6 +268,32 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				],
 			});
 		});
+
+		it('merges overflow buttons into an existing select instead of pushing a second one', () => {
+			const integration = createWhatsAppIntegration();
+			const existingSelect: SuspendComponent = {
+				type: 'select',
+				label: 'Pick a size',
+				options: [{ label: 'Small', value: 'small' }],
+			};
+			const components: SuspendComponent[] = [existingSelect, ...buttons(4)];
+
+			const normalized = integration.normalizeComponents(components);
+
+			expect(normalized.filter((c) => c.type === 'select')).toHaveLength(1);
+			expect(normalized.filter((c) => c.type === 'button')).toHaveLength(0);
+			expect(normalized[0]).toMatchObject({
+				type: 'select',
+				label: 'Pick a size',
+				options: [
+					{ label: 'Small', value: 'small' },
+					{ label: 'Option 1', value: 'opt-1' },
+					{ label: 'Option 2', value: 'opt-2' },
+					{ label: 'Option 3', value: 'opt-3' },
+					{ label: 'Option 4', value: 'opt-4' },
+				],
+			});
+		});
 	});
 
 	describe('interactive list message for more than 3 options', () => {
@@ -318,6 +344,44 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 						},
 					},
 				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it("drops a list option whose encoded id would exceed WhatsApp's row id limit", async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const longValue = 'x'.repeat(250);
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-select-3',
+						toolCallId: 'tool-select-3',
+						toolName: 'select',
+						suspendPayload: {
+							type: 'form',
+							toolName: 'pick_starter',
+							displayName: 'Choose Your Starter',
+							components: [
+								{ type: 'button', label: 'Bulbasaur', value: 'bulbasaur' },
+								{ type: 'button', label: 'Charmander', value: 'charmander' },
+								{ type: 'button', label: 'Squirtle', value: 'squirtle' },
+								{ type: 'button', label: 'Pikachu', value: longValue },
+							],
+						},
+					},
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const body = ctx.lastPost()?.body as {
+					interactive: { action: { sections: Array<{ rows: Array<{ title: string }> }> } };
+				};
+				const titles = body.interactive.action.sections[0].rows.map((r) => r.title);
+				expect(titles).toEqual(['Bulbasaur', 'Charmander', 'Squirtle']);
 			} finally {
 				await ctx.shutdown();
 			}
