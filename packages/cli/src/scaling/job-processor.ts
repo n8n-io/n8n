@@ -100,6 +100,7 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
+	/** Execution id per job id for every job in `processJob`, including jobs still in preflight. */
 	private readonly trackedJobs = new Map<string, string>();
 
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
@@ -585,6 +586,7 @@ export class JobProcessor {
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+		// The run may ignore cancellation and never settle; drop tracking now instead of waiting for it.
 		this.trackedJobs.delete(String(jobId));
 		this.cancellationReasons[jobId] = reason;
 	}
