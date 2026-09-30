@@ -303,8 +303,8 @@ export class ExecuteNodeService {
 		}
 	}
 
-	/** The post-execute promise does not reliably settle on multi-main (Bull's
-	 *  `job.finished()` behind it), so poll the execution row there — same as
+	/** The post-execute promise does not reliably settle on multi-main
+	 *  (`ScalingService.waitForJob()` behind it), so poll the execution row there — same as
 	 *  chat-hub's `waitForExecutionCompletion`. */
 	private async waitForSettled(executionId: string, signal: AbortSignal): Promise<void> {
 		if (!this.instanceSettings.isMultiMain) {
