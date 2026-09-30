@@ -51,7 +51,7 @@ ids. Full table in
    `list_signal_rates` lists every code check and label rule with its rate over a
    window: what fails most right now. Then `list_conversations` with `signals`,
    one token per signal, ANDed — `check:has_nodes`,
-   `label:outcome=agent-gave-up`, `analysis:bad`, `keeper:*`, `review:*` — puts
+   `label:task_outcome=agent-gave-up`, `analysis:bad`, `keeper:*`, `review:*` — puts
    the matching entries on each row, each with its evidence (the verdict comment,
    the judge's words, Keeper's reason) and its version. On a candidate,
    `get_conversation_signals` shows what every source said and which ones agreed:
