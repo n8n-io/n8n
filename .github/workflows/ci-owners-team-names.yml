@@ -11,6 +11,28 @@ permissions:
   contents: read
 
 jobs:
+  reject-fork-changes:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reject protected ownership file changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          protected=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- OWNERS GROUPS.json)
+          if [ -n "$protected" ]; then
+            echo "Fork PRs cannot modify OWNERS or GROUPS.json:"
+            echo "$protected"
+            exit 1
+          fi
+
   validate:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
