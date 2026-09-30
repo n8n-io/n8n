@@ -88,12 +88,13 @@ export class MigrationFindingQueryService {
 		]);
 		const countByRule = new Map(counts.map((row) => [row.ruleId, row.count]));
 
+		// Today's scan lists only rules that affect at least one workflow. Keep
+		// that shape so the overview does not change when it reads from the table.
 		const workflowResults: LightWorkflowResult[] = [];
 		for (const rule of workflowRules) {
-			workflowResults.push({
-				...(await this.describeRule(rule)),
-				nbAffectedWorkflows: countByRule.get(rule.id) ?? 0,
-			});
+			const nbAffectedWorkflows = countByRule.get(rule.id) ?? 0;
+			if (nbAffectedWorkflows === 0) continue;
+			workflowResults.push({ ...(await this.describeRule(rule)), nbAffectedWorkflows });
 		}
 
 		return {

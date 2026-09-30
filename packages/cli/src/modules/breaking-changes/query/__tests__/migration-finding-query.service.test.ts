@@ -176,17 +176,8 @@ describe('MigrationFindingQueryService', () => {
 					migratable: false,
 					nbAffectedWorkflows: 3,
 				},
-				{
-					ruleId: 'rule-b',
-					ruleTitle: 'rule-b title',
-					ruleDescription: 'rule-b description',
-					ruleImpact: 'executionsFail',
-					ruleDocumentationUrl: 'https://docs.n8n.io/rule-b',
-					recommendations: [{ action: 'Fix rule-b', description: 'How to fix rule-b' }],
-					migratable: true,
-					nbAffectedWorkflows: 0,
-				},
 			]);
+			// rule-b has no open findings, so it is left out, as in today's scan.
 			expect(result.report.targetVersion).toBe(TARGET_VERSION);
 			expect(result.totalWorkflows).toBe(10);
 			expect(result.shouldCache).toBe(false);
