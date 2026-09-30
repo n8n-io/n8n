@@ -7,7 +7,7 @@
 
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
