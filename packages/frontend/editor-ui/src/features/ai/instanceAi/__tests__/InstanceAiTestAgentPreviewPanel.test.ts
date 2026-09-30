@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { ref } from 'vue';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -147,7 +147,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const { findByText, container } = renderComponent();
 
 		await findByText(/very long answer/);
-		expect(container.querySelector('[class*="answerContent"]')).toBeInTheDocument();
+		expect(container.querySelector('[class*="content"]')).toBeInTheDocument();
 	});
 
 	it('emits dismiss when "Needs work" is clicked', async () => {
@@ -215,7 +215,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 
 		const user = userEvent.setup();
-		const { getByTestId, emitted, findByTestId } = renderComponent();
+		const { getByTestId, emitted, findByTestId, findAllByTestId } = renderComponent();
 		await waitFor(() =>
 			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
 		);
@@ -225,6 +225,15 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(emitted().confirm).toEqual([[]]);
 		expect(await findByTestId('instance-ai-test-agent-preview-suite-ready')).toBeInTheDocument();
 		expect(store.generateDraftCases).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {});
+
+		// One card for the already-answered preview case, one per freshly
+		// generated (unrun) case — the latter show only their question.
+		const cases = await findAllByTestId('instance-ai-test-agent-preview-case');
+		expect(cases).toHaveLength(3);
+		expect(within(cases[0]).getByText('x')).toBeInTheDocument();
+		expect(within(cases[0]).getByText('y')).toBeInTheDocument();
+		expect(within(cases[1]).getByText('a')).toBeInTheDocument();
+		expect(within(cases[2]).getByText('c')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-test-agent-preview-open-evals'));
 		expect(emitted()['open-evals']).toEqual([[]]);

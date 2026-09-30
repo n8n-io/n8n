@@ -7,14 +7,15 @@
  * flag, alongside the original `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
-import { N8nButton, N8nCard, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import type { AgentEvalDraftCase } from '@n8n/api-types';
+import { N8nButton, N8nCard, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-eval-review';
 import { useRelativeTimestamp } from '@/features/agents/utils/relative-time';
-import AgentMarkdownChunk from '@/features/agents/components/AgentMarkdownChunk.vue';
+import AgentAnswerCard from '@/features/agents/components/AgentAnswerCard.vue';
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
@@ -34,7 +35,7 @@ const formatRelative = useRelativeTimestamp();
 type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
 const phase = ref<Phase>('generating-preview');
 const previewRunId = ref<string | null>(null);
-const suiteCaseCount = ref(0);
+const suiteCases = ref<AgentEvalDraftCase[]>([]);
 
 const previewResult = computed(() =>
 	previewRunId.value ? store.getReview(previewRunId.value).results[0] : undefined,
@@ -46,6 +47,18 @@ const previewAnsweredAt = computed(() => {
 	const timestamp = result?.completedAt ?? result?.runAt ?? result?.createdAt;
 	return timestamp ? formatRelative(timestamp) : null;
 });
+
+// The previewed case already has a real answer from its own run; the rest of
+// the suite is generated as fresh drafts and isn't run here, so they show
+// only their question until the user runs them from the Evals tab.
+const suiteDisplayCases = computed(() => [
+	{ input: previewInput.value, output: previewOutput.value, answeredAt: previewAnsweredAt.value },
+	...suiteCases.value.map((draftCase) => ({
+		input: draftCase.input,
+		output: null as string | null,
+		answeredAt: null as string | null,
+	})),
+]);
 
 // Not reactive by design — nothing templates off it. It only guards async
 // continuations against acting after the panel is gone, since the store's
@@ -139,7 +152,7 @@ async function onConfirm() {
 		// in tests can match on a stable arity.
 		const result = await store.generateDraftCases(projectId, agentId, {});
 		if (!isMounted) return;
-		suiteCaseCount.value = result.cases.length;
+		suiteCases.value = result.cases;
 		maybeAutoRunGeneratedCases(projectId, agentId, result.datasetId);
 		phase.value = 'suite-ready';
 	} catch (error) {
@@ -176,22 +189,12 @@ function onOpenEvals() {
 				</template>
 				<N8nText color="text-dark">{{ previewInput }}</N8nText>
 			</N8nCard>
-			<N8nCard data-test-id="instance-ai-test-agent-preview-output">
-				<template #header>
-					<div :class="$style.answerHeader">
-						<span :class="$style.iconWrap">
-							<N8nIcon icon="sparkles" size="small" />
-						</span>
-						<N8nText bold color="text-dark">
-							{{ i18n.baseText('instanceAi.testAgentPreview.agentLabel') }}
-						</N8nText>
-						<N8nText v-if="previewAnsweredAt" color="text-base">{{ previewAnsweredAt }}</N8nText>
-					</div>
-				</template>
-				<div :class="$style.answerContent">
-					<AgentMarkdownChunk :source="previewOutput ?? ''" />
-				</div>
-			</N8nCard>
+			<AgentAnswerCard
+				data-test-id="instance-ai-test-agent-preview-output"
+				:label="i18n.baseText('instanceAi.testAgentPreview.agentLabel')"
+				:answered-at="previewAnsweredAt"
+				:source="previewOutput ?? ''"
+			/>
 			<N8nText bold color="text-dark">
 				{{ i18n.baseText('instanceAi.testAgentPreview.confirmQuestion') }}
 			</N8nText>
@@ -231,11 +234,31 @@ function onOpenEvals() {
 			<N8nText color="text-dark" data-test-id="instance-ai-test-agent-preview-suite-ready">
 				{{
 					i18n.baseText('agents.builder.agentEvals.generated', {
-						adjustToNumber: suiteCaseCount,
-						interpolate: { count: String(suiteCaseCount) },
+						adjustToNumber: suiteCases.length,
+						interpolate: { count: String(suiteCases.length) },
 					})
 				}}
 			</N8nText>
+			<div :class="$style.caseList">
+				<N8nCard
+					v-for="(displayCase, index) in suiteDisplayCases"
+					:key="index"
+					data-test-id="instance-ai-test-agent-preview-case"
+				>
+					<template #header>
+						<N8nText step="xs" color="text-base">
+							{{ i18n.baseText('instanceAi.testAgentPreview.eyebrow') }}
+						</N8nText>
+					</template>
+					<N8nText color="text-dark">{{ displayCase.input }}</N8nText>
+					<AgentAnswerCard
+						v-if="displayCase.output"
+						:label="i18n.baseText('instanceAi.testAgentPreview.agentLabel')"
+						:answered-at="displayCase.answeredAt"
+						:source="displayCase.output"
+					/>
+				</N8nCard>
+			</div>
 			<N8nButton
 				variant="outline"
 				size="small"
@@ -274,24 +297,11 @@ function onOpenEvals() {
 	border: none;
 }
 
-.answerHeader {
+.caseList {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.answerContent {
+	flex-direction: column;
+	gap: var(--spacing--xs);
 	width: 100%;
-	height: 105px;
-	overflow-y: auto;
-	scrollbar-width: thin;
-}
-
-.iconWrap {
-	display: flex;
-	padding: var(--spacing--3xs);
-	background-color: var(--background--subtle);
-	border-radius: var(--radius--2xs);
 }
 
 .options {
