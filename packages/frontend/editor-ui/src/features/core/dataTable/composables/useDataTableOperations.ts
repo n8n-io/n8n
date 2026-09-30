@@ -85,7 +85,7 @@ export const useDataTableOperations = ({
 	const toast = useToast();
 	const message = useMessage();
 	const dataTableStore = useDataTableStore();
-	const contentLoading = ref(false);
+	const contentLoading = ref(true);
 	const telemetry = useTelemetry();
 	const dataTableTypes = useDataTableTypes();
 

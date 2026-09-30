@@ -148,6 +148,9 @@ const initialize = async (params: GridReadyEvent) => {
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
 
+// Keep the loading state to suppress "No rows", without showing a loading pill.
+const customLoadingOverlay = '<span aria-hidden="true"></span>';
+
 watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 	await setCurrentPage(1);
 });
@@ -196,6 +199,7 @@ defineExpose({
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
+				:overlay-loading-template="customLoadingOverlay"
 				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
 				@cell-value-changed="dataTableOperations.onCellValueChanged"
