@@ -13,7 +13,7 @@ import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';

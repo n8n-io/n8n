@@ -5,6 +5,7 @@ import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -796,6 +797,8 @@ export class WorkflowRunner {
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			// Nobody will wait for this job, so drop any outcome the worker already reported
+			this.scalingService.popJobResult(executionId);
 			throw error;
 		}
 
@@ -821,7 +824,7 @@ export class WorkflowRunner {
 				});
 
 				try {
-					await job.finished();
+					await this.scalingService.waitForJob(job);
 				} catch (error) {
 					if (
 						error instanceof Error &&
@@ -862,15 +865,43 @@ export class WorkflowRunner {
 					!jobResult ||
 					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
 				) {
-					const fullExecutionData = await this.executionPersistence.findSingleExecution(
-						executionId,
-						{
+					let fullExecutionData: IExecutionResponse | undefined;
+					try {
+						fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 							includeData: true,
 							unflattenData: true,
-						},
-					);
+						});
+					} catch (error) {
+						// An async executor's throw would never settle this promise, and the
+						// active execution would keep the request alive until restart
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
+						return reject(error);
+					}
+
 					if (!fullExecutionData) {
-						return reject(new Error(`Could not find execution with id "${executionId}"`));
+						// Not a bug by itself: the worker deletes an execution that is not saved.
+						// Finalizing with a failed run makes the webhook respond with an error
+						// instead of a success without data.
+						this.logger.warn(`Execution ${executionId} ended but its record is gone`, {
+							executionId,
+						});
+						const error = new WorkflowOperationError(
+							`Could not find execution with id "${executionId}"`,
+						);
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
+						return reject(error);
 					}
 
 					runData = {
@@ -921,7 +952,9 @@ export class WorkflowRunner {
 			// So we're just preventing crashes here.
 		});
 
-		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+			isQueueJob: true,
+		});
 	}
 
 	/**

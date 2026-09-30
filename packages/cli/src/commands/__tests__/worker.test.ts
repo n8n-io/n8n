@@ -33,7 +33,7 @@ import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 

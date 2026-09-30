@@ -306,7 +306,6 @@ function onSelected(item: INodeCreateElement) {
 		openSampleWorkflowTemplate(item.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
-				section: activeViewStack.value.title,
 			},
 		});
 	}

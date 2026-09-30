@@ -1,4 +1,4 @@
-import { computed, nextTick, reactive, ref, triggerRef, watch } from 'vue';
+import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -68,7 +68,7 @@ import {
 	useResourceRegistry,
 	type TransientWorkflowArtifactReference,
 } from './useResourceRegistry';
-import { buildThreadArtifactsContext } from './threadArtifacts';
+import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
@@ -530,6 +530,13 @@ export function createThreadRuntime(
 	const lastEventId = ref<number | undefined>(undefined);
 	/** Focused preview tab id while the artifacts preview is open. */
 	const activeArtifactId = ref<string>();
+	/**
+	 * The tabs the thread view has open, sent to the agent with each message.
+	 * `undefined` when no view reports tabs; the agent then gets every artifact.
+	 * `null` while the view's stored tabs load; the message then carries no tabs,
+	 * so the agent keeps the last tabs it has instead of closed ones.
+	 */
+	const openTabs = shallowRef<OpenThreadTab[] | null>();
 	// Event ids already applied on this thread — guards against replay overlap,
 	// e.g. an auto-reconnect replaying an id that already arrived just before
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
@@ -592,6 +599,17 @@ export function createThreadRuntime(
 	function forgetManualExecution(workflowId: string): void {
 		rememberedManualExecutions.delete(workflowId);
 	}
+
+	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
+	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
+	const logsPanelMemory = {
+		// The user collapsed the panel in this thread, so later runs do not open it again.
+		collapsedByUser: false,
+		// Only a panel that opened automatically collapses after a successful run.
+		autoOpened: false,
+		// Latest started run per workflow id. Only the success of that run collapses the panel.
+		latestStartedExecutionIds: new Map<string, string>(),
+	};
 
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
@@ -1397,6 +1415,10 @@ export function createThreadRuntime(
 		activeArtifactId.value = id;
 	}
 
+	function setOpenTabs(tabs?: OpenThreadTab[] | null): void {
+		openTabs.value = tabs;
+	}
+
 	/** Reset all state owned by this runtime. */
 	function resetState(): void {
 		hydrationGeneration += 1;
@@ -1421,6 +1443,7 @@ export function createThreadRuntime(
 		lastEventId.value = undefined;
 		seenEventIds.clear();
 		activeArtifactId.value = undefined;
+		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
 		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
@@ -1626,7 +1649,13 @@ export function createThreadRuntime(
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 				instanceAiSettingsStore.computerUseChannels,
-				buildThreadArtifactsContext(producedArtifacts.values(), activeArtifactId.value),
+				openTabs.value === null
+					? undefined
+					: buildThreadArtifactsContext(
+							producedArtifacts.values(),
+							activeArtifactId.value,
+							openTabs.value,
+						),
 			);
 
 			return runId;
@@ -1929,6 +1958,7 @@ export function createThreadRuntime(
 		producedArtifactOrigins,
 		activeArtifactId,
 		setActiveArtifactId,
+		setOpenTabs,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
@@ -1950,6 +1980,7 @@ export function createThreadRuntime(
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
+		logsPanelMemory,
 		resetState,
 		dispose,
 		applyEvent,

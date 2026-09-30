@@ -17,7 +17,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { PrometheusMetricsService } from '@/metrics/prometheus';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export type WorkerServerEndpointsConfig = {

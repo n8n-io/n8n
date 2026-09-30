@@ -191,8 +191,9 @@ test.describe(
 			}) => {
 				await setupRequirements(webhookTestRequirements);
 				await n8n.canvas.clickExecuteWorkflowButton();
-				await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText(
-					'Waiting for trigger event from Webhook',
+				await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
+				await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveAccessibleName(
+					'Execute workflow from Webhook',
 				);
 
 				const webhookPath = '/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f';

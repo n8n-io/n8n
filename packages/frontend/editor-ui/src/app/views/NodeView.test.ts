@@ -18,6 +18,7 @@ import { useWorkflowsListStore } from '../stores/workflowsList.store';
 import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
 import {
@@ -918,6 +919,35 @@ describe('NodeView', () => {
 			const { findByTestId } = renderNodeView();
 
 			expect(await findByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+	});
+
+	describe('Canvas-only mode', () => {
+		it('shows the n8n logo on the canvas when canvas-only mode is enabled', async () => {
+			useSettingsStore().settings.canvasOnly = true;
+
+			const { findByTestId } = renderNodeView();
+
+			expect(await findByTestId('n8n-logo')).toBeInTheDocument();
+		});
+
+		it('does not show the n8n logo on the canvas when canvas-only mode is disabled', async () => {
+			useSettingsStore().settings.canvasOnly = false;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId('n8n-logo')).not.toBeInTheDocument();
+		});
+
+		it('does not show the n8n logo in a workflow preview', async () => {
+			routeMock.name = VIEWS.DEMO;
+			useSettingsStore().settings.canvasOnly = true;
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId('n8n-logo')).not.toBeInTheDocument();
 		});
 	});
 
