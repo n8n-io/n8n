@@ -900,12 +900,17 @@ describe('useDataTableOperations', () => {
 			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
 
 			await onRenameColumn('col1', 'first');
-			const firstGridUpdate = vi.mocked(params.setGridData).mock.calls[1][0].colDefs;
+			const gridUpdates = vi.mocked(params.setGridData).mock.calls;
+			const firstGridUpdate = gridUpdates.at(-1)?.[0].colDefs;
 			await onRenameColumn('col2', 'second');
-			const secondGridUpdate = vi.mocked(params.setGridData).mock.calls[3][0].colDefs;
+			const secondGridUpdate = gridUpdates.at(-1)?.[0].colDefs;
 			await onRenameColumn('col3', 'third');
 
-			expect(dataTableStore.renameDataTableColumn).toHaveBeenCalledTimes(3);
+			expect(vi.mocked(dataTableStore.renameDataTableColumn).mock.calls).toEqual([
+				['test', 'test', 'col1', 'first'],
+				['test', 'test', 'col2', 'second'],
+				['test', 'test', 'col3', 'third'],
+			]);
 			expect(firstGridUpdate?.map(({ field }) => field)).toEqual(['first', 'field3', 'field4']);
 			expect(secondGridUpdate?.map(({ field }) => field)).toEqual(['first', 'second', 'field4']);
 			expect(colDefs.value.map(({ field }) => field)).toEqual(['first', 'second', 'third']);
