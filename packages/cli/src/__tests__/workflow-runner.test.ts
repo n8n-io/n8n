@@ -52,7 +52,6 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
-import type { Job } from '@/scaling/scaling.types';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
@@ -1252,8 +1251,8 @@ describe('enqueueExecution', () => {
 		const executionId = await activeExecutions.add(data);
 
 		const job = mock<Job>({ id: '1', data: { executionId, workflowId: workflow.id } });
-		job.finished.mockReturnValue(new Promise(() => {}));
 		addJob.mockResolvedValueOnce(job);
+		waitForJob.mockReturnValueOnce(new Promise(() => {}));
 
 		// @ts-expect-error Private method
 		await runner.enqueueExecution(executionId, workflow.id, data);
