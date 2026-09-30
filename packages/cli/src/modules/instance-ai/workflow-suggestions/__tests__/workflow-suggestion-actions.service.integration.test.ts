@@ -550,8 +550,13 @@ it('continues to publication when the editor notification fails after Apply', as
 	expect(publish).toHaveBeenCalledTimes(1);
 });
 
-it('preserves submitted activity when the review schema is reverted and reapplied', async () => {
-	const { suggestion } = await fixture();
+it('preserves activity when the review schema is reverted and reapplied', async () => {
+	const { suggestion, act } = await fixture();
+	await act('open-in-editor');
+	await suggestions.appendActivity(suggestion.id, 'published', null, {});
+	const expectedActivity = (await suggestions.getActivity(suggestion.id)).map(
+		({ id, action, author }) => ({ id, action, author }),
+	);
 	const db = Container.get(DataSource);
 	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
 	const migration = db.migrations.find(
@@ -563,14 +568,16 @@ it('preserves submitted activity when the review schema is reverted and reapplie
 		await migration.down(runner);
 		try {
 			expect(await runner.hasColumn(suggestions.metadata.tablePath, 'resultKind')).toBe(false);
-			expect(
-				await runner.manager
-					.getRepository(WorkflowSuggestionActivityEntity)
-					.createQueryBuilder('activity')
-					.select('activity.id')
-					.where('activity.suggestionId = :suggestionId', { suggestionId: suggestion.id })
-					.getCount(),
-			).toBe(1);
+			const activity = await runner.manager
+				.getRepository(WorkflowSuggestionActivityEntity)
+				.createQueryBuilder('activity')
+				.select(['activity.id', 'activity.action', 'activity.author'])
+				.where('activity.suggestionId = :suggestionId', { suggestionId: suggestion.id })
+				.getMany();
+			expect(activity).toHaveLength(3);
+			expect(activity.map(({ id, action, author }) => ({ id, action, author }))).toEqual(
+				expect.arrayContaining(expectedActivity),
+			);
 		} finally {
 			await migration.up(runner);
 		}
@@ -583,7 +590,12 @@ it('preserves submitted activity when the review schema is reverted and reapplie
 		appliedVersion: null,
 		publication: null,
 	});
-	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
+	const activity = await suggestions.getActivity(suggestion.id);
+	expect(activity).toHaveLength(3);
+	expect(activity.map(({ id, action, author }) => ({ id, action, author }))).toEqual(
+		expect.arrayContaining(expectedActivity),
+	);
+	expect(activity.every(({ actorId }) => actorId === null)).toBe(true);
 	await expect(
 		suggestions.update(suggestion.id, { resultKind: 'invalid' as never }),
 	).rejects.toThrow();

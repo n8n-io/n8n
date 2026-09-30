@@ -38,33 +38,9 @@ export class AddWorkflowSuggestionReviewState1790759889862 implements Reversible
 			'SET NULL',
 		);
 		await s.createIndex('workflow_suggestion_activity', ['actorId']);
-		await s.dropEnumCheck('workflow_suggestion_activity', 'action', { recreatesOnSqlite: true });
-		await s.addEnumCheck(
-			'workflow_suggestion_activity',
-			'action',
-			['submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed'],
-			{ recreatesOnSqlite: true },
-		);
-		await s.dropEnumCheck('workflow_suggestion_activity', 'author', { recreatesOnSqlite: true });
-		await s.addEnumCheck(
-			'workflow_suggestion_activity',
-			'author',
-			['assistant', 'human', 'system'],
-			{ recreatesOnSqlite: true },
-		);
 	}
 
-	async down({ schemaBuilder: s, runQuery, escape }: MigrationContext) {
-		await runQuery(`DELETE FROM ${escape.tableName('workflow_suggestion_activity')}
-			WHERE ${escape.columnName('action')} <> 'submitted'`);
-		await s.dropEnumCheck('workflow_suggestion_activity', 'author', { recreatesOnSqlite: true });
-		await s.addEnumCheck('workflow_suggestion_activity', 'author', ['assistant'], {
-			recreatesOnSqlite: true,
-		});
-		await s.dropEnumCheck('workflow_suggestion_activity', 'action', { recreatesOnSqlite: true });
-		await s.addEnumCheck('workflow_suggestion_activity', 'action', ['submitted'], {
-			recreatesOnSqlite: true,
-		});
+	async down({ schemaBuilder: s }: MigrationContext) {
 		await s.dropForeignKey(
 			'workflow_suggestion_activity',
 			'actorId',

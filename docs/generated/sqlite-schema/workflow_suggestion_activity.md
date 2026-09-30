@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NULL, "suggestionId" varchar(36) NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "actorId" varchar, CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant', 'human', 'system')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_suggestion_activity_actor" FOREIGN KEY ("actorId") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NULL, "suggestionId" varchar(36) NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "actorId" varchar, CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK (("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed'))), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK (("author" IN ('assistant', 'human', 'system'))), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_suggestion_activity_actor" FOREIGN KEY ("actorId") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -27,8 +27,8 @@ CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NU
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed')) |
-| - | CHECK | CHECK ("author" IN ('assistant', 'human', 'system')) |
+| - | CHECK | CHECK (("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed'))) |
+| - | CHECK | CHECK (("author" IN ('assistant', 'human', 'system'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (actorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
