@@ -47,6 +47,7 @@ const mockUpdateResult: UpdateResult = {
 describe('WorkflowHistoryService', () => {
 	beforeEach(() => {
 		mockClear(workflowHistoryRepository.insert);
+		mockClear(workflowHistoryRepository.insertVersion);
 		mockClear(workflowHistoryRepository.update);
 		mockClear(workflowHistoryRepository.find);
 		mockClear(workflowHistoryRepository.findOne);

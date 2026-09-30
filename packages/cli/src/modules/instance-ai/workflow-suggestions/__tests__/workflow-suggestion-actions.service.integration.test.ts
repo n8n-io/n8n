@@ -1,7 +1,12 @@
-import { createWorkflowWithHistory, mockInstance } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflowWithHistory,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRepository,
+	SharedWorkflowRepository,
 	TransactionRunner,
 	UserRepository,
 	WorkflowEntity,
@@ -231,6 +236,28 @@ it('restores the suggestion and activity when the caller rolls back a discard', 
 
 	expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
 	expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+});
+
+it('keeps a moved proposal outdated when discard rejects the old project', async () => {
+	const { user, original, project, suggestion, act } = await fixture();
+	const destination = await createTeamProject(undefined, user);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: original.id, projectId: project.id },
+		{ projectId: destination.id },
+	);
+
+	await expect(act('discard')).rejects.toThrow('Suggestion not found.');
+
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
+		state: 'closed',
+		closedReason: 'outdated',
+		appliedVersion: null,
+	});
+	expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
+		'submitted',
+		'outdated',
+	]);
+	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
 it('creates and discards a suggestion in the caller transaction', async () => {
@@ -529,6 +556,12 @@ it('rejects Apply when an editor saves after suggestion preparation', async () =
 it('requests normal publication of the applied version and does not repeat it', async () => {
 	const { user, original, suggestion, act } = await fixture();
 	const publish = vi.spyOn(workflowService, 'activateWorkflow');
+	let notifiedWorkflow: WorkflowEntity | undefined;
+	const notify = vi
+		.spyOn(Container.get(CollaborationService), 'broadcastWorkflowUpdate')
+		.mockImplementation(async (workflowId) => {
+			notifiedWorkflow = await workflows.findOneByOrFail({ id: workflowId });
+		});
 	const detail = await act('approve-and-publish');
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	const beforeHistory = await history.countBy({ workflowId: original.id });
@@ -551,10 +584,16 @@ it('requests normal publication of the applied version and does not repeat it', 
 		await Container.get(WorkflowPublicationOutboxRepository).findInFlightByWorkflowId(original.id),
 	).toMatchObject({ publishedVersionId: saved.versionId });
 	expect(saved.activeVersionId).toBe(saved.versionId);
+	expect(notifiedWorkflow).toMatchObject({
+		versionId: saved.versionId,
+		activeVersionId: saved.versionId,
+	});
+	expect(notify).toHaveBeenCalledExactlyOnceWith(original.id, user.id);
 	expect(detail).not.toHaveProperty('publication');
 
 	await act('approve-and-publish');
 	expect(publish).toHaveBeenCalledTimes(1);
+	expect(notify).toHaveBeenCalledTimes(1);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
 	expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
 		'submitted',
@@ -563,8 +602,9 @@ it('requests normal publication of the applied version and does not repeat it', 
 });
 
 it('keeps the fix applied when the normal publication guard rejects it', async () => {
-	const { original, suggestion, act } = await fixture();
+	const { user, original, suggestion, act } = await fixture();
 	const publish = vi.spyOn(workflowService, 'activateWorkflow');
+	const notify = vi.spyOn(Container.get(CollaborationService), 'broadcastWorkflowUpdate');
 	vi.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish').mockRejectedValueOnce(
 		new Error('An open review blocks publication.'),
 	);
@@ -577,6 +617,7 @@ it('keeps the fix applied when the normal publication guard rejects it', async (
 	});
 	expect(saved.versionId).toBe(detail.appliedVersion?.versionId);
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
+	expect(notify).toHaveBeenCalledExactlyOnceWith(original.id, user.id);
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		closedReason: 'applied',
 	});
@@ -617,18 +658,21 @@ it('starts publication only from the request that applies the fix', async () => 
 	expect(publish).toHaveBeenCalledTimes(1);
 });
 
-it('continues to publication when the editor notification fails after Apply', async () => {
-	const { act } = await fixture();
-	const publish = vi
-		.spyOn(workflowService, 'activateWorkflow')
-		.mockResolvedValue(new WorkflowEntity());
+it('returns the applied fix when the editor notification fails after publication', async () => {
+	const { original, act } = await fixture();
+	const publish = vi.spyOn(workflowService, 'activateWorkflow');
 	vi.spyOn(Container.get(CollaborationService), 'broadcastWorkflowUpdate').mockRejectedValueOnce(
 		new Error('Editor notification unavailable.'),
 	);
 
-	expect(await act('approve-and-publish')).toMatchObject({
+	const detail = await act('approve-and-publish');
+	expect(detail).toMatchObject({
 		closedReason: 'applied',
 	});
+	expect(detail.publicationError).toBeUndefined();
+	expect(
+		await Container.get(WorkflowPublicationOutboxRepository).findInFlightByWorkflowId(original.id),
+	).toMatchObject({ publishedVersionId: detail.appliedVersion?.versionId });
 	expect(publish).toHaveBeenCalledTimes(1);
 });
 

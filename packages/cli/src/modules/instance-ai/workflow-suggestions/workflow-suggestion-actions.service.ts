@@ -138,14 +138,6 @@ export class WorkflowSuggestionActionsService {
 				if (applied?.versionId !== current.appliedVersion?.versionId) applied = undefined;
 			}
 			if (applied) {
-				try {
-					await this.collaboration.broadcastWorkflowUpdate(workflowId, user.id);
-				} catch (error) {
-					this.logger.warn('Could not notify editors about the applied suggestion', {
-						workflowId,
-						error,
-					});
-				}
 				if (action === 'approve-and-publish' && applied.action === action) {
 					try {
 						const publisher = await this.service.requireEditor(user.id, workflowId);
@@ -165,6 +157,14 @@ export class WorkflowSuggestionActionsService {
 						publicationError = ensureError(error).message;
 					}
 				}
+				try {
+					await this.collaboration.broadcastWorkflowUpdate(workflowId, user.id);
+				} catch (error) {
+					this.logger.warn('Could not notify editors about the applied suggestion', {
+						workflowId,
+						error,
+					});
+				}
 			}
 		}
 		return {
@@ -180,18 +180,20 @@ export class WorkflowSuggestionActionsService {
 		suggestionId: string,
 		ctx: OperationContext = {},
 	) {
-		await this.txRunner.run(ctx, async (ctx) => {
+		const found = await this.txRunner.run(ctx, async (ctx) => {
 			await this.service.requireEditor(user.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,
 				{ workflowId, projectId },
 				ctx,
 			);
-			if (!target.workflow || target.projectId !== projectId)
-				throw new NotFoundError('Suggestion not found.');
+			if (!target.workflow || target.projectId !== projectId) return false;
 			if (suggestion.state === 'pending') {
 				await this.suggestions.closePending(suggestion, 'discarded', user.id, ctx);
 			}
+			return true;
 		});
+		// Keep the outdated closure when this call owns the transaction.
+		if (!found) throw new NotFoundError('Suggestion not found.');
 	}
 }

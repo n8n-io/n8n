@@ -230,8 +230,13 @@ describe('update()', () => {
 			Object.assign(workflowRepository.create(), { name: 'Ordinary edit' }),
 			workflow.id,
 		);
-		await prepared.promise;
 		try {
+			await Promise.race([
+				prepared.promise,
+				ordinarySave.then(() => {
+					throw new Error('The ordinary save did not pause before the write.');
+				}),
+			]);
 			const saved = await workflowService.update(
 				owner,
 				Object.assign(workflowRepository.create(), {
@@ -253,6 +258,7 @@ describe('update()', () => {
 			expect(current.name).toBe('Ordinary edit');
 		} finally {
 			resume.resolve();
+			await Promise.allSettled([ordinarySave]);
 		}
 	});
 
