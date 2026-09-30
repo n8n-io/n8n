@@ -56,6 +56,17 @@ describe('describeRejectionReason', () => {
 		expect(lines[10]).toBe('    at frame9 (file.js:9:1)');
 	});
 
+	it('should cap the description at 1000 characters', () => {
+		const error = new Error('boom');
+		error.name = 'N'.repeat(100);
+		error.stack = [
+			`${error.name}: boom`,
+			...Array.from({ length: 10 }, (_, i) => `    at frame${i} (${'f'.repeat(250)}.js:${i}:1)`),
+		].join('\n');
+
+		expect(describeRejectionReason(error).length).toBeLessThanOrEqual(1000);
+	});
+
 	it('should describe an error-like object by its keys only', () => {
 		const result = describeRejectionReason({ name: 'CustomError', message: 'boom' });
 
