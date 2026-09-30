@@ -14,10 +14,12 @@ function describeKind(reason: object): string {
 }
 
 function describeObject(reason: object): string {
-	// `isNativeError` detects vm sandbox errors without running user code; a plain object's `message` can hold request data.
+	// Only real errors are trusted, since a plain object's `message` can hold request data.
 	if (types.isNativeError(reason)) {
 		if (typeof reason.stack === 'string') return reason.stack;
-		return `${reason.name}: ${reason.message}`;
+		const name = typeof reason.name === 'string' ? reason.name : 'Error';
+		const message = typeof reason.message === 'string' ? reason.message : '';
+		return `${name}: ${message}`;
 	}
 
 	const kind = describeKind(reason);
