@@ -1,6 +1,9 @@
 import type { BreakingChangeVersion } from '@n8n/api-types';
 
-import type { MigrationFinding } from '../database/entities/migration-finding.entity';
+import type {
+	MigrationFinding,
+	MigrationFindingId,
+} from '../database/entities/migration-finding.entity';
 import type { NewMigrationFinding } from '../database/repositories/migration-finding.repository';
 
 /** One rule that fired on one workflow during a scan. */
@@ -17,11 +20,11 @@ export interface MigrationFindingDiffInput {
 	existing: MigrationFinding[];
 }
 
-/** Row ids to update, plus the findings to create. */
+/** Findings to create, plus the ids of stored findings to update. */
 export interface MigrationFindingDiff {
 	toInsert: NewMigrationFinding[];
-	toMarkFixed: number[];
-	toReopen: number[];
+	toMarkFixed: MigrationFindingId[];
+	toReopen: MigrationFindingId[];
 }
 
 // The null character separates the two ids. It cannot appear in either id, so

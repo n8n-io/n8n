@@ -3,7 +3,7 @@ import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource, In, Not, type EntityManager } from '@n8n/typeorm';
 
-import { MigrationFinding } from '../entities/migration-finding.entity';
+import { MigrationFinding, type MigrationFindingId } from '../entities/migration-finding.entity';
 
 /** A finding the scan detected. New findings always start as `open`. */
 export type NewMigrationFinding = Pick<MigrationFinding, 'targetVersion' | 'ruleId' | 'workflowId'>;
@@ -47,7 +47,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	 * or a repeated sync does not falsify it.
 	 */
 	async updateStatusForIds(
-		ids: number[],
+		ids: MigrationFindingId[],
 		status: MigrationFindingStatus,
 		note: string | undefined,
 		ctx: OperationContext,
@@ -64,7 +64,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	/** Updates only the rows not already in `status`, so `statusChangedAt` marks a real transition. */
 	private async transitionStatus(
 		manager: EntityManager,
-		ids: number[],
+		ids: MigrationFindingId[],
 		status: MigrationFindingStatus,
 	): Promise<void> {
 		await manager.update(
@@ -75,7 +75,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/** Called by the sync when a re-scan no longer detects the finding. */
-	async markFixedForIds(ids: number[], ctx: OperationContext): Promise<void> {
+	async markFixedForIds(ids: MigrationFindingId[], ctx: OperationContext): Promise<void> {
 		await this.updateStatusForIds(ids, 'fixed', undefined, ctx);
 	}
 
@@ -83,7 +83,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	 * Records a notification. `notifiedAt` is bumped for every id, so a reminder
 	 * updates it, while `statusChangedAt` moves only on the first transition.
 	 */
-	async markNotifiedForIds(ids: number[], ctx: OperationContext): Promise<void> {
+	async markNotifiedForIds(ids: MigrationFindingId[], ctx: OperationContext): Promise<void> {
 		if (ids.length === 0) return;
 
 		const manager = this.managerFor(ctx);
