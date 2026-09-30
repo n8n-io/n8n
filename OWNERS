@@ -89,7 +89,6 @@ packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
 packages/cli/src/mfa/                                   @n8n-io/iam
 packages/cli/src/oauth/                                 @n8n-io/iam
-packages/cli/src/permissions.ee/                        @n8n-io/iam
 packages/cli/src/sso.ee/                                @n8n-io/iam
 packages/cli/src/user-management/                       @n8n-io/iam
 packages/cli/src/license/                               @n8n-io/iam
@@ -162,6 +161,7 @@ packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
 packages/cli/src/services/access.service.ts             @n8n-io/iam
 packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
 packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
+packages/@n8n/backend-services/src/permissions.ee/                 @n8n-io/iam
 packages/cli/src/services/ai.service.ts                 @n8n-io/ai
 packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai
 packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai
