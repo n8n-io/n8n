@@ -31,7 +31,7 @@ Each run:
 
 1. **Build** — the test case prompt goes to Instance AI, which builds a workflow.
 2. **Phase 1** — the server analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario).
-3. **Phase 2** — the workflow executes with every HTTP request intercepted and answered by an LLM using the node's configuration and API docs from Context7.
+3. **Phase 2** — the workflow executes with every HTTP request intercepted and answered by an LLM using the node's configuration and its own knowledge of the API.
 4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see [Failure categories](#failure-categories)).
 
 ### What gets mocked
@@ -64,7 +64,6 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
    N8N_EVAL_PASSWORD=PlaywrightTest123
    # Optional — see "Environment variables" for the full list
    LANGSMITH_API_KEY=...
-   CONTEXT7_API_KEY=...
    ```
 
 2. **Start the instance**:
@@ -345,7 +344,6 @@ on disk. Losing this field turns it into a normal attachment test.
 | `LANGSMITH_ENDPOINT` | No | Region (`https://api.smith.langchain.com` US, `https://eu.api.smith.langchain.com` EU) |
 | `LANGSMITH_REVISION_ID` | No | Commit SHA to tag the experiment with (auto-set in CI) |
 | `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (auto-set in CI) |
-| `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
@@ -697,7 +695,7 @@ reliable signal. Two specific things to know:
 
 1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
 2. **Phase 1** — analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario)
-3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and API documentation from Context7
+3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and its own knowledge of the API
 4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see Failure categories below)
 
 ### What gets mocked
@@ -1228,7 +1226,6 @@ packages/cli/src/modules/instance-ai/eval/
 ├── execution.service.ts  # Phase 1 + Phase 2 orchestration
 ├── workflow-analysis.ts  # Hint generation (Phase 1)
 ├── mock-handler.ts       # Per-request mock generation (Phase 2)
-├── api-docs.ts           # Context7 API doc fetcher
 ├── node-config.ts        # Node config serializer
 └── pin-data-generator.ts # LLM pin data for bypass nodes (Phase 1.5)
 ```

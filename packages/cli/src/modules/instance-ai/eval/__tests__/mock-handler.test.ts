@@ -86,8 +86,6 @@ vi.mock('@n8n/agents/tool', () => ({
 	}),
 }));
 
-vi.mock('../api-docs', () => ({ fetchApiDocs: vi.fn().mockResolvedValue('') }));
-
 vi.mock('../node-config', () => ({
 	extractNodeConfig: vi.fn().mockReturnValue('{}'),
 }));
@@ -114,7 +112,6 @@ import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { fetchApiDocs } from '../api-docs';
 import {
 	buildDateAnchors,
 	createLlmMockHandler,
@@ -128,7 +125,6 @@ import { extractNodeConfig } from '../node-config';
 // matter for tests to pass. Keep in sync with the factory bodies above.
 function reapplyMockImplementations() {
 	vi.mocked(Container.get).mockReturnValue(mockLogger);
-	vi.mocked(fetchApiDocs).mockResolvedValue('');
 	vi.mocked(extractNodeConfig).mockReturnValue('{}');
 	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
 	vi.mocked(Tool).mockImplementation(function (name: string) {

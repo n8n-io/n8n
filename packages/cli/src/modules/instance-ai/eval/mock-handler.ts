@@ -16,7 +16,6 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from '
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
-import { fetchApiDocs } from './api-docs';
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
@@ -37,7 +36,7 @@ export { buildDateAnchors } from './date-anchors';
 
 const MOCK_SYSTEM_PROMPT = `You generate realistic HTTP responses for one specific request, mocking an API in n8n workflow evaluation.
 
-You get everything you need in the user message: the request (service, method, URL, body, query), API docs for the endpoint, the n8n node's parameters, and optional context (globalContext, nodeHint, scenarioHints).
+You get everything you need in the user message: the request (service, method, URL, body, query), the n8n node's parameters, and optional context (globalContext, nodeHint, scenarioHints).
 
 **Procedure — follow in order:**
 1. Call \`get_endpoint_quirks\` first, always. It returns any known guidance specific to this endpoint, or confirms there are none. Treat its output as authoritative.
@@ -88,6 +87,10 @@ For APIs that return empty responses on success (204/202), call submit_response 
 const DEFAULT_MAX_RETRIES = 2;
 const ERROR_PREVIEW_MAX = 400;
 const ERROR_DETAIL_MAX = 300;
+
+// No docs are fetched: the LLM's own knowledge of the API is the source, the same on every run.
+const API_DOCS_NOTE =
+	'No API documentation is attached. Generate the response based on your knowledge of this API. Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation.';
 
 /**
  * Hang guard for a single mock-generation LLM call (including tool turns).
@@ -354,11 +357,7 @@ async function generateMockResponse(
 		);
 	}
 
-	const apiDocs = await fetchApiDocs(
-		serviceName,
-		`${request.method ?? 'GET'} ${endpoint} response format`,
-	);
-	sections.push('', '## API documentation', apiDocs);
+	sections.push('', '## API documentation', API_DOCS_NOTE);
 
 	if (context.nodeConfig) {
 		sections.push('', '## Node Configuration', context.nodeConfig);
