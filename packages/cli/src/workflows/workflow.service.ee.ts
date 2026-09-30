@@ -18,6 +18,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import {
@@ -37,6 +38,10 @@ import { EnterpriseCredentialsService } from '@/credentials/credentials.service.
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import {
+	AGENT_CONFIG_ID_KEYS,
+	extractAgentCredentialIds,
+} from '@/modules/agents/utils/extract-agent-credential-ids';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -368,9 +373,52 @@ export class EnterpriseWorkflowService {
 			if (isNodeWithWorkflowSelector(current)) {
 				stack.push(...this.getInlineWorkflowNodes(current.parameters?.workflowJson));
 			}
+
+			const inlineAgent = this.parseInlineAgent(current.parameters?.inlineAgent);
+			if (inlineAgent) {
+				ids.push(...extractAgentCredentialIds(inlineAgent, AGENT_CONFIG_ID_KEYS));
+				stack.push(...this.getAgentToolNodes(inlineAgent));
+			}
 		}
 
 		return { ids, hasUnresolved };
+	}
+
+	/**
+	 * Read the agent config a node carries in its `inlineAgent` parameter instead
+	 * of in `node.credentials`. Execution resolves the credential ids in the
+	 * config in the workflow owner's project, so the guard must see them.
+	 *
+	 * The parameter name is the key, not the node type, so the agent node, its
+	 * tool variant and any later node that embeds an agent config are covered.
+	 * The value holds an object or JSON text, depending on the client.
+	 * Unparseable text references nothing: the node fails at run time.
+	 */
+	private parseInlineAgent(inlineAgent: unknown): unknown {
+		return typeof inlineAgent === 'string'
+			? jsonParse<unknown>(inlineAgent, { fallbackValue: null })
+			: inlineAgent;
+	}
+
+	/**
+	 * An agent config embeds the node tools it runs as node definitions, which
+	 * keep their own parameters — an inline sub-workflow, or another agent
+	 * config. Those definitions use `nodeType`/`nodeParameters`, so map them to
+	 * node shape and let the walk inspect them like any other node.
+	 */
+	private getAgentToolNodes(config: unknown): INode[] {
+		if (Array.isArray(config)) return config.flatMap((entry) => this.getAgentToolNodes(entry));
+		if (!isRecord(config)) return [];
+
+		const nested = Object.values(config).flatMap((value) => this.getAgentToolNodes(value));
+		if (typeof config.nodeType !== 'string') return nested;
+
+		// A node runs as a tool under its `…Tool` variant, which carries the same
+		// parameters as the node itself.
+		const type = config.nodeType.replace(/Tool$/, '');
+		const parameters = isRecord(config.nodeParameters) ? config.nodeParameters : {};
+
+		return [...nested, { type, parameters } as INode];
 	}
 
 	/**
