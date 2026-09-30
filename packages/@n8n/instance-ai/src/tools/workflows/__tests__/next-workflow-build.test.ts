@@ -1,6 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { nextWorkspaceFiles, nodeOutputsDeclaration, usedNodeIds } from '../next-workflow-build';
+import {
+	nextWorkspaceFiles,
+	nodeOutputsDeclaration,
+	synthesizedFixtures,
+	usedNodeIds,
+} from '../next-workflow-build';
 
 const source = `import { workflow, manual } from '@n8n/workflow-sdk/next';
 import { notion } from '@n8n/nodes/notion';
@@ -61,5 +66,12 @@ describe('next workflow build', () => {
 		const text = nodeOutputsDeclaration(workflow);
 		expect(text).toContain('"Done tasks": {');
 		expect(text).toContain('property_completed: {\n\t\t\t\tstart: string;');
+		expect(synthesizedFixtures(workflow)['Done tasks']?.[0]).toMatchObject({
+			id: 'example',
+			property_completed: { start: 'example', end: 'example', time_zone: 'example' },
+		});
+		expect(synthesizedFixtures(workflow, { 'Done tasks': [{ id: 'mine' }] })).toEqual({
+			'Done tasks': [{ id: 'mine' }],
+		});
 	});
 });

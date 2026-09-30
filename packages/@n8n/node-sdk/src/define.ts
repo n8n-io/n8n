@@ -16,6 +16,8 @@ export interface NodeDefinition {
 	readonly credentials: readonly string[];
 	readonly baseUrl?: string;
 	readonly icon?: string;
+	/** The node also runs without a credential (a public HTTP API). */
+	readonly authOptional?: boolean;
 }
 
 export const defineNode = <const N extends NodeDefinition>(node: N): N => node;

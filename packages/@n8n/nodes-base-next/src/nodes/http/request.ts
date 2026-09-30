@@ -4,6 +4,7 @@ export const httpRequest = defineNode({
 	id: 'httpRequest',
 	displayName: 'HTTP Request',
 	credentials: ['httpHeaderAuth', 'httpBearerAuth', 'httpBasicAuth', 'httpQueryAuth', 'oAuth2Api'],
+	authOptional: true,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

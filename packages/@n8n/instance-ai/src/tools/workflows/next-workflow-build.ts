@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { generateNodeModule, toContract, toTs } from '@n8n/node-sdk';
+import { exampleOf, generateNodeModule, toContract, toTs, type JsonSchema } from '@n8n/node-sdk';
 import { actions, nodeTypeOf } from '@n8n/nodes-base-next';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
@@ -77,24 +77,49 @@ export function nextWorkspaceFiles(
 	};
 }
 
+const byNodeType = () => new Map(actions.map((action) => [nodeTypeOf(action), action]));
+
+/** The action's output for this node's parameters; a hatch that cannot read them keeps the default. */
+function outputOf(
+	action: (typeof actions)[number],
+	parameters: Record<string, unknown>,
+): JsonSchema {
+	try {
+		return action.deriveOutput?.(parameters) ?? action.output.json;
+	} catch {
+		return action.output.json;
+	}
+}
+
+type Fixtures = NonNullable<WorkflowJSON['pinData']>;
+
+/**
+ * One example item for each read node without declared output, so verification simulates it
+ * instead of calling the service. Write nodes keep the existing simulation classification.
+ */
+export function synthesizedFixtures(workflow: WorkflowJSON, declared: Fixtures = {}): Fixtures {
+	const types = byNodeType();
+	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
+		const action = types.get(node.type);
+		if (action?.flow.effect !== 'read' || !node.name || declared[node.name]) return [];
+		const example = exampleOf(outputOf(action, node.parameters ?? {}));
+		return typeof example === 'object' && example !== null && !Array.isArray(example)
+			? [[node.name, [Object.fromEntries(Object.entries(example))]]]
+			: [];
+	});
+	return { ...declared, ...Object.fromEntries(synthesized) };
+}
+
 /**
  * Output types for the nodes of a built workflow, from each action's `deriveOutput` pure
  * hatch. Keyed by node name, they narrow `$('Node')` and the next node's item in `tsc`.
  */
 export function nodeOutputsDeclaration(workflow: WorkflowJSON): string {
-	const byType = new Map(actions.map((action) => [nodeTypeOf(action), action]));
+	const types = byNodeType();
 	const members = workflow.nodes.flatMap((node) => {
-		const action = byType.get(node.type);
+		const action = types.get(node.type);
 		if (!action?.deriveOutput || !node.name) return [];
-		// Parameters are not validated yet; a shape the hatch cannot read keeps the default output.
-		const schema = (() => {
-			try {
-				return action.deriveOutput?.(node.parameters ?? {});
-			} catch {
-				return undefined;
-			}
-		})();
-		if (!schema) return [];
+		const schema = outputOf(action, node.parameters ?? {});
 		return [`\t\t${JSON.stringify(node.name)}: ${toTs(schema, { input: false, indent: '\t\t' })};`];
 	});
 	if (members.length === 0) return EMPTY_OUTPUTS;

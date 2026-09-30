@@ -136,3 +136,32 @@ export function validate(
 /** Type guard: `value` matches `schema`. */
 export const matches = <S extends AnySchema>(schema: S, value: unknown): value is Infer<S> =>
 	validate(value, schema.json).length === 0;
+
+/** One plausible value for `schema`, for verification fixtures when a node declares none. */
+export function exampleOf(schema: JsonSchema): unknown {
+	if (schema.const !== undefined) return schema.const;
+	if (schema.default !== undefined) return schema.default;
+	if (schema.enum) return schema.enum[0];
+	const union = schema.oneOf ?? schema.anyOf;
+	if (union) {
+		const first = union.find((option) => option.type !== 'null') ?? union[0];
+		return first ? exampleOf(first) : null;
+	}
+	switch (schema.type) {
+		case 'string':
+			return schema.format === 'date' ? '2026-01-01' : 'example';
+		case 'number':
+		case 'integer':
+			return 1;
+		case 'boolean':
+			return true;
+		case 'null':
+			return null;
+		case 'array':
+			return schema.items ? [exampleOf(schema.items)] : [];
+		default:
+			return Object.fromEntries(
+				Object.entries(schema.properties ?? {}).map(([key, child]) => [key, exampleOf(child)]),
+			);
+	}
+}

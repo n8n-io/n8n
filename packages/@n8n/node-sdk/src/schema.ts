@@ -30,6 +30,8 @@ export interface JsonSchema {
 	'x-n8n-literal'?: boolean;
 	/** A resource reference, e.g. `notion.database`. */
 	'x-n8n-ref'?: string;
+	/** Value types by source type (Notion property type), for open `patternProperties`. */
+	'x-n8n-value-types'?: Record<string, JsonSchema>;
 }
 
 declare const phantom: unique symbol;

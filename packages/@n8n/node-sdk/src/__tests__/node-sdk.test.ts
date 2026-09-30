@@ -4,6 +4,7 @@ import {
 	arr,
 	defineAction,
 	defineNode,
+	exampleOf,
 	generateNodeModule,
 	lintContract,
 	num,
@@ -140,6 +141,25 @@ describe('toNodeType', () => {
 		]);
 	});
 
+	it('adds one authentication selector when the node takes several credential types', () => {
+		const open = defineNode({
+			id: 'web',
+			displayName: 'Web',
+			credentials: ['a', 'b'],
+			authOptional: true,
+		});
+		const { description } = new (toNodeType({
+			...listTasks,
+			node: open,
+			credentialTypes: ['a', 'b'],
+		}))();
+		expect(description.properties[0]).toMatchObject({ name: 'authentication', default: 'none' });
+		expect(description.credentials).toEqual([
+			{ name: 'a', required: false, displayOptions: { show: { authentication: ['a'] } } },
+			{ name: 'b', required: false, displayOptions: { show: { authentication: ['b'] } } },
+		]);
+	});
+
 	it('runs per item, applies the credential, and pairs output items', async () => {
 		const { context, requests } = fakeContext(
 			{ project: 'p1', paging: '{"mode":"limit","max":2}' },
@@ -181,6 +201,15 @@ describe('toNodeType', () => {
 		const lenient = fakeContext({ project: 'p1', paging: { mode: 'all' } }, bad, true);
 		const result = await new NodeType().execute?.call(lenient.context);
 		expect(JSON.stringify(result)).toContain('output.id: must be string');
+	});
+});
+
+describe('exampleOf', () => {
+	it('builds a value that matches the output schema', () => {
+		const schema = obj({ id: str(), tags: arr(str()), paging: variant('mode', { all: {} }) });
+		const example = exampleOf(schema.json);
+		expect(example).toEqual({ id: 'example', tags: ['example'], paging: { mode: 'all' } });
+		expect(validate(example, schema.json)).toEqual([]);
 	});
 });
 

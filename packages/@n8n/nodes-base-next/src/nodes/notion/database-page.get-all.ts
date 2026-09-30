@@ -122,6 +122,7 @@ const input = {
 
 const page = obj({ id: str(), name: str().hint('The page title'), url: str() }).with({
 	patternProperties: { '^property_': {} },
+	'x-n8n-value-types': SIMPLIFIED,
 	'x-n8n-hint': 'Keys: property_ + snake_case of the exact property name',
 });
 

@@ -96,6 +96,8 @@ function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IH
 	};
 }
 
+const AUTHENTICATION = 'authentication';
+
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
@@ -111,6 +113,25 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	const isInput = (value: unknown): value is ObjectOf<S> =>
 		validate(value, action.inputSchema).length === 0;
 
+	// A selector lets setup see one credential slot; each credential shows for its own value.
+	const { credentialTypes } = action;
+	const optional = action.node.authOptional === true;
+	const selector: INodeProperties[] =
+		credentialTypes.length > 1 || optional
+			? [
+					{
+						displayName: 'Authentication',
+						name: AUTHENTICATION,
+						type: 'options',
+						options: [...(optional ? ['none'] : []), ...credentialTypes].map((value) => ({
+							name: value,
+							value,
+						})),
+						default: optional ? 'none' : (credentialTypes[0] ?? 'none'),
+					},
+				]
+			: [];
+
 	const description: INodeTypeDescription = {
 		displayName: `${action.node.displayName}: ${action.action}`,
 		name: nodeNameOf(action.id),
@@ -120,16 +141,26 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		defaults: { name: action.action },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: action.credentialTypes.map((name) => ({
+		credentials: credentialTypes.map((name) => ({
 			name,
-			required: action.credentialTypes.length === 1,
+			required: !optional,
+			...(selector.length > 0 ? { displayOptions: { show: { [AUTHENTICATION]: [name] } } } : {}),
 		})),
-		properties: Object.entries(action.input).map(([name, schema]) => toProperty(name, schema)),
+		properties: [
+			...selector,
+			...Object.entries(action.input).map(([name, schema]) => toProperty(name, schema)),
+		],
 	};
 
 	async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = this.getNode().credentials ?? {};
-		const credentialType = action.credentialTypes.find((type) => credentials[type] !== undefined);
+		const selected: unknown =
+			selector.length > 0 ? this.getNodeParameter(AUTHENTICATION, 0, undefined) : undefined;
+		const credentialType =
+			credentialTypes.find((type) => type === selected) ??
+			(selected === 'none'
+				? undefined
+				: credentialTypes.find((type) => credentials[type] !== undefined));
 		const http: Http = {
 			request: async (request) => {
 				const options = toRequestOptions(request, action.node.baseUrl);

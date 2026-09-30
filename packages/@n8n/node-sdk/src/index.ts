@@ -14,6 +14,6 @@ export {
 	type NodeDefinition,
 	type RunContext,
 } from './define';
-export { matches, validate } from './validate';
+export { exampleOf, matches, validate } from './validate';
 export { nodeNameOf, toNodeType } from './runtime';
 export { generateNodeModule, toTs, type GeneratedAction } from './codegen';

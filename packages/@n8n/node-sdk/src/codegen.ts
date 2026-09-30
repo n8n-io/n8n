@@ -18,6 +18,17 @@ function patternKey(pattern: string): string {
 	return prefix ? `\`${prefix}\${string}\`` : 'string';
 }
 
+/** The value types of an open key space, as a doc comment the agent reads. */
+function valueTypesDoc(schema: JsonSchema, indent: string): string {
+	const types = schema['x-n8n-value-types'];
+	if (!types) return '';
+	const lines = Object.entries(types).map(([name, child]) => {
+		const hint = child['x-n8n-hint'] ? ` (${child['x-n8n-hint']})` : '';
+		return `${indent} * - ${name}: ${toTs(child, { input: false, indent: '' }).replace(/\s+/g, ' ')}${hint}`;
+	});
+	return `${indent}/**\n${indent} * Value by property type:\n${lines.join('\n')}\n${indent} */\n`;
+}
+
 function leaf(text: string, schema: JsonSchema, mode: Mode): string {
 	return mode.input && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
 }
@@ -34,7 +45,7 @@ function objectTs(schema: JsonSchema, mode: Mode, tag?: { name: string; values: 
 		),
 		...Object.entries(schema.patternProperties ?? {}).map(
 			([pattern, child]) =>
-				`${inner}[key: ${patternKey(pattern)}]: ${toTs(child, { ...mode, indent: inner })};`,
+				`${valueTypesDoc(schema, inner)}${inner}[key: ${patternKey(pattern)}]: ${toTs(child, { ...mode, indent: inner })};`,
 		),
 	];
 	const { additionalProperties } = schema;

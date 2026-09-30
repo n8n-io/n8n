@@ -25,6 +25,7 @@ import {
 	NODE_OUTPUTS_PATH,
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
+	synthesizedFixtures,
 	typecheckWorkflowSource,
 } from './next-workflow-build';
 
@@ -466,7 +467,12 @@ async function compileNextWorkflowSource(
 			summary: 'Workflow source has type errors.',
 		};
 	}
-	return built;
+	return built.success
+		? {
+				...built,
+				declaredOutputFixtures: synthesizedFixtures(built.workflow, built.declaredOutputFixtures),
+			}
+		: built;
 }
 
 export async function compileWorkflowSource(
