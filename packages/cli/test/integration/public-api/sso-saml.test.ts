@@ -1,3 +1,5 @@
+import type { SamlConfigurationPublicDto } from '@n8n/api-types';
+import { UrlService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -10,9 +12,26 @@ import {
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
+import {
+	getServiceProviderEntityId,
+	getServiceProviderReturnUrl,
+} from '@/modules/sso-saml/service-provider.ee';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { sampleConfig } from '../saml/sample-metadata';
 import { setupTestServer } from '@test-integration/utils';
+
+function mockedSamlConfigurationPublicDto(
+	override: Partial<SamlConfigurationPublicDto> = {},
+): SamlConfigurationPublicDto {
+	return {
+		...sampleConfig,
+		metadata: CREDENTIAL_BLANKING_VALUE,
+		relayState: Container.get(UrlService).getInstanceBaseUrl(),
+		entityID: getServiceProviderEntityId(),
+		returnUrl: getServiceProviderReturnUrl(),
+		...override,
+	};
+}
 
 describe('SAML SSO configuration in Public API', () => {
 	let owner: User;
@@ -48,18 +67,15 @@ describe('SAML SSO configuration in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/saml');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
-				loginEnabled: samlService.samlPreferences.loginEnabled,
-				loginLabel: samlService.samlPreferences.loginLabel,
-				ignoreSSL: false,
-				loginBinding: 'redirect',
-				acsBinding: 'post',
-				authnRequestsSigned: false,
-				wantAssertionsSigned: true,
-				wantMessageSigned: true,
-			});
-			expect(response.body.entityID).toContain('/rest/sso/saml/metadata');
-			expect(response.body.returnUrl).toContain('/rest/sso/saml/acs');
+			expect(response.body).toStrictEqual(
+				mockedSamlConfigurationPublicDto({
+					mapping: { ...sampleConfig.mapping, n8nInstanceRole: '' },
+					metadata: '',
+					ignoreSSL: false,
+					loginEnabled: samlService.samlPreferences.loginEnabled,
+					loginLabel: samlService.samlPreferences.loginLabel,
+				}),
+			);
 		});
 
 		it('redacts certificates and secrets on read', async () => {
@@ -78,22 +94,19 @@ describe('SAML SSO configuration in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/saml');
 
 			expect(response.status).toBe(200);
-			expect(response.body.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
-			expect(response.body.signingCertificate).toBe(CREDENTIAL_BLANKING_VALUE);
-			expect(response.body.metadata).toBe(CREDENTIAL_BLANKING_VALUE);
-			expect(response.body.metadata).not.toContain('BEGIN CERTIFICATE');
-			expect(response.body.signingCertificate).not.toContain('BEGIN CERTIFICATE');
-			expect(response.body.mapping).toMatchObject({
-				n8nInstanceRole: expect.any(String),
-				n8nProjectRoles: expect.any(Array),
-			});
+			expect(response.body).toStrictEqual(
+				mockedSamlConfigurationPublicDto({
+					signingPrivateKey: CREDENTIAL_BLANKING_VALUE,
+					signingCertificate: CREDENTIAL_BLANKING_VALUE,
+				}),
+			);
 		});
 
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/saml');
 
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+			expect(response.body).toStrictEqual({ message: licenseErrorMessage });
 		});
 
 		it('rejects with 403 when the API key lacks the saml:manage scope', async () => {
@@ -147,16 +160,12 @@ describe('SAML SSO configuration in Public API', () => {
 				});
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
-				loginLabel: 'Updated SAML Label',
-				loginEnabled: sampleConfig.loginEnabled,
-				ignoreSSL: sampleConfig.ignoreSSL,
-			});
-			expect(response.body.entityID).toContain('/rest/sso/saml/metadata');
-			expect(response.body.returnUrl).toContain('/rest/sso/saml/acs');
+			expect(response.body).toStrictEqual(
+				mockedSamlConfigurationPublicDto({ loginLabel: 'Updated SAML Label' }),
+			);
 
 			const readResponse = await testServer.publicApiAgentFor(owner).get('/settings/sso/saml');
-			expect(readResponse.body.loginLabel).toBe('Updated SAML Label');
+			expect(readResponse.body).toStrictEqual(response.body);
 		});
 
 		it('accepts a GET response body as a PUT body and preserves redacted secrets', async () => {
@@ -184,10 +193,10 @@ describe('SAML SSO configuration in Public API', () => {
 				});
 
 			expect(putResponse.status).toBe(200);
-			expect(putResponse.body.loginLabel).toBe('Round-tripped Label');
-			expect(putResponse.body.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
-			expect(putResponse.body.signingCertificate).toBe(CREDENTIAL_BLANKING_VALUE);
-			expect(putResponse.body.metadata).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(putResponse.body).toStrictEqual({
+				...getResponse.body,
+				loginLabel: 'Round-tripped Label',
+			});
 
 			const samlService = Container.get(SamlService);
 			expect(samlService.samlPreferences.signingPrivateKey).toBeTruthy();
@@ -210,8 +219,9 @@ describe('SAML SSO configuration in Public API', () => {
 				});
 
 			expect(clearResponse.status).toBe(200);
-			expect(clearResponse.body.metadata).toBe('');
-			expect(clearResponse.body.metadataUrl).toBe('');
+			expect(clearResponse.body).toStrictEqual(
+				mockedSamlConfigurationPublicDto({ metadata: '', metadataUrl: '' }),
+			);
 
 			const samlService = Container.get(SamlService);
 			expect(samlService.samlPreferences.metadata).toBe('');
@@ -293,7 +303,7 @@ describe('SAML SSO configuration in Public API', () => {
 				.send(sampleConfig);
 
 			expect(response.status).toBe(403);
-			expect(response.body).toHaveProperty('message', licenseErrorMessage);
+			expect(response.body).toStrictEqual({ message: licenseErrorMessage });
 		});
 
 		it('rejects with 403 when the API key lacks the saml:manage scope', async () => {
@@ -333,7 +343,7 @@ describe('SAML SSO configuration in Public API', () => {
 				});
 
 			expect(writeResponse.status).toBe(409);
-			expect(writeResponse.body).toMatchObject({
+			expect(writeResponse.body).toStrictEqual({
 				message:
 					'SSO configuration is managed declaratively and cannot be modified through the API',
 			});
