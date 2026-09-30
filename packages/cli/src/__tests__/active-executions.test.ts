@@ -6,6 +6,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
+import type { InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -836,6 +837,57 @@ describe('ActiveExecutions', () => {
 				waitingExecutionId2,
 				expect.any(SystemShutdownExecutionCancelledError),
 			);
+		});
+	});
+
+	describe('shutdown with an execution enqueued as a Bull job', () => {
+		const buildActiveExecutions = (instanceType: InstanceSettings['instanceType']) => {
+			const queueExecutionsConfig = mock<ExecutionsConfig>({ mode: 'queue' });
+			const instanceSettings = mock<InstanceSettings>({ instanceType });
+			return new ActiveExecutions(
+				logger,
+				executionRepository,
+				executionPersistence,
+				concurrencyControl,
+				mock(),
+				queueExecutionsConfig,
+				instanceSettings,
+			);
+		};
+
+		const raceShutdownAgainstTimeout = async (instance: ActiveExecutions) => {
+			return await Promise.race([
+				instance.shutdown().then(() => 'shutdown'),
+				new Promise((resolve) => setTimeout(() => resolve('timeout'), 50)),
+			]);
+		};
+
+		beforeEach(() => {
+			(sleep as Mock).mockImplementation(async () => await new Promise(() => {}));
+		});
+
+		test('resolves promptly on a worker instance', async () => {
+			const workerActiveExecutions = buildActiveExecutions('worker');
+			const executionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+				isQueueJob: true,
+			});
+
+			const outcome = await raceShutdownAgainstTimeout(workerActiveExecutions);
+
+			expect(outcome).toBe('shutdown');
+		});
+
+		test('keeps waiting on a main instance', async () => {
+			const mainActiveExecutions = buildActiveExecutions('main');
+			const executionId = await mainActiveExecutions.add(executionData);
+			mainActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+				isQueueJob: true,
+			});
+
+			const outcome = await raceShutdownAgainstTimeout(mainActiveExecutions);
+
+			expect(outcome).toBe('timeout');
 		});
 	});
 });
