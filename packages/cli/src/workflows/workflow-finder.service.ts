@@ -1,5 +1,11 @@
 import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
-import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, chunkIds } from '@n8n/db';
+import {
+	SharedWorkflowRepository,
+	FolderRepository,
+	WorkflowRepository,
+	RoleRepository,
+	chunkIds,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
@@ -31,6 +37,7 @@ export class WorkflowFinderService {
 		private readonly folderRepository: FolderRepository,
 		private readonly roleService: RoleService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	async findWorkflowForUser(
@@ -44,7 +51,7 @@ export class WorkflowFinderService {
 			em?: EntityManager;
 		} = {},
 	) {
-		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
@@ -92,12 +99,18 @@ export class WorkflowFinderService {
 	private async buildSingleWorkflowReadWhere(
 		user: User,
 		scopes: Scope[],
+		em?: EntityManager,
 	): Promise<FindOptionsWhere<SharedWorkflow>> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
+		const loadRoles = em ? async () => await this.roleRepository.findAll(em) : undefined;
+		const rolesWithScope = async (namespace: 'project' | 'workflow') =>
+			loadRoles
+				? await this.roleService.rolesWithScope(namespace, scopes, loadRoles)
+				: await this.roleService.rolesWithScope(namespace, scopes);
 
 		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roleService.rolesWithScope('project', scopes),
-			this.roleService.rolesWithScope('workflow', scopes),
+			rolesWithScope('project'),
+			rolesWithScope('workflow'),
 		]);
 
 		return {

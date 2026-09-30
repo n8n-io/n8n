@@ -3,7 +3,7 @@ export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.e
 export { CacheService } from './services/cache/cache.service';
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
-export { RoleCacheService } from './services/role-cache.service';
+export { RoleCacheService, type RoleLoader } from './services/role-cache.service';
 export {
 	RoleDeletionCheckProxy,
 	type RoleDeletionChecker,

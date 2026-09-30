@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
 	ProjectRelationRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	User,
 	UserRepository,
@@ -37,6 +38,7 @@ describe('CredentialConnectionStatusService', () => {
 	const cipher = mock<Cipher>();
 	const logger = mock<Logger>();
 	const em = mock<EntityManager>();
+	const roleRepository = mock<RoleRepository>();
 
 	const service = new CredentialConnectionStatusService(
 		repository,
@@ -46,6 +48,7 @@ describe('CredentialConnectionStatusService', () => {
 		projectRelationRepository,
 		cipher,
 		logger,
+		roleRepository,
 	);
 
 	const CRED_ID = 'cred-1';
@@ -199,7 +202,11 @@ describe('CredentialConnectionStatusService', () => {
 			await service.cleanupOrphanedEntriesForUsers(['sharee-1'], em);
 
 			// ASSERT — retention is evaluated against credential:connect, not credential:update
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', 'credential:connect');
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'credential',
+				'credential:connect',
+				expect.any(Function),
+			);
 			expect(sharedCredentialsRepository.findPairsWithCredentialAccess).toHaveBeenCalledWith(
 				[{ credentialId: CRED_ID, userId: 'sharee-1' }],
 				'credential:connect',

@@ -8,6 +8,7 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleRepository,
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -99,6 +100,7 @@ export class ProjectService {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	private get workflowService() {
@@ -910,7 +912,11 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			const projectRoles = await this.roleService.rolesWithScope(
+				'project',
+				scopes,
+				async () => await this.roleRepository.findAll(em),
+			);
 
 			where = {
 				...where,

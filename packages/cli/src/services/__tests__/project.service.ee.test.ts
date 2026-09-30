@@ -4,6 +4,7 @@ import { type EventService, type RoleService } from '@n8n/backend-services';
 import {
 	type Project,
 	type ProjectRepository,
+	type RoleRepository,
 	type SharedCredentialsRepository,
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
@@ -47,6 +48,7 @@ describe('ProjectService', () => {
 	const eventService = mock<EventService>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const userRepository = mock<UserRepository>();
+	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
@@ -62,6 +64,7 @@ describe('ProjectService', () => {
 		eventService,
 		userManagementMailer,
 		userRepository,
+		roleRepository,
 	);
 
 	beforeEach(() => {

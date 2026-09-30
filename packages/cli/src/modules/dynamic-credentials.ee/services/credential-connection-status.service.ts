@@ -3,6 +3,7 @@ import {
 	CredentialsEntity,
 	In,
 	ProjectRelationRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 	type User,
@@ -54,6 +55,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	async findMyConnections(
@@ -214,6 +216,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 					const validCredRoles = await this.roleService.rolesWithScope(
 						'credential',
 						CREDENTIAL_RETAIN_SCOPE,
+						async () => await this.roleRepository.findAll(em),
 					);
 					return await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
 						pairsToCheck,

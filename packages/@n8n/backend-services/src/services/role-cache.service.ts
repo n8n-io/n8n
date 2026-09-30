@@ -28,6 +28,8 @@ interface RoleScopeMap {
 	};
 }
 
+export type RoleLoader = () => ReturnType<RoleRepository['findAll']>;
+
 @Service()
 export class RoleCacheService {
 	private static readonly CACHE_KEY = 'roles:scope-map';
@@ -42,9 +44,9 @@ export class RoleCacheService {
 	/**
 	 * Get all roles from database and build scope map
 	 */
-	private async buildRoleScopeMap(): Promise<RoleScopeMap> {
+	private async buildRoleScopeMap(loadRoles?: RoleLoader): Promise<RoleScopeMap> {
 		try {
-			const roles = await this.roleRepository.findAll();
+			const roles = await (loadRoles?.() ?? this.roleRepository.findAll());
 
 			const roleScopeMap: RoleScopeMap = {};
 			for (const role of roles) {
@@ -67,12 +69,13 @@ export class RoleCacheService {
 	async getRolesWithAllScopes(
 		namespace: 'global' | 'project' | 'credential' | 'workflow' | 'secretsProviderConnection',
 		requiredScopes: Scope[],
+		loadRoles?: RoleLoader,
 	): Promise<string[]> {
 		if (requiredScopes.length === 0) return [];
 
 		// Get cached role map with refresh function
 		const roleScopeMap = await this.cacheService.get<RoleScopeMap>(RoleCacheService.CACHE_KEY, {
-			refreshFn: async () => await this.buildRoleScopeMap(),
+			refreshFn: async () => await this.buildRoleScopeMap(loadRoles),
 			fallbackValue: undefined,
 		});
 

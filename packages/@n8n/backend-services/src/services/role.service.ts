@@ -36,7 +36,7 @@ import {
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { RoleCacheService } from './role-cache.service';
+import { RoleCacheService, type RoleLoader } from './role-cache.service';
 import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
 import { EventService } from '../events/event.service';
 
@@ -454,12 +454,18 @@ export class RoleService {
 	 * Enhanced rolesWithScope function that combines static roles with database roles
 	 * This replaces the original rolesWithScope function from @n8n/permissions
 	 */
-	async rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]): Promise<string[]> {
+	async rolesWithScope(
+		namespace: RoleNamespace,
+		scopes: Scope | Scope[],
+		loadRoles?: RoleLoader,
+	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
+		return loadRoles
+			? await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, loadRoles)
+			: await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
 	}
 
 	isRoleLicensed(role: string) {
