@@ -17,6 +17,7 @@ import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import { faker } from '@faker-js/faker';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	IUsedCredential,
@@ -49,6 +50,7 @@ const mockDocumentStore = {
 	updateNodeProperties: vi.fn(),
 	getExpressionHandler: vi.fn(() => ({})),
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	getWorkflowObjectAccessorSnapshot: vi.fn(() => ({}) as unknown as WorkflowObjectAccessors),
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
