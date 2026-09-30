@@ -773,3 +773,93 @@ describe('seed-table scenarios (TRUST-311 parity)', () => {
 		await rows;
 	});
 });
+
+describe('dedupe scenarios queue on the workflow they run', () => {
+	const TRIGGER = 'n8n-nodes-base.manualTrigger';
+	const dedupeWorkflow = (id: string) =>
+		({ id, nodes: [{ type: TRIGGER }, { type: 'n8n-nodes-base.removeDuplicates' }] }) as never;
+
+	function laneWithTwoDeferredRuns() {
+		const lane = makeLane();
+		const started: string[] = [];
+		const first = deferred();
+		const second = deferred();
+		vi.mocked(lane.tracedExecute).mockImplementation(((execArgs: {
+			scenario: { name: string };
+		}) => {
+			started.push(execArgs.scenario.name);
+			return (started.length === 1 ? first.promise : second.promise) as never;
+		}) as never);
+		return { lane, started, first, second };
+	}
+
+	async function expectSerialized(
+		rows: Promise<unknown>,
+		started: string[],
+		first: ReturnType<typeof deferred>,
+		second: ReturnType<typeof deferred>,
+	) {
+		await vi.waitFor(() => expect(started).toHaveLength(1));
+		for (let i = 0; i < 5; i++) await Promise.resolve();
+		// The second row must not start while the first still runs.
+		expect(started).toHaveLength(1);
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await vi.waitFor(() => expect(started).toHaveLength(2));
+		second.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await rows;
+	}
+
+	it('serializes scenarios routed to a deduping sibling, not only the first workflow', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		// The first workflow has no trigger and no dedupe; the only runnable entry point dedupes.
+		const build = okBuild({
+			workflowId: 'wf-producer',
+			workflowJsons: [
+				{ id: 'wf-producer', nodes: [{ type: 'n8n-nodes-base.set' }] },
+				dedupeWorkflow('wf-incidents'),
+			] as never,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 1 }), {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1', 's2'])]]),
+			}),
+		);
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await expectSerialized(rows, started, first, second);
+	});
+
+	it('serializes rows of different iterations that run the same prebuilt workflow', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		// Prebuilt: no workflow JSON to read, one id shared by both iterations.
+		const cached = {
+			build: okBuild({ workflowId: 'wf-prebuilt', workflowJsons: [] }),
+			lane,
+			buildDurationMs: 1,
+		};
+		const orchestrator = makeOrchestrator(cached);
+		orchestrator.buildCache.set('1:case-a', Promise.resolve(cached));
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, { testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1'])]]) }),
+		);
+		const rows = Promise.all([
+			pipeline.runRow(rowInputs('s1')),
+			pipeline.runRow({ ...rowInputs('s1'), _iteration: 1 }),
+		]);
+		await expectSerialized(rows, started, first, second);
+	});
+
+	it('does not serialize a case whose workflows do not deduplicate', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		const build = okBuild({ workflowJsons: [{ id: 'wf-1', nodes: [{ type: TRIGGER }] }] as never });
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 1 }), {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1', 's2'])]]),
+			}),
+		);
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await vi.waitFor(() => expect(started).toHaveLength(2));
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		second.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await rows;
+	});
+});
