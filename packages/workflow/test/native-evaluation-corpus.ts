@@ -198,6 +198,8 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 ];
 
 export const DECLINED_CORPUS: string[] = [
+	// BigInt literals are not part of the subset.
+	'={{ 1n }}',
 	"={{ $json.item.names.filter((n) => n.includes('bar')) }}",
 	'={{ $json.item.names.first() }}',
 	'={{ Object.keys($json.item) }}',

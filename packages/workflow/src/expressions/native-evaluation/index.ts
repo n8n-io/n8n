@@ -3,7 +3,7 @@ import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, bounded, evalChunk } from './evaluator';
-import { clone, isObj, type SimpleNode } from './grammar';
+import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
 import { parseSimple } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
@@ -164,9 +164,11 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 	// String concatenation, mirroring tmpl semantics: falsy chunk values other
 	// than 0/false render as '', parts are joined with String() coercion.
 	const parts: unknown[] = [];
+	let length = 0;
 	for (const chunk of compiled.chunks) {
 		if (chunk.type === 'text') {
 			if (chunk.text !== '') parts.push(chunk.text);
+			length += chunk.text.length;
 			continue;
 		}
 
@@ -177,7 +179,12 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 			throw new EngineFallbackError();
 		}
 
-		parts.push(value || value === 0 || value === false ? value : '');
+		const part = value || value === 0 || value === false ? value : '';
+		parts.push(part);
+		length += typeof part === 'string' ? part.length : 1;
+
+		// Bound before the join allocates the combined string.
+		if (length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
 	}
 
 	// Single-chunk expressions (plain text, or a lone blank `{{}}`) return the

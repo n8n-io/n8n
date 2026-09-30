@@ -158,6 +158,9 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 		for (const arg of args) {
 			upperBound += isArray(arg) ? arg.length : 1;
 		}
+	} else if (method === 'flat' && isArray(receiver)) {
+		const depth = args.length === 0 ? 1 : toNum(args[0]);
+		upperBound = flatSize(receiver, depth);
 	} else if (method === 'replaceAll' && typeof receiver === 'string') {
 		// A missing replacement inserts the string "undefined".
 		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
@@ -180,6 +183,18 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 	if (upperBound > MAX_RESULT_LENGTH) {
 		throw new EngineFallbackError();
 	}
+}
+
+// Element count of `array.flat(depth)`, stopping early once past the cap
+// (a nested structure can flatten to far more elements than the outer
+// array holds).
+function flatSize(array: unknown[], depth: number): number {
+	let size = 0;
+	for (const element of array) {
+		size += depth >= 1 && isArray(element) ? flatSize(element, depth - 1) : 1;
+		if (size > MAX_RESULT_LENGTH) break;
+	}
+	return size;
 }
 
 function evalCall(

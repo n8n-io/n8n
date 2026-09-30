@@ -28,6 +28,9 @@ function parseLiteral(node: namedTypes.Literal): SimpleNode | null {
 	// Regex literals stay on the engine (backtracking blowup has no isolate
 	// timeout here).
 	if ('regex' in node && node.regex) return null;
+	// BigInt literals carry `bigint` metadata; `value` is null where BigInt
+	// is unsupported, so decline on the metadata rather than the value.
+	if ('bigint' in node && node.bigint) return null;
 
 	const value = node.value;
 	const isPrimitiveLiteral =

@@ -296,9 +296,20 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(100)}$json.item.active }}`)).toBe(false);
 		});
 
-		test('an expression too long to cache still evaluates', () => {
+		test('an expression too long to cache still evaluates natively', () => {
 			const literal = 'x'.repeat(20_000);
-			expect(evaluate(`={{ '${literal}' }}`, true)).toBe(literal);
+			expect(nativeOutcome(`={{ '${literal}' }}`)).toEqual({ handled: true, value: literal });
+		});
+
+		test('flat is bounded by the flattened size, not the outer length', () => {
+			const big = new Array<number>(600_000).fill(0);
+			expect(nativeOutcome('={{ $json.item.names.flat() }}').handled).toBe(true);
+			expect(nativeOn('{{ $json.rows.flat() }}', { $json: { rows: [big, big] } })).toEqual({
+				handled: false,
+			});
+			expect(nativeOn('{{ $json.rows.flat(0) }}', { $json: { rows: [big, big] } }).handled).toBe(
+				true,
+			);
 		});
 
 		test('an inherited member below the root hands off to the engine', () => {
