@@ -60,14 +60,16 @@ export const TASKS: readonly TaskSpec[] = [acmeTasks, ledger, searchly, githubIs
 
 const FORMAT_PARAGRAPH: Record<Format, readonly string[]> = {
 	old: [
-		'Format: use the n8n community node format. The project in the current directory was created with `n8n-node new`; read AGENTS.md.',
+		'Format: use the n8n community node format. The project in the current directory was created with `n8n-node new`.',
+		'First read AGENTS.md and README.md (if it exists) in the current directory.',
 		'Write a programmatic or a declarative node, and replace the example node.',
 		'An operation `<resource>.<operation>` means the node parameters `resource` and `operation` (for example `{{example}}` is `resource` = `{{resource}}`, `operation` = `{{operationName}}`).',
 		'Every field is a top-level node parameter with exactly the given name.',
 		'Register the node and the credential in `package.json` under `n8n`. `npx n8n-node build` and `npx n8n-node lint` must pass.',
 	],
 	new: [
-		'Format: use @n8n/node-sdk, see AGENTS.md. The project in the current directory was created with `n8n-node-next new`.',
+		'Format: use @n8n/node-sdk. The project in the current directory was created with `n8n-node-next new`.',
+		'First read AGENTS.md and README.md (if it exists) in the current directory.',
 		'`src/index.ts` exports `node`, `actions`, and `credentials`.',
 		'An operation `<resource>.<operation>` means the action ID `<node name>.<resource>.<operation>` (for example `{{node}}.{{example}}`).',
 		'Every field is an action input field with exactly the given name.',

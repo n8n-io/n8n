@@ -1,4 +1,13 @@
-import { arr, defineAction, defineCredential, defineNode, int, obj, str } from '../index';
+import {
+	arr,
+	defineAction,
+	defineCredential,
+	defineNode,
+	int,
+	isHttpError,
+	obj,
+	str,
+} from '../index';
 import { mockHttp, runAction } from '../testing';
 
 const todoApi = defineCredential({
@@ -139,6 +148,33 @@ describe('runAction', () => {
 		expect(result).toEqual({
 			ok: false,
 			error: expect.objectContaining({ httpStatus: 404 }),
+		});
+	});
+
+	it('throws an HttpError with the status, headers and body of a failed request', async () => {
+		const retryAfter = defineAction({
+			...listTasks,
+			output: obj({ status: int(), retryAfter: str(), body: str() }),
+			async run({ http, emit }) {
+				try {
+					await http.request({ path: '/tasks' });
+				} catch (error) {
+					if (!isHttpError(error)) throw error;
+					const body = JSON.stringify(error.body);
+					emit({ status: error.status, retryAfter: error.headers['retry-after'] ?? '', body });
+				}
+			},
+		});
+		const fetch = mockHttp([
+			{
+				path: '/tasks',
+				reply: { status: 429, json: { error: 'slow' }, headers: { 'Retry-After': '2' } },
+			},
+		]);
+		const result = await runAction(retryAfter, { input: {}, credential, credentials, fetch });
+		expect(result).toEqual({
+			ok: true,
+			items: [{ status: 429, retryAfter: '2', body: '{"error":"slow"}' }],
 		});
 	});
 

@@ -168,6 +168,8 @@ export async function runAgent(options: {
 		'--no-session',
 		'-ne',
 		'-ns',
+		// Only the project's own AGENTS.md counts; the agent reads it as the prompt says.
+		'-nc',
 		'--model',
 		options.model ?? DEFAULT_MODEL,
 		'-t',

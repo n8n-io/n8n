@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -13,7 +13,8 @@ const USAGE = `Usage: n8n-node-next <command>
 
   new <service> [--dir <path>]    Scaffold a node project
   check                           Type-check (tsc --strict) and check the contracts
-  test                            Run src/**/*.test.ts with node:test
+  test [--timeout <seconds>]      Run src/**/*.test.ts with node:test. Each test fails
+                                  after --timeout (default 20 s); all tests stop after 5 times that
   describe [actionId]             Print the typed module the AI workflow builder reads
   run <actionId> --input '<json>' [--credential-file <file.json> | --credential-env <PREFIX>]
                                   Run one action against the live API
@@ -85,17 +86,58 @@ async function check(root: string) {
 	console.log('check passed');
 }
 
-function test(root: string) {
+/** Kills the test run and each process it started. */
+function killGroup(child: ChildProcess) {
+	if (child.pid === undefined) return;
+	try {
+		if (process.platform === 'win32') child.kill('SIGKILL');
+		else process.kill(-child.pid, 'SIGKILL');
+	} catch {
+		// All processes of the group have already exited.
+	}
+}
+
+async function waitForTests(child: ChildProcess, totalMs: number) {
+	const exited = new Promise<number | null>((done) => child.once('exit', done));
+	const timedOut = new Promise<'stopped'>((done) => {
+		const timer = setTimeout(done, totalMs, 'stopped');
+		void exited.then(() => clearTimeout(timer));
+	});
+	const interrupt = () => killGroup(child);
+	process.once('SIGINT', interrupt);
+	const first = await Promise.race([exited, timedOut]);
+	if (first === 'stopped') {
+		// SIGTERM first: node:test then prints the file and test that still run.
+		child.kill('SIGTERM');
+		const kill = setTimeout(() => killGroup(child), 5_000);
+		await exited;
+		clearTimeout(kill);
+	}
+	process.off('SIGINT', interrupt);
+	// A test file process can outlive the runner.
+	killGroup(child);
+	return first === 'stopped' ? first : first === 0 ? 'passed' : 'failed';
+}
+
+async function test(root: string, timeout: string | undefined) {
+	const seconds = Number(timeout ?? '20');
+	if (!(seconds > 0)) throw new CliError('--timeout must be a number of seconds above 0');
 	const files = readdirSync(join(root, 'src'), { recursive: true, encoding: 'utf8' })
 		.filter((file) => file.endsWith('.test.ts'))
 		.map((file) => join('src', file));
 	if (files.length === 0) throw new CliError('No src/**/*.test.ts files');
 	const tsx = require.resolve('tsx/cli');
-	const result = spawnSync(process.execPath, [tsx, '--test', ...files], {
-		cwd: root,
-		stdio: 'inherit',
-	});
-	if (result.status !== 0) throw new CliError('tests failed');
+	// --test-force-exit: a handle a test leaves open (a server, a timer) must not keep the run alive.
+	const args = [tsx, '--test', `--test-timeout=${seconds * 1000}`, '--test-force-exit', ...files];
+	// A separate process group, so that a stop also kills the test file processes.
+	const child = spawn(process.execPath, args, { cwd: root, stdio: 'inherit', detached: true });
+	const outcome = await waitForTests(child, seconds * 5 * 1000);
+	if (outcome === 'stopped') {
+		throw new CliError(
+			`tests stopped after ${seconds * 5} s. A test blocks the event loop or does not end. See "Interrupted while running" above.`,
+		);
+	}
+	if (outcome === 'failed') throw new CliError('tests failed');
 }
 
 function findAction(project: Project, id: string | undefined): Action {
@@ -194,6 +236,7 @@ async function main(argv: string[]) {
 		options: {
 			dir: { type: 'string' },
 			input: { type: 'string' },
+			timeout: { type: 'string' },
 			'credential-file': { type: 'string' },
 			'credential-env': { type: 'string' },
 			help: { type: 'boolean', short: 'h' },
@@ -207,7 +250,7 @@ async function main(argv: string[]) {
 		case 'check':
 			return await check(root);
 		case 'test':
-			return test(root);
+			return await test(root, values.timeout);
 		case 'describe':
 			return await describe(root, argument);
 		case 'run':

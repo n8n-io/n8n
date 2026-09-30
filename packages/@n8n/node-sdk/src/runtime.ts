@@ -101,6 +101,41 @@ function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IH
 	};
 }
 
+/** The HTTP response on a failed request: on the transport error, or on its `cause` in a NodeApiError. */
+function responseOf(error: unknown): IDataObject | undefined {
+	if (!isRecord(error)) return undefined;
+	const { response, cause } = error;
+	if (isRecord(response) && typeof response.status === 'number') return response;
+	return cause === undefined ? undefined : responseOf(cause);
+}
+
+const headerText = (value: unknown): string | undefined =>
+	Array.isArray(value)
+		? value.filter((entry) => typeof entry === 'string').join(', ')
+		: typeof value === 'string' || typeof value === 'number'
+			? String(value)
+			: undefined;
+
+const headersOf = (headers: unknown): Record<string, string> =>
+	Object.fromEntries(
+		Object.entries(isRecord(headers) ? headers : {}).flatMap(([name, value]) => {
+			const text = headerText(value);
+			return text === undefined ? [] : [[name.toLowerCase(), text]];
+		}),
+	);
+
+/** Adds the `HttpError` fields (status, headers, body) to the error n8n threw. */
+function withResponse(error: unknown): unknown {
+	const response = responseOf(error);
+	if (!(error instanceof Error) || !response) return error;
+	// Change the caught error in place, so n8n still shows its NodeApiError message.
+	return Object.assign(error, {
+		status: response.status,
+		headers: headersOf(response.headers),
+		body: response.data,
+	});
+}
+
 const AUTHENTICATION = 'authentication';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -135,10 +170,14 @@ function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>):
 		const http: Http = {
 			request: async (request) => {
 				const options = toRequestOptions(request, action.node.baseUrl);
-				const response: unknown = credentialType
-					? await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options)
-					: await this.helpers.httpRequest(options);
-				return response;
+				try {
+					const response: unknown = credentialType
+						? await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options)
+						: await this.helpers.httpRequest(options);
+					return response;
+				} catch (error) {
+					throw withResponse(error);
+				}
 			},
 		};
 

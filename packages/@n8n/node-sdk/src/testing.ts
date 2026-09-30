@@ -4,7 +4,14 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
-import type { Action, CredentialDefinition, Http, HttpRequest } from './define';
+import {
+	isHttpError,
+	type Action,
+	type CredentialDefinition,
+	type Http,
+	type HttpError,
+	type HttpRequest,
+} from './define';
 import { validate } from './validate';
 
 export interface RunActionOptions {
@@ -27,10 +34,12 @@ export type RunActionResult =
 	| { readonly ok: true; readonly items: unknown[] }
 	| { readonly ok: false; readonly error: RunActionError };
 
-class HttpError extends Error {
+class ResponseError extends Error implements HttpError {
 	constructor(
 		message: string,
-		readonly httpStatus: number,
+		readonly status: number,
+		readonly headers: Readonly<Record<string, string>>,
+		readonly body: unknown,
 	) {
 		super(message);
 	}
@@ -112,15 +121,16 @@ async function send(fetchFn: typeof fetch, options: IHttpRequestOptions, fullRes
 	const text = await response.text();
 	const body: unknown =
 		text && /json/.test(response.headers.get('content-type') ?? '') ? JSON.parse(text) : text;
+	const responseHeaders = Object.fromEntries(response.headers);
 	if (!response.ok) {
-		throw new HttpError(
+		throw new ResponseError(
 			`${method} ${url.origin}${url.pathname} failed with ${response.status}: ${text.slice(0, 300)}`,
 			response.status,
+			responseHeaders,
+			body,
 		);
 	}
-	return fullResponse
-		? { body, headers: Object.fromEntries(response.headers), statusCode: response.status }
-		: body;
+	return fullResponse ? { body, headers: responseHeaders, statusCode: response.status } : body;
 }
 
 const pathOf = (issue: string) => issue.split(': ')[0];
@@ -197,7 +207,7 @@ export async function runAction(
 		const message = error instanceof Error ? `${error.message}${cause}` : String(error);
 		return {
 			ok: false,
-			error: { message, ...(error instanceof HttpError ? { httpStatus: error.httpStatus } : {}) },
+			error: { message, ...(isHttpError(error) ? { httpStatus: error.status } : {}) },
 		};
 	}
 	const outputIssues = items.flatMap((item, index) =>

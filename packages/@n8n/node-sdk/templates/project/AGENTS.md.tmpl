@@ -16,7 +16,7 @@ into a node type. The AI workflow builder reads a typed module made from the con
 
 ```sh
 n8n-node-next check                      # tsc --strict plus contract checks
-n8n-node-next test                       # run src/**/*.test.ts
+n8n-node-next test                       # run src/**/*.test.ts; a test fails after 20 s
 n8n-node-next describe [actionId]        # the typed module the AI builder sees
 n8n-node-next run __service__.item.getAll --input '{"limit":5}' --credential-env __ENV__
 ```
@@ -49,6 +49,8 @@ Then add it to `actions` in `src/index.ts`.
 - Use `variant('mode', { ... })` when fields depend on a choice. Do not make a field conditionally required.
 - `http.request({ method, path, query, headers, body })` goes to `baseUrl` + `path`, with the credential applied.
   It returns the parsed JSON body as `unknown`. Narrow it with `matches(schema, value)`.
+  A non-2xx response throws. After `isHttpError(error)`, read `error.status`, `error.body` and
+  `error.headers` (lower-case names, e.g. `error.headers['retry-after']`).
 - `emit(item)` once per output item. Each item must match `output`; n8n checks it at run time.
 - `deriveOutput(input)` may return a more exact output schema for these parameters.
   It must stay compatible with `output`; `check` verifies this.

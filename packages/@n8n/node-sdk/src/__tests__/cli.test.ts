@@ -90,6 +90,34 @@ describe('n8n-node-next', () => {
 		expect(result.stdout).toContain('pass 2');
 	});
 
+	it('test fails a test that does not end and names it', async () => {
+		const file = join(project, 'src/hangs.test.ts');
+		writeFileSync(
+			file,
+			"import { test } from 'node:test';\ntest('waits forever', () => new Promise(() => setInterval(() => {}, 1000)));\n",
+		);
+		const result = await cli(project, ['test', '--timeout', '1']);
+		rmSync(file);
+		expect(result.code).toBe(1);
+		expect(result.stdout).toContain('waits forever');
+		expect(result.stdout).toContain('test timed out after 1000ms');
+	}, 20_000);
+
+	it('test stops a run that blocks the event loop and names the file', async () => {
+		const file = join(project, 'src/spins.test.ts');
+		writeFileSync(
+			file,
+			"import { test } from 'node:test';\ntest('spins', () => {\n\twhile (true) {}\n});\n",
+		);
+		const started = Date.now();
+		const result = await cli(project, ['test', '--timeout', '1']);
+		rmSync(file);
+		expect(Date.now() - started).toBeLessThan(15_000);
+		expect(result.code).toBe(1);
+		expect(result.stdout).toContain('src/spins.test.ts');
+		expect(result.stderr).toContain('tests stopped after 5 s');
+	}, 20_000);
+
 	it('describe prints the typed module', async () => {
 		const result = await cli(project, ['describe', 'todo.item.getAll']);
 		expect(result.stdout).toContain('export type TodoItemGetAllOutput');

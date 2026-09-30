@@ -106,10 +106,28 @@ export interface HttpRequest {
 	readonly fullResponse?: boolean;
 }
 
-/** An HTTP client with the node's credential already applied. */
+/** An HTTP client with the node's credential already applied. A non-2xx response throws an `HttpError`. */
 export interface Http {
 	request(request: HttpRequest): Promise<unknown>;
 }
+
+/** The error `http.request` throws for a non-2xx response. */
+export interface HttpError extends Error {
+	readonly status: number;
+	/** Header names are lower case, e.g. `retry-after`. */
+	readonly headers: Readonly<Record<string, string>>;
+	readonly body: unknown;
+}
+
+// A property check, not `instanceof`: a frozen bundle has its own copy of the SDK.
+export const isHttpError = (error: unknown): error is HttpError =>
+	error instanceof Error &&
+	'status' in error &&
+	typeof error.status === 'number' &&
+	'headers' in error &&
+	typeof error.headers === 'object' &&
+	error.headers !== null &&
+	'body' in error;
 
 export interface RunContext<Input, Output> {
 	/** Parameters for the current item, expressions resolved and validated. */
