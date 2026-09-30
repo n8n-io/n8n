@@ -29,7 +29,7 @@ import {
 	nextNodeIdOfNodeType,
 	nextNodeModule,
 	searchNextActions,
-} from '../node-contracts/next-modules';
+} from './next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
@@ -317,7 +317,7 @@ async function handleList(
 
 type SearchInput = Extract<FullInput, { action: 'search' }>;
 
-async function findSearchHits(
+async function handleSearch(
 	context: InstanceAiContext,
 	input: SearchInput,
 	cache: SearchEngineCache,
@@ -331,24 +331,15 @@ async function findSearchHits(
 		cache.engine = engine;
 	}
 
+	let results;
 	if (input.connectionType) {
-		return engine.searchByConnectionType(input.connectionType, input.limit, input.query);
+		results = engine.searchByConnectionType(input.connectionType, input.limit, input.query);
+	} else if (input.query) {
+		results = engine.searchByName(input.query, input.limit);
+	} else {
+		return { results: [], totalResults: 0 };
 	}
-	return input.query ? engine.searchByName(input.query, input.limit) : [];
-}
 
-async function handleSearch(
-	context: InstanceAiContext,
-	input: SearchInput,
-	cache: SearchEngineCache,
-) {
-	return await enrichSearchHits(context, await findSearchHits(context, input, cache));
-}
-
-async function enrichSearchHits(
-	context: InstanceAiContext,
-	results: Awaited<ReturnType<typeof findSearchHits>>,
-) {
 	// Enrich results with discriminator and credential setup metadata when available.
 	const enriched = await Promise.all(
 		results.map(async (r) => {
@@ -402,16 +393,18 @@ async function searchOneWithModules(
 	input: SearchInput,
 	cache: SearchEngineCache,
 ) {
-	const hits = await findSearchHits(context, input, cache);
-	const coveredNodes = hits.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
-	const legacy = await enrichSearchHits(
-		context,
-		hits.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined),
-	);
+	const catalog = await handleSearch(context, input, cache);
+	const coveredNodes = catalog.results.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
+	const results = catalog.results.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
 	const { nodes, otherActions } = input.connectionType
 		? { nodes: [], otherActions: [] }
 		: searchNextActions(input.query ?? '', coveredNodes);
-	return { nodes, ...(otherActions.length ? { otherActions } : {}), ...legacy };
+	return {
+		nodes,
+		...(otherActions.length ? { otherActions } : {}),
+		results,
+		totalResults: results.length,
+	};
 }
 
 /** Each module goes inline once per call, also when several queries name its node. */
@@ -869,16 +862,7 @@ export function createNodesTool(
 					if (context.nodeContractsEnabled) {
 						return await handleModuleSearch(context, input, searchEngineCache);
 					}
-					return 'queries' in input && input.queries
-						? {
-								searches: await Promise.all(
-									input.queries.map(async (query) => ({
-										query,
-										...(await handleSearch(context, { ...input, query }, searchEngineCache)),
-									})),
-								),
-							}
-						: await handleSearch(context, input, searchEngineCache);
+					return await handleSearch(context, input, searchEngineCache);
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':

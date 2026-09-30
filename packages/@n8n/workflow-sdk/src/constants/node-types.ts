@@ -18,14 +18,11 @@ export const NODE_TYPES = {
  */
 export type NodeTypeValue = (typeof NODE_TYPES)[keyof typeof NODE_TYPES];
 
-/** Instance AI action contract that compiles to an IF node (spike, NODE-6071). */
-export const IF_ACTION_ID = 'if.condition';
-
 /**
- * Check if a type string is the IF node type, or the IF action contract id
+ * Check if a type string is the IF node type
  */
-export function isIfNodeType(type: string): type is typeof NODE_TYPES.IF | typeof IF_ACTION_ID {
-	return type === NODE_TYPES.IF || type === IF_ACTION_ID;
+export function isIfNodeType(type: string): type is typeof NODE_TYPES.IF {
+	return type === NODE_TYPES.IF;
 }
 
 /**

@@ -1261,9 +1261,6 @@ describe('nodes tool', () => {
 				},
 			]);
 			expect(result.results.map(({ name }) => name)).not.toContain('n8n-nodes-base.notion');
-			expect(context.nodeService.listDiscriminators).not.toHaveBeenCalledWith(
-				'n8n-nodes-base.notion',
-			);
 		});
 
 		it('searches several services in one call and inlines each module once', async () => {

@@ -166,7 +166,7 @@ function rangeContains(range: SourceRange, line: number, column: number): boolea
 
 /** Builders that put a box on the canvas: `ifElse`, `merge` and `switchCase` each
  *  call `node()` under the hood, so they draw one of their own. */
-export const CANVAS_BOX_BUILDERS = new Set(['node', 'action', 'trigger', 'ifElse', 'merge', 'switchCase']);
+export const CANVAS_BOX_BUILDERS = new Set(['node', 'trigger', 'ifElse', 'merge', 'switchCase']);
 
 /** Builders that draw a box only when they build the node themselves:
  *  `splitInBatches({ version, config }, …)` does, `splitInBatches(handle, …)`

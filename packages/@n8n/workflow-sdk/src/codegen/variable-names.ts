@@ -51,7 +51,6 @@ export const RESERVED_KEYWORDS = new Set([
 	'workflow',
 	'trigger',
 	'node',
-	'action',
 	'merge',
 	'ifElse',
 	'switchCase',

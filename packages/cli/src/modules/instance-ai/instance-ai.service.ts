@@ -2782,8 +2782,8 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
 				});
-				// Contract builds compile on the host. Loading skills from the workspace would
-				// create a sandbox on the first load_skill call.
+				// Node contracts serve skills from the host, so load_skill does not start the
+				// sandbox before the first build needs it.
 				runtimeSkills = context.nodeContractsEnabled
 					? allRuntimeSkills
 					: createLazyWorkspaceRuntimeSkillSource({
