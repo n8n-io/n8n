@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import { jsonParse } from 'n8n-workflow';
 
-const MIGRATION_NAME = 'MigrateAgentMcpToolPermissions1790675181230';
+const MIGRATION_NAME = 'MigrateAgentMcpToolPermissions1790759733730';
 
 type Fixture = {
 	name: string;
