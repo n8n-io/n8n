@@ -100,7 +100,16 @@ const contractSearchAction = searchAction.extend({
 		.describe(
 			'Search node types by name or AI connection type. Use a short service name and the operation, e.g. "gmail send" or "google sheets append". ' +
 				'A hit with action contracts lists them: `actions` has the full contract of each action the query names, `otherActions` has the id and summary of the others. ' +
+				'To find every service a workflow needs in one call, pass `queries` instead of `query`. ' +
 				GATEWAY_SEARCH_DESCRIPTION,
+		),
+	queries: z
+		.array(z.string())
+		.min(1)
+		.max(6)
+		.optional()
+		.describe(
+			'One short query per service, e.g. ["notion get many pages", "http request"]. Returns one result list per query.',
 		),
 });
 
@@ -813,9 +822,9 @@ export function createNodesTool(
 							'every node you need in one call. `explore-resources` needs the method name ' +
 							'from a `@searchListMethod` / `@loadOptionsMethod` annotation in a TypeScript definition.'
 					: "Read node type definitions or query real resources for a node's RLC parameters " +
-						'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
-						'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-						'`explore-resources` with the real method name and a credential.',
+							'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+							'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+							'`explore-resources` with the real method name and a credential.',
 			)
 			.input(orchestratorInputSchema)
 			.handler(async (input: OrchestratorInput, ctx) => {
@@ -843,7 +852,16 @@ export function createNodesTool(
 				case 'list':
 					return await handleList(context, input);
 				case 'search':
-					return await handleSearch(context, input, searchEngineCache);
+					return 'queries' in input && input.queries
+						? {
+								searches: await Promise.all(
+									input.queries.map(async (query) => ({
+										query,
+										...(await handleSearch(context, { ...input, query }, searchEngineCache)),
+									})),
+								),
+							}
+						: await handleSearch(context, input, searchEngineCache);
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':

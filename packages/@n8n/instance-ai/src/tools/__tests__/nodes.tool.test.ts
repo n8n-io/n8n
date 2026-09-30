@@ -1259,6 +1259,25 @@ describe('nodes tool', () => {
 			);
 		});
 
+		it('searches several services in one call', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{
+				searches: Array<{ query: string; results: Array<Record<string, unknown>> }>;
+			}>(createNodesTool(context, 'full'), {
+				action: 'search',
+				queries: ['gmail send', 'http request'],
+				limit: 5,
+			});
+
+			expect(result.searches.map(({ query }) => query)).toEqual(['gmail send', 'http request']);
+			const gmail = result.searches[0].results.find(({ name }) => name === 'n8n-nodes-base.gmail');
+			const http = result.searches[1].results.find(
+				({ name }) => name === 'n8n-nodes-base.httpRequest',
+			);
+			expect(gmail?.actions).toEqual([expect.objectContaining({ id: 'gmail.message.send' })]);
+			expect(http?.actions).toEqual([expect.objectContaining({ id: 'httpRequest.request' })]);
+		});
+
 		it('keeps every action to one line when the search query names only the service', async () => {
 			const { hit } = await search('gmail');
 

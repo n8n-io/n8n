@@ -31,8 +31,9 @@ names are snake_case.
 
 ## Process
 
-1. Discover nodes. Call `nodes(action="search")` with short service names
-   ("Gmail", not task phrases). For a node with an action contract, the result
+1. Discover nodes. Call `nodes(action="search")` ONCE with `queries`: one
+   short query per service the workflow needs, including HTTP Request, e.g.
+   `["notion get many pages", "http request"]`. For a node with an action contract, the result
    contains the contract view. Use `nodes(action="suggested")` only when you do
    not know which nodes to use.
 2. Get the remaining definitions in ONE `nodes(action="type-definition")` call
