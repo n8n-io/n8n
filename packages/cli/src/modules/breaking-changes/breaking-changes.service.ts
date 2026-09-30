@@ -18,6 +18,7 @@ import { CacheService } from '@n8n/backend-services';
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { groupNodesByType } from './group-nodes-by-type';
+import { summarizeExecutionStatistics } from './summarize-execution-statistics';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
@@ -246,10 +247,7 @@ export class BreakingChangeService {
 				const workflowMetadata: WorkflowMetadata = {
 					name: workflow.name,
 					active: !!workflow.activeVersionId,
-					numberOfExecutions: statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
-					lastExecutedAt: statistics.sort(
-						(a, b) => b.latestEvent.getTime() - a.latestEvent.getTime(),
-					)[0]?.latestEvent,
+					...summarizeExecutionStatistics(statistics),
 					lastUpdatedAt: workflow.updatedAt,
 				};
 				workflowMetadataMap.set(workflow.id, workflowMetadata);

@@ -1,0 +1,198 @@
+import type {
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeWorkflowRuleResult,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import {
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+	type WorkflowEntity,
+	type WorkflowStatistics,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
+import { ErrorReporter } from 'n8n-core';
+
+import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
+import { RuleRegistry } from '../breaking-changes.rule-registry.service';
+import { BreakingChangeService } from '../breaking-changes.service';
+import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
+import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
+import { groupNodesByType } from '../group-nodes-by-type';
+import { summarizeExecutionStatistics } from '../summarize-execution-statistics';
+import type {
+	IBreakingChangeBatchWorkflowRule,
+	IBreakingChangeInstanceRule,
+	IBreakingChangeRule,
+	IBreakingChangeWorkflowRule,
+} from '../types';
+import { N8N_VERSION } from '../../../constants';
+
+/** The rule kinds whose hits the sync writes to the finding table. */
+type WorkflowLevelRule = IBreakingChangeWorkflowRule | IBreakingChangeBatchWorkflowRule;
+
+type LightWorkflowResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
+
+/** The rule fields both report types share. */
+type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+
+function isWorkflowLevelRule(rule: IBreakingChangeRule): rule is WorkflowLevelRule {
+	return 'detectWorkflow' in rule || 'collectWorkflowData' in rule;
+}
+
+function isInstanceRule(rule: IBreakingChangeRule): rule is IBreakingChangeInstanceRule {
+	return 'detect' in rule;
+}
+
+/** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
+const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
+
+/**
+ * Reads the migration report from the `migration_finding` table and shapes it into the
+ * current response types. Nothing serves it yet; the routes switch over in a later change.
+ * It never writes: the sync service brings the table up to date.
+ */
+@Service()
+export class MigrationFindingQueryService {
+	constructor(
+		private readonly ruleRegistry: RuleRegistry,
+		private readonly migrationRegistry: MigrationRegistry,
+		private readonly breakingChangeService: BreakingChangeService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
+		private readonly findingRepository: MigrationFindingRepository,
+		private readonly syncRepository: MigrationFindingSyncRepository,
+		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
+	) {
+		this.logger = logger.scoped('breaking-changes');
+	}
+
+	/** The overview: one entry per workflow rule with its open-finding count, plus live instance results. */
+	async getLightReport(
+		targetVersion: BreakingChangeVersion,
+	): Promise<BreakingChangeLightReportResult> {
+		const rules = this.ruleRegistry.getRules(targetVersion);
+		const workflowRules = rules.filter(isWorkflowLevelRule);
+		const instanceRules = rules.filter(isInstanceRule);
+
+		const [counts, sync, totalWorkflows, instanceResults] = await Promise.all([
+			this.findingRepository.countOpenByRule(targetVersion, {}),
+			this.syncRepository.getForVersion(targetVersion, {}),
+			this.workflowRepository.count(),
+			// Instance rules read config and environment, not workflows, so they stay live.
+			this.breakingChangeService.getAllInstanceRulesResults(instanceRules),
+		]);
+		const countByRule = new Map(counts.map((row) => [row.ruleId, row.count]));
+
+		const workflowResults: LightWorkflowResult[] = [];
+		for (const rule of workflowRules) {
+			workflowResults.push({
+				...(await this.describeRule(rule)),
+				nbAffectedWorkflows: countByRule.get(rule.id) ?? 0,
+			});
+		}
+
+		return {
+			report: {
+				// Before the first sync there is nothing to date, so the read time stands in.
+				generatedAt: sync?.syncedAt ?? new Date(),
+				targetVersion,
+				currentVersion: N8N_VERSION,
+				instanceResults,
+				workflowResults,
+			},
+			totalWorkflows,
+			// Kept for the response shape only; the table replaces the cache.
+			shouldCache: false,
+		};
+	}
+
+	/** The detail of one workflow rule: every open finding with its workflow, statistics and issues. */
+	async getRuleFindings(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+	): Promise<BreakingChangeWorkflowRuleResult> {
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule || !isWorkflowLevelRule(rule)) {
+			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
+		}
+
+		const findings = await this.findingRepository.listOpenForRule(targetVersion, ruleId, {});
+		const workflowIds = findings.map((finding) => finding.workflowId);
+		const [workflows, statistics] = await Promise.all([
+			this.workflowRepository.findByIds(workflowIds, { fields: WORKFLOW_FIELDS }),
+			this.workflowStatisticsRepository.findByWorkflowIds(workflowIds),
+		]);
+		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
+		const statisticsByWorkflow = groupByWorkflowId(statistics);
+
+		const affectedWorkflows: BreakingChangeAffectedWorkflow[] = [];
+		for (const finding of findings) {
+			const workflow = workflowsById.get(finding.workflowId);
+			affectedWorkflows.push({
+				id: finding.workflowId,
+				name: finding.workflow.name,
+				active: !!finding.workflow.activeVersionId,
+				lastUpdatedAt: finding.workflow.updatedAt,
+				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
+				issues: workflow ? await this.detectIssues(rule, workflow) : [],
+			});
+		}
+
+		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
+	}
+
+	private async describeRule(
+		rule: WorkflowLevelRule,
+		affectedWorkflows: BreakingChangeAffectedWorkflow[] = [],
+	): Promise<RuleDescription> {
+		const metadata = rule.getMetadata();
+		return {
+			ruleId: rule.id,
+			ruleTitle: metadata.title,
+			ruleDescription: metadata.description,
+			ruleImpact: metadata.impact,
+			ruleDocumentationUrl: metadata.documentationUrl,
+			recommendations: await rule.getRecommendations(affectedWorkflows),
+			migratable: this.migrationRegistry.has(rule.id),
+		};
+	}
+
+	/**
+	 * Re-runs one rule on one workflow for its issue list, which the table does not store.
+	 * A batch rule needs every workflow to decide, so it gets no issues here. A rule that no
+	 * longer fires, or that throws, yields none too; the finding stays listed until the next sync.
+	 */
+	private async detectIssues(
+		rule: WorkflowLevelRule,
+		workflow: WorkflowEntity,
+	): Promise<BreakingChangeWorkflowIssue[]> {
+		if (!('detectWorkflow' in rule)) return [];
+
+		try {
+			const result = await rule.detectWorkflow(workflow, groupNodesByType(workflow.nodes));
+			return result.issues;
+		} catch (error) {
+			this.logger.warn('Breaking change rule failed for workflow, listing it without issues', {
+				ruleId: rule.id,
+				workflowId: workflow.id,
+			});
+			this.errorReporter.error(error, { extra: { ruleId: rule.id, workflowId: workflow.id } });
+			return [];
+		}
+	}
+}
+
+function groupByWorkflowId(statistics: WorkflowStatistics[]): Map<string, WorkflowStatistics[]> {
+	const grouped = new Map<string, WorkflowStatistics[]>();
+	for (const statistic of statistics) {
+		const existing = grouped.get(statistic.workflowId);
+		if (existing) existing.push(statistic);
+		else grouped.set(statistic.workflowId, [statistic]);
+	}
+	return grouped;
+}

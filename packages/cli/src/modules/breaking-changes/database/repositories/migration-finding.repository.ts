@@ -1,5 +1,10 @@
 import type { BreakingChangeVersion, MigrationFindingStatus } from '@n8n/api-types';
-import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
+import {
+	BaseRepository,
+	type OperationContext,
+	TransactionRunner,
+	type WorkflowEntity,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, Not, type EntityManager } from '@n8n/typeorm';
 
@@ -7,6 +12,16 @@ import { MigrationFinding, type MigrationFindingId } from '../entities/migration
 
 /** A finding the scan detected. New findings always start as `open`. */
 export type NewMigrationFinding = Pick<MigrationFinding, 'targetVersion' | 'ruleId' | 'workflowId'>;
+
+/** An open finding with the workflow columns the report shows. */
+export type OpenMigrationFinding = Pick<MigrationFinding, 'id' | 'ruleId' | 'workflowId'> & {
+	workflow: Pick<WorkflowEntity, 'id' | 'name' | 'activeVersionId' | 'updatedAt'>;
+};
+
+export interface OpenFindingCount {
+	ruleId: string;
+	count: number;
+}
 
 @Service()
 export class MigrationFindingRepository extends BaseRepository<MigrationFinding> {
@@ -27,6 +42,43 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 
 		return await this.managerFor(ctx).find(MigrationFinding, {
 			where: { targetVersion, workflowId: In(workflowIds) },
+			order: { id: 'ASC' },
+		});
+	}
+
+	/** Number of open findings per rule for the version. Rules without open findings are absent. */
+	async countOpenByRule(
+		targetVersion: BreakingChangeVersion,
+		ctx: OperationContext,
+	): Promise<OpenFindingCount[]> {
+		const rows = await this.managerFor(ctx)
+			.createQueryBuilder(MigrationFinding, 'finding')
+			.select('finding.ruleId', 'ruleId')
+			.addSelect('COUNT(finding.id)', 'count')
+			.where('finding.targetVersion = :targetVersion', { targetVersion })
+			.andWhere('finding.status = :status', { status: 'open' })
+			.groupBy('finding.ruleId')
+			.getRawMany<{ ruleId: string; count: number | string }>();
+
+		// Postgres returns COUNT as a bigint string, SQLite as a number.
+		return rows.map((row) => ({ ruleId: row.ruleId, count: Number(row.count) }));
+	}
+
+	/** Open findings of one rule for the version, each with its workflow's report columns. */
+	async listOpenForRule(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		ctx: OperationContext,
+	): Promise<OpenMigrationFinding[]> {
+		return await this.managerFor(ctx).find(MigrationFinding, {
+			select: {
+				id: true,
+				ruleId: true,
+				workflowId: true,
+				workflow: { id: true, name: true, activeVersionId: true, updatedAt: true },
+			},
+			where: { targetVersion, ruleId, status: 'open' },
+			relations: { workflow: true },
 			order: { id: 'ASC' },
 		});
 	}
