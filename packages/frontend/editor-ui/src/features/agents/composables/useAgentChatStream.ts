@@ -578,21 +578,41 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Budget cards are live-stream only. The history read that follows `done`
-	 * replaces the transcript, so copy the notices from the streams that just
-	 * ended onto the persisted turn, then drop them. A stop before any
-	 * assistant text has no persisted message to land on.
+	 * Budget cards are live-stream only: the stream attaches them to the
+	 * minted bubble, and every history read replaces the transcript wholesale.
+	 * Carry them forward from the messages being replaced — plus the bucket of
+	 * the streams that just ended — so a trailing refresh cannot wipe a card
+	 * nobody dismissed. Only an explicit clear (cap raised) drops them. A stop
+	 * before any assistant text has no persisted message to land on.
 	 */
 	function restoreBudgetNotices(next: ChatMessage[]): ChatMessage[] {
-		// Consume only this target's bucket: the first refresh after `done`
-		// restores the notices, and later refreshes must not bring a dismissed
-		// card back. Buckets of other agents or sessions stay untouched.
+		const pending = new Map<string, NonNullable<ChatMessage['budgetNotices']>>();
+		const sources = new Map<string, ChatMessage>();
+		const collect = (
+			key: string,
+			notices: NonNullable<ChatMessage['budgetNotices']>,
+			source: ChatMessage,
+		) => {
+			const merged = pending.get(key) ?? [];
+			for (const notice of notices) {
+				if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+			}
+			pending.set(key, merged);
+			if (!sources.has(key)) sources.set(key, source);
+		};
+		for (const message of messages.value) {
+			if (message.budgetNotices?.length) {
+				collect(message.executionId ?? message.id, message.budgetNotices, message);
+			}
+		}
+		// Consume only this target's bucket: buckets of other agents or
+		// sessions stay untouched so their own refresh restores them.
 		const forTarget = pendingBudgetNotices.get(targetKey());
-		if (!forTarget || forTarget.size === 0) return next;
-		pendingBudgetNotices.delete(targetKey());
-
-		const pending = new Map([...forTarget].map(([key, entry]) => [key, entry.notices]));
-		const sources = new Map([...forTarget].map(([key, entry]) => [key, entry.source]));
+		if (forTarget) {
+			pendingBudgetNotices.delete(targetKey());
+			for (const [key, entry] of forTarget) collect(key, entry.notices, entry.source);
+		}
+		if (pending.size === 0) return next;
 
 		const restored = next.map((message) => ({ ...message }));
 		for (let index = restored.length - 1; index >= 0; index--) {

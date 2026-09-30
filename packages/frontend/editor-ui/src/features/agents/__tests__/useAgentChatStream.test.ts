@@ -1406,6 +1406,52 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
 	});
 
+	it('keeps the budget stop card when a trailing push refresh follows the restore', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const restored = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(restored?.budgetNotices?.[0]?.code).toBe('budget.session');
+
+		// The execution's terminal push can land right after the post-done
+		// refresh. Nothing dismissed the card, so this refresh must keep it.
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'exec-1' },
+			});
+		}
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
 	it('attaches a budget stop card on a guardrail finish chunk', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'partial' },
