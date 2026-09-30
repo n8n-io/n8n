@@ -298,6 +298,29 @@ describe('InstanceReportingService', () => {
 			});
 			expect(reportRepository.releaseStaleSend).not.toHaveBeenCalled();
 		});
+
+		it('uses the database clock to check the retry delay', async () => {
+			const { service, reportRepository } = makeHarness();
+			const oneMinuteAfterAttempt = new Date(AFTER_SLOT.getTime() + Time.minutes.toMilliseconds);
+			const tenMinutesAfterAttempt = new Date(
+				AFTER_SLOT.getTime() + 10 * Time.minutes.toMilliseconds,
+			);
+			reportRepository.findPending.mockResolvedValue(
+				makeReport({ createdAt: AFTER_SLOT, lastAttemptAt: AFTER_SLOT }),
+			);
+
+			reportRepository.readDbNow.mockResolvedValue(oneMinuteAfterAttempt);
+			expect(await service.findDueWork(tenMinutesAfterAttempt)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+			});
+
+			reportRepository.readDbNow.mockResolvedValue(tenMinutesAfterAttempt);
+			expect(await service.findDueWork(oneMinuteAfterAttempt)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+			});
+		});
 	});
 
 	describe('sendReport', () => {
