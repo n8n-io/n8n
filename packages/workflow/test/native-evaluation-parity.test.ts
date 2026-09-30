@@ -279,6 +279,44 @@ describe('Expression - fast native evaluation parity', () => {
 		});
 	});
 
+	describe('structural guards', () => {
+		// Direct calls: the data shapes here cannot come out of a node, so the
+		// engines have nothing to agree with.
+		const nativeOn = (expr: string, data: Record<string, unknown>) => {
+			Expression.setNativeEvaluation(true);
+			try {
+				return evaluateNatively(expr, data as never);
+			} finally {
+				Expression.setNativeEvaluation(false);
+			}
+		};
+
+		test('nesting deeper than the cap is declined', () => {
+			expect(isNativelyEvaluable(`{{ ${'!'.repeat(20)}$json.item.active }}`)).toBe(true);
+			expect(isNativelyEvaluable(`{{ ${'!'.repeat(100)}$json.item.active }}`)).toBe(false);
+		});
+
+		test('an expression too long to cache still evaluates', () => {
+			const literal = 'x'.repeat(20_000);
+			expect(evaluate(`={{ '${literal}' }}`, true)).toBe(literal);
+		});
+
+		test('an inherited member below the root hands off to the engine', () => {
+			const $json = { item: Object.create({ inherited: 1 }) as object };
+			expect(nativeOn('{{ $json.item.inherited }}', { $json })).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.item.missing }}', { $json })).toEqual({
+				handled: true,
+				value: undefined,
+			});
+		});
+
+		test('an own property shadowing a method hands off to the engine', () => {
+			const $json = { list: Object.assign(['a'], { join: null }) };
+			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.list.at(0) }}', { $json })).toEqual({ handled: true, value: 'a' });
+		});
+	});
+
 	// extendSyntax rewrites calls to extension-named methods into extend()
 	// dispatch; native evaluation calls natives directly, so its allowlist
 	// must never contain an extension name.

@@ -132,6 +132,11 @@ export const CALLABLE_METHODS = new Set([...STRING_METHODS, ...NUMBER_METHODS, .
 // can otherwise expand without bound on the main thread).
 export const MAX_RESULT_LENGTH = 1_000_000;
 
+// Nesting depth of the subset grammar. Parsing and evaluation both recurse
+// once per level, so this keeps a pathological expression off the host stack;
+// real expressions are a handful of levels deep.
+const MAX_DEPTH = 64;
+
 const isObj = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null;
 
@@ -143,6 +148,9 @@ const isOneOf = <T extends string>(ops: readonly T[], op: unknown): op is T =>
 // Total (never throws), constructive (returns new objects; the esprima node
 // is read and dropped, so no unvetted field survives), and recursive (one
 // unsupported leaf makes the whole expression decline).
+
+// Child parses go through the depth-tracking closure parseSimple builds.
+type ParseChild = (node: unknown) => SimpleNode | null;
 
 function parseLiteral(node: Record<string, unknown>): SimpleNode | null {
 	// Regex literals stay on the engine (backtracking blowup has no isolate
@@ -179,8 +187,8 @@ function parseIdentifier(node: Record<string, unknown>): SimpleNode | null {
 // names unrepresentable. An own-property-only lookup would make that vetting
 // unnecessary, but $json/$parameter are get-trap proxies for which
 // Object.hasOwn misreports every key, so the parse-time vet is the boundary.
-function parseMember(node: Record<string, unknown>): SimpleNode | null {
-	const object = parseSimple(node.object);
+function parseMember(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
+	const object = parse(node.object);
 	if (object === null) return null;
 
 	const property = node.property;
@@ -219,7 +227,7 @@ function parseStaticKey(property: Record<string, unknown>): string | null {
 	return name;
 }
 
-function parseCall(node: Record<string, unknown>): SimpleNode | null {
+function parseCall(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
 	const callee = node.callee;
 	if (!isObj(callee) || callee.type !== 'MemberExpression' || callee.computed === true) return null;
 
@@ -229,14 +237,14 @@ function parseCall(node: Record<string, unknown>): SimpleNode | null {
 	const method = property.name;
 	if (typeof method !== 'string' || !CALLABLE_METHODS.has(method)) return null;
 
-	const receiver = parseSimple(callee.object);
+	const receiver = parse(callee.object);
 	if (receiver === null) return null;
 
 	if (!Array.isArray(node.arguments)) return null;
 
 	const args: SimpleNode[] = [];
 	for (const argument of node.arguments) {
-		const parsed = parseSimple(argument);
+		const parsed = parse(argument);
 		if (parsed === null) return null;
 
 		args.push(parsed);
@@ -252,56 +260,57 @@ function parseCall(node: Record<string, unknown>): SimpleNode | null {
 // The wrapper esprima puts around every optional chain. It is the boundary an
 // optional hop short-circuits to: `a?.b.c` yields undefined for a missing
 // `a`, while `(a?.b).c` throws. Parentheses end the chain in the AST too.
-function parseChain(node: Record<string, unknown>): SimpleNode | null {
-	const expression = parseSimple(node.expression);
+function parseChain(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
+	const expression = parse(node.expression);
 	if (expression === null) return null;
 
 	return { kind: 'chain', expression };
 }
 
-function parseBranches(node: Record<string, unknown>): SimpleNode | null {
-	const test = parseSimple(node.test);
-	const consequent = parseSimple(node.consequent);
-	const alternate = parseSimple(node.alternate);
+function parseBranches(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
+	const test = parse(node.test);
+	const consequent = parse(node.consequent);
+	const alternate = parse(node.alternate);
 
 	if (test === null || consequent === null || alternate === null) return null;
 
 	return { kind: 'conditional', test, consequent, alternate };
 }
 
-function parseUnary(node: Record<string, unknown>): SimpleNode | null {
+function parseUnary(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
 	if (node.prefix !== true || !isOneOf(UNARY_OPS, node.operator)) return null;
 
-	const argument = parseSimple(node.argument);
+	const argument = parse(node.argument);
 	if (argument === null) return null;
 
 	return { kind: 'unary', op: node.operator, argument };
 }
 
-function parseBinary(node: Record<string, unknown>): SimpleNode | null {
+function parseBinary(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
 	if (!isOneOf(BINARY_OPS, node.operator)) return null;
 
-	const left = parseSimple(node.left);
-	const right = parseSimple(node.right);
+	const left = parse(node.left);
+	const right = parse(node.right);
 
 	if (left === null || right === null) return null;
 
 	return { kind: 'binary', op: node.operator, left, right };
 }
 
-function parseLogical(node: Record<string, unknown>): SimpleNode | null {
+function parseLogical(node: Record<string, unknown>, parse: ParseChild): SimpleNode | null {
 	if (!isOneOf(LOGICAL_OPS, node.operator)) return null;
 
-	const left = parseSimple(node.left);
-	const right = parseSimple(node.right);
+	const left = parse(node.left);
+	const right = parse(node.right);
 
 	if (left === null || right === null) return null;
 
 	return { kind: 'logical', op: node.operator, left, right };
 }
 
-function parseSimple(node: unknown): SimpleNode | null {
-	if (!isObj(node)) return null;
+function parseSimple(node: unknown, depth = 0): SimpleNode | null {
+	if (!isObj(node) || depth > MAX_DEPTH) return null;
+	const parse = (child: unknown) => parseSimple(child, depth + 1);
 
 	switch (node.type) {
 		case 'Literal':
@@ -309,19 +318,19 @@ function parseSimple(node: unknown): SimpleNode | null {
 		case 'Identifier':
 			return parseIdentifier(node);
 		case 'MemberExpression':
-			return parseMember(node);
+			return parseMember(node, parse);
 		case 'ChainExpression':
-			return parseChain(node);
+			return parseChain(node, parse);
 		case 'UnaryExpression':
-			return parseUnary(node);
+			return parseUnary(node, parse);
 		case 'BinaryExpression':
-			return parseBinary(node);
+			return parseBinary(node, parse);
 		case 'LogicalExpression':
-			return parseLogical(node);
+			return parseLogical(node, parse);
 		case 'ConditionalExpression':
-			return parseBranches(node);
+			return parseBranches(node, parse);
 		case 'CallExpression':
-			return parseCall(node);
+			return parseCall(node, parse);
 		default:
 			// Everything else (functions, templates, object/array literals,
 			// regex, dynamic keys, ...) is outside the subset.
@@ -405,6 +414,18 @@ function evalMember(
 
 	if (!isIndexable(object)) {
 		throw new TypeError(`Cannot read properties of ${String(object)} (reading '${node.key}')`);
+	}
+
+	// Below the roots (get-trap proxies, where Object.hasOwn misreports every
+	// key) the data is plain JSON, so an inherited property is a host prototype
+	// the isolates never see. The engine decides what it yields.
+	const inherited =
+		node.object.kind !== 'root' &&
+		typeof object === 'object' &&
+		node.key in object &&
+		!Object.hasOwn(object, node.key);
+	if (inherited) {
+		throw new EngineFallbackError();
 	}
 
 	const value = object[node.key];
@@ -496,6 +517,12 @@ function evalCall(
 
 	if (receiverMissing) {
 		throw new TypeError(`Cannot read properties of ${String(receiver)} (reading '${node.method}')`);
+	}
+
+	// An own property shadowing the method (an engine-resolved $parameter value
+	// can carry one) would take precedence in the engines.
+	if (Object.hasOwn(receiver, node.method)) {
+		throw new EngineFallbackError();
 	}
 
 	const proto = prototypeFor(receiver, node.method);
@@ -630,11 +657,13 @@ interface CompiledExpression {
 
 // null = outside the subset. Declined expressions are cached too, so an
 // expression the engine owns costs one parse here, not one per evaluation.
+// Entries are keyed by expression text, so the key length is capped to keep
+// the cache's memory bounded; longer expressions are compiled per evaluation.
 const cache = new LruCache<string, CompiledExpression | null>(1024);
+const MAX_CACHED_EXPRESSION_LENGTH = 10_000;
 
 // One code chunk of the split expression, or null when it is outside the
-// subset. A throw during the re-parse (parseSimple recurses per member, so a
-// deep enough chain overflows the stack) must always mean "declined", never
+// subset. A throw during the re-parse must always mean "declined", never
 // escape.
 function compileChunk(chunk: { parsed: { program: { body: unknown[] } } }): SimpleNode | null {
 	const body = chunk.parsed.program.body;
@@ -679,6 +708,8 @@ function compile(expression: string): CompiledExpression | null {
 }
 
 function getCompiled(expression: string): CompiledExpression | null {
+	if (expression.length > MAX_CACHED_EXPRESSION_LENGTH) return compile(expression);
+
 	let compiled = cache.get(expression);
 
 	if (compiled === undefined) {
