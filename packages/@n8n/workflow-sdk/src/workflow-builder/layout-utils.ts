@@ -469,7 +469,7 @@ function layoutGroupMembers(
 	const subgraphs = layoutSubgraphs(subgraph, aiParentNames, aiConfigNames);
 	const boxes = boxesFromSubgraphs(
 		subgraphs,
-		undefined,
+		arrangeSubgraphs(subgraphs),
 		new Map<string, CollapsedGroup>(),
 		nodes,
 		new Map<string, string>(),

@@ -66,6 +66,10 @@ function contains(outer: Box, inner: Box): boolean {
 	);
 }
 
+function overlaps(a: Box, b: Box): boolean {
+	return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
 /** What the canvas draws for a node the user can see. */
 function visibleBoxes(json: WorkflowJSON): Map<string, Box> {
 	const byId = new Map(json.nodes.map((n) => [n.id, n]));
@@ -400,6 +404,49 @@ describe('collapsed node group layout after tidyUp', () => {
 		expect(positionOf(json, 'Model')[1]).toBeGreaterThan(positionOf(json, 'Answer')[1]);
 		expect(positionOf(json, 'Calculator')[1]).toBeGreaterThan(positionOf(json, 'Answer')[1]);
 		expect(json.nodeGroups?.map((g) => g.name)).toEqual(['Brain']);
+	});
+
+	it('keeps disconnected members clear of a complete AI subtree when expanded', () => {
+		const model = languageModel({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1,
+			config: { name: 'Model' },
+		});
+		const calculator = tool({
+			type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			version: 1,
+			config: { name: 'Calculator' },
+		});
+		const agent = node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2,
+			config: { name: 'Answer', subnodes: { model, tools: [calculator] } },
+		});
+		const chat = trigger({
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1.1,
+			config: { name: 'On Chat' },
+		});
+		const unrelated = node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: 'Unrelated' },
+		});
+
+		const json = workflow('wf', 'Disconnected AI group')
+			.add(chat.to(agent))
+			.add(unrelated)
+			.group('Brain', [agent, model, calculator, unrelated])
+			.toJSON({ tidyUp: true });
+
+		const boxes = ['Answer', 'Model', 'Calculator', 'Unrelated'].map((name) =>
+			serializedBox(json, name),
+		);
+		for (let i = 0; i < boxes.length; i++) {
+			for (let j = i + 1; j < boxes.length; j++) {
+				expect(overlaps(boxes[i], boxes[j])).toBe(false);
+			}
+		}
 	});
 
 	it('falls back when a group contains only part of an AI subtree', () => {
