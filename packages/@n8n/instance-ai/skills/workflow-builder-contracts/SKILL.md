@@ -39,7 +39,8 @@ names are snake_case.
    with all node ids. Do not fetch definitions that you already have.
 3. Resolve real resource IDs with `nodes(action="explore-resources")` when a
    credential is available. For new model choices, follow `model-selection`.
-4. Call `credentials(action="list")` when the task touches external services.
+4. Call `credentials(action="list")` only to choose between several
+   credentials, or when `explore-resources` needs a credential id.
 5. Write the complete source. Call `build-workflow` with a stable `filePath`
    (for example `src/workflows/main.workflow.ts`) and the complete source as
    `sourceCode`. Do not write files, do not run `workflow-sdk validate`, and
@@ -142,10 +143,14 @@ AI) that feeds IF or Switch logic whose branches need proof.
   Use it directly as the value. Do not wrap it in `expr()`.
 - Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`). Keep real
   values that the user gave or that you discovered.
-- Use `newCredential('Name', 'credential-id')` only for a credential that the
-  user selected, a single clear match, or the credential that the workflow
-  already had. Otherwise use `newCredential('Suggested Name')`. Never write
-  raw credential objects.
+- For a service node, write `newCredential('<Service> account')` without an
+  id. If exactly one existing credential fits the node, the build binds it
+  and reports it in `resolvedCredentialsByNode`. If none or several fit, the
+  credential stays open for setup.
+- Call `credentials(action="list")` only to choose between several
+  credentials. Then write `newCredential('Name', 'credential-id')` for the
+  credential that the user selected or that the workflow already had. Never
+  write raw credential objects.
 - When the user asks for a new credential, pass its type in
   `preferNewCredentials` on `build-workflow` and on `workflows(action="setup")`.
 - Credentials in `resolvedCredentialsByNode` are connected. Do not ask the

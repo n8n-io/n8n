@@ -342,32 +342,50 @@ const sortedJson = (value: unknown): string =>
 		isRecord(v) && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v,
 	);
 
-/** Output of a manual-mode Set node, resolved per item by the expression engine. */
+/** Output of a Set node for `items`, run by the node's own execute code at the saved typeVersion. */
 async function setOutput(set: WorkflowNodeResponse, sourceName: string, items: IDataObject[]) {
-	const parameters = set.parameters ?? {};
-	const list = isRecord(parameters.assignments) ? parameters.assignments.assignments : [];
-	const assignments = (Array.isArray(list) ? list : []).filter(isRecord);
-	const columns = await Promise.all(
-		assignments.map(
-			async (assignment) =>
-				await evaluateOnChild(
-					assignment.value,
-					sourceName,
-					set.name,
-					items,
-					set.executeOnce === true,
-				),
-		),
+	const { SetV2 } = loadDist(nodesBaseRequire, './dist/nodes/Set/v2/SetV2.node.js', ['SetV2']);
+	const setNode: unknown =
+		typeof SetV2 === 'function'
+			? Reflect.construct(SetV2, [{ displayName: 'Edit Fields', name: 'set' }])
+			: {};
+	if (!isRecord(setNode)) throw new Error('SetV2 did not construct');
+	const parameters = withDefaults(set);
+	const once = set.executeOnce === true;
+	const output = await withChildContext(
+		sourceName,
+		set.name,
+		items,
+		async (evaluate) => {
+			const context = {
+				getInputData: () =>
+					(once ? items.slice(0, 1) : items).map((json, item) => ({ json, pairedItem: { item } })),
+				getNodeParameter: (
+					name: string,
+					itemIndex: number,
+					fallback?: unknown,
+					options?: unknown,
+				) => {
+					const raw = valueAt(parameters, name) ?? fallback;
+					return valueAt(options, 'rawExpressions') === true || !isParameterValue(raw)
+						? raw
+						: evaluate(raw, itemIndex);
+				},
+				evaluateExpression: (expression: string, itemIndex: number) =>
+					evaluate(`=${expression}`, itemIndex),
+				getNode: () => ({ ...stubNode(set.name), typeVersion: set.typeVersion ?? 1, parameters }),
+				getMode: () => 'manual',
+				continueOnFail: () => false,
+				getWorkflowSettings: () => ({}),
+			};
+			return await invoke(setNode.execute, context);
+		},
+		once,
 	);
-	return (set.executeOnce === true ? items.slice(0, 1) : items).map((item, itemIndex) => {
-		const assigned: IDataObject = Object.fromEntries(
-			assignments.map((assignment, column) => [
-				String(assignment.name),
-				toDataValue(columns[column][itemIndex]),
-			]),
-		);
-		return parameters.includeOtherFields === true ? { ...item, ...assigned } : assigned;
-	});
+	const [firstOutput] = Array.isArray(output) ? output : [];
+	return (Array.isArray(firstOutput) ? firstOutput : [])
+		.map((item: unknown) => (isRecord(item) ? item.json : undefined))
+		.filter(isDataObject);
 }
 
 const toDataValue = (value: unknown): IDataObject[string] =>
@@ -620,27 +638,31 @@ async function sheetsReadOutput(parameters: INodeParameters, version: number, va
 		.filter(isDataObject);
 }
 
-// A Limit node that keeps the first row passes: it sends the same single POST.
-const gradeSheetsLookupFirstMatch: Grader = async (workflow) => {
-	const sheets = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.googleSheets');
-	if (!sheets) return [{ name: 'sheets-node', pass: false, detail: 'no Google Sheets node' }];
-	const parameters = await runtimeParameters(workflow, sheets);
+function sheetsReadTarget(parameters: INodeParameters, documentId: string, sheetName: string) {
 	const document = asText(valueAt(parameters, 'documentId.value'));
 	const sheetNames = [
 		valueAt(parameters, 'sheetName.value'),
 		valueAt(parameters, 'sheetName.cachedResultName'),
 	];
+	return {
+		name: 'target',
+		pass:
+			parameters.operation === 'read' &&
+			document.includes(documentId) &&
+			sheetNames.includes(sheetName),
+		detail: JSON.stringify({ operation: parameters.operation, document, sheetNames }),
+	};
+}
+
+// A Limit node that keeps the first row passes: it sends the same single POST.
+const gradeSheetsLookupFirstMatch: Grader = async (workflow) => {
+	const sheets = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.googleSheets');
+	if (!sheets) return [{ name: 'sheets-node', pass: false, detail: 'no Google Sheets node' }];
+	const parameters = await runtimeParameters(workflow, sheets);
 	const rows = await sheetsReadOutput(parameters, sheets.typeVersion ?? 1, STOCK_ROWS);
 	const posted = await postedBodies(workflow, sheets.name, rows);
 	return [
-		{
-			name: 'target',
-			pass:
-				parameters.operation === 'read' &&
-				document.includes(SHEET_ID) &&
-				sheetNames.includes('Stock'),
-			detail: JSON.stringify({ operation: parameters.operation, document, sheetNames }),
-		},
+		sheetsReadTarget(parameters, SHEET_ID, 'Stock'),
 		{
 			name: 'lookup',
 			pass:
@@ -653,6 +675,73 @@ const gradeSheetsLookupFirstMatch: Grader = async (workflow) => {
 			posted,
 			'POST https://shop.example.com/api/price',
 			(bodies) => bodies.length === 1 && isRecord(bodies[0]) && String(bodies[0].price) === '19.99',
+		),
+	];
+};
+
+const SIGNUPS_SHEET_ID = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+// Only Email is named in the prompt; the other columns are unknown to the builder.
+const SIGNUP_ROWS = [
+	['Email', 'Name', 'Plan'],
+	['a@b.test', 'A', 'pro'],
+	['c@d.test', 'C', 'free'],
+];
+
+const gradeSheetsDynamicColumns: Grader = async (workflow) => {
+	const sheets = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.googleSheets');
+	if (!sheets) return [{ name: 'sheets-node', pass: false, detail: 'no Google Sheets node' }];
+	const parameters = await runtimeParameters(workflow, sheets);
+	const rows = await sheetsReadOutput(parameters, sheets.typeVersion ?? 1, SIGNUP_ROWS);
+	const posted = await postedBodies(workflow, sheets.name, rows);
+	return [
+		sheetsReadTarget(parameters, SIGNUPS_SHEET_ID, 'Signups'),
+		readsCheck(
+			posted,
+			'POST https://hooks.example.com/api/signups',
+			(bodies) =>
+				sortedJson(bodies) ===
+				sortedJson([
+					{ email: 'a@b.test', row: 2 },
+					{ email: 'c@d.test', row: 3 },
+				]),
+		),
+	];
+};
+
+const ORDER_URL = 'https://shop.example.com/api/orders/o1';
+const ORDER: IDataObject = { id: 'o1', total: 10, currency: 'EUR', customer: { tier: 'gold' } };
+
+const gradeSetKeepAllPassthrough: Grader = async (workflow) => {
+	const get = workflow.nodes.find(
+		(node) =>
+			node.type === 'n8n-nodes-base.httpRequest' &&
+			asText(node.parameters?.url).includes(ORDER_URL),
+	);
+	if (!get) return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the order URL' }];
+	const set = childrenOf(workflow, get.name).find((node) => node.type === 'n8n-nodes-base.set');
+	if (!set) return [{ name: 'set-node', pass: false, detail: 'no Set node after the GET' }];
+	const [output] = await setOutput(set, get.name, [ORDER]);
+	const posted = await postedBodies(workflow, get.name, [ORDER]);
+	const setParameters = withDefaults(set);
+	return [
+		{
+			name: 'keep-all',
+			pass: Object.entries(ORDER).every(
+				([key, value]) => sortedJson(output?.[key]) === sortedJson(value),
+			),
+			detail: `v${set.typeVersion ?? 1} includeOtherFields=${asText(setParameters.includeOtherFields)} include=${asText(setParameters.include)} ${JSON.stringify(output)}`,
+		},
+		{
+			name: 'number-type',
+			pass: output?.total_with_tax === 12,
+			detail: `total_with_tax=${JSON.stringify(output?.total_with_tax)} (${typeof output?.total_with_tax})`,
+		},
+		readsCheck(
+			posted,
+			'POST https://ledger.example.com/api/orders',
+			(bodies) =>
+				bodies.length === 1 &&
+				sortedJson(bodies[0]) === sortedJson({ id: 'o1', total_with_tax: 12 }),
 		),
 	];
 };
@@ -840,6 +929,8 @@ const GRADERS: Record<string, Grader> = {
 	'nc-sheets-lookup-first-match': gradeSheetsLookupFirstMatch,
 	'nc-http-cursor-pagination': gradeHttpCursorPagination,
 	'nc-gmail-send-then-post': gradeGmailSendThenPost,
+	'nc-sheets-dynamic-columns': gradeSheetsDynamicColumns,
+	'nc-set-keep-all-passthrough': gradeSetKeepAllPassthrough,
 };
 
 async function gradeSafely(caseSlug: string, workflow: WorkflowResponse): Promise<Check[]> {

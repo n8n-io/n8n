@@ -1,0 +1,34 @@
+{
+	"complexity": "simple",
+	"tags": [
+		"build",
+		"node-contracts-poc",
+		"google-sheets",
+		"dynamic-schema"
+	],
+	"triggerType": "manual",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: read all rows from the 'Signups' tab of my Google Sheet (spreadsheet ID 1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789). I don't know the other columns; the only one I rely on is 'Email'. For each row, POST JSON {\"email\": <the row's Email>, \"row\": <the row's row number>} to https://hooks.example.com/api/signups."
+		}
+	],
+	"description": "The sheet columns are not known when the workflow is built, except the one the user names. Grades that the build reads the right sheet and maps only the named column and the row number, without guessed columns.",
+	"executionScenarios": [
+		{
+			"name": "each-row-posted-with-email-and-row",
+			"description": "The sheet columns are not known when the workflow is built, except the one the user names.",
+			"dataSetup": "The 'Signups' tab has header row Email | Name | Plan and data rows: a@b.test | A | pro, c@d.test | C | free. Answer Google Sheets API reads (GET .../values/Signups...) with exactly those values. The signups endpoint returns 200 { \"ok\": true }.",
+			"successCriteria": "Two POSTs reach https://hooks.example.com/api/signups with bodies exactly { \"email\": \"a@b.test\", \"row\": 2 } and { \"email\": \"c@d.test\", \"row\": 3 }. A missing or empty email, a missing row, or extra fields FAIL."
+		}
+	],
+	"outcomeExpectations": [
+		"The Google Sheets read returns all rows of the 'Signups' tab, and the POST body uses the Email column and row_number of each row."
+	],
+	"credentials": [
+		{
+			"type": "googleSheetsOAuth2Api",
+			"name": "Google Sheets account"
+		}
+	]
+}

@@ -312,6 +312,43 @@ export async function resolveCredentials(
 		}
 	}
 
+	// Node contracts: the model writes `newCredential('<Service> account')` without an id,
+	// or omits the slot, and does not list credentials first. When exactly one stored
+	// credential exists across all types the node accepts, bind it and switch the auth
+	// parameters to its type. Returns the bound type.
+	const bindSoleAcceptedCredential = async (node: NodeJSON): Promise<string | undefined> => {
+		if (!ctx.nodeContractsEnabled || !node.name) return undefined;
+		let nodeDesc: Awaited<ReturnType<typeof ctx.nodeService.getDescription>> | undefined;
+		try {
+			nodeDesc = await ctx.nodeService.getDescription(node.type, node.typeVersion ?? 1);
+		} catch {
+			return undefined;
+		}
+		const candidates = (nodeDesc?.credentials ?? [])
+			.filter(
+				(credential) =>
+					!GENERIC_AUTH_CREDENTIAL_TYPES.has(credential.name) &&
+					!preferNewTypes.has(credential.name) &&
+					getCredentialActivationState(node, credential) !== 'unreachable',
+			)
+			.flatMap((credential) => availableCredentials?.get(credential.name) ?? []);
+		if (candidates.length !== 1) return undefined;
+		const [credential] = candidates;
+		const binding = { id: credential.id, name: credential.name };
+		node.credentials ??= {};
+		node.credentials[credential.type] = binding;
+		await applyManagedAuth(node, credential.type);
+		registerSiblingBinding(credential.type, binding);
+		resolvedCredentialsByNode[node.name] ??= [];
+		resolvedCredentialsByNode[node.name].push({
+			type: credential.type,
+			id: credential.id,
+			name: credential.name,
+		});
+		cleanupMockPinData(json, node.name);
+		return credential.type;
+	};
+
 	for (const node of json.nodes ?? []) {
 		if (!node.credentials) continue;
 		const creds = node.credentials as Record<string, unknown>;
@@ -521,6 +558,14 @@ export async function resolveCredentials(
 				continue;
 			}
 
+			if (!wantsNewCredential) {
+				const boundType = await bindSoleAcceptedCredential(node);
+				if (boundType) {
+					if (boundType !== key) delete creds[key];
+					continue;
+				}
+			}
+
 			// No stored credential and not gateway-supported — mock: remove the
 			// credential key and produce sidecar verification data so the execution
 			// engine skips this node during test runs.
@@ -541,6 +586,14 @@ export async function resolveCredentials(
 	for (const node of json.nodes ?? []) {
 		if (!node.name) continue;
 		const requiredTypes = await getValidCredentialTypes(ctx, node);
+		const omitsCredentials =
+			requiredTypes.size > 0 &&
+			Object.keys(node.credentials ?? {}).length === 0 &&
+			!mockedNodeNames.includes(node.name) &&
+			![...requiredTypes].some((type) => preferNewTypes.has(type));
+		if (omitsCredentials && (await bindSoleAcceptedCredential(node))) {
+			continue;
+		}
 		for (const credType of requiredTypes) {
 			const creds = (node.credentials ?? {}) as Record<string, unknown>;
 			const existing = creds[credType];

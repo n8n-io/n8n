@@ -1,0 +1,29 @@
+{
+	"complexity": "simple",
+	"tags": [
+		"build",
+		"node-contracts-poc",
+		"set-node",
+		"passthrough",
+		"types"
+	],
+	"triggerType": "manual",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: GET the order from https://shop.example.com/api/orders/o1 (it returns the order as JSON with an id, a total and other fields). Add a field total_with_tax (a number) = total * 1.2 and keep all the other order fields. Then POST JSON {\"id\": <order id>, \"total_with_tax\": <total_with_tax>} to https://ledger.example.com/api/orders."
+		}
+	],
+	"description": "The Set node output has only the set fields unless it keeps the input fields. Grades that the Set keeps all input fields, that total_with_tax is a number, and that the POST reads both the kept id and the new field.",
+	"executionScenarios": [
+		{
+			"name": "kept-fields-and-typed-total-posted",
+			"description": "The Set node output has only the set fields unless it keeps the input fields.",
+			"dataSetup": "GET https://shop.example.com/api/orders/o1 returns 200 { \"id\": \"o1\", \"total\": 10, \"currency\": \"EUR\", \"customer\": { \"tier\": \"gold\" } }. The ledger endpoint returns 200 { \"ok\": true } for any POST.",
+			"successCriteria": "One POST reaches https://ledger.example.com/api/orders with body exactly { \"id\": \"o1\", \"total_with_tax\": 12 }, with total_with_tax a number. A missing id, a string '12', or an empty body FAIL."
+		}
+	],
+	"outcomeExpectations": [
+		"The Set node adds total_with_tax typed as a number and keeps all input fields, so the POST can read id from the Set output."
+	]
+}

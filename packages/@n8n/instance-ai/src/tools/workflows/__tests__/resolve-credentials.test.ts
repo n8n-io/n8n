@@ -1906,6 +1906,66 @@ describe('resolveCredentials with preferNewCredentialTypes', () => {
 	});
 });
 
+describe('resolveCredentials with node contracts enabled', () => {
+	function createNotionContext(): InstanceAiContext {
+		const context = createMockContext();
+		context.nodeContractsEnabled = true;
+		context.nodeService = {
+			getDescription: vi.fn().mockResolvedValue({
+				credentials: [
+					{ name: 'notionApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					{ name: 'notionOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+				],
+			}),
+		} as unknown as InstanceAiContext['nodeService'];
+		return context;
+	}
+
+	function makeNotionNode(credentials?: Record<string, undefined>): WorkflowJSON['nodes'][number] {
+		return {
+			id: '1',
+			name: 'Create page',
+			type: 'n8n-nodes-base.notion',
+			typeVersion: 2.2,
+			position: [0, 0],
+			parameters: { authentication: 'apiKey' },
+			...(credentials ? { credentials: credentials as never } : {}),
+		};
+	}
+
+	it('binds the only stored credential of any type the node accepts', async () => {
+		const json = makeWorkflow({ nodes: [makeNotionNode({ notionApi: undefined })] });
+		const map = makeCredentialMap([
+			{ id: 'cred-1', name: 'Notion account', type: 'notionOAuth2Api' },
+		]);
+
+		const result = await resolveCredentials(json, undefined, createNotionContext(), map);
+
+		expect(json.nodes[0].credentials).toEqual({
+			notionOAuth2Api: { id: 'cred-1', name: 'Notion account' },
+		});
+		expect(json.nodes[0].parameters).toEqual({ authentication: 'oAuth2' });
+		expect(result.mockedNodeNames).toEqual([]);
+		expect(result.resolvedCredentialsByNode).toEqual({
+			'Create page': [{ type: 'notionOAuth2Api', id: 'cred-1', name: 'Notion account' }],
+		});
+	});
+
+	it('leaves the credential unresolved when several stored credentials match', async () => {
+		const json = makeWorkflow({ nodes: [makeNotionNode()] });
+		const map = makeCredentialMap([
+			{ id: 'cred-1', name: 'Notion account', type: 'notionApi' },
+			{ id: 'cred-2', name: 'Notion OAuth account', type: 'notionOAuth2Api' },
+		]);
+
+		const result = await resolveCredentials(json, undefined, createNotionContext(), map);
+
+		expect(json.nodes[0].credentials).toBeUndefined();
+		expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+		expect(result.resolvedCredentialsByNode).toEqual({});
+	});
+});
+
 describe('buildCredentialResolutionNote', () => {
 	it('returns undefined when nothing was resolved', () => {
 		expect(buildCredentialResolutionNote({})).toBeUndefined();
