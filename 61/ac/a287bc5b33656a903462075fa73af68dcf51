@@ -1,0 +1,56 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_8e9cae71c7c159::t_5da9aedaaf080f 569-570
+  s_8e9cae71c7c159::t_c428966a6ac081 568,582
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.test.ts
+  s_8e9cae71c7c159::t_bbca6b66b3b71a 1-44
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_8e9cae71c7c159::t_17e4bbb5098f2b 14
+  s_8e9cae71c7c159::t_609090fd25facd 57-73
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_8e9cae71c7c159::t_c2841f1f90a7e5 72-86
+  s_8e9cae71c7c159::t_c0a2997c1b7aa6 67-71
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8e9cae71c7c159::t_a7be5b81059044 8962
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_8e9cae71c7c159::t_2ccdc91aea6c2a 315
+  s_8e9cae71c7c159::t_3ed41de903cec9 18
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8e9cae71c7c159::t_fa18c4dda20aa3 763-765
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.ts
+  s_8e9cae71c7c159::t_cea23d3b5d939f 1,3-7,11-18,25-29,31-33
+  s_8e9cae71c7c159::t_ff23b5786953a6 2,19-24,30
+  s_8e9cae71c7c159::t_c133872b1eb4aa 8-10
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_8e9cae71c7c159::t_18da960487b495 1-4
+  s_8e9cae71c7c159::t_a4bd5b4d1b1955 14
+  s_8e9cae71c7c159::t_8769c7aea6d51f 5-13,16-19
+packages/cli/src/errors/http-error-serializers.ts
+  s_8e9cae71c7c159::t_b818041665bc0a 51
+  s_8e9cae71c7c159::t_c6486396f6a0c8 10-12
+  s_8e9cae71c7c159::t_b70d6ee2cc6766 52,56
+  s_8e9cae71c7c159::t_7e293665804b66 1-4
+  s_8e9cae71c7c159::t_729fd1e5978ce3 50,53-55,57-59
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_8e9cae71c7c159::t_7a4d4e791298a1 20
+  s_8e9cae71c7c159::t_1a74ff9a2971f8 171-180
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_8e9cae71c7c159::t_f9fb922d9a1085 319,327
+  s_8e9cae71c7c159::t_d90b8374d39c83 428
+  s_8e9cae71c7c159::t_1e49d2b0dda89f 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61aca287bc5b33656a903462075fa73af68dcf51",
+  "prompts": {},
+  "sessions": {
+    "s_8e9cae71c7c159": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "93946471-1d3e-40e1-a7f0-dd60bb59d865",
+        "model": "composer-2.5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

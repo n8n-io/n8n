@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e5a64625bc5cd1::t_bc5ca6871ef596 163-166
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e5a64625bc5cd1::t_bc5ca6871ef596 315,317-320,324-328,332-333
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_e5a64625bc5cd1::t_bc5ca6871ef596 69,71,79-80,84,88
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_e5a64625bc5cd1::t_7580b8598197dd 113,116-121,125-132,139-140,142-144
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_e5a64625bc5cd1::t_c68359b320297f 244-247,249
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_e5a64625bc5cd1::t_67048d46631f62 499-532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c915ad4af2f9cc94b34fef6d04a1a03e3992acfb",
+  "prompts": {},
+  "sessions": {
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
