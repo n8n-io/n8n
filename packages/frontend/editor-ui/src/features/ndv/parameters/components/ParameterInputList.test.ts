@@ -1040,7 +1040,11 @@ describe('ParameterInputList', () => {
 				name: 'responseMode',
 				type: 'options',
 				options: [
-					{ name: 'Form Is Submitted', value: 'onReceived' },
+					{
+						name: 'Form Is Submitted',
+						value: 'onReceived',
+						description: 'As soon as this node receives the form submission',
+					},
 					{ name: 'Workflow Finishes', value: 'lastNode' },
 				],
 				default: 'onReceived',
@@ -1228,7 +1232,7 @@ describe('ParameterInputList', () => {
 							ParameterInputFull: {
 								props: ['parameter', 'isReadOnly', 'value'],
 								template:
-									'<button :data-test-id="parameter.name" :disabled="isReadOnly">{{ value }}</button>',
+									'<button :data-test-id="parameter.name" :disabled="isReadOnly">{{ value }} {{ parameter.options[0].description }}</button>',
 							},
 						},
 					},
@@ -1237,18 +1241,23 @@ describe('ParameterInputList', () => {
 
 				const control = getByTestId('responseMode');
 				expect(control).toHaveTextContent(responseMode);
+				expect(control).toBeEnabled();
 				if (multiPage) {
-					expect(control).toBeDisabled();
+					expect(control).toHaveTextContent(
+						'parameterInputList.multiPageFormSubmissionDescription',
+					);
 					expect(queryByText('parameterInputList.multiPageFormResponseNotice')).toBeInTheDocument();
 
 					lastNode.disabled = true;
-					await waitFor(() => expect(control).toBeEnabled());
+					await waitFor(() =>
+						expect(control).toHaveTextContent('As soon as this node receives the form submission'),
+					);
 					expect(
 						queryByText('parameterInputList.multiPageFormResponseNotice'),
 					).not.toBeInTheDocument();
 					expect(control).toHaveTextContent(responseMode);
 				} else {
-					expect(control).toBeEnabled();
+					expect(control).toHaveTextContent('As soon as this node receives the form submission');
 					expect(
 						queryByText('parameterInputList.multiPageFormResponseNotice'),
 					).not.toBeInTheDocument();

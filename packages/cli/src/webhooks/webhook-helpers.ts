@@ -96,6 +96,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { toResponseExpectation } from './engine-v2-response-expectation';
 import { EngineV2Webhooks } from './engine-v2-webhooks';
+import { getFormTriggerResponseMode } from './form-response-mode';
 import {
 	applySandboxCSP,
 	WebhookResponseHeaders,
@@ -990,7 +991,7 @@ export async function executeWebhook(
 		responsePropertyName,
 		responseContentType,
 		responseBinaryPropertyName,
-	} = evaluateResponseOptions(context, req);
+	} = evaluateResponseOptions(context, req, runExecutionData);
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1538,12 +1539,19 @@ export async function executeWebhook(
 /**
  * Evaluates the response mode, code and data for a webhook node
  */
-function evaluateResponseOptions(context: WebhookExecutionContext, req: WebhookRequest) {
+function evaluateResponseOptions(
+	context: WebhookExecutionContext,
+	req: WebhookRequest,
+	runExecutionData: IRunExecutionData | undefined,
+) {
 	const { workflow, workflowStartNode } = context;
 
 	//check if response mode should be set automatically, e.g. multipage form
 	const responseMode =
 		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
+		(workflowStartNode.type === FORM_NODE_TYPE && req.method === 'POST'
+			? getFormTriggerResponseMode(context, runExecutionData)
+			: undefined) ??
 		context.evaluateSimpleWebhookDescriptionExpression<WebhookResponseMode>(
 			'responseMode',
 			undefined,

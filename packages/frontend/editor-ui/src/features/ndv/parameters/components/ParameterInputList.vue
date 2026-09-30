@@ -262,9 +262,7 @@ throttledWatch(
 			filteredParameters.map(async (parameter) => {
 				const parameterPath = getPath(parameter.name);
 				const isMultipleValues = multipleValues(parameter);
-				const isDisabled =
-					(disabledMap[parameterPath] ?? false) ||
-					(hasFollowingFormPage.value && parameter.name === 'responseMode');
+				const isDisabled = disabledMap[parameterPath] ?? false;
 				const showOptions = shouldShowOptions(parameter);
 				const dependentParametersValues = await getDependentParametersValues(parameter);
 				const issues = getParameterIssues(parameter);
@@ -380,7 +378,19 @@ function updateFormTriggerParameters(parameters: INodeProperties[]) {
 
 		for (const parameter of parameters) {
 			if (parameter.name === 'responseMode') {
-				triggerParameters.push(parameter);
+				triggerParameters.push({
+					...parameter,
+					options: parameter.options?.map((option) =>
+						'value' in option && option.value === 'onReceived'
+							? {
+									...option,
+									description: i18n.baseText(
+										'parameterInputList.multiPageFormSubmissionDescription',
+									),
+								}
+							: option,
+					),
+				});
 				triggerParameters.push({
 					displayName: i18n.baseText('parameterInputList.multiPageFormResponseNotice'),
 					name: 'formResponseModeNotice',

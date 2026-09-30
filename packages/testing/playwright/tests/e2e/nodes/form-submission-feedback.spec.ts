@@ -3,7 +3,20 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect } from '../../../fixtures/base';
 import { PublicFormPage } from '../../../pages/PublicFormPage';
 
-function formWorkflow(webhookId: string, withNextPage = true): Partial<IWorkflowBase> {
+function formWorkflow(
+	webhookId: string,
+	{
+		withNextPage = true,
+		responseMode = 'onReceived',
+		delayAfterLastPage = false,
+		withEnding = false,
+	}: {
+		withNextPage?: boolean;
+		responseMode?: 'onReceived' | 'lastNode';
+		delayAfterLastPage?: boolean;
+		withEnding?: boolean;
+	} = {},
+): Partial<IWorkflowBase> {
 	return {
 		name: `Form submission feedback ${webhookId}`,
 		nodes: [
@@ -16,7 +29,7 @@ function formWorkflow(webhookId: string, withNextPage = true): Partial<IWorkflow
 				webhookId,
 				parameters: {
 					formTitle: 'First page',
-					responseMode: 'onReceived',
+					responseMode,
 					formFields: { values: [{ fieldLabel: 'Name', requiredField: true }] },
 					options: {
 						respondWithOptions: {
@@ -49,11 +62,49 @@ function formWorkflow(webhookId: string, withNextPage = true): Partial<IWorkflow
 						},
 					]
 				: []),
+			...(delayAfterLastPage
+				? [
+						{
+							id: 'after-submission',
+							name: 'After submission',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [672, 0] as [number, number],
+							parameters: { resume: 'timeInterval', amount: 8, unit: 'seconds' },
+						},
+					]
+				: []),
+			...(withEnding
+				? [
+						{
+							id: 'ending',
+							name: 'Ending',
+							type: 'n8n-nodes-base.form',
+							typeVersion: 2.5,
+							position: [896, 0] as [number, number],
+							parameters: { operation: 'completion', completionTitle: 'Custom ending' },
+						},
+					]
+				: []),
 		],
 		connections: {
 			'Form Trigger': { main: [[{ node: 'Processing', type: 'main', index: 0 }]] },
 			...(withNextPage
 				? { Processing: { main: [[{ node: 'Next page', type: 'main' as const, index: 0 }]] } }
+				: {}),
+			...(delayAfterLastPage
+				? {
+						'Next page': {
+							main: [[{ node: 'After submission', type: 'main' as const, index: 0 }]],
+						},
+					}
+				: {}),
+			...(withEnding
+				? {
+						'After submission': {
+							main: [[{ node: 'Ending', type: 'main' as const, index: 0 }]],
+						},
+					}
 				: {}),
 		},
 	};
@@ -88,6 +139,9 @@ test.describe(
 				{ makeUnique: false },
 			);
 			workflowId = created.workflowId;
+			await expect
+				.poll(async () => (await api.webhooks.trigger(`/form/${webhookId}`)).status())
+				.toBe(200);
 
 			let acceptSubmission = () => {};
 			const submissionGate = new Promise<void>((resolve) => {
@@ -150,6 +204,9 @@ test.describe(
 					{ makeUnique: false },
 				);
 				workflowId = created.workflowId;
+				await expect
+					.poll(async () => (await api.webhooks.trigger(`/form/${webhookId}`)).status())
+					.toBe(200);
 
 				await context.route(`**/form/${webhookId}`, async (route) => {
 					if (route.request().method() === 'POST') {
@@ -182,18 +239,90 @@ test.describe(
 			const webhookId = crypto.randomUUID();
 			const created = await api.workflows.importWorkflowFromDefinition(
 				{
-					...formWorkflow(webhookId, false),
+					...formWorkflow(webhookId, { withNextPage: false }),
 					active: true,
 				},
 				{ makeUnique: false },
 			);
 			workflowId = created.workflowId;
+			await expect
+				.poll(async () => (await api.webhooks.trigger(`/form/${webhookId}`)).status())
+				.toBe(200);
 
 			const form = await PublicFormPage.fromNewTab(context, `${baseURL}/form/${webhookId}`);
 			await form.fillField('Name', 'Alex');
 			await form.submit();
 			await form.expectText('All done');
 			await expect(form.waitingCard).toBeHidden();
+			await form.close();
+		});
+
+		for (const responseMode of ['onReceived', 'lastNode'] as const) {
+			test(`confirms the last page at the selected time with ${responseMode}`, async ({
+				api,
+				context,
+				baseURL,
+			}) => {
+				const webhookId = crypto.randomUUID();
+				const created = await api.workflows.importWorkflowFromDefinition(
+					{
+						...formWorkflow(webhookId, { responseMode, delayAfterLastPage: true }),
+						active: true,
+					},
+					{ makeUnique: false },
+				);
+				workflowId = created.workflowId;
+				await expect
+					.poll(async () => (await api.webhooks.trigger(`/form/${webhookId}`)).status())
+					.toBe(200);
+				const form = await PublicFormPage.fromNewTab(context, `${baseURL}/form/${webhookId}`);
+				await form.fillField('Name', 'Alex');
+				await form.submit();
+				await form.fillField('City', 'Madrid');
+				const [execution] = await api.workflows.getExecutions(workflowId);
+				await form.submit();
+				await expect
+					.poll(async () => (await api.workflows.getExecution(execution.id)).status)
+					.toBe('running');
+
+				await expect(form.submittedCard).toBeVisible({
+					visible: responseMode === 'onReceived',
+					timeout: 3000,
+				});
+				await expect(form.submitSpinner).toBeVisible({ visible: responseMode === 'lastNode' });
+				expect((await api.workflows.getExecution(execution.id)).status).toBe('running');
+				await expect(form.waitingCard).toBeHidden();
+				expect((await api.workflows.waitForExecutionById(execution.id)).status).toBe('success');
+				await form.expectText('Your response has been recorded');
+				await form.close();
+			});
+		}
+
+		test('opens an explicit Form Ending after the final submission', async ({
+			api,
+			context,
+			baseURL,
+		}) => {
+			const webhookId = crypto.randomUUID();
+			const created = await api.workflows.importWorkflowFromDefinition(
+				{
+					...formWorkflow(webhookId, { delayAfterLastPage: true, withEnding: true }),
+					active: true,
+				},
+				{ makeUnique: false },
+			);
+			workflowId = created.workflowId;
+			await expect
+				.poll(async () => (await api.webhooks.trigger(`/form/${webhookId}`)).status())
+				.toBe(200);
+			const form = await PublicFormPage.fromNewTab(context, `${baseURL}/form/${webhookId}`);
+			await form.fillField('Name', 'Alex');
+			await form.submit();
+			await form.fillField('City', 'Madrid');
+			await form.submit();
+			await expect(form.waitingCard).toBeVisible();
+			await expect(form.submittedCard).toBeHidden();
+			await form.expectText('Custom ending', { timeout: 15000 });
 			await form.close();
 		});
 	},

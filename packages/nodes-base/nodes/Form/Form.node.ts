@@ -328,6 +328,7 @@ export class Form extends Node {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'responseNode',
+				responseData: 'noData',
 				path: '',
 				restartWebhook: true,
 				isFullPath: true,
