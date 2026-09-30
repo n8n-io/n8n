@@ -45,10 +45,8 @@ export function attachResponseHooks(
 	if (kind === 'stepResponse') {
 		additionalData.hooks.addHandler('sendResponse', (response) => {
 			const result = respond.send(() => toJsonPayload(response));
-			if (!result.ok) {
-				// Fail the node so the caller can see the response error.
-				throw result.error;
-			}
+			// Fail the node so the caller can see the response error.
+			if (!result.ok) throw result.error;
 		});
 	}
 
@@ -56,6 +54,7 @@ export function attachResponseHooks(
 		additionalData.streamingEnabled = true;
 		additionalData.hooks.addHandler('sendChunk', (chunk) => {
 			const result = respond.chunk(() => toJsonPayload(chunk));
+			// Fail the node so the caller can see the response error.
 			if (!result.ok) throw result.error;
 		});
 	}
