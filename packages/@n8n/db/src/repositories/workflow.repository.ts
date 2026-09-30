@@ -20,6 +20,8 @@ import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { runWorkflowContentWrite } from './workflow-content-write-context';
+import { restrictedNodeTypeMatch, type RestrictedNodeTypes } from './restricted-node-type-match';
+import { runningVersionRowsCondition } from './workflow-dependency.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -73,6 +75,10 @@ export type WorkflowFolderUnionFull = (
 type WorkflowListResult = {
 	workflows: ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[];
 	count: number;
+};
+
+type WorkflowListOptions = ListQuery.Options & {
+	restrictedNodeTypes?: RestrictedNodeTypes;
 };
 
 /**
@@ -839,7 +845,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		if (
@@ -897,7 +903,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } =
@@ -931,7 +937,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
@@ -961,7 +967,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		// Common fields for both folders and workflows
@@ -983,7 +989,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			filter: folderFilter,
 		};
 
-		const workflowQueryParameters: ListQuery.Options = {
+		const workflowQueryParameters: WorkflowListOptions = {
 			select: {
 				...commonFields,
 				description: true,
@@ -993,6 +999,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				name: true,
 			},
 			filter: options.filter,
+			restrictedNodeTypes: options.restrictedNodeTypes,
 		};
 
 		// For union, we need to have the same columns, so add NULL as description for folders
@@ -1092,7 +1099,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	@TimedQuery()
 	async getMany(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 	): Promise<WorkflowListResult['workflows']> {
 		if (workflowIds.length === 0) {
 			return [];
@@ -1129,7 +1136,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 		callableForParentWorkflowId?: string,
 	): Promise<WorkflowListResult> {
 		const query = this.getManyQueryWithSharingSubquery(
@@ -1156,7 +1163,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListOptions = {},
 		callableForParentWorkflowId?: string,
 	): SelectQueryBuilder<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
@@ -1203,6 +1210,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, filtersToApply);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyRestrictedNodeTypesFilter(qb, options.restrictedNodeTypes);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1304,11 +1312,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, sharingOptions);
 	}
 
-	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+	getManyQuery(workflowIds: string[], options: WorkflowListOptions = {}) {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyRestrictedNodeTypesFilter(qb, options.restrictedNodeTypes);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1574,6 +1583,40 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
 			.andWhere('dep.dependencyKey IN (:...nodeTypes)', { nodeTypes })
 			.andWhere('dep.publishedVersionId IS NULL');
+	}
+
+	private applyRestrictedNodeTypesFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		restricted: RestrictedNodeTypes | undefined,
+	): void {
+		if (restricted === undefined) return;
+
+		const { condition, parameters } = restrictedNodeTypeMatch(
+			restricted,
+			this.globalConfig.database.type === 'postgresdb',
+		);
+		const subQuery = this.buildRunningNodeTypesByOwnerSubQuery().andWhere(condition, parameters);
+
+		qb.andWhere(`workflow.id IN (${subQuery.getQuery()})`);
+		qb.setParameters(subQuery.getParameters());
+	}
+
+	private buildRunningNodeTypesByOwnerSubQuery() {
+		return this.manager
+			.createQueryBuilder(WorkflowDependency, 'restrictedDep')
+			.select('restrictedDep.workflowId')
+			.innerJoin(
+				WorkflowEntity,
+				'restrictedWorkflow',
+				'restrictedWorkflow.id = restrictedDep.workflowId',
+			)
+			.innerJoin(
+				SharedWorkflow,
+				'restrictedOwner',
+				"restrictedOwner.workflowId = restrictedDep.workflowId AND restrictedOwner.role = 'workflow:owner'",
+			)
+			.where('restrictedDep.dependencyType = :restrictedDepType', { restrictedDepType: 'nodeType' })
+			.andWhere(runningVersionRowsCondition('restrictedDep', 'restrictedWorkflow'));
 	}
 
 	private applyOwnedByRelation(

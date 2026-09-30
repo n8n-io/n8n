@@ -1,10 +1,18 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
-import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus, WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type {
+	User,
+	ListQueryDb,
+	RestrictedNodeTypes,
+	Project,
+	WorkflowFolderUnionFull,
+	WorkflowHistory,
+} from '@n8n/db';
 import {
+	isStringArray,
 	SharedWorkflow,
 	WorkflowEntity,
 	FolderRepository,
@@ -33,6 +41,7 @@ import { v4 as uuid } from 'uuid';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
+import { RestrictedNodeTypesProviderProxy } from './restricted-node-types-provider-proxy.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -129,6 +138,7 @@ export class WorkflowService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 	) {}
 
 	async getMany(
@@ -191,13 +201,16 @@ export class WorkflowService {
 			options,
 		);
 
+		const restrictedNodeTypes = await this.resolveRestrictedNodeTypes(options);
+		const listOptions = restrictedNodeTypes ? { ...options, restrictedNodeTypes } : options;
+
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
 					sharingOptions,
-					options,
+					listOptions,
 					callableForParentWorkflowId,
 				);
 
@@ -206,7 +219,7 @@ export class WorkflowService {
 			({ workflows, count } = await this.workflowRepository.getManyAndCountWithSharingSubquery(
 				user,
 				sharingOptions,
-				options,
+				listOptions,
 				callableForParentWorkflowId,
 			));
 		}
@@ -279,6 +292,19 @@ export class WorkflowService {
 		);
 
 		return parentWorkflow ? parentWorkflowId : undefined;
+	}
+
+	private async resolveRestrictedNodeTypes(
+		options?: ListQuery.Options,
+	): Promise<RestrictedNodeTypes | undefined> {
+		const executionBlockedBy = options?.filter?.executionBlockedBy;
+		if (
+			!isStringArray(executionBlockedBy) ||
+			!executionBlockedBy.includes('restrictedNode' satisfies WorkflowExecutionBlockCause)
+		)
+			return undefined;
+
+		return await this.restrictedNodeTypesProvider.findRestrictedNodeTypesInUse();
 	}
 
 	/**

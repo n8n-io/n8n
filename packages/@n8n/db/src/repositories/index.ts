@@ -132,6 +132,7 @@ export {
 	WorkflowDependencies,
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
+export type { NodeTypesInProjects, RestrictedNodeTypes } from './restricted-node-type-match';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
