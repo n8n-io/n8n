@@ -816,6 +816,26 @@ describe('a build a budget ended', () => {
 		]);
 	});
 
+	it('stamps the verdicts of a build whose prior-run staging also failed, matching its row', async () => {
+		// The fast path for a missing premise returns before `attribute`; the
+		// iteration's scenario row is re-stamped `timeout`, so the verdicts must be too.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const build = okBuild({ priorRunFailed: 'sEeDeDwF1234567a: fetch failed', timeout });
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['reads the failed execution'] })],
+			]),
+		});
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toEqual([
+			expect.objectContaining({ pass: false, incomplete: true, attribution: 'timeout' }),
+		]);
+	});
+
 	it('stamps the unjudged verdicts of a build that saved nothing the same way, not as infra', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
 		const build: BuildResult = {

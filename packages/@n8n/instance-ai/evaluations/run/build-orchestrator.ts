@@ -470,14 +470,24 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
 		// does not reach them. A priorRuns case is usually expectation-only, so without
 		// this the single graded unit still lands in the builder's baseline as a red.
+		// A budget ended the conversation: every verdict of the iteration is kept
+		// for the record but counts neither way, same as its scenario rows (see
+		// `attachExpectations`). The deterministic ones too, or the iteration
+		// would still score on them.
+		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
 		if (build.priorRunFailed) {
+			const unjudged = allFailVerdicts(
+				collectExpectations(testCase),
+				`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			);
+			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
 				key,
 				Promise.resolve(
-					allFailVerdicts(
-						collectExpectations(testCase),
-						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
-					).map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
+					build.timeout
+						? timedOut(unjudged)
+						: unjudged.map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
 				),
 			);
 			return;
@@ -514,12 +524,6 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// rather than the agent's miss. Both readers of this map (the row outputs
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
-		// A budget ended the conversation: every verdict of the iteration is kept
-		// for the record but counts neither way, same as its scenario rows (see
-		// `attachExpectations`). The deterministic ones too, or the iteration
-		// would still score on them.
-		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			build.timeout
 				? timedOut(verdicts)
