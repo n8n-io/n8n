@@ -157,7 +157,7 @@ const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 const N8N_CREDITS_LABEL = i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
 
 const instanceAiCapability = useInstanceAiEditorCapability();
-const { instanceAi } = useEditorContext();
+const { instanceAi, readOnly } = useEditorContext();
 const isToolContext = inject(ChatHubToolContextKey, false);
 
 // The host's credential-help behavior, handed to the (teleported) credential
@@ -423,7 +423,7 @@ let hasEvaluatedCredentials = false;
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
-		if (props.skipAutoSelect) return;
+		if (props.skipAutoSelect || props.readonly || readOnly.value) return;
 		if (types.length === 0) return;
 		// Before the scoped fetch lands there are no options to pick from, which would
 		// read as "no credentials exist" and auto-enable the AI Gateway below. The

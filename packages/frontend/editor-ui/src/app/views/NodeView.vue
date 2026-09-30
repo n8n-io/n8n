@@ -71,6 +71,7 @@ import {
 	isNodeCreatorOpenFromConnection,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import {
@@ -149,7 +150,12 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nCanvasThinkingPill,
+	N8nCanvasCollaborationPill,
+	N8nLogo,
+} from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { findTriggerNodeToAutoSelect } from '@/features/execution/executions/executions.utils';
@@ -203,6 +209,7 @@ const workflowExecutionState = computed(() =>
 );
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 const groupTelemetry = useCanvasNodeGroupTelemetry();
@@ -308,6 +315,7 @@ const hideCanvasControls = computed(() => {
 const stripedCanvasBackground = computed(() => route.query.canvasBackground !== 'dots');
 
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const isCanvasOnlyLogoVisible = computed(() => settingsStore.isCanvasOnly && !isDemoRoute.value);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -492,12 +500,6 @@ const allTriggerNodesDisabled = computed(() => {
 const selectableTriggerNodes = computed(() =>
 	triggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
 );
-const isRunButtonSplit = computed(() => {
-	return (
-		selectableTriggerNodes.value.length > 1 &&
-		workflowExecutionState.value.selectedTriggerNodeName !== undefined
-	);
-});
 
 function onTidyUp(
 	event: CanvasLayoutEvent,
@@ -2208,60 +2210,74 @@ onBeforeUnmount(() => {
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="onToggleChat"
 		>
-			<Suspense v-if="!isCanvasReadOnly">
-				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
-			</Suspense>
+			<div :class="$style.canvasTopLeftContainer">
+				<div :class="$style.canvasTopLeft">
+					<N8nLogo
+						v-if="isCanvasOnlyLogoVisible"
+						size="small"
+						:collapsed="false"
+						:class="$style.canvasOnlyLogo"
+						aria-hidden="true"
+					/>
+					<Suspense v-if="!isCanvasReadOnly">
+						<LazySetupWorkflowCredentialsButton
+							:collapsible="isCanvasOnlyLogoVisible"
+							:class="$style.setupCredentialsButton"
+						/>
+					</Suspense>
+				</div>
+			</div>
 			<EvaluationsCanvasInfoCard
 				v-if="!isCanvasReadOnly"
 				:class="$style.evaluationsCanvasInfoCardWrapper"
 			/>
-			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
-				<CanvasRunWorkflowButton
-					v-if="isRunWorkflowButtonVisible"
-					:waiting-for-webhook="isExecutionWaitingForWebhook"
-					:disabled="isExecutionDisabled"
-					:executing="isWorkflowRunning"
-					:trigger-nodes="triggerNodes"
-					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
-					:type="runWorkflowButtonType"
-					@mouseenter="onRunWorkflowButtonMouseEnter"
-					@mouseleave="onRunWorkflowButtonMouseLeave"
-					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
-				/>
-				<template v-if="containsChatTriggerNodes">
-					<CanvasChatButton
-						v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
-						variant="subtle"
-						:label="i18n.baseText('chat.hide')"
-						:class="$style.chatButton"
-						@click="onToggleChat"
+			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtonsContainer">
+				<div :class="$style.executionButtons">
+					<CanvasRunWorkflowButton
+						v-if="isRunWorkflowButtonVisible"
+						:waiting-for-webhook="isExecutionWaitingForWebhook"
+						:disabled="isExecutionDisabled"
+						:executing="isWorkflowRunning"
+						:trigger-nodes="triggerNodes"
+						:get-node-type="nodeTypesStore.getNodeType"
+						:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
+						:type="runWorkflowButtonType"
+						@mouseenter="onRunWorkflowButtonMouseEnter"
+						@mouseleave="onRunWorkflowButtonMouseLeave"
+						@execute="runEntireWorkflow('main')"
+						@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
 					/>
-					<KeyboardShortcutTooltip
-						v-else
-						:label="i18n.baseText('chat.open')"
-						:shortcut="{ keys: ['c'] }"
-					>
+					<template v-if="containsChatTriggerNodes">
 						<CanvasChatButton
-							:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
-							:label="i18n.baseText('chat.open')"
+							v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
+							variant="subtle"
+							:label="i18n.baseText('chat.hide')"
 							:class="$style.chatButton"
-							@click="onOpenChat"
+							@click="onToggleChat"
 						/>
-					</KeyboardShortcutTooltip>
-				</template>
-				<CanvasStopCurrentExecutionButton
-					v-if="isStopExecutionButtonVisible"
-					:stopping="isStoppingExecution"
-					:size="isRunButtonSplit ? 'xlarge' : 'large'"
-					@click="onStopExecution"
-				/>
-				<CanvasStopWaitingForWebhookButton
-					v-if="isStopWaitingForWebhookButtonVisible"
-					:size="isRunButtonSplit ? 'xlarge' : 'large'"
-					@click="onStopWaitingForWebhook"
-				/>
+						<KeyboardShortcutTooltip
+							v-else
+							:label="i18n.baseText('chat.open')"
+							:shortcut="{ keys: ['c'] }"
+						>
+							<CanvasChatButton
+								:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
+								:label="i18n.baseText('chat.open')"
+								:class="$style.chatButton"
+								@click="onOpenChat"
+							/>
+						</KeyboardShortcutTooltip>
+					</template>
+					<CanvasStopCurrentExecutionButton
+						v-if="isStopExecutionButtonVisible"
+						:stopping="isStoppingExecution"
+						@click="onStopExecution"
+					/>
+					<CanvasStopWaitingForWebhookButton
+						v-if="isStopWaitingForWebhookButtonVisible"
+						@click="onStopWaitingForWebhook"
+					/>
+				</div>
 			</div>
 
 			<N8nCallout
@@ -2332,8 +2348,16 @@ onBeforeUnmount(() => {
 	width: 100%;
 }
 
+.executionButtonsContainer {
+	position: absolute;
+	inset: 0;
+	container-type: inline-size;
+	pointer-events: none;
+}
+
 .executionButtons {
 	position: absolute;
+	pointer-events: auto;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -2349,15 +2373,39 @@ onBeforeUnmount(() => {
 		transform: none;
 	}
 
+	@container (max-width: #{var.$sm - 1}) {
+		left: auto;
+		right: var(--spacing--sm);
+		transform: none;
+	}
+
 	.chatButton {
 		align-self: stretch;
 	}
 }
 
-.setupCredentialsButtonWrapper {
+.canvasTopLeftContainer {
+	position: absolute;
+	inset: 0;
+	container: canvas / inline-size;
+	pointer-events: none;
+}
+
+.canvasTopLeft {
 	position: absolute;
 	left: var(--spacing--sm);
 	top: var(--spacing--sm);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.canvasOnlyLogo {
+	height: var(--height--xl);
+}
+
+.setupCredentialsButton {
+	pointer-events: auto;
 }
 
 .evaluationsCanvasInfoCardWrapper {

@@ -9,8 +9,7 @@ import promClient from 'prom-client';
 
 import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publication-metrics.service';
 
-import type { EventService } from '@/events/event.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService, EventService } from '@n8n/backend-services';
 
 vi.mock('prom-client');
 

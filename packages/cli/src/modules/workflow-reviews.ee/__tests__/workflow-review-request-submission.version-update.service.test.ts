@@ -1,5 +1,6 @@
 import type { UpdateWorkflowReviewRequestVersionDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
@@ -24,11 +25,7 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';

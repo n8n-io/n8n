@@ -3,6 +3,7 @@ import {
 	ListApiKeysQueryDto,
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -18,8 +19,7 @@ import {
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 

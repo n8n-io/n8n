@@ -1,4 +1,9 @@
-import { OidcConfigurationPublicDto } from '../oidc-configuration-public.dto';
+import assert from 'node:assert';
+
+import {
+	OidcConfigurationPublicDto,
+	UpdateOidcConfigurationPublicDto,
+} from '../oidc-configuration-public.dto';
 
 const configuration = {
 	clientId: 'n8n-client',
@@ -39,6 +44,34 @@ describe('OidcConfigurationPublicDto', () => {
 		['a missing emailVerifiedRequired', { emailVerifiedRequired: undefined }],
 	])('rejects %s', (_, override) => {
 		const result = OidcConfigurationPublicDto.safeParse({ ...configuration, ...override });
+
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('UpdateOidcConfigurationPublicDto', () => {
+	test('accepts a full body', () => {
+		expect(UpdateOidcConfigurationPublicDto.safeParse(configuration).success).toBe(true);
+	});
+
+	test('reports every field as missing for an empty body', () => {
+		const result = UpdateOidcConfigurationPublicDto.safeParse({});
+
+		assert(!result.success, 'Expected validation to fail for an empty body');
+
+		const missing = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
+		expect(missing).toEqual(Object.keys(configuration).sort());
+	});
+
+	test.each([
+		['an unknown key', { extra: true }],
+		['an empty clientId', { clientId: '' }],
+		['an empty clientSecret', { clientSecret: '' }],
+		['a discovery endpoint that is not a URL', { discoveryEndpoint: 'not-a-url' }],
+		['a prompt outside the set', { prompt: 'always' }],
+		['a missing loginEnabled', { loginEnabled: undefined }],
+	])('rejects %s', (_, override) => {
+		const result = UpdateOidcConfigurationPublicDto.safeParse({ ...configuration, ...override });
 
 		expect(result.success).toBe(false);
 	});

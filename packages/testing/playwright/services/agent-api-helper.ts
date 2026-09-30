@@ -91,6 +91,20 @@ export class AgentApiHelper {
 			throw new TestError(`Failed to remove queued message: ${await response.text()}`);
 	}
 
+	async steerQueuedMessage(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		queueId: string,
+		executionId: string,
+	): Promise<void> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}/steer`,
+			{ data: { executionId } },
+		);
+		if (!response.ok()) throw new TestError(`Failed to steer message: ${await response.text()}`);
+	}
+
 	async executions(
 		projectId: string,
 		agentId: string,
