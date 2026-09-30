@@ -12,8 +12,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nHeading,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
 } from '@n8n/design-system';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
@@ -36,20 +35,18 @@ const oidcFormRef = useTemplateRef<InstanceType<typeof OidcSettingsForm>>('oidcF
 const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
 
-const options = computed(() => {
-	return [
-		{
-			label: SupportedProtocols.SAML.toUpperCase(),
-			value: SupportedProtocols.SAML,
-		},
-		{
-			label: ssoStore.isEnterpriseOidcEnabled
-				? SupportedProtocols.OIDC.toUpperCase()
-				: `${SupportedProtocols.OIDC.toUpperCase()} (${i18n.baseText('generic.upgradeToEnterprise')})`,
-			value: SupportedProtocols.OIDC,
-		},
-	];
-});
+const protocolItems = computed(() => [
+	{
+		label: SupportedProtocols.SAML.toUpperCase(),
+		value: SupportedProtocols.SAML,
+	},
+	{
+		label: ssoStore.isEnterpriseOidcEnabled
+			? SupportedProtocols.OIDC.toUpperCase()
+			: `${SupportedProtocols.OIDC.toUpperCase()} (${i18n.baseText('generic.upgradeToEnterprise')})`,
+		value: SupportedProtocols.OIDC,
+	},
+]);
 
 const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
@@ -62,10 +59,6 @@ const activeForm = computed(() => {
 });
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
-
-function onAuthProtocolUpdated(value: SupportedProtocolType) {
-	authProtocol.value = value;
-}
 
 const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
@@ -135,23 +128,13 @@ onMounted(() => {
 					<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
 				</div>
 				<div :class="shared.settingsItemControl">
-					<N8nSelect
-						filterable
+					<N8nSelect2
+						v-model="authProtocol"
 						size="medium"
 						:disabled="ssoStore.ssoManagedByEnv"
-						:model-value="authProtocol"
+						:items="protocolItems"
 						:placeholder="i18n.baseText('parameterInput.select')"
-						@update:model-value="onAuthProtocolUpdated"
-						@keydown.stop
-					>
-						<N8nOption
-							v-for="{ label, value } in options"
-							:key="value"
-							:value="value"
-							:label="label"
-							data-test-id="credential-select-option"
-						/>
-					</N8nSelect>
+					/>
 				</div>
 			</div>
 		</div>
