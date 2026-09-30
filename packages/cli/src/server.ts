@@ -347,13 +347,28 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
+		const cacheOptions: { maxAge?: number } = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		this.protectTypeFiles(staticCacheDir);
 
 		if (frontendService) {
-			this.app.use(
+			const assetAuthMiddleware = Container.get(AuthService).createAssetAuthMiddleware();
+
+			const registerAuthenticatedRoutes = (paths: string[], handler: express.RequestHandler) => {
+				for (const assetPath of paths) {
+					this.app.get(assetPath, assetAuthMiddleware, handler);
+				}
+			};
+
+			const respondWithPrivateFile = (res: express.Response, filePath: string, assetMaxAge = 0) => {
+				const maxAgeSeconds = Math.floor(assetMaxAge * Time.milliseconds.toSeconds);
+				// `res.sendFile` writes its own `Cache-Control` only when the response carries none.
+				res.setHeader('Cache-Control', `private, max-age=${maxAgeSeconds}`);
+				return res.sendFile(filePath, { maxAge: assetMaxAge, dotfiles: 'allow' });
+			};
+
+			registerAuthenticatedRoutes(
 				[
 					'/icons/{@:scope/}:packageName/*path/*file.svg',
 					'/icons/{@:scope/}:packageName/*path/*file.png',
@@ -366,7 +381,7 @@ export class Server extends AbstractServer {
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
-							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+							return respondWithPrivateFile(res, filePath, maxAge);
 						} catch {}
 					}
 					res.sendStatus(404);
@@ -385,12 +400,15 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
+						return respondWithPrivateFile(res, filePath, cacheOptions.maxAge);
 					} catch {}
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			registerAuthenticatedRoutes(
+				['/schemas/:node/:version{/:resource}{/:operation}.json'],
+				serveSchemas,
+			);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);

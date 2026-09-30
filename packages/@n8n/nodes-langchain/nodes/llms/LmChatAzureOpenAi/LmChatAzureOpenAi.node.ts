@@ -1,5 +1,10 @@
 import { AzureChatOpenAI, ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import {
 	NodeOperationError,
 	NodeConnectionTypes,
@@ -106,6 +111,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				const foundryURL = modelConfig.azureFoundryBaseURL;
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
+					fetch: aiClientFetch,
 					fetchOptions: {
 						dispatcher: getProxyAgent(
 							foundryURL,
@@ -155,6 +161,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
+					fetch: aiClientFetch,
 					fetchOptions: {
 						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
 						// `||` rather than `??`: the Entra handler yields '' for a missing endpoint.

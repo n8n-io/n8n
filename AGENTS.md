@@ -43,7 +43,8 @@ frontend, and extensible node-based workflow engine.
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
 - **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
   PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
-  parsing, …), you MUST check the shared packages for an existing
+  parsing, AI client HTTP transport and response-size limiting, …), you MUST
+  check the shared packages for an existing
   implementation and use it: `@n8n/utils` (generic helpers, redaction),
   `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
   (workflow graph and traversal). A new shared helper usually belongs in one of

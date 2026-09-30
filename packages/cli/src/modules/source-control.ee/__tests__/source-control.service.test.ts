@@ -1575,6 +1575,7 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued reset runs - but only after the commit.
 			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(gitService.pull).toHaveBeenCalled();
 			expect(callOrder).toEqual(['commit', 'reset']);
 		});
 
