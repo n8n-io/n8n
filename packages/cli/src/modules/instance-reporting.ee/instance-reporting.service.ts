@@ -63,7 +63,7 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 };
 
 /**
- * Measures and delivers one instance report. *When* that happens is
+ * Measures and delivers one instance report. How often a pass runs is
  * {@link InstanceReportingTask}'s concern.
  */
 @Service()
@@ -134,6 +134,23 @@ export class InstanceReportingService {
 		}
 
 		return work;
+	}
+
+	/** Skip the report whose slot passed at `now`, then send the report due at `now`, if any. */
+	async sendDueReport(now: Date): Promise<void> {
+		const { expiredReport, reportDue } = await this.findDueWork(now);
+
+		if (expiredReport) {
+			await this.skip(
+				expiredReport.id,
+				expiredReport.attempts,
+				'slot-passed',
+				expiredReport.lastError,
+			);
+		}
+		if (reportDue) {
+			await this.sendReport();
+		}
 	}
 
 	/**
@@ -277,7 +294,7 @@ export class InstanceReportingService {
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	async skip(
+	private async skip(
 		id: string,
 		attempts: number,
 		reason: SkipReason,

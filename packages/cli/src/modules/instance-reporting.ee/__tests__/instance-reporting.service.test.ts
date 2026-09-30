@@ -20,7 +20,7 @@ import type { InstanceMonitoringReport } from '../database/entities/instance-mon
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
-import { InstanceReportingService } from '../instance-reporting.service';
+import { type DueReportWork, InstanceReportingService } from '../instance-reporting.service';
 
 vi.mock('@/constants', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/constants')>()),
@@ -317,6 +317,60 @@ describe('InstanceReportingService', () => {
 				expiredReport: null,
 				reportDue: true,
 			});
+		});
+	});
+
+	describe('sendDueReport', () => {
+		const NOW = new Date('2026-03-26T07:43:00.000Z');
+
+		function setup(work: DueReportWork) {
+			const harness = makeHarness();
+			const findDueWork = vi.spyOn(harness.service, 'findDueWork').mockResolvedValue(work);
+			const sendReport = vi.spyOn(harness.service, 'sendReport').mockResolvedValue();
+			return { ...harness, findDueWork, sendReport };
+		}
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('sends the report when one is due', async () => {
+			const { service, findDueWork, sendReport } = setup({ expiredReport: null, reportDue: true });
+			await service.sendDueReport(NOW);
+			expect(findDueWork).toHaveBeenCalledWith(NOW);
+			expect(sendReport).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends nothing when no report is due', async () => {
+			const { service, reportRepository, sendReport } = setup({
+				expiredReport: null,
+				reportDue: false,
+			});
+			await service.sendDueReport(NOW);
+			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
+			expect(sendReport).not.toHaveBeenCalled();
+		});
+
+		it('skips an expired report before it sends', async () => {
+			const expiredReport = makeReport({ id: 'pending-report', attempts: 1 });
+			const { service, reportRepository, sendReport } = setup({ expiredReport, reportDue: true });
+			await service.sendDueReport(NOW);
+			expect(reportRepository.markSkipped).toHaveBeenCalledWith('pending-report');
+			expect(reportRepository.markSkipped.mock.invocationCallOrder[0]).toBeLessThan(
+				sendReport.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('exposes a delivery failure to the caller', async () => {
+			const { service, sendReport } = setup({ expiredReport: null, reportDue: true });
+			sendReport.mockRejectedValue(new Error('Network error'));
+			await expect(service.sendDueReport(NOW)).rejects.toThrow('Network error');
+		});
+
+		it('recovers from a failed read of the due work on the next pass', async () => {
+			const { service, findDueWork, sendReport } = setup({ expiredReport: null, reportDue: true });
+			findDueWork.mockRejectedValueOnce(new Error('DB unavailable'));
+			await expect(service.sendDueReport(NOW)).rejects.toThrow('DB unavailable');
+			await service.sendDueReport(NOW);
+			expect(sendReport).toHaveBeenCalledTimes(1);
 		});
 	});
 

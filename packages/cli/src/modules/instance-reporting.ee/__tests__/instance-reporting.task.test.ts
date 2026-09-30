@@ -13,13 +13,11 @@ import type { SystemTaskJobRegistrar } from '@/scheduling/system-tasks/system-ta
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 
-import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
 import type { InstanceReportingService } from '../instance-reporting.service';
 import { InstanceReportingTask } from '../instance-reporting.task';
 
 function setup() {
 	const service = mock<InstanceReportingService>();
-	service.findDueWork.mockResolvedValue({ expiredReport: null, reportDue: true });
 	const task = new InstanceReportingTask(service);
 	return { service, task };
 }
@@ -41,48 +39,16 @@ describe('InstanceReportingTask', () => {
 		});
 	});
 
-	it('sends the report when one is due', async () => {
+	it('sends the report due at the current time', async () => {
 		const { task, service } = setup();
 		await task.run();
-		expect(service.findDueWork).toHaveBeenCalledWith(new Date());
-		expect(service.sendReport).toHaveBeenCalledTimes(1);
-	});
-
-	it('sends nothing when no report is due', async () => {
-		const { task, service } = setup();
-		service.findDueWork.mockResolvedValue({ expiredReport: null, reportDue: false });
-		await task.run();
-		expect(service.skip).not.toHaveBeenCalled();
-		expect(service.sendReport).not.toHaveBeenCalled();
-	});
-
-	it('skips an expired report before it sends', async () => {
-		const { task, service } = setup();
-		const expiredReport = mock<InstanceMonitoringReport>({
-			id: 'pending-report',
-			attempts: 1,
-			lastError: 'Network error',
-		});
-		service.findDueWork.mockResolvedValue({ expiredReport, reportDue: true });
-		await task.run();
-		expect(service.skip).toHaveBeenCalledWith('pending-report', 1, 'slot-passed', 'Network error');
-		expect(service.skip.mock.invocationCallOrder[0]).toBeLessThan(
-			service.sendReport.mock.invocationCallOrder[0],
-		);
+		expect(service.sendDueReport).toHaveBeenCalledWith(new Date());
 	});
 
 	it('exposes a delivery failure to the runner', async () => {
 		const { task, service } = setup();
-		service.sendReport.mockRejectedValue(new Error('Network error'));
+		service.sendDueReport.mockRejectedValue(new Error('Network error'));
 		await expect(task.run()).rejects.toThrow('Network error');
-	});
-
-	it('recovers from a failed read of the due work on the next pass', async () => {
-		const { task, service } = setup();
-		service.findDueWork.mockRejectedValueOnce(new Error('DB unavailable'));
-		await expect(task.run()).rejects.toThrow('DB unavailable');
-		await task.run();
-		expect(service.sendReport).toHaveBeenCalledTimes(1);
 	});
 
 	describe('runner placement', () => {
@@ -132,11 +98,9 @@ describe('InstanceReportingTask', () => {
 				);
 				await runner.init();
 				await vi.advanceTimersByTimeAsync(0);
-				expect(service.sendReport).toHaveBeenCalledTimes(1);
-				service.findDueWork.mockResolvedValue({ expiredReport: null, reportDue: false });
+				expect(service.sendDueReport).toHaveBeenCalledTimes(1);
 				await vi.advanceTimersByTimeAsync(15 * Time.minutes.toMilliseconds);
-				expect(service.sendReport).toHaveBeenCalledTimes(1);
-				expect(service.findDueWork).toHaveBeenCalledTimes(2);
+				expect(service.sendDueReport).toHaveBeenCalledTimes(2);
 				expect(scheduler.registerTaskHandler).not.toHaveBeenCalled();
 			},
 		);
@@ -145,13 +109,13 @@ describe('InstanceReportingTask', () => {
 			const { runner, service } = setupRunner(false, false, false);
 			await runner.init();
 			await vi.advanceTimersByTimeAsync(15 * Time.minutes.toMilliseconds);
-			expect(service.sendReport).not.toHaveBeenCalled();
+			expect(service.sendDueReport).not.toHaveBeenCalled();
 			runner.startLeaderTimers();
 			await vi.advanceTimersByTimeAsync(0);
-			expect(service.sendReport).toHaveBeenCalledTimes(1);
+			expect(service.sendDueReport).toHaveBeenCalledTimes(1);
 			await runner.stopLeaderTimers();
 			await vi.advanceTimersByTimeAsync(15 * Time.minutes.toMilliseconds);
-			expect(service.sendReport).toHaveBeenCalledTimes(1);
+			expect(service.sendDueReport).toHaveBeenCalledTimes(1);
 		});
 
 		it.each([true, false])(
@@ -160,7 +124,7 @@ describe('InstanceReportingTask', () => {
 				const { runner, service, task, scheduler, registrar } = setupRunner(isLeader, true, true);
 				await runner.init();
 				await vi.advanceTimersByTimeAsync(15 * Time.minutes.toMilliseconds);
-				expect(service.sendReport).not.toHaveBeenCalled();
+				expect(service.sendDueReport).not.toHaveBeenCalled();
 				expect(registrar.provision).toHaveBeenCalledWith(task);
 				expect(scheduler.registerTaskHandler).toHaveBeenCalledWith(
 					'system:instance-reporting',

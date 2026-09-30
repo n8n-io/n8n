@@ -23,18 +23,6 @@ export class InstanceReportingTask implements SystemTask {
 	constructor(private readonly reportingService: InstanceReportingService) {}
 
 	async run(): Promise<void> {
-		const { expiredReport, reportDue } = await this.reportingService.findDueWork(new Date());
-
-		if (expiredReport) {
-			await this.reportingService.skip(
-				expiredReport.id,
-				expiredReport.attempts,
-				'slot-passed',
-				expiredReport.lastError,
-			);
-		}
-		if (reportDue) {
-			await this.reportingService.sendReport();
-		}
+		await this.reportingService.sendDueReport(new Date());
 	}
 }
