@@ -305,6 +305,34 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('countDistinctOpenWorkflows', () => {
+		test('counts a workflow once even when several rules hit it, and ignores fixed and other versions', async () => {
+			const [first, second, third] = await Promise.all([
+				createWorkflow(),
+				createWorkflow(),
+				createWorkflow(),
+			]);
+			await findingRepository.insertMany(
+				[
+					finding(first.id, 'rule-a'),
+					finding(first.id, 'rule-b'),
+					finding(second.id, 'rule-a'),
+					finding(third.id, 'rule-a'),
+					finding(third.id, 'rule-b', 'v2'),
+				],
+				ctx,
+			);
+			const [fixed] = await findingRepository.listForWorkflows('v3', [third.id], ctx);
+			await findingRepository.markFixedForIds([fixed.id], ctx);
+
+			expect(await findingRepository.countDistinctOpenWorkflows('v3', ctx)).toBe(2);
+		});
+
+		test('returns zero when the version has no open findings', async () => {
+			expect(await findingRepository.countDistinctOpenWorkflows('v3', ctx)).toBe(0);
+		});
+	});
+
 	describe('listOpenForRule', () => {
 		test('returns each open finding of the rule with its workflow name, published state and last update', async () => {
 			const published = await createWorkflowWithHistory({ name: 'Published flow' });

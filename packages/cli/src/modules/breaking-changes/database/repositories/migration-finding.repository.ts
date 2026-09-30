@@ -64,6 +64,22 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		return rows.map((row) => ({ ruleId: row.ruleId, count: Number(row.count) }));
 	}
 
+	/** Number of distinct workflows with at least one open finding for the version. */
+	async countDistinctOpenWorkflows(
+		targetVersion: BreakingChangeVersion,
+		ctx: OperationContext,
+	): Promise<number> {
+		const row = await this.managerFor(ctx)
+			.createQueryBuilder(MigrationFinding, 'finding')
+			.select('COUNT(DISTINCT finding.workflowId)', 'count')
+			.where('finding.targetVersion = :targetVersion', { targetVersion })
+			.andWhere('finding.status = :status', { status: 'open' })
+			.getRawOne<{ count: number | string }>();
+
+		// Postgres returns COUNT as a bigint string, SQLite as a number.
+		return Number(row?.count ?? 0);
+	}
+
 	/** Open findings of one rule for the version, each with its workflow's report columns. */
 	async listOpenForRule(
 		targetVersion: BreakingChangeVersion,

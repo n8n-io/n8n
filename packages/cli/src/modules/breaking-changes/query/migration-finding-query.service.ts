@@ -79,13 +79,15 @@ export class MigrationFindingQueryService {
 		const workflowRules = rules.filter(isWorkflowLevelRule);
 		const instanceRules = rules.filter(isInstanceRule);
 
-		const [counts, sync, totalWorkflows, instanceResults] = await Promise.all([
-			this.findingRepository.countOpenByRule(targetVersion, {}),
-			this.syncRepository.getForVersion(targetVersion, {}),
-			this.workflowRepository.count(),
-			// Instance rules read config and environment, not workflows, so they stay live.
-			this.breakingChangeService.getAllInstanceRulesResults(instanceRules),
-		]);
+		const [counts, totalAffectedWorkflows, sync, totalWorkflows, instanceResults] =
+			await Promise.all([
+				this.findingRepository.countOpenByRule(targetVersion, {}),
+				this.findingRepository.countDistinctOpenWorkflows(targetVersion, {}),
+				this.syncRepository.getForVersion(targetVersion, {}),
+				this.workflowRepository.count(),
+				// Instance rules read config and environment, not workflows, so they stay live.
+				this.breakingChangeService.getAllInstanceRulesResults(instanceRules),
+			]);
 		const countByRule = new Map(counts.map((row) => [row.ruleId, row.count]));
 
 		// Today's scan lists only rules that affect at least one workflow. Keep
@@ -107,6 +109,7 @@ export class MigrationFindingQueryService {
 				workflowResults,
 			},
 			totalWorkflows,
+			totalAffectedWorkflows,
 			// Kept for the response shape only; the table replaces the cache.
 			shouldCache: false,
 		};

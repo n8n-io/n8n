@@ -151,6 +151,7 @@ describe('MigrationFindingQueryService', () => {
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
 		findingRepository.countOpenByRule.mockResolvedValue([]);
+		findingRepository.countDistinctOpenWorkflows.mockResolvedValue(0);
 		findingRepository.listOpenForRule.mockResolvedValue([]);
 		syncRepository.getForVersion.mockResolvedValue(null);
 
@@ -195,6 +196,22 @@ describe('MigrationFindingQueryService', () => {
 			expect(result.report.targetVersion).toBe(TARGET_VERSION);
 			expect(result.totalWorkflows).toBe(10);
 			expect(result.shouldCache).toBe(false);
+		});
+
+		it('counts each affected workflow once across rules', async () => {
+			findingRepository.countOpenByRule.mockResolvedValue([
+				{ ruleId: 'rule-a', count: 3 },
+				{ ruleId: 'rule-b', count: 2 },
+			]);
+			findingRepository.countDistinctOpenWorkflows.mockResolvedValue(4);
+
+			const result = await service.getLightReport(TARGET_VERSION);
+
+			expect(findingRepository.countDistinctOpenWorkflows).toHaveBeenCalledWith(
+				TARGET_VERSION,
+				expect.anything(),
+			);
+			expect(result.totalAffectedWorkflows).toBe(4);
 		});
 
 		it('computes instance results live through the detection service', async () => {
