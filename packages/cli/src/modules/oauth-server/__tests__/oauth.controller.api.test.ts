@@ -3,14 +3,18 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 
+import { AuthService } from '@/auth/auth.service';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@n8n/backend-services';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 import { pendingFlowFrom } from './oauth-flow-test-utils';
@@ -868,6 +872,62 @@ describe('Full authorization-code flow (PKCE)', () => {
 		expect(new URL(secondConsent.body.data.redirectUrl).searchParams.get('state')).toBe(
 			'state-second',
 		);
+	});
+
+	// Eviction depends on the browser offering its pending flow cookies back to
+	// /authorize, which is a property of how the cookies are scoped, not of the
+	// service. A mock request cannot show that: it is handed the cookies it is
+	// asked about. So this drives a real cookie jar past the cap and reads the
+	// result through the consent endpoint.
+	test('should evict the oldest pending flow once a browser passes the cap', async () => {
+		// Written straight to the table: the DCR endpoint is IP rate limited, and
+		// this test is about pending flows rather than registration.
+		const clientId = `pending-flow-cap-${randomUUID()}`;
+		await Container.get(OAuthClientRepository).save({
+			id: clientId,
+			name: 'Pending Flow Cap Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		// One signed-in browser: no path prefix, so it reaches both the
+		// /mcp-oauth/authorize routes and the /rest/consent ones out of one jar,
+		// offering each the cookies that request's path is entitled to.
+		const browser = request.agent(testServer.app);
+		browser.jar.setCookie(
+			`${AUTH_COOKIE_NAME}=${Container.get(AuthService).issueJWT(owner, owner.mfaEnabled, 'test-browser-id')}`,
+		);
+
+		const authorize = async (state: string) => {
+			const response = await browser.get('/mcp-oauth/authorize').query({
+				client_id: clientId,
+				redirect_uri: 'https://example.com/callback',
+				response_type: 'code',
+				code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+				code_challenge_method: 'S256',
+				state,
+			});
+			expect(response.statusCode).toBe(302);
+			return pendingFlowFrom(response);
+		};
+
+		const flows = [];
+		for (const state of ['first', 'second', 'third', 'fourth']) {
+			flows.push(await authorize(state));
+		}
+		expect(new Set(flows.map((flow) => flow.flowId)).size).toBe(4);
+
+		// The cap is three, so the fourth request pushed the first one out and the
+		// browser no longer holds its cookie.
+		const evicted = await browser.get(`/rest/consent/details?flow=${flows[0].flowId}`);
+		expect(evicted.statusCode).toBe(400);
+
+		// The three newest survived, each still readable under its own flow id.
+		for (const flow of flows.slice(1)) {
+			const details = await browser.get(`/rest/consent/details?flow=${flow.flowId}`);
+			expect(details.body).toMatchObject({ data: { clientId } });
+		}
 	});
 });
 

@@ -472,9 +472,6 @@ export class OAuthServerService implements OAuthServerProvider {
 			}
 
 			const flowId = this.oauthSessionService.createSession(res, sessionPayload);
-
-			// The flow id names this request's session, so the consent screen asks
-			// for the parameters it will show, not for whatever the browser holds.
 			res.redirect(`/oauth/consent?flow=${flowId}`);
 		} catch (error) {
 			if (error instanceof InvalidResourceIndicatorError) {

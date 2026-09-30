@@ -24,11 +24,12 @@ export const OAUTH_SESSION_COOKIE_PREFIX = 'n8n-oauth-session-';
 const SESSION_EXPIRY_MS = 10 * Time.minutes.toMilliseconds; // 10 minutes
 
 /**
- * Pending flows one browser may hold at once. Two /authorize calls that overlap
- * each read the same cookie snapshot, so this bounds the common case rather
- * than every case. What keeps the bound from mattering is the cookie path: the
- * consent endpoints are the only readers, so these cookies never ride along on
- * another request no matter how many of them a browser holds.
+ * Pending flows one browser may hold at once, which is what keeps the request
+ * header bounded: the consent screen is sent every pending flow's cookie.
+ *
+ * Two /authorize calls that overlap both read the same cookie snapshot, so a
+ * burst can hold more than this for a moment. The next /authorize sees them all
+ * and prunes back to the cap, so an overshoot decays instead of accumulating.
  */
 const MAX_PENDING_FLOWS = 3;
 
@@ -50,11 +51,9 @@ export class OAuthSessionService {
 	 * Store one authorization request under a new flow id, and return that id
 	 * for the consent screen to ask for its own session by.
 	 *
-	 * Each /authorize call gets its own cookie, so a second authorization
-	 * request cannot replace the request a consent screen is already showing:
-	 * the parameters the user approves stay the ones they were shown, and two
-	 * clients (or one client twice over) can hold a pending flow at the same
-	 * time without either losing it.
+	 * One cookie per /authorize call, so a second request cannot replace the one
+	 * a consent screen is already showing: the parameters the user approves stay
+	 * the ones they were shown.
 	 */
 	createSession(res: Response, payload: OAuthSessionPayload): string {
 		const flowId = this.newFlowId();
@@ -84,13 +83,12 @@ export class OAuthSessionService {
 		return oauthSessionPayloadSchema.parse(payload);
 	}
 
-	/** Clear one flow's cookie, leaving the browser's other pending flows alone. */
+	/** Clear one flow's cookie, leaving the browser's other pending flows. */
 	clearSession(res: Response, flowId: string): void {
 		if (!FLOW_ID_PATTERN.test(flowId)) return;
 		res.clearCookie(OAUTH_SESSION_COOKIE_PREFIX + flowId, this.cookieOptions());
 	}
 
-	/** Extract one flow's session token from request cookies */
 	getSessionToken(cookies: Record<string, string | undefined>, flowId: string): string | undefined {
 		if (!FLOW_ID_PATTERN.test(flowId)) return undefined;
 		return cookies[OAUTH_SESSION_COOKIE_PREFIX + flowId];
@@ -122,11 +120,12 @@ export class OAuthSessionService {
 
 	/**
 	 * Attributes come from the instance's cookie config, the same source as the
-	 * auth cookie — `sameSite` clamped to a `lax` minimum, because `strict`
+	 * auth cookie, with `sameSite` clamped to a `lax` minimum because `strict`
 	 * would drop the cookie on a hand-off into /authorize from another site.
 	 *
-	 * The path covers the consent endpoints and nothing else, so a pending
-	 * authorization never travels with an unrelated request.
+	 * The default path is deliberate. /authorize and the consent endpoints sit
+	 * under different roots, so scoping to either one hides the pending flows
+	 * from the other, and `evictOldestFlows` would never see a cookie to evict.
 	 */
 	private cookieOptions(): CookieOptions {
 		const { secure, samesite } = this.globalConfig.auth.cookie;
@@ -134,7 +133,6 @@ export class OAuthSessionService {
 			httpOnly: true,
 			secure,
 			sameSite: samesite === 'strict' ? 'lax' : samesite,
-			path: `/${this.globalConfig.endpoints.rest}/consent`,
 		};
 	}
 

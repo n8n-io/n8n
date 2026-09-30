@@ -39,17 +39,18 @@ describe('OAuthSessionService', () => {
 			const flowId = oauthSessionService.createSession(res, sessionPayload);
 
 			expect(flowId).toMatch(/^[0-9a-z]{6,12}-[0-9a-f]{24}$/);
+			// Exact, so a `path` narrower than the default cannot be added back:
+			// it would hide the pending flows from /authorize, where they are
+			// evicted, or from the consent endpoints, where they are read.
 			expect(res.cookie).toHaveBeenCalledWith(
 				`${OAUTH_SESSION_COOKIE_PREFIX}${flowId}`,
 				expect.any(String),
-				expect.objectContaining({
+				{
 					httpOnly: true,
 					secure: true,
 					sameSite: 'lax',
-					// The consent endpoints are the only readers, so a pending
-					// authorization never rides along on an unrelated request.
-					path: '/rest/consent',
-				}),
+					maxAge: 10 * 60 * 1000,
+				},
 			);
 		});
 
