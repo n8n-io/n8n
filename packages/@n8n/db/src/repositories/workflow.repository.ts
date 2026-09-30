@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
+import { DataSource, In, Like, MoreThan, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -507,6 +507,33 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			where: { ...workflowWhere, shared: { projectId } },
 			relations: options.withActiveVersion ? ['shared', 'activeVersion'] : ['shared'],
 		});
+	}
+
+	/**
+	 * Up to `take` workflow ids greater than `afterId`, in ascending order. Keyset paging:
+	 * a workflow deleted between two pages does not shift the next page, so no id is skipped.
+	 */
+	async getIdsAfter(afterId: string | undefined, take: number): Promise<string[]> {
+		const workflows = await this.find({
+			select: { id: true },
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+
+		return workflows.map(({ id }) => id);
+	}
+
+	/** The subset of `workflowIds` that still exists, in no particular order. */
+	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+
+		const workflows = await this.managerFor(ctx).find(WorkflowEntity, {
+			select: { id: true },
+			where: { id: In(workflowIds) },
+		});
+
+		return workflows.map(({ id }) => id);
 	}
 
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
