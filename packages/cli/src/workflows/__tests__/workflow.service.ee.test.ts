@@ -396,6 +396,141 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('validateWorkflowCredentialUsage() - agent node parameters', () => {
+		// The agent node keeps its credential references in the hidden
+		// `inlineAgent` parameter, not in `node.credentials`.
+		const agentNode = (id: string, inlineAgent: unknown) =>
+			({
+				id,
+				name: id,
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: { agentSource: 'inline', inlineAgent },
+			}) as unknown as INode;
+
+		const withModelCredential = (credential: string) => ({ config: { credential } });
+
+		const withToolCredential = (id: string) => ({
+			config: {
+				credential: 'cred-editor',
+				tools: [
+					{
+						type: 'node',
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequest',
+							credentials: { httpBearerAuth: { id, name: 'Token' } },
+						},
+					},
+				],
+			},
+		});
+
+		const save = (
+			newNodes: INode[],
+			previousNodes: INode[] = [],
+			allowed: string[] = ['cred-editor'],
+		) =>
+			service.validateWorkflowCredentialUsage(
+				{ nodes: newNodes } as unknown as IWorkflowBase,
+				{ nodes: previousNodes } as unknown as IWorkflowBase,
+				allowed.map((id) => mock<CredentialsEntity>({ id })),
+			);
+
+		it.each([
+			['the model credential', withModelCredential('cred-other')],
+			['a node tool credential', withToolCredential('cred-other')],
+			['a JSON-encoded parameter', JSON.stringify(withModelCredential('cred-other'))],
+			[
+				'a node tool sub-workflow',
+				{
+					config: {
+						credential: 'cred-editor',
+						tools: [
+							{
+								type: 'node',
+								node: {
+									nodeType: 'n8n-nodes-base.executeWorkflow',
+									nodeParameters: {
+										source: 'parameter',
+										workflowJson: JSON.stringify({
+											nodes: [{ credentials: { httpHeaderAuth: { id: 'cred-other', name: 'x' } } }],
+											connections: {},
+										}),
+									},
+								},
+							},
+						],
+					},
+				},
+			],
+			[
+				'a node tool that is another agent, as JSON text',
+				{
+					config: {
+						credential: 'cred-editor',
+						tools: [
+							{
+								type: 'node',
+								node: {
+									nodeType: 'n8n-nodes-base.messageAnAgentTool',
+									nodeParameters: {
+										agentSource: 'inline',
+										inlineAgent: JSON.stringify({ config: { credential: 'cred-other' } }),
+									},
+								},
+							},
+						],
+					},
+				},
+			],
+		])('rejects a new agent node that names a credential in %s', (_label, inlineAgent) => {
+			expect(() => save([agentNode('new-agent', inlineAgent)])).toThrow();
+		});
+
+		it('restores the stored agent node when the user cannot use its credential', () => {
+			const stored = agentNode('agent-1', withModelCredential('cred-other'));
+			const edited = agentNode('agent-1', {
+				config: { credential: 'cred-other', instructions: 'Summarize the input.' },
+			});
+
+			const result = save([edited], [stored]);
+
+			expect(result.nodes[0].parameters).toEqual(stored.parameters);
+		});
+
+		it('accepts an agent node whose credentials the user can use', () => {
+			expect(() => save([agentNode('new-agent', withToolCredential('cred-editor'))])).not.toThrow();
+		});
+
+		it('accepts a parameter value that is not valid JSON', () => {
+			expect(() => save([agentNode('new-agent', '{ not json')])).not.toThrow();
+		});
+
+		it('ignores a `credentialId` parameter of a node tool, which names a remote credential', () => {
+			const remoteReference = {
+				config: {
+					credential: 'cred-editor',
+					tools: [
+						{
+							type: 'node',
+							node: {
+								nodeType: 'n8n-nodes-base.n8n',
+								nodeParameters: {
+									resource: 'credential',
+									operation: 'delete',
+									credentialId: 'remote-id',
+								},
+							},
+						},
+					],
+				},
+			};
+
+			expect(() => save([agentNode('new-agent', remoteReference)])).not.toThrow();
+		});
+	});
+
 	describe('attemptWorkflowReactivation', () => {
 		// Workflow and folder transfers deactivate, transfer, then re-add. A failed
 		// re-add may have partially registered triggers, in memory and as durable
