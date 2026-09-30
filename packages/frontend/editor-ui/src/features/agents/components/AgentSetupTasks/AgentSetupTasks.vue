@@ -2,9 +2,9 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
+import { N8nIcon, N8nText, N8nToggle } from '@n8n/design-system';
 
 import type { SetupTask, SetupTaskId } from './agentSetupTasks.registry';
-import { N8nIcon, N8nText, N8nToggle } from '@n8n/design-system';
 
 const props = defineProps<{
 	tasks: Array<SetupTask<SetupTaskId>>;
@@ -19,6 +19,13 @@ const i18n = useI18n();
 
 const isMinimised = ref(true);
 const isPeekEnabled = ref(false);
+const dragOffset = ref(0);
+const isDragging = ref(false);
+
+const DRAG_THRESHOLD = 32;
+const CLICK_SLOP = 4;
+let dragStartY = 0;
+let suppressHeaderClick = false;
 
 const beamStyle = computed(() => {
 	if (!props.personalisation) return undefined;
@@ -32,6 +39,11 @@ const beamStyle = computed(() => {
 		'--agent-personalisation-gradient-to-stop': `${gradient.toStop}%`,
 	};
 });
+
+const panelStyle = computed(() => ({
+	...beamStyle.value,
+	'--agent-setup-drag-offset': `${dragOffset.value}px`,
+}));
 
 const areTasksResolved = computed(() => props.tasks.every((task) => task.state !== 'unknown'));
 
@@ -64,6 +76,55 @@ function maximise() {
 	}
 }
 
+function onHeaderClick() {
+	if (suppressHeaderClick) {
+		suppressHeaderClick = false;
+		return;
+	}
+
+	maximise();
+}
+
+function onHeaderPointerDown(event: PointerEvent) {
+	if (event.button !== 0 || !(event.currentTarget instanceof HTMLElement)) return;
+	if (event.target instanceof Element && event.target.closest('button')) return;
+
+	dragStartY = event.clientY;
+	dragOffset.value = 0;
+	isDragging.value = true;
+	event.currentTarget.setPointerCapture(event.pointerId);
+}
+
+function onHeaderPointerMove(event: PointerEvent) {
+	if (!isDragging.value) return;
+
+	const offset = event.clientY - dragStartY;
+	dragOffset.value = isMinimised.value ? Math.min(0, offset) : Math.max(0, offset);
+}
+
+function onHeaderPointerUp(event: PointerEvent) {
+	if (!isDragging.value || !(event.currentTarget instanceof HTMLElement)) return;
+
+	const didDrag = Math.abs(dragOffset.value) >= DRAG_THRESHOLD;
+	if (didDrag) {
+		isMinimised.value = dragOffset.value > 0;
+		isPeekEnabled.value = false;
+	}
+
+	suppressHeaderClick = Math.abs(dragOffset.value) > CLICK_SLOP;
+	window.setTimeout(() => {
+		suppressHeaderClick = false;
+	}, 0);
+	dragOffset.value = 0;
+	isDragging.value = false;
+	event.currentTarget.releasePointerCapture(event.pointerId);
+}
+
+function onHeaderPointerCancel() {
+	dragOffset.value = 0;
+	isDragging.value = false;
+}
+
 watch(areTasksResolved, (resolved) => {
 	if (resolved && remainingTaskCount.value > 0) {
 		isMinimised.value = false;
@@ -81,16 +142,21 @@ watch(areTasksResolved, (resolved) => {
 				[$style.isMinimised]: isMinimised,
 				[$style.isPeekEnabled]: isPeekEnabled,
 				[$style.hasPersonalisation]: !!personalisation,
+				[$style.isDragging]: isDragging,
 			},
 		]"
-		:style="beamStyle"
+		:style="panelStyle"
 		data-testid="agent-setup-tasks"
 	>
 		<div aria-hidden="true" :class="$style.borderBeamStroke" />
 		<div
 			:class="[$style.header, { [$style.isClickable]: isMinimised }]"
 			data-testid="agent-setup-tasks-header"
-			@click="maximise"
+			@click="onHeaderClick"
+			@pointerdown="onHeaderPointerDown"
+			@pointermove="onHeaderPointerMove"
+			@pointerup="onHeaderPointerUp"
+			@pointercancel="onHeaderPointerCancel"
 		>
 			<div :class="$style.headerContent">
 				<N8nText tag="h3" bold>
@@ -194,7 +260,10 @@ watch(areTasksResolved, (resolved) => {
 	right: var(--n8n-agent-setup-task-list--padding);
 	display: flex;
 	flex-direction: column;
-	transform: translateY(0);
+	--agent-setup-panel-offset: 0%;
+	--agent-setup-drag-offset: 0px;
+
+	transform: translateY(calc(var(--agent-setup-panel-offset) + var(--agent-setup-drag-offset)));
 	transition:
 		transform var(--duration--snappy) var(--easing--ease-out),
 		--agent-setup-beam-hover-opacity calc(3 * var(--duration--snappy)) ease;
@@ -203,8 +272,8 @@ watch(areTasksResolved, (resolved) => {
 
 	&.hasBorderBeam {
 		animation:
-			agentSetupBeamSpin calc(4 * var(--duration--slow)) linear infinite,
-			agentSetupBeamFadeIn calc(4 * var(--duration--slow)) linear infinite;
+			agentSetupBeamSpin calc(4 * var(--duration--base)) linear 2,
+			agentSetupBeamFadeIn calc(4 * var(--duration--base)) linear 2;
 
 		@include motion.reduced-motion;
 
@@ -309,13 +378,18 @@ watch(areTasksResolved, (resolved) => {
 		}
 	}
 
+	&.isDragging {
+		transition: none;
+	}
+
 	&.isMinimised {
-		transform: translateY(100%);
+		--agent-setup-panel-offset: 100%;
 
 		&:focus-within,
 		&.isPeekEnabled:hover,
-		&:has(+ .peekTrigger:hover) {
-			transform: translateY(calc(100% - calc(var(--height--xl) - var(--spacing--xs))));
+		&:has(+ .peekTrigger:hover),
+		&.isDragging {
+			--agent-setup-panel-offset: calc(100% - calc(var(--height--xl) - var(--spacing--xs)));
 		}
 
 		.header {
@@ -339,9 +413,15 @@ watch(areTasksResolved, (resolved) => {
 	height: calc(var(--height--xl) + var(--spacing--4xs));
 	border-bottom: var(--border);
 	border-color: var(--border-color--subtle);
+	touch-action: none;
+	user-select: none;
+
+	&:active {
+		cursor: grabbing;
+	}
 
 	&.isClickable {
-		cursor: pointer;
+		cursor: default;
 	}
 }
 .headerContent {
