@@ -140,6 +140,9 @@ export type BreakingChangeReportResult = z.infer<typeof breakingChangeReportResu
 const breakingChangeLightReportResultDataSchema = z.object({
 	report: breakingChangeLightReportSchema,
 	totalWorkflows: z.number(),
+	// Distinct workflows affected by at least one rule. Summing per-rule
+	// nbAffectedWorkflows counts a workflow once for each rule it breaks.
+	totalAffectedWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeLightReportResult = z.infer<

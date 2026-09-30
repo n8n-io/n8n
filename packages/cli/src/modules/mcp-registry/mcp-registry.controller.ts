@@ -36,7 +36,10 @@ function toResponse(server: McpRegistryServer): McpRegistryServerResponse {
 		icons: server.icons,
 		websiteUrl: server.websiteUrl,
 		credentials: getMcpRegistryCredentialOptions(server),
-		tools: server.tools,
+		tools: server.tools.map((tool) => ({
+			name: tool.name,
+			...(tool.title ? { title: tool.title } : {}),
+		})),
 		isOfficial: server.isOfficial,
 		status: server.status,
 		tags: server.tags,

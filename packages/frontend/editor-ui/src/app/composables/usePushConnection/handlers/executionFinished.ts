@@ -33,10 +33,7 @@ import {
 	useSurfaceAssistantOnWorkflowError,
 } from '@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError';
 // EOF Experiment cleanup
-import {
-	SampleTemplates,
-	isTutorialTemplateId,
-} from '@/features/workflows/templates/utils/workflowSamples';
+import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
@@ -156,11 +153,6 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 			} else {
 				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isTutorialTemplateId(templateId)) {
-			telemetry.track('User executed tutorial template', {
-				template: templateId,
-				status: data.status,
-			});
 		}
 	}
 

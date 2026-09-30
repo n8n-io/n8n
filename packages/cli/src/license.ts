@@ -110,7 +110,8 @@ export class License implements LicenseProvider {
 				autoRenewTimer: false,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
-				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
+				detachFloatingOnShutdown:
+					this.globalConfig.license.detachFloatingOnShutdown && !this.instanceSettings.isMultiMain,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),

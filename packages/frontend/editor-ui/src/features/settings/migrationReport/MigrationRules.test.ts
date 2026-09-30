@@ -64,6 +64,7 @@ const mockReport: BreakingChangeLightReportResult = {
 		instanceResults: [mockInstanceIssue],
 	},
 	totalWorkflows: 10,
+	totalAffectedWorkflows: 5,
 	shouldCache: true,
 };
 
@@ -81,6 +82,7 @@ const createMockReport = (
 			...overrides.report,
 		},
 		totalWorkflows: 10,
+		totalAffectedWorkflows: 0,
 		shouldCache: true,
 		...overrides,
 	};
@@ -429,6 +431,7 @@ describe('MigrationRules', () => {
 					instanceResults: [],
 				},
 				totalWorkflows: 15,
+				totalAffectedWorkflows: 10,
 			});
 
 			vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(updatedReport);
@@ -493,33 +496,89 @@ describe('MigrationRules', () => {
 
 	describe('compatible workflows count', () => {
 		it.each([
-			{ affected: [5], compatible: 5, description: 'single issue' },
-			{ affected: [3, 2], compatible: 5, description: 'multiple issues' },
-			{ affected: [10], compatible: 0, description: 'all affected' },
-			{ affected: [], compatible: 10, description: 'no issues' },
-		])('should calculate correctly with $description', async ({ affected, compatible }) => {
-			const report = createMockReport({
-				report: {
-					generatedAt: new Date('2024-01-01'),
-					targetVersion: '2.0.0',
-					currentVersion: '1.0.0',
-					workflowResults: affected.map((count, idx) => ({
-						...mockWorkflowIssue,
-						ruleId: `rule-${idx}`,
-						nbAffectedWorkflows: count,
-					})),
-					instanceResults: [],
-				},
-			});
+			{ affected: [5], totalAffected: 5, compatible: 5, description: 'single issue' },
+			{ affected: [3, 2], totalAffected: 5, compatible: 5, description: 'multiple issues' },
+			{
+				affected: [5, 5, 5],
+				totalAffected: 5,
+				compatible: 5,
+				description: 'workflows that break several rules',
+			},
+			{ affected: [10], totalAffected: 10, compatible: 0, description: 'all affected' },
+			{ affected: [], totalAffected: 0, compatible: 10, description: 'no issues' },
+		])(
+			'should calculate correctly with $description',
+			async ({ affected, totalAffected, compatible }) => {
+				const report = createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: affected.map((count, idx) => ({
+							...mockWorkflowIssue,
+							ruleId: `rule-${idx}`,
+							nbAffectedWorkflows: count,
+						})),
+						instanceResults: [],
+					},
+					totalAffectedWorkflows: totalAffected,
+				});
 
-			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(report);
+				vi.mocked(breakingChangesApi.getReport).mockResolvedValue(report);
+
+				renderComponent();
+
+				await waitFor(() => {
+					expect(
+						screen.getByText(
+							new RegExp(`${compatible} of your 10 workflows are already compatible`),
+						),
+					).toBeInTheDocument();
+				});
+			},
+		);
+	});
+
+	describe('migration progress', () => {
+		it('should render the progress bar with the compatible share', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				const progressBar = screen.getByTestId('migration-report-progress');
+				expect(progressBar).toHaveAttribute('aria-valuenow', '50');
+				expect(progressBar).toHaveAttribute('aria-label', '5 of 10 compatible');
+			});
+			expect(screen.getByText('5 of 10 compatible')).toBeInTheDocument();
+		});
+
+		it('should show 0% when there are no workflows', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ totalWorkflows: 0 }),
+			);
 
 			renderComponent();
 
 			await waitFor(() => {
-				expect(
-					screen.getByText(new RegExp(`${compatible} of your 10 workflows are already compatible`)),
-				).toBeInTheDocument();
+				expect(screen.getByTestId('migration-report-progress')).toHaveAttribute(
+					'aria-valuenow',
+					'0',
+				);
+			});
+			expect(screen.getByText('0 of 0 compatible')).toBeInTheDocument();
+		});
+
+		it('should not show 100% while some workflows are incompatible', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ totalWorkflows: 1000, totalAffectedWorkflows: 5 }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-progress')).toHaveAttribute(
+					'aria-valuenow',
+					'99',
+				);
 			});
 		});
 	});
@@ -617,6 +676,7 @@ describe('MigrationRules', () => {
 						instanceResults: [],
 					},
 					totalWorkflows: 0,
+					totalAffectedWorkflows: 0,
 					shouldCache: false,
 				}),
 			);
