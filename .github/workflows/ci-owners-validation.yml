@@ -5,7 +5,7 @@ name: 'CI: Validate OWNERS'
 # existing file or directory. Runs on OWNERS changes and on changes to the
 # owned paths, so a move or delete that orphans an OWNERS entry fails here.
 #
-# Group team names are checked against the GitHub organization by a separate
+# Team names are checked against the GitHub organization by the required-review
 # workflow when OWNERS or GROUPS.json changes.
 
 # The paths cover every top-level path that OWNERS entries point at, so a
