@@ -15,6 +15,8 @@ import {
 	type AgentConfigFingerprint,
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig } from '../types';
+import AgentChatPlan from '../components/AgentChatPlan.vue';
+import { planMessage, planView } from './fixtures/agent-plan';
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
@@ -665,6 +667,80 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		},
 	);
+
+	describe('plan card', () => {
+		it('renders live plan results above the input without changing submission', async () => {
+			const wrapper = mountPanel();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			messagesMock.value = [planMessage(planView(), { state: 'running', output: undefined })];
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			messagesMock.value[0].toolCalls![0].state = 'done';
+			messagesMock.value[0].toolCalls![0].output = planView();
+			await nextTick();
+			const card = wrapper.getComponent(AgentChatPlan);
+			expect(card.props('plan').revision).toBe(1);
+			expect(wrapper.get('[data-testid="chat-input"]').findComponent(AgentChatPlan).exists()).toBe(
+				true,
+			);
+			const chatInput = wrapper.getComponent({ name: 'ChatInputBase' });
+			chatInput.vm.$emit('update:modelValue', 'Continue the research');
+			await nextTick();
+			await wrapper.get('form').trigger('submit');
+			expect(sendMessageMock).toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it('restores history, preserves expansion across updates, and clears with the conversation', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			messagesMock.value.push(planMessage(planView({ revision: 2 }), { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.getComponent(AgentChatPlan).props('plan').revision).toBe(2);
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('true');
+			messagesMock.value.push(planMessage({ error: 'conflict' }, { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.getComponent(AgentChatPlan).props('plan').revision).toBe(2);
+			await wrapper.setProps({ continueSessionId: 't2' });
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('false');
+			messagesMock.value = [];
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('keeps background jobs visible and independent of the plan', async () => {
+			messagesMock.value = [planMessage(planView({ closed: true }))];
+			backgroundJobsMock.value = [
+				{
+					id: 'job-1',
+					kind: 'subagent',
+					title: 'Separate work',
+					status: 'running',
+					startedAt: '2026-09-30T10:00:00Z',
+				},
+			];
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			const card = wrapper.getComponent(AgentChatPlan);
+			const job = wrapper.get('[data-testid="agent-background-jobs"]');
+			expect(
+				card.element.compareDocumentPosition(job.element) & Node.DOCUMENT_POSITION_PRECEDING,
+			).toBeTruthy();
+			await job.get('button').trigger('click');
+			expect(card.get('button').attributes('aria-expanded')).toBe('false');
+			expect(job.text()).toContain('Separate work');
+			messagesMock.value.push(planMessage(null, { tool: 'read_plan' }));
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
+	});
 
 	describe('background task panel', () => {
 		afterEach(() => vi.useRealTimers());
