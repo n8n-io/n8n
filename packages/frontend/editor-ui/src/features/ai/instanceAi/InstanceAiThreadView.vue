@@ -684,10 +684,12 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 	// preview chat open reads as two places to ask the same thing.
 	isAgentPreviewDockOpen.value = false;
 
-	conversationRef.value?.applyHandoff(
+	if (!conversationRef.value) return;
+	conversationRef.value.applyHandoff(
 		buildInstanceAiAgentPreviewHandoffContext(params),
 		params.initialDraft,
 	);
+	params.onAccepted?.();
 }
 
 /**
