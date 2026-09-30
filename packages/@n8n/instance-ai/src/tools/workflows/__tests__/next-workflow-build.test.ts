@@ -1,8 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import type { InstanceAiContext } from '../../../types';
 import {
 	fetchResourceFields,
+	lockNodeContracts,
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
 	synthesizedFixtures,
@@ -165,6 +168,47 @@ describe('next workflow build', () => {
 				property_status: 'example',
 				property_story_points: 1,
 			});
+		});
+	});
+
+	describe('lockNodeContracts', () => {
+		const lock = JSON.parse(
+			readFileSync(
+				path.join(require.resolve('@n8n/nodes-base-next/package.json'), '..', 'versions/lock.json'),
+				'utf8',
+			),
+		) as Record<string, { bundleHash: string; contractHash: string }>;
+		const nodes = [
+			{
+				id: '1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+			},
+			{
+				id: '2',
+				name: 'Get',
+				type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
+				typeVersion: 1,
+				position: [0, 0],
+			},
+		] as WorkflowJSON['nodes'];
+
+		it('pins contract nodes to the frozen bundle of their version', () => {
+			const locked = lockNodeContracts({ name: 'wf', nodes, connections: {} });
+			const { bundleHash, contractHash } = lock['notion.databasePage.getAll@1'];
+
+			expect(locked.meta).toEqual({
+				nodeContracts: {
+					'@n8n/nodes-base-next.notionDatabasePageGetAll@1': { bundleHash, contractHash },
+				},
+			});
+		});
+
+		it('leaves a workflow without contract nodes unchanged', () => {
+			const workflow = { name: 'wf', nodes: [nodes[0]], connections: {} };
+			expect(lockNodeContracts(workflow)).toBe(workflow);
 		});
 	});
 });

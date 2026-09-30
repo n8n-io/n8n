@@ -23,6 +23,7 @@ import { joinWorkspacePath } from '../../workspace/workspace-paths';
 import {
 	EMPTY_OUTPUTS,
 	fetchResourceFields,
+	lockNodeContracts,
 	NEXT_TSCONFIG_FILENAME,
 	NODE_OUTPUTS_PATH,
 	nextWorkspaceFiles,
@@ -474,6 +475,7 @@ async function compileNextWorkflowSource(
 	return built.success
 		? {
 				...built,
+				workflow: lockNodeContracts(built.workflow),
 				declaredOutputFixtures: synthesizedFixtures(
 					built.workflow,
 					built.declaredOutputFixtures,

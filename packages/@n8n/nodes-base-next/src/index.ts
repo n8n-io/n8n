@@ -10,6 +10,8 @@ import { readSheetRows } from './nodes/google-sheets/sheet.read';
 import { getRequest, sendRequest } from './nodes/http/request';
 import { getManyDatabasePages } from './nodes/notion/database-page.get-all';
 
+export { versionsOf } from './registry';
+
 export const NODE_PACKAGE = '@n8n/nodes-base-next';
 
 /** Every action this package ships, one n8n node type each. */
