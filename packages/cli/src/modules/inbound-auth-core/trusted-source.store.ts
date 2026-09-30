@@ -25,6 +25,7 @@ import {
 	type TrustedSourceRowChanges,
 } from './database/repositories/trusted-source.repository';
 import { TransactionRunner } from '@n8n/db';
+import { Time } from '@n8n/constants';
 
 /**
  * A trusted source as consumers see it: decrypted, validated and migrated to the latest config
@@ -57,6 +58,9 @@ export class SystemTrustedSourceModificationError extends UserError {
 const idKey = (id: string) => `trusted-source:id:${id}`;
 const issuerKey = (issuer: string) => `trusted-source:issuer:${issuer}`;
 const ALL_KEY = 'trusted-source:all';
+// Reads are look-aside, so a read that started before a concurrent write can re-cache the old
+// row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
+const CACHE_TTL = 5 * Time.minutes.toMilliseconds;
 
 @Service()
 export class TrustedSourceStore {
@@ -71,12 +75,14 @@ export class TrustedSourceStore {
 
 	async getById(id: string): Promise<TrustedSource | undefined> {
 		return await this.cacheService.get(idKey(id), {
+			ttl: CACHE_TTL,
 			refreshFn: async () => await this.load(await this.trustedSourceRepository.findById(id)),
 		});
 	}
 
 	async getByIssuer(issuer: string): Promise<TrustedSource | undefined> {
 		return await this.cacheService.get(issuerKey(issuer), {
+			ttl: CACHE_TTL,
 			refreshFn: async () =>
 				await this.load(await this.trustedSourceRepository.findByIssuer(issuer)),
 		});
@@ -85,6 +91,7 @@ export class TrustedSourceStore {
 	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
 		const allSources =
 			(await this.cacheService.get(ALL_KEY, {
+				ttl: CACHE_TTL,
 				refreshFn: async () => await this.loadAll(),
 			})) ?? [];
 		return allSources.filter((source) => source.config.surfaces[surface] !== undefined);
