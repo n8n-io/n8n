@@ -139,3 +139,68 @@ export function toObjectParameter(value: unknown): unknown {
 	if (isExpression(value) || !hasExpression(value)) return value;
 	return `={{ ${valueToJs(value)} }}`;
 }
+
+type SchemaType = NonNullable<JsonSchema['type']>;
+
+/** JSON Schema primitive types as TS type text. */
+export const primitiveType = (type: SchemaType | undefined) =>
+	type === 'integer' ? 'number' : type === 'object' || type === 'array' ? undefined : type;
+
+/** `^property_` becomes a template-literal key; any other pattern accepts every key. */
+function patternKey(pattern: string): string {
+	const prefix = /^\^([\w-]*)$/.exec(pattern)?.[1];
+	return prefix === undefined ? 'string' : `\`${prefix}\${string}\``;
+}
+
+/** Value types that share a TS type render once: `title | rich_text: string`. */
+function valueTypesComment(valueTypes: Record<string, JsonSchema>): string {
+	const groups = new Map<string, string[]>();
+	for (const [name, schema] of Object.entries(valueTypes)) {
+		const type = schemaToTs(schema);
+		groups.set(type, [...(groups.get(type) ?? []), name]);
+	}
+	const rows = [...groups].map(([type, names]) => `${names.join(' | ')}: ${type}`);
+	return `/* by type: ${rows.join('; ')} */ `;
+}
+
+/**
+ * An output schema as TS type text. Declared output fields are always present. With `hints`,
+ * `x-n8n-hint` and `x-n8n-value-types` render as comments, for the agent view.
+ */
+export function schemaToTs(schema: JsonSchema, options: { hints?: boolean } = {}): string {
+	const hint = options.hints && schema['x-n8n-hint'] ? ` /* ${schema['x-n8n-hint']} */` : '';
+	const valueTypes =
+		options.hints && schema['x-n8n-value-types']
+			? valueTypesComment(schema['x-n8n-value-types'])
+			: '';
+	const child = (value: JsonSchema) => schemaToTs(value, options);
+	if (schema.const !== undefined) return JSON.stringify(schema.const) + hint;
+	if (schema.enum) return schema.enum.map((value) => JSON.stringify(value)).join(' | ') + hint;
+	const union = schema.anyOf ?? schema.oneOf;
+	if (union) {
+		const wrap = (text: string) =>
+			/^[{A]/.test(text) || !text.includes(' | ') ? text : `(${text})`;
+		return union.map((option) => wrap(child(option))).join(' | ') + hint;
+	}
+	if (schema.type === 'array') return `Array<${schema.items ? child(schema.items) : 'any'}>${hint}`;
+	if (schema.type !== 'object' && !schema.properties) {
+		return valueTypes + (primitiveType(schema.type) ?? 'any') + hint;
+	}
+	const { additionalProperties } = schema;
+	const closed =
+		additionalProperties === false || (schema.properties && additionalProperties === undefined);
+	const members = [
+		...Object.entries(schema.properties ?? {}).map(
+			([key, value]) => `${JSON.stringify(key)}: ${child(value)};`,
+		),
+		...Object.entries(schema.patternProperties ?? {}).map(
+			([pattern, value]) => `[key: ${patternKey(pattern)}]: ${child(value)};`,
+		),
+		...(closed
+			? []
+			: [
+					`[key: string]: ${isRecord(additionalProperties) ? child(additionalProperties) : 'any'};`,
+				]),
+	];
+	return `{ ${members.join(' ')} }${hint}`;
+}

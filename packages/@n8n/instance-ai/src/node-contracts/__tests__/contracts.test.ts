@@ -58,6 +58,36 @@ const post = (body: IDataObject) => ({
 	parameters: { method: 'POST', url: 'https://example.com', body: { kind: 'json', json: body } },
 });
 
+function hints(schema: unknown): string[] {
+	if (typeof schema !== 'object' || schema === null) return [];
+	return Object.entries(schema).flatMap(([key, value]) =>
+		key === 'x-n8n-hint' && typeof value === 'string' ? [value] : hints(value),
+	);
+}
+
+describe('contract lint', () => {
+	it.each(CONTRACTS.map((contract) => [contract.id, contract] as const))(
+		'%s keeps summary and hints within the prose budget',
+		(_id, contract) => {
+			expect(contract.summary.length).toBeLessThanOrEqual(120);
+			expect(
+				[...hints(contract.input), ...hints(contract.output)].filter((hint) => hint.length > 80),
+			).toEqual([]);
+		},
+	);
+
+	it.each(CONTRACTS.map((contract) => [contract.id, contract] as const))(
+		'%s states no conditional requirement in prose',
+		(_id, contract) => {
+			expect(
+				hints(contract.input).filter((hint) =>
+					/\b(omit (for|when)|only (when|if)|required (when|if))\b/i.test(hint),
+				),
+			).toEqual([]);
+		},
+	);
+});
+
 describe('node contracts', () => {
 	it.each(CONTRACTS.map((contract) => [contract.id, contract] as const))(
 		'%s example is valid contract input',
@@ -140,10 +170,9 @@ describe('node contracts', () => {
 						{
 							property: 'Completed On',
 							type: 'date',
-							condition: 'on_or_after',
-							value: '2026-09-01',
+							condition: { op: 'on_or_after', value: '2026-09-01' },
 						},
-						{ property: 'Owners', type: 'people', condition: 'is_not_empty' },
+						{ property: 'Owners', type: 'people', condition: { op: 'is_not_empty' } },
 					],
 				},
 				paging: { mode: 'all' },
@@ -333,8 +362,7 @@ describe('node contracts', () => {
 		const condition = (type: string, operator: string, value: unknown) => ({
 			property: 'P',
 			type,
-			condition: operator,
-			value,
+			condition: { op: operator, value },
 		});
 		const { workflow, issues } = await build(
 			workflowOf([
@@ -375,24 +403,51 @@ describe('node contracts', () => {
 		const notion = CONTRACTS.find(({ id }) => id === 'notion.databasePage.getAll');
 		const view = JSON.stringify(notion && contractView(notion));
 
-		expect(view).toContain('people: array of email strings');
-		expect(view).toContain('^property_');
+		expect(view).toContain('people: Array<string | {  }>');
+		expect(view).toContain('date: { \\"start\\": string; \\"end\\": string | null;');
+		expect(view).toContain('[key: `property_');
 	});
 
 	it('rejects a Notion filter condition the property type does not support', () => {
 		const notion = CONTRACTS.find(({ id }) => id === 'notion.databasePage.getAll');
 		if (!notion) throw new Error('missing contract');
-		const input = (condition: string) => ({
+		const input = (condition: IDataObject) => ({
 			...notion.example,
 			filter: {
 				mode: 'conditions',
 				match: 'all',
-				conditions: [{ property: 'Tags', type: 'multi_select', condition, value: 'ops' }],
+				conditions: [{ property: 'Tags', type: 'multi_select', condition }],
 			},
 		});
 
-		expect(validateContractInput(input('contains'), notion.input)).toEqual([]);
-		expect(validateContractInput(input('equals'), notion.input)).not.toEqual([]);
+		expect(validateContractInput(input({ op: 'contains', value: 'ops' }), notion.input)).toEqual(
+			[],
+		);
+		expect(validateContractInput(input({ op: 'equals', value: 'ops' }), notion.input)).not.toEqual(
+			[],
+		);
+	});
+
+	it('requires a Notion condition value exactly for operators that compare against one', () => {
+		const notion = CONTRACTS.find(({ id }) => id === 'notion.databasePage.getAll');
+		if (!notion) throw new Error('missing contract');
+		const issues = (condition: IDataObject) =>
+			validateContractInput(
+				{
+					...notion.example,
+					filter: {
+						mode: 'conditions',
+						match: 'all',
+						conditions: [{ property: 'Due', type: 'date', condition }],
+					},
+				},
+				notion.input,
+			);
+
+		expect(issues({ op: 'on_or_after', value: '2026-09-01' })).toEqual([]);
+		expect(issues({ op: 'on_or_after' })).not.toEqual([]);
+		expect(issues({ op: 'is_empty' })).toEqual([]);
+		expect(issues({ op: 'past_week', value: 'x' })).not.toEqual([]);
 	});
 
 	it('rejects legacy parameters, expression selectors, and expression binary field names', async () => {

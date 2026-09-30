@@ -106,6 +106,34 @@ const VALUE_KEY_BY_TYPE = new Map(
 	FILTER_FAMILIES.flatMap(({ types, valueKey }) => types.map((type) => [type, valueKey] as const)),
 );
 
+/** Conditions that test presence or a relative period. They take no value. */
+const VALUELESS_CONDITIONS = new Set([
+	'is_empty',
+	'is_not_empty',
+	'past_week',
+	'past_month',
+	'past_year',
+	'this_week',
+	'next_week',
+	'next_month',
+	'next_year',
+]);
+
+/** A value is required exactly for the operators that compare against one. */
+function conditionVariant(conditions: string[], value?: JsonSchema): JsonSchema {
+	return variant(
+		'op',
+		Object.fromEntries(
+			conditions.map((op) => [
+				op,
+				value && !VALUELESS_CONDITIONS.has(op)
+					? { properties: { value }, required: ['value'] }
+					: {},
+			]),
+		),
+	);
+}
+
 const filterCondition = variant(
 	'type',
 	Object.fromEntries(
@@ -115,42 +143,15 @@ const filterCondition = variant(
 				{
 					properties: {
 						property: str('Exact Notion property name'),
-						condition: { enum: conditions },
-						...(value
-							? {
-									value: {
-										...value,
-										'x-n8n-hint': `${value['x-n8n-hint'] ? `${value['x-n8n-hint']}. ` : ''}Omit for is_empty, is_not_empty and past_/next_/this_ conditions`,
-									},
-								}
-							: {}),
+						condition: conditionVariant(conditions, value),
 					},
 					required: ['property', 'condition'],
 				},
 			]),
 		),
 	),
-	{
-		'x-n8n-hint':
-			'type is the Notion property type; formula and rollup filters need filter mode json',
-	},
+	{ 'x-n8n-hint': 'type is the Notion property type; for formula or rollup use filter mode json' },
 );
-
-/** Mirrors the node's `simplifyProperty`. */
-const SIMPLIFIED_VALUE_BY_TYPE =
-	'title, rich_text, email, url, phone_number, select, status, created_by, last_edited_by: string (select/status: option name, null if unset). ' +
-	'number: number. checkbox: boolean. created_time, last_edited_time: ISO string. ' +
-	'date: object { start, end, time_zone } or null, never a plain string. ' +
-	'people: array of email strings, one per person; a person without an email becomes {}. Join or index it; it is never a name. ' +
-	'multi_select: array of option names. relation: array of page ids. files: array of URLs. ' +
-	'formula: the computed value. rollup: number or array.';
-
-const simplifiedPage = {
-	...obj({ id: str(), name: str('The page title'), url: str() }),
-	patternProperties: { '^property_': { 'x-n8n-hint': SIMPLIFIED_VALUE_BY_TYPE } },
-	'x-n8n-hint':
-		'Each page property is a top-level key: property_ plus the snake_case of its exact Notion name, with no words added. The value type depends on the Notion property type (see patternProperties). Properties named in filter conditions are typed at build time',
-};
 
 const nullable = (schema: JsonSchema): JsonSchema => ({ anyOf: [schema, { type: 'null' }] });
 const nonNull = (schema: JsonSchema): JsonSchema => schema.anyOf?.[0] ?? schema;
@@ -178,10 +179,18 @@ const SIMPLIFIED_SCHEMA_BY_TYPE: Record<string, JsonSchema> = {
 			'time_zone',
 		]),
 	),
-	people: strArray,
+	people: { type: 'array', items: { anyOf: [str(), { type: 'object', properties: {} }] } },
 	multi_select: strArray,
 	relation: strArray,
 	files: strArray,
+	formula: {},
+	rollup: { anyOf: [num(), { type: 'array' }] },
+};
+
+const simplifiedPage: JsonSchema = {
+	...obj({ id: str(), name: str('The page title'), url: str() }),
+	patternProperties: { '^property_': { 'x-n8n-value-types': SIMPLIFIED_SCHEMA_BY_TYPE } },
+	'x-n8n-hint': 'Keys: property_ + snake_case of the exact property name',
 };
 
 /** change-case v5 `snakeCase`, which the v3 node uses for simplified keys. */
@@ -221,7 +230,8 @@ function deriveGetAllOutput(input: ContractInput): JsonSchema {
 	const { match, conditions } =
 		tagOf(input.filter, 'mode') === 'conditions' ? record(input.filter) : { conditions: [] };
 	const typed = (Array.isArray(conditions) ? conditions : []).flatMap((condition) => {
-		const { property, type, condition: operator } = record(condition);
+		const { property, type } = record(condition);
+		const operator = record(record(condition).condition).op;
 		const schema = typeof type === 'string' ? SIMPLIFIED_SCHEMA_BY_TYPE[type] : undefined;
 		if (typeof property !== 'string' || !schema) return [];
 		// Under AND, a condition that needs a value only matches pages that have one.
@@ -261,7 +271,7 @@ const outputMode = variant(
 	'mode',
 	{
 		simplified: {
-			hint: 'Flat: each property becomes property_<snake_case of its exact name>; people are email arrays, dates are {start,end} objects',
+			hint: 'Flat items: property_<snake_case name> keys; see output for value types',
 			output: simplifiedPage,
 		},
 		raw: {
@@ -302,12 +312,13 @@ function compileFilter(filter: unknown) {
 		matchType: match === 'all' ? 'allFilters' : 'anyFilter',
 		filters: {
 			conditions: (Array.isArray(conditions) ? conditions : []).map((item) => {
-				const { property, type, condition, value } = record(item);
+				const { property, type, condition } = record(item);
+				const { op, value } = record(condition);
 				const valueKey = VALUE_KEY_BY_TYPE.get(String(type));
 				return {
 					key: `${String(property)}|${String(type)}`,
 					type,
-					condition,
+					condition: op,
 					...(valueKey && value !== undefined ? { [valueKey]: value } : {}),
 				};
 			}),
@@ -393,7 +404,9 @@ export const notionGetManyPages: ActionContract = {
 		filter: {
 			mode: 'conditions',
 			match: 'all',
-			conditions: [{ property: 'Name', type: 'title', condition: 'equals', value: 'Launch v2' }],
+			conditions: [
+				{ property: 'Name', type: 'title', condition: { op: 'equals', value: 'Launch v2' } },
+			],
 		},
 		paging: { mode: 'limit', max: 1 },
 		output: { mode: 'simplified' },

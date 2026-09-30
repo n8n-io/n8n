@@ -28,6 +28,8 @@ export interface JsonSchema {
 	'x-n8n-hint'?: string;
 	/** The value must be a literal (for example a binary property name), never an expression. */
 	'x-n8n-literal'?: boolean;
+	/** Value types by source type (Notion property type), shown to the agent as a table. */
+	'x-n8n-value-types'?: Record<string, JsonSchema>;
 	/** On a variant branch: the item shape the action emits when this branch is selected. */
 	'x-n8n-output'?: JsonSchema;
 }

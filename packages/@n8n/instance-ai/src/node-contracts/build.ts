@@ -4,7 +4,7 @@ import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from
 
 import { getContract } from './contracts';
 import { getExpressionService } from './expression-check';
-import { branchTag, isExpression } from './helpers';
+import { branchTag, isExpression, primitiveType, schemaToTs } from './helpers';
 import type { ExploreResourcesParams, ExploreResourcesResult } from '../types';
 import type { ActionContract, ContractInput, JsonSchema } from './types';
 
@@ -194,50 +194,9 @@ export function compileContractNodes(json: WorkflowJSON): {
 
 // ── Expression type check ────────────────────────────────────────────────────
 
-type SchemaType = NonNullable<JsonSchema['type']>;
-
-/** JSON Schema primitive types as TS type text. */
-const primitiveType = (type: SchemaType | undefined) =>
-	type === 'integer' ? 'number' : type === 'object' || type === 'array' ? undefined : type;
-
 /** The TS type an expression must yield to fill a slot of this schema type. */
-const slotType = (type: SchemaType | undefined) =>
+const slotType = (type: JsonSchema['type']) =>
 	type === 'object' ? 'object' : type === 'array' ? 'unknown[]' : primitiveType(type);
-
-/** `^property_` becomes a template-literal key; any other pattern accepts every key. */
-function patternKey(pattern: string): string {
-	const prefix = /^\^([\w-]*)$/.exec(pattern)?.[1];
-	return prefix === undefined ? 'string' : `\`${prefix}\${string}\``;
-}
-
-/** An output schema as TS type text. Declared output fields are always present. */
-export function schemaToTs(schema: JsonSchema): string {
-	if (schema.const !== undefined) return JSON.stringify(schema.const);
-	if (schema.enum) return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
-	const union = schema.anyOf ?? schema.oneOf;
-	if (union) return union.map((option) => `(${schemaToTs(option)})`).join(' | ');
-	if (schema.type === 'array') return `Array<${schema.items ? schemaToTs(schema.items) : 'any'}>`;
-	if (schema.type !== 'object' && !schema.properties) {
-		return primitiveType(schema.type) ?? 'any';
-	}
-	const { additionalProperties } = schema;
-	const closed =
-		additionalProperties === false || (schema.properties && additionalProperties === undefined);
-	const members = [
-		...Object.entries(schema.properties ?? {}).map(
-			([key, child]) => `${JSON.stringify(key)}: ${schemaToTs(child)};`,
-		),
-		...Object.entries(schema.patternProperties ?? {}).map(
-			([pattern, child]) => `[key: ${patternKey(pattern)}]: ${schemaToTs(child)};`,
-		),
-		...(closed
-			? []
-			: [
-					`[key: string]: ${isRecord(additionalProperties) ? schemaToTs(additionalProperties) : 'any'};`,
-				]),
-	];
-	return `{ ${members.join(' ')} }`;
-}
 
 interface ExpressionSlot {
 	path: string;

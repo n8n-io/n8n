@@ -1,5 +1,5 @@
 import { CONTRACTS, getContract } from './contracts';
-import { branchTag } from './helpers';
+import { branchTag, schemaToTs } from './helpers';
 import type { ActionContract, JsonSchema } from './types';
 
 export type { ActionContract, JsonSchema } from './types';
@@ -91,6 +91,9 @@ function groupIdentical(entries: ReadonlyArray<readonly [string, unknown]>) {
 	return Object.fromEntries([...groups.values()].map(({ tags, view }) => [tags.join(' | '), view]));
 }
 
+/** Outputs render as the TS types that `CONTRACT_EXPRESSION_TYPE` checks against. */
+const outputType = (schema: JsonSchema) => schemaToTs(schema, { hints: true });
+
 function stripOutput({ 'x-n8n-output': _output, ...rest }: JsonSchema): JsonSchema {
 	return rest;
 }
@@ -110,7 +113,7 @@ function viewSchema(
 		if (chosen) {
 			return {
 				...viewSchema(stripOutput(chosen), selections, path),
-				...(chosen['x-n8n-output'] ? { 'x-n8n-output': chosen['x-n8n-output'] } : {}),
+				...(chosen['x-n8n-output'] ? { output: outputType(chosen['x-n8n-output']) } : {}),
 			};
 		}
 		return {
@@ -139,7 +142,7 @@ function viewSchema(
 										),
 									}
 								: {}),
-							...(branch['x-n8n-output'] ? { output: branch['x-n8n-output'] } : {}),
+							...(branch['x-n8n-output'] ? { output: outputType(branch['x-n8n-output']) } : {}),
 						},
 					] as const;
 				}),
@@ -200,8 +203,7 @@ export function contractView(contract: ActionContract, selections: Record<string
 		usage: `action('${contract.id}', {\n  name: '…',\n  parameters: ${parameters}${credentials}\n})`,
 		input: viewSchema(contract.input, selections, ''),
 		output: contract.deriveOutput
-			? 'Derived from parameters at build time; defaultOutput is the base shape'
-			: 'Default shape below; a selected variant with x-n8n-output replaces it',
-		defaultOutput: contract.output,
+			? `Derived from parameters at build time. Base: ${outputType(contract.output)}`
+			: `${outputType(contract.output)} (a variant's output replaces it)`,
 	};
 }
