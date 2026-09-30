@@ -198,8 +198,13 @@ Follow "A red is signal" in the general skill. For Agent cases, add this:
      URLs out of the ticket. Describe the use case in neutral words.
    - Link the LangTracer case and the source thread. Do not copy raw user
      messages or agent instructions from the thread.
-   - Say if the gap is reproduced. Write "Not yet reproduced. Based on trace
-     analysis" when no case has reproduced it.
+   - Reproduce the gap first. This is a default, not a hard rule. Propose a
+     ticket only after a case is red on a real build. Quote the failing
+     expectation and the judge reason. Follow "Reproduce first" in the general
+     skill.
+   - The driver may approve an exception, for example when the harness cannot
+     reach the mechanism after about three attempts. Then the ticket must say
+     "Not reproduced in the eval. Based on trace analysis."
 4. **Check the builder's own guidance for the gap.** Read the files that steer
    Agent Builder:
    `packages/cli/src/modules/agents/builder/agents-builder-prompts.ts`,
