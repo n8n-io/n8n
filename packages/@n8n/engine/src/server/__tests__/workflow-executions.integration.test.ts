@@ -333,7 +333,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.responseExpectation).toEqual({ kind: 'none' });
 	});
 
-	it.each([{ kind: 'stream' }, { kind: 'none', extra: true }, 'none'])(
+	it.each([{ kind: 'chunks' }, { kind: 'none', extra: true }, 'none'])(
 		'rejects the response expectation %j with 400',
 		async (responseExpectation) => {
 			const response = await request(url)

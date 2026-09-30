@@ -33,6 +33,16 @@ describe('executionResponseSchema', () => {
 		});
 	});
 
+	it('accepts a chunk response', () => {
+		const chunk = {
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hi' },
+		};
+
+		expect(executionResponseSchema.parse(chunk)).toEqual(chunk);
+	});
+
 	it.each([
 		[
 			'execution id',
@@ -102,11 +112,11 @@ describe('executionResponseSchema', () => {
 });
 
 describe('responseExpectationSchema', () => {
-	it.each(['none', 'runEnd', 'stepResponse'])('accepts the kind %s', (kind) => {
+	it.each(['none', 'runEnd', 'stepResponse', 'stream'])('accepts the kind %s', (kind) => {
 		expect(responseExpectationSchema.parse({ kind })).toEqual({ kind });
 	});
 
-	it.each([{ kind: 'stream' }, { kind: 'none', extra: true }, {}, 'none'])(
+	it.each([{ kind: 'chunks' }, { kind: 'none', extra: true }, {}, 'none'])(
 		'rejects %j',
 		(value) => {
 			expect(responseExpectationSchema.safeParse(value).success).toBe(false);
