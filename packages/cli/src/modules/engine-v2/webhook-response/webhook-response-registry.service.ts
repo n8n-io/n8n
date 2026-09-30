@@ -6,11 +6,13 @@ import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+import type { ResponseStream } from '@/services/streaming-webhook-response-heartbeat';
 
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
 } from '../response-channel/execution-response-receiver';
+import { StreamingResponseWriter } from './streaming-response-writer';
 import { toWebhookOutcome, type WebhookRunOutcome } from './webhook-outcome';
 
 /** The caller's view of an open webhook request that waits for its run. */
@@ -34,6 +36,8 @@ type PendingWebhook = {
 	timeoutTimer: NodeJS.Timeout;
 	/** Set when the subscription is ready. */
 	unsubscribe?: UnsubscribeExecutionResponse;
+	/** Set only when the request waits for a stream. */
+	writer?: StreamingResponseWriter;
 	released: boolean;
 };
 
@@ -49,7 +53,8 @@ export const SUBSCRIBE_TIMEOUT_MS = 30_000;
 /**
  * Keeps track of the webhook requests that wait for a data-plane run. It owns
  * the lifecycle of each wait: the capacity limit, the subscription, the
- * response timeout, and the release.
+ * response timeout, and the release. For a streaming request, it passes the
+ * chunks to a `StreamingResponseWriter`.
  *
  * `waitForResponse` should be called before starting the execution in case a
  * fast execution sends a response before we're listening for it.
@@ -83,14 +88,18 @@ export class EngineV2WebhookResponseRegistry {
 	 * `StartExecution`.
 	 * @param expectation What the request waits for. Pass the same value to
 	 * `StartExecution`.
-	 * @throws {UnexpectedError} If the execution response receiver is not set, or
-	 * if the service already waits for this execution.
+	 * @param responseStream The HTTP response to write chunks to. The service
+	 * uses it only when the expectation is `stream`, and then it is required.
+	 * @throws {UnexpectedError} If the execution response receiver is not set,
+	 * if the service already waits for this execution, or if a stream is
+	 * expected without a response stream.
 	 * @throws {OperationalError} If the service is at capacity, or if it cannot
 	 * listen for the response within `SUBSCRIBE_TIMEOUT_MS`.
 	 */
 	async waitForResponse(
 		executionId: ExecutionIdV2,
 		expectation: ResponseExpectation,
+		responseStream?: ResponseStream,
 	): Promise<WebhookResponseWait> {
 		const { receiver } = this;
 		if (!receiver) {
@@ -110,6 +119,12 @@ export class EngineV2WebhookResponseRegistry {
 			});
 		}
 
+		if (expectation.kind === 'stream' && !responseStream) {
+			throw new UnexpectedError('Engine v2 cannot stream a response without a response stream', {
+				extra: { executionId },
+			});
+		}
+
 		const pending: PendingWebhook = {
 			executionId,
 			expectation,
@@ -119,6 +134,10 @@ export class EngineV2WebhookResponseRegistry {
 				this.engineConfig.webhookResponseTimeout,
 			).unref(),
 			released: false,
+			writer:
+				expectation.kind === 'stream' && responseStream
+					? new StreamingResponseWriter(responseStream)
+					: undefined,
 		};
 
 		// Hold the slot before the subscription is ready, so requests that arrive
@@ -192,6 +211,8 @@ export class EngineV2WebhookResponseRegistry {
 		if (pending.released) return;
 
 		try {
+			if (received.type === 'chunk') pending.writer?.writeChunk(received.payload);
+
 			const outcome = toWebhookOutcome(received, pending.expectation);
 			if (outcome) this.settle(pending, outcome);
 		} catch (error) {
@@ -207,6 +228,16 @@ export class EngineV2WebhookResponseRegistry {
 	private settle(pending: PendingWebhook, outcome: WebhookRunOutcome): void {
 		if (pending.released) return;
 
+		try {
+			pending.writer?.finish(outcome);
+		} catch (error) {
+			// A closed connection must not keep the request from settling.
+			this.logger.error('Failed to end an engine v2 webhook stream', {
+				executionId: pending.executionId,
+				error,
+			});
+		}
+
 		pending.answer.resolve(outcome);
 		this.release(pending);
 	}
@@ -217,6 +248,7 @@ export class EngineV2WebhookResponseRegistry {
 		pending.released = true;
 
 		clearTimeout(pending.timeoutTimer);
+		pending.writer?.stop();
 		pending.unsubscribe?.();
 		this.pendingWebhooks.delete(pending.executionId);
 	}
