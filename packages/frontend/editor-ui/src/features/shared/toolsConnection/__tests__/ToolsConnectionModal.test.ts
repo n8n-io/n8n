@@ -187,6 +187,56 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
 	});
 
+	it('lists restricted tools after every usable tool on the all tab and in their category', async () => {
+		const restrictedGateway: ToolConnectionItem = {
+			id: 'n8n-connect:gmail',
+			kind: 'node',
+			title: 'Gmail',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.gmailTool',
+			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'instance' },
+		};
+		const restrictedApp: ToolConnectionItem = {
+			id: 'nodeType:gmail',
+			kind: 'node',
+			title: 'Gmail',
+			status: 'none',
+			category: 'app-action',
+			nodeTypeName: 'n8n-nodes-base.gmailTool',
+			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'project' },
+		};
+		const usableApp: ToolConnectionItem = {
+			id: 'nodeType:sheets',
+			kind: 'node',
+			title: 'Google Sheets',
+			status: 'none',
+			category: 'app-action',
+			nodeTypeName: 'n8n-nodes-base.googleSheetsTool',
+		};
+		const { getAllByTestId, getByTestId } = renderWith({
+			// Restricted first, and one of them gateway-backed: the all-tab rank sort alone
+			// would keep it above the usable tool.
+			items: [restrictedGateway, restrictedApp, usableApp],
+			categories: ['all', 'app-action'],
+		});
+
+		const titlesOnAll = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+		expect(titlesOnAll[0]).toContain('Google Sheets');
+		expect(titlesOnAll[1]).toContain('Gmail');
+		expect(titlesOnAll[2]).toContain('Gmail');
+		expect(getAllByTestId('node-restricted-icon')).toHaveLength(2);
+
+		await fireEvent.click(getByTestId('tab-app-action'));
+		await waitFor(() => {
+			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+			expect(titles).toHaveLength(2);
+			expect(titles[0]).toContain('Google Sheets');
+			expect(titles[1]).toContain('Gmail');
+		});
+	});
+
 	it('labels and populates the n8n-connect tab and finds its items in search', async () => {
 		const gatewayItem: ToolConnectionItem = {
 			id: 'n8n-connect:slack',

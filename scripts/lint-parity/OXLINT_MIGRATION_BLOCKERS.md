@@ -26,7 +26,7 @@ These rules come from the shared base or backend layers. Resolve these first bec
 | P2 | `import/export` | A native rule exists, but it is still in the nursery category. | Run parity samples and enable it after it becomes stable. |
 | P3 | `no-octal` | Oxlint has no rule. The parser already rejects relevant octal syntax in module and strict-mode code. | Confirm parser coverage and retire the explicit rule if no supported source form remains. |
 
-## Package-level typed blocker
+## Package-level blockers
 
 ### `@typescript-eslint/naming-convention`
 
@@ -40,6 +40,14 @@ Possible approaches:
 4. Keep a narrow ESLint pass only in packages whose convention protects an API contract.
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
+
+## Retirement exceptions
+
+### `n8n-node-dev`
+
+Keep `n8n-node-dev` on ESLint. The v3 removal plan makes an Oxlint migration unnecessary.
+
+Reconsider this exception only if the package removal plan changes.
 
 ## Frontend package blockers
 

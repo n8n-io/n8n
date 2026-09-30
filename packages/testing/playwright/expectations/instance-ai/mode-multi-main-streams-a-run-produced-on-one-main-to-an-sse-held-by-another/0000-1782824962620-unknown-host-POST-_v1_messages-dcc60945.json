@@ -4,7 +4,7 @@
     "path": "/v1/messages",
     "body": {
       "type": "REGEX",
-      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*Reply with exactly the single word: pong\\. Do not use any tools\\.\\\\n\\\\n<current-date-time>\\\\n## Current Date and Time\\\\n\\\\nThe user'[\\s\\S]*"
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*Reply with exactly the single word: pong\\. Do not use any tools\\.\\\\n\\\\n<current-date-time>\\\\nThe user'[\\s\\S]*"
     }
   },
   "httpResponse": {

@@ -74,6 +74,16 @@ paths:
       $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
     delete:
       $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
+  /data-tables/{dataTableId}/columns:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTableColumns.generated.yml
+    post:
+      $ref: ./handlers/data-tables/spec/paths/createDataTableColumn.generated.yml
+  /data-tables/{dataTableId}/columns/{columnId}:
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTableColumn.generated.yml
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTableColumn.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
@@ -153,6 +163,9 @@ paths:
   /node-type-policies/scopes/{scopeId}/attachments:
     put:
       $ref: ./handlers/node-type-policies/spec/paths/replaceNodeTypePolicyAttachments.generated.yml
+  /settings/otel:
+    get:
+      $ref: ./handlers/settings/spec/paths/getOtelSettings.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
@@ -268,6 +281,8 @@ paths:
   /settings/sso/oidc:
     get:
       $ref: ./handlers/settings/spec/paths/getOidcConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/setOidcConfiguration.generated.yml
   /source-control/status:
     get:
       $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml

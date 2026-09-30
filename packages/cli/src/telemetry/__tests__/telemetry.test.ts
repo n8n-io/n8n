@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
 
 import type { License } from '@/license';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
@@ -1077,6 +1078,28 @@ describe('Telemetry', () => {
 						user_id: '1234',
 						version_cli: expect.any(String),
 						custom_prop: 'value',
+					}),
+				}),
+			);
+		});
+
+		test('redacts MCP tool call properties before sending the event', () => {
+			const agentId = 'sk-proj-example0123456789abcdef0123456789';
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'validate_agent',
+				parameters: { agentId, settings: { apiKey: 'example-value' } },
+				results: { success: false, error: `Agent "${agentId}" not found` },
+			});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: USER_CALLED_MCP_TOOL_EVENT,
+					properties: expect.objectContaining({
+						user_id: 'user-1',
+						tool_name: 'validate_agent',
+						parameters: { agentId: '[REDACTED]', settings: { apiKey: '[REDACTED]' } },
+						results: { success: false, error: 'Agent "[REDACTED]" not found' },
 					}),
 				}),
 			);

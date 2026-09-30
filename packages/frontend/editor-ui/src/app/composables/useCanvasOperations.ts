@@ -3617,7 +3617,7 @@ export function useCanvasOperations() {
 			Object.entries(credentials).filter(([, credential]) => {
 				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
 				const used = usedCredentials[credential.id];
-				return !used || used.currentUserHasAccess;
+				return !used || used.currentUserCanUse;
 			}),
 		);
 	}
@@ -3890,6 +3890,17 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		},
 	) {
+		// New nodes only: imports go through `addNodes` and keep unknown types as placeholders.
+		const unavailable = nodes.filter((node) => nodeTypesStore.isNodeTypeUnavailable(node.type));
+		if (unavailable.length > 0) {
+			console.warn(
+				'Skipped adding node types this instance does not load:',
+				unavailable.map((node) => node.type),
+			);
+			uiStore.resetLastInteractedWith();
+			return { addedNodes: [] };
+		}
+
 		// An empty group contains only its internal anchor, which the selected node must replace.
 		const replacementTargetId = options.replaceNodeId;
 		const replacementTarget = replacementTargetId

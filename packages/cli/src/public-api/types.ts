@@ -1,11 +1,8 @@
 import type {
-	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	PublicCreateDestination,
-	UpdateOidcConfigurationDto,
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
@@ -158,19 +155,6 @@ export declare namespace DataTableRequest {
 			dryRun?: string | boolean;
 		}
 	>;
-
-	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
-
-	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
-
-	type UpdateColumn = AuthenticatedRequest<
-		{ dataTableId: string; columnId: string },
-		{},
-		UpdateDataTableColumnDto,
-		{}
-	>;
 }
 
 // ----------------------------------
@@ -208,7 +192,6 @@ export declare namespace SsoSamlRequest {
 // ----------------------------------
 
 export declare namespace OtelSettingsRequest {
-	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
 	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }
@@ -222,12 +205,4 @@ export declare namespace LdapRequest {
 	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
 	type GetSync = PaginatedRequest;
 	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
-}
-
-// ----------------------------------
-//        /settings/sso/oidc
-// ----------------------------------
-
-export declare namespace SsoOidcRequest {
-	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

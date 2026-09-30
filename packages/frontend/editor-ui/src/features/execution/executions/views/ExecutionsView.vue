@@ -47,6 +47,10 @@ const projectId = computed(() => {
 	return typeof value === 'string' ? value : undefined;
 });
 
+const filtersKey = computed(() => `project:${projectId.value ?? 'overview'}`);
+// Restore before the filter component is set up, so it shows the same filters.
+executionsStore.restoreFilters(filtersKey.value);
+
 const workflowCount = computed(() => workflowsListStore.allWorkflows.length);
 const hasFetchedWorkflowsForProject = computed(() =>
 	workflowsListStore.hasFetchedAllWorkflows(projectId.value),
@@ -85,7 +89,9 @@ onBeforeMount(async () => {
 });
 
 watch(projectId, async () => {
-	await loadWorkflowsForCurrentProject();
+	executionsStore.reset();
+	executionsStore.restoreFilters(filtersKey.value);
+	await Promise.all([executionsStore.initialize(), loadWorkflowsForCurrentProject()]);
 });
 
 onMounted(async () => {
@@ -127,6 +133,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.saveFilters(filtersKey.value);
 	await executionsStore.initialize();
 }
 
@@ -163,6 +170,7 @@ async function onExecutionStop() {
 	</PageViewLayout>
 	<GlobalExecutionsList
 		v-else
+		:key="filtersKey"
 		:executions="allExecutions"
 		:filters="filters"
 		:total="executionsCount"

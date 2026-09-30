@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -6,7 +7,6 @@ import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -37,6 +37,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		await super.init();
 		await this.initLicense();
+		await this.initPolicyEnforcement();
 		await this.initCommunityPackages();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();

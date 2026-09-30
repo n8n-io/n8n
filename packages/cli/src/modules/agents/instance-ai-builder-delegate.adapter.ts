@@ -13,7 +13,7 @@ import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
@@ -263,7 +263,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 		for (const { id } of threads) {
 			// The target agent id is the suffix; memory impls are agent-scoped.
 			const memory = this.n8nMemory.getImplementation(id.slice(prefix.length));
-			await memory.deleteMessagesByThread(id);
 			await memory.deleteThread(id);
 		}
 	}

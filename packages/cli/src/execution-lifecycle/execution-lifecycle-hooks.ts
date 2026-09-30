@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -35,7 +36,6 @@ import {
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
@@ -44,7 +44,7 @@ import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
-import { getLastExecutedNodeData } from '@/workflow-helpers';
+import { getLastExecutedNodeData, getLastExecutedNodeRuns } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -549,8 +549,12 @@ async function duplicateBinaryDataToParent(
 	parentExecution: RelatedExecution,
 	binaryDataService: BinaryDataService,
 ) {
-	const outputData = getLastExecutedNodeData(fullRunData);
-	if (outputData?.data?.main) {
+	const outputRuns =
+		fullRunData.data.subWorkflowOutput?.lastRunOnly === false
+			? getLastExecutedNodeRuns(fullRunData)
+			: [getLastExecutedNodeData(fullRunData)];
+	for (const outputData of outputRuns) {
+		if (!outputData?.data?.main) continue;
 		const duplicatedData = await binaryDataService.duplicateBinaryData(
 			FileLocation.ofExecution(parentExecution.workflowId, parentExecution.executionId),
 			outputData.data.main,
@@ -592,8 +596,9 @@ function hookFunctionsSave(
 		// If this is a subworkflow execution, duplicate binary data to the parent's
 		// execution. This must happen before any potential deletion of this execution's
 		// data, and updates the binary data IDs in fullRunData to point to the parent location.
-		if (parentExecution) {
-			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+		const parent = parentExecution ?? fullRunData.data.parentExecution;
+		if (parent) {
+			await duplicateBinaryDataToParent(fullRunData, parent, binaryDataService);
 		}
 
 		const isManualMode = this.mode === 'manual';
@@ -716,6 +721,7 @@ function hookFunctionsSaveWorker(
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
+	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData, newStaticData) {
@@ -723,6 +729,11 @@ function hookFunctionsSaveWorker(
 			executionId: this.executionId,
 			workflowId: this.workflowData.id,
 		});
+
+		const { parentExecution } = fullRunData.data;
+		if (parentExecution) {
+			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);
+		}
 
 		const isManualMode = this.mode === 'manual';
 

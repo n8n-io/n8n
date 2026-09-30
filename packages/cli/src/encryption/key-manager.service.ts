@@ -16,7 +16,7 @@ import {
 } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { isKeyRotationEnabled } from './key-rotation-flag';
 

@@ -411,19 +411,24 @@ export {
 	type RoleMembersResponse,
 } from './roles/role-members-response.dto';
 
-export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export {
 	OidcConfigurationPublicDto,
 	oidcConfigurationPublicSchema,
+	UpdateOidcConfigurationPublicDto,
 } from './oidc/oidc-configuration-public.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
+	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
+	DataTableColumnListPublicDto,
+	DataTableColumnPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
+	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
 	dataTablePublicSchema,
 	type DataTablePublic,
@@ -444,10 +449,6 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
-export {
-	updateDataTableColumnSchema,
-	type UpdateDataTableColumnDto,
-} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
@@ -586,6 +587,10 @@ export {
 	type OtlpProtocol,
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+export {
+	GetOtelSettingsQueryPublicDto,
+	OtelSettingsPublicDto,
+} from './otel/otel-settings-public.dto';
 
 export {
 	PromotionChangesDto,

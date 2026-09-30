@@ -10,6 +10,7 @@ import {
 	type EntityManager,
 	type SelectQueryBuilder,
 } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -37,6 +38,17 @@ export type AgentSummaryFilters = {
 export class AgentRepository extends Repository<Agent> {
 	constructor(dataSource: DataSource) {
 		super(Agent, dataSource.manager);
+	}
+
+	/**
+	 * Insert-only create. `save()` on an entity whose id is already set is an
+	 * upsert, so an id minted by the client that already names a row would
+	 * update that row instead of colliding on the primary key.
+	 */
+	async insertNew(agent: Agent): Promise<void> {
+		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
+		// cannot express, so cast at this boundary.
+		await this.insert(agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
