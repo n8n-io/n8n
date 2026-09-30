@@ -318,12 +318,9 @@ export async function resolveCredentials(
 	// parameters to its type. Returns the bound type.
 	const bindSoleAcceptedCredential = async (node: NodeJSON): Promise<string | undefined> => {
 		if (!ctx.nodeContractsEnabled || !node.name) return undefined;
-		let nodeDesc: Awaited<ReturnType<typeof ctx.nodeService.getDescription>> | undefined;
-		try {
-			nodeDesc = await ctx.nodeService.getDescription(node.type, node.typeVersion ?? 1);
-		} catch {
-			return undefined;
-		}
+		const nodeDesc = await ctx.nodeService
+			.getDescription(node.type, node.typeVersion ?? 1)
+			.catch(() => undefined);
 		const candidates = (nodeDesc?.credentials ?? [])
 			.filter(
 				(credential) =>

@@ -372,13 +372,8 @@ async function compileTypeScriptWorkflowSource(
 
 const SDK_IMPORT_STATEMENT = /^\s*import\s[^;]*?from\s*['"]@n8n\/workflow-sdk['"];?/gm;
 
-/**
- * Builds TypeScript SDK source with the SDK AST interpreter, so no sandbox is needed.
- * The interpreter rejects import statements and provides every SDK function, so the
- * SDK import is removed. Every other import still fails.
- */
-function compileTypeScriptWorkflowSourceOnHost(source: string): WorkflowSourceCompileResult {
-	let buildOutput: SandboxWorkflowBuildOutput | undefined;
+/** The sandbox build output for `source`, or the error message. */
+function buildOnHost(source: string): SandboxWorkflowBuildOutput | undefined | string {
 	try {
 		const wf = parseWorkflowCodeToBuilder(source.replace(SDK_IMPORT_STATEMENT, ''));
 		const validation = wf.validate();
@@ -392,13 +387,25 @@ function compileTypeScriptWorkflowSourceOnHost(source: string): WorkflowSourceCo
 			},
 			(_key, value: unknown) => (value === undefined ? null : value),
 		);
-		buildOutput = parseSandboxBuildOutput(stdout);
+		return parseSandboxBuildOutput(stdout);
 	} catch (error) {
+		return error instanceof Error ? error.message : String(error);
+	}
+}
+
+/**
+ * Builds TypeScript SDK source with the SDK AST interpreter, so no sandbox is needed.
+ * The interpreter rejects import statements and provides every SDK function, so the
+ * SDK import is removed. Every other import still fails.
+ */
+function compileTypeScriptWorkflowSourceOnHost(source: string): WorkflowSourceCompileResult {
+	const buildOutput = buildOnHost(source);
+	if (typeof buildOutput === 'string') {
 		return {
 			success: false,
 			reason: 'workflow_source_build_failed',
 			editable: true,
-			errors: [error instanceof Error ? error.message : String(error)],
+			errors: [buildOutput],
 			summary: 'Workflow source failed to build.',
 		};
 	}

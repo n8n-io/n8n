@@ -19,8 +19,9 @@ export function findContractForLegacyRequest(
 	if (candidates.length === 1 && !candidates[0].compile.discriminators) return candidates[0];
 	return candidates.find((contract) => {
 		const own = contract.compile.discriminators ?? {};
-		return (Object.keys(own) as Array<keyof typeof own>).every(
-			(key) => discriminators[key] === own[key],
+		const requested = Object.entries(discriminators);
+		return Object.entries(own).every(([key, value]) =>
+			requested.some(([name, given]) => name === key && given === value),
 		);
 	});
 }

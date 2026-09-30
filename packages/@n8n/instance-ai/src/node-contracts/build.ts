@@ -137,6 +137,9 @@ export function validateContractInput(value: unknown, schema: JsonSchema, path =
 	return issues;
 }
 
+/** Compile functions return plain JSON objects built from the contract input. */
+const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
+
 // ── Output resolution ────────────────────────────────────────────────────────
 
 /** The item shape a contract node emits for its configured parameters. */
@@ -198,8 +201,8 @@ export function compileContractNodes(json: WorkflowJSON): {
 			});
 		}
 		if (node.name) contractNodes.set(node.name, { contract, input });
-		// The compile functions only read the input and return a fresh parameters object.
-		const parameters = contract.compile.parameters(input) as IDataObject;
+		const compiled = contract.compile.parameters(input);
+		const parameters: IDataObject = isDataObject(compiled) ? compiled : {};
 		return {
 			...node,
 			type: contract.compile.type,

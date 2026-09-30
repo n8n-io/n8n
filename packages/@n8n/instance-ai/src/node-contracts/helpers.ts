@@ -112,13 +112,14 @@ function expressionToJs(expression: string): string {
 
 	const escape = (literal: string) =>
 		literal.replace(/[`\\]/g, '\\$&').replace(/\$\{/g, '\\$' + '{');
-	let js = '';
-	let last = 0;
-	for (const match of body.matchAll(INTERPOLATION)) {
-		js += `${escape(body.slice(last, match.index))}\${${match[1].trim()}}`;
-		last = match.index + match[0].length;
-	}
-	return `\`${js}${escape(body.slice(last))}\``;
+	const matches = [...body.matchAll(INTERPOLATION)];
+	const parts = matches.map((match, i) => {
+		const start = i === 0 ? 0 : (matches[i - 1].index ?? 0) + matches[i - 1][0].length;
+		return `${escape(body.slice(start, match.index))}\${${match[1].trim()}}`;
+	});
+	const tail = matches.at(-1);
+	const rest = body.slice(tail ? (tail.index ?? 0) + tail[0].length : 0);
+	return `\`${parts.join('')}${escape(rest)}\``;
 }
 
 function valueToJs(value: unknown): string {
