@@ -10,7 +10,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
@@ -19,6 +19,7 @@ import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-
 import { isDataTableDataset, toCaseSource } from '@/features/agents/utils/agentEvalCases.utils';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
 import InstanceAiTestAgentExamplesPanel from './InstanceAiTestAgentExamplesPanel.vue';
+import CapabilityChip from '@/features/agents/components/CapabilityChip.vue';
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
@@ -292,15 +293,25 @@ function onDontCreateEvals() {
 		</template>
 
 		<template v-else-if="phase === 'awaiting-sample-input'">
+			<CapabilityChip
+				:text="i18n.baseText('instanceAi.testAgentPreview.needsWork')"
+				status="fail"
+			/>
+			<EvalInitialSample :preview-input="previewInput" :preview-output="previewOutput ?? ''" />
+			<N8nText bold>{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}</N8nText>
 			<N8nInput
 				v-model="sampleInput"
-				type="textarea"
 				:autosize="{ minRows: 1, maxRows: 6 }"
-				:placeholder="i18n.baseText('instanceAi.testAgentPreview.sampleInputPlaceholder')"
+				:placeholder="i18n.baseText('instanceAi.testAgentPreview.inputCorrectionPlaceholder')"
 				data-test-id="instance-ai-test-agent-preview-sample-input"
 				@keydown.meta.enter="onSubmitSampleInput"
+				@keydown.enter="onSubmitSampleInput"
 				@keydown.ctrl.enter="onSubmitSampleInput"
-			/>
+			>
+				<template #prefix>
+					<N8nIcon icon="sparkle" size="xsmall" color="primary" />
+				</template>
+			</N8nInput>
 			<div :class="$style.options">
 				<N8nButton
 					variant="solid"
@@ -309,7 +320,7 @@ function onDontCreateEvals() {
 					data-test-id="instance-ai-test-agent-preview-submit-sample"
 					@click="onSubmitSampleInput"
 				>
-					{{ i18n.baseText('instanceAi.testAgentPreview.submit') }}
+					{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
 				</N8nButton>
 				<N8nButton
 					variant="outline"
@@ -317,7 +328,7 @@ function onDontCreateEvals() {
 					data-test-id="instance-ai-test-agent-preview-dont-create-evals"
 					@click="onDontCreateEvals"
 				>
-					{{ i18n.baseText('instanceAi.testAgentPreview.dontCreateEvals') }}
+					{{ i18n.baseText('instanceAi.testAgentPreview.skip') }}
 				</N8nButton>
 			</div>
 		</template>
