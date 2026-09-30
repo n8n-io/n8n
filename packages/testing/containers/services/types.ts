@@ -28,6 +28,7 @@ export const SERVICE_NAMES = [
 	'postgresExporter',
 	'cadvisor',
 	'sandbox',
+	'npmRegistry',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];

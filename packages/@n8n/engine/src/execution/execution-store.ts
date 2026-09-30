@@ -63,6 +63,9 @@ export interface ExecutionStore {
 	 */
 	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
 
+	/** End an execution on request, from any status that has not ended. */
+	cancelExecution(id: string): Promise<boolean>;
+
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when
 	 * every step it still owes is suspended, `running` when one step can run.

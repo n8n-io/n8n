@@ -1676,9 +1676,14 @@ export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
  * `closedTabs` holds the artifacts the user closed, so they do not reopen when
  * the thread loads again.
  */
+/** Most open tabs a stored thread tabs state holds. */
+export const MAX_INSTANCE_AI_THREAD_OPEN_TABS = 100;
+/** Most closed artifacts a stored thread tabs state remembers. */
+export const MAX_INSTANCE_AI_THREAD_CLOSED_TABS = 500;
+
 export const instanceAiThreadTabsStateSchema = z.object({
-	tabs: z.array(instanceAiThreadTabSchema).max(100),
-	closedTabs: z.array(instanceAiThreadTabRefSchema).max(500),
+	tabs: z.array(instanceAiThreadTabSchema).max(MAX_INSTANCE_AI_THREAD_OPEN_TABS),
+	closedTabs: z.array(instanceAiThreadTabRefSchema).max(MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
 	activeTab: instanceAiThreadTabRefSchema.nullable(),
 	/**
 	 * Whether the preview panel is open. Without it, the active tab does not
@@ -2880,6 +2885,9 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * budget can exceed the 15 minutes a plain run takes.
 	 */
 	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
+	/** Data tables the caller reseeded with this scenario's rows. A Data Table read
+	 *  bound to one of them reads the table instead of pinned rows. */
+	seededDataTableIds: z.array(z.string().min(1)).max(20).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

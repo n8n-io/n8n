@@ -4,7 +4,7 @@ import { SettingsRepository } from '@n8n/db';
 
 import config from '@/config';
 import { AiUsageService } from '@/services/ai-usage.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 vi.mock('@/config', () => ({ default: { set: vi.fn() } }));
 

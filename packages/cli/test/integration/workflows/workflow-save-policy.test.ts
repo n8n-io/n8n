@@ -6,6 +6,8 @@ import { PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
 import { cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwnerWithApiKey } from '../shared/db/users';
@@ -68,6 +70,12 @@ let owner: User;
 let editorAgent: SuperAgentTest;
 let publicApiAgent: SuperAgentTest;
 let workflowRepository: WorkflowRepository;
+const eventBus = mockInstance(MessageEventBus);
+
+const blockEvents = () =>
+	eventBus.sendAuditEvent.mock.calls
+		.map(([options]) => options)
+		.filter((options) => options.eventName === 'n8n.audit.policy.decision.blocked');
 
 const truncate = async () =>
 	await testDb.truncate([
@@ -86,6 +94,7 @@ const truncate = async () =>
 beforeAll(async () => {
 	await utils.initNodeTypes();
 	workflowRepository = Container.get(WorkflowRepository);
+	Container.get(LogStreamingEventRelay).init();
 
 	// The public API's OpenAPI validator compiles the whole spec on the first authenticated
 	// request that reaches it (~3s). Spend it here, under the 30s hook timeout, so it can't
@@ -99,6 +108,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	mode = 'allow';
+	eventBus.sendAuditEvent.mockClear();
 	await truncate();
 	await cleanupRolesAndScopes();
 
@@ -126,6 +136,31 @@ describe('with a check that denies every save', () => {
 			meta: { violations: [DENIAL] },
 		});
 		await expect(workflowRepository.count()).resolves.toBe(0);
+	});
+
+	test('editor create sends one audit event naming the point, violation and user', async () => {
+		await editorAgent.post('/workflows').send(editorPayload);
+
+		expect(blockEvents()).toHaveLength(1);
+		expect(blockEvents()[0].payload).toMatchObject({
+			point: 'workflowSave',
+			outcome: 'violation',
+			checkIds: expect.arrayContaining([CHECK_ID]),
+			violations: [
+				{
+					checkId: CHECK_ID,
+					kind: DENIAL.kind,
+					subject: DENIAL.subject,
+					subjectType: DENIAL.subjectType,
+					scope: null,
+					matchedRuleId: null,
+				},
+			],
+			policyVersions: [],
+			actorType: 'user',
+			userId: owner.id,
+			_email: owner.email,
+		});
 	});
 
 	test('editor update fails with 403 and the violations', async () => {
@@ -219,4 +254,12 @@ test('a check that breaks blocks the save without leaking violations', async () 
 	const { meta } = response.body as { meta: Record<string, unknown> };
 	expect(meta.violations).toBeUndefined();
 	await expect(workflowRepository.count()).resolves.toBe(0);
+
+	expect(blockEvents()).toHaveLength(1);
+	expect(blockEvents()[0].payload).toMatchObject({
+		outcome: 'checkFailure',
+		correlationIds: meta.correlationIds,
+		userId: owner.id,
+	});
+	expect(JSON.stringify(blockEvents()[0].payload)).not.toContain('failed on purpose');
 });

@@ -208,6 +208,41 @@ export class AuthService {
 		};
 	}
 
+	/**
+	 * Gates a route on the auth cookie's signature and expiry, without the revocation
+	 * or user lookups, so a request costs no database query.
+	 */
+	createAssetAuthMiddleware() {
+		return (req: Request, res: Response, next: NextFunction) => {
+			const token = this.getCookieToken(req);
+
+			if (token) {
+				try {
+					const payload = this.jwtService.verify<unknown>(token, { algorithms: ['HS256'] });
+					if (this.isAuthJwtPayload(payload)) {
+						next();
+						return;
+					}
+				} catch {}
+			}
+
+			if (process.env.N8N_PREVIEW_MODE === 'true') {
+				next();
+				return;
+			}
+
+			res.sendStatus(404);
+		};
+	}
+
+	/**
+	 * Every JWT this instance signs shares one secret, so a valid signature alone does
+	 * not make a token an auth cookie. Only that cookie carries both `id` and `hash`.
+	 */
+	private isAuthJwtPayload(payload: unknown): payload is AuthJwtPayload {
+		return isRecord(payload) && typeof payload.id === 'string' && typeof payload.hash === 'string';
+	}
+
 	getCookieToken(req: Request) {
 		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
 		if (typeof req.cookies === 'object' && req.cookies !== null) {

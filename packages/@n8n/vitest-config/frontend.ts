@@ -4,6 +4,7 @@ import type { InlineConfig } from 'vitest/node';
 
 import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
+import { profilingConfig, profilingReporters } from './profiling.js';
 
 // Resolves to the empty component that stands in for `.svg` imports (see below).
 const svgStub = fileURLToPath(new URL('./svg-stub.js', import.meta.url));
@@ -11,6 +12,7 @@ const svgStub = fileURLToPath(new URL('./svg-stub.js', import.meta.url));
 export const createVitestConfig = (options: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
 		test: {
+			...profilingConfig(),
 			// Redirect the node-icon `.svg` imports (the ~80 files under
 			// `N8nIcon/nodes/`) to an inert component. `node-icons.ts` is imported
 			// lazily (on the first `node:*` icon render), so its bulk async
@@ -34,7 +36,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// spies set up once don't leak across tests. Packages may override via `options`.
 			restoreMocks: true,
 			environment: 'jsdom',
-			// CI shards the frontend suite 2-way (`--shard=N/2`). A package with fewer
+			// CI shards the frontend suite across runners. A package with fewer
 			// test files than shards leaves a shard with nothing to run, and vitest
 			// treats that as an error — so a sparse package (a freshly scaffolded
 			// module, a config-only package) would fail outright. Default it on here so
@@ -45,7 +47,6 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// Externalized, pnpm can link them to a second vitest copy. Vitest 5 bundles
 			// `expect` into `vitest`, so a second copy breaks snapshots and `.rejects`.
 			server: { deps: { inline: ['vitest-mock-extended', '@testing-library/jest-dom'] } },
-			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },
 			coverage: {
 				enabled: false,
@@ -60,6 +61,9 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 				},
 			},
 			...options,
+			reporters: profilingReporters(
+				options.reporters ?? (process.env.CI === 'true' ? ['default', 'junit'] : ['default']),
+			),
 		},
 	});
 

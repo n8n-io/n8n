@@ -24,7 +24,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
 
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);

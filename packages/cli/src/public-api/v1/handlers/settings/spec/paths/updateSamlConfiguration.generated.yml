@@ -29,6 +29,9 @@ requestBody:
               userPrincipalName:
                 type: string
                 description: SAML attribute mapped to the user's principal name.
+              emailVerified:
+                type: string
+                description: SAML attribute that states whether the identity provider verified the user's email. Accepted values are `true` and `false`, case-insensitive. Use an empty string when unused.
               n8nInstanceRole:
                 type: string
                 description: SAML attribute mapped to the n8n instance role. Use an empty string when unused.
@@ -42,6 +45,7 @@ requestBody:
               - firstName
               - lastName
               - userPrincipalName
+              - emailVerified
               - n8nInstanceRole
               - n8nProjectRoles
             additionalProperties: false
@@ -83,6 +87,10 @@ requestBody:
             type: boolean
             description: Whether signed SAML messages are required.
             example: true
+          emailVerifiedRequired:
+            type: boolean
+            description: Whether the identity provider must assert that the user's email address is verified before a login is linked to an existing user by email. When disabled, only an explicit negative assertion is rejected.
+            example: false
           signingPrivateKey:
             type: string
             description: PEM-encoded private key for signing SAML AuthnRequests. Use an empty string to clear an existing key, or the redaction placeholder from a prior GET to leave it unchanged.
@@ -148,6 +156,7 @@ requestBody:
           - authnRequestsSigned
           - wantAssertionsSigned
           - wantMessageSigned
+          - emailVerifiedRequired
           - signingPrivateKey
           - signingCertificate
           - acsBinding

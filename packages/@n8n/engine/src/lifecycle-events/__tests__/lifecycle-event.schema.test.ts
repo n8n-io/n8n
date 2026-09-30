@@ -25,6 +25,7 @@ const every: LifecycleEvent[] = [
 	{ type: 'execution:started', ...executionEvent, mode: 'manual', hostMode: 'manual' },
 	{ type: 'execution:completed', ...executionEvent },
 	{ type: 'execution:failed', ...executionEvent },
+	{ type: 'execution:cancelled', ...executionEvent },
 	{ type: 'step:started', ...stepEvent },
 	{ type: 'step:completed', ...stepEvent, outputs: [[{ json: { x: 1 } }], null] },
 	{ type: 'step:failed', ...stepEvent },
@@ -58,7 +59,7 @@ describe('lifecycleEventSchema', () => {
 
 	it('rejects an event type the engine cannot emit yet', () => {
 		expect(
-			lifecycleEventSchema.safeParse({ type: 'execution:cancelled', ...executionEvent }).success,
+			lifecycleEventSchema.safeParse({ type: 'execution:paused', ...executionEvent }).success,
 		).toBe(false);
 	});
 

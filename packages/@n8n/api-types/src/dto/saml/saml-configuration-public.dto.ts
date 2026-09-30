@@ -20,6 +20,10 @@ const mappingShape = {
 	userPrincipalName: z.string().openapi({
 		description: "SAML attribute mapped to the user's principal name.",
 	}),
+	emailVerified: z.string().openapi({
+		description:
+			"SAML attribute that states whether the identity provider verified the user's email. An empty string when unused.",
+	}),
 	n8nInstanceRole: z.string().openapi({
 		description: 'SAML attribute mapped to the n8n instance role.',
 	}),
@@ -97,6 +101,11 @@ export const samlConfigurationPublicSchema = z
 			description: 'Whether signed SAML messages are required.',
 			example: true,
 		}),
+		emailVerifiedRequired: z.boolean().openapi({
+			description:
+				"Whether the identity provider must assert that the user's email address is verified before a login is linked to an existing user by email. When disabled, only an explicit negative assertion is rejected.",
+			example: false,
+		}),
 		signingPrivateKey: z.string().openapi({
 			description:
 				'PEM-encoded private key for signing SAML AuthnRequests. Redacted on read when set; never echoed back in plaintext. Use an empty string when unset.',
@@ -136,6 +145,10 @@ const updateMappingSchema = z
 		}),
 		userPrincipalName: z.string().openapi({
 			description: "SAML attribute mapped to the user's principal name.",
+		}),
+		emailVerified: z.string().openapi({
+			description:
+				"SAML attribute that states whether the identity provider verified the user's email. Accepted values are `true` and `false`, case-insensitive. Use an empty string when unused.",
 		}),
 		n8nInstanceRole: z.string().openapi({
 			description:
@@ -204,6 +217,11 @@ const updateSamlConfigurationPublicSchema = z
 		wantMessageSigned: z.boolean().openapi({
 			description: 'Whether signed SAML messages are required.',
 			example: true,
+		}),
+		emailVerifiedRequired: z.boolean().openapi({
+			description:
+				"Whether the identity provider must assert that the user's email address is verified before a login is linked to an existing user by email. When disabled, only an explicit negative assertion is rejected.",
+			example: false,
 		}),
 		signingPrivateKey: z.string().openapi({
 			description:
