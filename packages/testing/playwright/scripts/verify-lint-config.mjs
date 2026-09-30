@@ -3,8 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const packageDirectory = join(root, 'packages/testing/playwright');
+const packageDirectory = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(join(packageDirectory, 'package.json'));
 const playwrightPlugin = require('eslint-plugin-playwright');
 const oxlintConfig = await import(pathToFileURL(join(packageDirectory, 'oxlint.config.mts')).href);
