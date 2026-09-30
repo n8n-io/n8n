@@ -1,7 +1,7 @@
 import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThanOrEqual, Not } from '@n8n/typeorm';
+import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -21,7 +21,7 @@ type AgentExecutionFinalizationValues = Pick<
 	Partial<
 		Pick<
 			AgentExecution,
-			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
+			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'hitlStatus'
 		>
 	>;
 
@@ -77,12 +77,38 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async updateTimelineIfRunning(
 		executionId: string,
 		timeline: AgentExecution['timeline'],
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update({ id: executionId, status: 'running' }, {
-			timeline,
-			updatedAt: new Date(),
-		} as QueryDeepPartialEntity<AgentExecution>);
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, status: 'running' },
+			{
+				timeline,
+				updatedAt: new Date(),
+			} as QueryDeepPartialEntity<AgentExecution>,
+		);
 		return result.affected === 1;
+	}
+
+	async findSteerable(threadId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOne(AgentExecution, {
+			select: ['id'],
+			where: {
+				threadId,
+				status: 'running',
+				acceptsSteering: true,
+			},
+		});
+	}
+
+	async closeSteering(threadId: string, executionId: string, ctx: OperationContext) {
+		await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, threadId, acceptsSteering: true },
+			{
+				acceptsSteering: false,
+			},
+		);
 	}
 
 	async updateIfRunning(
@@ -90,16 +116,44 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		values: AgentExecutionFinalizationValues,
 		staleBefore?: Date,
 		ctx: OperationContext = {},
+		costIncrement?: number,
 	): Promise<boolean> {
-		const result = await this.managerFor(ctx).update(
-			AgentExecution,
-			{
-				id: executionId,
-				status: 'running',
-				...(staleBefore ? { updatedAt: LessThanOrEqual(staleBefore) } : {}),
-			},
-			values as QueryDeepPartialEntity<AgentExecution>,
+		const current = await this.managerFor(ctx).findOne(AgentExecution, {
+			select: ['timeline'],
+			where: { id: executionId, status: 'running' },
+		});
+		const inputIds = new Set(
+			values.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
 		);
+		// A failed commit acknowledgement must not let terminal recording erase durable input.
+		if (
+			current?.timeline?.some((event) => event.type === 'input' && !inputIds.has(event.messageId))
+		)
+			return false;
+		// Build the SET values once. `cost` is never set as a literal here —
+		// the only way to move cost is the additive `costIncrement` fragment
+		// below, which preserves any in-flight side-call `incrementCost` calls
+		// (`COALESCE(cost, 0) + :costIncrement` instead of `cost = :value`).
+		const setValues = {
+			...values,
+			acceptsSteering: false,
+		} as QueryDeepPartialEntity<AgentExecution>;
+		const params: Record<string, unknown> = { executionId, status: 'running' };
+		if (costIncrement !== undefined && costIncrement > 0) {
+			setValues.cost = () => 'COALESCE(cost, 0) + :costIncrement';
+			params.costIncrement = costIncrement;
+		}
+		const qb = this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(AgentExecution)
+			.set(setValues)
+			.where('id = :executionId', { executionId })
+			.andWhere('status = :status', { status: 'running' });
+		if (staleBefore) {
+			qb.andWhere('updatedAt <= :staleBefore', { staleBefore });
+			params.staleBefore = staleBefore;
+		}
+		const result = await qb.setParameters(params).execute();
 		return result.affected === 1;
 	}
 
@@ -272,6 +326,36 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.set({ model })
 			.whereInIds(executionIds)
 			.execute();
+	}
+
+	/**
+	 * Atomically add a side-call model cost (title generation, observation-log
+	 * observer/reflector, episodic-memory model calls) onto an execution row.
+	 * Side calls can settle before or after the terminal row write, so this is
+	 * an unconditional increment — not gated on `status = 'running'`. `cost` is
+	 * nullable (an execution may have no priced main-turn usage yet), so
+	 * `COALESCE` keeps the increment from collapsing to `NULL + :cost = NULL`.
+	 * Pass the `ctx` from `TransactionRunner.run` to apply the increment inside
+	 * the same transaction as the matching thread-total update.
+	 */
+	async incrementCost(
+		executionId: string,
+		cost: number,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		if (cost <= 0) return;
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(AgentExecution)
+			.set({ cost: () => 'COALESCE(cost, 0) + :cost' })
+			.where('id = :executionId', { executionId })
+			.setParameters({ cost })
+			.execute();
+	}
+
+	/** Delete every run in a thread. Caller must verify ownership first. */
+	async deleteByThreadId(threadId: string): Promise<void> {
+		await this.delete({ threadId });
 	}
 
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */

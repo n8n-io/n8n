@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import '@/zod-alias-support';
 
 import { Logger } from '@n8n/backend-common';
@@ -14,7 +15,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

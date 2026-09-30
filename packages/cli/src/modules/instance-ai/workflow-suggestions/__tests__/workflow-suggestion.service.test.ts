@@ -1,16 +1,18 @@
 import type { WorkflowSuggestionBaseline, WorkflowSuggestionGraph } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
 import {
 	WorkflowEntity,
 	type OperationContext,
+	type SharedWorkflow,
 	type Transaction,
 	type TransactionRunner,
 	type User,
+	type UserRepository,
 } from '@n8n/db';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import type { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
@@ -18,16 +20,18 @@ import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 import type { WorkflowSuggestionPublicationService } from '../workflow-suggestion-publication.service';
 
 const suggestions = mock<WorkflowSuggestionRepository>();
+const users = mock<UserRepository>();
 const publication = mock<WorkflowPublicationStatusService>();
-const modules = mock<ModuleRegistry>();
+const finder = mock<WorkflowFinderService>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
 const suggestionPublication = mock<WorkflowSuggestionPublicationService>();
 const service = new WorkflowSuggestionService(
 	suggestions,
+	users,
 	publication,
 	tx,
-	modules,
+	finder,
 	suggestionPublication,
 );
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
@@ -51,8 +55,9 @@ let suggestion: WorkflowSuggestion;
 
 beforeEach(async () => {
 	vi.resetAllMocks();
-	modules.isActive.mockReturnValue(true);
+	users.findByIdWithRole.mockResolvedValue(user);
 	suggestions.findEditor.mockResolvedValue(user);
+	suggestions.getLatestPublicationId.mockResolvedValue(null);
 	tx.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 	workflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf',
@@ -64,6 +69,7 @@ beforeEach(async () => {
 		isArchived: false,
 		settings: { executionTimeout: 30 },
 		nodeGroups: [],
+		shared: [mock<SharedWorkflow>({ role: 'workflow:owner', projectId: 'project' })],
 	});
 	baseline = {
 		workflowId: workflow.id,
@@ -100,6 +106,7 @@ beforeEach(async () => {
 			errorContext: null,
 		},
 	});
+	finder.findWorkflowForUser.mockResolvedValue(workflow);
 	suggestions.getSuggestion.mockResolvedValue(suggestion);
 	suggestions.createPending.mockResolvedValue(suggestion);
 	suggestions.readWorkflowTarget.mockResolvedValue({
@@ -122,8 +129,9 @@ it('captures a detached baseline without creating a suggestion', async () => {
 	captured.original.settings!.executionTimeout = 60;
 	expect(workflow.settings?.executionTimeout).toBe(30);
 	expect(suggestions.createPending).not.toHaveBeenCalled();
-	expect(tx.run).toHaveBeenCalledWith({}, expect.any(Function));
-	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, ctx);
+	expect(tx.run).not.toHaveBeenCalled();
+	expect(suggestions.readWorkflowTarget).not.toHaveBeenCalled();
+	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, {});
 });
 
 it.each(['unpublished', 'saved changes', 'archived', 'publishing'] as const)(
@@ -335,22 +343,28 @@ it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] a
 	},
 );
 
-it('blocks capture, final preparation, and review without current edit access', async () => {
-	suggestions.findEditor.mockResolvedValue(null);
-	await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
-	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
-		'edit access',
-	);
-	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
-		'edit access',
-	);
-	expect(suggestions.createPending).not.toHaveBeenCalled();
-	expect(suggestions.getSuggestion).not.toHaveBeenCalled();
-});
+it.each(['missing', 'disabled', 'no edit access'] as const)(
+	'blocks capture, final preparation, and review for a user with %s',
+	async (failure) => {
+		if (failure === 'missing') users.findByIdWithRole.mockResolvedValue(null);
+		else if (failure === 'disabled')
+			users.findByIdWithRole.mockResolvedValue(mock<User>({ id: user.id, disabled: true }));
+		else finder.findWorkflowForUser.mockResolvedValue(null);
+		await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
+		await expect(
+			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+		).rejects.toThrow('edit access');
+		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
+			'edit access',
+		);
+		expect(suggestions.createPending).not.toHaveBeenCalled();
+		expect(suggestions.getSuggestion).not.toHaveBeenCalled();
+	},
+);
 
 it('lets another current editor review without publish permission', async () => {
 	const viewer = mock<User>({ id: 'another-editor', disabled: false });
-	suggestions.findEditor.mockResolvedValue(viewer);
+	users.findByIdWithRole.mockResolvedValue(viewer);
 	const detail = await service.getProposal(viewer, 'project', workflow.id, suggestion.id);
 	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
 	expect(detail.backgroundUserId).toBe(user.id);
@@ -362,29 +376,15 @@ it('lets another current editor review without publish permission', async () => 
 		},
 		ctx,
 	);
-	expect(suggestions.findEditor).toHaveBeenCalledWith(viewer.id, workflow.id, {});
+	expect(finder.findWorkflowForUser).toHaveBeenCalledWith(workflow.id, viewer, [
+		'workflow:read',
+		'workflow:update',
+	]);
 });
 
 it('rejects review after ownership changes', async () => {
-	suggestions.readWorkflowTarget.mockResolvedValue({
-		workflow,
-		projectId: 'other',
-		publicationId: null,
-	});
+	workflow.shared[0].projectId = 'other';
 	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 		'not found',
-	);
-});
-
-it('blocks operations when the Instance AI module is disabled', async () => {
-	const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Fix' });
-	modules.isActive.mockImplementation((moduleName) => moduleName !== 'instance-ai');
-	await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('not enabled');
-	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
-		'not enabled',
-	);
-	await expect(service.createSuggestion(prepared)).rejects.toThrow('not enabled');
-	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
-		'not enabled',
 	);
 });

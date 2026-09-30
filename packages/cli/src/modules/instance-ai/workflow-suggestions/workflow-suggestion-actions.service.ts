@@ -78,7 +78,7 @@ export class WorkflowSuggestionActionsService {
 						source: 'n8n-ai',
 						guardedUpdate: {
 							beforeSave: async (ctx, prepared) => {
-								const target = await this.suggestions.readWorkflowTarget(workflowId, ctx);
+								const target = await this.suggestions.readWorkflowTargetForApply(workflowId, ctx);
 								const current = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 								if (
 									current.state !== 'pending' ||

@@ -15,11 +15,26 @@ test.describe(
 				lastName: 'Member',
 			});
 
-			await n8n.navigate.toWorkflow('new');
-			const workflowName = `Test Workflow ${nanoid()}`;
-			await n8n.canvas.setWorkflowName(workflowName);
-			await n8n.canvas.addNode('Manual Trigger');
+			// Create the workflow through the API. On an unsaved workflow the share
+			// modal saves the workflow itself and races the canvas autosave for the
+			// same POST /workflows; the loser gets a 400 and the modal stays open on a
+			// "save changes?" prompt. This test proves the sharing, not the first save.
+			const workflow = await api.workflows.createWorkflow({
+				name: `Test Workflow ${nanoid()}`,
+				nodes: [
+					{
+						id: 'manual-trigger',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [100, 200],
+						parameters: {},
+						typeVersion: 1,
+					},
+				],
+				connections: {},
+			});
 
+			await n8n.start.fromExistingWorkflow(workflow.id);
 			await n8n.canvas.openShareModal();
 			await expect(n8n.workflowSharingModal.container).toBeVisible();
 			await n8n.workflowSharingModal.addUser(member.email);
@@ -27,7 +42,7 @@ test.describe(
 
 			const memberN8n = await n8n.start.withUser(member);
 			await memberN8n.navigate.toWorkflows();
-			await expect(memberN8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
+			await expect(memberN8n.workflows.cards.getWorkflow(workflow.name)).toBeVisible();
 		});
 
 		test('should share workflow with another user via API', async ({ api }) => {

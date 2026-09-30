@@ -5,6 +5,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
+	WorkflowEntity,
 	ProjectRepository,
 	GLOBAL_OWNER_ROLE,
 	SharedWorkflowRepository,
@@ -222,4 +223,54 @@ it('requires detail requests to match the suggestion workflow and project', asyn
 	const url = `/projects/${project.id}/workflows/${baseline.workflowId}/suggestions/${suggestion.id}`;
 	await testServer.authAgentFor(otherUser).get(url).expect(403);
 	await testServer.authlessAgent.get(url).expect(401);
+});
+
+describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves', () => {
+	let peer: DataSource;
+
+	beforeAll(async () => {
+		// A separate pool keeps this check independent of the application pool size.
+		peer = await new DataSource({
+			...Container.get(DataSource).options,
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+		}).initialize();
+	});
+
+	afterAll(async () => {
+		if (peer?.isInitialized) await peer.destroy();
+	});
+
+	it('preserves an edit made after the final baseline check without blocking it', async () => {
+		const { saved, workflows, baseline, graph } = await fixture();
+		const prepared = await service.prepareSuggestion(baseline, {
+			graph,
+			explanation: 'Sample fix',
+		});
+		const createPending = suggestions.createPending.bind(suggestions);
+		const insert = vi
+			.spyOn(suggestions, 'createPending')
+			.mockImplementationOnce(async (...args) => {
+				await peer.transaction(async (manager) => {
+					await manager.query("SET LOCAL lock_timeout = '250ms'");
+					await manager.update(WorkflowEntity, saved.id, { settings: { executionTimeout: 60 } });
+				});
+				return await createPending(...args);
+			});
+		try {
+			const suggestion = await service.createSuggestion(prepared);
+			expect(suggestion.expectedBaseline).toEqual(baseline.expectedBaseline);
+			expect(suggestion.payload.original).toEqual(baseline.original);
+			expect(suggestion.payload.candidate).toEqual(graph);
+			expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
+			expect(await workflows.findOneByOrFail({ id: saved.id })).toMatchObject({
+				nodes: saved.nodes,
+				connections: saved.connections,
+				settings: { executionTimeout: 60 },
+			});
+		} finally {
+			insert.mockRestore();
+		}
+	});
 });

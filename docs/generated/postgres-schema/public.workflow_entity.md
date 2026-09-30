@@ -352,7 +352,7 @@ erDiagram
   varchar_16_ closedReason
   timestamp_3__with_time_zone createdAt
   json expectedBaseline
-  varchar id
+  varchar_36_ id
   json payload
   varchar_36_ projectId FK
   json publication

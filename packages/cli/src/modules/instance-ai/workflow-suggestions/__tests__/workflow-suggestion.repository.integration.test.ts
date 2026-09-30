@@ -153,7 +153,7 @@ it.each([
 	},
 );
 
-it('leaves workflow and history unchanged and reads current saves at the guarded boundary', async () => {
+it('leaves workflow and history unchanged and reads the current saved workflow', async () => {
 	const workflows = Container.get(WorkflowRepository);
 	const histories = Container.get(WorkflowHistoryRepository);
 	const before = await workflows.findOneByOrFail({ id: workflow.id });
@@ -173,7 +173,7 @@ it('leaves workflow and history unchanged and reads current saves at the guarded
 	});
 });
 
-describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL row locks', () => {
+describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL Apply row locks', () => {
 	let peer: DataSource;
 
 	beforeAll(async () => {
@@ -190,21 +190,19 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL row locks', ()
 	});
 
 	async function assertWriteBlocked(write: (manager: EntityManager) => Promise<unknown>) {
-		const suggestion = await tx.run({}, async (ctx) => {
-			await suggestions.readWorkflowTarget(workflow.id, ctx);
+		await tx.run({}, async (ctx) => {
+			await suggestions.readWorkflowTargetForApply(workflow.id, ctx);
 			await expect(
 				peer.transaction(async (manager) => {
 					await manager.query("SET LOCAL lock_timeout = '250ms'");
 					await write(manager);
 				}),
 			).rejects.toThrow('lock timeout');
-			return await suggestions.createPending(baseline(), payload(), ctx);
 		});
 		await peer.transaction(write);
-		expect(suggestion.state).toBe('pending');
 	}
 
-	it('holds a workflow save until the suggestion transaction commits', async () => {
+	it('holds a workflow save until the Apply transaction commits', async () => {
 		await assertWriteBlocked(
 			async (manager) =>
 				await manager.update(WorkflowEntity, workflow.id, {
@@ -213,7 +211,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL row locks', ()
 		);
 	});
 
-	it('holds a transfer to an existing sharing until the suggestion transaction commits', async () => {
+	it('holds a transfer to an existing sharing until the Apply transaction commits', async () => {
 		const destination = await createTeamProject();
 		await peer.manager.insert(SharedWorkflow, {
 			workflowId: workflow.id,
@@ -232,7 +230,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL row locks', ()
 		const { read } = await peer.transaction(async (manager) => {
 			await manager.delete(SharedWorkflow, { workflowId: workflow.id, projectId: project.id });
 			const read = Promise.allSettled([
-				tx.run({}, async (ctx) => await suggestions.readWorkflowTarget(workflow.id, ctx)),
+				tx.run({}, async (ctx) => await suggestions.readWorkflowTargetForApply(workflow.id, ctx)),
 			]);
 			await vi.waitFor(async () => {
 				const rows = await manager.query<Array<{ blocked: boolean }>>(
@@ -261,7 +259,7 @@ it('reverts and reapplies the suggestion schema', async () => {
 	// Template databases skip migrate(), which normally installs the DSL wrappers.
 	postgresMigrations.forEach(wrapMigration);
 	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790667560304',
+		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790759505518',
 	);
 	if (!migration) throw new Error('The workflow suggestion migration is not registered.');
 	// Test this schema directly. Newer migrations must remain applied.

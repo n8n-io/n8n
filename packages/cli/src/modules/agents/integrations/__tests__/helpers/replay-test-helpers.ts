@@ -248,7 +248,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
 		if (payload.kind !== 'integration') throw new Error('Expected integration input');
 		pending.push({ payload: deepCopy(payload), threadId });
-		return mock<AgentMessageQueue>();
+		return { status: 'accepted', item: mock<AgentMessageQueue>() };
 	});
 
 	const bridge = new AgentChatBridge(

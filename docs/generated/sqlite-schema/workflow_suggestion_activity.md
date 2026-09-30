@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_suggestion_activity" ("id" varchar PRIMARY KEY NOT NULL, "suggestionId" varchar NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "actorId" varchar, CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant', 'human', 'system')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_suggestion_activity_actor" FOREIGN KEY ("actorId") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_suggestion_activity" ("id" varchar(36) PRIMARY KEY NOT NULL, "suggestionId" varchar(36) NOT NULL, "action" varchar(16) NOT NULL, "author" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "actorId" varchar, CONSTRAINT "CHK_workflow_suggestion_activity_action" CHECK ("action" IN ('submitted', 'applied', 'discarded', 'outdated', 'published', 'publish_failed')), CONSTRAINT "CHK_workflow_suggestion_activity_author" CHECK ("author" IN ('assistant', 'human', 'system')), CONSTRAINT "FK_c9a28e6f7349dc4950aeb858692" FOREIGN KEY ("suggestionId") REFERENCES "workflow_suggestion" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_suggestion_activity_actor" FOREIGN KEY ("actorId") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -19,8 +19,8 @@ CREATE TABLE "workflow_suggestion_activity" ("id" varchar PRIMARY KEY NOT NULL, 
 | actorId | varchar |  | true |  | [user](user.md) |  |
 | author | varchar(16) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar |  | false |  |  |  |
-| suggestionId | varchar |  | false |  | [workflow_suggestion](workflow_suggestion.md) |  |
+| id | varchar(36) |  | false |  |  |  |
+| suggestionId | varchar(36) |  | false |  | [workflow_suggestion](workflow_suggestion.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -55,8 +55,8 @@ erDiagram
   varchar actorId FK
   varchar_16_ author
   datetime_3_ createdAt
-  varchar id PK
-  varchar suggestionId FK
+  varchar_36_ id PK
+  varchar_36_ suggestionId FK
   datetime_3_ updatedAt
 }
 "user" {
@@ -83,7 +83,7 @@ erDiagram
   varchar_16_ closedReason
   datetime_3_ createdAt
   TEXT expectedBaseline
-  varchar id PK
+  varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
   TEXT publication

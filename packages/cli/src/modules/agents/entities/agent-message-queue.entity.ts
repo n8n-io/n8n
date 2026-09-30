@@ -12,11 +12,16 @@ import {
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
 import { AgentExecution } from './agent-execution.entity';
-import type { AgentQueuedMessage } from '../types/agent-queued-message';
+import { AgentMessageEntity } from './agent-message.entity';
+import type { AgentQueueDispatch } from '../types/agent-queued-message';
 
 @Entity({ name: 'agent_message_queue' })
 @Index(['threadId', 'id'])
 @Index(['threadId'], { unique: true, where: '"executionId" IS NOT NULL' })
+@Index(['steeringExecutionId', 'steeringOrder'], {
+	unique: true,
+	where: '"steeringExecutionId" IS NOT NULL',
+})
 export class AgentMessageQueue extends WithTimestamps {
 	@Generated()
 	@PrimaryColumn({
@@ -33,11 +38,22 @@ export class AgentMessageQueue extends WithTimestamps {
 	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
 
-	@Column({ type: 'varchar', length: 32, comment: 'Preview or integration source' })
-	source: string;
+	@ManyToOne(() => AgentMessageEntity, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'messageId', foreignKeyConstraintName: 'FK_agent_message_queue_messageId' })
+	message: Relation<AgentMessageEntity>;
 
-	@JsonColumn({ comment: 'Input, attachment references, identity, and reply context' })
-	payload: AgentQueuedMessage;
+	@Index({ unique: true })
+	@Column({
+		type: 'varchar',
+		length: 36,
+		comment: 'Canonical input created when the queue accepts it',
+	})
+	messageId: string;
+
+	@JsonColumn({
+		comment: 'Dispatch, authorization, and reply context. Input is stored on the message',
+	})
+	payload: AgentQueueDispatch;
 
 	@ManyToOne(() => AgentExecution, { nullable: true, onDelete: 'NO ACTION' })
 	@JoinColumn({ name: 'executionId' })
@@ -51,4 +67,19 @@ export class AgentMessageQueue extends WithTimestamps {
 		comment: 'Current execution; NULL means pending',
 	})
 	executionId: string | null;
+
+	@ManyToOne(() => AgentExecution, { nullable: true, onDelete: 'NO ACTION' })
+	@JoinColumn({ name: 'steeringExecutionId' })
+	steeringExecution: Relation<AgentExecution> | null;
+
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Execution reserved to consume this input',
+	})
+	steeringExecutionId: string | null;
+
+	@Column({ type: 'int', nullable: true, comment: 'Acceptance order among outstanding steers' })
+	steeringOrder: number | null;
 }

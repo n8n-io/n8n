@@ -8,6 +8,7 @@ import {
 	dataTableColumnFieldDocs,
 	dataTableFieldDocs,
 	dataTableListFieldDocs,
+	updateDataTableColumnFieldDocs,
 	updateDataTableFieldDocs,
 } from './data-table-public.openapi';
 import {
@@ -67,4 +68,46 @@ const dataTableListColumnPublicSchema = dataTableColumnPublicSchema.extend({
 	dataTableId: z.string().openapi(dataTableColumnFieldDocs.dataTableId),
 });
 
+export class DataTableColumnPublicDto extends Z.class(dataTableListColumnPublicSchema.shape) {}
+
 export class DataTableColumnListPublicDto extends Z.array(dataTableListColumnPublicSchema) {}
+
+export class CreateDataTableColumnPublicDto extends Z.class({
+	name: dataTableColumnNameSchema.openapi(createDataTableColumnFieldDocs.name),
+	type: dataTableColumnTypeSchema.openapi(createDataTableColumnFieldDocs.type),
+	index: z.number().int().min(0).openapi(createDataTableColumnFieldDocs.index).optional(),
+}) {}
+
+// Legacy `updateColumnRequest.yml` requires at least one of `name`/`index`.
+const updateDataTableColumnPublicSchema = z
+	.object({
+		name: dataTableColumnNameSchema.openapi(updateDataTableColumnFieldDocs.name).optional(),
+		index: z.number().int().min(0).openapi(updateDataTableColumnFieldDocs.index).optional(),
+	})
+	.strict()
+	.refine(({ name, index }) => name !== undefined || index !== undefined, {
+		message: 'At least one field is required',
+	})
+	.openapi({ minProperties: 1 });
+
+type UpdateDataTableColumnPublic = z.infer<typeof updateDataTableColumnPublicSchema>;
+
+export class UpdateDataTableColumnPublicDto implements UpdateDataTableColumnPublic {
+	name?: string;
+
+	index?: number;
+
+	static schema = updateDataTableColumnPublicSchema;
+
+	constructor(data: UpdateDataTableColumnPublic) {
+		Object.assign(this, updateDataTableColumnPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateDataTableColumnPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateDataTableColumnPublicSchema.parse(data);
+	}
+}

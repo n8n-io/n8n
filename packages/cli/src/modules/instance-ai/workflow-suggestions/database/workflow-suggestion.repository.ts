@@ -97,6 +97,18 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 
 	async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
+		const workflow = await manager.findOne(WorkflowEntity, {
+			where: { id: workflowId },
+		});
+		const owner = await manager.findOne(SharedWorkflow, {
+			where: { workflowId, role: 'workflow:owner' },
+		});
+		const publicationId = await this.getLatestPublicationId(workflowId, ctx);
+		return { workflow, projectId: owner?.projectId, publicationId };
+	}
+
+	async readWorkflowTargetForApply(workflowId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
 		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
 		const workflow = await manager.findOne(WorkflowEntity, {
 			where: { id: workflowId },
@@ -107,11 +119,16 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			where: { workflowId, role: 'workflow:owner' },
 			...(lockRows ? { lock: { mode: 'pessimistic_read' as const } } : {}),
 		});
-		const publication = await manager.findOne(WorkflowPublishHistory, {
+		const publicationId = await this.getLatestPublicationId(workflowId, ctx);
+		return { workflow, projectId: owner?.projectId, publicationId };
+	}
+
+	async getLatestPublicationId(workflowId: string, ctx: OperationContext = {}) {
+		const publication = await this.managerFor(ctx).findOne(WorkflowPublishHistory, {
 			where: { workflowId },
 			order: { id: 'DESC' },
 		});
-		return { workflow, projectId: owner?.projectId, publicationId: publication?.id ?? null };
+		return publication?.id ?? null;
 	}
 
 	async appendSubmittedActivity(suggestionId: string, ctx: OperationContext) {

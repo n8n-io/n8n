@@ -152,6 +152,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
@@ -320,7 +321,7 @@ export {
 export type { UsageState } from './schemas/usage.schema';
 
 export type {
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeInstanceIssue,
@@ -501,6 +502,8 @@ export {
 	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
+	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	MAX_INSTANCE_AI_NODES_PER_SET,
@@ -707,6 +710,13 @@ export type {
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
+
+export {
+	instanceAiSetupCredentialSelectionKey,
+	instanceAiSetupCredentialAppliedKey,
+	readPendingInstanceAiSetupCredentialSelections,
+	type InstanceAiSetupCredentialSelection,
+} from './schemas/instance-ai-setup-credential-selection';
 
 export type {
 	McpRegistryServerStatus,

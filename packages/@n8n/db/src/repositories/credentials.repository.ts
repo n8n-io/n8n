@@ -4,6 +4,7 @@ import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -259,7 +260,9 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			credentialSubject({ id: content.id ?? null, type: content.type }),
 		);
 
-		const result = await this.managerFor(ctx).upsert(CredentialsEntity, content, ['id']);
+		// A plain object skips the entity's `@BeforeInsert` id generation, and the column has no default.
+		const row = { ...content, id: content.id ?? generateNanoId() };
+		const result = await this.managerFor(ctx).upsert(CredentialsEntity, row, ['id']);
 		const id = result.identifiers.at(0)?.id;
 
 		if (typeof id !== 'string') {

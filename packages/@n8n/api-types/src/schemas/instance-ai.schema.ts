@@ -1174,6 +1174,7 @@ export const setupItemSchema = z.discriminatedUnion('kind', [
 		kind: z.literal('credential'),
 		credentialType: z.string(),
 		appDisplayName: z.string().optional(),
+		preferNew: z.boolean().optional(),
 		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
 		setupHint: credentialSetupHintSchema.optional(),
 		/** Why the app is needed, e.g. "for the docs search". */
@@ -1675,9 +1676,14 @@ export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
  * `closedTabs` holds the artifacts the user closed, so they do not reopen when
  * the thread loads again.
  */
+/** Most open tabs a stored thread tabs state holds. */
+export const MAX_INSTANCE_AI_THREAD_OPEN_TABS = 100;
+/** Most closed artifacts a stored thread tabs state remembers. */
+export const MAX_INSTANCE_AI_THREAD_CLOSED_TABS = 500;
+
 export const instanceAiThreadTabsStateSchema = z.object({
-	tabs: z.array(instanceAiThreadTabSchema).max(100),
-	closedTabs: z.array(instanceAiThreadTabRefSchema).max(500),
+	tabs: z.array(instanceAiThreadTabSchema).max(MAX_INSTANCE_AI_THREAD_OPEN_TABS),
+	closedTabs: z.array(instanceAiThreadTabRefSchema).max(MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
 	activeTab: instanceAiThreadTabRefSchema.nullable(),
 	/**
 	 * Whether the preview panel is open. Without it, the active tab does not
@@ -1758,6 +1764,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `canvas_action_button` — Instance AI button on the workflow canvas
  * - `canvas_choice_prompt` — empty-canvas choice prompt that opens Instance AI
  * - `node_error_view` — "Ask AI" from a node error / failed-execution view
+ * - `workflow_error_nudge` — nudge on a workflow error toast that opens the Assistant to fix the run
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
@@ -1776,6 +1783,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
+	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
@@ -2877,6 +2885,9 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * budget can exceed the 15 minutes a plain run takes.
 	 */
 	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
+	/** Data tables the caller reseeded with this scenario's rows. A Data Table read
+	 *  bound to one of them reads the table instead of pinned rows. */
+	seededDataTableIds: z.array(z.string().min(1)).max(20).optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

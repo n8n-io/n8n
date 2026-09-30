@@ -1,9 +1,9 @@
 import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -15,6 +15,7 @@ import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-mess
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import { emitChunkEvents } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
@@ -95,10 +96,12 @@ export class AgentMessageQueueConsumer {
 			const claim = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 				if (this.stopped) return false;
 				if (item.payload.kind === 'preview') return true;
+				const source = item.message.origin?.source;
+				if (!source) throw new UnexpectedError('Queued integration input has no source');
 				const connection = await this.repository.findPublishedConnection(
 					thread.agentId,
 					thread.projectId,
-					item.source,
+					source,
 					item.payload.credentialId,
 					ctx,
 				);
@@ -107,7 +110,7 @@ export class AgentMessageQueueConsumer {
 				if (!connection) return true;
 				lease = this.integrations.acquireQueueBridge(
 					thread.agentId,
-					item.source,
+					source,
 					item.payload.credentialId,
 				);
 				return lease !== undefined;
@@ -122,22 +125,23 @@ export class AgentMessageQueueConsumer {
 
 	/** Execute a claimed message, deliver its output, and settle its queue item. */
 	private async consume(claim: ClaimedAgentMessage, bridge?: AgentChatBridge): Promise<void> {
-		const { item, thread, admission } = claim;
+		const { item, thread, admission, payload } = claim;
 		const controller = new AbortController();
 		const signal = AbortSignal.any([
 			controller.signal,
 			this.executionService.getAbortSignal(admission.executionId),
 		]);
 		const sender =
-			item.payload.kind === 'preview' ? this.previewStreams.createSender(item.id) : undefined;
+			payload.kind === 'preview' ? this.previewStreams.createSender(item.id) : undefined;
 		try {
-			if (item.payload.kind === 'preview' && sender) {
+			if (payload.kind === 'preview' && sender) {
+				const user = await this.getPreviewOwner(thread);
 				this.chatExecutionService.register(
 					{
 						projectId: thread.projectId,
 						agentId: thread.agentId,
 						threadId: thread.id,
-						userId: item.payload.userId,
+						userId: user.id,
 						executionId: admission.executionId,
 					},
 					controller,
@@ -147,11 +151,11 @@ export class AgentMessageQueueConsumer {
 					executionId: admission.executionId,
 					sessionId: thread.id,
 					inputMessageIds: admission.inputMessageIds,
-					message: item.payload.message,
+					message: payload.message,
 				});
 				await this.chatExecutionService.settle(
 					admission.executionId,
-					async () => await this.consumePreview(claim, signal, sender.send),
+					async () => await this.consumePreview(claim, user, signal, sender.send),
 				);
 			} else {
 				await this.consumeIntegration(claim, signal, bridge);
@@ -173,14 +177,9 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
-	private async consumePreview(
-		claim: ClaimedAgentMessage,
-		signal: AbortSignal,
-		send: (event: AgentSseEvent) => void,
-	): Promise<void> {
-		const { item, thread, admission } = claim;
-		if (item.payload.kind !== 'preview') return;
-		const user = await this.userRepository.findByIdWithRole(item.payload.userId);
+	private async getPreviewOwner(thread: AgentExecutionThread): Promise<User> {
+		if (!thread.ownerId) throw new UserError('You can no longer execute this agent');
+		const user = await this.userRepository.findByIdWithRole(thread.ownerId);
 		if (
 			!user ||
 			user.disabled ||
@@ -188,6 +187,17 @@ export class AgentMessageQueueConsumer {
 		) {
 			throw new UserError('You can no longer execute this agent');
 		}
+		return user;
+	}
+
+	private async consumePreview(
+		claim: ClaimedAgentMessage,
+		user: User,
+		signal: AbortSignal,
+		send: (event: AgentSseEvent) => void,
+	): Promise<void> {
+		const { thread, admission, payload } = claim;
+		if (payload.kind !== 'preview') return;
 		signal.throwIfAborted();
 		const prepared = await this.testRunService.prepareDraftRun({
 			agentId: thread.agentId,
@@ -222,12 +232,12 @@ export class AgentMessageQueueConsumer {
 			agentId: thread.agentId,
 			projectId: thread.projectId,
 			user,
-			message: item.payload.message,
-			attachments: item.payload.attachments,
+			message: payload.message,
+			attachments: payload.attachments,
 			sessionId: thread.id,
 			sessionMode: 'existing',
 			previewChat: true,
-			source: item.source,
+			source: claim.recording.source,
 			admittedExecution: admission,
 			abortSignal: signal,
 			errorMode: 'forward',
@@ -242,16 +252,16 @@ export class AgentMessageQueueConsumer {
 		signal: AbortSignal,
 		bridge?: AgentChatBridge,
 	): Promise<void> {
-		const { item, thread } = claim;
-		if (item.payload.kind !== 'integration') return;
+		const { thread, payload } = claim;
+		if (payload.kind !== 'integration') return;
 		const connection = await this.repository.findPublishedConnection(
 			thread.agentId,
 			thread.projectId,
-			item.source,
-			item.payload.credentialId,
+			payload.messageContext.platform,
+			payload.credentialId,
 		);
 		if (!connection) throw new UserError('The message integration is no longer configured');
 		if (!bridge) throw new OperationalError('The message integration is unavailable');
-		await bridge.consumeQueuedMessage(item.payload, thread.id, claim.admission, signal, connection);
+		await bridge.consumeQueuedMessage(payload, thread.id, claim.admission, signal, connection);
 	}
 }

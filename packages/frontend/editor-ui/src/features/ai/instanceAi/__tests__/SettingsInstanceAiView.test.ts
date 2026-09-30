@@ -62,25 +62,17 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const {
-	computerUseExperimentMock,
-	browserUseExperimentMock,
-	contextPreferencesEnabledMock,
-	routerPushMock,
-} = vi.hoisted(() => ({
-	browserUseExperimentMock: vi.fn(),
-	computerUseExperimentMock: vi.fn(),
-	contextPreferencesEnabledMock: vi.fn(() => true),
-	routerPushMock: vi.fn(),
-}));
+const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
+	() => ({
+		computerUseExperimentMock: vi.fn(),
+		contextPreferencesEnabledMock: vi.fn(() => true),
+		routerPushMock: vi.fn(),
+	}),
+);
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
-}));
-
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -114,7 +106,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -554,17 +545,9 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('Browser use settings', () => {
-		it('shows the browser use toggle when the experiment is enabled', () => {
+		it('shows the browser use toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
-		});
-
-		it('hides the browser use toggle when the experiment is disabled', () => {
-			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-browser-use-toggle')).toBeNull();
 		});
 	});
 

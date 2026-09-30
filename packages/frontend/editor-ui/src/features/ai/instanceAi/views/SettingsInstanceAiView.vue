@@ -33,7 +33,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
@@ -62,7 +61,6 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
@@ -666,7 +664,6 @@ function openAiUsageSettings() {
 			<DefaultEditorSetting />
 
 			<N8nSettingsSection
-				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
@@ -735,7 +732,6 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						v-if="isBrowserUseEnabled"
 						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"

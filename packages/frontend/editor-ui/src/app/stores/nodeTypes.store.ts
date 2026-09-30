@@ -504,6 +504,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	// True for types the instance does not load (NODES_EXCLUDE, NODES_INCLUDE). Vetted community
+	// types stay available: the node creator offers them for installation. Before the types load,
+	// nothing counts as unavailable, so callers do not hide or skip every node.
+	function isNodeTypeUnavailable(nodeTypeName: string): boolean {
+		if (Object.keys(nodeTypes.value).length === 0) return false;
+		return (
+			!getNodeType.value(removePreviewToken(nodeTypeName)) && !communityNodeType.value(nodeTypeName)
+		);
+	}
+
 	const getIsNodeInstalled = computed(() => {
 		return (nodeTypeName: string) => {
 			const cleanedNodeTypeName = removePreviewToken(nodeTypeName);
@@ -583,5 +593,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		removeNodeTypes,
 		getCommunityNodeAttributes,
 		getIsNodeInstalled,
+		isNodeTypeUnavailable,
 	};
 });

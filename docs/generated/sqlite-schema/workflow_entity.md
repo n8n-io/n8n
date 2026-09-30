@@ -343,7 +343,7 @@ erDiagram
   varchar_16_ closedReason
   datetime_3_ createdAt
   TEXT expectedBaseline
-  varchar id PK
+  varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
   TEXT publication
