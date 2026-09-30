@@ -1,0 +1,582 @@
+{
+	"id": "acme-tasks",
+	"node": "acmeTasks",
+	"credential": {
+		"name": "acmeTasksApi",
+		"properties": ["apiKey"],
+		"data": {
+			"apiKey": "{{secret}}"
+		},
+		"secretPrefix": "acme_"
+	},
+	"prompt": [
+		"Build an n8n node for the Acme Tasks API. Read its docs first: `curl -s http://127.0.0.1:18090/acme-tasks/docs`.",
+		"The API runs locally. Use the sandbox key from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `acmeTasks`, display name \"Acme Tasks\".",
+		"- Credential name `acmeTasksApi` with one field `apiKey` (a password field). The credential sends the key the way the docs say.",
+		"- Operation `task.getAll` (\"Get many tasks\"). Fields: `status` (one of `any`, `open`, `done`; default `any`; `any` sends no status filter), `returnAll` (boolean, default false), `limit` (number, default 50; used when `returnAll` is false). Follow `nextCursor` to the last page, or until you have `limit` tasks. Do not fetch pages that you do not need. Emit one item per task: the task object exactly as the API returns it.",
+		"- Operation `task.create` (\"Create a task\"). Fields: `title` (string, required), `assignee` (string, optional; send it only when it is not empty). Emit the created task object exactly as the API returns it.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "list-all",
+			"operation": "task.getAll",
+			"input": {
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "tsk_001",
+						"title": "Task 1",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-01T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_002",
+						"title": "Task 2",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-02T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_003",
+						"title": "Task 3",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-03T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_004",
+						"title": "Task 4",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-04T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_005",
+						"title": "Task 5",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-05T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_006",
+						"title": "Task 6",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-06T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_007",
+						"title": "Task 7",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-07T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_008",
+						"title": "Task 8",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-08T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_009",
+						"title": "Task 9",
+						"status": "done",
+						"assignee": null,
+						"createdAt": "2026-01-09T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_010",
+						"title": "Task 10",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-10T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_011",
+						"title": "Task 11",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-11T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_012",
+						"title": "Task 12",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-12T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_013",
+						"title": "Task 13",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-13T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_014",
+						"title": "Task 14",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-14T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_015",
+						"title": "Task 15",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-15T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_016",
+						"title": "Task 16",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-16T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_017",
+						"title": "Task 17",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-17T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_018",
+						"title": "Task 18",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-18T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_019",
+						"title": "Task 19",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-19T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_020",
+						"title": "Task 20",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-20T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_021",
+						"title": "Task 21",
+						"status": "done",
+						"assignee": null,
+						"createdAt": "2026-01-21T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_022",
+						"title": "Task 22",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-22T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_023",
+						"title": "Task 23",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-23T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_024",
+						"title": "Task 24",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-24T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_025",
+						"title": "Task 25",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-25T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/acme-tasks/v1/tasks",
+					"absentQuery": ["status"],
+					"pagination": "cursor"
+				}
+			}
+		},
+		{
+			"id": "list-any-limit-22",
+			"operation": "task.getAll",
+			"input": {
+				"status": "any",
+				"returnAll": false,
+				"limit": 22
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "tsk_001",
+						"title": "Task 1",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-01T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_002",
+						"title": "Task 2",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-02T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_003",
+						"title": "Task 3",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-03T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_004",
+						"title": "Task 4",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-04T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_005",
+						"title": "Task 5",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-05T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_006",
+						"title": "Task 6",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-06T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_007",
+						"title": "Task 7",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-07T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_008",
+						"title": "Task 8",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-08T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_009",
+						"title": "Task 9",
+						"status": "done",
+						"assignee": null,
+						"createdAt": "2026-01-09T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_010",
+						"title": "Task 10",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-10T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_011",
+						"title": "Task 11",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-11T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_012",
+						"title": "Task 12",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-12T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_013",
+						"title": "Task 13",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-13T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_014",
+						"title": "Task 14",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-14T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_015",
+						"title": "Task 15",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-15T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_016",
+						"title": "Task 16",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-16T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_017",
+						"title": "Task 17",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-17T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_018",
+						"title": "Task 18",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-18T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_019",
+						"title": "Task 19",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-19T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_020",
+						"title": "Task 20",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-20T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_021",
+						"title": "Task 21",
+						"status": "done",
+						"assignee": null,
+						"createdAt": "2026-01-21T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_022",
+						"title": "Task 22",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-22T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/acme-tasks/v1/tasks",
+					"absentQuery": ["status"],
+					"pagination": "cursor",
+					"limit": 22
+				}
+			}
+		},
+		{
+			"id": "list-open-limit-5",
+			"operation": "task.getAll",
+			"input": {
+				"status": "open",
+				"returnAll": false,
+				"limit": 5
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "tsk_001",
+						"title": "Task 1",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-01T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_002",
+						"title": "Task 2",
+						"status": "open",
+						"assignee": "grace",
+						"createdAt": "2026-01-02T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_004",
+						"title": "Task 4",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-04T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_005",
+						"title": "Task 5",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-01-05T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_007",
+						"title": "Task 7",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-01-07T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/acme-tasks/v1/tasks",
+					"query": {
+						"status": "open"
+					},
+					"pagination": "cursor",
+					"limit": 5
+				}
+			}
+		},
+		{
+			"id": "list-done-all",
+			"operation": "task.getAll",
+			"input": {
+				"status": "done",
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "tsk_003",
+						"title": "Task 3",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-03T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_006",
+						"title": "Task 6",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-06T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_009",
+						"title": "Task 9",
+						"status": "done",
+						"assignee": null,
+						"createdAt": "2026-01-09T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_012",
+						"title": "Task 12",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-12T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_015",
+						"title": "Task 15",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-15T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_018",
+						"title": "Task 18",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-18T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_021",
+						"title": "Task 21",
+						"status": "done",
+						"assignee": null,
+						"createdAt": "2026-01-21T00:00:00.000Z"
+					},
+					{
+						"id": "tsk_024",
+						"title": "Task 24",
+						"status": "done",
+						"assignee": "linus",
+						"createdAt": "2026-01-24T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/acme-tasks/v1/tasks",
+					"query": {
+						"status": "done"
+					},
+					"pagination": "cursor"
+				}
+			}
+		},
+		{
+			"id": "create",
+			"operation": "task.create",
+			"input": {
+				"title": "Write report",
+				"assignee": "ada"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "tsk_026",
+						"title": "Write report",
+						"status": "open",
+						"assignee": "ada",
+						"createdAt": "2026-02-01T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/acme-tasks/v1/tasks",
+					"body": {
+						"title": "Write report",
+						"assignee": "ada"
+					},
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "create-unassigned",
+			"operation": "task.create",
+			"input": {
+				"title": "Solo task"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "tsk_026",
+						"title": "Solo task",
+						"status": "open",
+						"assignee": null,
+						"createdAt": "2026-02-01T00:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/acme-tasks/v1/tasks",
+					"body": {
+						"title": "Solo task"
+					},
+					"count": 1
+				}
+			}
+		}
+	]
+}

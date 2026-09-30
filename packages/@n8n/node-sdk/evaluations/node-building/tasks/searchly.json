@@ -1,0 +1,358 @@
+{
+	"id": "searchly",
+	"node": "searchly",
+	"credential": {
+		"name": "searchlyApi",
+		"properties": ["apiKey"],
+		"data": {
+			"apiKey": "{{secret}}"
+		},
+		"secretPrefix": "sly_"
+	},
+	"prompt": [
+		"Build an n8n node for the Searchly API. Read its OpenAPI description first: `curl -s http://127.0.0.1:18090/searchly/docs`.",
+		"The API runs locally. Use the sandbox key from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `searchly`, display name \"Searchly\".",
+		"- Credential name `searchlyApi` with one field `apiKey` (a password field). The credential sends the key the way the docs say.",
+		"- Operation `document.search` (\"Search documents\"). Fields: `index` (string, required), `query` (string, required), `lang` (one of `any`, `en`, `de`; default `any`; `en` and `de` send `filters.lang`, `any` sends no `filters`), `returnAll` (boolean, default false), `limit` (number, default 10; used when `returnAll` is false).",
+		"  Page with `offset` and `limit` (the API allows at most 10 per page). Do not fetch pages that you do not need.",
+		"  When the API answers 429, wait the `Retry-After` seconds and send the same request again.",
+		"  Emit one item per hit: the hit object exactly as the API returns it.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "search-all",
+			"operation": "document.search",
+			"input": {
+				"index": "docs",
+				"query": "workflow",
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "doc_1",
+						"title": "Workflow tip 1",
+						"lang": "en",
+						"score": 99
+					},
+					{
+						"id": "doc_2",
+						"title": "Workflow tip 2",
+						"lang": "en",
+						"score": 98
+					},
+					{
+						"id": "doc_4",
+						"title": "Workflow tip 4",
+						"lang": "de",
+						"score": 96
+					},
+					{
+						"id": "doc_5",
+						"title": "Workflow tip 5",
+						"lang": "en",
+						"score": 95
+					},
+					{
+						"id": "doc_7",
+						"title": "Workflow tip 7",
+						"lang": "en",
+						"score": 93
+					},
+					{
+						"id": "doc_8",
+						"title": "Workflow tip 8",
+						"lang": "de",
+						"score": 92
+					},
+					{
+						"id": "doc_10",
+						"title": "Workflow tip 10",
+						"lang": "en",
+						"score": 90
+					},
+					{
+						"id": "doc_11",
+						"title": "Workflow tip 11",
+						"lang": "en",
+						"score": 89
+					},
+					{
+						"id": "doc_13",
+						"title": "Workflow tip 13",
+						"lang": "en",
+						"score": 87
+					},
+					{
+						"id": "doc_14",
+						"title": "Workflow tip 14",
+						"lang": "en",
+						"score": 86
+					},
+					{
+						"id": "doc_16",
+						"title": "Workflow tip 16",
+						"lang": "de",
+						"score": 84
+					},
+					{
+						"id": "doc_17",
+						"title": "Workflow tip 17",
+						"lang": "en",
+						"score": 83
+					},
+					{
+						"id": "doc_19",
+						"title": "Workflow tip 19",
+						"lang": "en",
+						"score": 81
+					},
+					{
+						"id": "doc_20",
+						"title": "Workflow tip 20",
+						"lang": "de",
+						"score": 80
+					},
+					{
+						"id": "doc_22",
+						"title": "Workflow tip 22",
+						"lang": "en",
+						"score": 78
+					},
+					{
+						"id": "doc_23",
+						"title": "Workflow tip 23",
+						"lang": "en",
+						"score": 77
+					},
+					{
+						"id": "doc_25",
+						"title": "Workflow tip 25",
+						"lang": "en",
+						"score": 75
+					},
+					{
+						"id": "doc_26",
+						"title": "Workflow tip 26",
+						"lang": "en",
+						"score": 74
+					},
+					{
+						"id": "doc_28",
+						"title": "Workflow tip 28",
+						"lang": "de",
+						"score": 72
+					},
+					{
+						"id": "doc_29",
+						"title": "Workflow tip 29",
+						"lang": "en",
+						"score": 71
+					},
+					{
+						"id": "doc_31",
+						"title": "Workflow tip 31",
+						"lang": "en",
+						"score": 69
+					},
+					{
+						"id": "doc_32",
+						"title": "Workflow tip 32",
+						"lang": "de",
+						"score": 68
+					},
+					{
+						"id": "doc_34",
+						"title": "Workflow tip 34",
+						"lang": "en",
+						"score": 66
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/searchly/v2/search",
+					"query": {
+						"index": "docs"
+					},
+					"body": {
+						"query": "workflow"
+					},
+					"pagination": "offset",
+					"retryAfter429": true
+				}
+			}
+		},
+		{
+			"id": "search-limit-12",
+			"operation": "document.search",
+			"input": {
+				"index": "docs",
+				"query": "workflow",
+				"returnAll": false,
+				"limit": 12
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "doc_1",
+						"title": "Workflow tip 1",
+						"lang": "en",
+						"score": 99
+					},
+					{
+						"id": "doc_2",
+						"title": "Workflow tip 2",
+						"lang": "en",
+						"score": 98
+					},
+					{
+						"id": "doc_4",
+						"title": "Workflow tip 4",
+						"lang": "de",
+						"score": 96
+					},
+					{
+						"id": "doc_5",
+						"title": "Workflow tip 5",
+						"lang": "en",
+						"score": 95
+					},
+					{
+						"id": "doc_7",
+						"title": "Workflow tip 7",
+						"lang": "en",
+						"score": 93
+					},
+					{
+						"id": "doc_8",
+						"title": "Workflow tip 8",
+						"lang": "de",
+						"score": 92
+					},
+					{
+						"id": "doc_10",
+						"title": "Workflow tip 10",
+						"lang": "en",
+						"score": 90
+					},
+					{
+						"id": "doc_11",
+						"title": "Workflow tip 11",
+						"lang": "en",
+						"score": 89
+					},
+					{
+						"id": "doc_13",
+						"title": "Workflow tip 13",
+						"lang": "en",
+						"score": 87
+					},
+					{
+						"id": "doc_14",
+						"title": "Workflow tip 14",
+						"lang": "en",
+						"score": 86
+					},
+					{
+						"id": "doc_16",
+						"title": "Workflow tip 16",
+						"lang": "de",
+						"score": 84
+					},
+					{
+						"id": "doc_17",
+						"title": "Workflow tip 17",
+						"lang": "en",
+						"score": 83
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/searchly/v2/search",
+					"query": {
+						"index": "docs"
+					},
+					"body": {
+						"query": "workflow"
+					},
+					"pagination": "offset",
+					"limit": 12,
+					"retryAfter429": true
+				}
+			}
+		},
+		{
+			"id": "search-de-all",
+			"operation": "document.search",
+			"input": {
+				"index": "docs",
+				"query": "workflow",
+				"lang": "de",
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "doc_4",
+						"title": "Workflow tip 4",
+						"lang": "de",
+						"score": 96
+					},
+					{
+						"id": "doc_8",
+						"title": "Workflow tip 8",
+						"lang": "de",
+						"score": 92
+					},
+					{
+						"id": "doc_16",
+						"title": "Workflow tip 16",
+						"lang": "de",
+						"score": 84
+					},
+					{
+						"id": "doc_20",
+						"title": "Workflow tip 20",
+						"lang": "de",
+						"score": 80
+					},
+					{
+						"id": "doc_28",
+						"title": "Workflow tip 28",
+						"lang": "de",
+						"score": 72
+					},
+					{
+						"id": "doc_32",
+						"title": "Workflow tip 32",
+						"lang": "de",
+						"score": 68
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/searchly/v2/search",
+					"query": {
+						"index": "docs"
+					},
+					"body": {
+						"query": "workflow",
+						"filters": {
+							"lang": "de"
+						}
+					},
+					"pagination": "offset",
+					"retryAfter429": true
+				}
+			}
+		}
+	]
+}

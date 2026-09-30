@@ -1,0 +1,129 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Searchly API",
+		"version": "2.0.0",
+		"description": "Full-text search. Authenticate with the `api_key` query parameter; keys start with `sly_`. Use the sandbox key `sly_sandbox` for tests. The API rate-limits clients: when it answers 429, wait the number of seconds in the `Retry-After` header and send the same request again."
+	},
+	"servers": [{ "url": "http://127.0.0.1:18090/searchly/v2" }],
+	"components": {
+		"securitySchemes": {
+			"apiKey": { "type": "apiKey", "in": "query", "name": "api_key" }
+		},
+		"schemas": {
+			"SearchRequest": {
+				"type": "object",
+				"required": ["query"],
+				"additionalProperties": false,
+				"properties": {
+					"query": {
+						"type": "string",
+						"minLength": 1,
+						"description": "Words to find in document titles"
+					},
+					"filters": {
+						"type": "object",
+						"additionalProperties": false,
+						"properties": {
+							"lang": { "type": "string", "enum": ["en", "de"] }
+						}
+					}
+				}
+			},
+			"Hit": {
+				"type": "object",
+				"required": ["id", "title", "lang", "score"],
+				"properties": {
+					"id": { "type": "string" },
+					"title": { "type": "string" },
+					"lang": { "type": "string", "enum": ["en", "de"] },
+					"score": { "type": "number" }
+				}
+			},
+			"SearchResponse": {
+				"type": "object",
+				"required": ["hits", "total", "offset", "limit"],
+				"properties": {
+					"hits": { "type": "array", "items": { "$ref": "#/components/schemas/Hit" } },
+					"total": { "type": "integer", "description": "Number of matches over all pages" },
+					"offset": { "type": "integer" },
+					"limit": { "type": "integer" }
+				}
+			},
+			"Error": {
+				"type": "object",
+				"required": ["error"],
+				"properties": { "error": { "type": "string" } }
+			}
+		}
+	},
+	"security": [{ "apiKey": [] }],
+	"paths": {
+		"/search": {
+			"post": {
+				"operationId": "search",
+				"summary": "Search one index. Pages use offset and limit.",
+				"parameters": [
+					{
+						"name": "index",
+						"in": "query",
+						"required": true,
+						"schema": { "type": "string" },
+						"description": "Index name. The sandbox has the index `docs`."
+					},
+					{
+						"name": "offset",
+						"in": "query",
+						"schema": { "type": "integer", "minimum": 0, "default": 0 }
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"schema": { "type": "integer", "minimum": 1, "maximum": 10, "default": 10 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": { "schema": { "$ref": "#/components/schemas/SearchRequest" } }
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "One page of hits, best first",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } }
+						}
+					},
+					"400": {
+						"description": "Invalid request",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+						}
+					},
+					"401": {
+						"description": "Missing or invalid API key",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+						}
+					},
+					"404": {
+						"description": "Unknown index",
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+						}
+					},
+					"429": {
+						"description": "Rate limited",
+						"headers": {
+							"Retry-After": { "schema": { "type": "integer" }, "description": "Seconds to wait" }
+						},
+						"content": {
+							"application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+						}
+					}
+				}
+			}
+		}
+	}
+}

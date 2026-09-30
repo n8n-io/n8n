@@ -1,0 +1,178 @@
+{
+	"id": "ledger",
+	"node": "ledger",
+	"credential": {
+		"name": "ledgerApi",
+		"properties": ["token"],
+		"data": {
+			"token": "{{secret}}"
+		},
+		"secretPrefix": "ldg_"
+	},
+	"prompt": [
+		"Build an n8n node for the Ledger API. Read its docs first: `curl -s http://127.0.0.1:18090/ledger/docs`.",
+		"The API runs locally. Use the sandbox token from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `ledger`, display name \"Ledger\".",
+		"- Credential name `ledgerApi` with one field `token` (a password field). The credential sends the token the way the docs say.",
+		"- Operation `invoice.get` (\"Get an invoice\"). Fields: `invoiceId` (string, required), `splitLineItems` (boolean, default false).",
+		"  When `splitLineItems` is false, emit one item: the invoice object (the `data` of the response) with every field exactly as the API returns it. Amounts stay integer cents and a `null` due date stays `null`.",
+		"  When `splitLineItems` is true, emit one item per line item: the line item fields exactly as returned, plus `invoiceId` (the invoice `id`).",
+		"  An unknown invoice ID must fail the node with an error. It must not emit an item.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "get-open",
+			"operation": "invoice.get",
+			"input": {
+				"invoiceId": "inv_1001"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "inv_1001",
+						"number": "2026-1001",
+						"status": "open",
+						"currency": "EUR",
+						"customer": {
+							"id": "cus_1",
+							"name": "Acme Corp"
+						},
+						"issuedAt": "2026-09-01",
+						"dueDate": "2026-10-15",
+						"totalCents": 12955,
+						"lineItems": [
+							{
+								"sku": "SUP-1",
+								"description": "Support hours",
+								"quantity": 3,
+								"unitPriceCents": 2500,
+								"totalCents": 7500
+							},
+							{
+								"sku": "LIC-2",
+								"description": "License seat",
+								"quantity": 2,
+								"unitPriceCents": 1999,
+								"totalCents": 3998
+							},
+							{
+								"sku": "SHP-9",
+								"description": "Shipping",
+								"quantity": 1,
+								"unitPriceCents": 1457,
+								"totalCents": 1457
+							}
+						]
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/ledger/api/invoices/inv_1001",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "get-draft-null-due-date",
+			"operation": "invoice.get",
+			"input": {
+				"invoiceId": "inv_1002",
+				"splitLineItems": false
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "inv_1002",
+						"number": "2026-1002",
+						"status": "draft",
+						"currency": "EUR",
+						"customer": {
+							"id": "cus_1",
+							"name": "Acme Corp"
+						},
+						"issuedAt": "2026-09-01",
+						"dueDate": null,
+						"totalCents": 90000,
+						"lineItems": [
+							{
+								"sku": "CON-4",
+								"description": "Consulting day",
+								"quantity": 1,
+								"unitPriceCents": 90000,
+								"totalCents": 90000
+							}
+						]
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/ledger/api/invoices/inv_1002",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "split-line-items",
+			"operation": "invoice.get",
+			"input": {
+				"invoiceId": "inv_1001",
+				"splitLineItems": true
+			},
+			"expect": {
+				"items": [
+					{
+						"invoiceId": "inv_1001",
+						"sku": "SUP-1",
+						"description": "Support hours",
+						"quantity": 3,
+						"unitPriceCents": 2500,
+						"totalCents": 7500
+					},
+					{
+						"invoiceId": "inv_1001",
+						"sku": "LIC-2",
+						"description": "License seat",
+						"quantity": 2,
+						"unitPriceCents": 1999,
+						"totalCents": 3998
+					},
+					{
+						"invoiceId": "inv_1001",
+						"sku": "SHP-9",
+						"description": "Shipping",
+						"quantity": 1,
+						"unitPriceCents": 1457,
+						"totalCents": 1457
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/ledger/api/invoices/inv_1001",
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "unknown-invoice",
+			"operation": "invoice.get",
+			"input": {
+				"invoiceId": "inv_9999"
+			},
+			"expect": {
+				"error": true,
+				"requests": {
+					"method": "GET",
+					"path": "/ledger/api/invoices/inv_9999",
+					"count": 1
+				}
+			}
+		}
+	]
+}

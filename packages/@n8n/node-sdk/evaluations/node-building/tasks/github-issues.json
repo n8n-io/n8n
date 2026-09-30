@@ -1,0 +1,115 @@
+{
+	"id": "github-issues",
+	"node": "githubIssueReader",
+	"credential": {
+		"name": "githubIssueReaderApi",
+		"properties": ["accessToken"],
+		"data": {
+			"accessToken": "{{githubToken}}"
+		}
+	},
+	"prompt": [
+		"Build a read-only n8n node for GitHub issues on the real GitHub REST API (https://api.github.com).",
+		"Find the API docs yourself: https://docs.github.com/en/rest or the OpenAPI description in the github/rest-api-description repository.",
+		"You have no token. Public repositories work without one, but GitHub allows only 60 requests per hour without a token, so test with few requests.",
+		"Test with the public repository `google/flexbox-layout`.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `githubIssueReader`, display name \"GitHub Issue Reader\".",
+		"- Credential name `githubIssueReaderApi` with one field `accessToken` (a password field) for a personal access token. The node must also work without a credential.",
+		"- Operation `issue.getAll` (\"Get many issues\"). Fields: `owner` (string, required), `repo` (string, required), `state` (one of `open`, `closed`, `all`; default `open`), `labels` (string, optional; comma-separated label names; an issue must have all of them), `returnAll` (boolean, default false), `limit` (number, default 50; used when `returnAll` is false).",
+		"  Follow the `Link` response header for pagination. Do not fetch pages that you do not need.",
+		"  Emit one item per entry exactly as the API returns it (the endpoint also returns pull requests; keep them).",
+		"- Operation `issue.get` (\"Get an issue\"). Fields: `owner`, `repo`, `issueNumber` (number). Emit the issue object exactly as the API returns it.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "list-open-all",
+			"operation": "issue.getAll",
+			"input": {
+				"owner": "google",
+				"repo": "flexbox-layout",
+				"state": "open",
+				"returnAll": true
+			},
+			"expect": {
+				"github": {
+					"path": "repos/google/flexbox-layout/issues?state=open",
+					"fields": ["id", "number", "title", "state"]
+				}
+			}
+		},
+		{
+			"id": "list-closed-bug-all",
+			"operation": "issue.getAll",
+			"input": {
+				"owner": "google",
+				"repo": "flexbox-layout",
+				"state": "closed",
+				"labels": "bug",
+				"returnAll": true
+			},
+			"expect": {
+				"github": {
+					"path": "repos/google/flexbox-layout/issues?state=closed&labels=bug",
+					"fields": ["id", "number", "title", "state"]
+				}
+			}
+		},
+		{
+			"id": "list-two-labels",
+			"operation": "issue.getAll",
+			"input": {
+				"owner": "google",
+				"repo": "flexbox-layout",
+				"state": "all",
+				"labels": "enhancement,workload mid",
+				"returnAll": true
+			},
+			"expect": {
+				"github": {
+					"path": "repos/google/flexbox-layout/issues?state=all&labels=enhancement,workload%20mid",
+					"fields": ["id", "number", "title", "state"]
+				}
+			}
+		},
+		{
+			"id": "list-all-limit-5",
+			"operation": "issue.getAll",
+			"input": {
+				"owner": "google",
+				"repo": "flexbox-layout",
+				"state": "all",
+				"returnAll": false,
+				"limit": 5
+			},
+			"expect": {
+				"github": {
+					"path": "repos/google/flexbox-layout/issues?state=all",
+					"limit": 5,
+					"fields": ["id", "number", "title", "state"]
+				}
+			}
+		},
+		{
+			"id": "get-300",
+			"operation": "issue.get",
+			"input": {
+				"owner": "google",
+				"repo": "flexbox-layout",
+				"issueNumber": 300
+			},
+			"expect": {
+				"github": {
+					"path": "repos/google/flexbox-layout/issues/300",
+					"fields": ["id", "number", "title", "state"]
+				}
+			}
+		}
+	]
+}
