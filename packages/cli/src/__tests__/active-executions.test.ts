@@ -90,6 +90,7 @@ describe('ActiveExecutions', () => {
 			concurrencyControl,
 			mock(),
 			executionsConfig,
+			mock(),
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -290,6 +291,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			let resolvedId: string | undefined;
@@ -318,6 +320,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -461,6 +464,7 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			executionData.httpResponse = mock<Response>();

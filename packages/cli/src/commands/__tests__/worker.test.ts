@@ -8,6 +8,7 @@ import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
@@ -233,6 +234,7 @@ describe('Worker', () => {
 				mock<ConcurrencyControlService>(),
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
+				mock<InstanceSettings>({ instanceType: 'worker' }),
 			);
 
 			const drainLoopInterval = 500;
