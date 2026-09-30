@@ -2,11 +2,14 @@ import type { WorkflowSuggestionBaseline, WorkflowSuggestionGraph } from '@n8n/a
 import {
 	WorkflowEntity,
 	type OperationContext,
+	type Project,
 	type SharedWorkflow,
+	type SharedWorkflowRepository,
 	type Transaction,
 	type TransactionRunner,
 	type User,
 	type UserRepository,
+	type WorkflowRepository,
 } from '@n8n/db';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -22,9 +25,19 @@ const suggestions = mock<WorkflowSuggestionRepository>();
 const users = mock<UserRepository>();
 const publication = mock<WorkflowPublicationStatusService>();
 const finder = mock<WorkflowFinderService>();
+const workflowRepository = mock<WorkflowRepository>();
+const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
-const service = new WorkflowSuggestionService(suggestions, users, publication, tx, finder);
+const service = new WorkflowSuggestionService(
+	suggestions,
+	users,
+	publication,
+	tx,
+	finder,
+	workflowRepository,
+	sharedWorkflowRepository,
+);
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
 const graph: WorkflowSuggestionGraph = {
@@ -105,11 +118,10 @@ beforeEach(async () => {
 	finder.findWorkflowForUser.mockResolvedValue(workflow);
 	suggestions.getSuggestion.mockResolvedValue(suggestion);
 	suggestions.createPending.mockResolvedValue(suggestion);
-	suggestions.readWorkflowTarget.mockResolvedValue({
-		workflow,
-		projectId: 'project',
-		publicationId: null,
-	});
+	workflowRepository.findByIdInContext.mockResolvedValue(workflow);
+	sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+		mock<Project>({ id: 'project' }),
+	);
 	suggestions.getActivity.mockResolvedValue([]);
 	publication.getStatus.mockResolvedValue({
 		status: 'published',
@@ -126,7 +138,8 @@ it('captures a detached baseline without creating a suggestion', async () => {
 	expect(workflow.settings?.executionTimeout).toBe(30);
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 	expect(tx.run).not.toHaveBeenCalled();
-	expect(suggestions.readWorkflowTarget).not.toHaveBeenCalled();
+	expect(workflowRepository.findByIdInContext).not.toHaveBeenCalled();
+	expect(sharedWorkflowRepository.getWorkflowOwningProject).not.toHaveBeenCalled();
 	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, {});
 });
 
@@ -172,7 +185,8 @@ it('stores the exact final graph and activity in the caller transaction', async 
 		'fix_ready',
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
-	expect(suggestions.readWorkflowTarget).toHaveBeenCalledWith(workflow.id, ctx);
+	expect(workflowRepository.findByIdInContext).toHaveBeenCalledWith(workflow.id, ctx);
+	expect(sharedWorkflowRepository.getWorkflowOwningProject).toHaveBeenCalledWith(workflow.id, ctx);
 	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, ctx);
 	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, ctx);
 });
@@ -339,7 +353,15 @@ it('rejects changes to the captured original snapshot', async () => {
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
-it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] as const)(
+it.each([
+	'settings',
+	'version',
+	'published',
+	'archived',
+	'project',
+	'missing owner',
+	'deleted',
+] as const)(
 	'rejects a %s change after final preparation without saving a suggestion',
 	async (change) => {
 		const prepared = await service.prepareSuggestion(baseline, {
@@ -352,17 +374,12 @@ it.each(['settings', 'version', 'published', 'archived', 'project', 'deleted'] a
 		if (change === 'published') workflow.activeVersionId = 'new';
 		if (change === 'archived') workflow.isArchived = true;
 		if (change === 'project')
-			suggestions.readWorkflowTarget.mockResolvedValue({
-				workflow,
-				projectId: 'other',
-				publicationId: null,
-			});
-		if (change === 'deleted')
-			suggestions.readWorkflowTarget.mockResolvedValue({
-				workflow: null,
-				projectId: undefined,
-				publicationId: null,
-			});
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'other' }),
+			);
+		if (change === 'missing owner')
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+		if (change === 'deleted') workflowRepository.findByIdInContext.mockResolvedValue(null);
 		await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 		expect(suggestions.createPending).not.toHaveBeenCalled();
 		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();

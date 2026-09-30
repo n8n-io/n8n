@@ -4,7 +4,12 @@ import type {
 	WorkflowSuggestionGraph,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
-import { TransactionRunner, UserRepository } from '@n8n/db';
+import {
+	SharedWorkflowRepository,
+	TransactionRunner,
+	UserRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -50,6 +55,8 @@ export class WorkflowSuggestionService {
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinder: WorkflowFinderService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -142,12 +149,22 @@ export class WorkflowSuggestionService {
 		};
 	}
 
+	private async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
+		const workflow = await this.workflowRepository.findByIdInContext(workflowId, ctx);
+		const ownerProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+			workflowId,
+			ctx,
+		);
+		const publicationId = await this.suggestions.getLatestPublicationId(workflowId, ctx);
+		return { workflow, projectId: ownerProject?.id, publicationId };
+	}
+
 	// Prepare immediately before the caller opens its completion transaction.
 	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
 		const { baseline, payload } = prepared;
 		const { workflowId, projectId, expectedBaseline } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
-			const target = await this.suggestions.readWorkflowTarget(workflowId, ctx);
+			const target = await this.readWorkflowTarget(workflowId, ctx);
 			if (
 				!target.workflow ||
 				target.projectId !== projectId ||
@@ -209,7 +226,7 @@ export class WorkflowSuggestionService {
 		ctx: OperationContext = {},
 	) {
 		return await this.txRunner.run(ctx, async (ctx) => {
-			const target = await this.suggestions.readWorkflowTarget(scope.workflowId, ctx);
+			const target = await this.readWorkflowTarget(scope.workflowId, ctx);
 			let suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 			if (
 				suggestion.state === 'pending' &&

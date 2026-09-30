@@ -1,7 +1,7 @@
 import type {
 	WorkflowSuggestionContent,
 	WorkflowSuggestionBaseline,
-	WorkflowSuggestionActivity,
+	WorkflowSuggestionActivity as WorkflowSuggestionActivityDto,
 	WorkflowSuggestionAppliedVersion,
 } from '@n8n/api-types';
 import {
@@ -21,7 +21,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { WorkflowSuggestionActivityEntity } from './workflow-suggestion-activity.entity';
+import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
 @Service()
@@ -91,18 +91,6 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		}
 	}
 
-	async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const workflow = await manager.findOne(WorkflowEntity, {
-			where: { id: workflowId },
-		});
-		const owner = await manager.findOne(SharedWorkflow, {
-			where: { workflowId, role: 'workflow:owner' },
-		});
-		const publicationId = await this.getLatestPublicationId(workflowId, ctx);
-		return { workflow, projectId: owner?.projectId, publicationId };
-	}
-
 	async readWorkflowTargetForApply(workflowId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
@@ -130,7 +118,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	async appendSubmittedActivity(suggestionId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		await manager.save(
-			manager.create(WorkflowSuggestionActivityEntity, {
+			manager.create(WorkflowSuggestionActivity, {
 				suggestionId,
 				action: 'submitted',
 				author: 'assistant',
@@ -141,7 +129,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 
 	async appendActivity(
 		suggestionId: string,
-		action: WorkflowSuggestionActivity['action'],
+		action: WorkflowSuggestionActivityDto['action'],
 		actorId: string | null,
 		ctx: OperationContext,
 	) {
@@ -149,7 +137,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		await manager
 			.createQueryBuilder()
 			.insert()
-			.into(WorkflowSuggestionActivityEntity)
+			.into(WorkflowSuggestionActivity)
 			.values({
 				id: generateNanoId(),
 				suggestionId,
@@ -186,7 +174,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	}
 
 	async getActivity(suggestionId: string) {
-		return await this.managerFor({}).find(WorkflowSuggestionActivityEntity, {
+		return await this.managerFor({}).find(WorkflowSuggestionActivity, {
 			where: { suggestionId },
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});

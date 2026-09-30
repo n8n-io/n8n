@@ -30,7 +30,7 @@ import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-pr
 import { createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
-import { WorkflowSuggestionActivityEntity } from '../database/workflow-suggestion-activity.entity';
+import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestion-actions.service';
@@ -74,7 +74,7 @@ beforeEach(() => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity).clear();
+	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
@@ -449,7 +449,7 @@ it.skipIf(process.env.DB_TYPE !== 'postgresdb')(
 					},
 				);
 				await manager.save(
-					manager.create(WorkflowSuggestionActivityEntity, {
+					manager.create(WorkflowSuggestionActivity, {
 						suggestionId: suggestion.id,
 						action: 'discarded',
 						author: 'human',
@@ -665,7 +665,7 @@ it('reverts and reapplies the review schema before suggestions are created', asy
 it('keeps human activity when its actor is deleted', async () => {
 	const { suggestion } = await fixture();
 	const actor = await createUser();
-	const activity = Container.get(DataSource).getRepository(WorkflowSuggestionActivityEntity);
+	const activity = Container.get(DataSource).getRepository(WorkflowSuggestionActivity);
 	await activity.save(
 		activity.create({
 			suggestionId: suggestion.id,

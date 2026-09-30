@@ -126,7 +126,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { WorkflowSuggestion } = await import(
 			'./workflow-suggestions/database/workflow-suggestion.entity.js'
 		);
-		const { WorkflowSuggestionActivityEntity } = await import(
+		const { WorkflowSuggestionActivity } = await import(
 			'./workflow-suggestions/database/workflow-suggestion-activity.entity.js'
 		);
 
@@ -145,7 +145,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThreadTabs,
 			InstanceAiEventLogEntry,
 			WorkflowSuggestion,
-			WorkflowSuggestionActivityEntity,
+			WorkflowSuggestionActivity,
 		];
 	}
 

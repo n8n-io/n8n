@@ -460,6 +460,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	async findByIdInContext(workflowId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			where: { id: workflowId },
+		});
+	}
+
 	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
 		if (workflowIds.length === 0) {
 			return [];
