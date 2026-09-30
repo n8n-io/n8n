@@ -76,7 +76,8 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 		const result = buildCallPromptCacheOptions({ enabled: true }, 'openai/gpt-5.1', context);
 
 		expect(result?.openai).toMatchObject({ promptCacheRetention: '24h' });
-		expect(typeof (result?.openai as { promptCacheKey: string }).promptCacheKey).toBe('string');
+		if (!result?.openai) throw new Error('Expected OpenAI prompt cache options');
+		expect(typeof (result.openai as { promptCacheKey: string }).promptCacheKey).toBe('string');
 	});
 
 	it('passes through an explicit promptCacheKey and promptCacheRetention unchanged', () => {
@@ -120,7 +121,8 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 			...context,
 			...overrides,
 		});
-		return (result?.openai as { promptCacheKey: string }).promptCacheKey;
+		if (!result?.openai) throw new Error('Expected OpenAI prompt cache options');
+		return (result.openai as { promptCacheKey: string }).promptCacheKey;
 	}
 
 	it('is deterministic for the same agent, model, and instructions', () => {

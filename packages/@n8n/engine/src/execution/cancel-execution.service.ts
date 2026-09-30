@@ -34,7 +34,7 @@ export class CancelExecutionService {
 				type: 'execution:cancelled',
 				executionId,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: cancelled.finishedAt.toISOString(),
 			});
 			// Releases whoever waits on the run. No step settled, so there is no last step.
 			this.responseSender.send({

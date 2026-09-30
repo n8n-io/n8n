@@ -64,6 +64,7 @@ const JS_PLUGIN_NAMESPACES = new Set([
 	'lodash',
 	'unused-imports',
 	'n8n-local-rules',
+	'playwright',
 ]);
 
 function splitId(id) {
@@ -232,7 +233,12 @@ for (const id of eslintRules) {
 }
 const extra = [...oxlintRules].filter((id) => !expected.has(id)).sort();
 
-const isDocumented = ({ id, native: target }) => id in gap || (target !== null && target in gap);
+const hasApplicableGap = (id) => {
+	const entry = gap[id];
+	return entry !== undefined && (!entry.packages || entry.packages.includes(pkgDir));
+};
+const isDocumented = ({ id, native: target }) =>
+	hasApplicableGap(id) || (target !== null && hasApplicableGap(target));
 const undocumented = missing.filter((entry) => !isDocumented(entry));
 
 console.log(`${pkgDir}: ${sampled} sample files, ${eslintRules.size} ESLint rules at error`);

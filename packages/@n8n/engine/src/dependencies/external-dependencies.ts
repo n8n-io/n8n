@@ -1,7 +1,7 @@
 import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
-import type { ResponseEmitter } from '../response-channel';
+import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
 /**
  * Host integration seam — how the engine reaches capabilities it does not own.
@@ -34,6 +34,11 @@ export interface StepExecutionContext {
 	iteration: number;
 	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
 	callerContext: CallerContext;
+	/**
+	 * What kind of a response the caller expects. A step executor reads it to
+	 * decide whether a node may stream. The emitter in `respond` obeys it too.
+	 */
+	responseExpectation: ResponseExpectation;
 }
 
 /** A single step handed to an executor. */
