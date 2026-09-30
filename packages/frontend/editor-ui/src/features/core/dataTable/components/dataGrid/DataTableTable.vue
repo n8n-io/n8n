@@ -27,6 +27,7 @@ import { useDataTableColumnFilters } from '@/features/core/dataTable/composables
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
 import { useDebounce } from '@n8n/composables/useDebounce';
+import DataTableLoadingIndicator from './DataTableLoadingIndicator.vue';
 
 import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
 registerAgGridModulesOnce();
@@ -196,6 +197,7 @@ defineExpose({
 		<div
 			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
+			:aria-busy="dataTableOperations.contentLoading.value"
 			data-test-id="data-table-grid"
 		>
 			<AgGridVue
@@ -229,6 +231,7 @@ defineExpose({
 				@cell-key-down="dataTableOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>
+			<DataTableLoadingIndicator v-if="dataTableOperations.contentLoading.value" />
 			<div :class="$style.footer">
 				<N8nPagination
 					:page="currentPage"

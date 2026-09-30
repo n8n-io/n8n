@@ -3,7 +3,7 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable, DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 
 import DataTableTable from './DataTableTable.vue';
@@ -23,6 +23,67 @@ const renderComponent = createComponentRenderer(DataTableTable, {
 });
 
 describe('DataTableTable loading', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('shows an indicator after one second while the first rows are pending', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		const pinia = createTestingPinia();
+		const store = useDataTableStore();
+		const rows = createDeferredPromise<{ data: DataTableRow[]; count: number }>();
+		vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+
+		await vi.advanceTimersByTimeAsync(999);
+		expect(store.fetchDataTableContent).toHaveBeenCalledOnce();
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(getByTestId('data-table-loading')).toHaveTextContent('Loading...');
+		expect(getByTestId('data-table-grid')).toHaveAttribute('aria-busy', 'true');
+
+		rows.resolve({ data: [], count: 0 });
+		await flushPromises();
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(getByTestId('data-table-grid')).toHaveAttribute('aria-busy', 'false');
+	});
+
+	it.each(['success', 'failure'])(
+		'clears the slow pagination indicator after %s',
+		async (result) => {
+			const pinia = createTestingPinia();
+			const store = useDataTableStore();
+			vi.mocked(store.fetchDataTableContent).mockResolvedValue({
+				data: [{ id: 1, name: 'Notebook' }],
+				count: 40,
+			});
+			const { getByTestId, queryByTestId } = renderComponent({ pinia });
+			await waitFor(() => expect(getByTestId('data-table-grid')).toHaveTextContent('Notebook'));
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			const rows = createDeferredPromise<{ data: DataTableRow[]; count: number }>();
+			vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
+
+			await fireEvent.click(getByTestId('pagination-next'));
+			await vi.advanceTimersByTimeAsync(999);
+			expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2);
+			expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+			expect(getByTestId('data-table-grid')).toHaveTextContent('Notebook');
+			await vi.advanceTimersByTimeAsync(1);
+			expect(getByTestId('data-table-loading')).toBeVisible();
+
+			if (result === 'success') {
+				rows.resolve({ data: [{ id: 21, name: 'Pencil' }], count: 40 });
+			} else {
+				rows.reject(new Error('Request failed'));
+			}
+			await flushPromises();
+			expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+			expect(getByTestId('data-table-grid')).toHaveAttribute('aria-busy', 'false');
+		},
+	);
+
 	it('does not show an empty state or loading pill while the first rows are pending', async () => {
 		const pinia = createTestingPinia();
 		const store = useDataTableStore();

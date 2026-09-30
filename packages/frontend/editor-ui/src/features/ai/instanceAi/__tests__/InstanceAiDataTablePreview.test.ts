@@ -37,6 +37,10 @@ describe('InstanceAiDataTablePreview', () => {
 		isAgentWorking.value = false;
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	function setup() {
 		const pinia = createTestingPinia();
 		const store = useDataTableStore();
@@ -44,6 +48,90 @@ describe('InstanceAiDataTablePreview', () => {
 		vi.mocked(store.fetchDataTableContent).mockResolvedValue(firstRows);
 		return { pinia, store };
 	}
+
+	it('shows the slow switch indicator after one second across schema and row requests', async () => {
+		const { pinia, store } = setup();
+		const { getByTestId, queryByTestId, rerender } = renderComponent({ pinia });
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		});
+		const displayedGrid = getByTestId('instance-ai-data-table-grid');
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		const details = createDeferredPromise<DataTable>();
+		const rows = createDeferredPromise<Rows>();
+		vi.mocked(store.fetchDataTableDetails).mockReturnValue(details.promise);
+		vi.mocked(store.fetchDataTableContent).mockReturnValue(rows.promise);
+
+		await rerender({ dataTableId: secondTable.id });
+		await vi.advanceTimersByTimeAsync(600);
+		details.resolve(secondTable);
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(399);
+		expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2);
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(getByTestId('data-table-loading')).toBeVisible();
+		expect(displayedGrid).toHaveTextContent('Notebook');
+		expect(displayedGrid).toHaveAttribute('inert');
+
+		rows.resolve({ data: [{ id: 2, name: 'Pencil' }], count: 1 });
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(displayedGrid).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-data-table-grid')).toHaveTextContent('Pencil');
+	});
+
+	it('restarts the delay for another tab and clears the indicator after an error', async () => {
+		const { pinia, store } = setup();
+		const { getByTestId, queryByTestId, rerender } = renderComponent({ pinia });
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		});
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		const earlierDetails = createDeferredPromise<DataTable>();
+		const currentDetails = createDeferredPromise<DataTable>();
+		vi.mocked(store.fetchDataTableDetails)
+			.mockReturnValueOnce(earlierDetails.promise)
+			.mockReturnValueOnce(currentDetails.promise);
+
+		await rerender({ dataTableId: secondTable.id });
+		await vi.advanceTimersByTimeAsync(999);
+		await rerender({ dataTableId: 'table-3' });
+		await vi.advanceTimersByTimeAsync(999);
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(getByTestId('data-table-loading')).toBeVisible();
+
+		earlierDetails.resolve(secondTable);
+		await flushPromises();
+		expect(getByTestId('data-table-loading')).toBeVisible();
+		currentDetails.reject(new Error('Request failed'));
+		await flushPromises();
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-data-table-grid')).not.toBeInTheDocument();
+	});
+
+	it('does not show a delayed indicator after a fast switch finishes', async () => {
+		const { pinia, store } = setup();
+		const { getByTestId, queryByTestId, rerender } = renderComponent({ pinia });
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		});
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		vi.mocked(store.fetchDataTableDetails).mockResolvedValue(secondTable);
+
+		await rerender({ dataTableId: secondTable.id });
+		await vi.advanceTimersByTimeAsync(100);
+		expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute(
+			'data-table-id',
+			secondTable.id,
+		);
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+	});
 
 	it.each([firstRows, { data: [], count: 0 }])(
 		'keeps the initial spinner until the grid is ready for $count rows',

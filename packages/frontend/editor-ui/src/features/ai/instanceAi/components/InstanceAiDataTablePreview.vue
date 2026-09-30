@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
+import DataTableLoadingIndicator from '@/features/core/dataTable/components/dataGrid/DataTableLoadingIndicator.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -35,7 +36,7 @@ const tables = computed(() =>
 );
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
-let nextTableKey = 0;
+const requestKey = ref(0);
 
 // === Editing lock ===
 // The grid is editable only while the AI is not running, so user edits can't
@@ -80,12 +81,13 @@ watch(
 			displayedTable.value = null;
 			return;
 		}
+		const key = ++requestKey.value;
 
 		// Fetch the current schema before the replacement grid permits edits.
 		const result = await dataTableStore.fetchDataTableDetails(id, projectId).catch(() => null);
 		if (cancelled) return;
 		if (result) {
-			pendingTable.value = { key: nextTableKey++, dataTable: result, readOnly };
+			pendingTable.value = { key, dataTable: result, readOnly };
 		} else {
 			displayedTable.value = null;
 			isLoading.value = false;
@@ -119,6 +121,8 @@ watch(
 				@load-error="onLoadError(table.key)"
 			/>
 		</div>
+
+		<DataTableLoadingIndicator v-if="isLoading && displayedTable" :key="requestKey" />
 
 		<div
 			v-if="isLoading && !displayedTable"
