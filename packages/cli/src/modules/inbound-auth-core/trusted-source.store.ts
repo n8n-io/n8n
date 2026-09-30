@@ -11,8 +11,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
-
 import type {
 	TrustedSourceEntity,
 	TrustedSourceManagedBy,
@@ -26,6 +24,7 @@ import {
 } from './database/repositories/trusted-source.repository';
 import { TransactionRunner } from '@n8n/db';
 import { Time } from '@n8n/constants';
+import { CacheService } from '@n8n/backend-services';
 
 /**
  * A trusted source as consumers see it: decrypted, validated and migrated to the latest config

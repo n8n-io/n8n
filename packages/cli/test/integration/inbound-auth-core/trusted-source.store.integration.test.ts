@@ -13,7 +13,7 @@ import {
 	TrustedSourceStore,
 	type TrustedSource,
 } from '@/modules/inbound-auth-core/trusted-source.store';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { createOwner } from '../shared/db/users';
 
