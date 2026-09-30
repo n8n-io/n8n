@@ -20,6 +20,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
 			const copy: Record<string, string> = {
+				'agents.builder.budget.title': 'Usage and limits',
 				'agents.builder.budget.notSet': 'Not set',
 				'agents.builder.budget.usage.none': 'No monthly budget',
 				'agents.builder.budget.usage.unavailable': 'Usage unavailable',
@@ -136,6 +137,20 @@ describe('AgentBudgetPanel', () => {
 		await wrapper.setProps({ disabled: true });
 		expect(wrapper.getComponent(AgentBudgetSessionModal).props('disabled')).toBe(true);
 		expect(wrapper.getComponent(AgentBudgetMonthlyModal).props('disabled')).toBe(true);
+	});
+
+	it('keeps the panel heading visually hidden but accessible', async () => {
+		getAgentBudgetSpend.mockReset();
+		const wrapper = mount(AgentBudgetPanel, {
+			props: { config: config(), projectId: 'project-1', agentId: 'agent-1' },
+		});
+		await flushPromises();
+
+		const heading = wrapper.get('h3');
+		expect(heading.text()).toBe('Usage and limits');
+		expect(heading.attributes('style')).toContain('clip');
+		const section = wrapper.get('[data-testid="agent-budget-panel"]');
+		expect(section.attributes('aria-labelledby')).toBe(heading.attributes('id'));
 	});
 
 	it('applies the disabled styling to the panel body only when disabled', async () => {

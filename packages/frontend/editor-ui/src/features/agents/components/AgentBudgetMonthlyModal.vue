@@ -87,10 +87,13 @@ function save() {
 					:min="0"
 					:controls="false"
 					:disabled="disabled"
+					:class="$style.amountInput"
 					data-testid="agent-budget-monthly-amount"
 					@update:model-value="onAmount"
 				/>
-				<N8nText size="small">{{ i18n.baseText('agents.builder.budget.monthly.suffix') }}</N8nText>
+				<N8nText size="small" :class="$style.suffix">{{
+					i18n.baseText('agents.builder.budget.monthly.suffix')
+				}}</N8nText>
 			</label>
 			<N8nText size="small" :class="$style.hint">
 				{{ i18n.baseText('agents.builder.budget.monthly.stop') }}
@@ -141,6 +144,16 @@ function save() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+.amountInput {
+	flex: 1;
+	min-width: 0;
+}
+
+.suffix {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .hint {

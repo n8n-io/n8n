@@ -98,6 +98,7 @@ const sessionValue = computed(() => {
 <template>
 	<AgentPanel
 		:header="i18n.baseText('agents.builder.budget.title')"
+		header-visibility="visually-hidden"
 		data-testid="agent-budget-panel"
 	>
 		<div :class="[disabled && shared.disabled, $style.body]">
