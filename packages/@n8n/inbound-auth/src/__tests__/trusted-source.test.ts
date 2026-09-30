@@ -12,47 +12,53 @@ import {
 } from '../trusted-source-config';
 
 const issuer = 'https://idp.example';
+const fetchedAt = '2026-09-30T10:00:00.000Z';
 
-const oauth2Document = {
-	kind: 'oauth2',
-	fetchedAt: '2026-09-30T10:00:00.000Z',
-	discovery: {
-		issuer,
-		jwks_uri: `${issuer}/keys`,
-		authorization_endpoint: `${issuer}/authorize`,
-		token_endpoint: `${issuer}/token`,
-	},
-	jwks: { keys: [{ kid: 'k1', kty: 'RSA', use: 'sig', alg: 'RS256', n: 'AQAB', e: 'AQAB' }] },
+const endpoints = {
+	authorization_endpoint: `${issuer}/authorize`,
+	token_endpoint: `${issuer}/token`,
+};
+const fullMetadata = { issuer, jwks_uri: `${issuer}/keys`, ...endpoints };
+
+const oidcDocument = { kind: 'openid-configuration', fetchedAt, document: fullMetadata };
+const oauth2Document = { kind: 'oauth2-authorization-server', fetchedAt, document: fullMetadata };
+const jwksDocument = {
+	kind: 'jwks',
+	fetchedAt,
+	url: `${issuer}/keys`,
+	keys: [{ kid: 'k1', kty: 'RSA', use: 'sig', alg: 'RS256', n: 'AQAB', e: 'AQAB' }],
 };
 
 describe('TrustedSourceMetadataSchema', () => {
-	it('accepts a v1 document list with an oauth2 discovery document', () => {
-		const parsed = TrustedSourceMetadataSchema.parse({ version: 1, documents: [oauth2Document] });
-
-		expect(parsed).toMatchObject({
+	it('accepts a v1 list with an OIDC document, an RFC 8414 document and a JWKS', () => {
+		const parsed = TrustedSourceMetadataSchema.parse({
 			version: 1,
-			documents: [{ kind: 'oauth2', discovery: { issuer } }],
+			documents: [oidcDocument, oauth2Document, jwksDocument],
 		});
+
+		expect(parsed.documents.map((document) => document.kind)).toEqual([
+			'openid-configuration',
+			'oauth2-authorization-server',
+			'jwks',
+		]);
 	});
 
-	it('keeps discovery and JWK fields it does not type, so a later reader finds them', () => {
+	it('keeps metadata and JWK fields it does not type, so a later reader finds them', () => {
 		const parsed = TrustedSourceMetadataSchema.parse({
 			version: 1,
 			documents: [
 				{
-					...oauth2Document,
-					discovery: {
-						...oauth2Document.discovery,
-						introspection_endpoint: `${issuer}/introspect`,
-					},
+					...oidcDocument,
+					document: { ...fullMetadata, userinfo_endpoint: `${issuer}/userinfo` },
 				},
+				jwksDocument,
 			],
 		});
 
 		expect(parsed.documents[0]).toMatchObject({
-			discovery: { introspection_endpoint: `${issuer}/introspect` },
-			jwks: { keys: [{ n: 'AQAB', e: 'AQAB' }] },
+			document: { userinfo_endpoint: `${issuer}/userinfo` },
 		});
+		expect(parsed.documents[1]).toMatchObject({ keys: [{ n: 'AQAB', e: 'AQAB' }] });
 	});
 
 	it('accepts an empty document list, the state before discovery has run', () => {
@@ -63,35 +69,28 @@ describe('TrustedSourceMetadataSchema', () => {
 	});
 
 	it.each([
-		['an unknown document kind', { version: 1, documents: [{ ...oauth2Document, kind: 'saml' }] }],
-		['an unknown version', { version: 2, documents: [] }],
+		['an unknown document kind', [{ ...oidcDocument, kind: 'saml' }]],
 		[
-			'a non-https jwks_uri',
-			{
-				version: 1,
-				documents: [
-					{
-						...oauth2Document,
-						discovery: { ...oauth2Document.discovery, jwks_uri: 'http://idp.example/keys' },
-					},
-				],
-			},
+			'a non-https jwks_uri in a metadata document',
+			[{ ...oidcDocument, document: { ...fullMetadata, jwks_uri: 'http://idp.example/keys' } }],
 		],
-		[
-			'a key without kty',
-			{ version: 1, documents: [{ ...oauth2Document, jwks: { keys: [{ kid: 'k1' }] } }] },
-		],
-		['two documents of the same kind', { version: 1, documents: [oauth2Document, oauth2Document] }],
-	])('rejects %s', (_label, document) => {
-		expect(TrustedSourceMetadataSchema.safeParse(document).success).toBe(false);
+		['a non-https JWKS url', [{ ...jwksDocument, url: 'http://idp.example/keys' }]],
+		['a key without kty', [{ ...jwksDocument, keys: [{ kid: 'k1' }] }]],
+		['two documents of the same kind', [oidcDocument, oidcDocument]],
+	])('rejects %s', (_label, documents) => {
+		expect(TrustedSourceMetadataSchema.safeParse({ version: 1, documents }).success).toBe(false);
+	});
+
+	it('rejects an unknown version', () => {
+		expect(TrustedSourceMetadataSchema.safeParse({ version: 2, documents: [] }).success).toBe(
+			false,
+		);
 	});
 });
 
 describe('deriveCapabilities', () => {
-	type AuthOverrides = Record<string, unknown>;
-
 	const config = (
-		authentication: AuthOverrides,
+		authentication: Record<string, unknown>,
 		managedBy: ManagedBy = 'admin',
 	): TrustedSourceConfigLatest =>
 		migrateToLatest(
@@ -102,16 +101,20 @@ describe('deriveCapabilities', () => {
 			}),
 		);
 
-	const metadata = (discovery?: Record<string, unknown>, withJwks = true): TrustedSourceMetadata =>
+	type Fields = Partial<Omit<typeof fullMetadata, 'issuer'>>;
+	const metadata = (documents: {
+		oidc?: Fields;
+		oauth2?: Fields;
+		jwks?: boolean;
+	}): TrustedSourceMetadata =>
 		TrustedSourceMetadataSchema.parse({
 			version: 1,
 			documents: [
-				{
-					kind: 'oauth2',
-					fetchedAt: oauth2Document.fetchedAt,
-					...(discovery ? { discovery: { issuer, ...discovery } } : {}),
-					...(withJwks ? { jwks: oauth2Document.jwks } : {}),
-				},
+				...(documents.oidc ? [{ ...oidcDocument, document: { issuer, ...documents.oidc } }] : []),
+				...(documents.oauth2
+					? [{ ...oauth2Document, document: { issuer, ...documents.oauth2 } }]
+					: []),
+				...(documents.jwks ? [jwksDocument] : []),
 			],
 		});
 
@@ -122,19 +125,21 @@ describe('deriveCapabilities', () => {
 		authorizationEndpoint: `${issuer}/authorize`,
 		metadataUrl: `${issuer}/.well-known/openid-configuration`,
 	};
-	const endpoints = {
-		authorization_endpoint: `${issuer}/authorize`,
-		token_endpoint: `${issuer}/token`,
-	};
 
 	const cases: Array<
 		[string, TrustedSourceConfigLatest, () => TrustedSourceMetadata | null, Capability[]]
 	> = [
 		['jwks-uri keys and no metadata grant nothing', config({}), () => null, []],
 		[
-			'a discovered jwks_uri grants verify-jwt',
+			'a jwks_uri in the OIDC document grants verify-jwt',
 			config({}),
-			() => metadata({ jwks_uri: `${issuer}/keys` }),
+			() => metadata({ oidc: { jwks_uri: `${issuer}/keys` } }),
+			['verify-jwt'],
+		],
+		[
+			'a jwks_uri in the RFC 8414 document grants verify-jwt',
+			config({}),
+			() => metadata({ oauth2: { jwks_uri: `${issuer}/keys` } }),
 			['verify-jwt'],
 		],
 		[
@@ -152,13 +157,13 @@ describe('deriveCapabilities', () => {
 		[
 			'discovered endpoints without a client grant no redirect-login',
 			config({}),
-			() => metadata(endpoints),
+			() => metadata({ oidc: endpoints }),
 			[],
 		],
 		[
 			'discovered endpoints with a client grant redirect-login',
 			config({ client: registeredClient }),
-			() => metadata({ ...endpoints, jwks_uri: `${issuer}/keys` }),
+			() => metadata({ oidc: fullMetadata }),
 			['verify-jwt', 'redirect-login'],
 		],
 		[
@@ -178,26 +183,36 @@ describe('deriveCapabilities', () => {
 		[
 			'only an authorization endpoint with a client grants no redirect-login',
 			config({ client: registeredClient }),
-			() => metadata({ authorization_endpoint: `${issuer}/authorize` }),
+			() => metadata({ oidc: { authorization_endpoint: `${issuer}/authorize` } }),
 			[],
 		],
 		[
-			'a jwks document without a jwks_uri grants nothing on its own',
+			'a JWKS document without any jwks_uri grants nothing on its own',
 			config({}),
-			() => metadata(undefined, true),
+			() => metadata({ jwks: true }),
 			[],
 		],
-		// Manual and discovered fields merge, field by field.
+		// Fields merge: manual config, then the OIDC document, then the RFC 8414 document.
 		[
 			'a manual authorization endpoint completes discovered token and jwks endpoints',
 			config({ client: registeredClient, discovery: manualAuthorizationEndpoint }),
-			() => metadata({ token_endpoint: `${issuer}/token`, jwks_uri: `${issuer}/keys` }),
+			() => metadata({ oidc: { token_endpoint: `${issuer}/token`, jwks_uri: `${issuer}/keys` } }),
 			['verify-jwt', 'redirect-login'],
 		],
 		[
 			'a manual authorization endpoint with only a discovered token endpoint grants redirect-login alone',
 			config({ client: registeredClient, discovery: manualAuthorizationEndpoint }),
-			() => metadata({ token_endpoint: `${issuer}/token` }),
+			() => metadata({ oidc: { token_endpoint: `${issuer}/token` } }),
+			['redirect-login'],
+		],
+		[
+			'an authorization endpoint from OIDC and a token endpoint from RFC 8414 combine',
+			config({ client: registeredClient }),
+			() =>
+				metadata({
+					oidc: { authorization_endpoint: `${issuer}/authorize` },
+					oauth2: { token_endpoint: `${issuer}/token` },
+				}),
 			['redirect-login'],
 		],
 		[
@@ -206,7 +221,7 @@ describe('deriveCapabilities', () => {
 				client: registeredClient,
 				discovery: { mode: 'manual', jwksUri: `${issuer}/manual-keys` },
 			}),
-			() => metadata({ ...endpoints, jwks_uri: 'https://elsewhere.example/keys' }),
+			() => metadata({ oauth2: { ...endpoints, jwks_uri: 'https://elsewhere.example/keys' } }),
 			['verify-jwt', 'redirect-login'],
 		],
 	];
