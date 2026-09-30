@@ -17,6 +17,7 @@ import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
 import {
 	draftAgentVerdict,
+	seededAgentModel,
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
@@ -342,10 +343,14 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			const agentArtifactFields = capturedAgent?.artifact
 				? { agentArtifact: capturedAgent.artifact }
 				: {};
-			const declaredCredentials = testCaseByFileSlug.get(inputs.testCaseFile)?.credentials;
-			// A draft Agent throws before its first model turn; running it only produces
-			// a red the judge pins on the builder. Decide ownership here instead.
-			const draft = draftAgentVerdict(capturedAgent?.artifact, declaredCredentials);
+			const testCase = testCaseByFileSlug.get(inputs.testCaseFile);
+			// An Agent that cannot run throws before its first model turn; running it
+			// only produces a red the judge pins on the builder. Decide ownership here.
+			const draft = draftAgentVerdict(
+				capturedAgent?.artifact,
+				testCase?.credentials,
+				seededAgentModel(testCase?.seed, build.createdAgentIds, agentRef.id),
+			);
 			if (draft) {
 				logger.warn(`    [${scenario.name}] not run: ${draft.reasoning}`);
 				return await attachExpectations({
@@ -358,7 +363,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					reasoning: draft.reasoning,
 					failureCategory: draft.attribution,
 					attribution: draft.attribution,
-					execErrors: ['Agent has no model configured'],
+					execErrors: [draft.execError],
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,

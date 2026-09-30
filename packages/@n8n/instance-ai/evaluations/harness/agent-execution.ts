@@ -6,7 +6,11 @@
 // and assembles the agent verification artifact.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import {
+	getAgentModelProviderCredentialTypes,
+	type InstanceAiEvalAgentExecutionResult,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -31,34 +35,67 @@ import type {
 	ExecutionScenario,
 	TestCaseCredential,
 } from '../types';
+import type { CaseSeed } from './schema';
 
 /** LLM credential types the eval seeder can create (credentials/seeder.ts). */
 const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
 
+/** The seed's model for the Agent under test, when the seed restored that Agent.
+ *  `createdAgentIds` is positional to `seed.agents`; an Agent the live turn
+ *  created is not in it. */
+export function seededAgentModel(
+	seed: CaseSeed | undefined,
+	createdAgentIds: string[] | undefined,
+	agentId: string,
+): string | undefined {
+	if (seed?.mode !== 'inline') return undefined;
+	const index = (createdAgentIds ?? []).indexOf(agentId);
+	const config = index === -1 ? undefined : seed.agents[index]?.config;
+	return isRecord(config) && typeof config.model === 'string' ? config.model : undefined;
+}
+
 /**
- * A built Agent with no model cannot run. Who owns that depends on what the
- * case offered the builder: with no LLM credential declared, leaving the model
- * for setup is the builder's documented behaviour, so the eval is what cannot
- * proceed. With one declared, an empty model is the builder's miss.
+ * Decide, before running, a scenario whose Agent cannot run. A built Agent with
+ * no model: who owns that depends on what the case offered the builder. With no
+ * LLM credential declared, leaving the model for setup is the builder's
+ * documented behaviour, so the eval is what cannot proceed. With one declared,
+ * an empty model is the builder's miss.
+ *
+ * A seeded Agent still on its seed's model, when the case declares no credential
+ * of that model's provider: the restore had nothing to bind and the builder sees
+ * only declared credentials, so the eval cannot run it. The captured config
+ * redacts `credential`, so the rule reads the inputs, not the credential.
  */
 export function draftAgentVerdict(
 	artifact: AgentArtifact | undefined,
 	credentials: TestCaseCredential[] | undefined,
-): { attribution: EvalAttribution; reasoning: string } | undefined {
+	seededModel?: string,
+): { attribution: EvalAttribution; reasoning: string; execError: string } | undefined {
 	if (!artifact || !isRecord(artifact.config)) return undefined;
 	const model = artifact.config.model;
-	if (typeof model === 'string' && model.trim() !== '') return undefined;
+	if (typeof model === 'string' && model.trim() !== '') {
+		if (model !== seededModel) return undefined;
+		const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
+		if ((credentials ?? []).some((c) => types.includes(c.type))) return undefined;
+		return {
+			attribution: 'framework_issue',
+			reasoning: `The seeded Agent's model ${model} needs a ${types.join(' or ')} credential, and the case declares none, so the eval has no credential to run the Agent with.`,
+			execError: 'Seeded Agent model has no declared credential',
+		};
+	}
 	const offeredLlmCredential = (credentials ?? []).some((c) => LLM_CREDENTIAL_TYPES.has(c.type));
 	return offeredLlmCredential
 		? {
 				attribution: 'builder_issue',
 				reasoning:
 					'The built Agent has no model although the case declared an LLM credential the builder could have used, so the scenario cannot run.',
+				execError: 'Agent has no model configured',
 			}
 		: {
 				attribution: 'framework_issue',
 				reasoning:
 					'The built Agent has no model. The case declared no LLM credential, so the builder left model selection to setup by design; the eval has no credential to run the Agent with.',
+				execError: 'Agent has no model configured',
 			};
 }
 
