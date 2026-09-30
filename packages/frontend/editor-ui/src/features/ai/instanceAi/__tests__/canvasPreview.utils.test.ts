@@ -4,6 +4,7 @@ import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
 	getLatestAgentBuilderTarget,
+	getLatestCallAgentResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
@@ -188,6 +189,113 @@ describe('getLatestBuildResult', () => {
 			],
 		});
 		expect(getLatestBuildResult(parent)?.workflowId).toBe('wf-child');
+	});
+});
+
+describe('getLatestCallAgentResult', () => {
+	test('returns undefined for node with no tool calls', () => {
+		expect(getLatestCallAgentResult(makeAgentNode())).toBeUndefined();
+	});
+
+	test('returns undefined for non-call_agent tool calls', () => {
+		const node = makeAgentNode({
+			toolCalls: [makeToolCall({ toolName: 'build-agent', result: { agentChange: 'created' } })],
+		});
+		expect(getLatestCallAgentResult(node)).toBeUndefined();
+	});
+
+	test('returns undefined for a loading call_agent call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'call_agent',
+					isLoading: true,
+					args: { message: 'Summarize the thread' },
+					result: undefined,
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node)).toBeUndefined();
+	});
+
+	test('returns undefined for a call_agent call that did not complete', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'call_agent',
+					args: { message: 'Summarize the thread' },
+					result: { status: 'error', code: 'agent_misconfigured' },
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node)).toBeUndefined();
+	});
+
+	test('returns the message and response from a completed call_agent call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-call-1',
+					toolName: 'call_agent',
+					args: { message: 'Summarize the thread about the outage' },
+					result: {
+						status: 'completed',
+						response: 'Ticket #48219 is a P1 SSO outage.',
+						executionId: 'exec-1',
+						sessionId: 'session-1',
+					},
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node)).toEqual({
+			message: 'Summarize the thread about the outage',
+			response: 'Ticket #48219 is a P1 SSO outage.',
+			toolCallId: 'tc-call-1',
+		});
+	});
+
+	test('returns the latest result when multiple test calls exist', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-call-1',
+					toolName: 'call_agent',
+					args: { message: 'first try' },
+					result: { status: 'completed', response: 'old answer', executionId: 'exec-1' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-call-2',
+					toolName: 'call_agent',
+					args: { message: 'second try' },
+					result: { status: 'completed', response: 'new answer', executionId: 'exec-2' },
+				}),
+			],
+		});
+		expect(getLatestCallAgentResult(node)).toEqual({
+			message: 'second try',
+			response: 'new answer',
+			toolCallId: 'tc-call-2',
+		});
+	});
+
+	test('finds result in child agent nodes', () => {
+		const child = makeAgentNode({
+			agentId: 'builder-1',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-child',
+					toolName: 'call_agent',
+					args: { message: 'child message' },
+					result: { status: 'completed', response: 'child answer', executionId: 'exec-1' },
+				}),
+			],
+		});
+		const parent = makeAgentNode({ children: [child] });
+		expect(getLatestCallAgentResult(parent)).toEqual({
+			message: 'child message',
+			response: 'child answer',
+			toolCallId: 'tc-child',
+		});
 	});
 });
 

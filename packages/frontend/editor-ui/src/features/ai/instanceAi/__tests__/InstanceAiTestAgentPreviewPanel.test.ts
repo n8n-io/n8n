@@ -83,6 +83,28 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(store.startRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-1');
 	});
 
+	it("shows the builder's own test result directly, without generating or running a case", async () => {
+		const store = useAgentEvalsStore();
+		const generateDraftCases = vi.spyOn(store, 'generateDraftCases');
+		const startRun = vi.spyOn(store, 'startRun');
+
+		const { getByTestId, findByText } = createComponentRenderer(InstanceAiTestAgentPreviewPanel, {
+			props: {
+				target,
+				initialCase: {
+					message: 'Summarize the thread about the outage',
+					response: 'Ticket #48219 is a P1 SSO outage.',
+				},
+			},
+		})();
+
+		expect(await findByText('Summarize the thread about the outage')).toBeInTheDocument();
+		expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled();
+		expect(generateDraftCases).not.toHaveBeenCalled();
+		expect(startRun).not.toHaveBeenCalled();
+	});
+
 	it('renders the answer as formatted markdown', async () => {
 		const store = useAgentEvalsStore();
 		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({

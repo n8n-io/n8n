@@ -2495,6 +2495,50 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
+		it("reuses the builder's own test call instead of generating and running a case", async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+			thread.messages.push({
+				id: 'msg-builder',
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-builder',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					children: [],
+					toolCalls: [
+						{
+							toolCallId: 'tc-call-1',
+							toolName: 'call_agent',
+							args: { message: 'Summarize the thread about the outage' },
+							isLoading: false,
+							result: {
+								status: 'completed',
+								response: 'Ticket #48219 is a P1 SSO outage.',
+								executionId: 'exec-1',
+								sessionId: 'session-1',
+							},
+						},
+					],
+				},
+			});
+
+			const { findByText, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(await findByText('Summarize the thread about the outage')).toBeInTheDocument();
+			expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled();
+			expect(evalsStore.generateDraftCases).not.toHaveBeenCalled();
+			expect(evalsStore.startRun).not.toHaveBeenCalled();
+		});
+
 		it('persists the dismissal on "Needs work" without requesting the evals focus', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();

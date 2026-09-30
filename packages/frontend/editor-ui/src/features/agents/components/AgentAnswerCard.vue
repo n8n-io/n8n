@@ -36,6 +36,7 @@ defineProps<{
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--sm);
 }
 
 .content {

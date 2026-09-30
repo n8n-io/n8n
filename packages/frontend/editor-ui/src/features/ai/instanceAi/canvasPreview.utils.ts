@@ -84,6 +84,48 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	return undefined;
 }
 
+export interface CallAgentResult {
+	message: string;
+	response: string;
+	/** Unique per call — a later test call re-fires watchers. */
+	toolCallId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the message
+ * and response from the latest completed `call_agent` test run — the
+ * builder's own "Testing agent" step already runs a representative message
+ * against the draft agent, so a caller needing a real input/output pair for
+ * preview purposes can reuse it instead of generating and running its own.
+ */
+export function getLatestCallAgentResult(node: InstanceAiAgentNode): CallAgentResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestCallAgentResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (
+			tc.toolName !== 'call_agent' ||
+			tc.isLoading ||
+			!tc.result ||
+			typeof tc.result !== 'object'
+		) {
+			continue;
+		}
+		const args = tc.args;
+		const result = tc.result as Record<string, unknown>;
+		if (
+			result.status === 'completed' &&
+			typeof result.response === 'string' &&
+			typeof args.message === 'string'
+		) {
+			return { message: args.message, response: result.response, toolCallId: tc.toolCallId };
+		}
+	}
+	return undefined;
+}
+
 /** A workflow-builder sub-agent node, identified by kind or role. */
 function isBuilderNode(node: InstanceAiAgentNode): boolean {
 	return node.kind === 'builder' || node.role === 'workflow-builder';

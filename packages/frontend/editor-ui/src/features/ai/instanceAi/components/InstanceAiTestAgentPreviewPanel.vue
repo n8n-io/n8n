@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /**
  * Post-setup suggestion to test the agent that was just built — the preview
- * variant. Instead of a generic "want to test this?" offer, it runs one
- * generated case immediately and shows the real input/output before asking
- * whether it looks right. Behind the `INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT`
- * flag, alongside the original `InstanceAiTestAgentPanel`.
+ * variant. Instead of a generic "want to test this?" offer, it shows a real
+ * input/output pair before asking whether it looks right — reusing the
+ * builder's own test run when one exists (`initialCase`), otherwise
+ * generating and running one case of its own. Behind the
+ * `INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT` flag, alongside the original
+ * `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
@@ -19,6 +21,12 @@ import AgentAnswerCard from '@/features/agents/components/AgentAnswerCard.vue';
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
+	/**
+	 * A real input/output pair from the agent builder's own "Testing agent"
+	 * step, when one exists. Shown directly instead of generating and running
+	 * a fresh case, since the builder already ran an equivalent test.
+	 */
+	initialCase?: { message: string; response: string } | null;
 }>();
 
 const emit = defineEmits<{
@@ -33,16 +41,23 @@ const store = useAgentEvalsStore();
 const formatRelative = useRelativeTimestamp();
 
 type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
-const phase = ref<Phase>('generating-preview');
+// Skips straight to the confirmation state when the builder already ran an
+// equivalent test — there is nothing to generate or wait on.
+const phase = ref<Phase>(props.initialCase ? 'awaiting-confirmation' : 'generating-preview');
 const previewRunId = ref<string | null>(null);
 const suiteCases = ref<AgentEvalDraftCase[]>([]);
 
 const previewResult = computed(() =>
 	previewRunId.value ? store.getReview(previewRunId.value).results[0] : undefined,
 );
-const previewInput = computed(() => readCaseRequest(previewResult.value?.input));
-const previewOutput = computed(() => readAgentAnswer(previewResult.value?.output ?? null));
+const previewInput = computed(
+	() => props.initialCase?.message ?? readCaseRequest(previewResult.value?.input),
+);
+const previewOutput = computed(
+	() => props.initialCase?.response ?? readAgentAnswer(previewResult.value?.output ?? null),
+);
 const previewAnsweredAt = computed(() => {
+	if (props.initialCase) return null;
 	const result = previewResult.value;
 	const timestamp = result?.completedAt ?? result?.runAt ?? result?.createdAt;
 	return timestamp ? formatRelative(timestamp) : null;
@@ -73,6 +88,7 @@ function failAndDismiss(error: unknown) {
 }
 
 async function generatePreviewCase() {
+	if (props.initialCase) return;
 	try {
 		const { projectId, agentId } = props.target;
 		const result = await store.generateDraftCases(projectId, agentId, { count: 1 });

@@ -44,6 +44,7 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
+import { getLatestCallAgentResult } from './canvasPreview.utils';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
@@ -203,6 +204,21 @@ watch(
 );
 
 const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
+
+// The builder's own "Testing agent" step (the `call_agent` tool) already runs
+// a representative message against the draft agent — reused here so the
+// preview panel can show a real result immediately instead of generating and
+// running a case of its own.
+const latestCallAgentResult = computed(() => {
+	for (let i = thread.messages.length - 1; i >= 0; i--) {
+		const msg = thread.messages[i];
+		if (msg.agentTree) {
+			const result = getLatestCallAgentResult(msg.agentTree);
+			if (result) return result;
+		}
+	}
+	return null;
+});
 
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
@@ -962,6 +978,7 @@ function handleNewThreadClick() {
 							<InstanceAiTestAgentPreviewPanel
 								v-if="latchedTestAgentOffer && isTestAgentPreviewVariant"
 								:target="latchedTestAgentOffer"
+								:initial-case="latestCallAgentResult"
 								@confirm="handleConfirmTestAgentPreview"
 								@dismiss="dismissTestAgentOffer"
 								@open-evals="handleOpenEvalsFromPreview"
