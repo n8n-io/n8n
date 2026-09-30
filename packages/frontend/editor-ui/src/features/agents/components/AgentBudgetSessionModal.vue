@@ -7,10 +7,15 @@ import type { AgentJsonConfig } from '../types';
 import { parseBudgetAmount, sessionCapSave } from '../utils/budget-config';
 import AgentModal from './modals/AgentModal.vue';
 
-const props = defineProps<{
-	open: boolean;
-	config: AgentJsonConfig | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		config: AgentJsonConfig | null;
+		/** Editing locked (read-only builder): keep the modal view-only so a save cannot be dropped by the locked autosave. */
+		disabled?: boolean;
+	}>(),
+	{ disabled: false },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -53,6 +58,7 @@ function save() {
 					:model-value="amount"
 					:min="0"
 					:controls="false"
+					:disabled="disabled"
 					data-testid="agent-budget-session-amount"
 					@update:model-value="onAmount"
 				/>
@@ -63,7 +69,7 @@ function save() {
 			</N8nText>
 		</div>
 		<template #footerActions>
-			<N8nButton data-testid="agent-budget-session-save" @click="save">
+			<N8nButton :disabled="disabled" data-testid="agent-budget-session-save" @click="save">
 				{{ i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>

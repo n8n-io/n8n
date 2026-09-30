@@ -501,7 +501,7 @@ watch(
 						</div>
 					</div>
 					<AgentBudgetNoticeCard
-						v-for="notice in group.finalMessage?.budgetNotices ?? []"
+						v-for="notice in group.budgetNotices"
 						:key="notice.id"
 						:code="notice.code"
 						@increase="emit('increase-budget', $event)"

@@ -100,4 +100,18 @@ describe('AgentBudgetPanel', () => {
 		await wrapper.get('[data-testid="agent-budget-session-row"]').trigger('click');
 		expect(wrapper.getComponent(AgentBudgetSessionModal).props('open')).toBe(true);
 	});
+
+	it('keeps an open modal view-only when editing becomes locked', async () => {
+		getAgentBudgetSpend.mockReset();
+		const wrapper = mount(AgentBudgetPanel, {
+			props: { config: config(), projectId: 'project-1', agentId: 'agent-1' },
+		});
+
+		await wrapper.get('[data-testid="agent-budget-session-row"]').trigger('click');
+		expect(wrapper.getComponent(AgentBudgetSessionModal).props('disabled')).toBe(false);
+
+		await wrapper.setProps({ disabled: true });
+		expect(wrapper.getComponent(AgentBudgetSessionModal).props('disabled')).toBe(true);
+		expect(wrapper.getComponent(AgentBudgetMonthlyModal).props('disabled')).toBe(true);
+	});
 });

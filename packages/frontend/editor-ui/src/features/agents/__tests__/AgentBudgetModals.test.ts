@@ -58,7 +58,7 @@ describe('AgentBudgetMonthlyModal', () => {
 		expect(slider.props('min')).toBe(10);
 		expect(slider.props('max')).toBe(100);
 		expect(slider.props('step')).toBe(10);
-		expect(slider.props('showStops')).toBe(false);
+		expect(slider.props('showStops')).toBe(true);
 	});
 
 	it('snaps a saved percent to the nearest step of 10', () => {
@@ -98,6 +98,20 @@ describe('AgentBudgetMonthlyModal', () => {
 		});
 		expect(saved.config?.guardrails?.budget?.alertThresholdPercent).toBeUndefined();
 	});
+
+	it('disables the amount, the alert controls, and Save while editing is locked', () => {
+		const wrapper = mount(AgentBudgetMonthlyModal, {
+			props: { open: true, config: config(), disabled: true },
+			global: { stubs: { AgentModal: AgentModalStub } },
+		});
+
+		expect(wrapper.getComponent(N8nInputNumber).props('disabled')).toBe(true);
+		expect(wrapper.getComponent(N8nSwitch2).props('disabled')).toBe(true);
+		expect(wrapper.getComponent(ElSlider).props('disabled')).toBe(true);
+		expect(
+			wrapper.get('[data-testid="agent-budget-monthly-save"]').attributes('disabled'),
+		).toBeDefined();
+	});
 });
 
 describe('AgentBudgetSessionModal', () => {
@@ -131,5 +145,17 @@ describe('AgentBudgetSessionModal', () => {
 		expect(saved.config?.guardrails?.budget?.sessionCostCapUsd).toBeUndefined();
 		expect(saved.config?.guardrails?.budget?.monthlyBudgetUsd).toBe(200);
 		expect(saved.config?.guardrails?.budget?.enabled).toBe(true);
+	});
+
+	it('disables the amount and Save while editing is locked', () => {
+		const wrapper = mount(AgentBudgetSessionModal, {
+			props: { open: true, config: config(), disabled: true },
+			global: { stubs: { AgentModal: AgentModalStub } },
+		});
+
+		expect(wrapper.getComponent(N8nInputNumber).props('disabled')).toBe(true);
+		expect(
+			wrapper.get('[data-testid="agent-budget-session-save"]').attributes('disabled'),
+		).toBeDefined();
 	});
 });

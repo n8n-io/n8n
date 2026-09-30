@@ -8,6 +8,8 @@ import { ElSlider } from 'element-plus';
 
 defineProps<{
 	modelValue: number;
+	/** Accessible name for the slider; forwarded to ElSlider's `label` prop, which sets `aria-label`. */
+	label: string;
 	disabled?: boolean;
 }>();
 
@@ -30,11 +32,11 @@ function onUpdate(value: number | number[]) {
 	<ElSlider
 		:model-value="modelValue"
 		:min="10"
-		:max="100"
 		:step="10"
-		:show-stops="false"
+		:show-stops="true"
 		:show-tooltip="false"
 		:disabled="disabled"
+		:label="label"
 		:style="brandColor"
 		:class="$style.slider"
 		data-testid="agent-budget-alert-slider"

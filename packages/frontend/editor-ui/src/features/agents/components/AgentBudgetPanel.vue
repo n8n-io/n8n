@@ -101,17 +101,29 @@ const sessionValue = computed(() => {
 		data-testid="agent-budget-panel"
 	>
 		<div :class="[shared.disabled && disabled, $style.body]">
-			<div data-testid="agent-budget-usage" :class="budgetUsageRow">
-				<N8nText step="sm" bold :class="shared.dataEntryLabel">
-					{{ i18n.baseText('agents.builder.budget.usage.label') }}
-				</N8nText>
-				<N8nText v-if="monthlyBudget === undefined" size="small" :class="shared.dataEntrySubLabel">
-					{{ i18n.baseText('agents.builder.budget.usage.none') }}
-				</N8nText>
-				<N8nText v-else-if="spendState === 'error'" size="small" :class="shared.dataEntrySubLabel">
-					{{ i18n.baseText('agents.builder.budget.usage.unavailable') }}
-				</N8nText>
-				<template v-else-if="spendState === 'ready' && spentUsd !== undefined">
+			<div data-testid="agent-budget-usage" :class="$style.usageSection">
+				<div :class="$style.usageHeader">
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">
+						{{ i18n.baseText('agents.builder.budget.usage.label') }}
+					</N8nText>
+					<N8nText
+						v-if="monthlyBudget === undefined"
+						size="small"
+						:class="shared.dataEntrySubLabel"
+					>
+						{{ i18n.baseText('agents.builder.budget.usage.none') }}
+					</N8nText>
+					<N8nText
+						v-else-if="spendState === 'error'"
+						size="small"
+						:class="shared.dataEntrySubLabel"
+					>
+						{{ i18n.baseText('agents.builder.budget.usage.unavailable') }}
+					</N8nText>
+				</div>
+				<template
+					v-if="monthlyBudget !== undefined && spendState === 'ready' && spentUsd !== undefined"
+				>
 					<div :class="$style.usageLine">
 						<I18nT
 							keypath="agents.builder.budget.usage.spent"
@@ -201,12 +213,14 @@ const sessionValue = computed(() => {
 		<AgentBudgetMonthlyModal
 			:open="monthlyOpen"
 			:config="config"
+			:disabled="disabled"
 			@update:open="monthlyOpen = $event"
 			@save="emit('update:config', $event)"
 		/>
 		<AgentBudgetSessionModal
 			:open="sessionOpen"
 			:config="config"
+			:disabled="disabled"
 			@update:open="sessionOpen = $event"
 			@save="emit('update:config', $event)"
 		/>
@@ -220,9 +234,15 @@ const sessionValue = computed(() => {
 	gap: var(--spacing--sm);
 }
 
-.budgetUsageRow {
+.usageSection {
 	display: flex;
-	align-content: space-between;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.usageHeader {
+	display: flex;
+	justify-content: space-between;
 }
 
 .spent {

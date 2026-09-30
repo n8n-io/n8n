@@ -114,6 +114,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const consumedQueueIds = new Set<string>();
 	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
+	/**
+	 * Budget notices attached by streams that already ended, keyed by execution
+	 * id (or message id before `done`). The history read that follows `done`
+	 * consumes them once; a later refresh must not reinsert a stop card and
+	 * block Send again.
+	 */
+	const pendingBudgetNotices = new Map<string, NonNullable<ChatMessage['budgetNotices']>>();
+	const pendingBudgetNoticeSources = new Map<string, ChatMessage>();
 	let queueVersion = 0;
 	let submissionVersion = 0;
 	const activeExecutionId = ref<string | null>(null);
@@ -227,7 +235,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
 				messages.value = restoreBudgetNotices(
 					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
-					messages.value,
 				);
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
@@ -553,25 +560,30 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const notices = msg.budgetNotices ?? [];
 		if (notices.some((notice) => notice.code === code)) return;
 		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
+		const key = session.executionId ?? msg.id;
+		const pending = pendingBudgetNotices.get(key) ?? [];
+		if (!pending.some((notice) => notice.code === code)) {
+			pending.push({ id: crypto.randomUUID(), code });
+		}
+		pendingBudgetNotices.set(key, pending);
+		pendingBudgetNoticeSources.set(key, msg);
 	}
 
 	/**
 	 * Budget cards are live-stream only. The history read that follows `done`
-	 * replaces the transcript, so copy the notices onto the persisted turn.
-	 * A stop before any assistant text has no persisted message to land on.
+	 * replaces the transcript, so copy the notices from the streams that just
+	 * ended onto the persisted turn, then drop them. A stop before any
+	 * assistant text has no persisted message to land on.
 	 */
-	function restoreBudgetNotices(next: ChatMessage[], previous: ChatMessage[]): ChatMessage[] {
-		const pending = new Map<string, NonNullable<ChatMessage['budgetNotices']>>();
-		for (const message of previous) {
-			if (!message.budgetNotices?.length) continue;
-			const key = message.executionId ?? message.id;
-			const notices = pending.get(key) ?? [];
-			for (const notice of message.budgetNotices) {
-				if (!notices.some((item) => item.code === notice.code)) notices.push(notice);
-			}
-			pending.set(key, notices);
-		}
-		if (pending.size === 0) return next;
+	function restoreBudgetNotices(next: ChatMessage[]): ChatMessage[] {
+		if (pendingBudgetNotices.size === 0) return next;
+
+		// Consume the pending notices: the first refresh after `done` restores
+		// them, and later refreshes must not bring a dismissed card back.
+		const pending = new Map(pendingBudgetNotices);
+		const sources = new Map(pendingBudgetNoticeSources);
+		pendingBudgetNotices.clear();
+		pendingBudgetNoticeSources.clear();
 
 		const restored = next.map((message) => ({ ...message }));
 		for (let index = restored.length - 1; index >= 0; index--) {
@@ -584,9 +596,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		for (const [key, notices] of pending) {
-			const source = previous.find(
-				(message) => (message.executionId ?? message.id) === key && message.budgetNotices?.length,
-			);
+			const source = sources.get(key);
 			if (!source) continue;
 			const anchor =
 				source.executionId === undefined
@@ -1097,6 +1107,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (event.executionId) {
 					for (const msg of session.minted) {
 						msg.executionId = event.executionId;
+					}
+					// Notices attached before `accepted` are keyed by message id; rekey
+					// them so the history refresh can match the persisted turn.
+					for (const msg of session.minted) {
+						const notices = pendingBudgetNotices.get(msg.id);
+						if (!notices) continue;
+						pendingBudgetNotices.delete(msg.id);
+						pendingBudgetNotices.set(event.executionId, notices);
+						pendingBudgetNoticeSources.delete(msg.id);
+						pendingBudgetNoticeSources.set(event.executionId, msg);
 					}
 				}
 				session.terminalEventReceived = true;

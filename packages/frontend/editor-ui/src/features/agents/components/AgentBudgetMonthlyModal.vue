@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nInputNumber, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -8,10 +8,15 @@ import { monthlyBudgetSave, parseBudgetAmount, snapAlertPercent } from '../utils
 import AgentModal from './modals/AgentModal.vue';
 import BudgetAlertSlider from './BudgetAlertSlider.vue';
 
-const props = defineProps<{
-	open: boolean;
-	config: AgentJsonConfig | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		config: AgentJsonConfig | null;
+		/** Editing locked (read-only builder): keep the modal view-only so a save cannot be dropped by the locked autosave. */
+		disabled?: boolean;
+	}>(),
+	{ disabled: false },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -24,6 +29,12 @@ const alertOn = ref(false);
 const alertPercent = ref(80);
 
 const hasAmount = () => amount.value !== undefined;
+
+const alertPercentLabel = computed(() =>
+	i18n.baseText('agents.builder.budget.alert.percent', {
+		interpolate: { percent: alertPercent.value },
+	}),
+);
 
 watch(
 	() => props.open,
@@ -75,6 +86,7 @@ function save() {
 					:model-value="amount"
 					:min="0"
 					:controls="false"
+					:disabled="disabled"
 					data-testid="agent-budget-monthly-amount"
 					@update:model-value="onAmount"
 				/>
@@ -93,7 +105,7 @@ function save() {
 				</div>
 				<N8nSwitch2
 					:model-value="alertOn"
-					:disabled="!hasAmount()"
+					:disabled="disabled || !hasAmount()"
 					size="small"
 					data-testid="agent-budget-alert-switch"
 					@update:model-value="onAlertToggle"
@@ -101,17 +113,13 @@ function save() {
 			</div>
 			<div v-if="alertOn && hasAmount()" :class="$style.slider">
 				<N8nText size="small">
-					{{
-						i18n.baseText('agents.builder.budget.alert.percent', {
-							interpolate: { percent: alertPercent },
-						})
-					}}
+					{{ alertPercentLabel }}
 				</N8nText>
-				<BudgetAlertSlider v-model="alertPercent" />
+				<BudgetAlertSlider v-model="alertPercent" :disabled="disabled" :label="alertPercentLabel" />
 			</div>
 		</div>
 		<template #footerActions>
-			<N8nButton data-testid="agent-budget-monthly-save" @click="save">
+			<N8nButton :disabled="disabled" data-testid="agent-budget-monthly-save" @click="save">
 				{{ i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>
