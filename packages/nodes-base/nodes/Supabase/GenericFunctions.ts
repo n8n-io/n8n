@@ -97,9 +97,9 @@ async function getProjectSecretKey(
 		`/projects/${toPathSegment(projectRef)}/api-keys`,
 		{ reveal: true },
 	);
-	const secretKey =
-		keys.find((key) => key.type === 'secret' && key.name === N8N_SECRET_KEY_NAME && key.api_key) ??
-		keys.find((key) => key.type === 'secret' && key.api_key);
+	const secretKey = keys.find(
+		(key) => key.type === 'secret' && key.name === N8N_SECRET_KEY_NAME && key.api_key,
+	);
 
 	if (secretKey?.api_key) return secretKey.api_key;
 
