@@ -2672,6 +2672,56 @@ describe('JobProcessor', () => {
 			);
 		});
 
+		it('should stop counting a job as running once it is cancelled, before its run settles', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			const runPromise = new Promise<IRun>(() => {});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			void jobProcessor.processJob(job);
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(jobProcessor.getRunningJobIds()).toContain(String(job.id));
+
+			jobProcessor.stopJob(job.id);
+
+			expect(jobProcessor.getRunningJobIds()).not.toContain(String(job.id));
+		});
+
 		it('keeps a stop reported as manual when the timeout elapses before the run settles', async () => {
 			vi.useFakeTimers();
 
