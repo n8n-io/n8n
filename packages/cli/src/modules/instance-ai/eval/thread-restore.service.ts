@@ -281,6 +281,7 @@ export class EvalThreadRestoreService {
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
 	): Promise<string[]> {
 		if (agents.length === 0) return [];
@@ -301,6 +302,7 @@ export class EvalThreadRestoreService {
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
 				await agentsService.create(projectId, config.data.name, {
+					actor: { kind: 'user', user },
 					id: agent.id,
 					schema: config.data,
 					...(agent.skills ? { skills: agent.skills } : {}),

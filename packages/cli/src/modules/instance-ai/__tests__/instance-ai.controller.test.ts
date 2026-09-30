@@ -1408,6 +1408,7 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
 					[seedAgent],
 					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
 					expect.any(Map),
 				);
 				// Refs and ordering are reconstructed from the seeded history, so the

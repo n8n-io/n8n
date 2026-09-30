@@ -21,19 +21,23 @@ import {
 	type AgentSkill,
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	isMcpOAuth2Authentication,
 	NodeHelpers,
+	type INode,
 	type INodeParameters,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { toPolicedNodes } from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
+import { AgentPolicyService } from './agent-policy.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -74,6 +78,27 @@ function issue(
 	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
 }
 
+/** Where on a node tool a violation points, or `undefined` when it is about something else. */
+function policyIssuePath(
+	policedNodes: INode[],
+	index: number,
+	{ subject, subjectType }: PolicyViolation,
+): string | undefined {
+	if (subject === undefined) return undefined;
+	// The tool's own node comes first; any after it belong to an inline agent the tool embeds.
+	const [own, ...embedded] = policedNodes;
+	const matches = (node: INode) =>
+		(subjectType === 'nodeType' && node.type === subject) ||
+		(subjectType === 'credentialType' && subject in (node.credentials ?? {}));
+
+	if (own && matches(own)) {
+		return subjectType === 'nodeType'
+			? `tools.${index}.node.nodeType`
+			: `tools.${index}.node.credentials.${subject}`;
+	}
+	return embedded.some(matches) ? `tools.${index}.node.nodeParameters.inlineAgent` : undefined;
+}
+
 function agentIssue(
 	code: AgentConfigValidationIssueCode,
 	path: string,
@@ -91,6 +116,7 @@ export class AgentValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	/**
@@ -294,11 +320,48 @@ export class AgentValidationService {
 			}
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
+			await this.collectPolicyIssues(ctx, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
+	}
+
+	/** Advisory: publish enforces the same checks and refuses with the violations themselves. */
+	private async collectPolicyIssues(
+		ctx: ConfigurationValidationContext,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const { violations, checkErrors } = await this.agentPolicyService.evaluatePublish(
+			ctx.projectId,
+			ctx.agentId,
+			ctx.config,
+		);
+		// Publish fails closed when a check cannot run, so validation must not report valid.
+		if (checkErrors && checkErrors.length > 0) {
+			issues.push(issue('invalid_value', 'tools', { kind: 'tool' }, 'policy_check_failed'));
+		}
+		if (violations.length === 0) return;
+
+		const tools = ctx.config.tools ?? [];
+		for (let index = 0; index < tools.length; index++) {
+			const tool = tools[index];
+			if (tool.type !== 'node') continue;
+			const policedNodes = toPolicedNodes([tool]);
+			for (const violation of violations) {
+				const path = policyIssuePath(policedNodes, index, violation);
+				if (!path) continue;
+				issues.push(
+					issue(
+						'incompatible_reference',
+						path,
+						{ kind: 'tool', id: tool.name, index, toolType: 'node' },
+						'blocked_by_policy',
+					),
+				);
+			}
+		}
 	}
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
