@@ -7627,7 +7627,6 @@
 	"instanceAi.testAgentPreview.skip": "Skip",
 	"instanceAi.testAgentPreview.dontCreateEvals": "Don't create evals",
 	"instanceAi.testAgentPreview.generatingSuite": "Adding more cases to your eval suite…",
-	"instanceAi.testAgentPreview.viewInEvals": "View in Evals tab",
 	"instanceAi.testAgentPreview.yourTry": "Your try",
 	"instanceAi.testAgentPreview.tryExpandedPlaceholder": "Placeholder — expanded content goes here",
 	"instanceAi.testAgentPreview.savedAsFirstCheck": "Saved as your first check: an example you can run again, like a test.",

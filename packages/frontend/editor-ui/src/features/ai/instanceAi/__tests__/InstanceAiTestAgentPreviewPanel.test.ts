@@ -474,9 +474,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
 		expect(getByText('b answer')).toBeInTheDocument();
 		expect(getByText('d answer')).toBeInTheDocument();
-
-		await user.click(await findByTestId('instance-ai-test-agent-examples-view-evals'));
-		expect(emitted()['open-evals']).toEqual([[]]);
 	});
 
 	it('deletes the generated cases beyond the slider cap before running', async () => {

@@ -167,14 +167,5 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
 		});
-
-		it('shows the "View in Evals tab" button and emits view-evals', async () => {
-			const user = userEvent.setup();
-			const { getByTestId, emitted } = renderComponent({ props: { caseRuns } });
-
-			await user.click(getByTestId('instance-ai-test-agent-examples-view-evals'));
-
-			expect(emitted()['view-evals']).toEqual([[]]);
-		});
 	});
 });

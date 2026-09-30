@@ -276,24 +276,13 @@ function onViewEvals() {
 
 			<N8nButton
 				v-if="!runSettled"
-				variant="outline"
+				variant="ghost"
 				size="small"
-				icon="filled-square"
 				:loading="stoppingRun"
 				data-test-id="instance-ai-test-agent-examples-stop"
 				@click="onStopRun"
 			>
 				{{ i18n.baseText('agents.builder.agentEvals.run.cancel') }}
-			</N8nButton>
-
-			<N8nButton
-				v-if="runSettled"
-				variant="outline"
-				size="small"
-				data-test-id="instance-ai-test-agent-examples-view-evals"
-				@click="onViewEvals"
-			>
-				{{ i18n.baseText('instanceAi.testAgentPreview.viewInEvals') }}
 			</N8nButton>
 		</template>
 	</div>
