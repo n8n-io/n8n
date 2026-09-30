@@ -1348,9 +1348,11 @@ type PropertyDisplayOptions = NonNullable<NodeProperty['displayOptions']>;
 
 /**
  * Remove the conditions that the generated file already implies: `@version`
- * is implicit from the file path, and a discriminator value that the current
- * combination satisfies is redundant. What remains is the condition the
- * builder still has to meet at run time.
+ * is implicit from the file path, and every key the current combination
+ * defines is already decided. A property only reaches a combination's file
+ * when its show and hide conditions on those keys hold, so a remaining
+ * `hide: { operation: ['execute'] }` in the insert file is not a condition.
+ * What remains is the condition the builder still has to meet at run time.
  */
 function getResidualDisplayOptions(
 	displayOptions: NodeProperty['displayOptions'],
@@ -1359,13 +1361,11 @@ function getResidualDisplayOptions(
 	const residual: PropertyDisplayOptions = {};
 	if (!displayOptions) return residual;
 
-	const keep = ([key, values]: [string, unknown[]]): boolean => {
+	const keep = ([key]: [string, unknown[]]): boolean => {
 		if (key === '@version') return false;
 		// Strip leading '/' from key for root-level property references
 		const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
-		const contextValue = discriminatorContext?.[normalizedKey];
-		if (contextValue !== undefined && values.includes(contextValue)) return false;
-		return true;
+		return discriminatorContext?.[normalizedKey] === undefined;
 	};
 
 	const show = Object.entries(displayOptions.show ?? {}).filter(keep);

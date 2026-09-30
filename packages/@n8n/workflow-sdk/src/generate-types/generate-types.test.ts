@@ -2672,6 +2672,22 @@ describe('generate-types', () => {
 			expect(line).not.toContain('@required');
 		});
 
+		it('should treat a hide on a discriminator the combination does not match as decided', () => {
+			// Oracle-style: `table` is hidden for execute, so in the insert file it is unconditional.
+			const table: NodeProperty = {
+				name: 'table',
+				displayName: 'Table',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { hide: { operation: ['execute'] } },
+			};
+			const line = generateTypes.generatePropertyLine(table, false, { operation: 'insert' });
+			expect(line).toContain('table: string | Expression<string>;');
+			expect(line).not.toContain('@displayOptions');
+			expect(line).not.toContain('@required');
+		});
+
 		it('should keep a property required when only @version gates it', () => {
 			const prop: NodeProperty = {
 				...text,
