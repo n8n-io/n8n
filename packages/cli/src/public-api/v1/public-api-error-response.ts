@@ -1,8 +1,10 @@
 import type { Response } from 'express';
 
-import type { HttpErrorClassifierContext } from '@/errors/http-error-classifier';
-import { classifyHttpError } from '@/errors/http-error-classifier';
-import { serializePublicApiError } from '@/errors/http-error-serializers';
+import {
+	classifyRestError,
+	serializePublicApiError,
+	type RestErrorClassifierContext,
+} from '@n8n/backend-services';
 
 /**
  * Maps errors from the public API stack to HTTP responses. Used by the
@@ -11,9 +13,9 @@ import { serializePublicApiError } from '@/errors/http-error-serializers';
 export function sendPublicApiErrorResponse(
 	res: Response,
 	error: Error,
-	context?: HttpErrorClassifierContext,
+	context?: RestErrorClassifierContext,
 ): void {
-	const descriptor = classifyHttpError(error, context);
+	const descriptor = classifyRestError(error, context);
 	const { status, body } = serializePublicApiError(descriptor);
 	res.status(status).json(body);
 }

@@ -283,6 +283,13 @@ describe('AgentInfoPanel', () => {
 		expect(editor.props('placeholder')).toBe('agents.builder.agent.instructions.placeholder');
 	});
 
+	it('reports instructions input before its debounced config update', () => {
+		const wrapper = mountPanel('Cris');
+		wrapper.getComponent({ name: 'N8nMarkdownEditor' }).vm.$emit('update:modelValue', 'Crisp.');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
+	});
+
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {
 		const config: AgentJsonConfig = {
 			name: 'Support agent',

@@ -177,7 +177,11 @@ export interface MetricResult {
 	value: number;
 }
 
-export interface WaitForMetricOptions {
+export interface MetricQueryOptions {
+	latencyOffset?: string;
+}
+
+export interface WaitForMetricOptions extends MetricQueryOptions {
 	timeoutMs?: number;
 	intervalMs?: number;
 	predicate?: (values: MetricResult[]) => boolean;
@@ -201,8 +205,10 @@ export class MetricsHelper {
 		return await response.text();
 	}
 
-	async query(query: string): Promise<MetricResult[]> {
-		const response = await fetch(`${this.endpoint}/api/v1/query?${new URLSearchParams({ query })}`);
+	async query(query: string, options: MetricQueryOptions = {}): Promise<MetricResult[]> {
+		const params = new URLSearchParams({ query });
+		if (options.latencyOffset !== undefined) params.set('latency_offset', options.latencyOffset);
+		const response = await fetch(`${this.endpoint}/api/v1/query?${params}`);
 		if (!response.ok) {
 			throw new Error(`VictoriaMetrics query failed: ${response.status}`);
 		}
@@ -234,7 +240,7 @@ export class MetricsHelper {
 
 		while (Date.now() < deadline) {
 			try {
-				const values = await this.query(query);
+				const values = await this.query(query, options);
 				if (predicate(values)) return values[0] ?? null;
 			} catch {
 				// Ignore transient errors during polling

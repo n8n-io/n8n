@@ -281,6 +281,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		selectTab(tab.id);
 	}
 
+	function reorderTab(tabId: string, toIndex: number) {
+		tabs.moveTab(tabId, toIndex);
+		tabs.saveTabs(activeTabId.value);
+	}
+
 	function closeTab(tabId: string) {
 		const nextTabId = tabs.closeTab(tabId);
 		if (activeTabId.value === tabId) {
@@ -577,6 +582,8 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	return {
 		activeTabId,
 		openTabs,
+		/** False until the stored tabs of the thread load. */
+		tabsLoaded: tabs.isLoaded,
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,
@@ -589,6 +596,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		workflowRefreshKey,
 		selectTab,
 		openTab,
+		reorderTab,
 		closeTab,
 		closePreview,
 		openWorkflowPreview,

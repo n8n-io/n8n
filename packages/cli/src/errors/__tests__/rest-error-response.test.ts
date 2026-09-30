@@ -1,38 +1,13 @@
-import type { SourceControlledFile } from '@n8n/api-types';
-
-import { classifyHttpError } from '@/errors/http-error-classifier';
-import {
-	serializeInternalRestError,
-	serializePublicApiError,
-} from '@/errors/http-error-serializers';
-import { ConflictError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
+import { classifyRestError } from '@n8n/backend-services';
+import { serializeInternalRestError, serializePublicApiError } from '@n8n/backend-services';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
-describe('http-error-serializers', () => {
-	it('serializePublicApiError: minimal message for ResponseError', () => {
-		const descriptor = classifyHttpError(new NotFoundError('x'));
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 404,
-			body: { message: 'x' },
-		});
-	});
-
-	it('serializeInternalRestError: includes code for ResponseError', () => {
-		const descriptor = classifyHttpError(new NotFoundError('x'));
-		expect(serializeInternalRestError(descriptor)).toEqual({
-			status: 404,
-			body: {
-				code: 404,
-				message: 'x',
-			},
-		});
-	});
-
+describe('rest-error-response', () => {
 	it('serializePublicApiError: does not expose internal-only response error meta', () => {
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new LicenseEulaRequiredError('License activation requires EULA acceptance', {
 				eulaUrl: 'https://n8n.io/legal/eula/',
 			}),
@@ -52,7 +27,7 @@ describe('http-error-serializers', () => {
 	});
 
 	it('returns review details publicly while keeping editor-only validation metadata internal', () => {
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new WorkflowPublishBlockedError({
 				reason: 'changes_requested',
 				workflowReviewRequestId: 'review-1',
@@ -90,7 +65,7 @@ describe('http-error-serializers', () => {
 				usedByWorkflows: ['wf-1'],
 			},
 		];
-		const descriptor = classifyHttpError(toImportBlockedError(issues));
+		const descriptor = classifyRestError(toImportBlockedError(issues));
 
 		const result = serializePublicApiError(descriptor);
 		expect(result.status).toBe(422);
@@ -112,7 +87,7 @@ describe('http-error-serializers', () => {
 				usedByWorkflows: ['wf-1'],
 			},
 		];
-		const descriptor = classifyHttpError(toImportBlockedError(issues));
+		const descriptor = classifyRestError(toImportBlockedError(issues));
 
 		const result = serializePublicApiError(descriptor);
 		expect(result.status).toBe(409);
@@ -129,7 +104,7 @@ describe('http-error-serializers', () => {
 				subjectType: 'nodeType',
 			},
 		];
-		const descriptor = classifyHttpError(new PolicyViolationError([violations[0]]));
+		const descriptor = classifyRestError(new PolicyViolationError([violations[0]]));
 
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 403,
@@ -145,70 +120,6 @@ describe('http-error-serializers', () => {
 				message: 'Slack is not available in this project',
 				meta: { violations },
 			},
-		});
-	});
-
-	it('both serializers expose source control push conflicts on a 409', () => {
-		const conflicts: SourceControlledFile[] = [
-			{
-				file: 'workflows/wf-1.json',
-				id: 'wf-1',
-				name: 'My workflow',
-				type: 'workflow',
-				status: 'modified',
-				location: 'local',
-				conflict: true,
-				updatedAt: '2024-01-01T00:00:00.000Z',
-			},
-		];
-		const descriptor = classifyHttpError(
-			new ConflictError(
-				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
-				undefined,
-				{
-					conflicts,
-				},
-			),
-		);
-
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 409,
-			body: {
-				message: expect.stringContaining('conflicting files'),
-				conflicts,
-			},
-		});
-		expect(serializeInternalRestError(descriptor)).toEqual({
-			status: 409,
-			body: {
-				code: 409,
-				message: expect.stringContaining('conflicting files'),
-				meta: { conflicts },
-			},
-		});
-	});
-
-	it('both serializers map UserError to 400', () => {
-		const descriptor = classifyHttpError(new UserError('bad input'));
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 400,
-			body: { message: 'bad input' },
-		});
-		expect(serializeInternalRestError(descriptor)).toEqual({
-			status: 400,
-			body: { code: 0, message: 'bad input' },
-		});
-	});
-
-	it('public sanitizes UnexpectedError; internal keeps message', () => {
-		const descriptor = classifyHttpError(new UnexpectedError('secret'));
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 500,
-			body: { message: 'Internal server error' },
-		});
-		expect(serializeInternalRestError(descriptor)).toEqual({
-			status: 500,
-			body: { code: 0, message: 'secret' },
 		});
 	});
 });

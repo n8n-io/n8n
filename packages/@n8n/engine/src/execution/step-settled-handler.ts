@@ -96,7 +96,7 @@ export class StepSettledHandler {
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
 		}
@@ -206,7 +206,7 @@ export class StepSettledHandler {
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 		}
