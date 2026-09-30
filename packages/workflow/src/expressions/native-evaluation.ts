@@ -78,6 +78,26 @@ type SimpleNode =
 // takes the engine path there (under lazy acquisition, creating the bridge on
 // demand).
 
+// Intrinsics are captured at import so a later patch to a prototype or a
+// global (a polyfill, a community package) does not change what the native
+// path runs; the isolates never see such a patch either.
+const { isArray } = Array;
+const { hasOwn } = Object;
+const toStr = String;
+const toNum = Number;
+const clone = structuredClone;
+
+type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
+
+const captureMethods = (proto: object, names: string[]): ReadonlyMap<string, NativeMethod> => {
+	const methods = new Map<string, NativeMethod>();
+	for (const name of names) {
+		const method: unknown = Reflect.get(proto, name);
+		if (typeof method === 'function') methods.set(name, method as NativeMethod);
+	}
+	return methods;
+};
+
 // Native prototype methods callable on a receiver of the matching type.
 // Every name here must stay disjoint from the expression-extension method
 // names (extendSyntax rewrites extension calls into `extend()` dispatch;
@@ -87,7 +107,7 @@ type SimpleNode =
 // (EngineFallbackError below). Callback-taking forms (regex/function args,
 // array callbacks) are unrepresentable: those argument nodes decline parsing.
 // Accepting callbacks is CAT-4698.
-const STRING_METHODS = new Set([
+const STRING_METHODS = captureMethods(String.prototype, [
 	'toUpperCase',
 	'toLowerCase',
 	'trim',
@@ -103,7 +123,7 @@ const STRING_METHODS = new Set([
 	'replaceAll',
 ]);
 
-const NUMBER_METHODS = new Set(['toFixed', 'toPrecision', 'toString']);
+const NUMBER_METHODS = captureMethods(Number.prototype, ['toFixed', 'toPrecision', 'toString']);
 
 // Non-mutating methods only: the receiver is the live workflow data (the vm
 // engine evaluates a copy inside the isolate), so an in-place mutator like
@@ -111,7 +131,7 @@ const NUMBER_METHODS = new Set(['toFixed', 'toPrecision', 'toString']);
 // the toSorted()/toReversed() immutable variants instead. Iterator-returning
 // methods (entries/values/keys) are also excluded: a live iterator has no
 // equivalent representation across the engine boundary.
-const ARRAY_METHODS = new Set([
+const ARRAY_METHODS = captureMethods(Array.prototype, [
 	'includes',
 	'indexOf',
 	'lastIndexOf',
@@ -124,7 +144,11 @@ const ARRAY_METHODS = new Set([
 	'toReversed',
 ]);
 
-export const CALLABLE_METHODS = new Set([...STRING_METHODS, ...NUMBER_METHODS, ...ARRAY_METHODS]);
+export const CALLABLE_METHODS = new Set([
+	...STRING_METHODS.keys(),
+	...NUMBER_METHODS.keys(),
+	...ARRAY_METHODS.keys(),
+]);
 
 // The engine evaluates under a timeout and a memory limit; this interpreter
 // has neither. A string or array result above this length is handed to the
@@ -240,7 +264,7 @@ function parseCall(node: Record<string, unknown>, parse: ParseChild): SimpleNode
 	const receiver = parse(callee.object);
 	if (receiver === null) return null;
 
-	if (!Array.isArray(node.arguments)) return null;
+	if (!isArray(node.arguments)) return null;
 
 	const args: SimpleNode[] = [];
 	for (const argument of node.arguments) {
@@ -354,8 +378,10 @@ function parseSimple(node: unknown, depth = 0): SimpleNode | null {
 class EngineFallbackError extends Error {}
 
 // Thrown by an optional member/call on a nullish receiver and caught by the
-// enclosing chain node, which yields undefined for the whole chain.
-const chainShortCircuit = Symbol('chainShortCircuit');
+// enclosing chain node, which yields undefined for the whole chain. One
+// shared instance: a missing optional hop is ordinary data, not an error.
+class ChainShortCircuit extends Error {}
+const chainShortCircuit = new ChainShortCircuit();
 
 // Property lookup on a non-nullish primitive is well-defined and side-effect
 // free, so primitives are indexable here even though the predicate's type
@@ -370,7 +396,7 @@ const isPrimitive = (value: unknown): boolean =>
 	value === null || (typeof value !== 'object' && typeof value !== 'function');
 
 function bounded<T>(value: T): T {
-	const isSizeable = typeof value === 'string' || Array.isArray(value);
+	const isSizeable = typeof value === 'string' || isArray(value);
 
 	if (isSizeable && value.length > MAX_RESULT_LENGTH) {
 		throw new EngineFallbackError();
@@ -382,7 +408,7 @@ function bounded<T>(value: T): T {
 // Operand casts are intentional: the interpreter must reproduce JS coercion
 // semantics exactly (parity with the engines), not re-implement them.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = {
+const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 	'===': (l, r) => l === r,
 	'!==': (l, r) => l !== r,
 	// eslint-disable-next-line eqeqeq
@@ -393,13 +419,12 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = {
 	'<=': (l, r) => l <= r,
 	'>': (l, r) => l > r,
 	'>=': (l, r) => l >= r,
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	'+': (l, r) => bounded(l + r),
 	'-': (l, r) => l - r,
 	'*': (l, r) => l * r,
 	'/': (l, r) => l / r,
 	'%': (l, r) => l % r,
-};
+});
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 function evalMember(
@@ -413,7 +438,7 @@ function evalMember(
 	}
 
 	if (!isIndexable(object)) {
-		throw new TypeError(`Cannot read properties of ${String(object)} (reading '${node.key}')`);
+		throw new TypeError(`Cannot read properties of ${toStr(object)} (reading '${node.key}')`);
 	}
 
 	// Below the roots (get-trap proxies, where Object.hasOwn misreports every
@@ -423,7 +448,7 @@ function evalMember(
 		node.object.kind !== 'root' &&
 		typeof object === 'object' &&
 		node.key in object &&
-		!Object.hasOwn(object, node.key);
+		!hasOwn(object, node.key);
 	if (inherited) {
 		throw new EngineFallbackError();
 	}
@@ -443,20 +468,20 @@ function evalMember(
 // Parsing only proves the method name; the receiver's type is data. A
 // receiver whose type has no allowlist entry for the method could be
 // intercepted by extensions, so it hands the whole expression to the engine.
-function prototypeFor(receiver: unknown, method: string): object {
-	if (typeof receiver === 'string' && STRING_METHODS.has(method)) {
-		return String.prototype;
+function methodFor(receiver: unknown, name: string): NativeMethod {
+	let method: NativeMethod | undefined;
+
+	if (typeof receiver === 'string') {
+		method = STRING_METHODS.get(name);
+	} else if (typeof receiver === 'number') {
+		method = NUMBER_METHODS.get(name);
+	} else if (isArray(receiver)) {
+		method = ARRAY_METHODS.get(name);
 	}
 
-	if (typeof receiver === 'number' && NUMBER_METHODS.has(method)) {
-		return Number.prototype;
-	}
+	if (method === undefined) throw new EngineFallbackError();
 
-	if (Array.isArray(receiver) && ARRAY_METHODS.has(method)) {
-		return Array.prototype;
-	}
-
-	throw new EngineFallbackError();
+	return method;
 }
 
 // Arguments are primitives, plus arrays for concat. An object argument would
@@ -465,7 +490,7 @@ function prototypeFor(receiver: unknown, method: string): object {
 function isAllowedArgument(method: string, arg: unknown): boolean {
 	if (isPrimitive(arg)) return true;
 
-	return method === 'concat' && Array.isArray(arg);
+	return method === 'concat' && isArray(arg);
 }
 
 // The engine runs under a timeout; a synchronous native call cannot be
@@ -478,24 +503,24 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 
 	if (method === 'concat') {
 		for (const arg of args) {
-			upperBound += Array.isArray(arg) ? arg.length : 1;
+			upperBound += isArray(arg) ? arg.length : 1;
 		}
 	} else if (method === 'replaceAll' && typeof receiver === 'string') {
 		// A missing replacement inserts the string "undefined".
-		const replacement = args.length < 2 ? 'undefined' : String(args[1]);
+		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
 
 		// `$&`, `$\``, `$'` splice match context into every replacement, so
 		// the result is not bounded by the replacement's length.
 		if (replacement.includes('$')) throw new EngineFallbackError();
 
 		upperBound = (receiver.length + 1) * (replacement.length + 1);
-	} else if (method === 'join' && Array.isArray(receiver)) {
+	} else if (method === 'join' && isArray(receiver)) {
 		// Only an undefined separator means ","; null joins with "null".
-		const separator = args[0] === undefined ? ',' : String(args[0]);
+		const separator = args[0] === undefined ? ',' : toStr(args[0]);
 		upperBound = separator.length * Math.max(receiver.length - 1, 0);
 
 		for (const element of receiver) {
-			upperBound += String(element ?? '').length;
+			upperBound += toStr(element ?? '').length;
 		}
 	}
 
@@ -516,20 +541,16 @@ function evalCall(
 	}
 
 	if (receiverMissing) {
-		throw new TypeError(`Cannot read properties of ${String(receiver)} (reading '${node.method}')`);
+		throw new TypeError(`Cannot read properties of ${toStr(receiver)} (reading '${node.method}')`);
 	}
 
 	// An own property shadowing the method (an engine-resolved $parameter value
 	// can carry one) would take precedence in the engines.
-	if (Object.hasOwn(receiver, node.method)) {
+	if (hasOwn(receiver, node.method)) {
 		throw new EngineFallbackError();
 	}
 
-	const proto = prototypeFor(receiver, node.method);
-	const method: unknown = Reflect.get(proto, node.method);
-	if (typeof method !== 'function') {
-		throw new EngineFallbackError();
-	}
+	const method = methodFor(receiver, node.method);
 
 	const args = node.args.map((argument) => evalNode(argument, data));
 	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
@@ -538,7 +559,7 @@ function evalCall(
 
 	preflightSize(receiver, node.method, args);
 
-	return bounded(method.apply(receiver, args) as unknown);
+	return bounded(method.apply(receiver, args));
 }
 
 function evalChain(
@@ -568,7 +589,7 @@ function evalUnary(
 		throw new EngineFallbackError();
 	}
 
-	return node.op === '-' ? -Number(argument) : Number(argument);
+	return node.op === '-' ? -toNum(argument) : toNum(argument);
 }
 
 function evalBinary(
@@ -756,7 +777,7 @@ function copyResult(value: unknown): unknown {
 	if (!isObj(value)) return value;
 
 	try {
-		return structuredClone(value);
+		return clone(value);
 	} catch {
 		throw new EngineFallbackError();
 	}

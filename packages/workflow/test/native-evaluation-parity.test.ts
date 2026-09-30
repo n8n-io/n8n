@@ -310,6 +310,19 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 
+		test('a prototype patched after import does not reach the native path', () => {
+			const original = String.prototype.toUpperCase;
+			String.prototype.toUpperCase = () => 'patched';
+			try {
+				expect(nativeOn('{{ $json.name.toUpperCase() }}', { $json: { name: 'foo' } })).toEqual({
+					handled: true,
+					value: 'FOO',
+				});
+			} finally {
+				String.prototype.toUpperCase = original;
+			}
+		});
+
 		test('an own property shadowing a method hands off to the engine', () => {
 			const $json = { list: Object.assign(['a'], { join: null }) };
 			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({ handled: false });
