@@ -12,7 +12,7 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus';
 import { bodyParser, rawBodyReader } from '@/middlewares';
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { WorkerServer } from '../worker-server';
 

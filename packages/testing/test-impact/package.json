@@ -25,8 +25,8 @@
     "test:coverage": "vitest run --coverage",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -41,9 +41,12 @@
     "monocart-coverage-reports": "^2.12.0"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fast-check": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   }

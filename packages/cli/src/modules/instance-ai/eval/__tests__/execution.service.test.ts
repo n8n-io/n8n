@@ -114,6 +114,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
@@ -854,6 +855,7 @@ describe('EvalExecutionService', () => {
 			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				undefined,
+				new Set(),
 			);
 		});
 
@@ -937,6 +939,7 @@ describe('EvalExecutionService', () => {
 				expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'wf-1' }),
 					new Set(['Agent']),
+					new Set(),
 				);
 			});
 
@@ -1922,6 +1925,67 @@ describe('EvalExecutionService', () => {
 
 			expect(dataTableService.getColumns).not.toHaveBeenCalled();
 			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
+		});
+	});
+
+	describe('seeded Data Table reads (via execution)', () => {
+		function readNode(name: string, dataTableId: unknown): INode {
+			return {
+				id: name,
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { resource: 'row', operation: 'get', dataTableId },
+			} as INode;
+		}
+
+		beforeEach(() => {
+			vi.mocked(isDataTableRead).mockImplementation(
+				(node: INode) => node.type === 'n8n-nodes-base.dataTable',
+			);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		});
+
+		it('leaves the reads of a seeded table out of the pinned nodes', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						readNode('Read Seeded', { __rl: true, mode: 'list', value: 'dt-seeded' }),
+						// Spelt in another case: the node resolves names case-insensitively.
+						readNode('Read Named', { __rl: true, mode: 'name', value: 'stock [SEED 1a2b3c4d]' }),
+						readNode('Read Other', { __rl: true, mode: 'id', value: 'dt-other' }),
+						// A name the seed did not create stays pinned.
+						readNode('Read Unseeded', { __rl: true, mode: 'name', value: 'Orders' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([
+				{ id: 'dt-seeded', name: 'Customers' },
+				{ id: 'dt-named', name: 'Stock [seed 1a2b3c4d]' },
+			] as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser(), {
+				seededDataTableIds: ['dt-seeded', 'dt-named'],
+			});
+
+			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-seeded', 'dt-named']);
+			const liveReads = identifyNodesForPinDataMock.mock.calls[0][2];
+			expect([...(liveReads ?? [])]).toEqual(['Read Seeded', 'Read Named']);
+		});
+
+		it('pins every read when the caller seeded no table', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [makeStartNode(), readNode('Read', { __rl: true, mode: 'id', value: 'dt-1' })],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect([...(identifyNodesForPinDataMock.mock.calls[0][2] ?? [])]).toEqual([]);
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		});
 	});
 

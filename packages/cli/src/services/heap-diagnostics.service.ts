@@ -1,10 +1,8 @@
 import { Service } from '@n8n/di';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { createReadStream, existsSync, statSync, type ReadStream } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { writeHeapSnapshot } from 'node:v8';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export type GarbageCollectionResult = { success: boolean; message: string };
 

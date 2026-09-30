@@ -9,8 +9,7 @@ import { Service } from '@n8n/di';
 import { runSerially } from '@n8n/utils/run-serially';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import {
 	AgentIntegrationPersistenceService,

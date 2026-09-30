@@ -58,13 +58,17 @@ function makeExecutionStore(
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
 		...overrides,
 	};
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		finishExecution: vi.fn().mockResolvedValue(true),
+		finishExecution: vi
+			.fn()
+			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
+		cancelExecution: vi.fn().mockResolvedValue(null),
 		refreshLiveStatus: vi.fn(),
 		...storeOverrides,
 	};
@@ -454,7 +458,7 @@ describe('StepSettledHandler', () => {
 		const stepStore = makeStepStore({ status: 'failed' });
 		const executionStore = makeExecutionStore(
 			{},
-			{ finishExecution: vi.fn().mockResolvedValue(false) },
+			{ finishExecution: vi.fn().mockResolvedValue(null) },
 		);
 		const { handler } = makeHandler(stepStore, { executionStore });
 
@@ -512,14 +516,16 @@ describe('StepSettledHandler', () => {
 });
 
 describe('StepSettledHandler lifecycle events', () => {
-	const finished = { executionId: 'exec-1', workflowId: 'wf-1', at: expect.any(String) as string };
+	const finished = { executionId: 'exec-1', workflowId: 'wf-1', at: '2026-09-30T08:00:00.000Z' };
 
 	it('announces execution:completed when it records the completion', async () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
 		);
-		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ responseExpectation: { kind: 'runEnd' } }),
+		});
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -547,7 +553,9 @@ describe('StepSettledHandler lifecycle events', () => {
 			status: 'failed',
 			error: { name: 'NodeOperationError', message: 'it broke', stack: 'at trace' },
 		});
-		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ responseExpectation: { kind: 'runEnd' } }),
+		});
 
 		await handler.handle(event);
 
@@ -571,11 +579,69 @@ describe('StepSettledHandler lifecycle events', () => {
 		});
 	});
 
+	describe('the ended message for each response expectation', () => {
+		const outputs = [[{ json: { a: 1 } }]];
+		const finishingStore = () =>
+			makeStepStore(
+				{ id: 'step-m', nodeId: 'm', outputs },
+				{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			);
+
+		it('sends no ended message when the caller expects none', async () => {
+			const { handler, lifecycleEventPublisher, responseSender } = makeHandler(finishingStore(), {
+				executionStore: makeExecutionStore({ responseExpectation: { kind: 'none' } }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-m' });
+
+			// The run still ends: only the response is left out.
+			expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'execution:completed',
+				...finished,
+			});
+			expect(responseSender.send).not.toHaveBeenCalled();
+		});
+
+		it('sends the outputs of the last step when the caller expects the run end', async () => {
+			const { handler, responseSender } = makeHandler(finishingStore(), {
+				executionStore: makeExecutionStore({ responseExpectation: { kind: 'runEnd' } }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-m' });
+
+			expect(responseSender.send).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					type: 'ended',
+					lastStep: expect.objectContaining({ nodeId: 'm', outputs }) as unknown,
+				}),
+			);
+		});
+
+		it.each(['stepResponse', 'stream'] as const)(
+			'sends no outputs when the caller expects %s',
+			async (kind) => {
+				const { handler, responseSender } = makeHandler(finishingStore(), {
+					executionStore: makeExecutionStore({ responseExpectation: { kind } }),
+				});
+
+				await handler.handle({ ...event, stepId: 'step-m' });
+
+				expect(responseSender.send).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						type: 'ended',
+						status: 'completed',
+						lastStep: expect.objectContaining({ nodeId: 'm', outputs: null }) as unknown,
+					}),
+				);
+			},
+		);
+	});
+
 	it('announces nothing when finishExecution loses the compare-and-set', async () => {
 		// Another worker already wrote the outcome, so it announces it.
 		const executionStore = makeExecutionStore(
 			{},
-			{ finishExecution: vi.fn().mockResolvedValue(false) },
+			{ finishExecution: vi.fn().mockResolvedValue(null) },
 		);
 		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(
 			makeStepStore({ status: 'failed' }),

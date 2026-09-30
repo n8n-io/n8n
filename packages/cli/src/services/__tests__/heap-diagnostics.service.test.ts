@@ -1,9 +1,8 @@
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
 
 const { writeHeapSnapshot } = vi.hoisted(() => ({ writeHeapSnapshot: vi.fn<() => string>() }));

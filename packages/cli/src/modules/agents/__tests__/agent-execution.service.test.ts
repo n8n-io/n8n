@@ -24,6 +24,8 @@ import type { AgentExecutionThreadRepository } from '../repositories/agent-execu
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import type { AgentMessageRepository } from '../repositories/agent-message.repository';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
+import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -86,7 +88,7 @@ describe('AgentExecutionService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		messageRepository.createExecutionInput.mockResolvedValue('message-1');
+		messageRepository.createInput.mockResolvedValue(mock<AgentMessageEntity>({ id: 'message-1' }));
 		messageRepository.findExecutionInputs.mockResolvedValue(new Map());
 		messageRepository.copyExecutionInputs.mockResolvedValue([]);
 
@@ -141,6 +143,180 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	describe('recordSideCallUsage', () => {
+		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.00125,
+				reportId: 'report-1',
+			});
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			// Both increments run inside the same transaction context.
+			const txCtx = txRunner.run.mock.calls[0][0];
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledWith(
+				'execution-1',
+				0.00125,
+				txCtx,
+			);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
+				'thread-1',
+				0,
+				0,
+				0.00125,
+				0,
+				txCtx,
+			);
+		});
+
+		it('claims the reportId only after the transaction commits', async () => {
+			// A failed transaction must not claim the reportId, so a later
+			// replay can reapply both totals atomically instead of being
+			// suppressed while one total already diverged.
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+			const report = { task: 'title', model: 'openai/gpt-4o', cost: 0.001, reportId: 'retry-1' };
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', report),
+			).resolves.toBeUndefined();
+
+			// Not claimed: the failed transaction is replayable. The replay runs
+			// both increments again — `incrementCost` is retried (2 calls); the
+			// first attempt threw before reaching `incrementUsage`, so it runs
+			// only on the successful replay (1 call).
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('re-applies a sequentially replayed reportId (no process-local dedup)', async () => {
+			// The SDK calls `onSideCallUsage` once per model call with a fresh
+			// `reportId`, so a sequential replay is not expected. The in-flight
+			// map only coalesces concurrent deliveries; once it clears, a later
+			// delivery with the same id re-applies.
+			const report = { task: 'observer', model: 'openai/gpt-4o', cost: 0.0007, reportId: 'dup-1' };
+
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+			await service.recordSideCallUsage('execution-1', 'thread-1', report);
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
+		});
+
+		it('coalesces concurrent deliveries of the same reportId onto one transaction', async () => {
+			// Two deliveries of the same reportId racing past the duplicate
+			// check must not double-count: the second delivery awaits the
+			// in-flight attempt instead of starting its own transaction.
+			let resolveIncrement!: () => void;
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => {
+					resolveIncrement = resolve;
+				});
+			});
+			const report = {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.0007,
+				reportId: 'race-1',
+			};
+
+			const a = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			const b = service.recordSideCallUsage('execution-1', 'thread-1', report);
+			// The first transaction is in flight; release it so both settle.
+			resolveIncrement();
+			await Promise.all([a, b]);
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(1);
+		});
+
+		it('applies two different reportIds separately', async () => {
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'report-a',
+			});
+			await service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'observer',
+				model: 'openai/gpt-4o',
+				cost: 0.002,
+				reportId: 'report-b',
+			});
+
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(2);
+			expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledTimes(2);
+		});
+
+		it('swallows repository errors so a side-call cost failure never breaks the run', async () => {
+			agentExecutionRepository.incrementCost.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(
+				service.recordSideCallUsage('execution-1', 'thread-1', {
+					task: 'title',
+					model: 'openai/gpt-4o',
+					cost: 0.001,
+					reportId: 'report-err',
+				}),
+			).resolves.toBeUndefined();
+		});
+
+		it('drains pending side-call usage recordings before the terminal write so a crash after finalization does not lose cost', async () => {
+			// `onSideCallUsage` dispatches `recordSideCallUsage` fire-and-forget
+			// (`void` in `agent-turn-execution.service.ts`). Without a drain at
+			// finalization, a side-call `incrementCost` still in flight when the
+			// process exits after the terminal UPDATE would be lost. The terminal
+			// write drains this execution's pending recordings first, so the
+			// side-call cost settles before the row is finalized.
+			const gate = createDeferredPromise();
+			agentExecutionRepository.incrementCost.mockImplementationOnce(async () => {
+				await gate.promise;
+			});
+
+			// Fire-and-forget a side call (do not await), simulating the SDK path.
+			void service.recordSideCallUsage('execution-1', 'thread-1', {
+				task: 'title',
+				model: 'openai/gpt-4o',
+				cost: 0.001,
+				reportId: 'drain-1',
+			});
+
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			// Start finalization (do not await): it blocks on the drain, so the
+			// terminal write must not have run yet.
+			const finalize = service
+				.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record,
+				})
+				.catch((error: unknown) => error);
+
+			// `recordSideCallUsage` invokes `incrementCost` synchronously (before
+			// its first await), so it has already been called. Finalization blocks
+			// on the drain, so the terminal write has not run yet.
+			await Promise.resolve();
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+
+			gate.resolve();
+			const result = await finalize;
+			expect(result).toBe('execution-1');
+
+			// The side-call cost settled before the terminal write committed.
+			expect(agentExecutionRepository.incrementCost).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(1);
+			expect(agentExecutionRepository.incrementCost.mock.invocationCallOrder[0]).toBeLessThan(
+				agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0],
+			);
+		});
+	});
+
 	describe('startExecutionRecording', () => {
 		it('stores the signal before publishing the execution update', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
@@ -188,6 +364,9 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				id,
 				expect.objectContaining({ timeline: initialTimeline }),
+				undefined,
+				expect.any(Object),
+				undefined,
 			);
 		});
 
@@ -320,48 +499,69 @@ describe('AgentExecutionService', () => {
 		}
 	});
 
-	it('serializes timeline snapshot updates', async () => {
-		const params = await startSnapshotExecution();
-		let releaseFirstWrite!: () => void;
-		agentExecutionRepository.updateTimelineIfRunning
-			.mockImplementationOnce(
-				async () =>
-					await new Promise<boolean>((resolve) => {
-						releaseFirstWrite = () => resolve(true);
-					}),
-			)
-			.mockResolvedValue(true);
-		const first: TimelineEvent[] = [{ type: 'text', content: 'First', timestamp: 1 }];
-		const second: TimelineEvent[] = [{ type: 'text', content: 'Second', timestamp: 1 }];
+	it.each([false, true])(
+		'drains paused snapshots after an input check (consumed: %s)',
+		async (consumed) => {
+			const params = await startSnapshotExecution();
+			let releaseFirstWrite!: () => void;
+			agentExecutionRepository.updateTimelineIfRunning
+				.mockImplementationOnce(
+					async () =>
+						await new Promise<boolean>((resolve) => {
+							releaseFirstWrite = () => resolve(true);
+						}),
+				)
+				.mockResolvedValue(true);
+			const first: TimelineEvent[] = [{ type: 'text', content: 'First', timestamp: 1 }];
+			const second: TimelineEvent[] = [{ type: 'text', content: 'Second', timestamp: 1 }];
+			const withInput: TimelineEvent[] = [
+				...second,
+				{
+					type: 'input',
+					timestamp: 2,
+					messageId: 'input-1',
+				},
+			];
 
-		service.recordTimelineSnapshot({
-			executionId: 'execution-1',
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'thread-1',
-			timeline: first,
-		});
-		service.recordTimelineSnapshot({
-			executionId: 'execution-1',
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'thread-1',
-			timeline: second,
-		});
-		await vi.waitFor(() =>
-			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(1),
-		);
-		releaseFirstWrite();
-		await vi.waitFor(() =>
-			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(2),
-		);
+			service.recordTimelineSnapshot({
+				executionId: 'execution-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				timeline: first,
+			});
+			service.recordTimelineSnapshot({
+				executionId: 'execution-1',
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				timeline: second,
+			});
+			await vi.waitFor(() =>
+				expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(1),
+			);
+			const check = service.withTimelineWritesPaused('execution-1', async () => {
+				if (consumed) {
+					service.recordTimelineSnapshot({
+						...params,
+						executionId: 'execution-1',
+						timeline: withInput,
+					});
+				}
+			});
+			releaseFirstWrite();
+			await check;
+			await vi.waitFor(() =>
+				expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(2),
+			);
 
-		expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenLastCalledWith(
-			'execution-1',
-			second,
-		);
-		await service.finalizeExecution('execution-1', { ...params, record: makeMessageRecord() });
-	});
+			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenLastCalledWith(
+				'execution-1',
+				consumed ? withInput : second,
+			);
+			await service.finalizeExecution('execution-1', { ...params, record: makeMessageRecord() });
+		},
+	);
 
 	it('notifies only after a timeline snapshot retry persists', async () => {
 		vi.useFakeTimers();
@@ -462,7 +662,10 @@ describe('AgentExecutionService', () => {
 					.catch((error: unknown) => error);
 				expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
 				if (snapshotState === 'in flight') snapshot.reject(new Error('snapshot unavailable'));
-				await vi.advanceTimersByTimeAsync(1_000);
+				// The snapshot retry timer fires at 1s; `writeTerminalExecution`
+				// then runs its bounded retry (100ms + 200ms backoff) before
+				// rethrowing `cause`, so advance past all of it.
+				await vi.advanceTimersByTimeAsync(2_000);
 				expect(await finished).toBe(cause);
 				service.recordTimelineSnapshot(update);
 				await vi.advanceTimersByTimeAsync(180_000);
@@ -506,6 +709,9 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
+			undefined,
+			expect.any(Object),
+			undefined,
 		);
 		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
 	});
@@ -566,6 +772,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
 				expect.objectContaining({
+					status: 'success',
 					timeline: record.timeline,
 					storedAt: 'db',
 					failureSummary: {
@@ -578,6 +785,9 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				undefined,
+				expect.any(Object),
+				undefined,
 			);
 			expect(agentExecutionRepository.moveTimelineToBlob).toHaveBeenCalledWith('execution-1', 'fs');
 			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
@@ -671,6 +881,9 @@ describe('AgentExecutionService', () => {
 						storedAt: 'db',
 						failureSummary: null,
 					}),
+					undefined,
+					expect.any(Object),
+					undefined,
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 				if (shouldDeleteBlob) {
@@ -984,13 +1197,7 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it.each([
-			{ name: 'suspended turn', record: makeMessageRecord(), hitlStatus: 'suspended' as const },
-			{
-				name: 'max-iterations turn',
-				record: makeMessageRecord({ finishReason: 'max-iterations' }),
-			},
-		])('tracks $name without an error as succeeded', async ({ record, hitlStatus }) => {
+		it('tracks a suspended turn without an error as succeeded', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread(),
 				created: false,
@@ -1006,8 +1213,8 @@ describe('AgentExecutionService', () => {
 				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
-				record,
-				...(hitlStatus ? { hitlStatus } : {}),
+				record: makeMessageRecord(),
+				hitlStatus: 'suspended',
 				telemetry: {
 					runType: 'test',
 					configuration: {
@@ -1024,6 +1231,53 @@ describe('AgentExecutionService', () => {
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					turn_status: 'succeeded',
+				}),
+			);
+		});
+
+		it('tracks a max-iterations turn as failed', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
+
+			await recordExecution({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord({ finishReason: 'max-iterations' }),
+				telemetry: {
+					runType: 'test',
+					configuration: {
+						model: null,
+						channels: [],
+						tool_types: [],
+						tool_count: 0,
+						num_skills: 0,
+						memory_type: 'none',
+					},
+				},
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					status: 'error',
+					error: MAX_ITERATIONS_STOPPED_MESSAGE,
+				}),
+				undefined,
+				expect.any(Object),
+				undefined,
+			);
+			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					turn_status: 'failed',
 				}),
 			);
 		});
@@ -1065,10 +1319,111 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 					failureSummary: null,
 				}),
+				undefined,
+				expect.any(Object),
+				undefined,
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
 			);
+		});
+
+		it('applies the terminal main-loop cost additively so in-flight side-call increments survive', async () => {
+			// A side-call `incrementCost` that lands before the terminal write must
+			// not be overwritten by `cost = record.totalCost`. The terminal write
+			// therefore folds the main-loop cost into `updateIfRunning` as an
+			// additive `costIncrement` (`COALESCE(cost, 0) + :costIncrement`) on the
+			// same column the side calls increment, so the two never race and a
+			// failure leaves nothing half-applied.
+			const record = makeMessageRecord({ totalCost: 0.05 });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			const lastCall = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const [, terminalPayload, , , costIncrement] = lastCall;
+			expect(terminalPayload).not.toHaveProperty('cost');
+			expect(costIncrement).toBe(0.05);
+			// The cost is folded into the terminal UPDATE, so no separate
+			// `incrementCost` call is issued for the main loop.
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+		});
+
+		it('does not issue a cost increment when the terminal run has no priced usage', async () => {
+			const record = makeMessageRecord({ totalCost: null });
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			const lastCall = agentExecutionRepository.updateIfRunning.mock.calls.at(-1)!;
+			const [, , , , costIncrement] = lastCall;
+			expect(costIncrement).toBeUndefined();
+			expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+		});
+
+		it('retries the terminal write when it fails transiently so the row is finalized with cost', async () => {
+			// The terminal status write and the main-loop cost increment run as one
+			// atomic UPDATE. A transient failure (DB blip, deadlock) leaves the row
+			// `running` because nothing committed. The heartbeat is already stopped,
+			// so without a retry the row would stay `running` until the sweeper
+			// marks it `interrupted` and the main-loop cost would be lost.
+			// `writeTerminalExecution` retries a bounded number of times with linear
+			// backoff; the row is only terminal once a retry succeeds.
+			vi.useFakeTimers();
+			try {
+				const rows = new Map<string, { status: string; cost: number }>([
+					['execution-1', { status: 'running', cost: 0 }],
+				]);
+				agentExecutionRepository.updateIfRunning.mockImplementation(
+					async (id, values, _staleBefore, _ctx, costIncrement) => {
+						const row = rows.get(id);
+						if (row?.status !== 'running') return false;
+						row.status = values.status;
+						if (typeof costIncrement === 'number' && costIncrement > 0) {
+							row.cost += costIncrement;
+						}
+						return true;
+					},
+				);
+				// First attempt fails before mutating any state; the retry succeeds.
+				agentExecutionRepository.updateIfRunning.mockRejectedValueOnce(new Error('db down'));
+
+				const record = makeMessageRecord({ totalCost: 0.05 });
+				const finalize = service.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record,
+				});
+				await vi.advanceTimersByTimeAsync(1000);
+				await finalize;
+
+				// After the failed attempt the row is still `running` with no cost
+				// (the throw happened before any state mutation). After the retry
+				// the row is `success` with the main-loop cost applied.
+				expect(rows.get('execution-1')).toEqual({ status: 'success', cost: 0.05 });
+				expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledTimes(2);
+				expect(agentExecutionRepository.incrementCost).not.toHaveBeenCalled();
+				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
@@ -1134,14 +1489,62 @@ describe('AgentExecutionService', () => {
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
 		});
+
+		it('persists a successful mark_session_failed call as an execution error', async () => {
+			const record = makeMessageRecord({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: MARK_SESSION_FAILED_TOOL_NAME,
+						toolCallId: 'tc-fail',
+						input: { reason: 'Could not recover' },
+						output: { marked: true },
+						startTime: 0,
+						endTime: 1,
+						success: true,
+					},
+				],
+			});
+
+			await service.finalizeExecution('execution-1', {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
+
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					status: 'error',
+					error: 'Could not recover',
+					failureSummary: {
+						count: 1,
+						latest: {
+							kind: 'execution',
+							name: null,
+							message: 'Could not recover',
+							occurredAt: 1,
+						},
+					},
+				}),
+				undefined,
+				expect.any(Object),
+				undefined,
+			);
+		});
 	});
 
 	describe('getThreads', () => {
 		it('returns composite statuses and aggregated failure summaries', async () => {
-			const failedThread = makeThread({ id: 'thread-failed' });
+			const recoveredThread = makeThread({ id: 'thread-recovered' });
 			const cleanThread = makeThread({ id: 'thread-clean', accessScope: 'project', ownerId: null });
 			const runningThread = makeThread({ id: 'thread-running', parentThreadId: 'parent' });
 			const emptyThread = makeThread({ id: 'thread-empty' });
+			const errorThread = makeThread({ id: 'thread-error' });
 			const failureSummary = {
 				count: 2,
 				latest: {
@@ -1153,19 +1556,20 @@ describe('AgentExecutionService', () => {
 				},
 			};
 			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
-				threads: [failedThread, cleanThread, runningThread, emptyThread],
+				threads: [recoveredThread, cleanThread, runningThread, emptyThread, errorThread],
 				nextCursor: null,
 			});
 			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
 			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
 			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
-				new Map([[failedThread.id, failureSummary]]),
+				new Map([[recoveredThread.id, failureSummary]]),
 			);
 			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
 				new Map([
-					[failedThread.id, 'success'],
+					[recoveredThread.id, 'success'],
 					[cleanThread.id, 'success'],
 					[runningThread.id, 'running'],
+					[errorThread.id, 'error'],
 				]),
 			);
 
@@ -1173,9 +1577,9 @@ describe('AgentExecutionService', () => {
 
 			expect(result.threads).toEqual([
 				expect.objectContaining({
-					id: failedThread.id,
+					id: recoveredThread.id,
 					failureSummary,
-					status: 'error',
+					status: 'succeeded',
 					canContinueInPreview: true,
 				}),
 				expect.objectContaining({
@@ -1191,6 +1595,12 @@ describe('AgentExecutionService', () => {
 					canContinueInPreview: false,
 				}),
 				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
+				expect.objectContaining({
+					id: errorThread.id,
+					failureSummary: null,
+					status: 'error',
+					canContinueInPreview: true,
+				}),
 			]);
 		});
 	});

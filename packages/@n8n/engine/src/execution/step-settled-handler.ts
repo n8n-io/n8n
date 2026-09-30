@@ -96,7 +96,7 @@ export class StepSettledHandler {
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
 		}
@@ -206,7 +206,7 @@ export class StepSettledHandler {
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 		}
@@ -237,6 +237,9 @@ export class StepSettledHandler {
 			);
 		}
 
+		const { kind } = execution.responseExpectation;
+		if (kind === 'none') return;
+
 		this.responseSender.send({
 			type: 'ended',
 			executionId: execution.id,
@@ -246,7 +249,7 @@ export class StepSettledHandler {
 				nodeId: step.nodeId,
 				nodeName: node.name,
 				status: step.status,
-				outputs: step.outputs,
+				outputs: kind === 'runEnd' ? step.outputs : null,
 				// Name and message only: the caller reports them, and the rest of the
 				// error stays on the step row.
 				error: step.error ? { name: step.error.name, message: step.error.message } : undefined,

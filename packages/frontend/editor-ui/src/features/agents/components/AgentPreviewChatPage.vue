@@ -23,10 +23,11 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ visible: true, newSession: false, layout: 'dock' },
+	{ visible: true, newSession: false, layout: 'dock', dismissedFixToolCallIds: () => [] },
 );
 
 const emit = defineEmits<{
@@ -83,6 +84,7 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
 				:can-send-to-assistant="canSendToAssistant"
+				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 				:before-send="beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"

@@ -71,17 +71,24 @@ describe('settling the action card', () => {
 			value: JSON.stringify({ approved: false }),
 			content: '🚫 Declined by Alice',
 		},
+		{
+			name: 'background approval after a restart',
+			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:1',
+			value: '',
+			content: '✅ Approved by Alice',
+		},
 	])(
-		'names the decision on a $name card before resuming the agent',
+		'names the decision on a $name card',
 		async ({ callback, actionId = 'callback-key', value, content }) => {
+			const background = actionId.startsWith('bg:');
 			const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const resumeForChat = vi.fn(() => (async function* () {})());
+			const resolve = vi.fn().mockResolvedValue(callback);
+			const isResumable = vi.fn().mockResolvedValue(!background);
 			const handler = createHandler({
-				agentService: { resumeForChat },
-				...(callback
-					? { callbackStore: { resolve: vi.fn().mockResolvedValue(callback) } as never }
-					: {}),
+				agentService: { resumeForChat, isResumable },
+				...(callback || background ? { callbackStore: { resolve } as never } : {}),
 				formatActionDecisionMessage: ({ approved, selectedLabel, user }) => {
 					if (approved === undefined) return `✅ ${selectedLabel} selected by ${user.fullName}`;
 					return approved ? `✅ Approved by ${user.fullName}` : `🚫 Declined by ${user.fullName}`;
@@ -108,9 +115,23 @@ describe('settling the action card', () => {
 				messageId: 'message-1',
 				content,
 			});
-			expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
-				resumeForChat.mock.invocationCallOrder[0],
-			);
+			if (background) {
+				expect(resolve).not.toHaveBeenCalled();
+				expect(resumeForChat).toHaveBeenCalledWith(
+					expect.objectContaining({
+						runId: 'background-job-96fa13fa-75db-4439-b7c8-cd04a2c2f9b7',
+						toolCallId: 'abcdefghijklmnopqrstuv',
+						resumeData: { approved: true },
+					}),
+				);
+				expect(settleActionMessage.mock.invocationCallOrder[0]).toBeGreaterThan(
+					resumeForChat.mock.invocationCallOrder[0],
+				);
+			} else {
+				expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
+					resumeForChat.mock.invocationCallOrder[0],
+				);
+			}
 		},
 	);
 });

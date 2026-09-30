@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ProcessInternals } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/errors';
 import express from 'express';
 import { Readable } from 'node:stream';
 import request from 'supertest';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { createE2EDiagnosticsRouter } from '@/services/e2e-diagnostics.router';
 import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
 import { ProcessInternalsService } from '@/services/process-internals.service';
