@@ -154,7 +154,7 @@ export function generateNodeModule(nodeId: string, actions: readonly GeneratedAc
 	});
 	return [
 		`// Generated from the ${nodeId} action contracts. Do not edit.`,
-		'import { contractStep, type OutputOf, type Step, type Value } from \'@n8n/workflow-sdk/next\';',
+		"import { contractStep, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		'',
 		types.join('\n\n'),
 		'',

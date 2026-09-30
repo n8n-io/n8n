@@ -23,14 +23,13 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
-	contractSearchActions,
-	contractSignature,
-	contractView,
-	contractsForNodeType,
-	findContractForLegacyRequest,
-	getContract,
-	nearestContracts,
-} from '../node-contracts';
+	actionRow,
+	actionRowsOfNode,
+	nearestNextActions,
+	nextNodeIdOfNodeType,
+	nextNodeModule,
+	searchNextActions,
+} from '../node-contracts/next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
@@ -48,8 +47,8 @@ const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
-const CONTRACT_NODE_TYPES_ARRAY_DESCRIPTION =
-	'Every node you need, in one call (max 5). Action ids (e.g. "gmail.message.send") return the action contract. For other split nodes, pass the object form with resource/operation (or mode).';
+const MODULE_NODE_TYPES_ARRAY_DESCRIPTION =
+	'Every node you need, in one call (max 5). A module id ("notion") or an action id ("notion.databasePage.getAll") returns the node module. For other split nodes, pass the object form with resource/operation (or mode).';
 const GATEWAY_SEARCH_DESCRIPTION =
 	'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.';
 
@@ -95,12 +94,13 @@ const searchAction = z.object({
 		.describe('Maximum number of results to return (default: 10)'),
 });
 
-const contractSearchAction = searchAction.extend({
+const moduleSearchAction = searchAction.extend({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use a short service name and the operation, e.g. "gmail send" or "google sheets append". ' +
-				'A hit with action contracts lists them: `actions` has the full contract of each action the query names, `otherActions` has the id and summary of the others. ' +
+			'Search node types by name or AI connection type. Use a short service name and the operation, e.g. "notion get many pages" or "http request". ' +
+				'A service with a typed node module returns it in `nodeModules`: import it and call its actions. `otherActions` lists other typed actions by id. ' +
+				'`results` lists nodes without a module: use them with `node({ type, version, parameters })`. ' +
 				'To find every service a workflow needs in one call, pass `queries` instead of `query`. ' +
 				GATEWAY_SEARCH_DESCRIPTION,
 		),
@@ -134,21 +134,14 @@ export const nodeRequestSchema = z.union([
 
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
-const contractNodeRequestSchema = z.union([
+const moduleNodeRequestSchema = z.union([
 	z
 		.string()
-		.describe(`${NODE_TYPE_ID_DESCRIPTION}, or an action id such as "gmail.message.getAll"`),
-	nodeRequestObjectSchema.extend({
-		variants: z
-			.record(z.string())
-			.optional()
-			.describe(
-				'Action contracts only: variant branches to expand, by selector path, e.g. { "output.mode": "raw" }',
-			),
-	}),
+		.describe(
+			`${NODE_TYPE_ID_DESCRIPTION}, a module id such as "notion", or an action id such as "notion.databasePage.getAll"`,
+		),
+	nodeRequestObjectSchema,
 ]);
-
-type ContractNodeTypeRequest = z.infer<typeof contractNodeRequestSchema>;
 
 const typeDefinitionAction = z.object({
 	action: z
@@ -159,17 +152,17 @@ const typeDefinitionAction = z.object({
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
-const contractTypeDefinitionAction = z.object({
+const moduleTypeDefinitionAction = z.object({
 	action: z
 		.literal('type-definition')
 		.describe(
-			'Get node definitions. Request every node you need in one call. An action id returns its action contract: build it with `action(id, { name, parameters })` from @n8n/workflow-sdk, where parameters follow the contract input. Other nodes return TypeScript definitions.',
+			"Get node definitions. Request every node you need in one call. A module id or an action id returns the node module text: import it with `import { <id> } from '@n8n/nodes/<id>'`. Other nodes return TypeScript definitions for `node({ type, version, parameters })`.",
 		),
 	nodeTypes: z
-		.array(contractNodeRequestSchema)
+		.array(moduleNodeRequestSchema)
 		.min(1)
 		.max(5)
-		.describe(CONTRACT_NODE_TYPES_ARRAY_DESCRIPTION),
+		.describe(MODULE_NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
@@ -267,8 +260,8 @@ const suspendSchema = z.object({
 });
 
 function buildFullInputSchema(
-	search: typeof searchAction | typeof contractSearchAction,
-	typeDefinition: typeof typeDefinitionAction | typeof contractTypeDefinitionAction,
+	search: typeof searchAction | typeof moduleSearchAction,
+	typeDefinition: typeof typeDefinitionAction | typeof moduleTypeDefinitionAction,
 ) {
 	return sanitizeInputSchema(
 		z.discriminatedUnion('action', [
@@ -284,12 +277,9 @@ function buildFullInputSchema(
 }
 
 const fullInputSchema = buildFullInputSchema(searchAction, typeDefinitionAction);
-const contractFullInputSchema = buildFullInputSchema(
-	contractSearchAction,
-	contractTypeDefinitionAction,
-);
+const moduleFullInputSchema = buildFullInputSchema(moduleSearchAction, moduleTypeDefinitionAction);
 
-type FullInput = z.infer<typeof contractFullInputSchema>;
+type FullInput = z.infer<typeof moduleFullInputSchema>;
 
 interface SearchEngineCache {
 	nodeTypes?: SearchableNodeType[];
@@ -325,9 +315,11 @@ async function handleList(
 	return { nodes };
 }
 
-async function handleSearch(
+type SearchInput = Extract<FullInput, { action: 'search' }>;
+
+async function findSearchHits(
 	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'search' }>,
+	input: SearchInput,
 	cache: SearchEngineCache,
 ) {
 	const nodeTypes = await context.nodeService.listSearchable();
@@ -339,31 +331,27 @@ async function handleSearch(
 		cache.engine = engine;
 	}
 
-	let results;
 	if (input.connectionType) {
-		results = engine.searchByConnectionType(input.connectionType, input.limit, input.query);
-	} else if (input.query) {
-		results = engine.searchByName(input.query, input.limit);
-	} else {
-		return { results: [], totalResults: 0 };
+		return engine.searchByConnectionType(input.connectionType, input.limit, input.query);
 	}
+	return input.query ? engine.searchByName(input.query, input.limit) : [];
+}
 
+async function handleSearch(
+	context: InstanceAiContext,
+	input: SearchInput,
+	cache: SearchEngineCache,
+) {
+	return await enrichSearchHits(context, await findSearchHits(context, input, cache));
+}
+
+async function enrichSearchHits(
+	context: InstanceAiContext,
+	results: Awaited<ReturnType<typeof findSearchHits>>,
+) {
 	// Enrich results with discriminator and credential setup metadata when available.
 	const enriched = await Promise.all(
 		results.map(async (r) => {
-			const contractActions = context.nodeContractsEnabled
-				? contractSearchActions(r.name, actionTerms(input.query, r))
-				: undefined;
-			if (contractActions) {
-				// The contract replaces the legacy version, operation list, and builder hint.
-				const {
-					version: _version,
-					builderHintMessage: _builderHintMessage,
-					...node
-				} = await enrichWithSetupPreference(context, r, r.version);
-				return { ...node, ...contractActions };
-			}
-
 			const [node, discriminators] = await Promise.all([
 				enrichWithSetupPreference(context, r, r.version),
 				context.nodeService.listDiscriminators?.(r.name) ?? Promise.resolve(null),
@@ -408,30 +396,59 @@ async function handleSearch(
 	};
 }
 
-/** Query terms that the hit's own name does not explain, e.g. "send" in "gmail send". */
-function actionTerms(query: string | undefined, hit: { name: string; displayName: string }) {
-	const hitText = `${hit.name} ${hit.displayName}`.toLowerCase();
-	return (query ?? '')
-		.toLowerCase()
-		.split(/\W+/)
-		.filter((term) => term && !hitText.includes(term));
+/** A module node replaces its catalog hits; the other hits keep their catalog rows. */
+async function searchOneWithModules(
+	context: InstanceAiContext,
+	input: SearchInput,
+	cache: SearchEngineCache,
+) {
+	const hits = await findSearchHits(context, input, cache);
+	const coveredNodes = hits.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
+	const legacy = await enrichSearchHits(
+		context,
+		hits.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined),
+	);
+	const { nodes, otherActions } = input.connectionType
+		? { nodes: [], otherActions: [] }
+		: searchNextActions(input.query ?? '', coveredNodes);
+	return { nodes, ...(otherActions.length ? { otherActions } : {}), ...legacy };
+}
+
+/** Each module goes inline once per call, also when several queries name its node. */
+async function handleModuleSearch(
+	context: InstanceAiContext,
+	input: SearchInput,
+	cache: SearchEngineCache,
+) {
+	const queryList = 'queries' in input ? input.queries : undefined;
+	const queries = queryList ?? [input.query];
+	const searches = await Promise.all(
+		queries.map(async (query) => await searchOneWithModules(context, { ...input, query }, cache)),
+	);
+	const nodeModules = [...new Set(searches.flatMap(({ nodes }) => nodes))].flatMap(
+		(nodeId) => nextNodeModule(nodeId) ?? [],
+	);
+	const modulesPart = nodeModules.length ? { nodeModules } : {};
+	if (!queryList) {
+		const [{ nodes: _nodes, ...single }] = searches;
+		return { ...modulesPart, ...single };
+	}
+	return {
+		...modulesPart,
+		searches: searches.map(({ nodes, ...search }, index) => ({
+			query: queries[index],
+			...(nodes.length ? { modules: nodes } : {}),
+			...search,
+		})),
+	};
 }
 
 async function handleDescribe(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'describe' }>,
 ) {
-	if (context.nodeContractsEnabled) {
-		const contract = getContract(input.nodeType);
-		const contracts = contract ? [contract] : contractsForNodeType(input.nodeType);
-		if (contracts.length) {
-			return {
-				found: true,
-				name: input.nodeType,
-				actions: contracts.map((action) => contractView(action)),
-			};
-		}
-	}
+	const nodeModule = context.nodeContractsEnabled ? nextNodeModule(input.nodeType) : undefined;
+	if (nodeModule) return { found: true, name: input.nodeType, ...nodeModule };
 
 	try {
 		const desc = await context.nodeService.getDescription(input.nodeType);
@@ -450,25 +467,20 @@ async function handleDescribe(
 	}
 }
 
+/** The module text goes in `content`, the field that carries TypeScript definitions. */
+function resolveModuleDefinition(nodeType: string) {
+	const nodeModule = nextNodeModule(nodeType);
+	if (!nodeModule) return undefined;
+	return { nodeType, node: nodeModule.node, import: nodeModule.import, content: nodeModule.module };
+}
+
 /**
  * Resolve TypeScript type definitions for a validated list of node requests.
  * Used by the consolidated `nodes` tool's `type-definition` action.
  */
-function resolveContractDefinition(req: ContractNodeTypeRequest) {
-	const nodeType = typeof req === 'string' ? req : req.nodeType;
-	const { variants, ...discriminators } = typeof req === 'string' ? { variants: {} } : req;
-	const contract = getContract(nodeType) ?? findContractForLegacyRequest(nodeType, discriminators);
-	if (!contract) return undefined;
-	return {
-		nodeType: contract.id,
-		compilesTo: contract.compile.type,
-		contract: contractView(contract, variants),
-	};
-}
-
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
-	nodeTypes: ContractNodeTypeRequest[],
+	nodeTypes: NodeTypeRequest[],
 ) {
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
@@ -482,26 +494,28 @@ async function resolveNodeTypeDefinitions(
 
 	const definitions = await Promise.all(
 		nodeTypes.map(async (req) => {
-			const contractDefinition = context.nodeContractsEnabled
-				? resolveContractDefinition(req)
-				: undefined;
-			if (contractDefinition) return contractDefinition;
-
 			const nodeType = typeof req === 'string' ? req : req.nodeType;
+			const moduleDefinition = context.nodeContractsEnabled
+				? resolveModuleDefinition(nodeType)
+				: undefined;
+			if (moduleDefinition) return moduleDefinition;
+
 			const options = typeof req === 'string' ? undefined : req;
-			const actions = context.nodeContractsEnabled
-				? contractsForNodeType(nodeType).map(contractSignature)
-				: [];
+			const moduleNode = context.nodeContractsEnabled ? nextNodeIdOfNodeType(nodeType) : undefined;
+			const actions = moduleNode ? actionRowsOfNode(moduleNode) : [];
 
 			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
 
-			const nearest = context.nodeContractsEnabled && !result ? nearestContracts(nodeType) : [];
+			const nearest =
+				context.nodeContractsEnabled && (!result || result.error)
+					? nearestNextActions(nodeType)
+					: [];
 			if (nearest.length) {
 				return {
 					nodeType,
 					content: '',
 					error: `No action '${nodeType}'. The nearest actions follow; request one by id.`,
-					actions: nearest.map(contractSignature),
+					actions: nearest.map(actionRow),
 				};
 			}
 
@@ -547,7 +561,7 @@ async function handleTypeDefinition(
 	// a structured error the model can self-correct from, instead of crashing
 	// downstream on `input.nodeTypes.map`.
 	const parsed = (
-		context.nodeContractsEnabled ? contractTypeDefinitionAction : typeDefinitionAction
+		context.nodeContractsEnabled ? moduleTypeDefinitionAction : typeDefinitionAction
 	).safeParse(input);
 	if (!parsed.success) {
 		return {
@@ -559,18 +573,7 @@ async function handleTypeDefinition(
 	}
 
 	const result = await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
-	// Model selection keys off the compiled node type and its field names.
-	const legacyDefinitions = result.definitions.map((definition) =>
-		'contract' in definition
-			? {
-					nodeType: definition.compilesTo,
-					content: Object.keys(getContract(definition.nodeType)?.input.properties ?? {})
-						.map((field) => `${field}:`)
-						.join('\n'),
-				}
-			: definition,
-	);
-	if (loadSkill && (await needsModelSelection(context.nodeService, legacyDefinitions))) {
+	if (loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
 		await loadSkill('model-selection');
 	}
 	return result;
@@ -818,7 +821,7 @@ export function createNodesTool(
 
 		const orchestratorInputSchema = sanitizeInputSchema(
 			z.discriminatedUnion('action', [
-				context.nodeContractsEnabled ? contractTypeDefinitionAction : typeDefinitionAction,
+				context.nodeContractsEnabled ? moduleTypeDefinitionAction : typeDefinitionAction,
 				orchestratorExploreAction,
 			]),
 		);
@@ -852,10 +855,10 @@ export function createNodesTool(
 	return new Tool('nodes')
 		.description(
 			context.nodeContractsEnabled
-				? 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery (it returns action contracts inline), `type-definition` for each other node you configure (all of them in one call), `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).'
+				? 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery (it returns typed node modules inline), `type-definition` for each other node you configure (all of them in one call), `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).'
 				: 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
-		.input(context.nodeContractsEnabled ? contractFullInputSchema : fullInputSchema)
+		.input(context.nodeContractsEnabled ? moduleFullInputSchema : fullInputSchema)
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx) => {
@@ -863,6 +866,9 @@ export function createNodesTool(
 				case 'list':
 					return await handleList(context, input);
 				case 'search':
+					if (context.nodeContractsEnabled) {
+						return await handleModuleSearch(context, input, searchEngineCache);
+					}
 					return 'queries' in input && input.queries
 						? {
 								searches: await Promise.all(

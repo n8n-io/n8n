@@ -2,14 +2,11 @@
 name: workflow-builder-contracts
 description: >-
   Load before calling build-workflow. Default path for all single-workflow
-  work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. Write the complete TypeScript SDK source and
-  pass it to build-workflow as sourceCode. The host validates it. When the
-  workflow creates or writes Data Tables, load data-table-manager first, then
-  this skill. Do not load planning or create-tasks first. Load planning only
-  when multiple coordinated workflows or shared cross-task data tables require
-  a dependency-aware task graph. For one-off tasks that one node execution can
-  do, load one-off-operations and use nodes(action="execute").
+  work: new workflows, edits, and repairs. Write typed TypeScript with
+  @n8n/workflow-sdk/next and pass it to build-workflow as sourceCode. Load
+  data-table-manager first when the workflow writes Data Tables. Load planning
+  only for several coordinated workflows. For one-off tasks that one node
+  execution can do, load one-off-operations and use nodes(action="execute").
 recommended_tools:
   - build-workflow
   - workflows
@@ -22,201 +19,115 @@ recommended_tools:
 
 # Workflow Builder
 
-You write complete TypeScript with `@n8n/workflow-sdk`. The host compiles and
-saves it. Do not produce visible output until the final step, unless blocked.
-
-When the workflow creates or writes Data Tables, load `data-table-manager`
-first. Call `data-tables(action="schema")` before you use a table. Column
-names are snake_case.
+You write one typed TypeScript file. `tsc --strict` checks it. Do not produce
+visible output until the final step, unless blocked.
 
 ## Process
 
-1. Discover nodes. Call `nodes(action="search")` ONCE with `queries`: one
-   short query per node the workflow needs, including HTTP Request and IF,
-   e.g. `["notion get many pages", "if condition", "http request"]`. For a node with an action contract, the result
-   contains the contract view. Use `nodes(action="suggested")` only when you do
-   not know which nodes to use.
-2. Get the remaining definitions in ONE `nodes(action="type-definition")` call
-   with all node ids. Do not fetch definitions that you already have.
-3. Resolve real resource IDs with `nodes(action="explore-resources")` when a
-   credential is available. For new model choices, follow `model-selection`.
-4. Call `credentials(action="list")` only to choose between several
-   credentials, or when `explore-resources` needs a credential id.
-5. Write the complete source. Call `build-workflow` with a stable `filePath`
-   (for example `src/workflows/main.workflow.ts`) and the complete source as
-   `sourceCode`. Do not write files, do not run `workflow-sdk validate`, and
-   do not use the sandbox. The host validates SDK structure, contract
-   parameters and expression types.
-6. If the build returns errors, fix all of them in the source. Call
-   `build-workflow` again with the same `filePath` and the complete source.
-   Do not retry the same failing approach more than twice.
-7. After a successful build, if the output contains
-   `postBuildFlow.required: true`, follow the inlined
-   `postBuildFlow.instructions`. Do not load `post-build-flow` separately. Do
-   not call `verify-built-workflow` directly for direct builds.
+1. Call `nodes(action="search")` ONCE with `queries`: one short query per
+   service, e.g. `["notion get many pages", "http request", "slack"]`.
+   `nodeModules` holds the typed module of each service that has one. Import
+   it and call its actions. Other nodes come back in `results`. Use them with
+   `node()`.
+2. Get the remaining definitions in ONE `nodes(action="type-definition")` call.
+   A module id (`notion`) or an action id returns the module text.
+3. Write the complete source. Call `build-workflow` with a stable `filePath`
+   (e.g. `src/workflows/main.workflow.ts`) and the source as `sourceCode`.
+4. The host writes the file and runs `tsc`. Errors come back as `file:line`.
+   Fix all of them. Pass the full source again, or edit the file with
+   `workspace_str_replace_file` and build with `filePath` only.
+5. After a successful build, if the output has `postBuildFlow.required: true`,
+   follow `postBuildFlow.instructions`.
 
-For an existing workflow, call `workflows(action="get-as-code", workflowId)`.
-It returns a bound `filePath`. Make the smallest requested change and call
-`build-workflow` with that `filePath`. Keep every `config.id` exactly as
-`get-as-code` produced it. Omit `id` and `position` on new nodes. When a
-repair targets a failing node, inspect the real error with
-`debugging-executions` first. Do not guess.
+For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
+make the smallest change, and build with the returned `filePath`.
 
-For planned build follow-ups with `buildTask.isSupportingWorkflow === true`,
-pass `isSupportingWorkflow: true`. When the new workflow has a known folder,
-pass `folderPath`.
+## Imports and actions
 
-## Nodes
-
-These nodes have action contracts. Always write them with `action`, never
-with `node()`, also when you know the legacy node:
-
-- Set: `set.fields`. IF: `if.condition`. HTTP Request: `httpRequest.request`.
-- Gmail: `gmail.message.send`, `gmail.message.get`, `gmail.message.getAll`.
-- Notion: `notion.databasePage.getAll`, `notion.databasePage.get`.
-- Google Sheets: `googleSheets.sheet.read`, `googleSheets.sheet.append`,
-  `googleSheets.sheet.appendOrUpdate`.
-- Google Gemini: `googleGemini.text.message`.
-
-Write each action exactly as its contract view shows. A complete source has this form:
+Import the flow API from `@n8n/workflow-sdk/next` and each module from
+`@n8n/nodes/<id>`. Typed actions: `notion.databasePage.getAll`,
+`httpRequest.get`, `httpRequest.send`, `googleSheets.sheet.read`,
+`googleSheets.sheet.append`, `googleSheets.sheet.appendOrUpdate`,
+`gmail.message.send`, `gmail.message.getAll`, `gmail.message.get`,
+`googleGemini.text.message`. Every action takes `name` and its input fields
+in one object.
 
 ```ts
-import { workflow, trigger, action, newCredential, expr } from '@n8n/workflow-sdk';
+import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+import { notion } from '@n8n/nodes/notion';
 
-const start = trigger({
-  type: 'n8n-nodes-base.manualTrigger',
-  version: 1,
-  config: { name: 'Start' },
-});
-
-const pages = action('notion.databasePage.getAll', {
-  name: 'Get Tasks',
-  parameters: { /* the contract input */ },
-  credentials: { notionApi: newCredential('Notion') },
-});
-
-const report = action('httpRequest.request', {
-  name: 'Post Report',
-  parameters: { method: 'POST', url: 'https://…', body: { kind: 'json', json: { id: expr('{{ $json.id }}') } } },
-});
-
-export default workflow('tasks-report', 'Tasks Report').add(start).to(pages).to(report);
+export default workflow(
+  'Overdue tasks report',
+  manual()
+    .andThen(
+      notion.databasePage.getAll({
+        name: 'Overdue Tasks',
+        database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e',
+        where: {
+          match: 'all',
+          conditions: [
+            { property: 'Status', type: 'status', condition: { op: 'does_not_equal', value: 'Done' } },
+            { property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } },
+          ],
+        },
+      }),
+    )
+    .andThen(
+      httpRequest.send({
+        name: 'Post Report',
+        method: 'POST',
+        url: 'https://reports.acme.dev/overdue',
+        body: { kind: 'json', json: (page) => ({ title: page.name, url: page.url }) },
+      }),
+    ),
+);
 ```
 
-The host parses a subset of JavaScript. Do not use arrow functions, type
-annotations, `as`, or loops. `trigger()` and `node()` take one object
-`{ type, version, config }`. The manual trigger above needs no type
-definition.
+- `.branch({ name, if: (item) => …, then: (f) => f.andThen(…), else: (f) => … })`
+  adds an IF node. Without `else`, false items stop.
+- `.orElse((failed) => failed.andThen(…))` handles the items that the last
+  node fails on. `failed` items carry `error.message`.
+- `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
+  makes new fields. `keep: 'all'` also keeps the input fields.
+- `node({ name, type, version, parameters })` adds a node without a module.
+  Take the parameters from its type definition. Its output is untyped. Pass
+  `sample` items to type it. Use `trigger({ name, type, version, parameters })`
+  for triggers other than `manual()`.
 
-Use `node()` and `trigger()` only for nodes without a contract, for example
-triggers, Switch, Merge and Code. Use the type definition for their
-parameters.
+## Lambdas
 
-IF is the `if.condition` action. Set each condition `type` to the type of
-`left`. When the data has another type (for example an amount as the string
-"120.50"), convert it in `left` (`={{ Number($json.amount) }}`). The build
-rejects a `left` expression of the wrong type.
+A lambda becomes an n8n expression that runs for each item.
 
-- Native node first. Use Set, Filter, IF, Switch, Sort, Aggregate, Split Out,
-  Limit and Merge with expressions. Use a Code node only for logic that needs
-  three or more native nodes. Write Code nodes in JavaScript unless the user
-  asks for Python.
-- SDK code builds a static graph. It does not run. Do not use `.map()` or
-  other runtime logic in it.
-- Do not set node positions. Do not add `sticky()` notes unless the user asks.
-- Tool subnodes need a concise snake_case `name` (`get_email`), with no
-  service prefix.
+- Write `(item, $) => <one expression>`. A template literal becomes text.
+- Read only `item`, `$`, and JavaScript globals (`Math`, `JSON`, `String`).
+  Do not read local variables or constants from the file.
+- `item` is the output item of the node before. Use `$('Node Name')` to read
+  the paired item of an earlier node.
+- `$.now` and `$.today` are Luxon dates. Use `$.date(iso)` to parse a string.
+- Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
 
-## Expressions
+## Values and credentials
 
-- Use `expr('{{ $json.field }}')`. `$json` is the current item from the
-  immediate predecessor only.
-- Read upstream contract outputs with the field names in the contract output
-  schema. The build reports type mismatches as `CONTRACT_EXPRESSION_TYPE`.
-  Fix the reference. Do not add defensive code (`|| []`, `typeof` checks)
-  for fields that the contract types.
-- Use `$('Node Name').item.json.field` or `nodeJson(node, 'field')` for
-  values from further upstream, in AI subnodes, and after Switch or Merge.
-  Items pass through `if.condition` unchanged, so `$json` after it is the
-  item before it. Do not use `.first()` for per-item data.
-
-## Output samples
-
-Add `output` sample items only when verification needs pin data: a node with
-an unresolved credential, or a live or nondeterministic node (HTTP, search,
-AI) that feeds IF or Switch logic whose branches need proof.
-
-- Samples are raw `$json` objects: `output: [{ id: 'a1' }]`, not
-  `[{ json: { ... } }]`.
-- Include every field that downstream expressions read.
-- Give list results at least two items.
-- Match the documented payload shape of third-party webhooks.
-
-## Placeholders and credentials
-
-- Use `placeholder('descriptive hint')` for values that only the user knows:
-  recipients, chat IDs, custom URLs, and resource IDs with several candidates.
-  Use it directly as the value. Do not wrap it in `expr()`.
-- Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`). Keep real
-  values that the user gave or that you discovered.
-- For a service node, write `newCredential('<Service> account')` without an
-  id. If exactly one existing credential fits the node, the build binds it
-  and reports it in `resolvedCredentialsByNode`. If none or several fit, the
-  credential stays open for setup.
-- Call `credentials(action="list")` only to choose between several
-  credentials. Then write `newCredential('Name', 'credential-id')` for the
-  credential that the user selected or that the workflow already had. Never
-  write raw credential objects.
-- When the user asks for a new credential, pass its type in
-  `preferNewCredentials` on `build-workflow` and on `workflows(action="setup")`.
-- Credentials in `resolvedCredentialsByNode` are connected. Do not ask the
-  user to connect them.
-- If no instance exists for a named service, call
-  `credentials(action="search-types")`. Prefer a dedicated type. Then prefer
-  `httpTemplatedCustomAuth` for API keys and bearer tokens: load
-  `credential-recipe-research` before setup. Use plain generic types only
-  when a template cannot express the auth, or when the user asks.
-- A node with `aiGateway.supported === true` runs without an API key. Prefer
-  it when the user named no tool and has no credential for a similar one. To
-  use it, write `newCredential('Gateway credits', '__AI_GATEWAY_MANAGED__')`.
-  Call it "Gateway credits" in chat.
-- Inbound triggers (Webhook, Form, Chat) keep authentication `none` unless
-  the user asks.
-
-Do not ask for setup values before the first successful build. Placeholders
-and `newCredential()` cover them. Use `ask-user` before the build only when a
-choice changes the intent or topology. Never ask for secrets.
+- Keep real values that the user gave or that you discovered. Never invent
+  IDs, emails, or URLs. When a resource is unknown, write one clear
+  placeholder string, e.g. `'<Notion tasks database ID>'`, and tell the user.
+- Do not write credentials in the source. When exactly one stored credential
+  fits a node, the build binds it and reports it in
+  `resolvedCredentialsByNode`. Otherwise it stays open for setup.
+- Never ask for secrets.
 
 ## Workflow rules
 
-1. Zero items end a branch. Do not add empty-check gates. When a digest or
-   alert must still send, set `alwaysOutputData: true` on each node that can
-   emit zero items before it.
-2. Use `executeOnce: true` on a node that gets many items but must run once.
-3. Wire IF on the workflow builder: `.to(ifNode).onTrue(a).onFalse(b)`.
-   Switch uses zero-based `.onCase(index, target)`. Never wire branches as
-   statements after `export default`.
-4. Input and output indices are zero-based.
-5. A Filter or IF only selects items. Wire the requested action on the
-   matching path.
-6. A write node outputs its API response, not its input. When you insert it
-   into a chain, branch it in parallel or reference the data node explicitly.
-7. A polling trigger that creates records must process each item once: mark
-   the item handled after the record exists, or record handled ids in a Data
-   Table.
-8. `.onError(handler)` routes the error output. Call it once per handler.
-9. When the top level has more than {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}}
-   items, add `.group(name, members, { description })`, or pass
-   `groupingDecision: 'not_warranted'` with a `groupingReason`.
+1. Zero items end a path. Do not add empty-check gates.
+2. A write action outputs its API response, not its input. Use
+   `$('Node Name')` to read earlier data after it.
+3. With more than {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} top-level items,
+   pass `groupingDecision: 'not_warranted'` with a `groupingReason`.
 
 ## Verification and completion
 
-Build success is not proof that the workflow works. Say that a workflow works
-only after `verify-built-workflow` or `executions` ran the claimed path.
-Otherwise, say what you could not verify. Do not publish automatically.
-
-Finish with one sentence that names the workflow and what changed. Include
-the workflow ID. If setup is necessary, say so. For a Webhook trigger, share
-`{webhookBaseUrl}/{path}`. For a Form trigger, share `{formBaseUrl}/{path}`.
-For a private Chat trigger, tell the user to click **Open chat** on the
-canvas.
+Build success is not proof. Say that a workflow works only after
+`verify-built-workflow` or `executions` ran the claimed path. Do not publish
+automatically. Finish with one sentence that names the workflow, what
+changed, and its ID. If setup is necessary, say so.

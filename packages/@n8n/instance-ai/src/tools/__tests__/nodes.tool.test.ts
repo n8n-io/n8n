@@ -1198,19 +1198,26 @@ describe('nodes tool', () => {
 	describe('with node contracts enabled', () => {
 		const searchableNodes: SearchableNodeDescription[] = [
 			{
-				name: 'n8n-nodes-base.gmail',
-				displayName: 'Gmail',
-				description: 'Consume the Gmail API',
-				version: [2, 2.1],
+				name: 'n8n-nodes-base.notion',
+				displayName: 'Notion',
+				description: 'Consume Notion API',
+				version: [2, 2.2],
 				inputs: ['main'],
 				outputs: ['main'],
-				builderHint: { searchHint: 'Legacy Gmail hint' },
 			},
 			{
 				name: 'n8n-nodes-base.httpRequest',
 				displayName: 'HTTP Request',
 				description: 'Makes an HTTP request and returns the response data',
 				version: 4.2,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+			{
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				description: 'Consume Slack API',
+				version: 2.3,
 				inputs: ['main'],
 				outputs: ['main'],
 			},
@@ -1223,149 +1230,158 @@ describe('nodes tool', () => {
 				properties: [{ type: 'credentialsSelect' }],
 			} as never);
 			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue({
-				resources: [{ name: 'message', operations: ['send'] }],
+				resources: [{ name: 'message', operations: ['post'] }],
 			});
-			context.nodeService.getNodeTypeDefinition = vi.fn();
+			context.nodeService.getNodeTypeDefinition = vi.fn().mockResolvedValue({
+				version: '2.3',
+				content: 'export type SlackV23Params = {}',
+			});
 			return context;
 		}
 
-		async function search(query: string) {
+		type ModuleSearch = {
+			nodeModules?: Array<{ node: string; import: string; module: string }>;
+			otherActions?: string[];
+			results: Array<{ name: string }>;
+		};
+
+		it('inlines the module of the service the query names instead of its catalog row', async () => {
 			const context = createContractContext();
-			const result = await executeTool<{ results: Array<Record<string, unknown>> }>(
-				createNodesTool(context, 'full'),
-				{ action: 'search', query, limit: 5 },
-			);
-			return { context, hit: result.results.find(({ name }) => name === 'n8n-nodes-base.gmail') };
-		}
-
-		it('inlines the contract of the action the search query names and lists the others in one line', async () => {
-			const { context, hit } = await search('gmail send');
-
-			expect(hit?.actions).toEqual([
-				expect.objectContaining({
-					id: 'gmail.message.send',
-					usage: expect.stringContaining("action('gmail.message.send'"),
-				}),
-			]);
-			expect(hit?.otherActions).toEqual([
-				'gmail.message.getAll: List messages that match a Gmail search.',
-				'gmail.message.get: Get one message by ID.',
-			]);
-			expect(hit).not.toHaveProperty('discriminators');
-			expect(hit).not.toHaveProperty('version');
-			expect(hit).not.toHaveProperty('builderHintMessage');
-			expect(context.nodeService.listDiscriminators).not.toHaveBeenCalledWith(
-				'n8n-nodes-base.gmail',
-			);
-		});
-
-		it('returns the nearest actions for an unknown action id', async () => {
-			const context = createContractContext();
-			vi.mocked(context.nodeService.getNodeTypeDefinition!).mockResolvedValue(null);
-			const result = await executeTool<{
-				definitions: Array<{ error?: string; actions?: Array<{ id: string }> }>;
-			}>(createNodesTool(context, 'full'), {
-				action: 'type-definition',
-				nodeTypes: ['notion.page.getAll'],
-			});
-
-			expect(result.definitions[0].actions?.map(({ id }) => id)).toEqual([
-				'notion.databasePage.getAll',
-				'notion.databasePage.get',
-				'gmail.message.getAll',
-			]);
-		});
-
-		it('searches several services in one call', async () => {
-			const context = createContractContext();
-			const result = await executeTool<{
-				searches: Array<{ query: string; results: Array<Record<string, unknown>> }>;
-			}>(createNodesTool(context, 'full'), {
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
 				action: 'search',
-				queries: ['gmail send', 'http request'],
+				query: 'notion get many pages',
 				limit: 5,
 			});
 
-			expect(result.searches.map(({ query }) => query)).toEqual(['gmail send', 'http request']);
-			const gmail = result.searches[0].results.find(({ name }) => name === 'n8n-nodes-base.gmail');
-			const http = result.searches[1].results.find(
-				({ name }) => name === 'n8n-nodes-base.httpRequest',
+			expect(result.nodeModules).toEqual([
+				{
+					node: 'notion',
+					import: "import { notion } from '@n8n/nodes/notion';",
+					module: expect.stringContaining('export const notion = {'),
+				},
+			]);
+			expect(result.results.map(({ name }) => name)).not.toContain('n8n-nodes-base.notion');
+			expect(context.nodeService.listDiscriminators).not.toHaveBeenCalledWith(
+				'n8n-nodes-base.notion',
 			);
-			expect(gmail?.actions).toEqual([expect.objectContaining({ id: 'gmail.message.send' })]);
-			expect(http?.actions).toEqual([expect.objectContaining({ id: 'httpRequest.request' })]);
 		});
 
-		it('keeps every action to one line when the search query names only the service', async () => {
-			const { hit } = await search('gmail');
-
-			expect(hit).not.toHaveProperty('actions');
-			expect(hit?.otherActions).toHaveLength(3);
-		});
-
-		it('inlines the only action of a single-action node', async () => {
+		it('searches several services in one call and inlines each module once', async () => {
 			const context = createContractContext();
-			const result = await executeTool<{ results: Array<Record<string, unknown>> }>(
-				createNodesTool(context, 'full'),
-				{ action: 'search', query: 'http request', limit: 5 },
-			);
-
-			expect(result.results[0]).toMatchObject({
-				name: 'n8n-nodes-base.httpRequest',
-				actions: [expect.objectContaining({ id: 'httpRequest.request' })],
+			const result = await executeTool<{
+				nodeModules: Array<{ node: string }>;
+				searches: Array<ModuleSearch & { query: string; modules?: string[] }>;
+			}>(createNodesTool(context, 'full'), {
+				action: 'search',
+				queries: ['notion get many pages', 'http get', 'http send', 'slack'],
+				limit: 5,
 			});
-			expect(result.results[0]).not.toHaveProperty('otherActions');
+
+			expect(result.nodeModules.map(({ node }) => node)).toEqual(['notion', 'httpRequest']);
+			expect(result.searches.map(({ query, modules }) => ({ query, modules }))).toEqual([
+				{ query: 'notion get many pages', modules: ['notion'] },
+				{ query: 'http get', modules: ['httpRequest'] },
+				{ query: 'http send', modules: ['httpRequest'] },
+				{ query: 'slack', modules: undefined },
+			]);
+			expect(result.searches[3].results).toEqual([
+				expect.objectContaining({
+					name: 'n8n-nodes-base.slack',
+					version: 2.3,
+					discriminators: { resources: [{ name: 'message', operations: ['post'] }] },
+				}),
+			]);
+		});
+
+		it('lists module actions of services the query does not name as one line each', async () => {
+			const context = createContractContext();
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'slack send',
+				limit: 5,
+			});
+
+			expect(result).not.toHaveProperty('nodeModules');
+			expect(result.otherActions).toContain(
+				'httpRequest.send: POST, PUT, PATCH, or DELETE to any HTTP API.',
+			);
 		});
 
 		it.each(['full', 'orchestrator'] as const)(
-			'returns every requested action contract from one type-definition call on the %s surface',
+			'returns the module text for module and action ids on the %s surface',
 			async (surface) => {
 				const context = createContractContext();
 				const result = await executeTool<{ definitions: Array<Record<string, unknown>> }>(
 					createNodesTool(context, surface),
 					{
 						action: 'type-definition',
-						nodeTypes: [
-							'gmail.message.send',
-							'notion.databasePage.getAll',
-							{ nodeType: 'googleSheets.sheet.read', variants: { 'spreadsheet.mode': 'id' } },
-						],
+						nodeTypes: ['notion', 'httpRequest.send', 'n8n-nodes-base.slack'],
 					},
 				);
 
 				expect(result.definitions).toEqual([
-					expect.objectContaining({
-						nodeType: 'gmail.message.send',
-						contract: expect.objectContaining({ id: 'gmail.message.send' }),
-					}),
-					expect.objectContaining({
-						nodeType: 'notion.databasePage.getAll',
-						contract: expect.objectContaining({ id: 'notion.databasePage.getAll' }),
-					}),
-					expect.objectContaining({
-						nodeType: 'googleSheets.sheet.read',
-						contract: expect.objectContaining({ id: 'googleSheets.sheet.read' }),
-					}),
+					{
+						nodeType: 'notion',
+						node: 'notion',
+						import: "import { notion } from '@n8n/nodes/notion';",
+						content: expect.stringContaining('getAll'),
+					},
+					{
+						nodeType: 'httpRequest.send',
+						node: 'httpRequest',
+						import: "import { httpRequest } from '@n8n/nodes/httpRequest';",
+						content: expect.stringContaining('send'),
+					},
+					{ nodeType: 'n8n-nodes-base.slack', version: '2.3', content: expect.any(String) },
 				]);
-				expect(context.nodeService.getNodeTypeDefinition).not.toHaveBeenCalled();
+				expect(context.nodeService.getNodeTypeDefinition).toHaveBeenCalledTimes(1);
 			},
 		);
 
-		it.each([
-			['n8n-nodes-base.gmail', ['gmail.message.getAll', 'gmail.message.get', 'gmail.message.send']],
-			['gmail.message.send', ['gmail.message.send']],
-		])('describes %s with its action contracts', async (nodeType, ids) => {
+		it('lists the module actions next to the legacy definition of the same service', async () => {
 			const context = createContractContext();
-			const result = await executeTool<{ actions: Array<{ id: string }> }>(
+			const result = await executeTool<{ definitions: Array<{ actions?: string[] }> }>(
 				createNodesTool(context, 'full'),
-				{ action: 'describe', nodeType },
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.notion'] },
 			);
 
-			expect(result).toMatchObject({ found: true, name: nodeType });
-			expect(result.actions.map(({ id }) => id)).toEqual(ids);
+			expect(result.definitions[0].actions).toEqual([
+				'notion.databasePage.getAll: List pages of a Notion database, optionally filtered and sorted.',
+			]);
+		});
+
+		it('returns the nearest actions for an unknown action id', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.getNodeTypeDefinition!).mockResolvedValue(null);
+			const result = await executeTool<{
+				definitions: Array<{ error?: string; actions?: string[] }>;
+			}>(createNodesTool(context, 'full'), {
+				action: 'type-definition',
+				nodeTypes: ['notion.page.getAll'],
+			});
+
+			expect(result.definitions[0].error).toContain("No action 'notion.page.getAll'");
+			expect(result.definitions[0].actions?.[0]).toBe(
+				'notion.databasePage.getAll: List pages of a Notion database, optionally filtered and sorted.',
+			);
+		});
+
+		it('describes a module id with its module text', async () => {
+			const context = createContractContext();
+			const result = await executeTool(createNodesTool(context, 'full'), {
+				action: 'describe',
+				nodeType: 'httpRequest',
+			});
+
+			expect(result).toMatchObject({
+				found: true,
+				name: 'httpRequest',
+				module: expect.stringContaining('export const httpRequest = {'),
+			});
 			expect(context.nodeService.getDescription).not.toHaveBeenCalled();
 		});
 
-		it('describes a node without a contract with its legacy description', async () => {
+		it('describes a node without a module with its legacy description', async () => {
 			const context = createContractContext();
 			const result = await executeTool(createNodesTool(context, 'full'), {
 				action: 'describe',

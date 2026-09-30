@@ -67,6 +67,15 @@ const nodesBaseRequire = createRequire(
 	path.resolve(__dirname, '../../../../nodes-base/package.json'),
 );
 const coreRequire = createRequire(path.resolve(__dirname, '../../../../core/package.json'));
+const nextRequire = createRequire(path.resolve(__dirname, '../../../nodes-base-next/package.json'));
+
+const NEXT_PREFIX = '@n8n/nodes-base-next.';
+const NEXT_NOTION_GET_ALL = `${NEXT_PREFIX}notionDatabasePageGetAll`;
+const NEXT_HTTP_GET = `${NEXT_PREFIX}httpRequestGet`;
+const NEXT_HTTP_SEND = `${NEXT_PREFIX}httpRequestSend`;
+
+const isHttpRequest = (node: WorkflowNodeResponse) =>
+	['n8n-nodes-base.httpRequest', NEXT_HTTP_GET, NEXT_HTTP_SEND].includes(node.type);
 
 function loadDist(requireFrom: NodeJS.Require, file: string, names: string[]) {
 	const loaded: unknown = requireFrom(file);
@@ -124,6 +133,10 @@ const isParameterValue = (value: unknown): value is NodeParameterValueType =>
 
 /** The node's parameters with description defaults filled in, as the Workflow constructor does. */
 function withDefaults(node: WorkflowNodeResponse): INodeParameters {
+	// nodes-base-next defaults ('{}' and 0) fail the node's own input check. Grade the saved parameters.
+	if (node.type.startsWith(NEXT_PREFIX)) {
+		return isNodeParameters(node.parameters) ? node.parameters : {};
+	}
 	const version = node.typeVersion ?? 1;
 	const loaded: unknown = nodesBaseRequire('./dist/types/nodes.json');
 	const description = (Array.isArray(loaded) ? loaded : [])
@@ -331,22 +344,49 @@ async function runtimeParameters(
 	return isNodeParameters(resolved) ? resolved : {};
 }
 
+function parseJsonBody(body: unknown): unknown {
+	if (typeof body !== 'string') return body;
+	try {
+		const parsed: unknown = JSON.parse(body);
+		return parsed;
+	} catch {
+		return `<invalid JSON: ${body.slice(0, 80)}>`;
+	}
+}
+
+/** The body a nodes-base-next HTTP node would send: `body` resolved per item, then its payload. */
+async function nextHttpBodies(http: WorkflowNodeResponse, walked: PathStep[]): Promise<unknown[]> {
+	const body = http.parameters?.body;
+	const once = http.executeOnce === true;
+	const { items } = walked[walked.length - 1];
+	return await withChildContext(
+		walked,
+		http.name,
+		(evaluate) =>
+			(once ? items.slice(0, 1) : items).map((_, itemIndex) => {
+				try {
+					const resolved: unknown = isParameterValue(body) ? evaluate(body, itemIndex) : body;
+					const sent = typeof resolved === 'string' ? parseJsonBody(resolved) : resolved;
+					if (!isRecord(sent)) return {};
+					if (sent.kind === 'json') return parseJsonBody(sent.json);
+					return sent.kind === 'form' ? sent.fields : sent.kind === 'text' ? sent.text : {};
+				} catch (error) {
+					return `<error: ${errorText(error)}>`;
+				}
+			}),
+		once,
+	);
+}
+
 /** The JSON body an HTTP Request node would send for each input item. */
 async function httpBodies(http: WorkflowNodeResponse, walked: PathStep[]): Promise<unknown[]> {
+	if (http.type.startsWith(NEXT_PREFIX)) return await nextHttpBodies(http, walked);
 	const parameters = http.parameters ?? {};
 	const once = http.executeOnce === true;
 	const { items } = walked[walked.length - 1];
 	if (parameters.specifyBody === 'json') {
 		const resolved = await evaluateOnChild(parameters.jsonBody, walked, http.name, once);
-		return resolved.map((body) => {
-			if (typeof body !== 'string') return body;
-			try {
-				const parsed: unknown = JSON.parse(body);
-				return parsed;
-			} catch {
-				return `<invalid JSON: ${body.slice(0, 80)}>`;
-			}
-		});
+		return resolved.map(parseJsonBody);
 	}
 	const bodyParameters = isRecord(parameters.bodyParameters)
 		? parameters.bodyParameters.parameters
@@ -415,14 +455,27 @@ const RUNNABLE_NODE_TYPES = new Set(
 	].map((name) => `n8n-nodes-base.${name}`),
 );
 
-/** The node type for the saved typeVersion, loaded from nodes-base/dist as the node loader does. */
-function loadNodeType(node: WorkflowNodeResponse): Record<string, unknown> {
+/** The dist class of a nodes-base-next node: `dist/nodes/<Pascal>.node.js` exports `<Pascal>`. */
+function nextNodeClass(type: string) {
+	const name = type.slice(NEXT_PREFIX.length);
+	const className = `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+	return loadDist(nextRequire, `./dist/nodes/${className}.node.js`, [className])[className];
+}
+
+/** The node class of a nodes-base node, found in `known/nodes.json` as the node loader does. */
+function nodesBaseClass(type: string) {
 	const known: unknown = nodesBaseRequire('./dist/known/nodes.json');
-	const entry = isRecord(known) ? known[node.type.replace(/^n8n-nodes-base\./, '')] : undefined;
-	if (!isRecord(entry)) throw new Error(`${node.type} not found in nodes-base`);
+	const entry = isRecord(known) ? known[type.replace(/^n8n-nodes-base\./, '')] : undefined;
+	if (!isRecord(entry)) throw new Error(`${type} not found in nodes-base`);
 	const className = String(entry.className);
-	const loaded = loadDist(nodesBaseRequire, `./${String(entry.sourcePath)}`, [className]);
-	const nodeClass = loaded[className];
+	return loadDist(nodesBaseRequire, `./${String(entry.sourcePath)}`, [className])[className];
+}
+
+/** The node type for the saved typeVersion, loaded from the package dist. */
+function loadNodeType(node: WorkflowNodeResponse): Record<string, unknown> {
+	const nodeClass = node.type.startsWith(NEXT_PREFIX)
+		? nextNodeClass(node.type)
+		: nodesBaseClass(node.type);
 	const instance: unknown = typeof nodeClass === 'function' ? Reflect.construct(nodeClass, []) : {};
 	if (!isRecord(instance)) throw new Error(`${node.type} did not construct`);
 	const versioned: unknown =
@@ -433,8 +486,15 @@ function loadNodeType(node: WorkflowNodeResponse): Record<string, unknown> {
 	return versioned;
 }
 
-/** Outputs of `node` after `walked`, run by the node's own execute code at the saved typeVersion. */
-async function executeOutputs(node: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted[]> {
+/**
+ * Outputs of `node` after `walked`, run by the node's own execute code at the saved typeVersion.
+ * `helpers` replaces `this.helpers` for nodes that send requests.
+ */
+async function executeOutputs(
+	node: WorkflowNodeResponse,
+	walked: PathStep[],
+	helpers?: Record<string, unknown>,
+): Promise<Emitted[]> {
 	const { items } = walked[walked.length - 1];
 	const instance = loadNodeType(node);
 	const parameters = withDefaults(node);
@@ -467,6 +527,7 @@ async function executeOutputs(node: WorkflowNodeResponse, walked: PathStep[]): P
 				continueOnFail: () => false,
 				getWorkflowSettings: () => ({}),
 				addExecutionHints: () => undefined,
+				...(helpers ? { helpers } : {}),
 			};
 			return await invoke(instance.execute, context);
 		},
@@ -530,7 +591,7 @@ async function followToHttp(
 				filtered,
 				path: `no HTTP Request after ${[startName, ...path].join(' → ')}`,
 			};
-		if (child.type === 'n8n-nodes-base.httpRequest')
+		if (isHttpRequest(child))
 			return {
 				node: child,
 				walked,
@@ -601,51 +662,82 @@ function notionPage(id: string, title: string) {
 	};
 }
 
+/** The `filter` the nodes-base-next Notion node sends, run by its own execute code on a fake API. */
+async function nextNotionFilter(
+	workflow: WorkflowResponse,
+	notion: WorkflowNodeResponse,
+): Promise<unknown> {
+	const requests: unknown[] = [];
+	const helpers = {
+		httpRequest: async (options: unknown) => {
+			requests.push(options);
+			return await Promise.resolve({ results: [] });
+		},
+	};
+	try {
+		await executeOutputs(notion, sourceStep(parentName(workflow, notion.name), [{}]), helpers);
+	} catch (error) {
+		return `<node throws: ${errorText(error)}>`;
+	}
+	const query = requests.find((request) => asText(valueAt(request, 'url')).endsWith('/query'));
+	return valueAt(query, 'body.filter') ?? {};
+}
+
 const gradeNotionFilterAndRead: Grader = async (workflow) => {
 	const runtime = notionRuntime();
 	const notion = workflow.nodes.find(
-		(node) => node.type === 'n8n-nodes-base.notion' && node.parameters?.operation === 'getAll',
+		(node) =>
+			(node.type === 'n8n-nodes-base.notion' && node.parameters?.operation === 'getAll') ||
+			node.type === NEXT_NOTION_GET_ALL,
 	);
 	if (!notion) return [{ name: 'notion-node', pass: false, detail: 'no Notion getAll node' }];
 	const parameters = notion.parameters ?? {};
+	const isNext = notion.type === NEXT_NOTION_GET_ALL;
 
 	const version = notion.typeVersion ?? 2;
 	const conditions = isRecord(parameters.filters) ? parameters.filters.conditions : undefined;
-	const sent = ((): unknown => {
-		try {
-			if (parameters.filterType === 'manual') {
-				return runtime.filterBody(
-					Array.isArray(conditions) ? conditions : [],
-					parameters.matchType,
-					version,
-				);
-			}
-			if (parameters.filterType === 'json' && typeof parameters.filterJson === 'string') {
-				const parsed: unknown = JSON.parse(parameters.filterJson.replace(/^=/, ''));
-				return parsed;
-			}
-			return {};
-		} catch (error) {
-			return `<node throws: ${error instanceof Error ? error.message : String(error)}>`;
-		}
-	})();
+	const sent = isNext
+		? await nextNotionFilter(workflow, notion)
+		: ((): unknown => {
+				try {
+					if (parameters.filterType === 'manual') {
+						return runtime.filterBody(
+							Array.isArray(conditions) ? conditions : [],
+							parameters.matchType,
+							version,
+						);
+					}
+					if (parameters.filterType === 'json' && typeof parameters.filterJson === 'string') {
+						const parsed: unknown = JSON.parse(parameters.filterJson.replace(/^=/, ''));
+						return parsed;
+					}
+					return {};
+				} catch (error) {
+					return `<node throws: ${error instanceof Error ? error.message : String(error)}>`;
+				}
+			})();
+	// The legacy v3 node sends dates as UTC timestamps; the next node sends the date as given.
+	const completedDates = isNext ? ['2026-09-01', '2026-09-01T00:00:00Z'] : ['2026-09-01T00:00:00Z'];
 	const expected = [
-		{ property: 'Status', status: { equals: 'Done' } },
-		{ property: 'Completed', date: { on_or_after: '2026-09-01T00:00:00Z' } },
-		{ property: 'Owners', people: { contains: NOTION_USER } },
+		[{ property: 'Status', status: { equals: 'Done' } }],
+		completedDates.map((date) => ({ property: 'Completed', date: { on_or_after: date } })),
+		[{ property: 'Owners', people: { contains: NOTION_USER } }],
 	];
 	const sentConditions = isRecord(sent) && Array.isArray(sent.and) ? sent.and : [];
 	const sentKeys = sentConditions.map(sortedJson).sort();
 	const filterPass =
 		sentConditions.length === expected.length &&
-		expected.every((condition) => sentKeys.includes(sortedJson(condition)));
+		expected.every((choices) =>
+			choices.some((condition) => sentKeys.includes(sortedJson(condition))),
+		);
 
+	// The next node emits the v3 simplified page.
 	const items =
-		parameters.simple === false
+		parameters.simple === false && !isNext
 			? [notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')]
 			: runtime.simplifyObjects(
 					[notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')],
-					notion.typeVersion ?? 2,
+					isNext ? 3 : (notion.typeVersion ?? 2),
 				);
 	const outputItems = (Array.isArray(items) ? items : []).filter(isDataObject);
 
@@ -680,10 +772,11 @@ async function postedBodies(workflow: WorkflowResponse, startName: string, items
 	} = await followToHttp(workflow, startName, items);
 	if (!http) return { via, filtered, target: undefined, bodies: [] };
 	const parameters = withDefaults(http);
+	const method = http.type === NEXT_HTTP_GET ? 'GET' : asText(parameters.method);
 	return {
 		via,
 		filtered,
-		target: `${asText(parameters.method)} ${asText(parameters.url).replace(/^=/, '').trim()}`,
+		target: `${method} ${asText(parameters.url).replace(/^=/, '').trim()}`,
 		bodies: await httpBodies(http, walked),
 	};
 }
@@ -813,9 +906,7 @@ const ORDER: IDataObject = { id: 'o1', total: 10, currency: 'EUR', customer: { t
 
 const gradeSetKeepAllPassthrough: Grader = async (workflow) => {
 	const get = workflow.nodes.find(
-		(node) =>
-			node.type === 'n8n-nodes-base.httpRequest' &&
-			asText(node.parameters?.url).includes(ORDER_URL),
+		(node) => isHttpRequest(node) && asText(node.parameters?.url).includes(ORDER_URL),
 	);
 	if (!get) return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the order URL' }];
 	const set = childrenOf(workflow, get.name).find((node) => node.type === 'n8n-nodes-base.set');
@@ -968,8 +1059,7 @@ async function paginatedRequests(workflow: WorkflowResponse, http: WorkflowNodeR
 const gradeHttpCursorPagination: Grader = async (workflow) => {
 	const http = workflow.nodes.find(
 		(node) =>
-			node.type === 'n8n-nodes-base.httpRequest' &&
-			asText(node.parameters?.url).includes('api.example.com/v1/customers'),
+			isHttpRequest(node) && asText(node.parameters?.url).includes('api.example.com/v1/customers'),
 	);
 	if (!http)
 		return [{ name: 'http-node', pass: false, detail: 'no HTTP Request to the customers API' }];
@@ -1034,8 +1124,7 @@ const INVOICES: IDataObject[] = [
 const gradeIfStringAmountThreshold: Grader = async (workflow) => {
 	const get = workflow.nodes.find(
 		(node) =>
-			node.type === 'n8n-nodes-base.httpRequest' &&
-			asText(node.parameters?.url).includes('api.example.com/invoices'),
+			isHttpRequest(node) && asText(node.parameters?.url).includes('api.example.com/invoices'),
 	);
 	if (!get)
 		return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the invoices API' }];

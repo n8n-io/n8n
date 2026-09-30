@@ -133,10 +133,10 @@ describe('toNodeType', () => {
 		const { description } = new NodeType();
 		expect(description.name).toBe('todoTaskGetAll');
 		expect(description.credentials).toEqual([{ name: 'todoApi', required: true }]);
-		expect(description.properties.map((p) => [p.name, p.type, p.required])).toEqual([
-			['project', 'string', true],
-			['paging', 'json', true],
-			['status', 'options', false],
+		expect(description.properties.map((p) => [p.name, p.type, p.required, p.default])).toEqual([
+			['project', 'string', true, ''],
+			['paging', 'json', true, '{}'],
+			['status', 'options', false, ''],
 		]);
 	});
 
@@ -161,6 +161,15 @@ describe('toNodeType', () => {
 				qs: { max: 2 },
 			}),
 		]);
+	});
+
+	it('treats filled-in defaults of optional fields as unset', async () => {
+		const { context, requests } = fakeContext(
+			{ project: 'p1', paging: { mode: 'all' }, status: '' },
+			[],
+		);
+		await expect(new NodeType().execute?.call(context)).resolves.toEqual([[]]);
+		expect(requests).toHaveLength(2);
 	});
 
 	it('fails an item whose output breaks the contract, or continues with an error item', async () => {

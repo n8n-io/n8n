@@ -48,7 +48,14 @@
     "nodes": [
       "dist/nodes/NotionDatabasePageGetAll.node.js",
       "dist/nodes/HttpRequestGet.node.js",
-      "dist/nodes/HttpRequestSend.node.js"
+      "dist/nodes/HttpRequestSend.node.js",
+      "dist/nodes/GoogleSheetsSheetRead.node.js",
+      "dist/nodes/GoogleSheetsSheetAppend.node.js",
+      "dist/nodes/GoogleSheetsSheetAppendOrUpdate.node.js",
+      "dist/nodes/GmailMessageSend.node.js",
+      "dist/nodes/GmailMessageGetAll.node.js",
+      "dist/nodes/GmailMessageGet.node.js",
+      "dist/nodes/GoogleGeminiTextMessage.node.js"
     ]
   }
 }
