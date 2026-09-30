@@ -212,6 +212,11 @@ describe('loadModules', () => {
 
 			// A module that lives only in the enterprise directory.
 			await writeEntrypoint('ee-module.ee', 'ee-module', 'module.exports = {};\n');
+			await writeEntrypoint(
+				'ee-broken-module.ee',
+				'ee-broken-module',
+				`require(${JSON.stringify(MISSING_DEPENDENCY)});\n`,
+			);
 		});
 
 		afterAll(async () => {
@@ -246,6 +251,14 @@ describe('loadModules', () => {
 
 		it('should fall back to the enterprise directory when only that entrypoint exists', async () => {
 			await expect(loadModule('ee-module')).resolves.not.toThrow();
+		});
+
+		it('should report a missing dependency of an enterprise entrypoint', async () => {
+			const loading = loadModule('ee-broken-module');
+
+			await expect(loading).rejects.toThrow(ModuleLoadError);
+			await expect(loading).rejects.toThrow(MISSING_DEPENDENCY);
+			await expect(loading).rejects.not.toThrow('ee-broken-module/ee-broken-module.module.js');
 		});
 
 		it('should throw `MissingModuleError` if neither entrypoint exists', async () => {
