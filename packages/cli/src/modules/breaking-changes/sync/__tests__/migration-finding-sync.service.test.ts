@@ -28,7 +28,7 @@ const TARGET_VERSION: BreakingChangeVersion = 'v2';
 
 function detectionResult(
 	hits: MigrationFindingHit[],
-	failedWorkflowIds: string[] = [],
+	failedChecks: MigrationFindingHit[] = [],
 ): BreakingChangeDetectionResult {
 	const workflowIdsByRule = new Map<string, string[]>();
 	for (const hit of hits) {
@@ -55,7 +55,7 @@ function detectionResult(
 		},
 		totalWorkflows: 0,
 		shouldCache: false,
-		failedWorkflowIds,
+		failedChecks,
 	};
 }
 
@@ -205,9 +205,11 @@ describe('MigrationFindingSyncService', () => {
 		expect(findingRepository.insertMany).not.toHaveBeenCalled();
 	});
 
-	it('leaves the findings of a workflow untouched when a rule threw for it', async () => {
+	it('leaves the finding of a rule check that threw untouched', async () => {
 		givenWorkflows(3);
-		breakingChangeService.detect.mockResolvedValue(detectionResult([], ['wf-0001']));
+		breakingChangeService.detect.mockResolvedValue(
+			detectionResult([], [{ ruleId: 'rule-a', workflowId: 'wf-0001' }]),
+		);
 		findingRepository.listForWorkflows.mockResolvedValue([
 			findingRow(1, 'rule-a', 'wf-0001', 'open'),
 			findingRow(2, 'rule-a', 'wf-0002', 'open'),
@@ -215,12 +217,37 @@ describe('MigrationFindingSyncService', () => {
 
 		await service.sync(TARGET_VERSION);
 
+		// The workflow itself is still visited; only the failed pair is left alone.
 		expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
 			TARGET_VERSION,
-			['wf-0000', 'wf-0002'],
+			['wf-0000', 'wf-0001', 'wf-0002'],
 			expect.anything(),
 		);
 		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
+		expect(findingRepository.insertMany).not.toHaveBeenCalled();
+	});
+
+	it('still syncs the other rules of a workflow when one rule check threw', async () => {
+		givenWorkflows(1);
+		breakingChangeService.detect.mockResolvedValue(
+			detectionResult(
+				[{ ruleId: 'rule-b', workflowId: 'wf-0000' }],
+				[{ ruleId: 'rule-a', workflowId: 'wf-0000' }],
+			),
+		);
+		findingRepository.listForWorkflows.mockResolvedValue([
+			findingRow(1, 'rule-a', 'wf-0000', 'open'),
+			findingRow(2, 'rule-c', 'wf-0000', 'open'),
+		]);
+
+		await service.sync(TARGET_VERSION);
+
+		expect(findingRepository.insertMany).toHaveBeenCalledWith(
+			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-b', workflowId: 'wf-0000' }],
+			expect.anything(),
+		);
+		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
+		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
 	});
 
 	it('runs one transaction per batch of 100 workflows', async () => {

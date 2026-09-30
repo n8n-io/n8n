@@ -72,16 +72,16 @@ export class MigrationFindingSyncService {
 
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
-		const { report, failedWorkflowIds } = await this.breakingChangeService.detect(targetVersion);
+		const { report, failedChecks } = await this.breakingChangeService.detect(targetVersion);
 		const hitsByWorkflow = groupHitsByWorkflow(report.workflowResults);
 
-		// A rule that threw leaves no hit for its workflow. Treating that as "clean"
-		// would mark real findings fixed, so those workflows are left untouched.
-		const failed = new Set(failedWorkflowIds);
-		if (failed.size > 0) {
-			this.logger.warn('Skipping workflows whose rules failed during the scan', {
+		// A rule check that threw leaves no hit for its pair. Treating that as "clean"
+		// would mark a real finding fixed, so the diff leaves those pairs untouched.
+		const unknownByWorkflow = groupByWorkflow(failedChecks);
+		if (failedChecks.length > 0) {
+			this.logger.warn('Leaving the findings of rule checks that failed during the scan as is', {
 				targetVersion,
-				count: failed.size,
+				count: failedChecks.length,
 			});
 		}
 
@@ -104,19 +104,18 @@ export class MigrationFindingSyncService {
 				return;
 			}
 
-			const batchIds = workflowIds.filter((id) => !failed.has(id));
 			try {
-				await this.syncBatch(targetVersion, batchIds, hitsByWorkflow);
+				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record is withheld
 				// below, so the next sync visits this batch again.
 				failedBatches++;
 				this.logger.warn('Migration finding sync batch failed, continuing with the next batch', {
 					targetVersion,
-					batchStart: batchIds[0],
+					batchStart: workflowIds[0],
 				});
 				this.errorReporter.error(error, {
-					extra: { targetVersion, batchStart: batchIds[0] },
+					extra: { targetVersion, batchStart: workflowIds[0] },
 				});
 			}
 			afterId = workflowIds.at(-1);
@@ -148,6 +147,7 @@ export class MigrationFindingSyncService {
 		targetVersion: BreakingChangeVersion,
 		pagedIds: string[],
 		hitsByWorkflow: Map<string, MigrationFindingHit[]>,
+		unknownByWorkflow: Map<string, MigrationFindingHit[]>,
 	): Promise<void> {
 		if (pagedIds.length === 0) return;
 
@@ -158,12 +158,13 @@ export class MigrationFindingSyncService {
 			if (workflowIds.length === 0) return;
 
 			const hits = workflowIds.flatMap((workflowId) => hitsByWorkflow.get(workflowId) ?? []);
+			const unknown = workflowIds.flatMap((workflowId) => unknownByWorkflow.get(workflowId) ?? []);
 			const existing = await this.findingRepository.listForWorkflows(
 				targetVersion,
 				workflowIds,
 				ctx,
 			);
-			const diff = diffMigrationFindings({ targetVersion, workflowIds, hits, existing });
+			const diff = diffMigrationFindings({ targetVersion, workflowIds, hits, existing, unknown });
 
 			if (diff.toInsert.length > 0) {
 				await this.findingRepository.insertMany(diff.toInsert, ctx);
@@ -181,13 +182,22 @@ export class MigrationFindingSyncService {
 function groupHitsByWorkflow(
 	workflowResults: BreakingChangeWorkflowRuleResult[],
 ): Map<string, MigrationFindingHit[]> {
-	const hitsByWorkflow = new Map<string, MigrationFindingHit[]>();
-	for (const result of workflowResults) {
-		for (const workflow of result.affectedWorkflows) {
-			const hits = hitsByWorkflow.get(workflow.id) ?? [];
-			hits.push({ ruleId: result.ruleId, workflowId: workflow.id });
-			hitsByWorkflow.set(workflow.id, hits);
-		}
+	return groupByWorkflow(
+		workflowResults.flatMap((result) =>
+			result.affectedWorkflows.map((workflow) => ({
+				ruleId: result.ruleId,
+				workflowId: workflow.id,
+			})),
+		),
+	);
+}
+
+function groupByWorkflow(pairs: MigrationFindingHit[]): Map<string, MigrationFindingHit[]> {
+	const byWorkflow = new Map<string, MigrationFindingHit[]>();
+	for (const pair of pairs) {
+		const group = byWorkflow.get(pair.workflowId) ?? [];
+		group.push(pair);
+		byWorkflow.set(pair.workflowId, group);
 	}
-	return hitsByWorkflow;
+	return byWorkflow;
 }

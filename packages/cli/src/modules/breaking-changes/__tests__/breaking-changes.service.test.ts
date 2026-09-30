@@ -218,7 +218,7 @@ describe('BreakingChangeService', () => {
 			);
 		});
 
-		it('should list the workflows where a rule threw and keep them out of the report result', async () => {
+		it('should list the rule checks that threw and keep them out of the report result', async () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
@@ -229,10 +229,10 @@ describe('BreakingChangeService', () => {
 			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
 
 			const scan = await service.detect('v2');
-			expect(scan.failedWorkflowIds).toEqual(['wf-1']);
+			expect(scan.failedChecks).toEqual([{ ruleId: throwingRule.id, workflowId: 'wf-1' }]);
 
 			const result = await service.getDetectionResults('v2');
-			expect(result).not.toHaveProperty('failedWorkflowIds');
+			expect(result).not.toHaveProperty('failedChecks');
 		});
 
 		it('should reject when detection fails and allow a later detection to run', async () => {

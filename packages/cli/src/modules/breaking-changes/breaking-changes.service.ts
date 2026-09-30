@@ -27,17 +27,23 @@ import type {
 } from './types';
 import { N8N_VERSION } from '../../constants';
 
+/** One rule check on one workflow that threw, so its result is unknown. */
+export interface FailedRuleCheck {
+	ruleId: string;
+	workflowId: string;
+}
+
 /**
- * Result of one full scan. `failedWorkflowIds` lists the workflows where a rule threw, so the
- * report is incomplete for them. The public report type does not carry this field.
+ * Result of one full scan. `failedChecks` lists the rule checks that threw, so the report
+ * is incomplete for those pairs. The public report type does not carry this field.
  */
 export interface BreakingChangeDetectionResult extends BreakingChangeReportResult {
-	failedWorkflowIds: string[];
+	failedChecks: FailedRuleCheck[];
 }
 
 interface WorkflowRulesScan {
 	results: BreakingChangeWorkflowRuleResult[];
-	failedWorkflowIds: Set<string>;
+	failedChecks: FailedRuleCheck[];
 }
 
 interface WorkflowMetadata {
@@ -193,7 +199,7 @@ export class BreakingChangeService {
 	): Promise<WorkflowRulesScan> {
 		const allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]> = new Map();
 		const workflowMetadataMap: Map<string, WorkflowMetadata> = new Map();
-		const failedWorkflowIds = new Set<string>();
+		const failedChecks: FailedRuleCheck[] = [];
 
 		// Reset batch rules internal state before processing
 		batchRules.forEach((rule) => rule.reset());
@@ -254,7 +260,7 @@ export class BreakingChangeService {
 						result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 					} catch (error) {
 						this.reportRuleError(error, rule.id, workflow.id);
-						failedWorkflowIds.add(workflow.id);
+						failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
 						continue;
 					}
 					if (result.isAffected) {
@@ -277,7 +283,7 @@ export class BreakingChangeService {
 						await rule.collectWorkflowData(workflow, nodesGroupedByType);
 					} catch (error) {
 						this.reportRuleError(error, rule.id, workflow.id);
-						failedWorkflowIds.add(workflow.id);
+						failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
 					}
 				}
 			}
@@ -289,7 +295,7 @@ export class BreakingChangeService {
 		);
 		const batchResults = await this.aggregateBatchRuleResults(batchRules, workflowMetadataMap);
 
-		return { results: regularResults.concat(batchResults), failedWorkflowIds };
+		return { results: regularResults.concat(batchResults), failedChecks };
 	}
 
 	async refreshDetectionResults(
@@ -347,7 +353,7 @@ export class BreakingChangeService {
 			return cachedResult;
 		}
 
-		// The public report type has no `failedWorkflowIds`, so the field is dropped here.
+		// The public report type has no `failedChecks`, so the field is dropped here.
 		const { report, totalWorkflows, shouldCache } = await this.detect(targetVersion);
 		const result: BreakingChangeReportResult = { report, totalWorkflows, shouldCache };
 		if (result.shouldCache) {
@@ -414,7 +420,7 @@ export class BreakingChangeService {
 			report,
 			totalWorkflows,
 			shouldCache: this.shouldCacheDetection(duration),
-			failedWorkflowIds: [...workflowScan.failedWorkflowIds],
+			failedChecks: workflowScan.failedChecks,
 		};
 	}
 
