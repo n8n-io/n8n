@@ -1,9 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
-import type { DatabaseConfig } from '@n8n/config';
-import type { DbConnection, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
+import type { DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import type { WorkflowStatisticsService } from '../workflow-statistics.service';
@@ -12,19 +11,7 @@ import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.s
 type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncrements']>>;
 
 describe('WorkflowStatisticsRollupService', () => {
-	const dbConnection = mock<DbConnection>({ connectionState: { migrated: true } });
-
-	const makeService = (opts: {
-		isLeader?: boolean;
-		instanceType?: 'main' | 'worker';
-		dbType?: 'postgresdb' | 'sqlite';
-	}) => {
-		const instanceSettings = mock<InstanceSettings>({
-			isLeader: opts.isLeader ?? true,
-			instanceType: opts.instanceType ?? 'main',
-			instanceRole: 'leader',
-		});
-		const databaseConfig = mock<DatabaseConfig>({ type: opts.dbType ?? 'postgresdb' });
+	const makeService = () => {
 		const errorReporter = mock<ErrorReporter>();
 		const dbLockService = mock<DbLockService>();
 		const repository = mock<WorkflowStatisticsRepository>();
@@ -33,9 +20,6 @@ describe('WorkflowStatisticsRollupService', () => {
 		const service = new WorkflowStatisticsRollupService(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			errorReporter,
-			instanceSettings,
-			dbConnection,
-			databaseConfig,
 			dbLockService,
 			repository,
 			statisticsService,
@@ -43,75 +27,18 @@ describe('WorkflowStatisticsRollupService', () => {
 		return { service, logger, errorReporter, dbLockService, repository, statisticsService };
 	};
 
-	/** Invoke the private rollup tick directly. */
-	const rollup = async (service: WorkflowStatisticsRollupService) =>
-		await (service as unknown as { rollup: () => Promise<number> }).rollup();
+	const rollup = async (
+		service: WorkflowStatisticsRollupService,
+		signal = new AbortController().signal,
+	) => await service.rollup(signal);
 
-	describe('shouldRun', () => {
-		it('is true for a leader main on Postgres', () => {
-			const { service } = makeService({
-				isLeader: true,
-				instanceType: 'main',
-				dbType: 'postgresdb',
-			});
-			expect(service.shouldRun).toBe(true);
-		});
-
-		it('is false on SQLite', () => {
-			const { service } = makeService({ isLeader: true, instanceType: 'main', dbType: 'sqlite' });
-			expect(service.shouldRun).toBe(false);
-		});
-
-		it('is false for a follower', () => {
-			const { service } = makeService({ isLeader: false });
-			expect(service.shouldRun).toBe(false);
-		});
-
-		it('is false for a non-main instance', () => {
-			const { service } = makeService({ instanceType: 'worker' });
-			expect(service.shouldRun).toBe(false);
-		});
-	});
-
-	describe('init', () => {
-		it('starts the rollup on a leader main (Postgres)', () => {
-			const { service } = makeService({ isLeader: true });
-			const startSpy = vi.spyOn(service, 'start').mockImplementation(() => {});
-			service.init();
-			expect(startSpy).toHaveBeenCalled();
-		});
-
-		it('does not start on a follower', () => {
-			const { service } = makeService({ isLeader: false });
-			const startSpy = vi.spyOn(service, 'start').mockImplementation(() => {});
-			service.init();
-			expect(startSpy).not.toHaveBeenCalled();
-		});
-
-		it('does not run after shutdown', async () => {
-			const { service } = makeService({ isLeader: true });
-			expect(service.shouldRun).toBe(true);
-			await service.shutdown();
-			expect(service.shouldRun).toBe(false);
-		});
-	});
-
-	describe('start', () => {
-		const isRunning = (service: WorkflowStatisticsRollupService) =>
-			(service as unknown as { timeout: NodeJS.Timeout | undefined }).timeout !== undefined;
-
-		it('does not schedule on a takeover when it should not run', () => {
-			const { service } = makeService({ dbType: 'sqlite' });
-			service.start();
-			expect(isRunning(service)).toBe(false);
-		});
-	});
+	const batchOf = (increments: number): RollupResult => ({ increments, firstOccurrences: [] });
 
 	describe('lock contention', () => {
 		const lockHeld = () => new OperationalError('lock held');
 
 		it('warns with counts once skips reach the threshold', async () => {
-			const { service, dbLockService, logger } = makeService({});
+			const { service, dbLockService, logger } = makeService();
 			dbLockService.tryWithLock.mockRejectedValue(lockHeld());
 
 			for (let i = 0; i < 5; i++) await rollup(service);
@@ -124,11 +51,10 @@ describe('WorkflowStatisticsRollupService', () => {
 		});
 
 		it('resets the consecutive count on a successful fold but keeps the total', async () => {
-			const { service, dbLockService, logger } = makeService({});
-			const empty: RollupResult = { increments: 0, firstOccurrences: [] };
+			const { service, dbLockService, logger } = makeService();
 
 			for (let i = 0; i < 4; i++) dbLockService.tryWithLock.mockRejectedValueOnce(lockHeld());
-			dbLockService.tryWithLock.mockResolvedValueOnce(empty);
+			dbLockService.tryWithLock.mockResolvedValueOnce(batchOf(0));
 			for (let i = 0; i < 5; i++) await rollup(service);
 			expect(logger.warn).not.toHaveBeenCalled(); // streak broken at 4
 
@@ -143,7 +69,7 @@ describe('WorkflowStatisticsRollupService', () => {
 		});
 	});
 
-	describe('shutdown', () => {
+	describe('drain', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 		});
@@ -152,70 +78,125 @@ describe('WorkflowStatisticsRollupService', () => {
 			vi.useRealTimers();
 		});
 
-		it('resolves immediately when no tick is in flight', async () => {
-			const { service } = makeService({});
-			await expect(service.shutdown()).resolves.toBeUndefined();
+		it('folds batches until one comes back partial', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock
+				.mockResolvedValueOnce(batchOf(5000))
+				.mockResolvedValueOnce(batchOf(5000))
+				.mockResolvedValueOnce(batchOf(12));
+
+			const run = rollup(service);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(3);
 		});
 
-		it('awaits the in-flight tick (fold and milestones) before resolving, then stops', async () => {
-			const { service, dbLockService, statisticsService } = makeService({});
-			let resolveFold!: (result: RollupResult) => void;
-			dbLockService.tryWithLock.mockImplementation(
-				async () => await new Promise<RollupResult>((resolve) => (resolveFold = resolve)),
-			);
-			statisticsService.emitFirstOccurrenceEvent.mockResolvedValue();
+		it('pauses between full batches', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock
+				.mockResolvedValueOnce(batchOf(5000))
+				.mockResolvedValueOnce(batchOf(0));
 
-			service.start();
-			await vi.advanceTimersByTimeAsync(0); // fire the first tick; fold now in flight
+			const run = rollup(service);
+			await vi.advanceTimersByTimeAsync(249);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
 
-			let shutdownSettled = false;
-			const shutdownPromise = service.shutdown().then(() => (shutdownSettled = true));
-			await vi.advanceTimersByTimeAsync(0); // flush microtasks
-			expect(shutdownSettled).toBe(false); // still awaiting the in-flight fold
+			await vi.advanceTimersByTimeAsync(1);
+			await run;
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(2);
+		});
 
-			resolveFold({
-				increments: 1,
-				firstOccurrences: [
-					{
-						name: StatisticsNames.productionSuccess,
-						workflowId: 'wf-1',
-						workflowName: 'A',
-						firstEventMs: 1,
-					},
-				],
+		it('stops at once when aborted during the pause between batches', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
+			const controller = new AbortController();
+
+			const run = rollup(service, controller.signal);
+			await vi.advanceTimersByTimeAsync(0);
+			controller.abort();
+
+			await expect(run).resolves.toBeUndefined();
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
+		});
+
+		it('stops once the run budget is spent, leaving the backlog to the next run', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
+
+			let settled = false;
+			const run = rollup(service).then(() => (settled = true));
+			await vi.advanceTimersByTimeAsync(4000);
+
+			expect(settled).toBe(true);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(16);
+			await run;
+		});
+
+		it('does not pause after the last batch that fits in the run budget', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
+
+			let settled = false;
+			void rollup(service).then(() => (settled = true));
+			await vi.advanceTimersByTimeAsync(3750);
+
+			expect(settled).toBe(true);
+		});
+
+		it('does not start a batch that would end past the run budget', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 1500));
+				return batchOf(5000);
 			});
-			await shutdownPromise;
 
-			// The milestone was emitted before shutdown resolved.
-			expect(statisticsService.emitFirstOccurrenceEvent).toHaveBeenCalledTimes(1);
+			let settled = false;
+			void rollup(service).then(() => (settled = true));
+			await vi.advanceTimersByTimeAsync(3250);
 
-			// No further tick is scheduled after shutdown.
-			await vi.advanceTimersByTimeAsync(60_000);
+			expect(settled).toBe(true);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not fold when the signal is already aborted', async () => {
+			const { service, dbLockService } = makeService();
+
+			await rollup(service, AbortSignal.abort());
+
+			expect(dbLockService.tryWithLock).not.toHaveBeenCalled();
+		});
+
+		it('stops after one attempt when the lock is held elsewhere', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockRejectedValue(new OperationalError('lock held'));
+
+			await rollup(service);
+
 			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	describe('rollup', () => {
-		it('skips the tick (returns 0, no milestones) when the advisory lock is held by another instance', async () => {
-			const { service, dbLockService, statisticsService } = makeService({});
+		it('skips the run (no milestones) when the advisory lock is held by another instance', async () => {
+			const { service, dbLockService, statisticsService } = makeService();
 			dbLockService.tryWithLock.mockRejectedValue(new OperationalError('lock held'));
 
-			const folded = await rollup(service);
+			await rollup(service);
 
-			expect(folded).toBe(0);
 			expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
 		});
 
-		it('rethrows a non-lock error so the scheduler logs and retries the tick', async () => {
-			const { service, dbLockService, statisticsService } = makeService({});
+		it('rethrows a non-lock error so the runner reports the failed run', async () => {
+			const { service, dbLockService, statisticsService } = makeService();
 			dbLockService.tryWithLock.mockRejectedValue(new Error('connection reset'));
 
 			await expect(rollup(service)).rejects.toThrow('connection reset');
 			expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
 		});
 
-		it('fires a milestone for each first-occurrence row and returns the increment count', async () => {
-			const { service, dbLockService, statisticsService } = makeService({});
+		it('fires a milestone for each first-occurrence row', async () => {
+			const { service, dbLockService, statisticsService } = makeService();
 			const result: RollupResult = {
 				increments: 1234,
 				firstOccurrences: [
@@ -235,9 +216,8 @@ describe('WorkflowStatisticsRollupService', () => {
 			};
 			dbLockService.tryWithLock.mockResolvedValue(result);
 
-			const folded = await rollup(service);
+			await rollup(service);
 
-			expect(folded).toBe(1234);
 			expect(statisticsService.emitFirstOccurrenceEvent).toHaveBeenCalledTimes(2);
 			expect(statisticsService.emitFirstOccurrenceEvent).toHaveBeenCalledWith(
 				StatisticsNames.productionSuccess,
@@ -247,8 +227,8 @@ describe('WorkflowStatisticsRollupService', () => {
 			);
 		});
 
-		it('isolates milestone failures: one throwing row does not stop the others or fail the tick', async () => {
-			const { service, dbLockService, statisticsService } = makeService({});
+		it('isolates milestone failures: one throwing row does not stop the others or fail the run', async () => {
+			const { service, dbLockService, statisticsService } = makeService();
 			const result: RollupResult = {
 				increments: 2,
 				firstOccurrences: [
@@ -271,8 +251,7 @@ describe('WorkflowStatisticsRollupService', () => {
 				.mockRejectedValueOnce(new Error('workflow/project deleted during rollup lag'))
 				.mockResolvedValueOnce();
 
-			// Must not throw, and must still return the folded count.
-			await expect(rollup(service)).resolves.toBe(2);
+			await expect(rollup(service)).resolves.toBeUndefined();
 			expect(statisticsService.emitFirstOccurrenceEvent).toHaveBeenCalledTimes(2);
 		});
 	});
