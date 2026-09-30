@@ -92,7 +92,6 @@ describe('DataTableDetailsView', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			// ADO-5943: Keep the loading layout visible from the first frame of navigation.
 			expect(getByTestId('data-table-details-loading')).toBeInTheDocument();
 		});
 

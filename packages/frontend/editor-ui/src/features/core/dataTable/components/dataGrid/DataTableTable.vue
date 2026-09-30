@@ -118,6 +118,7 @@ const dataTableOperations = useDataTableOperations({
 	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
 	searchQuery: computed(() => props.search),
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 async function onDeleteColumnFunction(columnId: string) {

@@ -77,7 +77,7 @@ export const useDataTableColumns = ({
 				onDelete: onDeleteColumn,
 				onRename: onRenameColumn,
 				allowMenuActions: !readOnly.value,
-				readOnly: readOnly.value,
+				readOnly: () => readOnly.value,
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
@@ -208,7 +208,7 @@ export const useDataTableColumns = ({
 					minWidth: MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 					flex: 1,
 					headerComponent: AddColumnButton,
-					headerComponentParams: { onAddColumn, disabled: readOnly.value },
+					headerComponentParams: { onAddColumn, disabled: () => readOnly.value },
 				},
 			),
 		];

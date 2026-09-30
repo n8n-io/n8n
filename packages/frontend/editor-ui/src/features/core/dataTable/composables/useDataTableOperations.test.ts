@@ -17,6 +17,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
@@ -127,6 +128,44 @@ describe('useDataTableOperations', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('column editing lock', () => {
+		it('blocks column mutations after editing is locked', async () => {
+			const readOnly = ref(false);
+			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+			const operations = useDataTableOperations({ ...params, readOnly });
+			readOnly.value = true;
+
+			expect(await operations.onAddColumn({ name: 'description', type: 'string' })).toEqual({
+				success: false,
+			});
+			await operations.onRenameColumn('name-column', 'title');
+			await operations.onDeleteColumn('name-column');
+
+			expect(dataTableStore.addDataTableColumn).not.toHaveBeenCalled();
+			expect(dataTableStore.renameDataTableColumn).not.toHaveBeenCalled();
+			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(params.setGridData).not.toHaveBeenCalled();
+		});
+
+		it('blocks column deletion when editing is locked during confirmation', async () => {
+			const readOnly = ref(false);
+			params.colDefs.value = [{ colId: 'name-column', field: 'name', headerName: 'name' }];
+			const confirmation = createDeferredPromise<typeof MODAL_CONFIRM>();
+			confirmMock.mockReturnValue(confirmation.promise);
+			const operations = useDataTableOperations({ ...params, readOnly });
+
+			const deletion = operations.onDeleteColumn('name-column');
+			expect(confirmMock).toHaveBeenCalled();
+			readOnly.value = true;
+			confirmation.resolve(MODAL_CONFIRM);
+			await deletion;
+
+			expect(dataTableStore.deleteDataTableColumn).not.toHaveBeenCalled();
+			expect(params.deleteGridColumn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('onAddColumn', () => {

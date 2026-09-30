@@ -3,7 +3,8 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable, DataTableRow } from '@/features/core/dataTable/dataTable.types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 
@@ -110,6 +111,51 @@ describe('InstanceAiDataTablePreview', () => {
 			expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2);
 		},
 	);
+
+	it('closes the open column popover when the agent locks the displayed grid', async () => {
+		const { pinia, store } = setup();
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		});
+		await user.click(getByTestId('data-table-add-column-trigger-button'));
+		await user.type(getByTestId('add-column-name-input'), 'description');
+		const submitButton = getByTestId('data-table-add-column-submit-button');
+		const details = createDeferredPromise<DataTable>();
+		vi.mocked(store.fetchDataTableDetails).mockReturnValue(details.promise);
+
+		isAgentWorking.value = true;
+		await flushPromises();
+		await fireEvent.click(submitButton);
+
+		expect(store.addDataTableColumn).not.toHaveBeenCalled();
+		expect(queryByTestId('add-column-popover-content')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-data-table-grid')).toHaveTextContent('Notebook');
+	});
+
+	it('closes the open column menu when the agent locks the displayed grid', async () => {
+		const { pinia, store } = setup();
+		const user = userEvent.setup();
+		const { getByTestId, getByRole, queryByRole } = renderComponent({ pinia });
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-data-table-grid')).toHaveAttribute('aria-hidden', 'false');
+		});
+		const header = getByTestId('instance-ai-data-table-grid').querySelector(
+			'.ag-header-cell[col-id="name-column"]',
+		)!;
+		await fireEvent.mouseEnter(header.querySelector('[data-test-id="data-table-column-header"]')!);
+		await user.click(header.querySelector('button[aria-haspopup="menu"]')!);
+		expect(getByRole('menu')).toBeInTheDocument();
+		const details = createDeferredPromise<DataTable>();
+		vi.mocked(store.fetchDataTableDetails).mockReturnValue(details.promise);
+
+		isAgentWorking.value = true;
+		await waitFor(() => expect(queryByRole('menu')).not.toBeInTheDocument());
+
+		expect(store.deleteDataTableColumn).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-data-table-grid')).toHaveTextContent('Notebook');
+	});
 
 	it('ignores an earlier details response after another tab is selected', async () => {
 		const { pinia, store } = setup();

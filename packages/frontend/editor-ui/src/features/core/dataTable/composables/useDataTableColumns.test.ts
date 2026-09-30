@@ -601,9 +601,7 @@ describe('useDataTableColumns', () => {
 
 			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
 			expect(addColumnCol).toBeDefined();
-			expect(addColumnCol?.headerComponentParams).toMatchObject({
-				disabled: true,
-			});
+			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
 		});
 
 		it('should enable AddColumn button when readOnly is false', () => {
@@ -625,9 +623,7 @@ describe('useDataTableColumns', () => {
 
 			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
 			expect(addColumnCol).toBeDefined();
-			expect(addColumnCol?.headerComponentParams).toMatchObject({
-				disabled: false,
-			});
+			expect(addColumnCol?.headerComponentParams.disabled()).toBe(false);
 		});
 
 		it('should work without readOnly parameter (defaults to false)', () => {
