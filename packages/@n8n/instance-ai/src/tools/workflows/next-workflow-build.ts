@@ -57,7 +57,7 @@ function nodeModule(nodeId: string): string | undefined {
 	return `/// <reference path="../node-outputs.d.ts" />\n${text}`;
 }
 
-const EMPTY_OUTPUTS = 'export {};\n';
+export const EMPTY_OUTPUTS = 'export {};\n';
 
 /** Files to write before the build: the tsconfig, the imported node modules, empty outputs. */
 export function nextWorkspaceFiles(

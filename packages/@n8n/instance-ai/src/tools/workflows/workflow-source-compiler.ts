@@ -21,6 +21,7 @@ import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { writeWorkspaceFile, writeWorkspaceFileMap } from '../../workspace/workspace-files';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
 import {
+	EMPTY_OUTPUTS,
 	fetchResourceFields,
 	NEXT_TSCONFIG_FILENAME,
 	NODE_OUTPUTS_PATH,
@@ -453,13 +454,12 @@ async function compileNextWorkflowSource(
 	const resourceFields = built.success
 		? await fetchResourceFields(context, built.workflow)
 		: undefined;
-	if (built.success) {
-		await writeWorkspaceFile(
-			workspace,
-			NODE_OUTPUTS_PATH,
-			nodeOutputsDeclaration(built.workflow, resourceFields),
-			fileOptions,
-		);
+	const outputs = built.success
+		? nodeOutputsDeclaration(built.workflow, resourceFields)
+		: EMPTY_OUTPUTS;
+	// Empty outputs are in place from before the build. Only other outputs need a write.
+	if (outputs !== EMPTY_OUTPUTS) {
+		await writeWorkspaceFile(workspace, NODE_OUTPUTS_PATH, outputs, fileOptions);
 	}
 	const typeErrors = await typecheckWorkflowSource(context, filePath, abortSignal);
 	if (typeErrors && typeErrors.length > 0) {
