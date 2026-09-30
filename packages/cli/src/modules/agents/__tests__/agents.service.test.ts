@@ -60,7 +60,6 @@ function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 	const credentialsService = mock<CredentialsService>();
 
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
@@ -119,7 +118,6 @@ describe('AgentsService', () => {
 		const saved = makeAgent();
 
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 
 		await expect(service.create(projectId, 'Support Agent')).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
@@ -147,7 +145,6 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 
 		await service.create(projectId, 'Support Agent', {
 			defaultModel: {
@@ -171,7 +168,6 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
 
 		await service.create(projectId, 'Support Agent', {
@@ -193,7 +189,6 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 
 		await service.create(projectId, 'Support Agent', {
 			schema: { name: 'Support Agent', model: '', instructions: '' },
@@ -210,7 +205,6 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 		const tools = {
 			refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } },
 		};
@@ -236,7 +230,6 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 		agentRepository.create.mockReturnValue(saved);
-		agentRepository.save.mockResolvedValue(saved);
 		const skills = {
 			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
 		};
@@ -265,7 +258,6 @@ describe('AgentsService', () => {
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent();
 			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
 
 			await service.create(projectId, 'Support Agent', {
 				schema: {
@@ -291,7 +283,6 @@ describe('AgentsService', () => {
 			const { service, agentRepository, credentialsService } = makeService();
 			const saved = makeAgent();
 			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
 			// The duplicating user can use cred-model-1 but not cred-model-2.
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'cred-model-1', name: 'OpenAI', type: 'openaiApi' } as never,
@@ -335,7 +326,6 @@ describe('AgentsService', () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
 			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
 
 			await service.create(projectId, 'Support Agent', {
 				schema: {
@@ -353,7 +343,6 @@ describe('AgentsService', () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
 			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
 
 			await service.create(projectId, 'Support Agent');
 
@@ -364,7 +353,6 @@ describe('AgentsService', () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
 			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
 
 			await service.create(projectId, 'Support Agent', {
 				schema: {
@@ -395,7 +383,6 @@ describe('AgentsService', () => {
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent({ id: mintedId });
 			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
 
 			await service.create(projectId, 'Support Agent', { id: mintedId });
 
@@ -412,7 +399,7 @@ describe('AgentsService', () => {
 				integrations: [],
 			});
 			agentRepository.create.mockReturnValue(raced);
-			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(raced);
 
 			await expect(
@@ -431,7 +418,7 @@ describe('AgentsService', () => {
 				integrations: [],
 			});
 			agentRepository.create.mockReturnValue(raced);
-			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 
 			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toThrow(
 				ConflictError,
@@ -454,7 +441,7 @@ describe('AgentsService', () => {
 				integrations: [],
 			});
 			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
-			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(configured);
 
 			await expect(
@@ -464,13 +451,13 @@ describe('AgentsService', () => {
 				}),
 			).resolves.toBe(configured);
 			// The draft name/config this call carried must not overwrite the winner's.
-			expect(agentRepository.save).toHaveBeenCalledTimes(1);
+			expect(agentRepository.insertNew).toHaveBeenCalledTimes(1);
 		});
 
 		it('rejects without disclosing when the id collides outside this project', async () => {
 			const { service, agentRepository } = makeService();
 			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
-			agentRepository.save.mockRejectedValue(uniqueViolation());
+			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 			await expect(
@@ -485,7 +472,7 @@ describe('AgentsService', () => {
 			const { service, agentRepository } = makeService();
 			const error = new QueryFailedError('insert', undefined, new Error('connection lost'));
 			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
-			agentRepository.save.mockRejectedValue(error);
+			agentRepository.insertNew.mockRejectedValue(error);
 
 			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toBe(
 				error,

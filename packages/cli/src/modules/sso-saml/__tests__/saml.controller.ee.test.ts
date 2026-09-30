@@ -13,6 +13,7 @@ import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@n8n/backend-services';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
+import { SamlEmailNotVerifiedError } from '../errors/saml-email-not-verified.error';
 import { extractTestIdFromRelayState, isConnectionTestRequest } from '../saml-helpers';
 import { SamlController } from '../saml.controller.ee';
 import type { SamlService } from '../saml.service.ee';
@@ -320,6 +321,30 @@ describe('SAML Login Flow', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
 			userEmail: 'unknown',
 			authenticationMethod: 'saml',
+			reason: 'Access denied by SSO role mapping configuration',
+		});
+	});
+
+	test('Should name the account and the reason when the login is denied for an unverified email', async () => {
+		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+		const res = mock<Response>({
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+		});
+
+		samlService.handleSamlLogin.mockRejectedValueOnce(
+			new SamlEmailNotVerifiedError('test@example.com'),
+		);
+
+		await controller.acsPost(req, res, { RelayState: '/' });
+
+		expect(authService.issueCookie).not.toHaveBeenCalled();
+		expect(res.redirect).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
+			userEmail: 'test@example.com',
+			authenticationMethod: 'saml',
+			reason: 'Email address is not verified by the identity provider',
 		});
 	});
 

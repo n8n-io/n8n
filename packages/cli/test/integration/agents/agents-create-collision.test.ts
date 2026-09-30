@@ -1,0 +1,93 @@
+/**
+ * Create takes a client-minted agent id, so the id in the request may name a
+ * row that already exists. The unit tests mock the repository, so they can only
+ * prove the service handles a rejected write — not that the write is rejected.
+ * That needs a real primary key, which is what these cover.
+ */
+
+import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
+
+import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+
+describe('AgentsService.create — client-minted id', () => {
+	let agentsService: AgentsService;
+	let agentRepo: AgentRepository;
+
+	beforeAll(async () => {
+		await testModules.loadModules(['agents']);
+		await testDb.init();
+		agentsService = Container.get(AgentsService);
+		agentRepo = Container.get(AgentRepository);
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
+	it('returns a fully populated entity on a plain create', async () => {
+		const project = await createTeamProject();
+		const agent = await agentsService.create(project.id, 'Fresh Agent');
+
+		expect(agent.id).toEqual(expect.any(String));
+		expect(agent.createdAt).toBeInstanceOf(Date);
+		expect(agent.updatedAt).toBeInstanceOf(Date);
+		expect(await agentRepo.findOneByOrFail({ id: agent.id })).toMatchObject({
+			name: 'Fresh Agent',
+			projectId: project.id,
+		});
+	});
+
+	it('rejects an id that names a row in the same project', async () => {
+		const project = await createTeamProject();
+		const first = await agentsService.create(project.id, 'First');
+
+		await expect(agentsService.create(project.id, 'Second', { id: first.id })).rejects.toThrow(
+			ConflictError,
+		);
+	});
+
+	it('adopts a same-project row when the caller may adopt it', async () => {
+		const project = await createTeamProject();
+		const first = await agentsService.create(project.id, 'First');
+
+		const { agent, adopted } = await agentsService.createOrAdopt(project.id, 'Second', {
+			id: first.id,
+			adoptOnCollision: true,
+		});
+
+		expect(adopted).toBe(true);
+		expect(agent.name).toBe('First');
+	});
+
+	it('leaves an agent in its own project when another project reuses its id', async () => {
+		const ownerProject = await createTeamProject();
+		const otherProject = await createTeamProject();
+		const agent = await agentsService.create(ownerProject.id, 'Owned Agent');
+
+		await expect(
+			agentsService.create(otherProject.id, 'Renamed Agent', { id: agent.id }),
+		).rejects.toThrow(ConflictError);
+
+		const stored = await agentRepo.findOneByOrFail({ id: agent.id });
+		expect(stored.projectId).toBe(ownerProject.id);
+		expect(stored.name).toBe('Owned Agent');
+	});
+
+	// Adoption must not become a read oracle for ids in projects the caller
+	// cannot see: the same conflict either way.
+	it('rejects a cross-project id the same way when adoption is allowed', async () => {
+		const ownerProject = await createTeamProject();
+		const otherProject = await createTeamProject();
+		const agent = await agentsService.create(ownerProject.id, 'Owned Agent');
+
+		await expect(
+			agentsService.create(otherProject.id, 'Renamed Agent', {
+				id: agent.id,
+				adoptOnCollision: true,
+			}),
+		).rejects.toThrow(ConflictError);
+	});
+});
