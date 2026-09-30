@@ -9,7 +9,7 @@ import type { Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
-import type { SuspendComponent } from './component-mapper';
+import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
 import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
@@ -470,9 +470,15 @@ export abstract class AgentChatIntegration {
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
 	 * Convert unsupported types into close-enough equivalents — e.g. Telegram
-	 * turns select options into individual buttons.
+	 * turns select options into individual buttons. A platform that folds
+	 * several buttons into one native control (the opposite direction, e.g.
+	 * WhatsApp's list) should use `context.wrapResumeValue` — see
+	 * {@link NormalizeComponentsContext}.
 	 */
-	normalizeComponents?(components: SuspendComponent[]): SuspendComponent[];
+	normalizeComponents?(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): SuspendComponent[];
 
 	/**
 	 * Optional per-platform thread ID formatting.

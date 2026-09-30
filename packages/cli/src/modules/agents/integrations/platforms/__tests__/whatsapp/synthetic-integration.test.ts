@@ -3,7 +3,7 @@ import { UserError } from 'n8n-workflow';
 import { deriveWhatsAppVerifyToken } from '../../../integration-helpers';
 import { encodeIntegrationMessageContext } from '../../../integration-message-context';
 import { createIntegrationContextTool } from '../../../integration-tools';
-import type { SuspendComponent } from '../../../component-mapper';
+import type { NormalizeComponentsContext, SuspendComponent } from '../../../component-mapper';
 import {
 	createWhatsAppIntegration,
 	createWhatsAppReplayContext,
@@ -242,11 +242,20 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 	});
 
 	describe('normalizeComponents', () => {
+		// Mirrors wrapValueForSchema's no-schema fallback (component-mapper.ts) —
+		// these tests call normalizeComponents directly, not through the full
+		// toCard pipeline, so this stands in for the real resume-value wrapper.
+		const testNormalizeContext: NormalizeComponentsContext = {
+			runId: 'run-1',
+			toolCallId: 'tool-1',
+			wrapResumeValue: (rawValue) => JSON.stringify({ value: rawValue }),
+		};
+
 		it('passes components through unchanged when there are 3 or fewer buttons', () => {
 			const integration = createWhatsAppIntegration();
 			const components: SuspendComponent[] = [{ type: 'section', text: 'Pick one' }, ...buttons(3)];
 
-			expect(integration.normalizeComponents(components)).toEqual(components);
+			expect(integration.normalizeComponents(components, testNormalizeContext)).toEqual(components);
 		});
 
 		it('converts overflow buttons into a WhatsApp list when there are more than 3', () => {
@@ -254,17 +263,20 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			const section: SuspendComponent = { type: 'section', text: 'Pick one' };
 			const components: SuspendComponent[] = [section, ...buttons(4)];
 
-			const normalized = integration.normalizeComponents(components);
+			const normalized = integration.normalizeComponents(components, testNormalizeContext);
 
 			expect(normalized.filter((c) => c.type === 'button')).toHaveLength(0);
 			expect(normalized[0]).toEqual(section);
 			expect(normalized.at(-1)).toMatchObject({
 				type: 'select',
+				// A `resume:` id, not the generic `ri-sel:` one — options
+				// resume like buttons, matching a real button's own encoding.
+				id: 'resume:run-1:tool-1:0',
 				options: [
-					{ label: 'Option 1', value: 'opt-1' },
-					{ label: 'Option 2', value: 'opt-2' },
-					{ label: 'Option 3', value: 'opt-3' },
-					{ label: 'Option 4', value: 'opt-4' },
+					{ label: 'Option 1', value: JSON.stringify({ value: 'opt-1' }) },
+					{ label: 'Option 2', value: JSON.stringify({ value: 'opt-2' }) },
+					{ label: 'Option 3', value: JSON.stringify({ value: 'opt-3' }) },
+					{ label: 'Option 4', value: JSON.stringify({ value: 'opt-4' }) },
 				],
 			});
 		});
@@ -278,7 +290,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			};
 			const components: SuspendComponent[] = [existingSelect, ...buttons(4)];
 
-			const normalized = integration.normalizeComponents(components);
+			const normalized = integration.normalizeComponents(components, testNormalizeContext);
 
 			expect(normalized.filter((c) => c.type === 'select')).toHaveLength(1);
 			expect(normalized.filter((c) => c.type === 'button')).toHaveLength(0);
@@ -387,6 +399,52 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('lets a valid option past position ten fill the slot of a dropped oversized one', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const longValue = 'x'.repeat(250);
+			// 11 options: the first is oversized and dropped, leaving exactly 10
+			// valid ones — filtering before slicing must keep all 10, not stop
+			// at whichever 10 came first and lose "Option 10" to the drop.
+			const components: SuspendComponent[] = [
+				{ type: 'button', label: 'Option 0', value: longValue },
+				...Array.from({ length: 10 }, (_, i) => ({
+					type: 'button' as const,
+					label: `Option ${i + 1}`,
+					value: `opt-${i + 1}`,
+				})),
+			];
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-select-4',
+						toolCallId: 'tool-select-4',
+						toolName: 'select',
+						suspendPayload: {
+							type: 'form',
+							toolName: 'pick_option',
+							displayName: 'Choose one',
+							components,
+						},
+					},
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const body = ctx.lastPost()?.body as {
+					interactive: { action: { sections: Array<{ rows: Array<{ title: string }> }> } };
+				};
+				const titles = body.interactive.action.sections[0].rows.map((r) => r.title);
+				expect(titles).toHaveLength(10);
+				expect(titles).not.toContain('Option 0');
+				expect(titles).toContain('Option 10');
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('resumes the suspended run when the user taps a real list option', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures, {
@@ -429,7 +487,9 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 						runId: 'run-select-2',
 						toolCallId: 'tool-select-2',
 						integrationType: 'whatsapp',
-						resumeData: expect.objectContaining({ type: 'select', value: 'charmander' }),
+						// The `resume:` encoding (see normalizeComponents) resumes like a
+						// real button — `{ value }`, not a select's `{ type, id, value }`.
+						resumeData: { value: 'charmander' },
 					}),
 				);
 				expect(ctx.lastPost()?.body).toMatchObject({
@@ -437,6 +497,80 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					type: 'text',
 					text: { body: 'Great choice' },
 				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it("resumes with the tool's own resume-schema shape, not a select's, when the schema is set", async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-select-5',
+						toolCallId: 'tool-select-5',
+						toolName: 'select',
+						suspendPayload: {
+							type: 'form',
+							toolName: 'pick_starter',
+							displayName: 'Choose Your Starter',
+							components: [
+								{ type: 'button', label: 'Bulbasaur', value: 'bulbasaur' },
+								{ type: 'button', label: 'Charmander', value: 'charmander' },
+								{ type: 'button', label: 'Squirtle', value: 'squirtle' },
+								{ type: 'button', label: 'Pikachu', value: 'pikachu' },
+							],
+						},
+						// The interactive-card resume schema: matches the branch in
+						// wrapValueForSchema that produces { type: 'button', value }.
+						resumeSchema: {
+							type: 'object',
+							properties: { type: { type: 'string' }, value: { type: 'string' } },
+						},
+					},
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const body = ctx.lastPost()?.body as {
+					interactive: {
+						action: { sections: Array<{ rows: Array<{ id: string; title: string }> }> };
+					};
+				};
+				const picked = body.interactive.action.sections[0].rows[1];
+				expect(picked.title).toBe('Charmander');
+
+				ctx.nextStream([
+					{ type: 'text-delta', id: 'resume-text', delta: 'Great choice' },
+					{ type: 'finish', finishReason: 'stop' },
+				]);
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: {
+							from: fixtures.contact.wa_id,
+							id: 'wamid.TEST_RESUME_SCHEMA_0001',
+							timestamp: String(Math.floor(Date.now() / 1000)),
+							type: 'interactive',
+							interactive: {
+								type: 'list_reply',
+								list_reply: { id: picked.id, title: picked.title },
+							},
+						},
+					}),
+				);
+
+				// Without the fix, this would be { type: 'select', id, value } —
+				// the select decode path's fixed shape, ignoring the schema.
+				expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+					expect.objectContaining({
+						resumeData: { type: 'button', value: 'charmander' },
+					}),
+				);
 			} finally {
 				await ctx.shutdown();
 			}
