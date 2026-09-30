@@ -41,6 +41,12 @@ Possible approaches:
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
 
+### Testing infrastructure decisions
+
+- `@n8n/rules-engine`, `@n8n/code-health`, and `@n8n/playwright-janitor`: retire the exemption-only rule-ID selectors. They enforce no positive naming contract.
+- `n8n-containers`: retire the Docker label exemption. Object literal keys are data, not identifier contracts.
+- `n8n-playwright`: retire the broad style selectors. Workflow names, fixture keys, and spec paths are data, while identifier casing has no runtime contract.
+
 ## Retirement exceptions
 
 ### `n8n-node-dev`

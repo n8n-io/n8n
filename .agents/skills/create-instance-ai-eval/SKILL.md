@@ -468,6 +468,16 @@ read the run assumes someone already owns it. So once a red is classified as a
 real gap (and the driver has confirmed it, per the autonomy level), **propose a
 Linear ticket for it.**
 
+**Reproduce first. This is a default, not a hard rule.** Propose a ticket only
+after a case has reproduced the gap. That means the case is red on a real build,
+the precondition was confirmed to fire, and you re-read the raw thread (see
+[First reproduce, then reclassify](#first-reproduce-then-reclassify)). A gap that
+comes from trace analysis alone is a hypothesis. A ticket for it costs the owning
+team time. The driver may approve an exception, for example when the harness
+cannot reach the mechanism after about three attempts. In that case the ticket
+must say that the eval did not reproduce the gap. Never file an unreproduced gap
+without the driver's approval.
+
 **Propose, don't create.** Per [AGENTS.md](../../../AGENTS.md), never open a
 Linear ticket unasked. Put the draft in front of the driver — interactively in
 checkpoint mode, in the decision log in autonomous mode — with a title, a team,
