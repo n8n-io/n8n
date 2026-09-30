@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_08e3f2a35f1cb4::t_b002831e708d5b 111
+  s_08e3f2a35f1cb4::t_b019e8115d20f6 2,44,148-152,211
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiDataTablePreview.test.ts
+  s_08e3f2a35f1cb4::t_8bfc97f089cf1b 135-162
+  s_08e3f2a35f1cb4::t_22e867cc6b758f 1-70,72-127,132-134,163-176
+  s_08e3f2a35f1cb4::t_1016453ffcfe21 71,128-131
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDataTablePreview.vue
+  s_08e3f2a35f1cb4::t_b019e8115d20f6 25-35,38,52-56,60-79,81-83,91-92,96-101,103-107,109-117,131-134
+  s_08e3f2a35f1cb4::t_b002831e708d5b 108
+  s_08e3f2a35f1cb4::t_1016453ffcfe21 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8b7782daf94e00ca26c94a795166dd168f99a79",
+  "prompts": {},
+  "sessions": {
+    "s_08e3f2a35f1cb4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f1a1-65ca-7090-a540-e14230f0b85c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
