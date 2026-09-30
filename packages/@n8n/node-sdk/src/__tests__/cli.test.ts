@@ -1,0 +1,122 @@
+import { execFile } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { promisify } from 'node:util';
+
+const SDK_ROOT = resolve(__dirname, '..', '..');
+const BIN = join(SDK_ROOT, 'src', 'cli', 'n8n-node-next');
+
+interface CliResult {
+	code: number;
+	stdout: string;
+	stderr: string;
+}
+
+async function cli(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}): Promise<CliResult> {
+	try {
+		const { stdout, stderr } = await promisify(execFile)(process.execPath, [BIN, ...args], {
+			cwd,
+			env: { ...process.env, ...env },
+		});
+		return { code: 0, stdout, stderr };
+	} catch (error) {
+		const failed = error as { code: number; stdout: string; stderr: string };
+		return { code: failed.code, stdout: failed.stdout, stderr: failed.stderr };
+	}
+}
+
+/** What `pnpm install` does for the scaffold: link the SDK and the Node types. */
+function install(project: string) {
+	const link = (target: string, path: string) => {
+		mkdirSync(dirname(join(project, path)), { recursive: true });
+		symlinkSync(target, join(project, path));
+	};
+	link(SDK_ROOT, 'node_modules/@n8n/node-sdk');
+	link(dirname(require.resolve('@types/node/package.json')), 'node_modules/@types/node');
+}
+
+describe('n8n-node-next', () => {
+	const workspace = mkdtempSync(join(tmpdir(), 'n8n-node-next-'));
+	const project = join(workspace, 'todo');
+	const server = createServer((request, response) => {
+		const authorized = request.headers.authorization === 'Bearer secret';
+		response.writeHead(authorized ? 200 : 401, { 'content-type': 'application/json' });
+		response.end(JSON.stringify(authorized ? { items: [{ id: '1', name: 'First' }] } : {}));
+	});
+	const baseUrl = () => `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
+
+	beforeAll(async () => await new Promise<void>((done) => server.listen(0, '127.0.0.1', done)));
+
+	afterAll(() => {
+		server.close();
+		rmSync(workspace, { recursive: true, force: true });
+	});
+
+	it('new scaffolds a project', async () => {
+		const result = await cli(workspace, ['new', 'todo', '--dir', 'todo']);
+		expect(result.code).toBe(0);
+		const manifest = JSON.parse(readFileSync(join(project, 'package.json'), 'utf8'));
+		expect(manifest.dependencies['@n8n/node-sdk']).toBe(`link:${SDK_ROOT}`);
+		expect(readFileSync(join(project, 'AGENTS.md'), 'utf8').split('\n').length).toBeLessThan(80);
+		expect(readFileSync(join(project, 'src/index.ts'), 'utf8')).toContain('export const actions');
+		install(project);
+		expect((await cli(workspace, ['new', 'todo', '--dir', 'todo'])).stderr).toContain(
+			'is not empty',
+		);
+	});
+
+	it('check passes on the scaffold', async () => {
+		expect(await cli(project, ['check'])).toMatchObject({ code: 0, stdout: 'check passed\n' });
+	});
+
+	it('check reports the file, action id and schema path', async () => {
+		const file = join(project, 'src/actions/item.get-all.ts');
+		const source = readFileSync(file, 'utf8');
+		writeFileSync(file, source.replace("examples: ['itm_1']", 'examples: [1]'));
+		const result = await cli(project, ['check']);
+		writeFileSync(file, source);
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain(
+			'src/actions/item.get-all.ts: todo.item.getAll: output.id.examples[0]: must be string, got 1',
+		);
+	});
+
+	it('test runs the node:test files', async () => {
+		const result = await cli(project, ['test']);
+		expect(result.code).toBe(0);
+		expect(result.stdout).toContain('pass 2');
+	});
+
+	it('describe prints the typed module', async () => {
+		const result = await cli(project, ['describe', 'todo.item.getAll']);
+		expect(result.stdout).toContain('export type TodoItemGetAllOutput');
+		expect(result.stdout).toContain('contractStep("n8n-nodes-todo.todoItemGetAll", config)');
+	});
+
+	it('run calls the API with the credential from the environment', async () => {
+		const node = join(project, 'src/node.ts');
+		writeFileSync(
+			node,
+			readFileSync(node, 'utf8').replace('https://api.todo.example.com/v1', baseUrl()),
+		);
+		const args = ['run', 'todo.item.getAll', '--input', '{"limit":1}', '--credential-env', 'TODO'];
+		const ok = await cli(project, args, { TODO_API_KEY: 'secret' });
+		expect(ok.code).toBe(0);
+		expect(JSON.parse(ok.stdout)).toEqual([{ id: '1', name: 'First' }]);
+
+		const credentialFile = join(workspace, 'credential.json');
+		writeFileSync(credentialFile, JSON.stringify({ type: 'todoApi', data: { apiKey: 'secret' } }));
+		const fromFile = await cli(project, [...args.slice(0, 4), '--credential-file', credentialFile]);
+		expect(JSON.parse(fromFile.stdout)).toEqual([{ id: '1', name: 'First' }]);
+
+		const denied = await cli(project, args, { TODO_API_KEY: 'wrong' });
+		expect(denied.code).toBe(1);
+		expect(JSON.parse(denied.stderr).error.httpStatus).toBe(401);
+
+		const invalid = await cli(project, ['run', 'todo.item.getAll', '--input', '{"limit":0}']);
+		expect(JSON.parse(invalid.stderr).error.path).toBe('input.limit');
+	});
+});

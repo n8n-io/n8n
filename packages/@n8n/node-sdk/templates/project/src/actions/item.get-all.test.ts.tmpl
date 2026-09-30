@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { mockHttp, runAction } from '@n8n/node-sdk/testing';
+
+import { credentials } from '../index';
+import { getManyItems } from './item.get-all';
+
+const credential = { type: '__service__Api', data: { apiKey: 'test-key' } };
+
+test('lists items with the API key', async () => {
+	const fetch = mockHttp([
+		{
+			method: 'GET',
+			path: '/items',
+			query: { limit: 2 },
+			reply: { json: { items: [{ id: '1', name: 'First' }] } },
+		},
+	]);
+	const result = await runAction(getManyItems, { input: { limit: 2 }, credential, credentials, fetch });
+	assert.deepEqual(result, { ok: true, items: [{ id: '1', name: 'First' }] });
+	assert.equal(fetch.calls[0]?.headers.authorization, 'Bearer test-key');
+});
+
+test('rejects a limit over 100', async () => {
+	const result = await runAction(getManyItems, { input: { limit: 500 }, credential, credentials });
+	assert.equal(result.ok, false);
+	assert.equal(result.ok ? undefined : result.error.path, 'input.limit');
+});

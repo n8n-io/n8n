@@ -1,0 +1,10 @@
+import { defineNode } from '@n8n/node-sdk';
+
+import { __service__Api } from './credentials';
+
+export const node = defineNode({
+	id: '__service__',
+	displayName: '__Service__',
+	credentials: [__service__Api.name],
+	baseUrl: 'https://api.__slug__.example.com/v1',
+});

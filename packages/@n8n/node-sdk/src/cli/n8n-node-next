@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+// tsx loads the CLI source and the project's TypeScript files.
+require('tsx/cjs/api').register();
+require('tsx/esm/api').register();
+require('./index.ts');

@@ -1,0 +1,28 @@
+import { defineAction, int, matches, obj, str } from '@n8n/node-sdk';
+
+import { node } from '../node';
+
+const item = obj({
+	id: str().with({ examples: ['itm_1'] }),
+	name: str().hint('The item title'),
+});
+
+export const getManyItems = defineAction({
+	node,
+	id: '__service__.item.getAll',
+	action: 'Get many items',
+	summary: 'List items, newest first.',
+	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
+	input: {
+		limit: int().with({ minimum: 1, maximum: 100 }).default(50).hint('At most 100'),
+	},
+	output: item,
+	async run({ input, http, emit }) {
+		const response = await http.request({ path: '/items', query: { limit: input.limit } });
+		const items = typeof response === 'object' && response !== null && 'items' in response ? response.items : [];
+		for (const entry of Array.isArray(items) ? items : []) {
+			if (!matches(item, entry)) throw new Error('__Service__ returned an item without id or name');
+			emit(entry);
+		}
+	},
+});
