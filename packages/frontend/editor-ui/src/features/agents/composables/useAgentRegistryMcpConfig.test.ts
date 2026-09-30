@@ -170,7 +170,7 @@ describe('useAgentRegistryMcpConfig', () => {
 		scope.stop();
 	});
 
-	it.each([undefined, 0, 1.5, 120_001])(
+	it.each([undefined, 0, 999, 1.5, 120_001])(
 		'rejects invalid connection timeout %s at the save boundary',
 		async (connectionTimeoutMs) => {
 			const onConfirm = vi.fn();

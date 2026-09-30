@@ -319,9 +319,11 @@ function onOpenAutoFocus(event: Event) {
 
 .body {
 	box-sizing: border-box;
+	height: min(60dvh, calc(var(--height--5xl) * 5));
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
+	scrollbar-gutter: stable;
 	margin-inline: calc(var(--spacing--5xs) * -1);
 	padding: var(--spacing--md) var(--spacing--5xs) var(--spacing--5xs);
 

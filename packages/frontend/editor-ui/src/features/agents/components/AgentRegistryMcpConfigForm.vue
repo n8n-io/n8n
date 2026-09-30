@@ -54,12 +54,15 @@ const draftPermissions = computed<McpToolPermissions>({
 		};
 	},
 });
-const timeoutInput = computed({
-	get: () => String(draftSettings.value.connectionTimeoutMs ?? ''),
+const timeoutInputSeconds = computed({
+	get: () =>
+		draftSettings.value.connectionTimeoutMs === undefined
+			? ''
+			: String(draftSettings.value.connectionTimeoutMs / 1_000),
 	set: (value: string) => {
 		draftSettings.value = {
 			...draftSettings.value,
-			connectionTimeoutMs: value.trim() ? Number(value) : undefined,
+			connectionTimeoutMs: value.trim() ? Number(value) * 1_000 : undefined,
 		};
 	},
 });
@@ -95,6 +98,7 @@ const parsedTimeout = computed(() => {
 	const timeout = draftSettings.value.connectionTimeoutMs;
 	return timeout !== undefined &&
 		Number.isInteger(timeout) &&
+		timeout % 1_000 === 0 &&
 		timeout >= MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS &&
 		timeout <= MAX_AGENT_MCP_CONNECTION_TIMEOUT_MS
 		? timeout
@@ -102,7 +106,12 @@ const parsedTimeout = computed(() => {
 });
 const timeoutError = computed(() =>
 	submitted.value && parsedTimeout.value === null
-		? i18n.baseText('agents.toolConfig.mcp.timeout.validation')
+		? i18n.baseText('agents.toolConfig.mcp.timeout.validation', {
+				interpolate: {
+					min: MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS / 1_000,
+					max: MAX_AGENT_MCP_CONNECTION_TIMEOUT_MS / 1_000,
+				},
+			})
 		: '',
 );
 const saveDisabled = computed(() => item.value?.status !== 'connected');
@@ -117,13 +126,15 @@ async function remove(): Promise<boolean> {
 	if (!props.data.onRemove) return false;
 	const confirmed = await message.confirm(
 		i18n.baseText('tools.connection.settings.removeConfirm.description', {
-			interpolate: { service: title.value },
+			interpolate: { item: 'tool', service: title.value },
 		}),
 		{
 			title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
 				interpolate: { name: title.value },
 			}),
-			confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton'),
+			confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton', {
+				interpolate: { item: 'tool' },
+			}),
 			cancelButtonText: i18n.baseText('generic.cancel'),
 		},
 	);
@@ -176,8 +187,11 @@ defineExpose({
 				</N8nText>
 				<N8nInput
 					id="agent-mcp-connection-timeout"
-					:model-value="timeoutInput"
+					:model-value="timeoutInputSeconds"
 					type="number"
+					:min="MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS / 1_000"
+					:max="MAX_AGENT_MCP_CONNECTION_TIMEOUT_MS / 1_000"
+					:step="1"
 					:disabled="item.status !== 'connected'"
 					:aria-invalid="Boolean(timeoutError)"
 					:aria-describedby="
@@ -186,7 +200,7 @@ defineExpose({
 							: 'agent-mcp-connection-timeout-help'
 					"
 					data-testid="agent-mcp-connection-timeout"
-					@update:model-value="timeoutInput = $event"
+					@update:model-value="timeoutInputSeconds = $event"
 				>
 					<template #suffix>
 						<N8nText size="small" color="text-light">

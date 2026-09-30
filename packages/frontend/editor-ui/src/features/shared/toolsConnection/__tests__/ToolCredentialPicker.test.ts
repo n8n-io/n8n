@@ -76,6 +76,23 @@ describe('ToolCredentialPicker', () => {
 		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
 	});
 
+	it('hides the connected checkmark for a temporary connection', () => {
+		const item = { ...baseMcpItem, status: 'connected' as const };
+		const { getByTestId } = renderPicker({
+			props: {
+				item,
+				credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+				adapter: makeAdapter([{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }]),
+				showConnectedIcon: false,
+			},
+			pinia: createTestingPinia(),
+		});
+
+		const trigger = getByTestId('tool-credential-picker-trigger-connected');
+		expect(trigger).toHaveTextContent('My Notion account');
+		expect(trigger.querySelector('[data-icon="check"]')).toBeNull();
+	});
+
 	it('distinguishes a disconnected connection from a tool that was never added', () => {
 		const disconnectedItem = { ...baseMcpItem, status: 'disconnected' as const };
 		const disconnected = render(

@@ -10,6 +10,7 @@ import type {
 defineProps<{
 	item: McpServerConnectionItem;
 	adapter: ToolConnectionCredentialAdapter | null;
+	showConnectedIcon?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -31,6 +32,7 @@ defineExpose({ open });
 		:item="item"
 		:credentials="item.credentials ?? []"
 		:adapter="adapter"
+		:show-connected-icon="showConnectedIcon"
 		@select-credential="
 			(_item, authType, credentialId) => emit('select-credential', authType, credentialId)
 		"

@@ -380,13 +380,15 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	if (item.kind === 'mcp-server') {
 		const confirmed = await message.confirm(
 			i18n.baseText('tools.connection.settings.removeConfirm.description', {
-				interpolate: { service: item.title },
+				interpolate: { item: 'connector', service: item.title },
 			}),
 			{
 				title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
 					interpolate: { name: item.title },
 				}),
-				confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton'),
+				confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton', {
+					interpolate: { item: 'connector' },
+				}),
 				cancelButtonText: i18n.baseText('generic.cancel'),
 			},
 		);

@@ -1109,6 +1109,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			const item = getItems().find((candidate) => candidate.id === 'registry:github');
 			expect(item).toBeDefined();
+			expect(item?.title).toBe('GitHub');
 			emitSelectCredential(item!, 'githubMcpOAuth2Api', 'credential-1');
 			await flushPromises();
 
@@ -1116,7 +1117,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				kind: 'registryMcpServer',
 				isNew: true,
 				mcpServer: {
-					name: 'github',
+					name: 'GitHub',
 					authentication: 'githubMcpOAuth2Api',
 					credential: 'credential-1',
 					metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
@@ -1125,7 +1126,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			});
 
 			const configured: AgentJsonMcpServerConfig = {
-				name: 'github',
+				name: 'GitHub',
 				description: registryServer.description,
 				url: 'https://mcp.github.test',
 				transport: 'streamableHttp',

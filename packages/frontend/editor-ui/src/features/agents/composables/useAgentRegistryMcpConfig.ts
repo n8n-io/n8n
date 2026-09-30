@@ -20,7 +20,7 @@ import type {
 
 import { useAgentMcpDiscovery } from './useAgentMcpDiscovery';
 
-export const MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS = 1;
+export const MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS = 1_000;
 export const DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS = 60_000;
 export const MAX_AGENT_MCP_CONNECTION_TIMEOUT_MS = 120_000;
 

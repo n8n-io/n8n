@@ -902,7 +902,7 @@ function connectRegistryItem(
 
 	const draft: AgentRegistryMcpDraft = {
 		name: makeUniqueName(
-			registryServer.slug,
+			registryServer.title,
 			getExistingMcpServerNames(workingMcpServers.value),
 			(name, counter) => `${name}-${counter}`,
 		),
@@ -1261,6 +1261,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 				ref="credentialPicker"
 				:item="configContent.headerItem"
 				:adapter="configContent.credentialAdapter"
+				:show-connected-icon="Boolean(configData?.onRemove)"
 				@select-credential="
 					(authType, credentialId) => configContent?.selectCredential(authType, credentialId)
 				"
