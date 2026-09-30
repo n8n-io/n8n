@@ -121,5 +121,13 @@ function isHttpErrorInstance<T extends Error>(
 	errorClass: new (...args: never[]) => T,
 	classNames: string[],
 ): error is T {
-	return error instanceof errorClass || classNames.includes(error.constructor.name);
+	if (error instanceof errorClass) {
+		return true;
+	}
+
+	return classNames.includes(error.constructor.name) && hasHttpStatus(error);
+}
+
+function hasHttpStatus(error: Error): error is Error & { status: number } {
+	return 'status' in error && typeof error.status === 'number';
 }

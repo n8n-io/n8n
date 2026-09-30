@@ -1,0 +1,123 @@
+import { BadRequest, Unauthorized } from 'express-openapi-validator/dist/framework/types';
+
+import {
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
+
+import { classifyHttpError, HttpErrorKind, isResponseError } from '../http-error-classifier';
+
+describe('classifyHttpError', () => {
+	it('tags ResponseError with kind responseError and http fields', () => {
+		const d = classifyHttpError(new NotFoundError('missing'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.responseError,
+			status: 404,
+			message: 'missing',
+			code: 404,
+		});
+	});
+
+	it('tags UserError without HTTP status (serializers assign status)', () => {
+		const d = classifyHttpError(new UserError('bad input'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.userError,
+			message: 'bad input',
+		});
+	});
+
+	it('tags n8n UnexpectedError', () => {
+		const d = classifyHttpError(new UnexpectedError('internal bug'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.unexpectedError,
+			message: 'internal bug',
+		});
+	});
+
+	it('tags OperationalError as generic serverError', () => {
+		const d = classifyHttpError(new OperationalError('temporarily down'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.serverError,
+			message: 'temporarily down',
+		});
+	});
+
+	it('tags express-openapi-validator HttpError', () => {
+		const httpError = new BadRequest({ path: '/x', message: 'schema failed' });
+		const d = classifyHttpError(httpError);
+		expect(d).toEqual({
+			kind: HttpErrorKind.httpError,
+			status: 400,
+			message: 'schema failed',
+		});
+	});
+
+	describe('Unauthorized', () => {
+		it('keeps the express-openapi-validator message when no session cookie was sent', () => {
+			const unauthorizedError = new Unauthorized({
+				path: '/x',
+				message: "'X-N8N-API-KEY' header required",
+			});
+			const d = classifyHttpError(unauthorizedError);
+			expect(d).toEqual({
+				kind: HttpErrorKind.httpError,
+				status: 401,
+				message: "'X-N8N-API-KEY' header required",
+			});
+		});
+
+		it('replaces the api key hint with a generic message when a session cookie was sent', () => {
+			const unauthorizedError = new Unauthorized({
+				path: '/x',
+				message: "'X-N8N-API-KEY' header required",
+			});
+			const d = classifyHttpError(unauthorizedError, { hasSessionCookie: true });
+			expect(d).toEqual({
+				kind: HttpErrorKind.httpError,
+				status: 401,
+				message: 'Unauthorized',
+			});
+		});
+	});
+
+	it('does not classify an unrelated error with an HTTP error class name', () => {
+		class NotFound extends Error {}
+
+		const d = classifyHttpError(new NotFound('internal error'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.serverError,
+			message: 'internal error',
+		});
+	});
+
+	it('tags plain Error as serverError', () => {
+		const d = classifyHttpError(new Error('plain'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.serverError,
+			message: 'plain',
+		});
+	});
+
+	it('matches BadRequestError fields', () => {
+		const d = classifyHttpError(new BadRequestError('invalid'));
+		expect(d).toEqual({
+			kind: HttpErrorKind.responseError,
+			status: 400,
+			message: 'invalid',
+			code: 400,
+		});
+	});
+});
+
+describe('isResponseError', () => {
+	it('recognizes duck-typed hook errors', () => {
+		const hookError = Object.assign(new Error('hook'), {
+			httpStatusCode: 403,
+			errorCode: 403,
+		});
+		expect(isResponseError(hookError)).toBe(true);
+	});
+});
