@@ -1,4 +1,4 @@
-import { LdapSyncDto, UpdateLdapConfigurationDto } from '@n8n/api-types';
+import { LdapSyncDto } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
 import { ResponseError, BadRequestError } from '@n8n/errors';
@@ -6,11 +6,7 @@ import { getLdapSynchronizationsWithCount } from '@/modules/ldap.ee/helpers.ee';
 import { LdapConnectionError, LdapRejectionError } from '@/modules/ldap.ee/ldap.errors';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 
-import {
-	toLdapConfigurationResponse,
-	toLdapConfigUpdate,
-	toLdapSyncHistoryResponse,
-} from './ldap.mapper';
+import { toLdapSyncHistoryResponse } from './ldap.mapper';
 import type { LdapRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -21,44 +17,11 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type LdapHandlers = {
-	getLdapConfiguration: PublicAPIEndpoint<LdapRequest.GetConfig>;
-	updateLdapConfiguration: PublicAPIEndpoint<LdapRequest.UpdateConfig>;
 	getLdapSync: PublicAPIEndpoint<LdapRequest.GetSync>;
 	runLdapSync: PublicAPIEndpoint<LdapRequest.RunSync>;
 };
 
 const ldapHandlers: LdapHandlers = {
-	getLdapConfiguration: [
-		isLicensed('feat:ldap'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'ldap:manage' }),
-		async (_req, res) => {
-			const ldapService = Container.get(LdapService);
-			const config = await ldapService.loadConfig();
-
-			return res.json(toLdapConfigurationResponse(config));
-		},
-	],
-
-	updateLdapConfiguration: [
-		isLicensed('feat:ldap'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'ldap:manage' }),
-		async (req, res) => {
-			const payload = UpdateLdapConfigurationDto.safeParse(req.body);
-			if (!payload.success) {
-				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
-			}
-
-			const ldapService = Container.get(LdapService);
-			const current = await ldapService.loadConfig();
-
-			const updated = toLdapConfigUpdate(payload.data, current);
-			await ldapService.updateConfig(updated);
-
-			const reloaded = await ldapService.loadConfig();
-			return res.json(toLdapConfigurationResponse(reloaded));
-		},
-	],
-
 	getLdapSync: [
 		isLicensed('feat:ldap'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'ldap:sync' }),
