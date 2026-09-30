@@ -1972,23 +1972,9 @@ watch(
 );
 
 const headerActions = computed(() => {
-	const actions: Array<ActionDropdownItem<string>> = [
-		{
-			id: 'export-json',
-			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-			icon: 'download',
-		},
-	];
+	const actions: Array<ActionDropdownItem<string>> = [];
 
-	if (effectiveCanEditAgent.value) {
-		actions.push({
-			id: 'import-json',
-			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
-		});
-	}
-
-	// Mirrors the workflow menu: description sits right before Favorite.
+	// Same order as the workflow menu: description and favorite first, then import/export.
 	if (effectiveCanEditAgent.value) {
 		actions.push({
 			id: 'edit-description',
@@ -2005,6 +1991,21 @@ const headerActions = computed(() => {
 					? locale.baseText('favorites.remove')
 					: locale.baseText('favorites.add'),
 			icon: isFavorite.value === true ? 'star-filled' : 'star',
+		});
+	}
+
+	actions.push({
+		id: 'export-json',
+		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+		icon: 'download',
+		divided: actions.length > 0,
+	});
+
+	if (effectiveCanEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
 		});
 	}
 
