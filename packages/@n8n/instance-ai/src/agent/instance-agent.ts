@@ -22,7 +22,13 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	CHECKPOINT_FOLLOW_UP_TOOL_NAMES,
+	DOMAIN_TOOL_IDS,
+	ORCHESTRATION_TOOL_IDS,
+} from '../tools/tool-ids';
+import { withBuildVerification } from '../tools/workflows/build-and-verify';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -188,6 +194,16 @@ export async function createInstanceAgent(
 	);
 	for (const name of orchestrationContext?.disabledToolNames ?? [])
 		allOrchestratorTools.delete(name);
+	const buildTool = allOrchestratorTools.get(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
+	if (domainContext.nodeContractsEnabled && buildTool) {
+		allOrchestratorTools.set(
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			withBuildVerification(
+				buildTool,
+				allOrchestratorTools.get(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW),
+			),
+		);
+	}
 	const tracedOrchestratorTools =
 		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
 			agentRole: 'orchestrator',
