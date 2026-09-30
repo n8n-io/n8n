@@ -96,6 +96,8 @@ export {
 	merge,
 } from './workflow-builder/node-builders/node-builder';
 
+export { isPlaceholderValue } from './workflow-builder/string-utils';
+
 // Export MergeFactoryConfig type for merge() factory
 export type { MergeFactoryConfig } from './workflow-builder/node-builders/node-builder';
 

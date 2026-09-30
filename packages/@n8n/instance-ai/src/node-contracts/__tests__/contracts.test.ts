@@ -466,6 +466,7 @@ export default workflow('w', 'W').add(start).to(order).to(large).onTrue(high).on
 			expect.stringContaining('is not a Notion ID'),
 		]);
 		expect(notionIssues('={{ $json.databaseId }}')).toEqual([]);
+		expect(notionIssues('<__PLACEHOLDER_VALUE__Tasks database ID__>')).toEqual([]);
 		expect(sheetsIssues('1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789')).toEqual([]);
 		expect(sheetsIssues('https://docs.google.com/spreadsheets/d/1AbC/edit')).toEqual([
 			expect.stringContaining('is not a spreadsheet ID, not a URL'),

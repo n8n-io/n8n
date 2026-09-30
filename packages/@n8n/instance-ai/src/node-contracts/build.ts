@@ -1,5 +1,10 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { toEngineConnections, type IDataObject, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	isPlaceholderValue,
+	toEngineConnections,
+	type IDataObject,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
 import {
 	getParentNodes,
 	mapConnectionsByDestination,
@@ -60,6 +65,8 @@ export function validateContractInput(value: unknown, schema: JsonSchema, path =
 			if (node['x-n8n-literal']) issues.push(`${at}: must be a plain value, not an expression`);
 			return;
 		}
+		// A placeholder is a typed hole that setup fills; a variant selector cannot be one.
+		if (isPlaceholderValue(current) && !(node.oneOf && node.discriminator)) return;
 		if (node.oneOf && node.discriminator) {
 			const tagName = node.discriminator.propertyName;
 			const tags = node.oneOf.map((branch) => branchTag(branch, node));
