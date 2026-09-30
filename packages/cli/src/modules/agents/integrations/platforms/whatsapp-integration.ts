@@ -3,14 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type {
-	AdapterPostableMessage,
-	ChatInstance,
-	Logger as ChatLogger,
-	RawMessage,
-	StreamChunk,
-	StreamOptions,
-} from 'chat';
+import type { AdapterPostableMessage, ChatInstance, Logger as ChatLogger, RawMessage } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 
@@ -69,6 +62,13 @@ const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
  */
 const WHATSAPP_RATE_LIMIT_ERROR_CODES = new Set([130429, 131048, 131056, 80007]);
 
+/**
+ * Meta's per-recipient "pair" rate limit, not a limit on the number as a
+ * whole — cooling down the whole connection for it would silence every other
+ * customer because of one chatty conversation (see {@link withWhatsAppRateLimitBackoff}).
+ */
+const WHATSAPP_PAIR_RATE_LIMIT_CODE = 131056;
+
 const WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS = 4;
 const WHATSAPP_RATE_LIMIT_BACKOFF_BASE_MS = 1_000;
 const WHATSAPP_RATE_LIMIT_BACKOFF_CAP_MS = 8_000;
@@ -82,13 +82,15 @@ const WHATSAPP_RATE_LIMIT_BACKOFF_CAP_MS = 8_000;
  * adapter wiring:
  *
  * - The 24-hour customer service window (see {@link WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS}):
- *   enforced by wrapping the adapter (see {@link createAdapter}) rather than
- *   in the shared action executor, because that's the one choke point every
- *   outbound send (respond, send_dm, …) actually passes through.
+ *   enforced by wrapping the adapter's `postMessage` (see {@link createAdapter})
+ *   rather than in the shared action executor, because that's the one choke
+ *   point every outbound send (respond, send_dm, …) actually passes through.
  * - Meta rate-limits a number whose "quality rating" has dropped (see
- *   {@link WHATSAPP_RATE_LIMIT_ERROR_CODES}); the same wrapper retries those
- *   sends with backoff instead of surfacing them immediately, since retrying
- *   fast makes the underlying rating problem worse, not better.
+ *   {@link WHATSAPP_RATE_LIMIT_ERROR_CODES}); `graphApiRequest` — not
+ *   `postMessage` — is wrapped to retry those, since one `postMessage` call
+ *   can make several requests and retrying the whole thing would resend
+ *   whichever already went through. Every other request-making call
+ *   (reactions, templates, …) shares `graphApiRequest`, so they retry too.
  * - Reply buttons cap at 3 (see {@link normalizeComponents}); WhatsApp lists
  *   (`select`/`radio_select`) are natively supported by the adapter's own
  *   Card conversion, so unlike Telegram/Discord they need no flattening here.
@@ -236,33 +238,24 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		const connectionId = buildIntegrationConnectionId(ctx.integration);
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
-		// and the rate-limit backoff (see module doc). Every outbound send
-		// (respond, send_dm, …) ultimately calls one of these two methods, so
-		// this is the one place that catches them all without touching the
-		// shared cross-platform action executor.
+		// and the rate-limit backoff (see module doc). `stream` needs no override
+		// of its own — the base adapter's `stream` already delegates to
+		// `this.postMessage`.
 		class ConversationWindowGuardedAdapter extends AdapterClass {
 			override async postMessage(
 				threadId: string,
 				message: AdapterPostableMessage,
 			): Promise<RawMessage<WhatsAppRawMessage>> {
 				await assertCustomerServiceWindowOpen(this.chat, sdk, threadId, logger);
-				return await withWhatsAppRateLimitBackoff(
-					async () => await super.postMessage(threadId, message),
-					logger,
-					{ guard: channelRateLimitGuard, connectionId },
-				);
+				return await super.postMessage(threadId, message);
 			}
 
-			override async stream(
-				threadId: string,
-				textStream: AsyncIterable<string | StreamChunk>,
-				options?: StreamOptions,
-			): Promise<RawMessage<WhatsAppRawMessage>> {
-				await assertCustomerServiceWindowOpen(this.chat, sdk, threadId, logger);
+			override async graphApiRequest(path: string, body: unknown): Promise<unknown> {
+				const recipient = isRecord(body) && typeof body.to === 'string' ? body.to : undefined;
 				return await withWhatsAppRateLimitBackoff(
-					async () => await super.stream(threadId, textStream, options),
+					async () => await super.graphApiRequest(path, body),
 					logger,
-					{ guard: channelRateLimitGuard, connectionId },
+					{ guard: channelRateLimitGuard, connectionId, recipient },
 				);
 			}
 		}
@@ -434,8 +427,8 @@ function parseWhatsAppApiError(message: string): WhatsAppApiErrorDetails | undef
 }
 
 /**
- * True for a transient "you're sending too fast" failure (see
- * {@link WHATSAPP_RATE_LIMIT_ERROR_CODES}), false for anything else —
+ * Details for a transient "you're sending too fast" failure (see
+ * {@link WHATSAPP_RATE_LIMIT_ERROR_CODES}), `undefined` for anything else —
  * including a template rejected for negative feedback (code 131051), which
  * is a real content problem, not a rate limit, and must not be retried.
  *
@@ -448,14 +441,14 @@ function parseWhatsAppApiError(message: string): WhatsAppApiErrorDetails | undef
  * this one even though it is, in every way that matters, the same error.
  * `name` is a plain string set in the constructor, so it survives that.
  */
-function isWhatsAppRateLimitError(error: unknown): boolean {
-	if (!(error instanceof Error) || error.name !== 'AdapterError') return false;
+function whatsAppRateLimitDetails(error: unknown): WhatsAppApiErrorDetails | undefined {
+	if (!(error instanceof Error) || error.name !== 'AdapterError') return undefined;
 	const details = parseWhatsAppApiError(error.message);
-	if (!details) return false;
-	return (
+	if (!details) return undefined;
+	const isRateLimit =
 		details.status === 429 ||
-		(details.code !== undefined && WHATSAPP_RATE_LIMIT_ERROR_CODES.has(details.code))
-	);
+		(details.code !== undefined && WHATSAPP_RATE_LIMIT_ERROR_CODES.has(details.code));
+	return isRateLimit ? details : undefined;
 }
 
 /**
@@ -487,13 +480,22 @@ interface HttpStatusCarryingError {
  * — the same "stop hammering it and fail gracefully" behaviour every other
  * channel already gets, layered on top of the short local backoff above for
  * the common, momentary case.
+ *
+ * {@link WHATSAPP_PAIR_RATE_LIMIT_CODE} records its cooldown per recipient
+ * instead, so it doesn't cool down every other conversation on the number.
  */
 async function withWhatsAppRateLimitBackoff<T>(
 	send: () => Promise<T>,
 	logger: Logger,
-	rateLimit: { guard: ChannelRateLimitGuard; connectionId: string },
+	rateLimit: { guard: ChannelRateLimitGuard; connectionId: string; recipient?: string },
 ): Promise<T> {
-	if (rateLimit.guard.isBlocked(rateLimit.connectionId)) {
+	const pairKey = rateLimit.recipient
+		? `${rateLimit.connectionId}:${rateLimit.recipient}`
+		: undefined;
+	if (
+		rateLimit.guard.isBlocked(rateLimit.connectionId) ||
+		(pairKey && rateLimit.guard.isBlocked(pairKey))
+	) {
 		throw Object.assign(new OperationalError(channelRateLimitMessage('whatsapp')), {
 			response: { status: 429 },
 		} satisfies HttpStatusCarryingError);
@@ -502,9 +504,14 @@ async function withWhatsAppRateLimitBackoff<T>(
 		try {
 			return await send();
 		} catch (error) {
-			if (!isWhatsAppRateLimitError(error)) throw error;
+			const details = whatsAppRateLimitDetails(error);
+			if (!details) throw error;
 			if (attempt >= WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS) {
-				rateLimit.guard.record(rateLimit.connectionId);
+				const cooldownKey =
+					details.code === WHATSAPP_PAIR_RATE_LIMIT_CODE && pairKey
+						? pairKey
+						: rateLimit.connectionId;
+				rateLimit.guard.record(cooldownKey);
 				throw Object.assign(
 					new OperationalError(
 						'WhatsApp is rate-limiting messages to this number, likely because of its Meta ' +

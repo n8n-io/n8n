@@ -10,6 +10,7 @@ import {
 	whatsAppThreadId,
 } from '../../../__tests__/helpers/whatsapp/replay-test-context';
 import {
+	whatsAppContact,
 	whatsAppInboundTextMessage,
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
@@ -302,7 +303,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
-		it('lets the shared rate-limit guard block a WhatsApp connection after retries exhaust', async () => {
+		it("lets the action executor's own guard block a second `respond` call after retries exhaust", async () => {
 			vi.useFakeTimers();
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures, {
@@ -340,8 +341,8 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				});
 				const callsAfterFirst = ctx.apiCalls.length;
 
-				// Second call on the same connection: blocked before any API call —
-				// no new backoff attempts, no new send.
+				// Blocked by the action executor's own pre-existing guard, not the
+				// adapter-level one exercised below.
 				const secondResult = await execute();
 
 				expect(secondResult).toEqual({
@@ -349,6 +350,96 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('WhatsApp') },
 				});
 				expect(ctx.apiCalls).toHaveLength(callsAfterFirst);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('blocks a second automatic reply on the same connection once the first exhausts retries, bypassing the action executor entirely', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: Infinity, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+
+				// Automatic replies post through the adapter directly, never the
+				// action executor tested above.
+				const firstPromise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+				let firstError: unknown;
+				const firstAssertion = firstPromise.catch((error: unknown) => {
+					firstError = error;
+				});
+				await vi.runAllTimersAsync();
+				await firstAssertion;
+
+				expect(firstError).toBeInstanceOf(OperationalError);
+				expect((firstError as { response?: { status?: number } }).response?.status).toBe(429);
+				const callsAfterFirst = ctx.apiCalls.length;
+
+				// The adapter-level guard blocks this immediately — no new API calls.
+				await expect(
+					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
+				).rejects.toMatchObject({ response: { status: 429 } });
+				expect(ctx.apiCalls).toHaveLength(callsAfterFirst);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it("scopes a pair rate-limit's cooldown to the affected recipient, not the whole connection", async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			// Exactly enough failures to exhaust A's retries; B's first attempt
+			// afterward hits a clean stub.
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 4, code: 131056 },
+			});
+			try {
+				const threadA = whatsAppThreadId(fixtures);
+				const contactB = whatsAppContact({ wa_id: 'other-recipient-wa-id' });
+				const threadB = whatsAppThreadId({
+					phoneNumberId: fixtures.phoneNumberId,
+					contact: contactB,
+				});
+
+				const firstPromise = ctx.adapter.postMessage(threadA, { markdown: 'Hi A' });
+				let firstError: unknown;
+				const firstAssertion = firstPromise.catch((error: unknown) => {
+					firstError = error;
+				});
+				await vi.runAllTimersAsync();
+				await firstAssertion;
+				expect(firstError).toBeInstanceOf(OperationalError);
+				const callsAfterA = ctx.apiCalls.length;
+
+				// A different recipient is unaffected by A's cooldown.
+				await expect(ctx.adapter.postMessage(threadB, { markdown: 'Hi B' })).resolves.toBeDefined();
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+
+				// A itself is still blocked — the cooldown is real, just scoped right.
+				await expect(
+					ctx.adapter.postMessage(threadA, { markdown: 'Hi again A' }),
+				).rejects.toMatchObject({ response: { status: 429 } });
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('retries a reaction send too, since addReaction shares graphApiRequest with postMessage', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 1, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				const promise = ctx.adapter.addReaction(threadId, 'wamid.TEST_REACTION_TARGET', '👍');
+				await vi.runAllTimersAsync();
+				await expect(promise).resolves.toBeUndefined();
+				expect(ctx.apiCalls).toHaveLength(2);
 			} finally {
 				await ctx.shutdown();
 			}
