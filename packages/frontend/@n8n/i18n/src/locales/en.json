@@ -54,6 +54,8 @@
 	"generic.openResource": "Open {resource}",
 	"generic.add": "Add",
 	"generic.close": "Close",
+	"generic.expand": "Expand",
+	"generic.collapse": "Collapse",
 	"generic.clear": "Clear",
 	"generic.confirm": "Confirm",
 	"generic.create": "Create",

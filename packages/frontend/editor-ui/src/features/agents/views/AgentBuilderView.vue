@@ -679,13 +679,15 @@ const {
 } = useAgentConfigValidation();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+const isPublishReady = ref(false);
 const setupChecklistContext = computed(() => {
 	return {
 		config: {
 			loaded: initialized.value && localConfig.value !== null,
 			model: localConfig.value?.model ?? '',
 			instructions: localConfig.value?.instructions ?? '',
-			toolCount: localConfig.value?.tools?.length ?? 0,
+			toolCount:
+				(localConfig.value?.tools?.length ?? 0) + (localConfig.value?.mcpServers?.length ?? 0),
 		},
 		channels: {
 			loaded: initialized.value,
@@ -697,8 +699,7 @@ const setupChecklistContext = computed(() => {
 				initialized.value &&
 				!isUnsaved.value &&
 				effectiveCanEditAgent.value &&
-				(localConfig.value?.model.trim().length ?? 0) > 0 &&
-				(localConfig.value?.instructions.trim().length ?? 0) > 0,
+				isPublishReady.value,
 			activeVersionId: agent.value?.activeVersionId ?? null,
 		},
 	};
@@ -2703,13 +2704,19 @@ function onSwitchAgent(nextAgentId: string) {
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
+			@publish-ready="isPublishReady = $event"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
-		<AgentSetupTasks v-if="!isStandalonePreview" :tasks="setupTasks" @action="onSetupTaskAction" />
+		<AgentSetupTasks
+			v-if="!isStandalonePreview"
+			:tasks="setupTasks"
+			:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
+			@action="onSetupTaskAction"
+		/>
 		<div
 			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
 			:class="$style.aiToggleBar"
