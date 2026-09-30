@@ -37,6 +37,7 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "n8n-nodes-base": "workspace:*",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
@@ -44,6 +45,10 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [],
-    "nodes": []
+    "nodes": [
+      "dist/nodes/NotionDatabasePageGetAll.node.js",
+      "dist/nodes/HttpRequestGet.node.js",
+      "dist/nodes/HttpRequestSend.node.js"
+    ]
   }
 }

@@ -1,6 +1,6 @@
 import { safeRegex } from 'n8n-workflow';
 
-import type { JsonSchema } from './schema';
+import type { AnySchema, Infer, JsonSchema } from './schema';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -113,7 +113,11 @@ export function validate(
 			if (current[key] === undefined) issues.push(`${at}.${key}: is required`);
 		}
 		const unknown = Object.entries(current).flatMap(([key, child]) => {
-			const property = node.properties?.[key];
+			const property =
+				node.properties?.[key] ??
+				Object.entries(node.patternProperties ?? {}).find(([pattern]) =>
+					safeRegex.test(pattern, key),
+				)?.[1];
 			if (property) visit(child, property, `${at}.${key}`);
 			else if (isRecord(node.additionalProperties)) {
 				visit(child, node.additionalProperties, `${at}.${key}`);
@@ -128,3 +132,7 @@ export function validate(
 	visit(value, schema, options.path ?? 'input');
 	return issues;
 }
+
+/** Type guard: `value` matches `schema`. */
+export const matches = <S extends AnySchema>(schema: S, value: unknown): value is Infer<S> =>
+	validate(value, schema.json).length === 0;

@@ -92,7 +92,7 @@ export const oneOf = <const V extends readonly string[]>(...values: V) =>
 	new Schema<V[number]>({ enum: values }, false);
 
 export const arr = <S extends AnySchema>(items: S) =>
-	new Schema<Array<Infer<S>>>({ type: 'array', items: items.json }, false);
+	new Schema<ReadonlyArray<Infer<S>>>({ type: 'array', items: items.json }, false);
 
 function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
 	const required = Object.entries(shape)
