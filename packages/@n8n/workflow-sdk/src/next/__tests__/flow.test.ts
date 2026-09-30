@@ -6,6 +6,7 @@ interface Page {
 	name: string;
 	property_due: { start: string; end: string | null } | null;
 	property_owners: string[];
+	tags: string[];
 }
 
 const getPages = <In, Ctx, const N extends string>(config: {
@@ -50,14 +51,11 @@ describe('compileLambda', () => {
 
 	it('rewrites destructured fields, shorthand properties, and keeps inner lambda locals', () => {
 		const result = compileLambda(
-			({ property_owners }: Page) => ({
-				property_owners,
-				csv: property_owners.map((o) => o).join(','),
-			}),
+			({ tags }: Page) => ({ tags, csv: tags.map((tag) => tag).join(',') }),
 			names,
 		);
 		expect(squash(result.ok && result.js)).toBe(
-			'({ property_owners: $json.property_owners, csv: $json.property_owners.map((o) => o).join(",") })',
+			'({ tags: $json.tags, csv: $json.tags.map((tag) => tag).join(",") })',
 		);
 	});
 
