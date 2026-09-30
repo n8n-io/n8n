@@ -1,6 +1,8 @@
 import { backendConfig } from '@n8n/eslint-config/backend';
 import playwrightPlugin from 'eslint-plugin-playwright';
 
+import { legacyFilenameCaseFiles } from './lint-filename-debt.mjs';
+
 export default [
 	...backendConfig,
 	playwrightPlugin.configs['flat/recommended'],
@@ -33,13 +35,7 @@ export default [
 		},
 	},
 	{
-		files: [
-			'Types.ts',
-			'composables/**/*.ts',
-			'helpers/**/*.ts',
-			'pages/**/*.ts',
-			'tests/e2e/regression/[A-Z]*.spec.ts',
-		],
+		files: legacyFilenameCaseFiles,
 		rules: { 'unicorn/filename-case': 'off' },
 	},
 	{
