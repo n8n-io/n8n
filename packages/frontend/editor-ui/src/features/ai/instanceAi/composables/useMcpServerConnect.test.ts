@@ -161,6 +161,23 @@ describe('useMcpServerConnect', () => {
 			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(false);
 		});
 
+		it('hands a selected credential to a custom handler without saving it', async () => {
+			mockCanQuickConnect.mockReturnValue(true);
+			mockCreateAndAuthorize.mockResolvedValue({
+				id: 'cred-new',
+				type: 'linearMcpOAuth2Api',
+			});
+			const onCredentialSelected = vi.fn().mockResolvedValue('linear');
+
+			await expect(useMcpServerConnect().connectServer(linear, onCredentialSelected)).resolves.toBe(
+				'linear',
+			);
+
+			expect(onCredentialSelected).toHaveBeenCalledWith('linear', 'cred-new', 'linearMcpOAuth2Api');
+			expect(mcpStore.connect).not.toHaveBeenCalled();
+			expect(mcpStore.updateConnection).not.toHaveBeenCalled();
+		});
+
 		it('reopens one OAuth attempt after the two-second lock', async () => {
 			vi.useFakeTimers();
 			let finishAttempt: ((credential: { id: string }) => void) | undefined;

@@ -20,6 +20,12 @@ export interface McpConnectTarget {
 	credentialTypes?: readonly string[];
 }
 
+export type McpCredentialSelectionHandler = (
+	serverSlug: string,
+	credentialId: string,
+	credentialType: string,
+) => Promise<string | null>;
+
 interface McpConnectAttemptState {
 	acceptCredential: boolean;
 	reopen: (() => void) | undefined;
@@ -79,11 +85,15 @@ export function useMcpServerConnect() {
 	}
 
 	/**
-	 * Connects a server the user has no credential for yet: OAuth types needing no
-	 * manual input are authorized in place, the rest go through the credential edit
-	 * modal. Resolves once the user is done, with null if they backed out.
+	 * Gets a credential for a server. OAuth types needing no manual input are
+	 * authorized in place. Other types use the credential edit modal. The default
+	 * handler saves the connection. A caller can handle the credential as a draft.
 	 */
-	async function connectServer(server: McpConnectTarget): Promise<string | null> {
+	async function connectServer(
+		server: McpConnectTarget,
+		onCredentialSelected: McpCredentialSelectionHandler = async (serverSlug, credentialId) =>
+			await connectWithCredential(serverSlug, credentialId),
+	): Promise<string | null> {
 		const activeAttempt = connectAttemptsByServerSlug.get(server.slug);
 		if (activeAttempt) {
 			if (!isConnectLocked(server.slug) && activeAttempt.state.reopen) {
@@ -103,8 +113,8 @@ export function useMcpServerConnect() {
 		};
 
 		const connecting = isQuickConnect
-			? connectViaOAuth(server, state)
-			: connectViaCredentialModal(server);
+			? connectViaOAuth(server, state, onCredentialSelected)
+			: connectViaCredentialModal(server, onCredentialSelected);
 		const promise = connecting.finally(() => {
 			if (state.unlockTimer) clearTimeout(state.unlockTimer);
 			connectAttemptsByServerSlug.delete(server.slug);
@@ -134,6 +144,7 @@ export function useMcpServerConnect() {
 	async function connectViaOAuth(
 		server: McpConnectTarget,
 		state: McpConnectAttemptState,
+		onCredentialSelected: McpCredentialSelectionHandler,
 	): Promise<string | null> {
 		const credential = await createAndAuthorize(server.credentialType, undefined, {
 			onAuthorizationStarted: (reopen) => {
@@ -143,7 +154,7 @@ export function useMcpServerConnect() {
 			state.reopen = undefined;
 		});
 		if (!credential || !state.acceptCredential) return null;
-		return await connectWithCredential(server.slug, credential.id);
+		return await onCredentialSelected(server.slug, credential.id, credential.type);
 	}
 
 	function isConnectLocked(serverSlug: string): boolean {
@@ -174,13 +185,16 @@ export function useMcpServerConnect() {
 	}
 
 	/**
-	 * Opens the credential edit modal for the server and connects whatever
-	 * credential the user created there once they close it. Nothing is listening
-	 * outside an attempt, so unrelated credential edits stay free.
+	 * Opens the credential edit modal for the server and passes the created
+	 * credential to the current handler. Nothing listens outside an attempt, so
+	 * unrelated credential edits stay free.
 	 */
-	async function connectViaCredentialModal(server: McpConnectTarget): Promise<string | null> {
+	async function connectViaCredentialModal(
+		server: McpConnectTarget,
+		onCredentialSelected: McpCredentialSelectionHandler,
+	): Promise<string | null> {
 		return await new Promise<string | null>((settle) => {
-			let createdCredentialId: string | null = null;
+			let createdCredential: { id: string; type: string } | null = null;
 			const credentialTypes = server.credentialTypes ?? [server.credentialType];
 
 			// Detached because pinia disposes subscriptions with the effect scope they
@@ -190,7 +204,9 @@ export function useMcpServerConnect() {
 				listenForCredentialChanges({
 					store: credentialsStore,
 					onCredentialCreated: (credential) => {
-						if (credentialTypes.includes(credential.type)) createdCredentialId = credential.id;
+						if (credentialTypes.includes(credential.type)) {
+							createdCredential = { id: credential.id, type: credential.type };
+						}
 					},
 				});
 
@@ -200,12 +216,12 @@ export function useMcpServerConnect() {
 						if (modalName !== CREDENTIAL_EDIT_MODAL_KEY) return;
 						listeners.stop();
 
-						if (createdCredentialId === null) {
+						if (createdCredential === null) {
 							settle(null);
 							return;
 						}
-						// A failed connect settles the attempt rather than leaving it hanging
-						void connectWithCredential(server.slug, createdCredentialId)
+						// A failed selection settles the attempt rather than leaving it hanging.
+						void onCredentialSelected(server.slug, createdCredential.id, createdCredential.type)
 							.catch(() => null)
 							.then(settle);
 					},

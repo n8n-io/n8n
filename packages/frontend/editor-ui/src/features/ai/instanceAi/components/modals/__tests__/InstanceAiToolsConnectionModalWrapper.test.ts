@@ -5,6 +5,7 @@ import { defineComponent, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import type { McpRegistryDiscoveryResponse } from '@n8n/api-types';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
 	McpServerConnectionItem,
@@ -15,6 +16,15 @@ import type {
 
 const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
 const confirmRemoveMock = vi.hoisted(() => vi.fn());
+const discoverMcpConnectionMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/shared/toolsConnection/mcpRegistry.api', () => ({
+	discoverMcpConnection: discoverMcpConnectionMock,
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -244,6 +254,30 @@ const ToolsConnectionModalStub = defineComponent({
 		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
 });
 
+const ToolsConnectionModalWithSettingsStub = defineComponent({
+	name: 'ToolsConnectionModal',
+	inheritAttrs: false,
+	props: ['detailItem', 'detailMode'],
+	setup(props, { attrs }) {
+		modalListeners = attrs;
+		modalProps = props;
+		return {};
+	},
+	template: `
+		<div>
+			<slot
+				v-if="detailItem && detailMode === 'settings'"
+				name="settings-body"
+				:item="detailItem"
+				:on-save="() => {}"
+				:on-disconnect="() => {}"
+				:on-close="() => {}"
+				:on-reconnect="() => {}"
+			/>
+		</div>
+	`,
+});
+
 const McpRegistrySuggestionFooterStub = defineComponent({
 	name: 'McpRegistrySuggestionFooter',
 	props: ['prompt', 'action'],
@@ -325,6 +359,16 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		mockConnectWithCredential.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
 		mockDisconnect.mockResolvedValue(true);
+		discoverMcpConnectionMock.mockResolvedValue({
+			status: 'connected',
+			connection: {
+				url: 'https://mcp.linear.app',
+				transport: 'streamableHttp',
+				authentication: 'mcpOAuth2Api',
+				credentialId: 'cred-1',
+			},
+			tools: [{ name: 'search', category: 'read' }],
+		} satisfies McpRegistryDiscoveryResponse);
 		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
 	});
@@ -602,7 +646,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		expect(telemetryMock.trackCredentialDropdownOpened).toHaveBeenCalledWith('linear');
 	});
 
-	it('tracks existing credential selection', async () => {
+	it('discovers an existing credential without saving the connection', async () => {
 		renderComponent();
 
 		emitSelectCredential();
@@ -610,10 +654,86 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 
 		expect(telemetryMock.trackExistingCredentialSelected).toHaveBeenCalledWith('linear');
 		expect(mockIgnorePendingConnectResult).toHaveBeenCalledWith('linear');
-		expect(mockConnectWithCredential).toHaveBeenCalledWith('linear', 'cred-1');
+		expect(discoverMcpConnectionMock).toHaveBeenCalledWith(expect.anything(), {
+			slug: 'linear',
+			credentialId: 'cred-1',
+		});
+		expect(mockConnect).not.toHaveBeenCalled();
+		expect(mockUpdateConnection).not.toHaveBeenCalled();
+		expect(modalProps.detailItem).toMatchObject({
+			id: 'linear',
+			status: 'connected',
+			availableTools: [{ id: 'search', name: 'search', category: 'read' }],
+		});
 		expect(mockIgnorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
-			mockConnectWithCredential.mock.invocationCallOrder[0] ?? 0,
+			discoverMcpConnectionMock.mock.invocationCallOrder[0] ?? 0,
 		);
+	});
+
+	it('saves a new connection only after Add connector', async () => {
+		renderComponent();
+
+		emitSelectCredential();
+		await flushPromises();
+		emitModalEvent('onSave', modalProps.detailItem, toolSettings);
+		await flushPromises();
+
+		expect(mockConnect).toHaveBeenCalledWith({
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
+			toolPermissions: toolSettings,
+		});
+	});
+
+	it('shows Cancel and Add connector for an unsaved connection', async () => {
+		const { getByRole, queryByTestId } = renderComponent({
+			global: {
+				stubs: {
+					ToolsConnectionModal: ToolsConnectionModalWithSettingsStub,
+				},
+			},
+		});
+
+		emitSelectCredential();
+		await flushPromises();
+
+		expect(getByRole('button', { name: 'Cancel' })).toBeVisible();
+		expect(getByRole('button', { name: 'instanceAi.inputMenu.tools.add' })).toBeVisible();
+		expect(queryByTestId('tools-connection-settings-remove')).not.toBeInTheDocument();
+		expect(mockConnect).not.toHaveBeenCalled();
+	});
+
+	it('saves a changed credential and settings together', async () => {
+		const connection = {
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-old',
+			credentialType: 'mcpOAuth2Api',
+			status: 'connected' as const,
+			toolPermissions: toolSettings,
+		};
+		mcpStoreMock.connections = [connection];
+		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		renderComponent();
+		const connectedItem = (modalProps.items as McpServerConnectionItem[]).find(
+			(item) => item.id === 'conn-1',
+		);
+
+		emitModalEvent('onSelectCredential', connectedItem, 'mcpOAuth2Api', 'cred-1');
+		await flushPromises();
+
+		expect(mockUpdateConnection).not.toHaveBeenCalled();
+
+		const changedSettings: ToolConnectionSettings = {
+			categories: { read: 'blocked', write: 'require_approval' },
+		};
+		emitModalEvent('onSave', modalProps.detailItem, changedSettings);
+		await flushPromises();
+
+		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
+			credentialId: 'cred-1',
+			toolPermissions: changedSettings,
+		});
 	});
 
 	it('tracks new credential connection start', () => {

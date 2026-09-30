@@ -4,6 +4,7 @@ import type {
 	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
+	InstanceAiMcpCreateConnectionRequestDto,
 	InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
@@ -108,7 +109,7 @@ export class InstanceAiMcpRegistryService {
 
 	async createConnection(
 		user: User,
-		input: { serverSlug: string; credentialId: string },
+		input: InstanceAiMcpCreateConnectionRequestDto,
 	): Promise<{
 		connection: InstanceAiMcpRegistryConnection;
 		credential: CredentialsEntity;
@@ -157,7 +158,8 @@ export class InstanceAiMcpRegistryService {
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
-			toolPermissions: this.instanceAiSettingsService.getMcpToolPermissions(),
+			toolPermissions:
+				input.toolPermissions ?? this.instanceAiSettingsService.getMcpToolPermissions(),
 		});
 
 		try {
