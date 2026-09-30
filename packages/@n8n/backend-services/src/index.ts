@@ -3,7 +3,6 @@ export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.e
 
 export { CacheService } from './services/cache/cache.service';
 export { CredentialsFinderService } from './credentials/credentials-finder.service';
-export { EventService, type EventMap } from './events/event.service';
 export { userHasScopes } from './permissions.ee/check-access';
 export { ProjectScopeService } from './permissions.ee/project-scope.service';
 export {
