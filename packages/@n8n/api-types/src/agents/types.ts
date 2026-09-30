@@ -156,6 +156,8 @@ export interface AgentIntegrationStatusEntry {
 	status: AgentChannelRuntimeStatus;
 	/** Present only when `status` is `error`. */
 	errorMessage?: string;
+	/** ISO time the channel last received a message from a user. */
+	lastVerifiedAt?: string;
 }
 
 export interface AgentIntegrationStatusResponse {

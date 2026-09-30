@@ -7,6 +7,7 @@ import {
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
 
+import type { AgentChannelActivity } from '../entities/agent-channel-activity.entity';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 
 /** Decides whether a row still counts; see `AgentChannelStatusReporter.isLive`. */
@@ -38,7 +39,11 @@ export function buildChannelStatusReport(
 	statuses: AgentChannelStatus[],
 	isLive: IsLiveRow,
 	publishedIntegrations: AgentIntegrationConfig[] = [],
+	activity: AgentChannelActivity[] = [],
 ): Omit<AgentIntegrationStatusResponse, 'n8nChat'> {
+	const lastInboundByChannel = new Map(
+		activity.map((a) => [channelKey(a.integrationType, a.credentialId), a.lastInboundAt]),
+	);
 	const liveByChannel = new Map<string, AgentChannelStatus[]>();
 	for (const row of statuses) {
 		if (!isLive(row)) continue;
@@ -57,6 +62,9 @@ export function buildChannelStatusReport(
 			const rows = liveByChannel.get(channelKey(integration.type, integration.credentialId)) ?? [];
 			const status = resolveStatus(activeVersionId, rows);
 			const failure = status === 'error' ? mostRecentFailure(rows) : undefined;
+			const lastInboundAt = lastInboundByChannel.get(
+				channelKey(integration.type, integration.credentialId),
+			);
 
 			return {
 				type: integration.type,
@@ -65,6 +73,7 @@ export function buildChannelStatusReport(
 				...(integration.approval ? { approval: integration.approval } : {}),
 				status,
 				...(failure?.errorMessage ? { errorMessage: failure.errorMessage } : {}),
+				...(lastInboundAt ? { lastVerifiedAt: lastInboundAt.toISOString() } : {}),
 			};
 		});
 	const draftChat = integrations?.some((integration) => integration.type === 'n8n_chat') ?? false;

@@ -10,6 +10,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentChannelActivityRepository } from '../repositories/agent-channel-activity.repository';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -27,6 +28,7 @@ function makeController({
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
+	channelActivityRepository = mock<AgentChannelActivityRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	collaborationService = mock<CollaborationService>(),
 }: {
@@ -35,10 +37,12 @@ function makeController({
 	agentRepository?: Mocked<AgentRepository>;
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
+	channelActivityRepository?: Mocked<AgentChannelActivityRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
+	channelActivityRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
 
 	return {
@@ -48,6 +52,7 @@ function makeController({
 			agentRepository,
 			chatIntegrationRegistry,
 			channelStatusRepository,
+			channelActivityRepository,
 			statusReporter,
 			collaborationService,
 		),
@@ -55,6 +60,7 @@ function makeController({
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
+		channelActivityRepository,
 		statusReporter,
 		collaborationService,
 	};

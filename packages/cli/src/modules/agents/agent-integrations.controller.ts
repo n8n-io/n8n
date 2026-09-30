@@ -15,6 +15,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
+import { AgentChannelActivityRepository } from './repositories/agent-channel-activity.repository';
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -29,6 +30,7 @@ export class AgentIntegrationsController {
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
+		private readonly channelActivityRepository: AgentChannelActivityRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly collaborationService: CollaborationService,
 	) {}
@@ -104,7 +106,10 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
+		const [statuses, activity] = await Promise.all([
+			this.channelStatusRepository.findByAgentId(agentId),
+			this.channelActivityRepository.findByAgentId(agentId),
+		]);
 		const now = new Date();
 
 		return {
@@ -114,6 +119,7 @@ export class AgentIntegrationsController {
 				statuses,
 				(row) => this.statusReporter.isLive(row, now),
 				agent.activeVersion?.schema?.integrations ?? [],
+				activity,
 			),
 			n8nChat: {
 				draftEnabled:
