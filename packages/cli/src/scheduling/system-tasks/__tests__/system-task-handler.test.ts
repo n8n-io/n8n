@@ -58,7 +58,7 @@ describe('SystemTaskHandler', () => {
 	});
 
 	it.each(['idempotent', 'non-idempotent'] as const)(
-		'never marks %s work dispatched, so a throw is recorded as a failure',
+		'never marks %s work dispatched',
 		async (effects) => {
 			const { task, report, handler } = setup(effects);
 
