@@ -100,7 +100,7 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
-	private readonly trackedJobs = new Map<JobId, string>();
+	private readonly trackedJobs = new Map<string, string>();
 
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
 	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
