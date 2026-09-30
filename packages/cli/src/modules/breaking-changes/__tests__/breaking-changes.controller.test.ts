@@ -22,6 +22,7 @@ function lightReport(generatedAt: Date): BreakingChangeLightReportResult {
 			workflowResults: [],
 		},
 		totalWorkflows: 3,
+		totalAffectedWorkflows: 2,
 		shouldCache: false,
 	};
 }
