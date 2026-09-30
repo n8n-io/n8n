@@ -9,7 +9,7 @@ import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
+import AgentAvatar, { type AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
 /** One case of the running suite: its live status and, once settled, its answer. */
@@ -35,17 +35,41 @@ const props = defineProps<{
 	caseRuns: SuiteCaseRun[] | null;
 	/** True from the "Check your agent" click until the run has actually started. */
 	startingRun?: boolean;
-	/** True once every case in `caseRuns` has settled (no case still "waiting"). */
-	runSettled?: boolean;
+	/** True from the "Stop" click until the cancel request resolves. */
+	stoppingRun?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'add-example': [input: string];
 	'check-agent': [count: number];
+	'stop-run': [];
 	'view-evals': [];
 }>();
 
 const i18n = useI18n();
+
+// Collapsed to the summary strip by default once the run settles — expanding
+// is the user's own request, not something a partial success should force.
+const summaryExpanded = ref(false);
+
+const waitingCount = computed(
+	() => props.caseRuns?.filter((run) => run.status === 'waiting').length ?? 0,
+);
+const passedCount = computed(
+	() => props.caseRuns?.filter((run) => run.status === 'pass').length ?? 0,
+);
+const needsWorkCount = computed(
+	() => (props.caseRuns?.length ?? 0) - passedCount.value - waitingCount.value,
+);
+const runSettled = computed(() => props.caseRuns !== null && waitingCount.value === 0);
+
+function toggleSummaryExpanded() {
+	summaryExpanded.value = !summaryExpanded.value;
+}
+
+function onStopRun() {
+	emit('stop-run');
+}
 
 // `examples` grows when the user adds their own (the parent appends the
 // created case) — freeze the generated batch size at mount so the slider and
@@ -95,21 +119,20 @@ function onViewEvals() {
 
 <template>
 	<div :class="$style.root">
-		<AgentEvalTryRow
-			status="pass"
-			:input="previewInput"
-			:output="previewOutput"
-			:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
-			test-id="instance-ai-test-agent-examples-try"
-		/>
-
-		<N8nText color="text-light" size="small">
-			{{ i18n.baseText('instanceAi.testAgentPreview.savedAsFirstCheck') }}
-		</N8nText>
-
-		<hr :class="$style.divider" />
-
 		<template v-if="!caseRuns">
+			<AgentEvalTryRow
+				status="pass"
+				:input="previewInput"
+				:output="previewOutput"
+				:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
+				test-id="instance-ai-test-agent-examples-try"
+			/>
+
+			<N8nText color="text-light" size="small">
+				{{ i18n.baseText('instanceAi.testAgentPreview.savedAsFirstCheck') }}
+			</N8nText>
+
+			<hr :class="$style.divider" />
 			<N8nText color="text-dark" :class="$style.checkMoreExamplesHint">
 				{{ i18n.baseText('instanceAi.testAgentPreview.checkMoreExamples') }}
 			</N8nText>
@@ -185,7 +208,62 @@ function onViewEvals() {
 		</template>
 
 		<template v-else>
-			<div :class="$style.exampleList">
+			<N8nText v-if="!runSettled" color="text-dark" :class="$style.runStatus">
+				{{
+					i18n.baseText('instanceAi.testAgentPreview.checkingLeft', {
+						interpolate: { count: String(waitingCount) },
+					})
+				}}
+			</N8nText>
+			<N8nText
+				v-else
+				color="text-dark"
+				:class="$style.runStatus"
+				data-test-id="instance-ai-test-agent-examples-run-summary"
+			>
+				{{
+					i18n.baseText('instanceAi.testAgentPreview.wentWellNeedWork', {
+						interpolate: {
+							passed: String(passedCount),
+							total: String(caseRuns.length),
+							needsWork: String(needsWorkCount),
+						},
+					})
+				}}
+			</N8nText>
+
+			<button
+				v-if="runSettled"
+				type="button"
+				:class="$style.summaryPill"
+				data-test-id="instance-ai-test-agent-examples-summary-toggle"
+				@click="toggleSummaryExpanded"
+			>
+				<div :class="$style.summaryAvatars">
+					<AgentAvatar
+						v-for="run in caseRuns"
+						:key="run.rowId"
+						:kind="run.status"
+						size="row"
+						:class="$style.summaryAvatar"
+					/>
+				</div>
+				<N8nText size="small" color="text-dark">
+					{{
+						i18n.baseText('instanceAi.testAgentPreview.savedChecks', {
+							adjustToNumber: caseRuns.length,
+							interpolate: { count: String(caseRuns.length) },
+						})
+					}}
+				</N8nText>
+				<N8nIcon
+					:icon="summaryExpanded ? 'chevron-up' : 'chevron-down'"
+					size="small"
+					:class="$style.summaryChevron"
+				/>
+			</button>
+
+			<div v-if="!runSettled || summaryExpanded" :class="$style.exampleList">
 				<AgentEvalTryRow
 					v-for="run in caseRuns"
 					:key="run.rowId"
@@ -195,6 +273,18 @@ function onViewEvals() {
 					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
 				/>
 			</div>
+
+			<N8nButton
+				v-if="!runSettled"
+				variant="outline"
+				size="small"
+				icon="filled-square"
+				:loading="stoppingRun"
+				data-test-id="instance-ai-test-agent-examples-stop"
+				@click="onStopRun"
+			>
+				{{ i18n.baseText('agents.builder.agentEvals.run.cancel') }}
+			</N8nButton>
 
 			<N8nButton
 				v-if="runSettled"
@@ -224,6 +314,37 @@ function onViewEvals() {
 
 .checkMoreExamplesHint {
 	font-weight: bolder;
+}
+
+.runStatus {
+	font-weight: var(--font-weight--bold);
+}
+
+.summaryPill {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--3xs) var(--spacing--sm);
+	background: none;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	cursor: pointer;
+	text-align: left;
+}
+
+.summaryAvatars {
+	display: flex;
+	flex-shrink: 0;
+}
+
+.summaryAvatar:not(:first-child) {
+	margin-left: -6px;
+}
+
+.summaryChevron {
+	margin-left: auto;
+	color: var(--text-color--subtler);
 }
 
 .divider {

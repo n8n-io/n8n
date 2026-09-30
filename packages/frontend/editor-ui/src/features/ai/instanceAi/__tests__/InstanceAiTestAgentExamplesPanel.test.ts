@@ -106,4 +106,75 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		expect(getByText('Vague')).toBeInTheDocument();
 		expect(getByText('Sensitive data')).toBeInTheDocument();
 	});
+
+	describe('while the suite is running', () => {
+		const caseRuns = [
+			{ rowId: 1, input: 'a', status: 'pass' as const, output: 'answer a' },
+			{ rowId: 2, input: 'b', status: 'waiting' as const, output: null },
+		];
+
+		it('hides the confirmed try and shows how many cases are left', () => {
+			const { getByText, queryByTestId, queryByText } = renderComponent({
+				props: { caseRuns },
+			});
+
+			expect(getByText('Checking, 1 left')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
+			expect(queryByText(/Saved as your first check/)).not.toBeInTheDocument();
+		});
+
+		it('shows a stop button that emits stop-run', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns } });
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-stop'));
+
+			expect(emitted()['stop-run']).toEqual([[]]);
+		});
+
+		it('shows every case row, not the collapsed summary', () => {
+			const { getAllByTestId, queryByTestId } = renderComponent({ props: { caseRuns } });
+
+			expect(getAllByTestId(/^instance-ai-test-agent-examples-case-\d+$/)).toHaveLength(2);
+			expect(
+				queryByTestId('instance-ai-test-agent-examples-summary-toggle'),
+			).not.toBeInTheDocument();
+		});
+	});
+
+	describe('once the suite has settled', () => {
+		const caseRuns = [
+			{ rowId: 1, input: 'a', status: 'pass' as const, output: 'answer a' },
+			{ rowId: 2, input: 'b', status: 'work' as const, output: 'answer b' },
+			{ rowId: 3, input: 'c', status: 'fail' as const, output: null },
+		];
+
+		it('shows the pass/needs-work tally and hides the stop button', () => {
+			const { getByText, queryByTestId } = renderComponent({ props: { caseRuns } });
+
+			expect(getByText('1 of 3 went well, 2 need work')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
+		});
+
+		it('collapses to the summary pill by default, expanding on click', async () => {
+			const user = userEvent.setup();
+			const { getByText, getByTestId, queryByTestId } = renderComponent({ props: { caseRuns } });
+
+			expect(getByText('Saved 3 checks')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-case-1')).not.toBeInTheDocument();
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('shows the "View in Evals tab" button and emits view-evals', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns } });
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-view-evals'));
+
+			expect(emitted()['view-evals']).toEqual([[]]);
+		});
+	});
 });

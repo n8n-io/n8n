@@ -82,6 +82,7 @@ const addingExample = ref(false);
 const suiteCaseRows = ref<AgentEvalCase[] | null>(null);
 const suiteRunId = ref<string | null>(null);
 const startingSuiteRun = ref(false);
+const stoppingSuiteRun = ref(false);
 const sampleInput = ref('');
 // Cleared once the user submits their own sample, so the display switches
 // over to that new run instead of sticking with the builder's original test.
@@ -125,10 +126,6 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 	});
 });
 
-const isSuiteRunSettled = computed(
-	() =>
-		suiteCaseRuns.value !== null && suiteCaseRuns.value.every((run) => run.status !== 'waiting'),
-);
 // Not reactive by design — nothing templates off it. It only guards async
 // continuations against acting after the panel is gone, since the store's
 // poll timer is a single global watcher: a stale continuation calling
@@ -323,6 +320,22 @@ function onViewEvals() {
 	emit('open-evals');
 }
 
+// Cases already in flight settle on their own — only the ones not yet started
+// stop. Polling keeps running until every case's status reflects that.
+async function onStopSuiteRun() {
+	const { projectId, agentId } = props.target;
+	if (!suiteDatasetId.value || !suiteRunId.value) return;
+	stoppingSuiteRun.value = true;
+	try {
+		await store.cancelRun(projectId, agentId, suiteDatasetId.value, suiteRunId.value);
+	} catch (error) {
+		if (!isMounted) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.cancelError'));
+	} finally {
+		if (isMounted) stoppingSuiteRun.value = false;
+	}
+}
+
 function onNeedsWork() {
 	if (phase.value !== 'awaiting-confirmation') return;
 	sampleInput.value = '';
@@ -452,9 +465,10 @@ function onDontCreateEvals() {
 				:adding-example="addingExample"
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
-				:run-settled="isSuiteRunSettled"
+				:stopping-run="stoppingSuiteRun"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
+				@stop-run="onStopSuiteRun"
 				@view-evals="onViewEvals"
 			/>
 		</template>
