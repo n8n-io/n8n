@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/agents-create-collision.test.ts
+  s_4d4515bb8fac55::t_484f6a8626b8fe 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6016f9bb819dc6fcbb08e0855ffb7504a5d0910",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "unknown"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
