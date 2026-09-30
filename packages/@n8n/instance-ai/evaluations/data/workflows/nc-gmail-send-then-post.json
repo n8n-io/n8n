@@ -1,0 +1,30 @@
+{
+	"complexity": "simple",
+	"tags": ["build", "node-contracts-poc", "gmail", "send", "output-shape"],
+	"triggerType": "manual",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: send a plain-text email with Gmail to billing@acme.test with subject 'Invoice 1042 sent' and body 'Invoice 1042 is ready.' Then POST the ID and thread ID of the sent message to https://crm.example.com/api/emails as JSON fields messageId and threadId."
+		}
+	],
+	"description": "Gmail send returns the raw API message ({ id, threadId, labelIds }), so the message ID is `id` and not `messageId`. Grades the send parameters and that the POST reads the ID and thread ID from the send output.",
+	"executionScenarios": [
+		{
+			"name": "sent-ids-posted",
+			"description": "The email is sent as plain text and the POST carries the ID and thread ID of the sent message.",
+			"dataSetup": "The Gmail API POST /gmail/v1/users/me/messages/send accepts any message and returns { \"id\": \"m-1042\", \"threadId\": \"t-77\", \"labelIds\": [\"SENT\"] }. The request body carries a base64url-encoded raw MIME message; decode it to check headers. The CRM endpoint returns 200 { \"ok\": true }.",
+			"successCriteria": "One message is sent with To: billing@acme.test, Subject: Invoice 1042 sent and a text/plain body containing 'Invoice 1042 is ready.'. Then exactly one POST reaches https://crm.example.com/api/emails with messageId 'm-1042' and threadId 't-77'. An HTML-only message, a swapped or empty ID, or an undefined field FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The Gmail node sends a text email to billing@acme.test with the given subject and body.",
+		"The POST body reads messageId from the `id` field and threadId from the `threadId` field of the Gmail send output."
+	],
+	"credentials": [
+		{
+			"type": "gmailOAuth2",
+			"name": "Gmail account"
+		}
+	]
+}

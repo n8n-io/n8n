@@ -253,10 +253,21 @@ export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSch
 	})
 	.strict();
 
+const hostSourceCodeSchema = z
+	.string()
+	.optional()
+	.describe(
+		'Full TypeScript SDK workflow source. Always pass the complete workflow here. The tool builds it and runs SDK and contract validation, then returns the errors. filePath only identifies the workflow source.',
+	);
+
 function pickBuildWorkflowInputSchema(context: InstanceAiContext) {
-	return context.folderExplorationEnabled === true
-		? buildWorkflowInputSchemaWithFolderPlacement
-		: buildWorkflowInputSchema;
+	const schema =
+		context.folderExplorationEnabled === true
+			? buildWorkflowInputSchemaWithFolderPlacement
+			: buildWorkflowInputSchema;
+	return context.nodeContractsEnabled
+		? schema.extend({ sourceCode: hostSourceCodeSchema })
+		: schema;
 }
 
 /**
@@ -523,7 +534,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);
 	const formattedErrors = withEscalation(
-		reason === 'workflow_source_validation_failed'
+		reason === 'workflow_source_validation_failed' && !context.nodeContractsEnabled
 			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
 			: validationErrors,
 		{ trackingErrors: validationErrors },
@@ -619,14 +630,18 @@ function pickBuildWorkflowOutputSchema(context: InstanceAiContext) {
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
+	const sourceGuidance = context.nodeContractsEnabled
+		? 'Pass the full workflow as `sourceCode` on every call. Do not write the file separately and do not run `workflow-sdk validate`: this tool runs SDK and contract validation and returns the errors.'
+		: 'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+			'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).';
+
 	return new Tool('build-workflow')
 		.description(
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
-				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
+				sourceGuidance,
 		)
 		.input(pickBuildWorkflowInputSchema(context))
 		.output(pickBuildWorkflowOutputSchema(context))
@@ -876,8 +891,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
+			// With node contracts the host builds inline source, so the sandbox is not needed.
+			const hostSource = context.nodeContractsEnabled ? input.sourceCode : undefined;
+
 			// Persist inline source first so the workspace file stays canonical for later repairs.
-			if (input.sourceCode !== undefined && context.workspace) {
+			if (hostSource === undefined && input.sourceCode !== undefined && context.workspace) {
 				try {
 					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
 						logger: context.logger,
@@ -912,11 +930,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			let sourceCode: string;
 			let sourceHash: string;
 			try {
-				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
-					context,
-					filePath,
-					ctx.abortSignal,
-				));
+				({ source: sourceCode, sourceHash } =
+					hostSource === undefined
+						? await readWorkflowSourceFile(context, filePath, ctx.abortSignal)
+						: { source: hostSource, sourceHash: hashWorkflowSource(hostSource) });
 			} catch (error) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
@@ -1001,6 +1018,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (
 				!compiled.success &&
 				compiled.reason === 'workflow_source_build_failed' &&
+				!context.nodeContractsEnabled &&
 				context.workspace
 			) {
 				// Recover missing-import errors server-side; persist so later edits see the fix.
@@ -1043,7 +1061,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 			if (!compiled.success) {
 				const buildErrors =
-					compiled.reason === 'workflow_source_build_failed'
+					compiled.reason === 'workflow_source_build_failed' && !context.nodeContractsEnabled
 						? await appendWorkflowSourceDiagnostics(
 								context,
 								filePath,

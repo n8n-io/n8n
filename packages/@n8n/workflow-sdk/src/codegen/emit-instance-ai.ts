@@ -37,6 +37,7 @@ export const SDK_FUNCTIONS = [
 	'workflow',
 	'trigger',
 	'node',
+	'action',
 	'sticky',
 	'placeholder',
 	'merge',

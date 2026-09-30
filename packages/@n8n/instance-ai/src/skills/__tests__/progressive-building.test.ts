@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { getSystemPrompt } from '../../agent/system-prompt';
 import type { Logger } from '../../logger';
+import { PROMPT_FRAGMENT_SKILLS } from '../../prompts/prompt-profiles';
 import { buildRuntimeSkillWorkspaceBundle } from '../materialize-runtime-skills';
 import {
 	loadInstanceAiRuntimeSkillSource,
@@ -24,7 +25,7 @@ describe('progressive workflow skill variants', () => {
 			const original = await source.loadSkill(entry.id);
 			const selected = await progressive.loadSkill(entry.id);
 			const selectedEntry = progressive.registry.skills.find(({ id }) => id === entry.id);
-			if (entry.id === 'planning' || entry.id === 'progressive-building') {
+			if (entry.id === 'planning' || PROMPT_FRAGMENT_SKILLS.includes(entry.id)) {
 				expect(original).not.toBeNull();
 				expect(selected).toBeNull();
 				expect(selectedEntry).toBeUndefined();
@@ -45,7 +46,7 @@ describe('progressive workflow skill variants', () => {
 		expect(source.registry).toEqual(originalRegistry);
 		const control = await loadInstanceAiRuntimeSkillSourceForBuildMode('default');
 		expect(control.registry).toEqual(
-			filterRuntimeSkillSource(source, ['progressive-building']).registry,
+			filterRuntimeSkillSource(source, PROMPT_FRAGMENT_SKILLS).registry,
 		);
 		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(control);
 	});

@@ -382,6 +382,7 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			promptVersion: '',
 			nodeUsageEnabled: false,
+			nodeContractsEnabled: false,
 			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,

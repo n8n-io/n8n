@@ -227,6 +227,14 @@ export class InstanceAiConfig {
 	nodeUsageEnabled: boolean = false;
 
 	/**
+	 * Serve AI-first action contracts through the `nodes` tool for the nodes that
+	 * have one, and compile contract nodes back to workflow JSON on build.
+	 * Spike (NODE-6071): env-only, no PostHog flag.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED')
+	nodeContractsEnabled: boolean = false;
+
+	/**
 	 * Force-enable folder exploration in Instance AI: folder attribution and
 	 * folder scoping on the workflows list tool. Overrides the
 	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back

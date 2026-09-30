@@ -86,6 +86,7 @@ export { workflow } from './workflow-builder';
 // Node builders
 export {
 	node,
+	action,
 	trigger,
 	sticky,
 	placeholder,

@@ -7,7 +7,7 @@ import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
 
@@ -1193,5 +1193,160 @@ describe('nodes tool', () => {
 
 			expect(result).toMatchObject({ status: 'error' });
 		});
+	});
+
+	describe('with node contracts enabled', () => {
+		const searchableNodes: SearchableNodeDescription[] = [
+			{
+				name: 'n8n-nodes-base.gmail',
+				displayName: 'Gmail',
+				description: 'Consume the Gmail API',
+				version: [2, 2.1],
+				inputs: ['main'],
+				outputs: ['main'],
+				builderHint: { searchHint: 'Legacy Gmail hint' },
+			},
+			{
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes an HTTP request and returns the response data',
+				version: 4.2,
+				inputs: ['main'],
+				outputs: ['main'],
+			},
+		];
+
+		function createContractContext() {
+			const context = createMockContext({ nodeContractsEnabled: true });
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(searchableNodes);
+			vi.mocked(context.nodeService.getDescription).mockResolvedValue({
+				properties: [{ type: 'credentialsSelect' }],
+			} as never);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue({
+				resources: [{ name: 'message', operations: ['send'] }],
+			});
+			context.nodeService.getNodeTypeDefinition = vi.fn();
+			return context;
+		}
+
+		async function search(query: string) {
+			const context = createContractContext();
+			const result = await executeTool<{ results: Array<Record<string, unknown>> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query, limit: 5 },
+			);
+			return { context, hit: result.results.find(({ name }) => name === 'n8n-nodes-base.gmail') };
+		}
+
+		it('inlines the contract of the action the search query names and lists the others in one line', async () => {
+			const { context, hit } = await search('gmail send');
+
+			expect(hit?.actions).toEqual([
+				expect.objectContaining({
+					id: 'gmail.message.send',
+					usage: expect.stringContaining("action('gmail.message.send'"),
+				}),
+			]);
+			expect(hit?.otherActions).toEqual([
+				'gmail.message.getAll: List messages that match a Gmail search.',
+				'gmail.message.get: Get one message by ID.',
+			]);
+			expect(hit).not.toHaveProperty('discriminators');
+			expect(hit).not.toHaveProperty('version');
+			expect(hit).not.toHaveProperty('builderHintMessage');
+			expect(context.nodeService.listDiscriminators).not.toHaveBeenCalledWith(
+				'n8n-nodes-base.gmail',
+			);
+		});
+
+		it('keeps every action to one line when the search query names only the service', async () => {
+			const { hit } = await search('gmail');
+
+			expect(hit).not.toHaveProperty('actions');
+			expect(hit?.otherActions).toHaveLength(3);
+		});
+
+		it('inlines the only action of a single-action node', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{ results: Array<Record<string, unknown>> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'search', query: 'http request', limit: 5 },
+			);
+
+			expect(result.results[0]).toMatchObject({
+				name: 'n8n-nodes-base.httpRequest',
+				actions: [expect.objectContaining({ id: 'httpRequest.request' })],
+			});
+			expect(result.results[0]).not.toHaveProperty('otherActions');
+		});
+
+		it.each(['full', 'orchestrator'] as const)(
+			'returns every requested action contract from one type-definition call on the %s surface',
+			async (surface) => {
+				const context = createContractContext();
+				const result = await executeTool<{ definitions: Array<Record<string, unknown>> }>(
+					createNodesTool(context, surface),
+					{
+						action: 'type-definition',
+						nodeTypes: [
+							'gmail.message.send',
+							'notion.databasePage.getAll',
+							{ nodeType: 'googleSheets.sheet.read', variants: { 'spreadsheet.mode': 'id' } },
+						],
+					},
+				);
+
+				expect(result.definitions).toEqual([
+					expect.objectContaining({
+						nodeType: 'gmail.message.send',
+						contract: expect.objectContaining({ id: 'gmail.message.send' }),
+					}),
+					expect.objectContaining({
+						nodeType: 'notion.databasePage.getAll',
+						contract: expect.objectContaining({ id: 'notion.databasePage.getAll' }),
+					}),
+					expect.objectContaining({
+						nodeType: 'googleSheets.sheet.read',
+						contract: expect.objectContaining({ id: 'googleSheets.sheet.read' }),
+					}),
+				]);
+				expect(context.nodeService.getNodeTypeDefinition).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([
+			['n8n-nodes-base.gmail', ['gmail.message.getAll', 'gmail.message.get', 'gmail.message.send']],
+			['gmail.message.send', ['gmail.message.send']],
+		])('describes %s with its action contracts', async (nodeType, ids) => {
+			const context = createContractContext();
+			const result = await executeTool<{ actions: Array<{ id: string }> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'describe', nodeType },
+			);
+
+			expect(result).toMatchObject({ found: true, name: nodeType });
+			expect(result.actions.map(({ id }) => id)).toEqual(ids);
+			expect(context.nodeService.getDescription).not.toHaveBeenCalled();
+		});
+
+		it('describes a node without a contract with its legacy description', async () => {
+			const context = createContractContext();
+			const result = await executeTool(createNodesTool(context, 'full'), {
+				action: 'describe',
+				nodeType: 'n8n-nodes-base.slack',
+			});
+
+			expect(result).toMatchObject({ found: true, properties: [{ type: 'credentialsSelect' }] });
+		});
+
+		it.each(['full', 'orchestrator'] as const)(
+			'asks for all definitions in one call on the %s surface',
+			(surface) => {
+				const { description } = createNodesTool(createContractContext(), surface);
+
+				expect(description).toContain('one call');
+				expect(description).not.toContain('first to read');
+			},
+		);
 	});
 });

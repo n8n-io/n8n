@@ -14,6 +14,7 @@ import { nextBatch as nextBatchFn } from '../workflow-builder/control-flow-build
 import { splitInBatches as splitInBatchesFn } from '../workflow-builder/control-flow-builders/split-in-batches';
 import {
 	node as nodeFn,
+	action as actionFn,
 	trigger as triggerFn,
 	sticky as stickyFn,
 	placeholder as placeholderFn,
@@ -564,6 +565,7 @@ function unescapeOutsideStrings(code: string): string {
 const sdkFunctions: SDKFunctions = {
 	workflow: workflowFn,
 	node: nodeFn,
+	action: actionFn,
 	trigger: triggerFn,
 	sticky: stickyFn,
 	placeholder: placeholderFn,

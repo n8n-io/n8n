@@ -1,0 +1,35 @@
+{
+	"complexity": "simple",
+	"tags": [
+		"build",
+		"node-contracts-poc",
+		"google-sheets",
+		"filter",
+		"version-gated-option"
+	],
+	"triggerType": "manual",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: look up SKU B-200 in my Google Sheet (spreadsheet ID 1ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210), tab 'Stock', and POST only the FIRST matching row's Price to https://shop.example.com/api/price as JSON field price. There can be several rows for the same SKU; I only want one POST."
+		}
+	],
+	"description": "Google Sheets read has a version-gated 'first match only' option (returnAllMatches before 4.5, returnFirstMatch from 4.5). Grades that only the first matching row flows downstream.",
+	"executionScenarios": [
+		{
+			"name": "only-first-match-posted",
+			"description": "Google Sheets read has a version-gated 'first match only' option (returnAllMatches before 4.",
+			"dataSetup": "The 'Stock' tab has header row SKU | Price | Warehouse and data rows: A-100 | 9.50 | Berlin, B-200 | 19.99 | Berlin, B-200 | 24.99 | Lisbon, C-300 | 5.00 | Berlin. Answer Google Sheets API reads (GET .../values/Stock...) with exactly those values. The price endpoint returns 200 { \"ok\": true }.",
+			"successCriteria": "Exactly one POST reaches https://shop.example.com/api/price, with price 19.99 (number or string '19.99'). Two POSTs, a POST with 24.99, or a POST with an empty price FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The Google Sheets read filters on SKU = B-200 and is configured to return only the first match, so a single item reaches the POST."
+	],
+	"credentials": [
+		{
+			"type": "googleSheetsOAuth2Api",
+			"name": "Google Sheets account"
+		}
+	]
+}

@@ -35,8 +35,13 @@ const execFileAsync = promisify(execFile);
 
 const ENV_FLAG = 'N8N_INSTANCE_AI_SANDBOX_LINK_SDK';
 
-/** Packages installed into the sandbox when workspace linking is enabled. */
+/**
+ * Packages installed into the sandbox when workspace linking is enabled. `@n8n/errors` is
+ * linked because the workspace copy can gain exports before its version is bumped, and
+ * `n8n-workflow` fails to load against the older published copy.
+ */
 export const SANDBOX_LINKED_WORKSPACE_PACKAGES = [
+	'@n8n/errors',
 	'@n8n/utils',
 	'n8n-workflow',
 	'@n8n/workflow-sdk',
@@ -162,15 +167,15 @@ export async function packWorkspaceSdk(
 	return { ...packed, sdkPath: packed.packagePath };
 }
 
-function resolvePackagePath(name: string): string | null {
+function resolveFrom(require: NodeRequire, name: string): string | null {
 	try {
-		return path.dirname(hostRequire.resolve(`${name}/package.json`));
+		return path.dirname(require.resolve(`${name}/package.json`));
 	} catch {
 		// Packages that omit a `package.json` export still live under node_modules.
-		for (const base of hostRequire.resolve.paths(name) ?? []) {
+		for (const base of require.resolve.paths(name) ?? []) {
 			const candidate = path.join(base, name, 'package.json');
 			try {
-				hostRequire(candidate);
+				require(candidate);
 				return path.dirname(candidate);
 			} catch {
 				// keep looking
@@ -178,6 +183,20 @@ function resolvePackagePath(name: string): string | null {
 		}
 		return null;
 	}
+}
+
+/** A transitive dependency (such as `@n8n/errors`) resolves from the linked package that uses it. */
+function resolvePackagePath(name: string): string | null {
+	const direct = resolveFrom(hostRequire, name);
+	if (direct) return direct;
+	for (const linked of SANDBOX_LINKED_WORKSPACE_PACKAGES) {
+		if (linked === name) continue;
+		const linkedPath = resolveFrom(hostRequire, linked);
+		const transitive =
+			linkedPath && resolveFrom(createRequire(path.join(linkedPath, 'package.json')), name);
+		if (transitive) return transitive;
+	}
+	return null;
 }
 
 /**

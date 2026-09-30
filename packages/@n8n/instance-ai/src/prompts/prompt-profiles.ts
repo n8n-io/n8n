@@ -31,6 +31,14 @@ const progressiveBuilding: SkillVariant = {
 	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };
 
+/** Applied under every profile when node contracts are enabled, so profile variants append to it. */
+export const NODE_CONTRACTS_SKILL_VARIANT: SkillVariant = {
+	id: 'node-contracts@1',
+	changes: [
+		{ skillId: 'workflow-builder', appendFrom: 'workflow-builder-contracts', replace: true },
+	],
+};
+
 /** Published versions are immutable. Add a new entry to change a profile. */
 export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 	{
@@ -55,9 +63,10 @@ export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 
 export const PROMPT_FRAGMENT_SKILLS = [
 	...new Set(
-		INSTANCE_AI_PROMPT_PROFILES.flatMap((profile) =>
-			profile.variants.flatMap((variant) => variant.changes.map((change) => change.appendFrom)),
-		),
+		[
+			NODE_CONTRACTS_SKILL_VARIANT,
+			...INSTANCE_AI_PROMPT_PROFILES.flatMap((p) => p.variants),
+		].flatMap((variant) => variant.changes.map((change) => change.appendFrom)),
 	),
 ];
 

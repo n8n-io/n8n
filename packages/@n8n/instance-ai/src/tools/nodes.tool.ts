@@ -22,6 +22,14 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import {
+	contractSearchActions,
+	contractSignature,
+	contractView,
+	contractsForNodeType,
+	findContractForLegacyRequest,
+	getContract,
+} from '../node-contracts';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
@@ -39,6 +47,10 @@ const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+const CONTRACT_NODE_TYPES_ARRAY_DESCRIPTION =
+	'Every node you need, in one call (max 5). Action ids (e.g. "gmail.message.send") return the action contract. For other split nodes, pass the object form with resource/operation (or mode).';
+const GATEWAY_SEARCH_DESCRIPTION =
+	'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.';
 
 const listAction = z.object({
 	action: z
@@ -65,7 +77,7 @@ const searchAction = z.object({
 		.literal('search')
 		.describe(
 			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
-				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.',
+				GATEWAY_SEARCH_DESCRIPTION,
 		),
 	query: z
 		.string()
@@ -80,6 +92,16 @@ const searchAction = z.object({
 		.optional()
 		.default(10)
 		.describe('Maximum number of results to return (default: 10)'),
+});
+
+const contractSearchAction = searchAction.extend({
+	action: z
+		.literal('search')
+		.describe(
+			'Search node types by name or AI connection type. Use a short service name and the operation, e.g. "gmail send" or "google sheets append". ' +
+				'A hit with action contracts lists them: `actions` has the full contract of each action the query names, `otherActions` has the id and summary of the others. ' +
+				GATEWAY_SEARCH_DESCRIPTION,
+		),
 });
 
 const describeAction = z.object({
@@ -102,6 +124,22 @@ export const nodeRequestSchema = z.union([
 
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
+const contractNodeRequestSchema = z.union([
+	z
+		.string()
+		.describe(`${NODE_TYPE_ID_DESCRIPTION}, or an action id such as "gmail.message.getAll"`),
+	nodeRequestObjectSchema.extend({
+		variants: z
+			.record(z.string())
+			.optional()
+			.describe(
+				'Action contracts only: variant branches to expand, by selector path, e.g. { "output.mode": "raw" }',
+			),
+	}),
+]);
+
+type ContractNodeTypeRequest = z.infer<typeof contractNodeRequestSchema>;
+
 const typeDefinitionAction = z.object({
 	action: z
 		.literal('type-definition')
@@ -109,6 +147,19 @@ const typeDefinitionAction = z.object({
 			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
 		),
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
+});
+
+const contractTypeDefinitionAction = z.object({
+	action: z
+		.literal('type-definition')
+		.describe(
+			'Get node definitions. Request every node you need in one call. An action id returns its action contract: build it with `action(id, { name, parameters })` from @n8n/workflow-sdk, where parameters follow the contract input. Other nodes return TypeScript definitions.',
+		),
+	nodeTypes: z
+		.array(contractNodeRequestSchema)
+		.min(1)
+		.max(5)
+		.describe(CONTRACT_NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
@@ -205,19 +256,30 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const fullInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		searchAction,
-		describeAction,
-		typeDefinitionAction,
-		suggestedAction,
-		exploreResourcesAction,
-		executeAction,
-	]),
+function buildFullInputSchema(
+	search: typeof searchAction | typeof contractSearchAction,
+	typeDefinition: typeof typeDefinitionAction | typeof contractTypeDefinitionAction,
+) {
+	return sanitizeInputSchema(
+		z.discriminatedUnion('action', [
+			listAction,
+			search,
+			describeAction,
+			typeDefinition,
+			suggestedAction,
+			exploreResourcesAction,
+			executeAction,
+		]),
+	);
+}
+
+const fullInputSchema = buildFullInputSchema(searchAction, typeDefinitionAction);
+const contractFullInputSchema = buildFullInputSchema(
+	contractSearchAction,
+	contractTypeDefinitionAction,
 );
 
-type FullInput = z.infer<typeof fullInputSchema>;
+type FullInput = z.infer<typeof contractFullInputSchema>;
 
 interface SearchEngineCache {
 	nodeTypes?: SearchableNodeType[];
@@ -279,6 +341,19 @@ async function handleSearch(
 	// Enrich results with discriminator and credential setup metadata when available.
 	const enriched = await Promise.all(
 		results.map(async (r) => {
+			const contractActions = context.nodeContractsEnabled
+				? contractSearchActions(r.name, actionTerms(input.query, r))
+				: undefined;
+			if (contractActions) {
+				// The contract replaces the legacy version, operation list, and builder hint.
+				const {
+					version: _version,
+					builderHintMessage: _builderHintMessage,
+					...node
+				} = await enrichWithSetupPreference(context, r, r.version);
+				return { ...node, ...contractActions };
+			}
+
 			const [node, discriminators] = await Promise.all([
 				enrichWithSetupPreference(context, r, r.version),
 				context.nodeService.listDiscriminators?.(r.name) ?? Promise.resolve(null),
@@ -323,10 +398,31 @@ async function handleSearch(
 	};
 }
 
+/** Query terms that the hit's own name does not explain, e.g. "send" in "gmail send". */
+function actionTerms(query: string | undefined, hit: { name: string; displayName: string }) {
+	const hitText = `${hit.name} ${hit.displayName}`.toLowerCase();
+	return (query ?? '')
+		.toLowerCase()
+		.split(/\W+/)
+		.filter((term) => term && !hitText.includes(term));
+}
+
 async function handleDescribe(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'describe' }>,
 ) {
+	if (context.nodeContractsEnabled) {
+		const contract = getContract(input.nodeType);
+		const contracts = contract ? [contract] : contractsForNodeType(input.nodeType);
+		if (contracts.length) {
+			return {
+				found: true,
+				name: input.nodeType,
+				actions: contracts.map((action) => contractView(action)),
+			};
+		}
+	}
+
 	try {
 		const desc = await context.nodeService.getDescription(input.nodeType);
 		return { found: true, ...desc };
@@ -348,9 +444,21 @@ async function handleDescribe(
  * Resolve TypeScript type definitions for a validated list of node requests.
  * Used by the consolidated `nodes` tool's `type-definition` action.
  */
+function resolveContractDefinition(req: ContractNodeTypeRequest) {
+	const nodeType = typeof req === 'string' ? req : req.nodeType;
+	const { variants, ...discriminators } = typeof req === 'string' ? { variants: {} } : req;
+	const contract = getContract(nodeType) ?? findContractForLegacyRequest(nodeType, discriminators);
+	if (!contract) return undefined;
+	return {
+		nodeType: contract.id,
+		compilesTo: contract.compile.type,
+		contract: contractView(contract, variants),
+	};
+}
+
 async function resolveNodeTypeDefinitions(
 	context: InstanceAiContext,
-	nodeTypes: NodeTypeRequest[],
+	nodeTypes: ContractNodeTypeRequest[],
 ) {
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
@@ -364,8 +472,16 @@ async function resolveNodeTypeDefinitions(
 
 	const definitions = await Promise.all(
 		nodeTypes.map(async (req) => {
+			const contractDefinition = context.nodeContractsEnabled
+				? resolveContractDefinition(req)
+				: undefined;
+			if (contractDefinition) return contractDefinition;
+
 			const nodeType = typeof req === 'string' ? req : req.nodeType;
 			const options = typeof req === 'string' ? undefined : req;
+			const actions = context.nodeContractsEnabled
+				? contractsForNodeType(nodeType).map(contractSignature)
+				: [];
 
 			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
 
@@ -382,6 +498,7 @@ async function resolveNodeTypeDefinitions(
 					nodeType,
 					content: '',
 					error: result.error,
+					...(actions.length ? { actions } : {}),
 				};
 			}
 
@@ -391,6 +508,7 @@ async function resolveNodeTypeDefinitions(
 				content: result.content,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
+				...(actions.length ? { actions } : {}),
 			};
 		}),
 	);
@@ -408,7 +526,9 @@ async function handleTypeDefinition(
 	// optional. Re-assert the variant contract so missing/invalid inputs return
 	// a structured error the model can self-correct from, instead of crashing
 	// downstream on `input.nodeTypes.map`.
-	const parsed = typeDefinitionAction.safeParse(input);
+	const parsed = (
+		context.nodeContractsEnabled ? contractTypeDefinitionAction : typeDefinitionAction
+	).safeParse(input);
 	if (!parsed.success) {
 		return {
 			definitions: [],
@@ -419,7 +539,18 @@ async function handleTypeDefinition(
 	}
 
 	const result = await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
-	if (loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
+	// Model selection keys off the compiled node type and its field names.
+	const legacyDefinitions = result.definitions.map((definition) =>
+		'contract' in definition
+			? {
+					nodeType: definition.compilesTo,
+					content: Object.keys(getContract(definition.nodeType)?.input.properties ?? {})
+						.map((field) => `${field}:`)
+						.join('\n'),
+				}
+			: definition,
+	);
+	if (loadSkill && (await needsModelSelection(context.nodeService, legacyDefinitions))) {
 		await loadSkill('model-selection');
 	}
 	return result;
@@ -666,17 +797,25 @@ export function createNodesTool(
 		});
 
 		const orchestratorInputSchema = sanitizeInputSchema(
-			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+			z.discriminatedUnion('action', [
+				context.nodeContractsEnabled ? contractTypeDefinitionAction : typeDefinitionAction,
+				orchestratorExploreAction,
+			]),
 		);
 
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
 
 		return new Tool('nodes')
 			.description(
-				"Read node type definitions or query real resources for a node's RLC parameters " +
-					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
-					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-					'`explore-resources` with the real method name and a credential.',
+				context.nodeContractsEnabled
+					? "Read node definitions or query real resources for a node's RLC parameters " +
+							'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` for ' +
+							'every node you need in one call. `explore-resources` needs the method name ' +
+							'from a `@searchListMethod` / `@loadOptionsMethod` annotation in a TypeScript definition.'
+					: "Read node type definitions or query real resources for a node's RLC parameters " +
+						'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+						'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+						'`explore-resources` with the real method name and a credential.',
 			)
 			.input(orchestratorInputSchema)
 			.handler(async (input: OrchestratorInput, ctx) => {
@@ -692,9 +831,11 @@ export function createNodesTool(
 
 	return new Tool('nodes')
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
+			context.nodeContractsEnabled
+				? 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery (it returns action contracts inline), `type-definition` for each other node you configure (all of them in one call), `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).'
+				: 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
-		.input(fullInputSchema)
+		.input(context.nodeContractsEnabled ? contractFullInputSchema : fullInputSchema)
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx) => {

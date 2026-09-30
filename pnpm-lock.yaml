@@ -2953,6 +2953,9 @@ importers:
       '@thednp/dommatrix':
         specifier: ^3.1.1
         version: 3.1.1
+      '@typescript/typescript6':
+        specifier: 6.0.2
+        version: 6.0.2
       ai:
         specifier: 'catalog:'
         version: 7.0.74(zod@3.25.76)

@@ -2717,7 +2717,9 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			instanceContextEnabled,
 		});
-		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
+		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile, {
+			nodeContractsEnabled: context.nodeContractsEnabled,
+		});
 		const selectedRuntimeSkills = selectedSkills.source;
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0

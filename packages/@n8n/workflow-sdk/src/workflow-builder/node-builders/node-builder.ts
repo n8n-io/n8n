@@ -979,6 +979,26 @@ export function node<TNode extends NodeInput>(
 }
 
 /**
+ * Create a node from an action contract (`nodes` tool `type-definition` with an action id).
+ * `parameters` follow the contract's `input` schema; the host compiles the node to its
+ * underlying node type, version, and parameters when the workflow is built.
+ *
+ * @example
+ * ```typescript
+ * const fetchMail = action('gmail.message.getAll', {
+ *   name: 'Fetch unread',
+ *   parameters: { search: 'is:unread', paging: { mode: 'limit', max: 1 }, output: { mode: 'raw' } },
+ * });
+ * ```
+ */
+export function action<TId extends string>(
+	id: TId,
+	config: NodeConfig = {},
+): NodeInstance<TId, '1', unknown> {
+	return new NodeInstanceImpl<TId, '1', unknown>(id, '1', config);
+}
+
+/**
  * Config for ifElse() factory function
  */
 export interface IfElseFactoryConfig {

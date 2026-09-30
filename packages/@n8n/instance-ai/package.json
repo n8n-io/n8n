@@ -82,6 +82,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@thednp/dommatrix": "^3.1.1",
+    "@typescript/typescript6": "6.0.2",
     "ai": "catalog:",
     "csv-parse": "catalog:",
     "langsmith": "catalog:",

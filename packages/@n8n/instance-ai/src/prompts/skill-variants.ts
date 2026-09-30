@@ -11,6 +11,8 @@ export interface SkillVariant {
 		skillId: string;
 		appendFrom: string;
 		useDescription?: boolean;
+		/** Use the fragment's instructions, description and recommended tools instead of the original's. */
+		replace?: boolean;
 	}>;
 	disabledSkills?: readonly string[];
 	disabledTools?: readonly string[];
@@ -60,11 +62,15 @@ export async function composeSkillVariants(
 				const fragment = await source.loadSkill(selected.change.appendFrom);
 				if (!fragment)
 					throw new UnexpectedError(`Skill fragment "${selected.change.appendFrom}" is missing`);
+				const { replace, useDescription } = selected.change;
 				return {
 					...original,
 					version: selected.variant.id,
-					description: selected.change.useDescription ? fragment.description : original.description,
-					instructions: `${original.instructions}\n\n${fragment.instructions}`,
+					description: replace || useDescription ? fragment.description : original.description,
+					instructions: replace
+						? fragment.instructions
+						: `${original.instructions}\n\n${fragment.instructions}`,
+					...(replace ? { recommendedTools: fragment.recommendedTools } : {}),
 					...(fragment.dependencies?.tools?.length
 						? {
 								dependencies: {

@@ -47,6 +47,37 @@ describe('prompt profiles', () => {
 		});
 	});
 
+	it('replaces the workflow-builder skill with the contract skill only when node contracts are enabled', async () => {
+		const runtime = loadInstanceAiRuntimeSkillSource();
+		const original = await runtime.loadSkill('workflow-builder');
+		const slim = await runtime.loadSkill('workflow-builder-contracts');
+		const { profile } = resolvePromptProfile({});
+
+		const off = await loadInstanceAiPromptSkills(profile);
+		const on = await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled: true });
+
+		expect((await off.source.loadSkill('workflow-builder'))?.instructions).toBe(
+			original?.instructions,
+		);
+		expect((await on.source.loadSkill('workflow-builder'))?.instructions).toBe(slim?.instructions);
+		await expect(off.source.loadSkill('workflow-builder-contracts')).resolves.toBeNull();
+		await expect(on.source.loadSkill('workflow-builder-contracts')).resolves.toBeNull();
+		expect(Buffer.byteLength(slim?.instructions ?? '')).toBeLessThan(10_000);
+	});
+
+	it('appends the progressive policy to the contract skill when both apply', async () => {
+		const runtime = loadInstanceAiRuntimeSkillSource();
+		const slim = await runtime.loadSkill('workflow-builder-contracts');
+		const policy = await runtime.loadSkill('progressive-building');
+		const { profile } = resolvePromptProfile({ mode: 'progressive' });
+
+		const selected = await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled: true });
+
+		expect((await selected.source.loadSkill('workflow-builder'))?.instructions).toBe(
+			`${slim?.instructions}\n\n${policy?.instructions}`,
+		);
+	});
+
 	it('honors explicit versions before mode and reports retired-version fallback', () => {
 		expect(resolvePromptProfile({ version: 'default@1', mode: 'progressive' }).profile.mode).toBe(
 			'default',
@@ -226,6 +257,34 @@ describe('skill variant composition', () => {
 		await expect(
 			composeSkillVariants(source, [{ id: 'no-save@1', changes: [], disabledTools: ['save'] }]),
 		).rejects.toThrow('requires disabled tool');
+	});
+
+	it('replaces instructions, description and recommended tools with the fragment', async () => {
+		const result = await composeSkillVariants(
+			createRuntimeSkillSource([
+				{
+					id: 'build',
+					name: 'build',
+					description: 'Build.',
+					instructions: 'Old.',
+					recommendedTools: ['write'],
+				},
+				{
+					id: 'slim',
+					name: 'slim',
+					description: 'Slim.',
+					instructions: 'New.',
+					recommendedTools: ['save'],
+				},
+			]),
+			[{ id: 'slim@1', changes: [{ skillId: 'build', appendFrom: 'slim', replace: true }] }],
+		);
+		expect(await result.source.loadSkill('build')).toMatchObject({
+			description: 'Slim.',
+			instructions: 'New.',
+			recommendedTools: ['save'],
+		});
+		await expect(result.source.loadSkill('slim')).resolves.toBeNull();
 	});
 
 	it('removes disabled recommendations without treating them as required dependencies', async () => {

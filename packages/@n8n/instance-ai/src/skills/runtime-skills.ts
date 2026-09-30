@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
 
 import {
+	NODE_CONTRACTS_SKILL_VARIANT,
 	PROMPT_FRAGMENT_SKILLS,
 	resolvePromptProfile,
 	type PromptProfile,
@@ -45,15 +46,25 @@ export async function loadInstanceAiRuntimeSkillSourceForBuildMode(
 	return (await loadInstanceAiPromptSkills(resolvePromptProfile({ mode }).profile)).source;
 }
 
-export async function loadInstanceAiPromptSkills(profile: PromptProfile) {
-	let pending = cachedProfiles.get(profile.version);
+async function composePromptSkills(profile: PromptProfile, nodeContractsEnabled: boolean) {
+	const runtime = loadInstanceAiRuntimeSkillSource();
+	const base = nodeContractsEnabled
+		? (await composeSkillVariants(runtime, [NODE_CONTRACTS_SKILL_VARIANT])).source
+		: runtime;
+	return await composeSkillVariants(base, profile.variants, PROMPT_FRAGMENT_SKILLS);
+}
+
+export async function loadInstanceAiPromptSkills(
+	profile: PromptProfile,
+	{ nodeContractsEnabled = false }: { nodeContractsEnabled?: boolean } = {},
+) {
+	const key = nodeContractsEnabled
+		? `${profile.version}+${NODE_CONTRACTS_SKILL_VARIANT.id}`
+		: profile.version;
+	let pending = cachedProfiles.get(key);
 	if (!pending) {
-		pending = composeSkillVariants(
-			loadInstanceAiRuntimeSkillSource(),
-			profile.variants,
-			PROMPT_FRAGMENT_SKILLS,
-		);
-		cachedProfiles.set(profile.version, pending);
+		pending = composePromptSkills(profile, nodeContractsEnabled);
+		cachedProfiles.set(key, pending);
 	}
 	return await pending;
 }

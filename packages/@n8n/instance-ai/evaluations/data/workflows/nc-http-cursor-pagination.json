@@ -1,0 +1,29 @@
+{
+	"complexity": "simple",
+	"tags": [
+		"build",
+		"node-contracts-poc",
+		"http-request",
+		"pagination",
+		"conditionality"
+	],
+	"triggerType": "manual",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: fetch ALL customers from https://api.example.com/v1/customers. The API returns { data: [...customers], next_cursor } and accepts ?cursor=<next_cursor>; keep fetching until next_cursor is null. Then POST the total number of customers to https://reports.example.com/api/customers/count as JSON field total."
+		}
+	],
+	"description": "HTTP Request pagination nests mode, parameter updates and a stop condition under options.pagination. Grades cursor pagination that stops on a null cursor.",
+	"executionScenarios": [
+		{
+			"name": "all-pages-fetched-once",
+			"description": "HTTP Request pagination nests mode, parameter updates and a stop condition under options.",
+			"dataSetup": "GET https://api.example.com/v1/customers with no cursor returns { \"data\": [{ \"id\": 1 }, { \"id\": 2 }], \"next_cursor\": \"c2\" }. With cursor=c2 it returns { \"data\": [{ \"id\": 3 }, { \"id\": 4 }], \"next_cursor\": \"c3\" }. With cursor=c3 it returns { \"data\": [{ \"id\": 5 }], \"next_cursor\": null }. Any other cursor returns 400. The count endpoint returns 200 { \"ok\": true }.",
+			"successCriteria": "The run fetches exactly three pages (no cursor, cursor=c2, cursor=c3), stops after next_cursor is null, and POSTs total 5. Fetching only the first page, looping past the last page, or posting a total other than 5 FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The HTTP Request node uses built-in pagination that sets the cursor query parameter from the previous response's next_cursor and stops when next_cursor is null or missing."
+	]
+}

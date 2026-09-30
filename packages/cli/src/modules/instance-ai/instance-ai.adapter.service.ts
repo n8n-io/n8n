@@ -548,6 +548,7 @@ export class InstanceAiAdapterService {
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
+			...(this.globalConfig.instanceAi.nodeContractsEnabled ? { nodeContractsEnabled: true } : {}),
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,

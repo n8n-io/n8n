@@ -1560,6 +1560,8 @@ export interface InstanceAiAgentContextReader {
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
 	credentialDescriptionsEnabled?: boolean;
+	/** Serve action contracts in the `nodes` tool and compile contract nodes on build. */
+	nodeContractsEnabled?: boolean;
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration

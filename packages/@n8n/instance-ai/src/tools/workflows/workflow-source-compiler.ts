@@ -2,6 +2,7 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import {
+	parseWorkflowCodeToBuilder,
 	validateWorkflow,
 	workflow as workflowBuilder,
 	type WorkflowJSON,
@@ -15,12 +16,13 @@ import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
+import { checkContractOutputReads, compileContractNodes } from '../../node-contracts';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
 
-export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx';
+export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx' | 'host-ast';
 
 export type WorkflowSourceCompileFailureReason =
 	| 'workflow_json_parse_failed'
@@ -364,6 +366,58 @@ async function compileTypeScriptWorkflowSource(
 	};
 }
 
+const SDK_IMPORT_STATEMENT = /^\s*import\s[^;]*?from\s*['"]@n8n\/workflow-sdk['"];?/gm;
+
+/**
+ * Builds TypeScript SDK source with the SDK AST interpreter, so no sandbox is needed.
+ * The interpreter rejects import statements and provides every SDK function, so the
+ * SDK import is removed. Every other import still fails.
+ */
+function compileTypeScriptWorkflowSourceOnHost(source: string): WorkflowSourceCompileResult {
+	let buildOutput: SandboxWorkflowBuildOutput | undefined;
+	try {
+		const wf = parseWorkflowCodeToBuilder(source.replace(SDK_IMPORT_STATEMENT, ''));
+		const validation = wf.validate();
+		// Serialize like build.mjs, so both compilers give the same shape (undefined becomes null).
+		const stdout = JSON.stringify(
+			{
+				success: true,
+				workflow: wf.toJSON({ tidyUp: true }),
+				declaredOutputFixtures: wf.generatePinData().toJSON({ tidyUp: true }).pinData,
+				warnings: [...validation.errors, ...validation.warnings],
+			},
+			(_key, value: unknown) => (value === undefined ? null : value),
+		);
+		buildOutput = parseSandboxBuildOutput(stdout);
+	} catch (error) {
+		return {
+			success: false,
+			reason: 'workflow_source_build_failed',
+			editable: true,
+			errors: [error instanceof Error ? error.message : String(error)],
+			summary: 'Workflow source failed to build.',
+		};
+	}
+
+	if (!buildOutput?.workflow) {
+		return {
+			success: false,
+			reason: 'workflow_source_build_failed',
+			editable: true,
+			errors: ['Workflow source did not produce a workflow with name, nodes, and connections.'],
+			summary: 'Workflow source failed to build.',
+		};
+	}
+
+	return {
+		success: true,
+		workflow: buildOutput.workflow,
+		declaredOutputFixtures: buildOutput.declaredOutputFixtures,
+		warnings: buildOutput.warnings ?? [],
+		compiler: 'host-ast',
+	};
+}
+
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
 /**
@@ -437,7 +491,9 @@ export async function compileWorkflowSource(
 			if (isWorkflowJsonSourceFile(filePath)) {
 				result = parseWorkflowJsonSource(source);
 			} else if (isTypeScriptWorkflowSource(filePath)) {
-				result = await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
+				result = context.nodeContractsEnabled
+					? compileTypeScriptWorkflowSourceOnHost(source)
+					: await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
 			} else {
 				result = {
 					success: false,
@@ -451,6 +507,19 @@ export async function compileWorkflowSource(
 			}
 
 			if (!result.success) return result;
+
+			if (context.nodeContractsEnabled) {
+				const { workflow, issues, contractNodes } = compileContractNodes(result.workflow);
+				result = {
+					...result,
+					workflow,
+					warnings: [
+						...result.warnings,
+						...issues,
+						...(await checkContractOutputReads(workflow, contractNodes)),
+					],
+				};
+			}
 
 			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
 			const credentialWarnings = await collectCredentialResolutionWarnings(

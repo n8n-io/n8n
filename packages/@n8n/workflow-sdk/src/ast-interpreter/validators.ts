@@ -13,6 +13,7 @@ export const ALLOWED_SDK_FUNCTIONS = new Set([
 	// Core workflow builders
 	'workflow',
 	'node',
+	'action',
 	'trigger',
 	'sticky',
 	'placeholder',
