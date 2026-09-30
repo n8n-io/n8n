@@ -1,10 +1,4 @@
-import type {
-	INode,
-	INodeType,
-	INodeInputConfiguration,
-	INodeTypeDescription,
-	IConnections,
-} from './interfaces';
+import type { INode, INodeType, INodeInputConfiguration, INodeTypeDescription } from './interfaces';
 import { displayParameter, getNodeInputs } from './node-helpers';
 import type { Workflow } from './workflow';
 
@@ -112,30 +106,6 @@ export function validateNodeCredentials(node: INode, nodeType: INodeType): NodeC
 	}
 
 	return issues;
-}
-
-/**
- * Checks if a node has any incoming or outgoing connections.
- */
-export function isNodeConnected(
-	nodeName: string,
-	connections: IConnections,
-	connectionsByDestination: IConnections,
-): boolean {
-	// Check outgoing connections
-	if (connections[nodeName] && Object.keys(connections[nodeName]).length > 0) {
-		return true;
-	}
-
-	// Check incoming connections
-	if (
-		connectionsByDestination[nodeName] &&
-		Object.keys(connectionsByDestination[nodeName]).length > 0
-	) {
-		return true;
-	}
-
-	return false;
 }
 
 /**

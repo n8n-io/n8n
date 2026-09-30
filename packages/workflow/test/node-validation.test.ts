@@ -1,8 +1,7 @@
-import type { INode, INodeType, IConnections, INodeTypeDescription } from '../src/interfaces';
+import type { INode, INodeType, INodeTypeDescription } from '../src/interfaces';
 import {
 	validateNodeCredentials,
 	getUnconnectedRequiredInputs,
-	isNodeConnected,
 	isTriggerLikeNode,
 	type NodeCredentialIssue,
 	type WorkflowForInputValidation,
@@ -197,77 +196,6 @@ describe('node-validation', () => {
 			const issues = validateNodeCredentials(node, nodeType);
 
 			expect(issues[0].displayName).toBe('testCredential');
-		});
-	});
-
-	describe('isNodeConnected', () => {
-		it('should return true when node has outgoing connections', () => {
-			const connections: IConnections = {
-				'Node A': {
-					main: [[{ node: 'Node B', type: 'main', index: 0 }]],
-				},
-			};
-			const connectionsByDestination: IConnections = {};
-
-			const result = isNodeConnected('Node A', connections, connectionsByDestination);
-
-			expect(result).toBe(true);
-		});
-
-		it('should return true when node has incoming connections', () => {
-			const connections: IConnections = {};
-			const connectionsByDestination: IConnections = {
-				'Node B': {
-					main: [[{ node: 'Node A', type: 'main', index: 0 }]],
-				},
-			};
-
-			const result = isNodeConnected('Node B', connections, connectionsByDestination);
-
-			expect(result).toBe(true);
-		});
-
-		it('should return true when node has both incoming and outgoing connections', () => {
-			const connections: IConnections = {
-				'Node B': {
-					main: [[{ node: 'Node C', type: 'main', index: 0 }]],
-				},
-			};
-			const connectionsByDestination: IConnections = {
-				'Node B': {
-					main: [[{ node: 'Node A', type: 'main', index: 0 }]],
-				},
-			};
-
-			const result = isNodeConnected('Node B', connections, connectionsByDestination);
-
-			expect(result).toBe(true);
-		});
-
-		it('should return false when node has no connections', () => {
-			const connections: IConnections = {
-				'Node A': {
-					main: [[{ node: 'Node B', type: 'main', index: 0 }]],
-				},
-			};
-			const connectionsByDestination: IConnections = {};
-
-			const result = isNodeConnected('Node C', connections, connectionsByDestination);
-
-			expect(result).toBe(false);
-		});
-
-		it('should return false when node exists but has empty connections', () => {
-			const connections: IConnections = {
-				'Node A': {},
-			};
-			const connectionsByDestination: IConnections = {
-				'Node A': {},
-			};
-
-			const result = isNodeConnected('Node A', connections, connectionsByDestination);
-
-			expect(result).toBe(false);
 		});
 	});
 
