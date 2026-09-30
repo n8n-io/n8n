@@ -11,8 +11,7 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRowGroup,
@@ -131,6 +130,17 @@ const headersDescription = computed(() =>
 			: 'settings.opentelemetry.exporterHeaders.description',
 	),
 );
+
+const protocolItems = computed(() => [
+	{
+		value: 'http/protobuf',
+		label: i18n.baseText('settings.opentelemetry.exporterProtocol.option.httpProtobuf'),
+	},
+	{
+		value: 'grpc',
+		label: i18n.baseText('settings.opentelemetry.exporterProtocol.option.grpc'),
+	},
+]);
 
 function onProtocolChange(value: unknown) {
 	if (isOtlpProtocol(value)) {
@@ -438,25 +448,16 @@ watch(
 						action-fill
 					>
 						<template #action>
-							<N8nSelect
+							<N8nSelect2
 								:class="$style.control"
+								:items="protocolItems"
+								size="large"
 								:model-value="otelStore.settings.exporterProtocol"
 								:disabled="isEnvManaged('exporterProtocol')"
 								:aria-label="i18n.baseText('settings.opentelemetry.exporterProtocol.label')"
 								data-test-id="otel-exporter-protocol"
 								@update:model-value="onProtocolChange"
-							>
-								<N8nOption
-									value="http/protobuf"
-									:label="
-										i18n.baseText('settings.opentelemetry.exporterProtocol.option.httpProtobuf')
-									"
-								/>
-								<N8nOption
-									value="grpc"
-									:label="i18n.baseText('settings.opentelemetry.exporterProtocol.option.grpc')"
-								/>
-							</N8nSelect>
+							/>
 						</template>
 					</OtelSettingsRow>
 
