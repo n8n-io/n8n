@@ -1,11 +1,11 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import type { Push } from '@/push';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';

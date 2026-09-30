@@ -482,4 +482,55 @@ describe('InstanceRegistryService', () => {
 			expect(reg.poolName).toBeUndefined();
 		});
 	});
+
+	describe('storage failures', () => {
+		const storageOf = (s: InstanceRegistryService): InstanceStorage =>
+			(s as unknown as { storage: InstanceStorage }).storage;
+
+		it('getAllInstances returns an empty list when the storage read fails', async () => {
+			service = createService();
+			await service.init();
+			vi.spyOn(storageOf(service), 'getAllRegistrations').mockRejectedValueOnce(
+				new Error('Redis down'),
+			);
+
+			await expect(service.getAllInstances()).resolves.toEqual([]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to get all registrations',
+				expect.any(Object),
+			);
+		});
+
+		it('getLastKnownState returns an empty map when the storage read fails', async () => {
+			service = createService();
+			await service.init();
+			vi.spyOn(storageOf(service), 'getLastKnownState').mockRejectedValueOnce(
+				new Error('Redis down'),
+			);
+
+			await expect(service.getLastKnownState()).resolves.toEqual(new Map());
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to get last known state',
+				expect.any(Object),
+			);
+		});
+
+		it('readClusterState rejects when the registrations read fails', async () => {
+			service = createService();
+			await service.init();
+			const error = new Error('Redis down');
+			vi.spyOn(storageOf(service), 'getAllRegistrations').mockRejectedValueOnce(error);
+
+			await expect(service.readClusterState()).rejects.toBe(error);
+		});
+
+		it('readClusterState rejects when the baseline read fails', async () => {
+			service = createService();
+			await service.init();
+			const error = new Error('Redis down');
+			vi.spyOn(storageOf(service), 'getLastKnownState').mockRejectedValueOnce(error);
+
+			await expect(service.readClusterState()).rejects.toBe(error);
+		});
+	});
 });

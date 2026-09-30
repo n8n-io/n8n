@@ -158,7 +158,7 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(getByTestId('workflow-review-no-description')).toBeInTheDocument();
 		});
 
-		// Both go inside the feed's scroll container, so they scroll with the entries.
+		// Both go inside the feed, so they scroll with the entries.
 		it('places the description and the composer inside the feed', () => {
 			const { getByTestId } = renderComponent({
 				props: {

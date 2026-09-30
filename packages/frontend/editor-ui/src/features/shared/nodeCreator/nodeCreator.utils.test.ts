@@ -37,7 +37,7 @@ import {
 	mockSimplifiedNodeType,
 	mockViewCreateElement,
 } from './__tests__/utils';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 

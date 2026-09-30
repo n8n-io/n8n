@@ -72,6 +72,8 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
@@ -1815,12 +1817,14 @@ import {
 } from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	LockedError,
+	NotFoundError,
+} from '@n8n/errors';
 import type { License } from '@/license';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { RoleService } from '@/services/role.service';
@@ -3774,11 +3778,14 @@ describe('createWorkflowAdapter', () => {
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith({
-			workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
-			storedWorkflow: null,
-			projectId: 'team-project-id',
-		});
+		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+			{
+				workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
+				storedWorkflow: null,
+				projectId: 'team-project-id',
+			},
+			{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+		);
 		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalledWith(
 			{ policyCleared: cleared },
 			expect.any(Function),
@@ -6983,6 +6990,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
@@ -6998,6 +7006,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
+			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
@@ -7078,6 +7087,7 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
+			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[CANVAS_NODE_CONTEXT_FLAG]: false,
@@ -7091,6 +7101,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
@@ -7124,6 +7135,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('does not open the concise style gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_CONCISE_STYLE_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			conciseStyleEnabled: false,
+		});
+	});
+
 	// The preferences flag is multivariate too, so a boolean `true` must not
 	// open the gate.
 	it('does not open the AI preferences gate on a boolean true', async () => {
@@ -7142,6 +7161,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
@@ -7160,6 +7180,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
@@ -7514,6 +7535,23 @@ describe('createContext — builder delegate wiring', () => {
 		// The third argument is a provider factory, not a pre-built provider: it
 		// is called per turn with the concrete target agent id so Gateway spend
 		// carries the right id even when the agent is created mid-build.
+		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
+		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
+			agentId: string,
+		) => AgentsCredentialProvider;
+		const provider = providerFor('agent-42');
+		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
+		expect(provider).toEqual(
+			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		);
+	});
+
+	it('hands production threads the raw provider, built per target agent id', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
+
+		service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
 		) => AgentsCredentialProvider;

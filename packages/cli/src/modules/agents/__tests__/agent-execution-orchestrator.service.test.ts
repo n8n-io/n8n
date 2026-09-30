@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -26,7 +27,10 @@ import { mock } from 'vitest-mock-extended';
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
+import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import {
 	AgentChatExecutionService,
@@ -41,8 +45,10 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
@@ -51,6 +57,7 @@ import {
 } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentWakeService } from '../background/agent-wake.service';
+import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -179,6 +186,8 @@ function makeService(sandboxEnabled = false) {
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const executionRepository = mock<AgentExecutionRepository>();
+	const backgroundJobs = mock<AgentBackgroundJobService>();
+	const backgroundJobRepository = mock<AgentBackgroundJobRepository>();
 	const chatExecutionService = new AgentChatExecutionService(
 		Container.get(LockService),
 		executionRepository,
@@ -187,6 +196,8 @@ function makeService(sandboxEnabled = false) {
 		mock<Publisher>(),
 		mock<InstanceSettings>(),
 		mock<AgentExecutionUpdateBroadcaster>(),
+		mock<AgentMessageSteeringService>(),
+		backgroundJobs,
 	);
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -227,7 +238,11 @@ function makeService(sandboxEnabled = false) {
 		accessScope: 'project',
 		ownerId: null,
 	} as never);
-	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+		executionId: 'execution-1',
+		startedAt,
+		inputMessageIds: ['message-1'],
+	}));
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
@@ -240,6 +255,7 @@ function makeService(sandboxEnabled = false) {
 			executionService,
 			chatExecutionService,
 			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
 		),
 		telemetry,
 		runtimeCacheService,
@@ -250,10 +266,14 @@ function makeService(sandboxEnabled = false) {
 		agentRepository,
 		aiConfigMock,
 		chatExecutionService,
+		backgroundJobRepository,
+		backgroundJobs,
 	);
 
 	return {
 		service,
+		backgroundJobRepository,
+		backgroundJobs,
 		chatExecutionService,
 		executionRepository,
 		checkpointStorage,
@@ -271,11 +291,236 @@ function makeService(sandboxEnabled = false) {
 	};
 }
 
-async function collect(generator: AsyncGenerator<StreamChunk>) {
-	const chunks: StreamChunk[] = [];
+async function collect(generator: AsyncGenerator<AgentExecutionStreamChunk>) {
+	const chunks: AgentExecutionStreamChunk[] = [];
 	for await (const chunk of generator) chunks.push(chunk);
 	return chunks;
 }
+
+describe('background approvals', () => {
+	afterEach(() => Container.reset());
+
+	it('delivers a published approval through its stored connection and reply thread', async () => {
+		const { service, chatIntegrationService, bridge } = makeService();
+		const approval: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>> = {
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			runId: 'child-run-1',
+			token: 'gate-1',
+			metadata: {
+				jobId: 'job-1',
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext: {
+					...selectedContext,
+					integrationConnectionId: 'slack:approval-credential',
+					replyTarget: { type: 'thread', threadId: 'slack:approval-reply:1' },
+				},
+			},
+			pending: {
+				suspended: true,
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-1',
+				toolName: 'check_ledger',
+				input: { id: 'entry-1' },
+				suspendPayload: { type: 'approval', toolName: 'check_ledger', args: { id: 'entry-1' } },
+				resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+			},
+		};
+
+		await service.deliverBackgroundApproval(
+			{
+				agentId,
+				projectId,
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+			},
+			'Research',
+			approval,
+		);
+
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(
+			agentId,
+			'slack',
+			'approval-credential',
+		);
+		expect(bridge.deliverBackgroundApproval).toHaveBeenCalledExactlyOnceWith(
+			'slack:approval-reply:1',
+			{
+				jobId: 'job-1',
+				title: 'Research',
+				token: 'gate-1',
+				toolCall: {
+					type: 'tool-call-suspended',
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-1',
+					toolName: 'check_ledger',
+					input: { id: 'entry-1' },
+					suspendPayload: { type: 'approval', toolName: 'check_ledger', args: { id: 'entry-1' } },
+					resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+				},
+			},
+		);
+	});
+
+	it.each([
+		{ expectedMemory: { threadId: 'other-thread' } },
+		{ expectedMemory: { resourceId: 'draft-chat:other-user' } },
+		{ agentId: 'other-agent' },
+		{ projectId: 'other-project' },
+		{ toolCallId: 'old-gate' },
+		{ user: mock<User>({ id: 'other-user' }) },
+		{ usePublishedVersion: true, messageContext: structuredClone(selectedContext) },
+	])('rejects a background approval from another Preview scope: %j', async (other) => {
+		const { service, backgroundJobRepository, backgroundJobs, runtimeCacheService } =
+			makeService(false);
+		backgroundJobRepository.findById.mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				id: 'job-1',
+				parentAgentId: agentId,
+				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
+				parentPrincipalHash: userPrincipalHash,
+				status: 'suspended',
+			}),
+		);
+		backgroundJobs.getApproval.mockResolvedValue(
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
+				token: 'gate-1',
+				scope: { projectId, principalHash: userPrincipalHash },
+			}),
+		);
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: { approved: true },
+					usePublishedVersion: false,
+					user,
+					...other,
+				}),
+			),
+		).rejects.toBeInstanceOf(UserError);
+		expect(backgroundJobs.resume).not.toHaveBeenCalled();
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ ...selectedContext, platform: 'telegram' },
+		{ ...selectedContext, integrationConnectionId: 'slack:other-credential' },
+		{ ...selectedContext, target: { type: 'thread' as const, threadId: 'slack:other-channel:1' } },
+		null,
+	])('rejects a background approval from another channel: %j', async (messageContext) => {
+		const { service, backgroundJobRepository, backgroundJobs } = makeService(false);
+		backgroundJobRepository.findById.mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				id: 'job-1',
+				parentAgentId: agentId,
+				parentThreadId: 'thread-1',
+				parentResourceId: 'slack:user-1',
+				parentPrincipalHash: integrationPrincipalHash,
+				status: 'suspended',
+			}),
+		);
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash: integrationPrincipalHash },
+			metadata: {
+				jobId: 'job-1',
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext: structuredClone(selectedContext),
+			},
+		});
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: { approved: true },
+					messageContext,
+				}),
+			),
+		).rejects.toThrow('does not belong to this chat');
+		expect(backgroundJobs.resume).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])('resumes only the waiting child with published=%s', async (published) => {
+		const { service, backgroundJobRepository, backgroundJobs, runtimeCacheService } =
+			makeService(true);
+		const runner = mock<SubAgentBackgroundRunner>();
+		Container.set(SubAgentBackgroundRunner, runner);
+		Container.set(CredentialsService, mock<CredentialsService>());
+		const principalHash = published ? integrationPrincipalHash : userPrincipalHash;
+		const job = mock<AgentBackgroundJob>({
+			id: 'job-1',
+			parentAgentId: agentId,
+			parentThreadId: 'thread-1',
+			subAgentId: 'child-1',
+			childThreadId: 'child-thread-1',
+			parentResourceId: published ? 'slack:user-1' : 'draft-chat:user-1',
+			parentPrincipalHash: principalHash,
+			status: 'suspended',
+		});
+		backgroundJobRepository.findById.mockResolvedValue(job);
+		const messageContext: IntegrationMessageContext = {
+			...selectedContext,
+			replyTarget: { type: 'thread', threadId: 'slack:reply-thread:1' },
+		};
+		backgroundJobs.getApproval.mockResolvedValue({
+			...mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			token: 'gate-1',
+			scope: { projectId, principalHash },
+			metadata: {
+				jobId: job.id,
+				taskPath: '/root/research_0',
+				resumeContext: { agentId: 'child-1' },
+				sharedWorkspace: false,
+				messageContext,
+			},
+		});
+		const response = { approved: true };
+		expect(
+			await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					user,
+					runId: 'background-job-job-1',
+					toolCallId: 'gate-1',
+					resumeData: response,
+					usePublishedVersion: published,
+					messageContext: {
+						...selectedContext,
+						target: { type: 'thread', threadId: 'slack:reply-thread:1' },
+					},
+				}),
+			),
+		).toEqual([]);
+		expect(runner.resume).toHaveBeenCalledExactlyOnceWith(
+			job,
+			{ token: 'gate-1', resumeData: response },
+			expect.objectContaining({
+				projectId,
+				parentAgentId: agentId,
+				runType: published ? 'production' : 'test',
+				workflowToolExecutionMode: published ? 'integrated' : 'manual',
+			}),
+		);
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+});
 
 function makeCheckpoint(
 	pendingToolCalls: SerializableAgentState['pendingToolCalls'] = {},
@@ -385,7 +630,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect(sdkStart).not.toHaveBeenCalled();
 			});
 			await collect(stream);
-			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1');
+			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1', [
+				'message-1',
+			]);
 		});
 
 		it('rejects a competing preview without creating an execution or claiming a resume', async () => {
@@ -600,7 +847,11 @@ describe('AgentExecutionOrchestratorService', () => {
 				} else {
 					executionService.startExecutionRecording.mockImplementation(async () => {
 						controller.abort();
-						return 'execution-1';
+						return {
+							executionId: 'execution-1',
+							startedAt: new Date(),
+							inputMessageIds: ['message-1'],
+						};
 					});
 				}
 
@@ -825,7 +1076,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
 			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
@@ -885,7 +1140,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends the MCP registry attribution on its own line when a tool of that server returned', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -928,7 +1187,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when the reply is reasoning only, with no text', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -962,7 +1225,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when no tool of that server returned a result', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -1002,7 +1269,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('skips the attribution the model already echoed into its reply', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -1035,7 +1306,11 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('attributes an approval-gated tool on the resumed segment, not on the suspended one', async () => {
 		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockImplementation(async (_params, startedAt) => ({
+			executionId: 'execution-running',
+			startedAt,
+			inputMessageIds: ['message-1'],
+		}));
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const suspended = makeRuntime(
 			[
@@ -1134,7 +1409,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(chunks.at(-1)?.type).toBe('tool-call-suspended');
 		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({
 				persistence: {
 					threadId: 'thread-1',
@@ -1278,31 +1553,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it.each(['chat', 'wake'] as const)(
+	it.each(['chat', 'wake', 'approval'] as const)(
 		'rejects an inaccessible draft %s before runtime acquisition',
 		async (operation) => {
 			const { service, executionService, runtimeCacheService } = makeService();
 			executionService.canUseDraftThread.mockResolvedValue(false);
-			const result =
-				operation === 'chat'
-					? collect(
-							service.executeForChat({
-								agentId,
-								projectId,
-								message: 'hello',
-								user,
-								memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-							}),
-						)
-					: service.executeForWake({
-							backgroundJobSignal,
-							agentId,
-							projectId,
-							message: 'Wake',
-							memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-							identity: { type: 'draft', user, principalHash: userPrincipalHash },
-							abortSignal: new AbortController().signal,
-						});
+			let result: Promise<unknown>;
+			if (operation === 'chat') {
+				result = collect(
+					service.executeForChat({
+						agentId,
+						projectId,
+						message: 'hello',
+						user,
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					}),
+				);
+			} else if (operation === 'wake') {
+				result = service.executeForWake({
+					backgroundJobSignal,
+					agentId,
+					projectId,
+					message: 'Wake',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					abortSignal: new AbortController().signal,
+				});
+			} else {
+				result = service.deliverBackgroundApproval(
+					{
+						agentId,
+						projectId,
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+						identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					},
+					'Research',
+					mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+				);
+			}
 
 			await expect(result).rejects.toThrow('Session not found');
 			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
@@ -1410,7 +1698,13 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		// The model sees the labelled text; the transcript keeps the plain text and the author.
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'[alice (platform-user-1)]: from slack',
+			[
+				{
+					id: 'message-1',
+					role: 'user',
+					content: [{ type: 'text', text: '[alice (platform-user-1)]: from slack' }],
+				},
+			],
 			expect.anything(),
 		);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
@@ -1450,7 +1744,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(true);
 		executionService.canUseProductionChatThread.mockResolvedValue(true);
-		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
 			service.executeForN8nChatPublished({
@@ -1470,6 +1765,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				attributionUserId: user.id,
 			}),
 		);
+		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeUndefined();
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
 			'n8n-chat-production:user-1',
@@ -1683,7 +1979,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			);
 			expect(runtime.agent.stream).toHaveBeenCalledWith(
-				'hello',
+				[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 				expect.objectContaining({
 					persistence: {
 						...memory,
@@ -1951,7 +2247,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			await vi.waitFor(() =>
 				expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 					expect.objectContaining({
-						userMessage: null,
+						userMessage: expect.stringContaining('<background-jobs-settled>'),
+						hideUserMessageFromTranscript: true,
 						initialTimeline: [
 							{
 								type: 'background-task-signal',
@@ -2043,17 +2340,30 @@ describe('AgentExecutionOrchestratorService', () => {
 			sandboxPrincipalHash: userPrincipalHash,
 		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'<background-jobs-settled>[]</background-jobs-settled>',
+			[
+				{
+					id: 'message-1',
+					role: 'user',
+					content: [
+						{ type: 'text', text: '<background-jobs-settled>[]</background-jobs-settled>' },
+					],
+				},
+			],
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ userMessage: null, sessionMode: 'existing' }),
+			expect.objectContaining({
+				userMessage: expect.stringContaining('<background-jobs-settled>'),
+				hideUserMessageFromTranscript: true,
+				sessionMode: 'existing',
+			}),
 			expect.any(Date),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
-				userMessage: null,
+				userMessage: expect.stringContaining('<background-jobs-settled>'),
+				hideUserMessageFromTranscript: true,
 				record: expect.objectContaining({
 					assistantResponse: 'Handled the background result.',
 				}),
@@ -2097,7 +2407,10 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
-				expect.objectContaining({ userMessage: null }),
+				expect.objectContaining({
+					userMessage: expect.stringContaining('<background-jobs-settled>'),
+					hideUserMessageFromTranscript: true,
+				}),
 			);
 			expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
@@ -2977,7 +3290,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
-			'hello',
+			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
 

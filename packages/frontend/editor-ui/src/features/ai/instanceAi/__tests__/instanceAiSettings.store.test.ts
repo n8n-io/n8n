@@ -33,7 +33,8 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
-const rollouts = { computerUse: true, browserUse: true };
+const rollouts = { computerUse: true };
+const device = { supportsBrowserUse: true };
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: () => ({
@@ -41,10 +42,8 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	}),
 }));
 
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({
-		isFeatureEnabled: computed(() => rollouts.browserUse),
-	}),
+vi.mock('../utils/browserUseSupport', () => ({
+	isBrowserUseSupportedOnDevice: () => device.supportsBrowserUse,
 }));
 
 const mockFetchSettings = vi.fn();
@@ -131,7 +130,7 @@ describe('useInstanceAiSettingsStore', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		rollouts.computerUse = true;
-		rollouts.browserUse = true;
+		device.supportsBrowserUse = true;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -707,16 +706,15 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('computerUseChannels', () => {
-		it('reports both entries when each rollout and admin switch allows it', () => {
+		it('reports both entries when the rollout and admin switches allow them', () => {
 			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
 
 			expect(store.computerUseChannels).toEqual(['localComputer', 'browser']);
 		});
 
-		it('reports nothing when neither rollout covers the user', () => {
+		it('reports nothing when neither the rollout nor the admin allows an entry', () => {
 			rollouts.computerUse = false;
-			rollouts.browserUse = false;
-			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: false });
 
 			expect(store.computerUseChannels).toEqual([]);
 		});
@@ -733,8 +731,8 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.computerUseChannels).toEqual(['localComputer']);
 		});
 
-		it('drops the browser when its rollout does not cover the user', () => {
-			rollouts.browserUse = false;
+		it('drops the browser on phones and tablets', () => {
+			device.supportsBrowserUse = false;
 			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
 
 			expect(store.computerUseChannels).toEqual(['localComputer']);

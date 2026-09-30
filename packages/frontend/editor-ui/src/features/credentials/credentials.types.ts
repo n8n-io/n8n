@@ -44,7 +44,7 @@ export interface IUsedCredential {
 	id: string;
 	name: string;
 	credentialType: string;
-	currentUserHasAccess: boolean;
+	currentUserCanUse: boolean;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 }

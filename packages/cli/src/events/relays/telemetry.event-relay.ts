@@ -1,5 +1,6 @@
-import { LicenseState } from '@n8n/backend-common';
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -37,7 +38,6 @@ import semver from 'semver';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';

@@ -4,12 +4,14 @@ import { mock } from 'vitest-mock-extended';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import { enforceWorkflowPublishPolicy } from '../enforce-workflow-publish';
+import type { PolicyActor } from '../policy-enforcement-backend';
 import type { PolicyEnforcementService } from '../policy-enforcement.service';
 
 describe('enforceWorkflowPublishPolicy', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const ownershipService = mock<OwnershipService>();
 	const workflow = { id: 'workflow-1', name: 'Test Workflow', nodes: [] };
+	const actor: PolicyActor = { kind: 'user', user: { id: 'user-1' } };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -20,23 +22,26 @@ describe('enforceWorkflowPublishPolicy', () => {
 	it('skips the project lookup and the check when nothing is registered for workflowPublish', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
-		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow);
+		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow, actor);
 
 		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledWith('workflowPublish');
 		expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
 	});
 
-	it('enforces with the owning project when a check is registered', async () => {
+	it('enforces with the owning project and the actor when a check is registered', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 
-		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow);
+		await enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow, actor);
 
 		expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
-		expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledWith({
-			workflow,
-			projectId: 'project-1',
-		});
+		expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledWith(
+			{
+				workflow,
+				projectId: 'project-1',
+			},
+			actor,
+		);
 	});
 
 	// An unevaluated project rule is not a passed one, so the lookup is unguarded.
@@ -45,7 +50,7 @@ describe('enforceWorkflowPublishPolicy', () => {
 		ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('no owner row'));
 
 		await expect(
-			enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow),
+			enforceWorkflowPublishPolicy(policyEnforcementService, ownershipService, workflow, actor),
 		).rejects.toThrow('no owner row');
 
 		expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();

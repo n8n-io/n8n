@@ -170,6 +170,7 @@ const handleCopy = async (value: string) => {
 	}
 
 	button {
+		height: auto;
 		border: none;
 		border-radius: 0;
 		box-shadow: none;
@@ -196,8 +197,13 @@ const handleCopy = async (value: string) => {
 
 .copy-button-wrapper {
 	display: flex;
-	align-items: center;
+	align-items: stretch;
 	border-left: var(--border);
+
+	// Tooltip triggers wrap each button in a span, which must stretch it too.
+	> span {
+		display: flex;
+	}
 }
 
 .copy-button {

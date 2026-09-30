@@ -1,6 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
@@ -42,16 +43,12 @@ import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
@@ -615,15 +612,18 @@ export class WorkflowService {
 		// Gate the save on policy before persisting, so the author learns about a violation
 		// while editing rather than at runtime. Carries the stored workflow alongside the
 		// submitted one so a check can restrict its verdict to what this save adds.
-		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: {
-				id: workflow.id,
-				name: workflowUpdateData.name ?? workflow.name,
-				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflowUpdateData.name ?? workflow.name,
+					nodes: workflowUpdateData.nodes ?? workflow.nodes,
+				},
+				storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+				projectId: ownerProject.id,
 			},
-			storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
-			projectId: ownerProject.id,
-		});
+			{ kind: 'user', user },
+		);
 
 		const fieldsToUpdate = [
 			'name',
@@ -796,7 +796,9 @@ export class WorkflowService {
 	): Promise<void> {
 		let didPublish = false;
 		try {
-			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
+				actor: { kind: 'user', user },
+			});
 			didPublish = true;
 		} catch (error) {
 			// Activation failed partway through. It may already have registered triggers
@@ -1033,11 +1035,12 @@ export class WorkflowService {
 
 		// Polices what gets registered — the version row, not the hook's candidate.
 		// Enforced on a same-version republish too.
-		await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
-			id: workflowId,
-			name: workflow.name,
-			nodes: nodesToPublish,
-		});
+		await enforceWorkflowPublishPolicy(
+			this.policyEnforcementService,
+			this.ownershipService,
+			{ id: workflowId, name: workflow.name, nodes: nodesToPublish },
+			{ kind: 'user', user },
+		);
 
 		// re-applying the already-published version (e.g. a settings-only update)
 		// publishes no new version, so the review gate must not block it.

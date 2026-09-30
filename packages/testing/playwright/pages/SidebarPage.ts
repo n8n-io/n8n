@@ -2,6 +2,9 @@ import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
+/** Any page of a project: /projects/<id>/workflows, /projects/<id>/credentials, ... */
+const PROJECT_ROUTE = /\/projects\/[^/]+\//;
+
 export class SidebarPage extends BasePage {
 	get container() {
 		return this.page.locator('#side-menu');
@@ -36,8 +39,15 @@ export class SidebarPage extends BasePage {
 		await this.container.getByTestId('project-home-menu-item').click();
 	}
 
+	/**
+	 * Both project clicks wait for the project route. A click issued while a list
+	 * view is still initializing can be cancelled by that view's own
+	 * `router.replace` of its query string; then the page stays where it was and
+	 * the caller's assertions run against the wrong list.
+	 */
 	async clickPersonalMenuItem() {
 		await this.container.getByTestId('project-personal-menu-item').click();
+		await this.page.waitForURL(PROJECT_ROUTE);
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
@@ -92,6 +102,7 @@ export class SidebarPage extends BasePage {
 	async clickProjectMenuItem(projectName: string) {
 		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
+		await this.page.waitForURL(PROJECT_ROUTE);
 	}
 
 	getSettings(): Locator {

@@ -158,7 +158,7 @@ export function useNodeHelpers() {
 		return Object.values(credentials)
 			.map(({ id }) => id)
 			.filter((id) => id !== null)
-			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
+			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserCanUse);
 	}
 
 	// Returns if the given parameter should be displayed or not
