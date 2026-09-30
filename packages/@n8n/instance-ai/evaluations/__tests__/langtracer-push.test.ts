@@ -312,6 +312,16 @@ describe('planPush', () => {
 		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
 	});
 
+	it('reports a disk requiresMemoryCompaction: false as unchanged when the export omits the stored default', () => {
+		const plan = planPush(
+			[item('c', { requiresMemoryCompaction: false })],
+			{ 'c.json': body() },
+			{ c: 5 },
+		);
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+		expect(plan.toUpdate).toEqual([]);
+	});
+
 	it('treats a datasets difference as an update so tier edits re-sync', () => {
 		const plan = planPush(
 			[item('c', { datasets: ['mcp', 'pr', 'full'] })],
