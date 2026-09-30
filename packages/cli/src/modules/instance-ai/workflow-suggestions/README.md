@@ -4,7 +4,9 @@ These internal Instance AI services store proposed workflow changes for human re
 
 A suggestion is separate from the workflow's saved editor draft. The Assistant edits files in its workspace during an investigation. The service stores proposed changes when the investigation ends. The agent chooses the outcome. Self-healing stores that outcome and its handoff report. Both Fix ready and Needs attention results can reference a suggestion. Suggestion storage does not decide whether a fix is ready to apply.
 
-The existing `instance-ai` module registers these services and the read endpoint. It is enabled by default and requires no Enterprise license. There is no separate suggestion module. Disabling the Assistant in settings does not hide saved suggestions. Self-healing configuration and opt-in belong to INS-1481; this storage does not start investigations.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and restart n8n to enable these services and the read endpoint. The flag defaults to `false`. When it is off, the `instance-ai` module does not load the suggestion controller, services, or workflow event listeners. Database entities and migrations remain registered in either state.
+
+The `instance-ai` module must also be enabled. No Enterprise license is required. There is no separate suggestion module. Disabling the Assistant in settings does not hide saved suggestions when the environment flag is on. Self-healing configuration and opt-in belong to INS-1481; this storage does not start investigations.
 
 ## Internal operations
 
