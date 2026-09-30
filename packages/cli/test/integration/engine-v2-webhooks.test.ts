@@ -21,7 +21,7 @@ import { CacheService } from '@n8n/backend-services';
 import { InMemoryExecutionResponseChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
 import { InMemoryExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -77,11 +77,11 @@ beforeAll(async () => {
 		getExecution,
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 	});
-	// The host hands the responder its receiver at boot (`EngineV2Module.init`).
+	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
 	// wires the same receiver by hand.
 	const responseChannel = new InMemoryExecutionResponseChannel();
-	Container.get(EngineV2WebhookResponder).useReceiver(
+	Container.get(EngineV2WebhookResponseRegistry).useReceiver(
 		new InMemoryExecutionResponseReceiver(responseChannel, Container.get(Logger)),
 	);
 
