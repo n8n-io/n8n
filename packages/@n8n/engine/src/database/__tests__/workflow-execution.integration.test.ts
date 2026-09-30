@@ -205,10 +205,10 @@ describe('workflow_execution table (integration)', () => {
 
 		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
 
-		expect(finished).toBe(true);
 		const row = await repo.findOneOrFail({ where: { id: created.id } });
 		expect(row.status).toBe('failed');
 		expect(row.finishedAt).toBeInstanceOf(Date);
+		expect(finished).toEqual({ finishedAt: row.finishedAt });
 	});
 
 	it.each<ExecutionStatus>(['completed', 'queued'])(
@@ -233,7 +233,7 @@ describe('workflow_execution table (integration)', () => {
 
 			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
 
-			expect(finished).toBe(false);
+			expect(finished).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id: created.id } });
 			expect(row.status).toBe(status);
 			expect(row.finishedAt).toEqual(finishedAt);
