@@ -2497,7 +2497,7 @@ describe('executeWebhook on engine v2', () => {
 
 	/** Ends the run the request is waiting on, as the data plane would. */
 	const answerRun = (status: EndedMessage['status'], lastStep: EndedMessage['lastStep']): void => {
-		const executionId = workflowRunner.run.mock.calls[0][0].engineV2Response?.executionId as string;
+		const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
 		dataPlane.get(executionId)?.({
 			type: 'ended',
 			executionId,
@@ -2562,8 +2562,7 @@ describe('executeWebhook on engine v2', () => {
 			// The listener is created before the run starts, and the run has to use
 			// the id it listens under, so a fast answer is not lost.
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-			const dispatchedId = workflowRunner.run.mock.calls[0][0].engineV2Response
-				?.executionId as string;
+			const dispatchedId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
 			expect(dataPlane.has(dispatchedId)).toBe(true);
 		});
 
@@ -2575,14 +2574,9 @@ describe('executeWebhook on engine v2', () => {
 
 			await startWebhook({ responseMode: 'lastNode' });
 
-			const { engineV2Response } = workflowRunner.run.mock.calls[0][0];
-			expect(engineV2Response).toEqual({
-				executionId: expect.any(String),
-				responseMode: 'lastNode',
-			});
-			expect(waitForResponse).toHaveBeenCalledWith(engineV2Response?.executionId, {
-				kind: 'runEnd',
-			});
+			const { engineV2Response, engineExecutionId } = workflowRunner.run.mock.calls[0][0];
+			expect(engineV2Response).toEqual({ responseMode: 'lastNode' });
+			expect(waitForResponse).toHaveBeenCalledWith(engineExecutionId, { kind: 'runEnd' });
 		});
 
 		it('answers with a 500 when a Respond node fails because the caller waits for the run end', async () => {
@@ -2709,20 +2703,14 @@ describe('executeWebhook on engine v2', () => {
 
 			await startWebhook({ responseMode: 'responseNode' });
 
-			const { engineV2Response } = workflowRunner.run.mock.calls[0][0];
-			expect(engineV2Response).toEqual({
-				executionId: expect.any(String),
-				responseMode: 'responseNode',
-			});
-			expect(waitForResponse).toHaveBeenCalledWith(engineV2Response?.executionId, {
-				kind: 'stepResponse',
-			});
+			const { engineV2Response, engineExecutionId } = workflowRunner.run.mock.calls[0][0];
+			expect(engineV2Response).toEqual({ responseMode: 'responseNode' });
+			expect(waitForResponse).toHaveBeenCalledWith(engineExecutionId, { kind: 'stepResponse' });
 		});
 
 		it('answers with the response published by the data plane', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const executionId = workflowRunner.run.mock.calls[0][0].engineV2Response
-				?.executionId as string;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
 
 			dataPlane.get(executionId)?.({
 				type: 'response',
@@ -2741,8 +2729,7 @@ describe('executeWebhook on engine v2', () => {
 
 		it('answers with an empty body when the response has no body key', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const executionId = workflowRunner.run.mock.calls[0][0].engineV2Response
-				?.executionId as string;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
 
 			dataPlane.get(executionId)?.({
 				type: 'response',
@@ -2778,8 +2765,7 @@ describe('executeWebhook on engine v2', () => {
 
 		it('answers with the channel error when the response is undeliverable', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const executionId = workflowRunner.run.mock.calls[0][0].engineV2Response
-				?.executionId as string;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
 
 			dataPlane.get(executionId)?.({
 				type: 'undeliverable',

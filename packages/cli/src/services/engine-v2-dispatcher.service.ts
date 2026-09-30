@@ -105,7 +105,7 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = data.engineV2Response?.executionId ?? createExecutionIdV2();
+		const executionId = data.engineExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
 		assert(isExecutionIdV2(executionId), 'Engine v2 was given an id it cannot run');
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.

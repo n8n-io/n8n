@@ -216,7 +216,10 @@ describe('EngineV2Dispatcher', () => {
 				const executionId = createExecutionIdV2();
 
 				const started = await dispatcher.start(
-					webhookRunData(undefined, { engineV2Response: { executionId, responseMode } }),
+					webhookRunData(undefined, {
+						engineExecutionId: executionId,
+						engineV2Response: { responseMode },
+					}),
 				);
 
 				expect(started).toBe(executionId);

@@ -1248,7 +1248,8 @@ export async function executeWebhook(
 			pendingEngineV2Response = await Container.get(
 				EngineV2WebhookResponseRegistry,
 			).waitForResponse(engineExecutionId, toResponseExpectation(responseMode));
-			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
+			runData.engineExecutionId = engineExecutionId;
+			runData.engineV2Response = { responseMode };
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
