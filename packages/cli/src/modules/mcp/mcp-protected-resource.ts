@@ -6,10 +6,9 @@ import {
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
+import type { ProtectedResource, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
 import { PostHogClient } from '@/posthog';
 
@@ -54,6 +53,8 @@ const LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 @Service()
 export class McpProtectedResource implements ProtectedResource {
 	readonly id = INSTANCE_MCP_RESOURCE_ID;
+
+	readonly surface = 'instance-mcp' as const;
 
 	/**
 	 * Fallback audience for token requests without an RFC 8707 resource
@@ -169,7 +170,7 @@ export class McpProtectedResource implements ProtectedResource {
 	 * arm for the same reason, and one more: showing the scopes to the control
 	 * arm exposes the feature to the users the experiment keeps unaware of it.
 	 */
-	async getGrantableScopes(user: User): Promise<string[]> {
+	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
 			'@/modules/community-packages/community-packages.config.js'
 		);
@@ -189,7 +190,7 @@ export class McpProtectedResource implements ProtectedResource {
 		);
 	}
 
-	private async arePreferencesEnabledFor(user: User): Promise<boolean> {
+	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
 		try {
 			return arePreferenceToolsEnabled(await this.postHogClient.getFeatureFlags(user));
 		} catch {
@@ -202,7 +203,7 @@ export class McpProtectedResource implements ProtectedResource {
 		return await this.mcpSettingsService.getEnabled();
 	}
 
-	async authorize(_user: User): Promise<boolean> {
+	async authorize(_user: ResourceUser): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.
