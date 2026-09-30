@@ -98,3 +98,65 @@ export const listDataTablesQueryDocs = {
 		},
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const dataTableRowFieldDocs = {
+	id: { description: 'The row ID (auto-generated)' },
+	createdAt: { description: 'The date and time the row was created' },
+	updatedAt: { description: 'The date and time the row was last updated' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const dataTableRowListFieldDocs = {
+	nextCursor: {
+		description:
+			'Paginate through rows by setting the cursor parameter to a nextCursor attribute ' +
+			'returned by a previous request. Default value fetches the first "page" of the collection.',
+		example: 'MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const listDataTableRowsQueryDocs = {
+	filter: {
+		type: 'string',
+		format: 'jsonString',
+		param: {
+			description: 'JSON string of filter conditions',
+			example:
+				'{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"active"}]}',
+		},
+	},
+	sortBy: {
+		param: {
+			description: 'Sort format: columnName:asc or columnName:desc',
+			example: 'createdAt:desc',
+		},
+	},
+	search: {
+		param: { description: 'Search text across all string columns' },
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const createDataTableRowsFieldDocs = {
+	data: {
+		description: 'Array of rows to insert. Each row is an object with column names as keys.',
+	},
+	returnType: {
+		description:
+			'count: return only the number of rows inserted. ' +
+			'id: return an array of objects with the id of each inserted row. ' +
+			'all: return the full row data for all inserted rows.',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const upsertDataTableRowFieldDocs = {
+	filter: {
+		description:
+			'Filter conditions to match an existing row. If no row matches, n8n inserts a new row.',
+	},
+	data: { description: 'Column values for the row' },
+	returnData: {
+		description:
+			'Set to true to return the upserted row(s) matched by the filter. Set to false to return ' +
+			'true on success.',
+	},
+	dryRun: { description: 'Set to true to preview the change without saving it.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;

@@ -396,6 +396,244 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('validateWorkflowCredentialUsage() - credential added to an existing node', () => {
+		const httpNode = (
+			credentials?: INode['credentials'],
+			parameters: Record<string, unknown> = { url: '' },
+		) =>
+			({
+				id: 'existing-1',
+				name: 'Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters,
+				...(credentials ? { credentials } : {}),
+			}) as unknown as INode;
+		const accessible = [{ id: 'team-cred' }];
+
+		it('rejects a credential the user cannot use when the node did not have it before', () => {
+			const previousVersion = { nodes: [httpNode()] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [
+					httpNode(
+						{ httpHeaderAuth: { id: 'personal-cred', name: 'Mine' } },
+						{ url: 'https://x.test' },
+					),
+				],
+			} as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
+			).toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('saves a credential the user can use together with the other edits', () => {
+			const previousVersion = { nodes: [httpNode()] } as unknown as IWorkflowBase;
+			const edited = httpNode(
+				{ httpHeaderAuth: { id: 'team-cred', name: 'Team' } },
+				{ url: 'https://x.test', query: { key: 'value' } },
+			);
+			const newVersion = { nodes: [edited] } as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(edited);
+		});
+
+		it('still restores a node whose credential the user could not use before', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [{ ...previous, parameters: { url: 'https://changed.test' } }],
+			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0].parameters).toEqual({ url: '' });
+		});
+
+		it('restores a read-only node whose credential is swapped for another the user cannot use', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [
+					httpNode(
+						{ httpHeaderAuth: { id: 'other-foreign-cred', name: 'Fake' } },
+						{ url: 'https://changed.test' },
+					),
+				],
+			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(previous);
+		});
+
+		it('restores a read-only node whose unresolved credential is replaced', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: null, name: 'Old' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } }, { url: 'https://x.test' })],
+			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(previous);
+		});
+	});
+
+	describe('validateWorkflowCredentialUsage() - agent node parameters', () => {
+		// The agent node keeps its credential references in the hidden
+		// `inlineAgent` parameter, not in `node.credentials`.
+		const agentNode = (id: string, inlineAgent: unknown) =>
+			({
+				id,
+				name: id,
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: { agentSource: 'inline', inlineAgent },
+			}) as unknown as INode;
+
+		const withModelCredential = (credential: string) => ({ config: { credential } });
+
+		const withToolCredential = (id: string) => ({
+			config: {
+				credential: 'cred-editor',
+				tools: [
+					{
+						type: 'node',
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequest',
+							credentials: { httpBearerAuth: { id, name: 'Token' } },
+						},
+					},
+				],
+			},
+		});
+
+		const save = (
+			newNodes: INode[],
+			previousNodes: INode[] = [],
+			allowed: string[] = ['cred-editor'],
+		) =>
+			service.validateWorkflowCredentialUsage(
+				{ nodes: newNodes } as unknown as IWorkflowBase,
+				{ nodes: previousNodes } as unknown as IWorkflowBase,
+				allowed.map((id) => mock<CredentialsEntity>({ id })),
+			);
+
+		it.each([
+			['the model credential', withModelCredential('cred-other')],
+			['a node tool credential', withToolCredential('cred-other')],
+			['a JSON-encoded parameter', JSON.stringify(withModelCredential('cred-other'))],
+			[
+				'a node tool sub-workflow',
+				{
+					config: {
+						credential: 'cred-editor',
+						tools: [
+							{
+								type: 'node',
+								node: {
+									nodeType: 'n8n-nodes-base.executeWorkflow',
+									nodeParameters: {
+										source: 'parameter',
+										workflowJson: JSON.stringify({
+											nodes: [{ credentials: { httpHeaderAuth: { id: 'cred-other', name: 'x' } } }],
+											connections: {},
+										}),
+									},
+								},
+							},
+						],
+					},
+				},
+			],
+			[
+				'a node tool that is another agent, as JSON text',
+				{
+					config: {
+						credential: 'cred-editor',
+						tools: [
+							{
+								type: 'node',
+								node: {
+									nodeType: 'n8n-nodes-base.messageAnAgentTool',
+									nodeParameters: {
+										agentSource: 'inline',
+										inlineAgent: JSON.stringify({ config: { credential: 'cred-other' } }),
+									},
+								},
+							},
+						],
+					},
+				},
+			],
+		])('rejects a new agent node that names a credential in %s', (_label, inlineAgent) => {
+			expect(() => save([agentNode('new-agent', inlineAgent)])).toThrow();
+		});
+
+		it('restores the stored agent node when the user cannot use its credential', () => {
+			const stored = agentNode('agent-1', withModelCredential('cred-other'));
+			const edited = agentNode('agent-1', {
+				config: { credential: 'cred-other', instructions: 'Summarize the input.' },
+			});
+
+			const result = save([edited], [stored]);
+
+			expect(result.nodes[0].parameters).toEqual(stored.parameters);
+		});
+
+		it('accepts an agent node whose credentials the user can use', () => {
+			expect(() => save([agentNode('new-agent', withToolCredential('cred-editor'))])).not.toThrow();
+		});
+
+		it('accepts a parameter value that is not valid JSON', () => {
+			expect(() => save([agentNode('new-agent', '{ not json')])).not.toThrow();
+		});
+
+		it('ignores a `credentialId` parameter of a node tool, which names a remote credential', () => {
+			const remoteReference = {
+				config: {
+					credential: 'cred-editor',
+					tools: [
+						{
+							type: 'node',
+							node: {
+								nodeType: 'n8n-nodes-base.n8n',
+								nodeParameters: {
+									resource: 'credential',
+									operation: 'delete',
+									credentialId: 'remote-id',
+								},
+							},
+						},
+					],
+				},
+			};
+
+			expect(() => save([agentNode('new-agent', remoteReference)])).not.toThrow();
+		});
+	});
+
 	describe('attemptWorkflowReactivation', () => {
 		// Workflow and folder transfers deactivate, transfer, then re-add. A failed
 		// re-add may have partially registered triggers, in memory and as durable

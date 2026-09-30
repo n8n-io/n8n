@@ -424,13 +424,19 @@ export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
 	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
+	CreateDataTableRowsPublicDto,
 	DataTableColumnListPublicDto,
 	DataTableColumnPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
+	DataTableRowListPublicDto,
+	InsertDataTableRowsResponsePublicDto,
 	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpsertDataTableRowPublicDto,
+	UpsertDataTableRowResponsePublicDto,
 	dataTablePublicSchema,
+	dataTableRowPublicSchema,
 	type DataTablePublic,
 } from './data-table/data-table-public.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
@@ -442,7 +448,7 @@ export {
 } from './data-table/list-data-table-query.dto';
 export {
 	ListDataTableContentQueryDto,
-	PublicApiListDataTableContentQueryDto,
+	PublicApiListDataTableRowsQueryDto,
 } from './data-table/list-data-table-content-query.dto';
 export { CreateDataTableColumnDto } from './data-table/create-data-table-column.dto';
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
@@ -588,8 +594,9 @@ export {
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export {
-	GetOtelSettingsQueryPublicDto,
 	OtelSettingsPublicDto,
+	OtelSettingsQueryPublicDto,
+	UpdateOtelSettingsPublicDto,
 } from './otel/otel-settings-public.dto';
 
 export {

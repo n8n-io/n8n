@@ -9,6 +9,7 @@ import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
+import type { McpToolPermissions } from './mcp-tool-permissions.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -1648,9 +1649,12 @@ export const instanceAiThreadArtifactSchema = z.object({
 });
 export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
 
-/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+/**
+ * The tabs open in the thread view, plus which tab is focused when the preview is open.
+ * An empty list means no tabs are open.
+ */
 export const instanceAiThreadArtifactsContextSchema = z.object({
-	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	artifacts: z.array(instanceAiThreadArtifactSchema).max(20),
 	activeId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiThreadArtifactsContext = z.infer<
@@ -2313,7 +2317,8 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeNode: instanceAiPermissionModeSchema,
-	executeMcpTool: instanceAiPermissionModeSchema,
+	mcpRead: instanceAiPermissionModeSchema,
+	mcpWrite: instanceAiPermissionModeSchema,
 	createPreference: instanceAiPermissionModeSchema,
 });
 
@@ -2341,7 +2346,8 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeNode: 'require_approval',
-	executeMcpTool: 'require_approval',
+	mcpRead: 'always_allow',
+	mcpWrite: 'require_approval',
 	// The save_user_preference tool writes first and lets the user edit or undo
 	// from the chat card, so there is no approval step for require_approval to
 	// gate. always_allow is the only workable default; blocked is the feature off.
@@ -2365,6 +2371,8 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'readFilesystem',
 	'fetchUrl',
 	'webSearch',
+	'mcpRead',
+	'mcpWrite',
 	'publishWorkflow',
 	'createCredential',
 	'deleteCredential',
@@ -2669,19 +2677,15 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
-	toolFilter: InstanceAiMcpConnectionToolFilterResponse | null;
+	toolPermissions: McpToolPermissions;
 	createdAt: string;
 	updatedAt: string;
-}
-
-export interface InstanceAiMcpConnectionToolFilterResponse {
-	mode: 'allow' | 'exclude';
-	tools: string[];
 }
 
 export interface InstanceAiMcpConnectionToolResponse {
 	name: string;
 	description?: string;
+	category: 'read' | 'write';
 }
 
 export type InstanceAiMcpConnectionFailureReason =

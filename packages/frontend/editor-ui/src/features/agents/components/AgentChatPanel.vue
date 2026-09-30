@@ -66,6 +66,7 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
@@ -77,6 +78,7 @@ const props = withDefaults(
 		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
+		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
@@ -761,6 +763,7 @@ onBeforeUnmount(() => {
 			:agent-id="agentId"
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
+			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
