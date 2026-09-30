@@ -159,7 +159,7 @@ function toResponse(
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,
-		toolFilter: connection.toolFilter,
+		toolPermissions: connection.toolPermissions,
 		createdAt: connection.createdAt.toISOString(),
 		updatedAt: connection.updatedAt.toISOString(),
 	};
