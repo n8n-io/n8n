@@ -1,5 +1,5 @@
 import { bool, num, obj, openObj, record, resourceLocator, str, tagOf, variant } from '../helpers';
-import type { ActionContract, ContractInput, JsonSchema } from '../types';
+import type { ActionContract, ContractInput, JsonSchema, ResourceField } from '../types';
 
 const CREDENTIALS = ['notionApi', 'notionOAuth2Api'];
 
@@ -194,6 +194,27 @@ const snakeCase = (name: string) =>
 		.map((word) => word.toLowerCase())
 		.join('_');
 
+/**
+ * Types every simplified property from the data source schema and closes the shape, so a
+ * misspelled property key is a build error. Filter-derived types win: they know presence.
+ */
+function typeFromDataSource(
+	fields: ResourceField[],
+	input: ContractInput,
+	derived: JsonSchema,
+): JsonSchema {
+	if (tagOf(input.output, 'mode') === 'raw') return derived;
+	const typed = fields.flatMap(({ value }) => {
+		const [name, type] = String(value).split('|');
+		return name && type
+			? [[`property_${snakeCase(name)}`, SIMPLIFIED_SCHEMA_BY_TYPE[type] ?? {}] as const]
+			: [];
+	});
+	const { patternProperties: _open, ...closed } = derived;
+	const properties = { ...Object.fromEntries(typed), ...derived.properties };
+	return { ...closed, properties, required: Object.keys(properties) };
+}
+
 /** A filter condition names a property and its Notion type, so its simplified value has a known type. */
 function deriveGetAllOutput(input: ContractInput): JsonSchema {
 	if (tagOf(input.output, 'mode') === 'raw') return rawPage;
@@ -366,6 +387,7 @@ export const notionGetManyPages: ActionContract = {
 	),
 	output: simplifiedPage,
 	deriveOutput: deriveGetAllOutput,
+	resourceSchema: { methodName: 'getFilterProperties', toOutput: typeFromDataSource },
 	example: {
 		database: { mode: 'pick', name: 'Tasks' },
 		filter: {

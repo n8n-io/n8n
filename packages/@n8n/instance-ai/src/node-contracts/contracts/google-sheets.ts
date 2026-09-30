@@ -197,6 +197,17 @@ export const sheetsRead: ActionContract = {
 		['spreadsheet', 'sheet'],
 	),
 	output: row,
+	// Reads header row 1, so a custom header row keeps the open shape.
+	resourceSchema: {
+		methodName: 'getSheetHeaderRow',
+		toOutput: (fields, input, derived) =>
+			input.header === undefined
+				? obj({
+						row_number: num({ 'x-n8n-hint': 'Sheet row of this item' }),
+						...Object.fromEntries(fields.map((field) => [String(field.value), {}])),
+					})
+				: derived,
+	},
 	example: {
 		spreadsheet: { mode: 'pick', name: 'Leads' },
 		sheet: { mode: 'name', name: 'Signups' },

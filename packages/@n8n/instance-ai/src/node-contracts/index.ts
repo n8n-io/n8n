@@ -4,7 +4,7 @@ import type { ActionContract, JsonSchema } from './types';
 
 export type { ActionContract, JsonSchema } from './types';
 export { getContract };
-export { compileContractNodes, checkContractOutputReads } from './build';
+export { compileContractNodes, checkContractOutputReads, fetchResourceOutputs } from './build';
 
 export function contractsForNodeType(nodeType: string): ActionContract[] {
 	return CONTRACTS.filter((contract) => contract.compile.type === nodeType);

@@ -42,6 +42,11 @@ export interface ActionFlow {
 
 export type ContractInput = Record<string, unknown>;
 
+export interface ResourceField {
+	name: string;
+	value: string | number | boolean;
+}
+
 export interface CompiledNode {
 	type: string;
 	typeVersion: number;
@@ -59,8 +64,20 @@ export interface ActionContract {
 	input: JsonSchema;
 	/** Default item shape; a selected variant branch's `x-n8n-output` overrides it. */
 	output: JsonSchema;
-	/** Output that depends on parameter values, not only on the selected variant (Set). */
-	deriveOutput?: (input: ContractInput) => JsonSchema;
+	/**
+	 * Output that depends on parameter values, not only on the selected variant (Set).
+	 * `upstream` is the direct parent's output when it is known.
+	 */
+	deriveOutput?: (input: ContractInput, upstream?: JsonSchema) => JsonSchema;
+	/**
+	 * A node loadOptions method that lists the resource's fields (Sheet columns, Notion
+	 * properties). The build calls it when the credential and resource are known and types the
+	 * output from the result. When the call fails, the output stays as derived.
+	 */
+	resourceSchema?: {
+		methodName: string;
+		toOutput: (fields: ResourceField[], input: ContractInput, derived: JsonSchema) => JsonSchema;
+	};
 	/** A valid `parameters` value, shown to the agent as usage. */
 	example: ContractInput;
 	/** Legacy node this action compiles to. Consumed by the builder, never shown to the agent. */

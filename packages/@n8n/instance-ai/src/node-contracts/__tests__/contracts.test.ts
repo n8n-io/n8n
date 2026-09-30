@@ -1,6 +1,6 @@
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { validateContractInput } from '../build';
+import { fetchResourceOutputs, validateContractInput, type ExploreResources } from '../build';
 import { CONTRACTS } from '../contracts';
 import { toObjectParameter } from '../helpers';
 import {
@@ -12,7 +12,12 @@ import {
 } from '../index';
 
 function workflowOf(
-	nodes: Array<{ name: string; type: string; parameters: IDataObject }>,
+	nodes: Array<{
+		name: string;
+		type: string;
+		parameters: IDataObject;
+		credentials?: Record<string, { id: string; name: string }>;
+	}>,
 ): WorkflowJSON {
 	return {
 		name: 'test',
@@ -33,11 +38,17 @@ function workflowOf(
 	};
 }
 
-async function build(json: WorkflowJSON) {
+async function build(json: WorkflowJSON, explore?: ExploreResources) {
 	const { workflow, issues, contractNodes } = compileContractNodes(json);
+	const resourceOutputs = explore
+		? await fetchResourceOutputs(workflow, contractNodes, explore)
+		: undefined;
 	return {
 		workflow,
-		issues: [...issues, ...(await checkContractOutputReads(workflow, contractNodes))],
+		issues: [
+			...issues,
+			...(await checkContractOutputReads(workflow, contractNodes, resourceOutputs)),
+		],
 	};
 }
 
@@ -186,6 +197,104 @@ describe('node contracts', () => {
 				)
 			).issues;
 			expect(issues).toEqual([expect.objectContaining({ code: 'CONTRACT_EXPRESSION_TYPE' })]);
+		});
+	});
+
+	describe('Set keep modes', () => {
+		const source = {
+			name: 'Source',
+			type: 'set.fields',
+			parameters: { fields: [{ name: 'total', value: '10', type: 'number' }] },
+		};
+		const addTax = (keep: IDataObject) => ({
+			name: 'Tax',
+			type: 'set.fields',
+			parameters: {
+				fields: [{ name: 'total_with_tax', value: '={{ $json.total * 1.2 }}', type: 'number' }],
+				keep,
+			},
+		});
+		const issuesFor = async (keep: IDataObject, expression: string) =>
+			(await build(workflowOf([source, addTax(keep), post({ value: expression })]))).issues;
+
+		it('passes upstream fields through when keeping all fields', async () => {
+			expect(
+				await issuesFor(
+					{ mode: 'all' },
+					'={{ $json.total.toFixed(2) }} {{ $json.total_with_tax }}',
+				),
+			).toEqual([]);
+			expect(await issuesFor({ mode: 'all' }, '={{ $json.totl }}')).toHaveLength(1);
+		});
+
+		it('drops upstream fields that are not kept', async () => {
+			expect(await issuesFor({ mode: 'none' }, '={{ $json.total }}')).toHaveLength(1);
+			expect(
+				await issuesFor({ mode: 'except', fields: ['total'] }, '={{ $json.total }}'),
+			).toHaveLength(1);
+		});
+	});
+
+	describe('resource schemas', () => {
+		const notionCredentials = { notionApi: { id: 'cred-1', name: 'Notion account' } };
+		const tasks = {
+			name: 'Tasks',
+			type: 'notion.databasePage.getAll',
+			parameters: {
+				database: { mode: 'id', id: 'abc' },
+				paging: { mode: 'all' },
+				output: { mode: 'simplified' },
+			},
+			credentials: notionCredentials,
+		};
+		const dataSource: ExploreResources = async () =>
+			await Promise.resolve({
+				results: [
+					{ name: 'Due Date', value: 'Due Date|date' },
+					{ name: 'Tags', value: 'Tags|multi_select' },
+				],
+			});
+		const issuesFor = async (expression: string, explore: ExploreResources) =>
+			(await build(workflowOf([tasks, post({ value: expression })]), explore)).issues;
+
+		it('types Notion properties from the data source and rejects unknown keys', async () => {
+			expect(await issuesFor('={{ $json.property_tags.join(", ") }}', dataSource)).toEqual([]);
+			expect(await issuesFor('={{ $json.property_due_date.start }}', dataSource)).toHaveLength(1);
+			expect(await issuesFor('={{ $json.property_tag }}', dataSource)).toHaveLength(1);
+		});
+
+		it('keeps the open shape when the lookup fails', async () => {
+			const failing: ExploreResources = async () => await Promise.reject(new Error('401'));
+			expect(await issuesFor('={{ $json.property_anything }}', failing)).toEqual([]);
+		});
+
+		it('keeps the open shape when the node has no bound credential', async () => {
+			const explore = vi.fn(dataSource);
+			const unbound = { ...tasks, credentials: undefined };
+			const { issues } = await build(
+				workflowOf([unbound, post({ value: '={{ $json.property_anything }}' })]),
+				explore,
+			);
+			expect(issues).toEqual([]);
+			expect(explore).not.toHaveBeenCalled();
+		});
+
+		it('types Sheet rows from the header row', async () => {
+			const sheet = {
+				name: 'Rows',
+				type: 'googleSheets.sheet.read',
+				parameters: {
+					spreadsheet: { mode: 'id', id: 'sheet-1' },
+					sheet: { mode: 'name', name: 'Leads' },
+				},
+				credentials: { googleSheetsOAuth2Api: { id: 'cred-2', name: 'Google' } },
+			};
+			const headers: ExploreResources = async () =>
+				await Promise.resolve({ results: [{ name: 'Email', value: 'Email' }] });
+			const read = async (expression: string) =>
+				(await build(workflowOf([sheet, post({ value: expression })]), headers)).issues;
+			expect(await read('={{ $json.Email }} {{ $json.row_number }}')).toEqual([]);
+			expect(await read('={{ $json.email }}')).toHaveLength(1);
 		});
 	});
 

@@ -5,6 +5,7 @@ import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from
 import { getContract } from './contracts';
 import { getExpressionService } from './expression-check';
 import { branchTag, isExpression } from './helpers';
+import type { ExploreResourcesParams, ExploreResourcesResult } from '../types';
 import type { ActionContract, ContractInput, JsonSchema } from './types';
 
 export interface ContractIssue {
@@ -122,8 +123,12 @@ export function validateContractInput(value: unknown, schema: JsonSchema, path =
 // ── Output resolution ────────────────────────────────────────────────────────
 
 /** The item shape a contract node emits for its configured parameters. */
-export function resolveContractOutput(contract: ActionContract, input: ContractInput): JsonSchema {
-	if (contract.deriveOutput) return contract.deriveOutput(input);
+export function resolveContractOutput(
+	contract: ActionContract,
+	input: ContractInput,
+	upstream?: JsonSchema,
+): JsonSchema {
+	if (contract.deriveOutput) return contract.deriveOutput(input, upstream);
 	const find = (value: unknown, schema: JsonSchema): JsonSchema | undefined => {
 		if (schema.oneOf && schema.discriminator) {
 			const selected = value ?? schema.default;
@@ -264,6 +269,80 @@ function expressionSlots(
 	);
 }
 
+/**
+ * Output schemas of contract nodes. A node with one parent builds on the parent's output
+ * (Set keeping input fields); a fetched resource schema takes precedence.
+ */
+function contractOutputs(
+	byDestination: ReturnType<typeof mapConnectionsByDestination>,
+	contractNodes: Map<string, CompiledContractNode>,
+	resourceOutputs: ReadonlyMap<string, JsonSchema>,
+): Map<string, JsonSchema> {
+	const resolved = new Map<string, JsonSchema>();
+	const resolve = (name: string, visiting: ReadonlySet<string>): JsonSchema | undefined => {
+		const known = resolved.get(name) ?? resourceOutputs.get(name);
+		const compiled = contractNodes.get(name);
+		if (known || !compiled || visiting.has(name)) return known;
+		const parents = getParentNodes(byDestination, name, NodeConnectionTypes.Main, 1);
+		const upstream =
+			parents.length === 1 ? resolve(parents[0], new Set([...visiting, name])) : undefined;
+		const schema = resolveContractOutput(compiled.contract, compiled.input, upstream);
+		resolved.set(name, schema);
+		return schema;
+	};
+	return new Map(
+		[...contractNodes.keys()].flatMap((name) => {
+			const schema = resolve(name, new Set());
+			return schema ? [[name, schema] as const] : [];
+		}),
+	);
+}
+
+export type ExploreResources = (params: ExploreResourcesParams) => Promise<ExploreResourcesResult>;
+
+const RESOURCE_SCHEMA_TIMEOUT_MS = 5_000;
+
+/**
+ * Fetches the fields of each contract node's resource (Sheet columns, Notion properties) with
+ * the node's own loadOptions method. Best-effort: a missing credential, an error or a slow
+ * response leaves that node's output as derived, so a build never depends on the lookup.
+ */
+export async function fetchResourceOutputs(
+	json: WorkflowJSON,
+	contractNodes: Map<string, CompiledContractNode>,
+	explore: ExploreResources,
+): Promise<Map<string, JsonSchema>> {
+	const nodesByName = new Map((json.nodes ?? []).map((node) => [node.name, node]));
+	const fetched = await Promise.all(
+		[...contractNodes].map(async ([name, { contract, input }]) => {
+			const node = nodesByName.get(name);
+			const source = contract.resourceSchema;
+			const [credentialType, credential] = Object.entries(node?.credentials ?? {})[0] ?? [];
+			const credentialId = isRecord(credential) ? credential.id : undefined;
+			if (!source || !node || !credentialType || typeof credentialId !== 'string') return [];
+			const timeout = new Promise<undefined>((resolve) =>
+				setTimeout(() => resolve(undefined), RESOURCE_SCHEMA_TIMEOUT_MS).unref(),
+			);
+			const result = await Promise.race([
+				explore({
+					nodeType: node.type,
+					version: node.typeVersion,
+					methodName: source.methodName,
+					methodType: 'loadOptions',
+					credentialType,
+					credentialId,
+					currentNodeParameters: isRecord(node.parameters) ? node.parameters : {},
+				}).catch(() => undefined),
+				timeout,
+			]);
+			if (!result?.results.length) return [];
+			const derived = resolveContractOutput(contract, input);
+			return [[name, source.toOutput(result.results, input, derived)] as const];
+		}),
+	);
+	return new Map(fetched.flat());
+}
+
 /** `$('Name')` and `$node['Name']` reads; a non-literal name has no captured group. */
 const NODE_READ = /\$(?:\(|node\[)\s*(?:(['"])(.*?)\1)?/g;
 
@@ -275,14 +354,15 @@ const NODE_READ = /\$(?:\(|node\[)\s*(?:(['"])(.*?)\1)?/g;
 export async function checkContractOutputReads(
 	json: WorkflowJSON,
 	contractNodes: Map<string, CompiledContractNode>,
+	resourceOutputs: ReadonlyMap<string, JsonSchema> = new Map(),
 ): Promise<ContractIssue[]> {
+	const byDestination = mapConnectionsByDestination(toEngineConnections(json.connections));
 	const outputTypes = new Map(
-		[...contractNodes].map(([name, { contract, input }]) => [
+		[...contractOutputs(byDestination, contractNodes, resourceOutputs)].map(([name, schema]) => [
 			name,
-			schemaToTs(resolveContractOutput(contract, input)),
+			schemaToTs(schema),
 		]),
 	);
-	const byDestination = mapConnectionsByDestination(toEngineConnections(json.connections));
 	const checks = (json.nodes ?? []).flatMap((node) => {
 		const nodeName = node.name;
 		if (!nodeName) return [];

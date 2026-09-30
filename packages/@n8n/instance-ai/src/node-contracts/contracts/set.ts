@@ -31,6 +31,22 @@ function withField(schema: JsonSchema, path: string[], leaf: JsonSchema): JsonSc
 	return { ...schema, type: 'object', properties: { ...properties, [head]: child } };
 }
 
+/** The input fields a keep mode passes through. Unknown upstream shapes stay open. */
+function keptInput(mode: string, keepFields: unknown, upstream?: JsonSchema): JsonSchema {
+	if (mode === 'none') return { type: 'object', properties: {}, additionalProperties: false };
+	if (!upstream?.properties) return { type: 'object', properties: {}, additionalProperties: true };
+	const names = Array.isArray(keepFields) ? keepFields.filter((f) => typeof f === 'string') : [];
+	const keeps = (key: string) =>
+		mode === 'all' || (mode === 'selected' ? names.includes(key) : !names.includes(key));
+	const properties = Object.fromEntries(
+		Object.entries(upstream.properties).filter(([key]) => keeps(key)),
+	);
+	const required = (upstream.required ?? []).filter((key) => key in properties);
+	return mode === 'selected'
+		? { type: 'object', properties, required, additionalProperties: false }
+		: { ...upstream, properties, required };
+}
+
 export const setFields: ActionContract = {
 	id: 'set.fields',
 	node: 'set',
@@ -70,9 +86,12 @@ export const setFields: ActionContract = {
 		['fields'],
 	),
 	output: { type: 'object', additionalProperties: true },
-	deriveOutput: (input) => {
-		const keepsInput = (tagOf(input.keep, 'mode') ?? 'none') !== 'none';
-		const base: JsonSchema = { type: 'object', properties: {}, additionalProperties: keepsInput };
+	deriveOutput: (input, upstream) => {
+		const base = keptInput(
+			tagOf(input.keep, 'mode') ?? 'none',
+			record(input.keep).fields,
+			upstream,
+		);
 		return readFields(input.fields).reduce(
 			(schema, field) =>
 				withField(

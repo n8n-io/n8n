@@ -16,7 +16,11 @@ import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
-import { checkContractOutputReads, compileContractNodes } from '../../node-contracts';
+import {
+	checkContractOutputReads,
+	compileContractNodes,
+	fetchResourceOutputs,
+} from '../../node-contracts';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
@@ -510,13 +514,17 @@ export async function compileWorkflowSource(
 
 			if (context.nodeContractsEnabled) {
 				const { workflow, issues, contractNodes } = compileContractNodes(result.workflow);
+				const explore = context.nodeService.exploreResources?.bind(context.nodeService);
+				const resourceOutputs = explore
+					? await fetchResourceOutputs(workflow, contractNodes, explore)
+					: undefined;
 				result = {
 					...result,
 					workflow,
 					warnings: [
 						...result.warnings,
 						...issues,
-						...(await checkContractOutputReads(workflow, contractNodes)),
+						...(await checkContractOutputReads(workflow, contractNodes, resourceOutputs)),
 					],
 				};
 			}
