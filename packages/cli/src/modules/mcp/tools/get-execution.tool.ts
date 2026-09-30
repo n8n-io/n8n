@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import { type ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
@@ -12,7 +13,6 @@ import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),

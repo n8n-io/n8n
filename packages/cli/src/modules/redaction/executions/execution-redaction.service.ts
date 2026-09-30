@@ -1,6 +1,10 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import {
+	EventService,
+	ForbiddenError,
+	ScopeForbiddenError,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
@@ -16,8 +20,6 @@ import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
 	IExecutionRedactionStrategy,

@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

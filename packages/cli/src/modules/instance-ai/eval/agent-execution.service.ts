@@ -18,6 +18,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { userHasScopes } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -34,7 +35,6 @@ import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-comp
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';

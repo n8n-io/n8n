@@ -1,5 +1,5 @@
 import type { WorkflowReviewDecisionIneligibilityReason } from '@n8n/api-types';
-import { NotFoundError, RoleService } from '@n8n/backend-services';
+import { NotFoundError, RoleService, WorkflowFinderService } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -22,7 +22,6 @@ import {
 
 import { NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { resolveDecisionCapability } from './workflow-review-decision-policy';
 

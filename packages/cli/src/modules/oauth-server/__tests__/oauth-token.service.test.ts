@@ -1,4 +1,6 @@
 import { InvalidTargetError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import type { UrlService, WorkflowFinderService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
@@ -19,9 +21,6 @@ import { OAuthTokenService } from '../oauth-token.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@n8n/backend-services';
-import type { UrlService } from '@n8n/backend-services';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());

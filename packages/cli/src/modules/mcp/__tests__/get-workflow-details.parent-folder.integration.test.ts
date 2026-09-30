@@ -1,4 +1,4 @@
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, WorkflowFinderService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -12,7 +12,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';

@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

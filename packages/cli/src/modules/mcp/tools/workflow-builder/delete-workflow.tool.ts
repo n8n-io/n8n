@@ -1,9 +1,9 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';

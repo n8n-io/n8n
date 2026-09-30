@@ -1,3 +1,4 @@
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
@@ -19,7 +20,6 @@ import { McpService } from '@/modules/mcp/mcp.service';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import { createWorkflow } from './mock.utils';

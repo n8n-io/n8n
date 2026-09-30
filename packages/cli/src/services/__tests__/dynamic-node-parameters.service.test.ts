@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { BadRequestError, CredentialsFinderService, ForbiddenError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	CredentialsFinderService,
+	ForbiddenError,
+	userHasScopes,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
@@ -31,7 +36,15 @@ import { DynamicNodeParametersService } from '../dynamic-node-parameters.service
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { NodeTypes } from '@/node-types';
-import * as checkAccess from '@/permissions.ee/check-access';
+
+vi.mock('@n8n/backend-services', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/backend-services')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
@@ -608,7 +621,7 @@ describe('DynamicNodeParametersService', () => {
 		const user = mock<User>();
 
 		beforeEach(() => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 			// No end-user credentials unless a test says otherwise.
 			credentialsRepository.getManyByIds.mockResolvedValue([]);

@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -39,7 +40,6 @@ import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils'
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export { type FoundWorkflow };

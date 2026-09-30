@@ -1,3 +1,4 @@
+import { ConflictError, userHasScopes } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -47,8 +48,16 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import * as checkAccess from '@/permissions.ee/check-access';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+
+vi.mock('@n8n/backend-services', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/backend-services')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
 
 const ctx = {
 	resumeData: undefined,
@@ -1933,7 +1942,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('denies test execution when the user lacks agent:execute', async () => {
 			const { service, agentTestRunService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			const result = await getCallAgentTool(service).handler!({ message: 'Hello' }, ctx);
 
@@ -1946,7 +1955,7 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('suspends for a target approval and resumes the same test run with the human decision', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 
 			type MockStreamResult = Awaited<ReturnType<MockLanguageModelV3['doStream']>>;
 			type MockStreamPart = MockStreamResult['stream'] extends ReadableStream<infer Part>
@@ -2157,7 +2166,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('cancels approval-shaped custom suspensions and directs the user to Preview', async () => {
 			const { service, agentTestRunService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			agentTestRunService.executeDraftRun.mockResolvedValue({
 				status: 'suspended',
 				response: 'Choose a date.',
@@ -2221,7 +2230,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('publishes the bound agent draft when the user has agent:publish', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-active',
@@ -2231,7 +2240,7 @@ describe('AgentsBuilderToolsService', () => {
 
 			const result = await getPublishTool(service).handler!({}, ctx);
 
-			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:publish'], false, {
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:publish'], false, {
 				projectId,
 			});
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
@@ -2252,7 +2261,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('forwards an optional versionId to publishAgent', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: {
 					activeVersionId: 'v-history',
@@ -2301,7 +2310,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('denies publish when the user lacks agent:publish', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			const result = await getPublishTool(service).handler!({}, ctx);
 
@@ -2328,7 +2337,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('surfaces publish service errors to the model', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			agentPublishService.publishAgent.mockRejectedValue(
 				new Error('Cannot publish agent with missing custom tools: my_tool'),
 			);
@@ -2343,14 +2352,14 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('unpublishes the bound agent when the user has agent:unpublish', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			agentPublishService.unpublishAgent.mockResolvedValue({
 				activeVersionId: null,
 			} as Agent);
 
 			const result = await getUnpublishTool(service).handler!({}, ctx);
 
-			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:unpublish'], false, {
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:unpublish'], false, {
 				projectId,
 			});
 			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(
@@ -2369,7 +2378,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('denies unpublish when the user lacks agent:unpublish', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			const result = await getUnpublishTool(service).handler!({}, ctx);
 
@@ -2382,7 +2391,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('surfaces unpublish service errors to the model', async () => {
 			const { service, agentPublishService } = makeService();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			agentPublishService.unpublishAgent.mockRejectedValue(new Error('Agent "agent-1" not found'));
 
 			const result = await getUnpublishTool(service).handler!({}, ctx);

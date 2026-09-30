@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-import { type BooleanLicenseFeature, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { NotFoundError, userHasScopes } from '@n8n/backend-services';
+import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -10,8 +11,6 @@ import type { NextFunction, Request, Response } from 'express';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { PaginatedRequest } from '@/public-api/types';
 
 import { decodeCursor } from '../services/pagination.service';

@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -49,7 +50,6 @@ import { SourceControlScopedService } from '@/modules/source-control.ee/source-c
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
