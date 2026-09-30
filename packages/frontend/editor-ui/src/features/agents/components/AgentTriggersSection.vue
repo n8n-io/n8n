@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type {
 	AgentConfigValidationIssue,
 	AgentJsonConfig,
@@ -15,6 +16,7 @@ import {
 	getAgentChannelPlatform,
 } from '../channels/registry';
 import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
+import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
@@ -39,6 +41,10 @@ const props = withDefaults(
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 		personalisation?: AgentJsonConfig['personalisation'] | null;
+		/** n8n Chat's saved description, forwarded to the channel modal. */
+		savedDescription?: string;
+		/** Persists n8n Chat's description, forwarded to the channel modal. */
+		saveDescription?: (description: string) => Promise<void>;
 	}>(),
 	{
 		connectedTriggers: () => [],
@@ -111,6 +117,8 @@ const {
 		emit('agent-changed');
 	},
 });
+const { isEnabled: isN8nChatEnabled, withN8nChat } = useN8nChatChannel();
+const channelList = computed(() => withN8nChat(catalog.value ?? []));
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
@@ -154,23 +162,25 @@ function channelRuntimeErrorMessage(channel: string): string {
 }
 
 const channelRows = computed(() =>
-	props.connectedTriggers.map((channel) => {
-		const integration = catalog.value?.find(({ type }) => type === channel);
-		const credentialId = connectedCredentials.value[channel];
-		// A channel that is configured correctly but failed to start is just as
-		// broken from here as a misconfigured one, so it uses the same affordance.
-		const invalidReasons = [
-			...(channelIssueMessages.value.get(channel) ?? []),
-			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
-		];
-		return {
-			type: channel,
-			label: integration?.label ?? channel,
-			icon: channelIcon(integration?.icon),
-			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
-			invalidReasons,
-		};
-	}),
+	props.connectedTriggers
+		.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE || isN8nChatEnabled.value)
+		.map((channel) => {
+			const integration = channelList.value.find(({ type }) => type === channel);
+			const credentialId = connectedCredentials.value[channel];
+			// A channel that is configured correctly but failed to start is just as
+			// broken from here as a misconfigured one, so it uses the same affordance.
+			const invalidReasons = [
+				...(channelIssueMessages.value.get(channel) ?? []),
+				...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+			];
+			return {
+				type: channel,
+				label: integration?.label ?? channel,
+				icon: channelIcon(integration?.icon),
+				credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
+				invalidReasons,
+			};
+		}),
 );
 
 async function loadChannelDetails() {
@@ -179,7 +189,7 @@ async function loadChannelDetails() {
 	// exists. The catalog and credential list below are project-scoped and still
 	// load, so the channel picker works on an unsaved agent.
 	if (!props.agentUnsaved) {
-		await fetchStatus(integrations.map(({ type }) => type));
+		await fetchStatus(withN8nChat(integrations).map(({ type }) => type));
 	}
 
 	try {
@@ -230,7 +240,7 @@ function openChannelModal() {
 }
 
 function openChannelEdit(channelType: string) {
-	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
+	const hasEditableChannelView = channelList.value.some(({ type }) => type === channelType);
 	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
 	channelModalOpen.value = true;
 }
@@ -309,6 +319,8 @@ function handleChannelDisconnected(channelType: string) {
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
 			:personalisation="personalisation"
+			:saved-description="savedDescription"
+			:save-description="saveDescription"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"

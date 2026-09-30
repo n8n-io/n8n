@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AGENT_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { N8nCallout, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
@@ -42,6 +43,7 @@ defineExpose({ description });
 				v-model="description"
 				type="textarea"
 				:rows="3"
+				:maxlength="AGENT_DESCRIPTION_MAX_LENGTH"
 				:placeholder="i18n.baseText('agents.channels.n8nChat.description.placeholder')"
 				data-testid="agent-channel-n8n-chat-description"
 			/>

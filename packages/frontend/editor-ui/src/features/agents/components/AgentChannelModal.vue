@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval, AgentJsonConfig, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
@@ -11,7 +11,7 @@ import {
 	createAgentChannelRuntime,
 	getAgentChannelPlatform,
 } from '../channels/registry';
-import { n8nChatChannelDescriptor } from '../channels/n8nChat/n8nChatDescriptor';
+import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
 	AgentChannelRuntime,
 	AgentChannelView,
@@ -19,7 +19,6 @@ import type {
 } from '../channels/types';
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
-import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -41,7 +40,7 @@ interface Props {
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 	/** n8n Chat's saved description, seeded into its view when opened. */
 	savedDescription?: string;
-	/** Persists n8n Chat's description; called only when it changed. */
+	/** Persists n8n Chat's description. It skips the request when nothing changed. */
 	saveDescription?: (description: string) => Promise<void>;
 }
 
@@ -110,14 +109,7 @@ const isSetupMode = computed(() => currentView.value.endsWith('_setup'));
 const isEditMode = computed(() => currentView.value.endsWith('_edit'));
 const isN8nChatSelected = computed(() => selectedChannelType.value === N8N_CHAT_INTEGRATION_TYPE);
 
-const n8nChatDescriptor = computed(() =>
-	n8nChatChannelDescriptor(i18n.baseText('agents.channels.n8nChat.label')),
-);
-const isN8nChatEnabled = useAgentsN8nChatFlag();
-/** Catalog channels, with n8n Chat first when its flag is on. */
-function withN8nChat(integrations: ChatIntegrationDescriptor[]): ChatIntegrationDescriptor[] {
-	return isN8nChatEnabled.value ? [n8nChatDescriptor.value, ...integrations] : integrations;
-}
+const { withN8nChat } = useN8nChatChannel();
 const channelList = computed(() => withN8nChat(catalog.value ?? []));
 const n8nChatAvailableLabel = computed(() => i18n.baseText('agents.channels.n8nChat.available'));
 const removeChannelLabel = computed(() =>
@@ -492,9 +484,7 @@ function finishConnect(channelType: string) {
 }
 
 /** Same shape as `persistAgent`: reports its own failure and returns whether it saved. */
-async function saveDescriptionIfChanged(): Promise<boolean> {
-	const description = channelViewRef.value?.description ?? '';
-	if (description === (props.savedDescription ?? '')) return true;
+async function persistDescription(description: string): Promise<boolean> {
 	try {
 		await props.saveDescription?.(description);
 		return true;
@@ -511,14 +501,18 @@ async function saveDescriptionIfChanged(): Promise<boolean> {
  */
 async function saveN8nChat() {
 	if (actionInFlight.value) return;
+	// Read the view before any await: it can unmount while a request runs.
+	const description = channelViewRef.value?.description;
+	if (description === undefined) return;
+	const settingUp = isSetupMode.value;
 	channelActionInFlight.value = true;
 	try {
 		if (!(await persistAgent())) {
 			trackSetupFailure(N8N_CHAT_INTEGRATION_TYPE, 'persist');
 			return;
 		}
-		if (!(await saveDescriptionIfChanged())) return;
-		if (isSetupMode.value) {
+		if (!(await persistDescription(description))) return;
+		if (settingUp) {
 			await connect(N8N_CHAT_INTEGRATION_TYPE, '');
 		}
 	} catch {
@@ -529,7 +523,7 @@ async function saveN8nChat() {
 		channelActionInFlight.value = false;
 	}
 
-	if (isSetupMode.value) {
+	if (settingUp) {
 		finishConnect(N8N_CHAT_INTEGRATION_TYPE);
 		return;
 	}

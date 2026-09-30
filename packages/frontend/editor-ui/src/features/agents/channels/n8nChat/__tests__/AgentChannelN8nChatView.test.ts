@@ -112,4 +112,11 @@ describe('AgentChannelN8nChatView', () => {
 
 		expect(wrapper.vm.description).toBe('Answers billing questions');
 	});
+
+	it('caps the description at the shared agent description limit', () => {
+		const wrapper = renderView();
+
+		const textarea = wrapper.get(`[data-testid="${DESCRIPTION_TESTID}"]`);
+		expect(textarea.attributes('maxlength')).toBe('512');
+	});
 });

@@ -1090,15 +1090,16 @@ describe('AgentChannelModal', () => {
 			expect(wrapper.emitted('update:open')).toEqual([[false]]);
 		});
 
-		it('skips saveDescription when the description did not change', async () => {
+		it('does not connect when the description save fails', async () => {
+			mocks.saveDescription.mockRejectedValueOnce(new Error('not saved'));
 			const wrapper = mountModal('n8n_chat_setup', false, { savedDescription: '' });
 			await flushPromises();
 
 			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
 			await flushPromises();
 
-			expect(mocks.saveDescription).not.toHaveBeenCalled();
-			expect(mocks.connect).toHaveBeenCalledWith('n8n_chat', '');
+			expect(mocks.connect).not.toHaveBeenCalled();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
 		});
 
 		it('closes the modal on Cancel without connecting', async () => {
