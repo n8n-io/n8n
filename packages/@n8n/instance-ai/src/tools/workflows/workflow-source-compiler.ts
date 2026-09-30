@@ -21,6 +21,7 @@ import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { writeWorkspaceFile, writeWorkspaceFileMap } from '../../workspace/workspace-files';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
 import {
+	fetchResourceFields,
 	NEXT_TSCONFIG_FILENAME,
 	NODE_OUTPUTS_PATH,
 	nextWorkspaceFiles,
@@ -449,11 +450,14 @@ async function compileNextWorkflowSource(
 		abortSignal,
 		NEXT_TSCONFIG_FILENAME,
 	);
+	const resourceFields = built.success
+		? await fetchResourceFields(context, built.workflow)
+		: undefined;
 	if (built.success) {
 		await writeWorkspaceFile(
 			workspace,
 			NODE_OUTPUTS_PATH,
-			nodeOutputsDeclaration(built.workflow),
+			nodeOutputsDeclaration(built.workflow, resourceFields),
 			fileOptions,
 		);
 	}
@@ -470,7 +474,11 @@ async function compileNextWorkflowSource(
 	return built.success
 		? {
 				...built,
-				declaredOutputFixtures: synthesizedFixtures(built.workflow, built.declaredOutputFixtures),
+				declaredOutputFixtures: synthesizedFixtures(
+					built.workflow,
+					built.declaredOutputFixtures,
+					resourceFields,
+				),
 			}
 		: built;
 }

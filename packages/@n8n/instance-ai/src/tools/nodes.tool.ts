@@ -29,6 +29,7 @@ import {
 	nearestNextActions,
 	nextNodeIdOfNodeType,
 	nextNodeModule,
+	nextNodeView,
 	searchNextActions,
 } from './next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
@@ -397,23 +398,27 @@ async function searchOneWithModules(
 	const catalog = await handleSearch(context, input, cache);
 	const coveredNodes = catalog.results.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
 	const results = catalog.results.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
-	const { nodes, otherActions } = input.connectionType
-		? { nodes: [], otherActions: [] }
+	const { nodes, actions, otherActions } = input.connectionType
+		? { nodes: [], actions: [], otherActions: [] }
 		: searchNextActions(input.query ?? '', coveredNodes);
 	const otherActionsPart = otherActions.length ? { otherActions } : {};
 	if (nodes.length) {
 		const otherNodes = catalogRowsBesideModules(results, nodes);
-		return { nodes, ...otherActionsPart, ...(otherNodes.length ? { otherNodes } : {}) };
+		return { nodes, actions, ...otherActionsPart, ...(otherNodes.length ? { otherNodes } : {}) };
 	}
 	return {
 		nodes,
+		actions,
 		...otherActionsPart,
 		results,
 		totalResults: results.length,
 	};
 }
 
-/** Each module goes inline once per call, also when several queries name its node. */
+/**
+ * Each module goes inline once per call, also when several queries name its node. It shows
+ * the types of the actions that some query names.
+ */
 async function handleModuleSearch(
 	context: InstanceAiContext,
 	input: SearchInput,
@@ -424,18 +429,19 @@ async function handleModuleSearch(
 	const searches = await Promise.all(
 		queries.map(async (query) => await searchOneWithModules(context, { ...input, query }, cache)),
 	);
+	const shownActions = new Set(searches.flatMap(({ actions }) => actions));
 	const nodeModules = [...new Set(searches.flatMap(({ nodes }) => nodes))].flatMap(
-		(nodeId) => nextNodeModule(nodeId) ?? [],
+		(nodeId) => nextNodeView(nodeId, shownActions) ?? [],
 	);
 	if (nodeModules.length) warmWorkspace(context);
 	const modulesPart = nodeModules.length ? { nodeModules } : {};
 	if (!queryList) {
-		const [{ nodes: _nodes, ...single }] = searches;
+		const [{ nodes: _nodes, actions: _actions, ...single }] = searches;
 		return { ...modulesPart, ...single };
 	}
 	return {
 		...modulesPart,
-		searches: searches.map(({ nodes, ...search }, index) => ({
+		searches: searches.map(({ nodes, actions: _actions, ...search }, index) => ({
 			query: queries[index],
 			...(nodes.length ? { modules: nodes } : {}),
 			...search,

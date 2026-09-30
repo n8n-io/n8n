@@ -12,6 +12,8 @@ import {
 	variant,
 	type Infer,
 	type JsonSchema,
+	type ObjectOf,
+	type ResourceField,
 	Schema,
 	type Shape,
 } from '@n8n/node-sdk';
@@ -159,6 +161,49 @@ function guarantees(where: Infer<typeof input.where> | undefined): Array<[string
 	});
 }
 
+type Parameters = ObjectOf<typeof input>;
+
+function deriveOutput(parameters: Parameters): JsonSchema {
+	const typed = guarantees(parameters.where);
+	return {
+		...page.json,
+		properties: { ...page.json.properties, ...Object.fromEntries(typed) },
+		required: [...(page.json.required ?? []), ...typed.map(([key]) => key)],
+	};
+}
+
+/**
+ * Types every property of the data source and closes the key space, so a misspelled property
+ * key fails `tsc`. Filter-derived types win because they know presence. A property type without
+ * a simplified value stays optional: the simplified page can omit it.
+ */
+function outputFromProperties(
+	fields: readonly ResourceField[],
+	parameters: Parameters,
+): JsonSchema {
+	const derived = deriveOutput(parameters);
+	const known = derived.properties ?? {};
+	// The lookup encodes each field as `<property name>|<Notion type>`.
+	const typed = fields
+		.map(({ name, value }) => ({
+			key: `property_${snakeCase(name)}`,
+			schema: SIMPLIFIED[String(value).split('|').pop() ?? ''],
+		}))
+		.filter(({ key }) => !(key in known));
+	const { patternProperties: _open, 'x-n8n-value-types': _valueTypes, ...closed } = derived;
+	return {
+		...closed,
+		properties: {
+			...known,
+			...Object.fromEntries(typed.map(({ key, schema }) => [key, schema ?? {}])),
+		},
+		required: [
+			...(derived.required ?? []),
+			...typed.flatMap(({ key, schema }) => (schema ? [key] : [])),
+		],
+	};
+}
+
 export const getManyDatabasePages = defineAction({
 	node: notion,
 	id: 'notion.databasePage.getAll',
@@ -167,14 +212,8 @@ export const getManyDatabasePages = defineAction({
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
 	input,
 	output: page,
-	deriveOutput(parameters) {
-		const typed = guarantees(parameters.where);
-		return {
-			...page.json,
-			properties: { ...page.json.properties, ...Object.fromEntries(typed) },
-			required: [...(page.json.required ?? []), ...typed.map(([key]) => key)],
-		};
-	},
+	deriveOutput,
+	resourceOutput: { method: 'notion.dataSourceProperties', toOutput: outputFromProperties },
 	async run({ input: parameters, http, emit }) {
 		const dataSourceId = await dataSourceOf(http, notionIdOf(parameters.database));
 		const { where, limit, sort } = parameters;

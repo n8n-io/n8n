@@ -1,10 +1,17 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { exampleOf, generateNodeModule, toContract, toTs, type JsonSchema } from '@n8n/node-sdk';
+import {
+	exampleOf,
+	generateNodeModule,
+	toContract,
+	toTs,
+	type JsonSchema,
+	type ResourceField,
+} from '@n8n/node-sdk';
 import { actions, nodeTypeOf } from '@n8n/nodes-base-next';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import type { InstanceAiContext } from '../../types';
+import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { WORKFLOW_DIAGNOSTICS_FILENAME } from '../../workspace/sandbox-typescript';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -79,16 +86,132 @@ export function nextWorkspaceFiles(
 
 const byNodeType = () => new Map(actions.map((action) => [nodeTypeOf(action), action]));
 
-/** The action's output for this node's parameters; a hatch that cannot read them keeps the default. */
+/**
+ * The action's output for this node's parameters and its resource fields. A hatch that cannot
+ * read them keeps the default.
+ */
 function outputOf(
 	action: (typeof actions)[number],
 	parameters: Record<string, unknown>,
+	fields?: readonly ResourceField[],
 ): JsonSchema {
 	try {
+		if (fields?.length && action.resourceOutput) {
+			return action.resourceOutput.toOutput(fields, parameters);
+		}
 		return action.deriveOutput?.(parameters) ?? action.output.json;
 	} catch {
 		return action.output.json;
 	}
+}
+
+/** Resource fields by node name, from `fetchResourceFields`. */
+export type ResourceFields = ReadonlyMap<string, readonly ResourceField[]>;
+
+type LookupCall = Pick<ExploreResourcesParams, 'nodeType' | 'version' | 'methodName'> & {
+	currentNodeParameters: Record<string, unknown>;
+};
+
+// Same ID pattern as the Notion action; the legacy locator accepts an ID only.
+const NOTION_ID = /[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/i;
+
+const idLocator = (value: string) => ({ __rl: true, mode: 'id', value });
+
+/**
+ * The lookups `resourceOutput.method` names, as load-options calls on legacy nodes. The host
+ * tries the calls in order and keeps the first that lists fields.
+ */
+const RESOURCE_LOOKUPS: Record<string, (parameters: Record<string, unknown>) => LookupCall[]> = {
+	// v3 reads a data source ID and v2 a database ID; the action accepts both.
+	'notion.dataSourceProperties': ({ database }) => {
+		const id =
+			typeof database === 'string' && !database.startsWith('=')
+				? NOTION_ID.exec(database)?.[0]
+				: undefined;
+		if (!id) return [];
+		const base = { nodeType: 'n8n-nodes-base.notion', methodName: 'getFilterProperties' };
+		const databasePage = { resource: 'databasePage', operation: 'getAll' };
+		return [
+			{
+				...base,
+				version: 3,
+				currentNodeParameters: { ...databasePage, dataSourceId: idLocator(id) },
+			},
+			{
+				...base,
+				version: 2.2,
+				currentNodeParameters: { ...databasePage, databaseId: idLocator(id) },
+			},
+		];
+	},
+};
+
+const RESOURCE_LOOKUP_TIMEOUT_MS = 5_000;
+
+async function withTimeout<T>(work: Promise<T>, fallback: T): Promise<T> {
+	return await new Promise((resolve) => {
+		const timer = setTimeout(() => resolve(fallback), RESOURCE_LOOKUP_TIMEOUT_MS);
+		work.then(resolve, () => resolve(fallback)).finally(() => clearTimeout(timer));
+	});
+}
+
+async function firstFields(
+	explore: NonNullable<InstanceAiContext['nodeService']['exploreResources']>,
+	[call, ...rest]: LookupCall[],
+	credential: { credentialType: string; credentialId: string },
+): Promise<ResourceField[]> {
+	if (!call) return [];
+	const result = await explore({ ...call, ...credential, methodType: 'loadOptions' }).catch(
+		() => undefined,
+	);
+	return result?.results.length
+		? result.results.map(({ name, value }) => ({ name, value }))
+		: await firstFields(explore, rest, credential);
+}
+
+/**
+ * The fields of the resource each node reads, for actions with `resourceOutput`. The source
+ * binds no credential, so the lookup uses the node's credential or else the sole stored
+ * credential the action accepts. Best effort: a failed or slow lookup leaves the node out.
+ */
+export async function fetchResourceFields(
+	context: InstanceAiContext,
+	workflow: WorkflowJSON,
+): Promise<ResourceFields> {
+	const explore = context.nodeService.exploreResources?.bind(context.nodeService);
+	if (!explore) return new Map();
+	const types = byNodeType();
+	const targets = workflow.nodes.flatMap((node) => {
+		const action = types.get(node.type);
+		const calls = action?.resourceOutput
+			? (RESOURCE_LOOKUPS[action.resourceOutput.method]?.(node.parameters ?? {}) ?? [])
+			: [];
+		return action && node.name && calls.length > 0
+			? [{ name: node.name, node, action, calls }]
+			: [];
+	});
+	if (targets.length === 0) return new Map();
+	const stored = await context.credentialService.list().catch(() => []);
+	const fetched = await Promise.all(
+		targets.map(async ({ name, node, action, calls }) => {
+			const bound = Object.entries(node.credentials ?? {}).flatMap(([type, value]) =>
+				action.credentialTypes.includes(type) && typeof value?.id === 'string'
+					? [{ credentialType: type, credentialId: value.id }]
+					: [],
+			);
+			const accepted = stored.filter(({ type }) => action.credentialTypes.includes(type));
+			const [credential] =
+				bound.length > 0
+					? bound
+					: accepted.length === 1
+						? accepted.map(({ id, type }) => ({ credentialType: type, credentialId: id }))
+						: [];
+			if (!credential) return [];
+			const fields = await withTimeout(firstFields(explore, calls, credential), []);
+			return fields.length > 0 ? [[name, fields] as const] : [];
+		}),
+	);
+	return new Map(fetched.flat());
 }
 
 type Fixtures = NonNullable<WorkflowJSON['pinData']>;
@@ -98,12 +221,18 @@ type Fixtures = NonNullable<WorkflowJSON['pinData']>;
  * simulates read nodes instead of calling the service, and needs no LLM to invent the output
  * of simulated write nodes.
  */
-export function synthesizedFixtures(workflow: WorkflowJSON, declared: Fixtures = {}): Fixtures {
+export function synthesizedFixtures(
+	workflow: WorkflowJSON,
+	declared: Fixtures = {},
+	resourceFields: ResourceFields = new Map(),
+): Fixtures {
 	const types = byNodeType();
 	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
 		const action = types.get(node.type);
 		if (!action || !node.name || declared[node.name]) return [];
-		const example = exampleOf(outputOf(action, node.parameters ?? {}));
+		const example = exampleOf(
+			outputOf(action, node.parameters ?? {}, resourceFields.get(node.name)),
+		);
 		return typeof example === 'object' && example !== null && !Array.isArray(example)
 			? [[node.name, [Object.fromEntries(Object.entries(example))]]]
 			: [];
@@ -112,15 +241,22 @@ export function synthesizedFixtures(workflow: WorkflowJSON, declared: Fixtures =
 }
 
 /**
- * Output types for the nodes of a built workflow, from each action's `deriveOutput` pure
- * hatch. Keyed by node name, they narrow `$('Node')` and the next node's item in `tsc`.
+ * Output types for the nodes of a built workflow, from each action's `deriveOutput` or
+ * `resourceOutput` pure hatch. Keyed by node name, they narrow `$('Node')` and the next node's
+ * item in `tsc`.
  */
-export function nodeOutputsDeclaration(workflow: WorkflowJSON): string {
+export function nodeOutputsDeclaration(
+	workflow: WorkflowJSON,
+	resourceFields: ResourceFields = new Map(),
+): string {
 	const types = byNodeType();
 	const members = workflow.nodes.flatMap((node) => {
 		const action = types.get(node.type);
-		if (!action?.deriveOutput || !node.name) return [];
-		const schema = outputOf(action, node.parameters ?? {});
+		const fields = node.name ? resourceFields.get(node.name) : undefined;
+		if (!action || !node.name || !(action.deriveOutput || (fields && action.resourceOutput))) {
+			return [];
+		}
+		const schema = outputOf(action, node.parameters ?? {}, fields);
 		return [`\t\t${JSON.stringify(node.name)}: ${toTs(schema, { input: false, indent: '\t\t' })};`];
 	});
 	if (members.length === 0) return EMPTY_OUTPUTS;

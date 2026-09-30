@@ -7,6 +7,7 @@ import {
 	nextActions,
 	nextNodeIdOfNodeType,
 	nextNodeModule,
+	nextNodeView,
 	nodeModuleText,
 	searchNextActions,
 } from '../next-modules';
@@ -55,7 +56,11 @@ describe('next-modules', () => {
 	});
 
 	it('inlines only nodes the query names and keeps other matches to one line', () => {
-		expect(searchNextActions('http request')).toEqual({ nodes: ['httpRequest'], otherActions: [] });
+		expect(searchNextActions('http request')).toEqual({
+			nodes: ['httpRequest'],
+			actions: ['httpRequest.get', 'httpRequest.send'],
+			otherActions: [],
+		});
 		const slack = searchNextActions('slack send');
 		expect(slack.nodes).toEqual([]);
 		expect(slack.otherActions).toContain(
@@ -66,8 +71,44 @@ describe('next-modules', () => {
 	it('lists no other actions when the query names a module node', () => {
 		expect(searchNextActions('notion get many pages', ['gmail', 'googleSheets'])).toEqual({
 			nodes: ['notion'],
+			actions: ['notion.databasePage.getAll'],
 			otherActions: [],
 		});
+	});
+
+	it.each([
+		['gmail send message', ['gmail.message.send']],
+		['http request post', ['httpRequest.send']],
+		[
+			'google sheets append row',
+			['googleSheets.sheet.append', 'googleSheets.sheet.appendOrUpdate'],
+		],
+		['gmail', ['gmail.message.send', 'gmail.message.getAll', 'gmail.message.get']],
+	])('names the actions of %s that the query singles out', (query, ids) => {
+		expect(searchNextActions(query).actions.filter((id) => !id.startsWith('googleGemini'))).toEqual(
+			ids,
+		);
+	});
+
+	it('shows types only for the shown actions and one line for each other action', () => {
+		const view = nextNodeView('gmail', new Set(['gmail.message.send']));
+
+		expect(view?.import).toBe("import { gmail } from '@n8n/nodes/gmail';");
+		expect(view?.module).toContain('export type GmailMessageSendInput<I, C> = {');
+		expect(view?.module).toContain('\t\tsend: <In, Ctx, const N extends string>(');
+		expect(view?.module).not.toContain('export type GmailMessageGetAllInput');
+		expect(view?.module).toContain(
+			'// gmail.message.getAll(config: GmailMessageGetAllInput) — Get many messages (read, 1:N)\n',
+		);
+		expect(view?.module).toContain('type-definition "gmail"');
+		expect(view!.module.length).toBeLessThan(nodeModuleText('gmail')!.length / 2);
+	});
+
+	it('shows the whole module when all or none of its actions are shown', () => {
+		const all = new Set(['httpRequest.get', 'httpRequest.send']);
+		expect(nextNodeView('httpRequest', all)).toEqual(nextNodeModule('httpRequest'));
+		expect(nextNodeView('httpRequest', new Set())).toEqual(nextNodeModule('httpRequest'));
+		expect(nextNodeView('slack', all)).toBeUndefined();
 	});
 
 	it('lists the actions of module nodes that the catalog search found', () => {

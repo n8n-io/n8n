@@ -1,6 +1,8 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import type { InstanceAiContext } from '../../../types';
 import {
+	fetchResourceFields,
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
 	synthesizedFixtures,
@@ -71,6 +73,98 @@ describe('next workflow build', () => {
 		});
 		expect(synthesizedFixtures(workflow, { 'Done tasks': [{ id: 'mine' }] })).toEqual({
 			'Done tasks': [{ id: 'mine' }],
+		});
+	});
+
+	describe('resource fields', () => {
+		const databaseId = '0123456789abcdef0123456789abcdef';
+		const tasks: WorkflowJSON = {
+			name: 'Tasks',
+			connections: {},
+			nodes: [
+				{
+					id: '1',
+					name: 'Tasks',
+					type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { database: `https://www.notion.so/Tasks-${databaseId}` },
+				},
+			],
+		};
+		const fields = [
+			{ name: 'Status', value: 'Status|status' },
+			{ name: 'Story Points', value: 'Story Points|number' },
+		];
+
+		const makeContext = (
+			exploreResources: ReturnType<typeof vi.fn>,
+			credentials = [{ id: 'c1', name: 'Notion account', type: 'notionApi' }],
+		) =>
+			({
+				nodeService: { exploreResources },
+				credentialService: { list: vi.fn().mockResolvedValue(credentials) },
+			}) as unknown as InstanceAiContext;
+
+		it('lists properties with the sole accepted credential, data source first, then database', async () => {
+			const exploreResources = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('Could not find data source'))
+				.mockResolvedValueOnce({ results: fields });
+			const result = await fetchResourceFields(makeContext(exploreResources), tasks);
+			expect(result.get('Tasks')).toEqual(fields);
+			expect(exploreResources).toHaveBeenNthCalledWith(1, {
+				nodeType: 'n8n-nodes-base.notion',
+				version: 3,
+				methodName: 'getFilterProperties',
+				methodType: 'loadOptions',
+				credentialType: 'notionApi',
+				credentialId: 'c1',
+				currentNodeParameters: {
+					resource: 'databasePage',
+					operation: 'getAll',
+					dataSourceId: { __rl: true, mode: 'id', value: databaseId },
+				},
+			});
+			expect(exploreResources.mock.calls[1]?.[0]).toMatchObject({
+				version: 2.2,
+				currentNodeParameters: { databaseId: { __rl: true, mode: 'id', value: databaseId } },
+			});
+		});
+
+		it('skips the lookup when more than one credential could be bound', async () => {
+			const exploreResources = vi.fn();
+			const context = makeContext(exploreResources, [
+				{ id: 'c1', name: 'Notion A', type: 'notionApi' },
+				{ id: 'c2', name: 'Notion B', type: 'notionOAuth2Api' },
+			]);
+			expect((await fetchResourceFields(context, tasks)).size).toBe(0);
+			expect(exploreResources).not.toHaveBeenCalled();
+		});
+
+		it('gives up on a slow lookup after 5 seconds', async () => {
+			vi.useFakeTimers();
+			try {
+				const pending = fetchResourceFields(
+					makeContext(vi.fn(async () => await new Promise(() => {}))),
+					tasks,
+				);
+				await vi.advanceTimersByTimeAsync(5_000);
+				expect((await pending).size).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('closes the output type and seeds fixtures with real property names', () => {
+			const resourceFields = new Map([['Tasks', fields]]);
+			const text = nodeOutputsDeclaration(tasks, resourceFields);
+			expect(text).toContain('property_story_points: number | null;');
+			expect(text).not.toContain('[key: `property_');
+			expect(synthesizedFixtures(tasks, {}, resourceFields).Tasks?.[0]).toMatchObject({
+				property_status: 'example',
+				property_story_points: 1,
+			});
 		});
 	});
 });

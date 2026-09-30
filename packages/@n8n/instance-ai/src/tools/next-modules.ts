@@ -15,14 +15,16 @@ export interface NextNodeModule {
 
 const actionsOfNode = (nodeId: string) => nextActions.filter((action) => action.node.id === nodeId);
 
-/** The generated TypeScript module for every action of one node. */
-export function nodeModuleText(nodeId: string): string | undefined {
-	const own = actionsOfNode(nodeId);
-	if (!own.length) return undefined;
-	return generateNodeModule(
+const moduleOf = (nodeId: string, own: readonly Action[]) =>
+	generateNodeModule(
 		nodeId,
 		own.map((action) => ({ contract: toContract(action), nodeType: nodeTypeOf(action) })),
 	);
+
+/** The generated TypeScript module for every action of one node. */
+export function nodeModuleText(nodeId: string): string | undefined {
+	const own = actionsOfNode(nodeId);
+	return own.length ? moduleOf(nodeId, own) : undefined;
 }
 
 /** The node id for a node id, an action id, or an executable node type of this package. */
@@ -38,6 +40,36 @@ export function nextNodeModule(ref: string): NextNodeModule | undefined {
 	const module = nodeId === undefined ? undefined : nodeModuleText(nodeId);
 	if (nodeId === undefined || module === undefined) return undefined;
 	return { node: nodeId, import: `import { ${nodeId} } from '@n8n/nodes/${nodeId}';`, module };
+}
+
+const inputTypeOf = (action: Action) => `${action.id.split('.').map(capitalize).join('')}Input`;
+
+const otherActionLine = (action: Action) =>
+	`// ${action.id}(config: ${inputTypeOf(action)}) — ${action.action} (${action.flow.effect}, ${action.flow.cardinality})`;
+
+/**
+ * The search view of a module: the `shown` actions with their types, and one line for each
+ * other action. The view is a valid module with fewer factories, so the agent can copy it.
+ * The sandbox module keeps all actions.
+ */
+export function nextNodeView(
+	nodeId: string,
+	shown: ReadonlySet<string>,
+): NextNodeModule | undefined {
+	const full = nextNodeModule(nodeId);
+	const own = actionsOfNode(nodeId);
+	const others = own.filter((action) => !shown.has(action.id));
+	if (!full || !others.length || others.length === own.length) return full;
+	const module = [
+		moduleOf(
+			nodeId,
+			own.filter((action) => shown.has(action.id)),
+		),
+		`// Other actions. Get their types with type-definition "${nodeId}".`,
+		...others.map(otherActionLine),
+		'',
+	].join('\n');
+	return { ...full, module };
 }
 
 /**
@@ -82,6 +114,21 @@ const scoreOf = (action: Action, terms: readonly string[]) =>
 
 const termsOf = (query: string) => words(query).filter((term) => term.length >= 2);
 
+/**
+ * The actions of a node that the query names beyond the node name, e.g. `send` in
+ * "gmail send message". All actions of the node when the query names none.
+ */
+function actionsNamedBy(nodeId: string, terms: readonly string[]): Action[] {
+	const own = actionsOfNode(nodeId);
+	const actionTerms = terms.filter((term) => !own.some((action) => hits(term, nodeWords(action))));
+	const scored = own.map((action) => ({
+		action,
+		score: actionTerms.filter((term) => hits(term, actionWords(action))).length,
+	}));
+	const best = Math.max(0, ...scored.map(({ score }) => score));
+	return best ? scored.filter(({ score }) => score === best).map(({ action }) => action) : own;
+}
+
 /** Actions that share words with the query. Node words weigh more than action words. */
 export function findNextActions(query: string): Action[] {
 	const terms = termsOf(query);
@@ -95,8 +142,9 @@ export function findNextActions(query: string): Action[] {
 const MAX_OTHER_ACTIONS = 3;
 
 /**
- * One search query: the nodes whose module the query names, and one-line rows for other
- * matching actions. `coveredNodes` are module nodes that the catalog search found.
+ * One search query: the nodes whose module the query names, the ids of their actions that
+ * the query names, and one-line rows for other matching actions. `coveredNodes` are module
+ * nodes that the catalog search found.
  * When the query names a module, other actions match only generic words such as "get",
  * so they are not listed.
  */
@@ -113,7 +161,11 @@ export function searchNextActions(query: string, coveredNodes: readonly string[]
 	const others = nodes.length
 		? []
 		: [...new Set([...matches, ...coveredNodes.flatMap(actionsOfNode)])];
-	return { nodes, otherActions: others.slice(0, MAX_OTHER_ACTIONS).map(actionRow) };
+	return {
+		nodes,
+		actions: nodes.flatMap((nodeId) => actionsNamedBy(nodeId, terms).map(({ id }) => id)),
+		otherActions: others.slice(0, MAX_OTHER_ACTIONS).map(actionRow),
+	};
 }
 
 const MAX_CATALOG_ROWS = 3;

@@ -12,6 +12,7 @@ export {
 	type HttpMethod,
 	type HttpRequest,
 	type NodeDefinition,
+	type ResourceField,
 	type RunContext,
 } from './define';
 export { exampleOf, matches, validate } from './validate';

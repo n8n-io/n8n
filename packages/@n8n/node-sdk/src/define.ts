@@ -58,6 +58,12 @@ export interface RunContext<Input, Output> {
 	emit(item: Output): void;
 }
 
+/** A field of the resource an action reads (a Notion property, a sheet column), as a host lookup lists it. */
+export interface ResourceField {
+	readonly name: string;
+	readonly value: string | number | boolean;
+}
+
 export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 	readonly node: NodeDefinition;
 	/** `<node>.<resource>.<operation>`, e.g. `notion.databasePage.getAll`. */
@@ -76,6 +82,15 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 	 * mapping creates). Leaves other than discriminators may still be expression strings.
 	 */
 	deriveOutput?(input: ObjectOf<S>): JsonSchema;
+	/**
+	 * Pure hatch: the output shape from the fields of the resource these parameters name.
+	 * `method` names a lookup the host runs with the node's credential. Without fields, the host
+	 * keeps `deriveOutput`.
+	 */
+	readonly resourceOutput?: {
+		readonly method: string;
+		toOutput(fields: readonly ResourceField[], input: ObjectOf<S>): JsonSchema;
+	};
 	/** Runs once per input item; emit one or more output items. */
 	run(context: RunContext<ObjectOf<S>, Infer<O>>): Promise<void>;
 }

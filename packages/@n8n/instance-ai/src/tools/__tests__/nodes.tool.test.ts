@@ -8,6 +8,7 @@ import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
+import { nextNodeModule } from '../next-modules';
 import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
 import { warmWorkspace } from '../../workspace/warm-workspace';
@@ -1316,6 +1317,8 @@ describe('nodes tool', () => {
 			});
 
 			expect(result.nodeModules.map(({ node }) => node)).toEqual(['notion', 'httpRequest']);
+			expect(result.nodeModules[1]).toEqual(nextNodeModule('httpRequest'));
+			expect(result.searches[0]).not.toHaveProperty('actions');
 			expect(result.searches.map(({ query, modules }) => ({ query, modules }))).toEqual([
 				{ query: 'notion get many pages', modules: ['notion'] },
 				{ query: 'http get', modules: ['httpRequest'] },
@@ -1329,6 +1332,22 @@ describe('nodes tool', () => {
 					discriminators: { resources: [{ name: 'message', operations: ['post'] }] },
 				}),
 			]);
+		});
+
+		it('shows types only for the module actions that the query names', async () => {
+			const context = createContractContext();
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'http request post',
+				limit: 5,
+			});
+
+			expect(result).not.toHaveProperty('actions');
+			expect(result.nodeModules?.[0]?.module).toContain('export type HttpRequestSendInput<I, C>');
+			expect(result.nodeModules?.[0]?.module).not.toContain('export type HttpRequestGetInput');
+			expect(result.nodeModules?.[0]?.module).toContain(
+				'// httpRequest.get(config: HttpRequestGetInput) — GET a URL (read, 1:N)',
+			);
 		});
 
 		it('lists module actions of services the query does not name as one line each', async () => {
