@@ -58,12 +58,13 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return result.affected === 1;
 	}
 
-	async cancelExecution(id: string): Promise<boolean> {
+	async cancelExecution(id: string): Promise<{ finishedAt: Date } | null> {
+		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
-			{ status: 'cancelled', finishedAt: new Date() },
+			{ status: 'cancelled', finishedAt },
 		);
-		return result.affected === 1;
+		return result.affected === 1 ? { finishedAt } : null;
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {

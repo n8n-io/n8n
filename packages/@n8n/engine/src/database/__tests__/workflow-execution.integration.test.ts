@@ -248,10 +248,11 @@ describe('workflow_execution table (integration)', () => {
 
 			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
 
-			expect(cancelled).toBe(true);
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe('cancelled');
 			expect(row.finishedAt).toBeInstanceOf(Date);
+			// the caller reports the time the row records, not a second reading of the clock
+			expect(cancelled).toEqual({ finishedAt: row.finishedAt });
 		},
 	);
 
@@ -264,7 +265,7 @@ describe('workflow_execution table (integration)', () => {
 
 			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
 
-			expect(cancelled).toBe(false);
+			expect(cancelled).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(status);
 			expect(row.finishedAt).toEqual(finishedAt);

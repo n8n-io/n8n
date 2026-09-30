@@ -63,8 +63,12 @@ export interface ExecutionStore {
 	 */
 	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
 
-	/** End an execution on request, from any status that has not ended. */
-	cancelExecution(id: string): Promise<boolean>;
+	/**
+	 * End an execution on request, from any status that has not ended. Returns
+	 * the finish time it wrote, so the caller reports the time the row records,
+	 * or `null` when the execution had already ended.
+	 */
+	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
 
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when

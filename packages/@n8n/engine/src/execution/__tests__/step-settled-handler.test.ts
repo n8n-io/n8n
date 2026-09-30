@@ -66,7 +66,7 @@ function makeExecutionStore(
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
-		cancelExecution: vi.fn().mockResolvedValue(true),
+		cancelExecution: vi.fn().mockResolvedValue(null),
 		refreshLiveStatus: vi.fn(),
 		...storeOverrides,
 	};
