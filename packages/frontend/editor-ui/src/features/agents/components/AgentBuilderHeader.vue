@@ -36,7 +36,7 @@ const props = defineProps<{
 	projectName: string | null;
 	projectIcon: IconOrEmoji;
 	headerActions: Array<ActionDropdownItem<string>>;
-	saveStatus?: 'idle' | 'saving' | 'saved';
+	saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
 	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
 	isPreviewOpen?: boolean;
@@ -214,14 +214,16 @@ function onMenuSelect(id: string) {
 		</div>
 		<div :class="$style.right">
 			<span
-				v-if="saveStatus === 'saving' || saveStatus === 'saved'"
-				:class="$style.saveStatus"
+				v-if="saveStatus && saveStatus !== 'idle'"
+				:class="[$style.saveStatus, { [$style.saveStatusError]: saveStatus === 'error' }]"
 				data-testid="agent-header-save-status"
 			>
 				{{
 					saveStatus === 'saving'
 						? i18n.baseText('agents.builder.header.saving')
-						: i18n.baseText('agents.builder.header.saved')
+						: saveStatus === 'error'
+							? i18n.baseText('agents.builder.header.notSaved')
+							: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
 			<AgentPreviewButton
@@ -334,6 +336,10 @@ function onMenuSelect(id: string) {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	user-select: none;
+}
+
+.saveStatusError {
+	color: var(--text-color--danger);
 }
 
 .headerActionsMenu {

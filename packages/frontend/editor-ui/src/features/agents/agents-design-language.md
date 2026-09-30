@@ -25,6 +25,12 @@ the chip text before the action moves outside the panel.
 Show session details on separate lines when the session list is narrow. Keep the
 title, origin, date, token count, and actions visible without overlap.
 
+## Save status
+
+Keep the user's draft after an autosave fails. Show `Not saved` in the Agent
+header until a later save succeeds or the Agent reloads. Show the server error
+in a toast.
+
 ## Modal patterns
 
 ### Canonical components

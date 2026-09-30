@@ -675,6 +675,10 @@ const {
 	refresh: refreshConfigValidation,
 } = useAgentConfigValidation();
 const localConfig = ref<AgentJsonConfig | null>(null);
+let configEditRevision = 0;
+function markConfigDraftEdited() {
+	configEditRevision += 1;
+}
 const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
@@ -1104,6 +1108,7 @@ interface ConfigAutosaveSnapshot {
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
+	revision: number;
 	/** `undefined` while the agent's config has not been fetched yet (e.g. before it is persisted). */
 	baseConfigHash: string | null | undefined;
 }
@@ -1312,14 +1317,23 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveRes
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
 	if (result.stale) return undefined;
-	emit('name-saved', snapshot.config.name);
+	// Apply the server's config only if this is still the latest local edit.
+	// The editor reports input before its debounced config update reaches this view.
+	if (snapshot.revision === configEditRevision) config.value = result.config;
+	if (localConfig.value?.name === snapshot.config.name) emit('name-saved', result.config.name);
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
-	await Promise.all([
-		fetchAgent(snapshot.projectId, snapshot.agentId),
-		refreshConfigValidation(snapshot.projectId, snapshot.agentId),
-	]);
+	try {
+		await Promise.all([
+			fetchAgent(snapshot.projectId, snapshot.agentId),
+			refreshConfigValidation(snapshot.projectId, snapshot.agentId),
+		]);
+	} catch (error) {
+		if (!isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) {
+			showError(error, locale.baseText('agents.builder.loadError'));
+		}
+	}
 	return undefined;
 }
 
@@ -1366,6 +1380,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 // UI feel laggy right after an edit.
 const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
+	showErrorStatus: true,
 	onError: (error: unknown) => {
 		// Surface backend validation errors (e.g. incompatible workflow-tool
 		// triggers or body nodes) so the user isn't left wondering why their
@@ -1447,6 +1462,9 @@ const saveStatus = computed(() => {
 	];
 	if (statuses.includes('saving')) {
 		return 'saving';
+	}
+	if (statuses.includes('error')) {
+		return 'error';
 	}
 	if (statuses.includes('saved')) {
 		return 'saved';
@@ -1567,6 +1585,7 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
 	if (!localConfig.value) return;
+	markConfigDraftEdited();
 	// Acquire the write lock before persisting any change — the lock is
 	// lazy (acquired on first edit, released on inactivity), matching the
 	// workflow collaboration pattern.
@@ -1597,6 +1616,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
 }
@@ -1641,6 +1661,7 @@ const caps = useAgentCapabilitiesActions({
 const appliedSkills = caps.appliedSkills;
 
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
+	markConfigDraftEdited();
 	invalidateConfigValidation();
 	localConfig.value = deepCopy(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
@@ -1649,6 +1670,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		agentId: agentId.value,
 		type: 'config',
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
 }
@@ -2811,6 +2833,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
+					@draft:config="markConfigDraftEdited"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"
 					@add-tool="caps.onOpenAddToolModal"

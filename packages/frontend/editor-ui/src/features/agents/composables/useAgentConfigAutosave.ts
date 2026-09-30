@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
-export type SaveStatus = 'idle' | 'saving' | 'saved';
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export type AutosaveResult = 'skipped' | 'stale' | undefined;
 
 export interface UseAgentConfigAutosaveParams<TSnapshot> {
@@ -23,6 +23,8 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	onSaved?: (snapshot: TSnapshot) => void;
 	/** Called when the save throws — caller decides how to surface the error. */
 	onError?: (error: unknown) => void;
+	/** Keep an unsaved status visible when a failed draft stays in the editor. */
+	showErrorStatus?: boolean;
 	/** Debounce delay in ms (after `getDebounceTime`). */
 	debounceMs?: number;
 	/** How long to keep the "saved" affordance visible before fading back to idle. */
@@ -143,7 +145,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			params.onError?.(error);
 			if (!detached) {
 				lastSaveError = toError(error);
-				saveStatus.value = 'idle';
+				saveStatus.value = params.showErrorStatus ? 'error' : 'idle';
 			}
 			if (rethrow) throw toError(error);
 		}

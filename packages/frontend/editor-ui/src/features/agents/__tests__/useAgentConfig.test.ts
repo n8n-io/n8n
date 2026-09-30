@@ -116,9 +116,10 @@ describe('useAgentConfig', () => {
 			configHash: 'hash-1',
 			versionId: 'version-1',
 		});
-		await save;
+		const result = await save;
 		await nextTick();
 
+		expect(result.config.instructions).toBe('Cris');
 		expect(draft.value.instructions).toBe('Crisp.');
 		expect(state.configHash.value).toBe('hash-1');
 

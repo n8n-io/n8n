@@ -54,11 +54,12 @@ describe('useAgentConfigAutosave', () => {
 	it('flushAutosave rejects when the immediate save fails', async () => {
 		vi.useFakeTimers();
 		const error = new Error('save failed');
-		const save = vi.fn().mockRejectedValue(error);
+		const save = vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);
 		const onError = vi.fn();
 		const autosave = useAgentConfigAutosave<{ value: string }>({
 			save,
 			onError,
+			showErrorStatus: true,
 			debounceMs: 500,
 		});
 
@@ -66,8 +67,12 @@ describe('useAgentConfigAutosave', () => {
 
 		await expect(autosave.flushAutosave()).rejects.toBe(error);
 		expect(onError).toHaveBeenCalledWith(error);
+		expect(autosave.saveStatus.value).toBe('error');
 		// The snapshot is restored for a retry, so the loop still reports it as pending.
 		expect(autosave.hasPendingSave.value).toBe(true);
+
+		await autosave.flushAutosave();
+		expect(autosave.saveStatus.value).toBe('saved');
 	});
 
 	it('does not restore a failed flush snapshot over a newer pending snapshot', async () => {

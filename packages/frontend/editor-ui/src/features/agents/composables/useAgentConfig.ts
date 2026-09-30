@@ -72,7 +72,7 @@ export function useAgentConfig() {
 		agentId: string,
 		data: AgentJsonConfig,
 		baseConfigHash: string | null = configHash.value ?? null,
-	): Promise<{ versionId: string | null; stale: boolean }> {
+	): Promise<{ config: AgentJsonConfig; versionId: string | null; stale: boolean }> {
 		const key = keyFor(projectId, agentId);
 		if (configHash.value !== ownLatest) ownBases.clear();
 		else if (ownBases.has(baseConfigHash)) baseConfigHash = ownLatest;
@@ -85,13 +85,11 @@ export function useAgentConfig() {
 		);
 		const stale = latestKey !== key;
 		if (!stale) {
-			// The save response can lag behind newer edits in the working draft.
-			// Only a fetch may replace config; the save still advances its hash.
 			configHash.value = result.configHash;
 			ownBases.add(baseConfigHash);
 			ownLatest = result.configHash;
 		}
-		return { versionId: result.versionId, stale };
+		return { config: result.config, versionId: result.versionId, stale };
 	}
 
 	return { config, configHash, loading, repoint, fetchConfig, updateConfig };
