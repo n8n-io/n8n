@@ -89,7 +89,9 @@ const revokeLabel = computed(() =>
 				<N8nText size="small" color="text-light" :class="$style.line">
 					<I18nT :keypath="metaKeypath" scope="global" tag="span">
 						<template v-if="typeLabel" #type>{{ typeLabel }}</template>
-						<template #timeAgo><N8nTimeAgo :date="grantedAt" :locale="rootStore.defaultLocale" /></template>
+						<template #timeAgo
+							><N8nTimeAgo :date="grantedAt" :locale="rootStore.defaultLocale"
+						/></template>
 					</I18nT>
 				</N8nText>
 				<N8nText
