@@ -49,9 +49,13 @@ export function buildChatShellViewModel(
 export function connectBarText(vm: ChatShellViewModel, testMode?: boolean): string {
 	const remaining = Math.max(vm.total - vm.connectedCount, 0);
 	if (remaining === 0) {
-		return testMode
-			? "You're testing with your own connected accounts. Visitors will need to connect their own."
-			: `All ${vm.total} ${accountsLabel(vm.total)} connected \u00b7 ready to chat`;
+		if (testMode) {
+			return "You're testing with your own connected accounts. Visitors will need to connect their own.";
+		}
+		// "All" only reads correctly once there's more than one account to be "all" of.
+		return vm.total === 1
+			? 'Account connected \u00b7 ready to chat'
+			: `All ${vm.total} accounts connected \u00b7 ready to chat`;
 	}
 	if (vm.total === 1) {
 		return `Connect ${vm.credentials[0].name} to start this chat`;

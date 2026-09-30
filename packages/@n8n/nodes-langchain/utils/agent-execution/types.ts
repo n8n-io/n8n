@@ -184,6 +184,8 @@ export interface ToolMetadata extends Record<string, unknown> {
 	originalSchema?: ZodType;
 	/** Whether this tool came from a toolkit (vs. a standalone tool node) */
 	isFromToolkit?: boolean;
+	/** Text the agent appends to its final reply when this tool was called during the run */
+	attribution?: string;
 }
 
 /**

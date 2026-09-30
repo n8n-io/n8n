@@ -10,19 +10,10 @@ import uniqWith from 'lodash/uniqWith';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { compact as oCompact } from './object-extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
 import { randomInt } from '../utils';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
 
 // Report whether a field resolves on the object itself and not through its prototype chain.
 function hasReadableField(value: object, field: string): boolean {
@@ -407,7 +398,8 @@ average.doc = {
 		'Returns the average of the numbers in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[12, 1, 5].average()', evaluated: '6' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-average',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayaverage',
 };
 
 compact.doc = {
@@ -417,7 +409,8 @@ compact.doc = {
 		'Removes any empty values from the array. <code>null</code>, <code>""</code> and <code>undefined</code> count as empty.',
 	examples: [{ example: '[2, null, 1, ""].compact()', evaluated: '[2, 1]' }],
 	returnType: 'Array',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-compact',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraycompact',
 };
 
 isEmpty.doc = {
@@ -428,7 +421,8 @@ isEmpty.doc = {
 		{ example: "['quick', 'brown', 'fox'].isEmpty()", evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayisempty',
 };
 
 isNotEmpty.doc = {
@@ -439,7 +433,8 @@ isNotEmpty.doc = {
 		{ example: '[].isNotEmpty()', evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-isNotEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayisnotempty',
 };
 
 first.doc = {
@@ -448,7 +443,8 @@ first.doc = {
 	description: 'Returns the first element of the array',
 	examples: [{ example: "['quick', 'brown', 'fox'].first()", evaluated: "'quick'" }],
 	returnType: 'any',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-first',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayfirst',
 };
 
 last.doc = {
@@ -457,7 +453,8 @@ last.doc = {
 	description: 'Returns the last element of the array',
 	examples: [{ example: "['quick', 'brown', 'fox'].last()", evaluated: "'fox'" }],
 	returnType: 'any',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-last',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraylast',
 };
 
 max.doc = {
@@ -466,7 +463,8 @@ max.doc = {
 		'Returns the largest number in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[1, 12, 5].max()', evaluated: '12' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-max',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraymax',
 };
 
 min.doc = {
@@ -475,7 +473,8 @@ min.doc = {
 		'Returns the smallest number in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[12, 1, 5].min()', evaluated: '1' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-min',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraymin',
 };
 
 randomItem.doc = {
@@ -486,7 +485,8 @@ randomItem.doc = {
 		{ example: "['quick', 'brown', 'fox'].randomItem()", evaluated: "'quick'" },
 	],
 	returnType: 'any',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-randomItem',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayrandomitem',
 };
 
 sum.doc = {
@@ -495,7 +495,8 @@ sum.doc = {
 		'Returns the total of all the numbers in the array. Throws an error if there are any non-numbers.',
 	examples: [{ example: '[12, 1, 5].sum()', evaluated: '18' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-sum',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraysum',
 };
 
 chunk.doc = {
@@ -511,7 +512,8 @@ chunk.doc = {
 			type: 'number',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-chunk',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraychunk',
 };
 
 difference.doc = {
@@ -528,7 +530,8 @@ difference.doc = {
 			type: 'Array',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-difference',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraydifference',
 };
 
 intersection.doc = {
@@ -546,7 +549,7 @@ intersection.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-intersection',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayintersection',
 };
 
 merge.doc = {
@@ -570,7 +573,7 @@ merge.doc = {
 			type: 'Array',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
+	docURL: 'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array',
 };
 
 mergeIntoObject.doc = {
@@ -593,7 +596,7 @@ mergeIntoObject.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-mergeintoobject',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraymergeintoobject',
 };
 
 pluck.doc = {
@@ -620,7 +623,8 @@ pluck.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-pluck',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraypluck',
 };
 
 renameKeys.doc = {
@@ -643,7 +647,8 @@ renameKeys.doc = {
 		},
 		{ name: 'to', optional: false, description: 'The new key name', type: 'string' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-renameKeys',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayrenamekeys',
 };
 
 smartJoin.doc = {
@@ -672,7 +677,8 @@ smartJoin.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-smartJoin',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraysmartjoin',
 };
 
 union.doc = {
@@ -688,7 +694,8 @@ union.doc = {
 			type: 'Array',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-union',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayunion',
 };
 
 unique.doc = {
@@ -707,7 +714,8 @@ unique.doc = {
 	],
 	returnType: 'any',
 	aliases: ['removeDuplicates'],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-unique',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayunique',
 	args: [
 		{
 			name: 'fieldNames',
@@ -730,7 +738,7 @@ toJsonString.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-toJsonString',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arraytojsonstring',
 	returnType: 'string',
 };
 
@@ -748,7 +756,8 @@ append.doc = {
 			description: 'Consider using spread syntax instead',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-append',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/array#arrayappend',
 	returnType: 'Array',
 	args: [
 		{

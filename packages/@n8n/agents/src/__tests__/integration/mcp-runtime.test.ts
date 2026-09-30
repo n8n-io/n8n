@@ -45,7 +45,7 @@ describe_llm('agent generate() with MCP tool', () => {
 			'Echo the message "integration test passed" using the tools_echo tool.',
 		);
 
-		expect(result.finishReason).not.toBe('error');
+		expect(result.finishReason, String(result.error)).not.toBe('error');
 
 		const text = findLastTextContent(result.messages);
 		expect(text?.toLowerCase()).toContain('integration test passed');
@@ -73,7 +73,7 @@ describe_llm('agent generate() with MCP tool', () => {
 
 		const result = await agent.generate('Use the tools.add tool to add 15 and 27.');
 
-		expect(result.finishReason).not.toBe('error');
+		expect(result.finishReason, String(result.error)).not.toBe('error');
 		const text = findLastTextContent(result.messages);
 		expect(text).toContain('42');
 
@@ -91,8 +91,8 @@ describe_llm('agent generate() with MCP tool', () => {
 		const result1 = await agent.generate('Use tools.add to add 1 and 2.');
 		const result2 = await agent.generate('Use tools.add to add 3 and 4.');
 
-		expect(result1.finishReason).not.toBe('error');
-		expect(result2.finishReason).not.toBe('error');
+		expect(result1.finishReason, String(result1.error)).not.toBe('error');
+		expect(result2.finishReason, String(result2.error)).not.toBe('error');
 
 		await client.close();
 	});
@@ -194,7 +194,7 @@ describe_llm('McpServerConfig.requireApproval with MCP tools', () => {
 
 		const result = await agent.generate('Use tools.add to add 10 and 32.');
 
-		expect(result.finishReason).not.toBe('error');
+		expect(result.finishReason, String(result.error)).not.toBe('error');
 		const text = findLastTextContent(result.messages);
 		expect(text).toContain('42');
 

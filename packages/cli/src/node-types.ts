@@ -28,10 +28,15 @@ export class NodeTypes implements INodeTypes {
 	 * A "synthetic tool" has no implementation of its own: workflows persist
 	 * names like `gmailTool`, and the registry fabricates that node on demand by
 	 * converting the `gmail` base node into an agent tool.
+	 *
+	 * A tool name listed in `NODES_EXCLUDE` is never synthetic. It resolves to
+	 * itself, so loading it fails as an unrecognized type.
 	 */
-	private resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
+	resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
 		const isSyntheticTool =
-			nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
+			nodeTypeName.endsWith('Tool') &&
+			!this.loadNodesAndCredentials.recognizesNode(nodeTypeName) &&
+			!this.loadNodesAndCredentials.excludeNodes.includes(nodeTypeName);
 		return {
 			baseName: isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName,
 			isSyntheticTool,
@@ -48,7 +53,13 @@ export class NodeTypes implements INodeTypes {
 		const nodeType = this.loadNodesAndCredentials.getNode(nodeTypeName);
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
 
-		return { description: { ...description }, sourcePath: nodeType.sourcePath };
+		return {
+			description: { ...description },
+			sourcePath: this.loadNodesAndCredentials.resolveNodeSourcePath(
+				nodeTypeName,
+				nodeType.sourcePath,
+			),
+		};
 	}
 
 	/**
@@ -62,13 +73,15 @@ export class NodeTypes implements INodeTypes {
 		const { description, sourcePath } = this.getWithSourcePath(nodeTypeName, version);
 
 		if (locale !== 'en') {
-			const translationPath = await this.getNodeTranslationPath({
-				nodeSourcePath: sourcePath,
-				longNodeType: description.name,
-				locale,
-			});
-
 			try {
+				// The directory read in `getNodeTranslationPath` can fail too, so it
+				// stays inside the guard: a missing translation must not fail the request.
+				const translationPath = await this.getNodeTranslationPath({
+					nodeSourcePath: sourcePath,
+					longNodeType: description.name,
+					locale,
+				});
+
 				const translation = await readFile(translationPath, 'utf8');
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				description.translation = JSON.parse(translation);

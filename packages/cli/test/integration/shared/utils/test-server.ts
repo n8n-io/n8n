@@ -230,6 +230,14 @@ export const setupTestServer = ({
 						await import('@/environments.ee/variables/variables.controller.ee.js');
 						break;
 
+					case 'ai-preferences':
+						await import('@/controllers/ai-preference.controller.js');
+						break;
+
+					case 'instance-ai':
+						await import('@/modules/instance-ai/instance-ai.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;
@@ -238,7 +246,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
@@ -259,6 +267,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'jwks':
+						await import('@/jwks/jwks.controller.js');
 						break;
 
 					case 'mfa':
@@ -310,6 +322,10 @@ export const setupTestServer = ({
 
 					case 'passwordReset':
 						await import('@/controllers/password-reset.controller.js');
+						break;
+
+					case 'changeEmail':
+						await import('@/controllers/change-email.controller.js');
 						break;
 
 					case 'owner':
@@ -413,6 +429,12 @@ export const setupTestServer = ({
 
 					case 'test-webhooks':
 						await import('@/webhooks/test-webhooks.controller.js');
+						break;
+
+					case 'type-availability-policies':
+						await import(
+							'@/modules/type-availability-policies/type-availability-policies.module.js'
+						);
 						break;
 				}
 			}

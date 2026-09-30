@@ -20,10 +20,11 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithSubWorkflow,
 	subWorkflowRefOf,
+	WIRE_VERSION_ID,
 	workflowRequirementsFromWorkflows,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { executeWorkflowNode } from './utils/test-builders';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
 	Partial<Pick<ImportPackageRequest, 'workflowIdPolicy' | 'workflowPublishingPolicy'>>;
@@ -33,7 +34,7 @@ async function importPackage(params: ImportPackageParams) {
 }
 
 /** Builds a package where `workflows` carry Execute Sub-workflow refs + the derived requirements. */
-async function buildSubWorkflowPackage(workflows: SerializedWorkflow[]) {
+async function buildSubWorkflowPackage(workflows: PackageWorkflow[]) {
 	return await buildImportPackageBuffer(workflows, {
 		manifestExtras: {
 			requirements: { workflows: workflowRequirementsFromWorkflows(workflows) },
@@ -218,14 +219,14 @@ describe('Package import of workflows with sub-workflows', () => {
 		const parent = serializedWorkflow({
 			id: 'CHEDDAR',
 			name: 'Parent',
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			nodes: [scheduleTriggerNode(), executeWorkflowNode('BRIE')],
 		});
 		const subWorkflow = serializedWorkflow({
 			id: 'BRIE',
 			name: 'Sub-workflow',
 			isArchived: true,
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			nodes: [scheduleTriggerNode()],
 		});
 

@@ -11,6 +11,8 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRowGroup,
@@ -22,9 +24,13 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, watch, onMounted } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
 
-import { OTEL_FIELD_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import {
+	CREDENTIALS_BLANKING_VALUE,
+	OTEL_FIELD_ENV_VARS,
+	OTEL_TEST_SPAN_NAME,
+} from './otel.constants';
 import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
-import { createSampleRateFormat } from './otel.utils';
+import { createSampleRateFormat, isOtlpProtocol } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
 import OtelStatusControl from './OtelStatusControl.vue';
 
@@ -47,7 +53,7 @@ const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
 
 function syncHeaderPairsFromStore() {
-	headerPairs.value = headersStringToPairs(otelStore.settings.exporterHeaders);
+	headerPairs.value = headerPairsFromStore();
 }
 
 function syncHeaderPairsToStore() {
@@ -75,6 +81,23 @@ function isEnvManaged(field: keyof typeof OTEL_FIELD_ENV_VARS): boolean {
 	return otelStore.envManagedFields.includes(field);
 }
 
+// Keys come back from the API as-is; values come back blanked, so the value
+// inputs below render them empty until the user types a replacement. The pair
+// keeps the blanked value in state, so an untouched save preserves the stored one.
+function headerPairsFromStore(): Array<{ key: string; value: string }> {
+	return headersStringToPairs(otelStore.settings.exporterHeaders ?? '');
+}
+
+function headerValueDisplay(pair: { key: string; value: string }): string {
+	return pair.value === CREDENTIALS_BLANKING_VALUE ? '' : pair.value;
+}
+
+function headerValuePlaceholder(pair: { key: string; value: string }): string {
+	return pair.value === CREDENTIALS_BLANKING_VALUE
+		? i18n.baseText('settings.opentelemetry.exporterHeaders.hiddenValuePlaceholder')
+		: i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder');
+}
+
 // State-first copy: the row tells the admin whether tracing is live right now,
 // instead of describing what the disabled state would mean hypothetically.
 const statusDescription = computed(() =>
@@ -82,6 +105,38 @@ const statusDescription = computed(() =>
 		? i18n.baseText('settings.opentelemetry.status.enabledDescription')
 		: i18n.baseText('settings.opentelemetry.status.disabledDescription'),
 );
+
+const isGrpc = computed(() => otelStore.settings.exporterProtocol === 'grpc');
+
+const endpointDescription = computed(() =>
+	i18n.baseText(
+		isGrpc.value
+			? 'settings.opentelemetry.exporterEndpoint.grpcDescription'
+			: 'settings.opentelemetry.exporterEndpoint.description',
+	),
+);
+
+const endpointPlaceholder = computed(() =>
+	i18n.baseText(
+		isGrpc.value
+			? 'settings.opentelemetry.exporterEndpoint.grpcPlaceholder'
+			: 'settings.opentelemetry.exporterEndpoint.placeholder',
+	),
+);
+
+const headersDescription = computed(() =>
+	i18n.baseText(
+		isGrpc.value
+			? 'settings.opentelemetry.exporterHeaders.grpcDescription'
+			: 'settings.opentelemetry.exporterHeaders.description',
+	),
+);
+
+function onProtocolChange(value: unknown) {
+	if (isOtlpProtocol(value)) {
+		otelStore.settings.exporterProtocol = value;
+	}
+}
 
 function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 	const envVariable = i18n.baseText('settings.opentelemetry.envVarTooltip', {
@@ -101,6 +156,7 @@ async function save(): Promise<boolean> {
 
 		if (!wasEnabled && isNowEnabled) {
 			telemetry.track('Activated otel via UI', {
+				protocol: otelStore.settings.exporterProtocol,
 				includeNodeSpans: otelStore.settings.includeNodeSpans,
 				productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
 				tracesSampleRate: otelStore.settings.tracesSampleRate,
@@ -111,6 +167,7 @@ async function save(): Promise<boolean> {
 		} else {
 			telemetry.track('Updated otel via UI', {
 				enabled: isNowEnabled,
+				protocol: otelStore.settings.exporterProtocol,
 				includeNodeSpans: otelStore.settings.includeNodeSpans,
 				productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
 				tracesSampleRate: otelStore.settings.tracesSampleRate,
@@ -198,7 +255,7 @@ watch(
 	(newVal) => {
 		const currentString = headersPairsToString(headerPairs.value);
 		if (newVal !== currentString) {
-			headerPairs.value = headersStringToPairs(newVal ?? '');
+			headerPairs.value = headerPairsFromStore();
 		}
 	},
 );
@@ -323,6 +380,7 @@ async function onSendTestTrace() {
 // Connection changes invalidate the previous test result
 watch(
 	() => [
+		otelStore.settings.exporterProtocol,
 		otelStore.settings.exporterEndpoint,
 		otelStore.settings.exporterTracingPath,
 		otelStore.settings.exporterServiceName,
@@ -374,8 +432,37 @@ watch(
 			>
 				<N8nSettingsRowGroup>
 					<OtelSettingsRow
+						:title="i18n.baseText('settings.opentelemetry.exporterProtocol.label')"
+						:description="i18n.baseText('settings.opentelemetry.exporterProtocol.description')"
+						:env-tooltip="envTooltip('exporterProtocol')"
+						action-fill
+					>
+						<template #action>
+							<N8nSelect
+								:class="$style.control"
+								:model-value="otelStore.settings.exporterProtocol"
+								:disabled="isEnvManaged('exporterProtocol')"
+								:aria-label="i18n.baseText('settings.opentelemetry.exporterProtocol.label')"
+								data-test-id="otel-exporter-protocol"
+								@update:model-value="onProtocolChange"
+							>
+								<N8nOption
+									value="http/protobuf"
+									:label="
+										i18n.baseText('settings.opentelemetry.exporterProtocol.option.httpProtobuf')
+									"
+								/>
+								<N8nOption
+									value="grpc"
+									:label="i18n.baseText('settings.opentelemetry.exporterProtocol.option.grpc')"
+								/>
+							</N8nSelect>
+						</template>
+					</OtelSettingsRow>
+
+					<OtelSettingsRow
 						:title="i18n.baseText('settings.opentelemetry.exporterEndpoint.label')"
-						:description="i18n.baseText('settings.opentelemetry.exporterEndpoint.description')"
+						:description="endpointDescription"
 						:env-tooltip="envTooltip('exporterEndpoint')"
 						action-fill
 					>
@@ -383,7 +470,7 @@ watch(
 							<N8nInput
 								v-model="otelStore.settings.exporterEndpoint"
 								:class="$style.control"
-								:placeholder="i18n.baseText('settings.opentelemetry.exporterEndpoint.placeholder')"
+								:placeholder="endpointPlaceholder"
 								:disabled="isEnvManaged('exporterEndpoint')"
 								data-test-id="otel-exporter-endpoint"
 							/>
@@ -411,7 +498,7 @@ watch(
 
 					<OtelSettingsRow
 						:title="i18n.baseText('settings.opentelemetry.exporterHeaders.label')"
-						:description="i18n.baseText('settings.opentelemetry.exporterHeaders.description')"
+						:description="headersDescription"
 						:env-tooltip="envTooltip('exporterHeaders')"
 						layout="vertical"
 						action-fill
@@ -447,10 +534,8 @@ watch(
 										size="small"
 									>
 										<N8nInput
-											:model-value="pair.value"
-											:placeholder="
-												i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder')
-											"
+											:model-value="headerValueDisplay(pair)"
+											:placeholder="headerValuePlaceholder(pair)"
 											:disabled="isEnvManaged('exporterHeaders')"
 											data-test-id="otel-header-value"
 											@update:model-value="(v: string) => onHeaderChange(index, 'value', v)"
@@ -486,6 +571,7 @@ watch(
 					</OtelSettingsRow>
 
 					<OtelSettingsRow
+						v-if="!isGrpc"
 						:title="i18n.baseText('settings.opentelemetry.exporterTracingPath.label')"
 						:description="i18n.baseText('settings.opentelemetry.exporterTracingPath.description')"
 						:env-tooltip="envTooltip('exporterTracingPath')"

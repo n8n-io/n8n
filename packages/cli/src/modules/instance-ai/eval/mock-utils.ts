@@ -1,4 +1,5 @@
 import type { FetchFn } from '@n8n/agents';
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { Logger } from '@n8n/backend-common';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
@@ -10,10 +11,6 @@ import { jsonParse } from 'n8n-workflow';
 
 const GENERATOR_TIMEOUT_MS = 120_000;
 const MAX_GENERATOR_ATTEMPTS = 2;
-
-function fenceStrip(raw: string): string {
-	return raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '');
-}
 
 /**
  * Generate JSON with the eval agent and validate its shape, retrying once on
@@ -34,7 +31,7 @@ export async function generateJson<T>(
 				providerOptions: { anthropic: { maxTokens: 4096 } },
 				abortSignal: AbortSignal.timeout(GENERATOR_TIMEOUT_MS),
 			});
-			const parsed = jsonParse<unknown>(fenceStrip(extractText(result)), {
+			const parsed = jsonParse<unknown>(extractJsonCandidate(extractText(result)), {
 				fallbackValue: undefined,
 			});
 			const validated = validate(parsed);

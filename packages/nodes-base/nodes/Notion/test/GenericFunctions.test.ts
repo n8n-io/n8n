@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
@@ -23,6 +24,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
+import { wordFrom } from '@test/text-families';
 import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
@@ -603,6 +605,15 @@ describe('Test Notion, simplifyObjects', () => {
 		},
 	});
 
+	const keyFor = (propertyName: string, nodeVersion: number, text = 'x') => {
+		const [result] = simplifyObjects(
+			[page({ [propertyName]: richText(text) })],
+			false,
+			nodeVersion,
+		);
+		return Object.keys(result).find((key) => result[key] === text);
+	};
+
 	describe('v3 keeps change-case v5 Unicode-aware keys', () => {
 		it('preserves non-ASCII characters in simplified property keys', () => {
 			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 3);
@@ -621,6 +632,14 @@ describe('Test Notion, simplifyObjects', () => {
 			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
 
 			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+
+		it('keeps any accented word as its key', () => {
+			fc.assert(
+				fc.property(wordFrom('latin-accented'), (name) => {
+					expect(keyFor(name, 3)).toBe(`property_${name}`);
+				}),
+			);
 		});
 	});
 
@@ -662,6 +681,14 @@ describe('Test Notion, simplifyObjects', () => {
 			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
 
 			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+
+		it('folds any accented word to an ASCII key', () => {
+			fc.assert(
+				fc.property(wordFrom('latin-accented'), (name) => {
+					expect(keyFor(name, 2)).toMatch(/^property_[a-z_]*$/);
+				}),
+			);
 		});
 	});
 });

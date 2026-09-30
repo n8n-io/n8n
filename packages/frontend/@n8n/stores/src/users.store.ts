@@ -1,4 +1,7 @@
 import {
+	type ChangeEmailRequestDto,
+	type ChangeEmailResponse,
+	type ConfirmEmailChangeRequestDto,
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
@@ -336,10 +339,26 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			return;
 		}
 
-		return await updateUser({
-			email: currentUser.value.email as string,
-			...params,
-		});
+		return await updateUser(params);
+	};
+
+	const requestEmailChange = async (
+		params: ChangeEmailRequestDto,
+	): Promise<ChangeEmailResponse> => {
+		const result = await usersApi.requestEmailChange(rootStore.restApiContext, params);
+		// Without email delivery the backend applies the change at once, so sync the store.
+		if (result.status === 'changed') {
+			addUsers([result.user]);
+		}
+		return result;
+	};
+
+	const resolveEmailChangeToken = async (params: { token: string }) => {
+		return await usersApi.resolveEmailChangeToken(rootStore.restApiContext, params);
+	};
+
+	const confirmEmailChange = async (params: ConfirmEmailChangeRequestDto) => {
+		await usersApi.confirmEmailChange(rootStore.restApiContext, params);
 	};
 
 	const updateUserSettings = async (settings: UserSelfSettingsUpdateRequestDto) => {
@@ -529,6 +548,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		changePassword,
 		updateUser,
 		updateUserName,
+		requestEmailChange,
+		resolveEmailChangeToken,
+		confirmEmailChange,
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,

@@ -94,7 +94,7 @@ export async function requestWithAuthenticationPaginated(
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$request: sanitizedRequest ?? requestOptions,
-		$response: {} as IN8nHttpFullResponse,
+		$response: {},
 		$version: node.typeVersion,
 		$pageCount: 0,
 	};
@@ -118,7 +118,7 @@ export async function requestWithAuthenticationPaginated(
 			executeData,
 			additionalKeys,
 			false,
-		) as object as PaginationOptions['request'];
+		) as object;
 
 		const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
 
@@ -154,7 +154,7 @@ export async function requestWithAuthenticationPaginated(
 
 		if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
 			// Keep the original string version that we can use it to hash if needed
-			contentBody = await binaryToString(newResponse.body as Buffer | Readable);
+			contentBody = await binaryToString(newResponse.body);
 
 			const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
 			if (responseContentType.includes('application/json')) {
@@ -260,7 +260,7 @@ export async function requestWithAuthenticationPaginated(
 				// now an error manually if the response code is not a success one.
 				let data = tempResponseData.body;
 				if (data instanceof Readable && paginationOptions.binaryResult !== true) {
-					data = await binaryToString(data as Buffer | Readable);
+					data = await binaryToString(data);
 				} else if (typeof data === 'object') {
 					data = JSON.stringify(data);
 				}

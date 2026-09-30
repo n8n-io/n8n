@@ -4,7 +4,7 @@ import { INSTANCE_MEMBER_CREDENTIALS } from '../../../config/test-users';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Settings @capability:proxy',
+	'Settings',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},

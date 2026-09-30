@@ -50,6 +50,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 
+	/**
+	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
+	 * Observer runs only after the turn, which keeps the prompt prefix stable
+	 * within a turn and improves provider prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
+	midRunObservation: boolean = false;
+
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
@@ -103,8 +111,8 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
-	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
-	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 * When true, sandboxes are created ephemeral: the provider deletes them once idle instead
+	 * of leaving them stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
@@ -158,7 +166,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 30;
 
-	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
@@ -183,13 +191,6 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
-	 * Let the assistant discover and connect MCP registry servers.
-	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
-	 */
-	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
-	mcpConnectionsEnabled: boolean = false;
-
-	/**
 	 * Force-enable canvas-selected-nodes chat context in Instance AI.
 	 * Acts as an operator-level override of the PostHog rollout flag
 	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
@@ -199,13 +200,20 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
+	 * Pin every Instance AI run on this instance to one published prompt profile
+	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
+	 *
+	 * Instance-wide on purpose, so the two system prompts never fragment the
+	 * prompt cache within one instance. A request-level `promptVersion` and a
+	 * value already selected for the thread both still win, so an eval keeps the
+	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
+	 * that resumes after you change it uses the new value. Profiles are keyed by
+	 * build mode, so pinning a `default`-mode profile also overrides a
+	 * progressive building assignment. An unknown version fails the run, and n8n
+	 * keeps serving everything else.
 	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
+	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
+	promptVersion: string = '';
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
@@ -217,6 +225,15 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
 	nodeUsageEnabled: boolean = false;
+
+	/**
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
 
 	/**
 	 * Activation-capped trial variant for n8n cloud experiment.

@@ -519,6 +519,7 @@ Use the workflow SDK.`,
 			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
 		).build();
 		const { instructions } = runtimeConfig;
+		expect(runtimeConfig.skillSource).toBe(source);
 
 		expect(prepare).toHaveBeenCalledTimes(1);
 		expect(instructions).toContain('name: "Summarize notes"');
@@ -548,9 +549,8 @@ Use the workflow SDK.`,
 
 		const text = skillLoadText(await loadTool.handler?.({ skillId: 'credentials-guide' }, {}));
 
-		expect(text).toContain('token=[REDACTED]');
-		expect(text).toContain('Authorization: Bearer [REDACTED]');
-		expect(text).toContain('api_key=[REDACTED]');
+		expect(text).toContain('Use [REDACTED]');
+		expect(text).toContain('Authorization: [REDACTED]');
 		expect(text).not.toContain(secretValue);
 		expect(text).not.toContain('bearer-secret-value');
 		expect(text).not.toContain(longToken.slice(0, 32));

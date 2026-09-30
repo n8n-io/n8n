@@ -191,10 +191,7 @@ export async function httpRequest(
 	await validateProxySsrf(requestOptions.proxy, ssrfBridge);
 
 	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
-	if (
-		axiosRequest.data === undefined ||
-		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
-	) {
+	if (axiosRequest.data === undefined || axiosRequest.method?.toUpperCase() === 'GET') {
 		delete axiosRequest.data;
 	}
 

@@ -13,7 +13,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
+import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
@@ -33,6 +33,7 @@ const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
 	canFixWithAssistant?: boolean;
+	dismissedToolCallIds?: string[];
 	executionId?: string;
 }>();
 
@@ -44,11 +45,15 @@ const i18n = useI18n();
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
+const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
+
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
+	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
 	for (const toolCall of props.toolCalls) {
+		if (dismissed.has(toolCall.toolCallId)) continue;
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 
 		const error = toolStepError(toolCall)?.trim();
@@ -92,16 +97,17 @@ interface ToolStepDisplay {
 	expandable: boolean;
 }
 
-function getToolDisplayName(toolName: string): string {
-	return resolveToolNameForDisplay(toolName, i18n);
+function getToolDisplayName(toolName: string, output?: unknown): string {
+	return resolveToolNameForDisplay(toolName, i18n, output);
 }
 
-function toolStepLabel(tc: ToolCall): string {
+function toolStepLabel(tc: ToolCall, isCompact = false): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
-	return getToolDisplayName(tc.tool);
+	// The compact "Memory noted" label only applies once the call has finished.
+	return getToolDisplayName(tc.tool, isCompact ? tc.output : undefined);
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
@@ -154,14 +160,15 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 }
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
-	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
+	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
-		label: [toolStepLabel(tc), ...metadata].join(' · '),
+		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
 		details,
-		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
-		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
+		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
 	};
 }
 
@@ -332,29 +339,31 @@ function hasActiveToolCall(): boolean {
 			</template>
 		</template>
 
-		<N8nCallout
-			v-if="fixableErrorTexts.length > 0"
-			theme="danger"
-			data-test-id="agent-chat-tool-fix-with-assistant-callout"
-		>
-			<template v-if="fixableErrorTexts.length === 1">
-				{{ fixableErrorTexts[0] }}
-			</template>
-			<ul v-else :class="$style.errorList">
-				<li v-for="error in fixableErrorTexts" :key="error">{{ error }}</li>
-			</ul>
-			<template #trailingContent>
-				<N8nButton
-					size="small"
-					variant="subtle"
-					data-test-id="agent-chat-tool-fix-with-assistant"
-					@click="emitFixWithAssistant"
-				>
-					<template #icon><N8nIcon icon="sparkles" size="small" /></template>
-					{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
-				</N8nButton>
-			</template>
-		</N8nCallout>
+		<Transition name="fix-callout">
+			<N8nCallout
+				v-if="fixableErrorTexts.length > 0"
+				theme="danger"
+				data-test-id="agent-chat-tool-fix-with-assistant-callout"
+			>
+				<template v-if="fixableErrorTexts.length === 1">
+					{{ fixableErrorTexts[0] }}
+				</template>
+				<ul v-else :class="$style.errorList">
+					<li v-for="error in fixableErrorTexts" :key="error">{{ error }}</li>
+				</ul>
+				<template #trailingContent>
+					<N8nButton
+						size="small"
+						variant="subtle"
+						data-test-id="agent-chat-tool-fix-with-assistant"
+						@click="emitFixWithAssistant"
+					>
+						<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+						{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
+					</N8nButton>
+				</template>
+			</N8nCallout>
+		</Transition>
 	</div>
 </template>
 
@@ -428,5 +437,15 @@ function hasActiveToolCall(): boolean {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	user-select: text;
+}
+</style>
+
+<style lang="scss">
+.fix-callout-leave-active {
+	transition: opacity var(--duration--snappy) var(--easing--ease-in);
+}
+
+.fix-callout-leave-to {
+	opacity: 0;
 }
 </style>

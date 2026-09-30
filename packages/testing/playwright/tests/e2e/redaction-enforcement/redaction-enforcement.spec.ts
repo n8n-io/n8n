@@ -129,7 +129,7 @@ test.describe(
 				expect(response.status()).toBe(403);
 			});
 
-			test('shows the no-permission notice when a member without the reveal scope opens redacted data', async ({
+			test('shows the no-permission notice when a member without the reveal scope opens redacted data @engine:v2', async ({
 				api,
 				n8n,
 			}) => {
@@ -154,7 +154,50 @@ test.describe(
 				await expect(output).toContainText('You do not have the permissions to reveal it');
 			});
 
-			test('enforces the reveal scope on the executions API', async ({ api }) => {
+			test('disables copy to editor when a member cannot reveal the redacted data @engine:v2', async ({
+				api,
+				n8n,
+			}) => {
+				await api.enableProjectFeatures();
+				await api.securitySettings.setRedactionFloor('all');
+
+				// A project editor can update the workflow but lacks execution:reveal
+				const project = await api.projects.createProject(`Redaction Team ${nanoid()}`);
+				const execution = await runProductionExecution(api, undefined, project.id);
+
+				const member = await api.publicApi.createUser({
+					email: `member-${nanoid()}@test.com`,
+					firstName: 'Red',
+					lastName: 'Action',
+					role: 'global:member',
+				});
+				await api.projects.addUserToProject(project.id, member.id, 'project:editor');
+
+				const memberN8n = await n8n.start.withUser(member);
+				await memberN8n.navigate.toExecution(execution.workflowId, execution.executionId);
+
+				// Copying redacted data to the editor would pin empty items over the real ones
+				await expect(memberN8n.executions.getDebugButton()).toBeDisabled();
+
+				await memberN8n.executions.hoverDebugButton();
+				await expect(memberN8n.executions.getTooltip()).toContainText(
+					'This execution data is redacted',
+				);
+
+				// The disabled button sits inside the debug route's link. A click on it must
+				// not reach the link: the route change is synchronous, so the URL would
+				// already be the debug one here, before the pin path could redirect back.
+				await memberN8n.executions.getDebugButton().click({ force: true });
+				await expect(memberN8n.executions.getPreview()).toBeVisible();
+				await expect(memberN8n.page).toHaveURL(
+					new RegExp(`/workflow/${execution.workflowId}/executions/${execution.executionId}$`),
+				);
+				await expect(
+					memberN8n.notifications.getNotificationByTitle('Execution data not imported'),
+				).toBeHidden();
+			});
+
+			test('enforces the reveal scope on the executions API @engine:v2', async ({ api }) => {
 				await api.enableProjectFeatures();
 				await api.securitySettings.setRedactionFloor('all');
 
@@ -273,7 +316,7 @@ test.describe(
 				expect(saved.settings?.redactionPolicy).toBe('non-manual');
 			});
 
-			test('redacts production executions', async ({ api, n8n }) => {
+			test('redacts production executions @engine:v2', async ({ api, n8n }) => {
 				const execution = await runProductionExecution(api);
 				const output = await openExecutionOutput(n8n, execution);
 
@@ -338,7 +381,7 @@ test.describe(
 				);
 			});
 
-			test('redacts production executions', async ({ api, n8n }) => {
+			test('redacts production executions @engine:v2', async ({ api, n8n }) => {
 				const execution = await runProductionExecution(api);
 				const output = await openExecutionOutput(n8n, execution);
 
@@ -385,7 +428,7 @@ test.describe(
 		});
 
 		test.describe('when floor is "off" and workflow redaction is "non-manual"', () => {
-			test('redacts production executions', async ({ api, n8n }) => {
+			test('redacts production executions @engine:v2', async ({ api, n8n }) => {
 				const execution = await runProductionExecution(api, { redactionPolicy: 'non-manual' });
 				const output = await openExecutionOutput(n8n, execution);
 
@@ -408,7 +451,7 @@ test.describe(
 			});
 		});
 
-		test('does not retroactively redact executions captured before the floor was raised', async ({
+		test('does not retroactively redact executions captured before the floor was raised @engine:v2', async ({
 			api,
 			n8n,
 		}) => {

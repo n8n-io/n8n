@@ -1,13 +1,18 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { DATA_TABLE_NODE_TYPES, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
+import {
+	DATA_TABLE_NODE_TYPES,
+	INode,
+	IWorkflowBase,
+	IWorkflowSettings,
+	isNodeWithWorkflowSelector,
+} from 'n8n-workflow';
 
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
@@ -307,11 +312,16 @@ export class WorkflowIndexService {
 	}
 
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		if (node.type !== 'n8n-nodes-base.executeWorkflow') {
+		// Covers the Execute Sub-workflow node, the sub-workflow tool, and the workflow retriever.
+		if (!isNodeWithWorkflowSelector(node)) {
 			return;
 		}
 		const calledWorkflowId: string | undefined = this.getCalledWorkflowIdFrom(node);
 		if (!calledWorkflowId) {
+			return;
+		}
+		// Expressions resolve at runtime, so they are not static dependencies.
+		if (calledWorkflowId.trim().startsWith('=')) {
 			return;
 		}
 		dependencyUpdates.add({
@@ -378,7 +388,7 @@ export class WorkflowIndexService {
 			return node.parameters['workflowId']['value'];
 		}
 		this.errorReporter.warn(
-			`While indexing, could not determine called workflow ID from executeWorkflow node ${node.id}`,
+			`While indexing, could not determine called workflow ID from ${node.type} node ${node.id}`,
 			{ extra: node.parameters },
 		);
 		return undefined;

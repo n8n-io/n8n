@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { PollerFullState, WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
@@ -10,12 +11,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
-import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
+import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
 import { PollTriggerTaskHandler } from '../poll-trigger-task-handler';
 
 describe('PollTriggerTaskHandler', () => {
@@ -750,23 +750,6 @@ describe('PollTriggerTaskHandler', () => {
 			const { now: recordFailureNow } = pollBackoffService.recordFailure.mock.calls[0][0];
 			expect(isBackingOffNow.getTime()).toBe(fixedNow.getTime());
 			expect(recordFailureNow.getTime()).toBeGreaterThan(isBackingOffNow.getTime());
-		});
-	});
-
-	describe('isPollTriggerTaskPayload', () => {
-		test('accepts a payload with workflowId and nodeId', () => {
-			expect(isPollTriggerTaskPayload({ workflowId: 'wf-1', nodeId: 'node-1' })).toBe(true);
-		});
-
-		test.each([
-			['empty payload', {}],
-			['missing nodeId', { workflowId: 'wf-1' }],
-			['missing workflowId', { nodeId: 'node-1' }],
-			['empty workflowId', { workflowId: '', nodeId: 'node-1' }],
-			['empty nodeId', { workflowId: 'wf-1', nodeId: '' }],
-			['non-string ids', { workflowId: 42, nodeId: true }],
-		])('rejects %s', (_name, payload) => {
-			expect(isPollTriggerTaskPayload(payload)).toBe(false);
 		});
 	});
 });

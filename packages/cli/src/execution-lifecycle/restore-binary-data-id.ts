@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
-import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
 import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 /**
@@ -39,7 +39,7 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 						if (!binaryDataId) continue;
 
 						const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
-						if (!fileId.includes('/temp/')) continue;
+						if (!fileId.includes(`/${TEMP_EXECUTION_ID}/`)) continue;
 
 						const existing = entriesByFileId.get(fileId);
 						if (existing) {
@@ -49,7 +49,7 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 								binaryDataRefs: [binaryData],
 								mode,
 								fileId,
-								correctFileId: fileId.replace('temp', executionId),
+								correctFileId: fileId.replace(`/${TEMP_EXECUTION_ID}/`, `/${executionId}/`),
 							});
 						}
 					}

@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { RoleRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { MANDATORY_INSTANCE_SCOPES } from '@n8n/permissions';
 
 import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
 import {
@@ -12,6 +13,10 @@ import {
 import { setupTestServer } from '@test-integration/utils';
 
 describe('Roles in Public API', () => {
+	/** `findByList` does not order its rows, so compare scope sets, not sequences. */
+	const expectScopes = (actual: readonly string[], expected: readonly string[]) =>
+		expect([...actual].sort()).toEqual([...expected].sort());
+
 	let owner: User;
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
@@ -98,10 +103,11 @@ describe('Roles in Public API', () => {
 				systemRole: false,
 				roleType: 'global',
 				licensed: expect.any(Boolean),
-				scopes: ['user:read'],
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
+			expectScopes(custom.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		const allRolesOf = (body: Record<string, Array<Record<string, unknown>>>) => [
@@ -152,7 +158,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('GET /roles/:slug', () => {
+	describe('GET /roles/:roleSlug', () => {
 		const systemRoleBody = (slug: string, roleType: string) => ({
 			slug,
 			displayName: expect.any(String),
@@ -190,10 +196,11 @@ describe('Roles in Public API', () => {
 				systemRole: false,
 				roleType: 'global',
 				licensed: expect.any(Boolean),
-				scopes: ['user:read'],
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		it('returns a project role', async () => {
@@ -288,11 +295,11 @@ describe('Roles in Public API', () => {
 				description: null,
 				systemRole: false,
 				roleType: 'global',
-				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
-			expect(response.body.scopes).toHaveLength(2);
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		it('creates a project role and returns 201', async () => {
@@ -311,11 +318,21 @@ describe('Roles in Public API', () => {
 			expect(response.body.scopes).toEqual(['workflow:read']);
 		});
 
-		it('creates a role with no scopes and returns 201 (matches internal behaviour)', async () => {
+		it('creates a global role with no scopes but keeps the mandatory ones', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/roles')
 				.send({ displayName: 'PA empty role', roleType: 'global', scopes: [] });
+
+			expect(response.status).toBe(201);
+			expectScopes(response.body.scopes, MANDATORY_INSTANCE_SCOPES);
+		});
+
+		it('creates a project role with no scopes and adds nothing', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName: 'PA empty project role', roleType: 'project', scopes: [] });
 
 			expect(response.status).toBe(201);
 			expect(response.body.scopes).toEqual([]);
@@ -448,7 +465,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('PUT /roles/{slug}', () => {
+	describe('PUT /roles/{roleSlug}', () => {
 		type CreatedRole = {
 			slug: string;
 			displayName: string;
@@ -485,15 +502,15 @@ describe('Roles in Public API', () => {
 				description: 'An updated description',
 				systemRole: false,
 				roleType: 'global',
-				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
-			expect(response.body.scopes).toHaveLength(2);
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		it('replaces scopes entirely rather than merging them with the existing set', async () => {
-			const role = await createGlobalRole('PA put scopes', ['user:read', 'user:list']);
+			const role = await createGlobalRole('PA put scopes', ['user:read', 'insights:read']);
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -501,7 +518,20 @@ describe('Roles in Public API', () => {
 				.send(fullBody({ displayName: role.displayName, scopes: ['user:read'] }));
 
 			expect(response.status).toBe(200);
-			expect(response.body.scopes).toEqual(['user:read']);
+			// The mandatory scopes survive; `insights:read` does not.
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
+		});
+
+		it('keeps the mandatory scopes when the update sends an empty list', async () => {
+			const role = await createGlobalRole('PA put empty scopes', ['user:read', 'insights:read']);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: role.displayName, scopes: [] }));
+
+			expect(response.status).toBe(200);
+			expectScopes(response.body.scopes, MANDATORY_INSTANCE_SCOPES);
 		});
 
 		it('clears an existing description by sending null', async () => {
@@ -541,7 +571,9 @@ describe('Roles in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body.displayName).toBe(role.displayName);
 			expect(response.body.description).toBeNull();
-			expect(response.body.scopes).toEqual(expect.arrayContaining(['user:read', 'user:list']));
+			expect(response.body.scopes).toEqual(
+				expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
+			);
 		});
 
 		it('rejects a body missing a required field with 400', async () => {
@@ -737,7 +769,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('DELETE /roles/{slug}', () => {
+	describe('DELETE /roles/{roleSlug}', () => {
 		it('deletes a custom global role, returns its full public shape, and the slug becomes unreachable', async () => {
 			const role = await createGlobalRole('PA delete all fields', ['user:read', 'user:list']);
 
@@ -751,7 +783,7 @@ describe('Roles in Public API', () => {
 				description: null,
 				systemRole: false,
 				roleType: 'global',
-				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});

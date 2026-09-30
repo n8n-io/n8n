@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
@@ -11,9 +11,20 @@ function canonicalizeJson(value: unknown): unknown {
 	return sorted;
 }
 
+function getHash(value: unknown): string {
+	return createHash('sha256')
+		.update(JSON.stringify(canonicalizeJson(value)))
+		.digest('hex');
+}
+
+export function getAgentConfigHash(config: AgentJsonConfig): string;
+export function getAgentConfigHash(config: null): null;
+export function getAgentConfigHash(config: AgentJsonConfig | null): string | null;
 export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
 	if (!config) return null;
-	return createHash('sha256')
-		.update(JSON.stringify(canonicalizeJson(config)))
-		.digest('hex');
+	return getHash(config);
+}
+
+export function getAgentSkillHash(skill: AgentSkill): string {
+	return getHash(skill);
 }

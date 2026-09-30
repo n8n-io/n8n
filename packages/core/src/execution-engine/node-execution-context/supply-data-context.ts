@@ -325,7 +325,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 			taskData.data = {
 				[connectionType]: data,
-			} as ITaskDataConnections;
+			};
 		}
 
 		if (type === 'output') {
@@ -338,7 +338,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				// TODO: remove inputOverride
 				taskData.inputOverride = {
 					[connectionType]: data,
-				} as ITaskDataConnections;
+				};
 			}
 
 			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {

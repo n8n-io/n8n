@@ -17,8 +17,10 @@ const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 const STRAPI_ARRAY_LIMIT = 100;
 /** Version history:
  * 2 - introduced authType: `usesCredentials` field
+ * 3 - introduced remotes[].type: `streamable-http-templated`
+ * 4 - introduced `requiredCapabilities` field
  */
-const STRAPI_API_VERSION = 2;
+const STRAPI_API_VERSION = 4;
 
 @Service()
 export class McpRegistryApiClient {
@@ -27,7 +29,7 @@ export class McpRegistryApiClient {
 		private readonly credentialTypes: CredentialTypes,
 	) {}
 
-	async fetchAllServers(): Promise<McpRegistryServer[]> {
+	async fetchAllServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
 		const servers = await paginatedRequest<unknown>(
 			this.getUrl(),
 			{
@@ -36,12 +38,13 @@ export class McpRegistryApiClient {
 			},
 			{
 				throwOnError: true,
+				abortSignal: signal,
 			},
 		);
 		return this.parseServers(servers);
 	}
 
-	async fetchServersMetadata(): Promise<McpRegistryServerMetadata[]> {
+	async fetchServersMetadata(signal?: AbortSignal): Promise<McpRegistryServerMetadata[]> {
 		return await paginatedRequest<McpRegistryServerMetadata>(
 			this.getUrl(),
 			{
@@ -51,11 +54,12 @@ export class McpRegistryApiClient {
 			},
 			{
 				throwOnError: true,
+				abortSignal: signal,
 			},
 		);
 	}
 
-	async fetchServersBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
+	async fetchServersBySlugs(slugs: string[], signal?: AbortSignal): Promise<McpRegistryServer[]> {
 		const data: McpRegistryServer[] = [];
 		for (let i = 0; i < slugs.length; i += STRAPI_ARRAY_LIMIT) {
 			const batch = slugs.slice(i, i + STRAPI_ARRAY_LIMIT);
@@ -72,6 +76,7 @@ export class McpRegistryApiClient {
 				},
 				{
 					throwOnError: true,
+					abortSignal: signal,
 				},
 			);
 			data.push(...this.parseServers(batchData));

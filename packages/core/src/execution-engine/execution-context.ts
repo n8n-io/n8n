@@ -222,6 +222,19 @@ export const establishExecutionContext = async (
 			additionalData?.executionId,
 			{ allowInherit: true },
 		);
+
+		// Re-run the global sub-execution hooks against the child workflow so its own
+		// record reflects context derived from itself (redaction policy, private-
+		// credential flag), merged with the inherited parent context. An error
+		// workflow reaches inheritance through this branch, so without this a
+		// policy'd or private-credential error workflow called by a policy-less
+		// parent would not redact its own record. Mirrors the
+		// `runExecutionData.parentExecution` branch above.
+		executionData.runtimeData = await executionContextService.augmentSubExecutionContext(
+			workflow,
+			startItem,
+			executionData.runtimeData,
+		);
 		return;
 	}
 

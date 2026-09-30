@@ -2097,6 +2097,7 @@ invalid line without proper format`;
 			'remote.origin.receivepack',
 			'gpg.openpgp.program',
 			'gpg.ssh.defaultKeyCommand',
+			'credential.https://example.invalid.helper',
 		])("rejects repository Git config key '%s'", async (configKey) => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('add')
@@ -2122,9 +2123,11 @@ invalid line without proper format`;
 			{ operation: 'add', params: ['add', '/repo', {}, 'file.txt'], guard: 'add' },
 			{ operation: 'commit', params: ['commit', '/repo', {}, 'repro commit'], guard: 'commit' },
 			{ operation: 'fetch', params: ['fetch', '/repo', {}], guard: 'fetch' },
+			{ operation: 'log', params: ['log', '/repo', {}], guard: 'log' },
 			{ operation: 'pull', params: ['pull', '/repo', {}], guard: 'pull' },
 			{ operation: 'push', params: ['push', '/repo', {}], guard: 'push' },
 			{ operation: 'pushTags', params: ['pushTags', '/repo', {}], guard: 'pushTags' },
+			{ operation: 'reflog', params: ['reflog', '/repo', {}], guard: 'raw' },
 			{ operation: 'status', params: ['status', '/repo', {}], guard: 'status' },
 			{
 				operation: 'switchBranch',
@@ -2148,7 +2151,12 @@ invalid line without proper format`;
 			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				"Repository Git config key 'filter.poc.clean' is not allowed",
 			);
-			expect((mockGit as any)[guard]).not.toHaveBeenCalled();
+			// `raw` also carries the repository-layout `rev-parse`, which runs before the guard.
+			if (guard === 'raw') {
+				expect(mockGit.raw).not.toHaveBeenCalledWith(['reflog', expect.anything()]);
+			} else {
+				expect((mockGit as any)[guard]).not.toHaveBeenCalled();
+			}
 		});
 
 		it('does not pin command config when enableGitNodeAllConfigKeys is true', async () => {
@@ -2163,7 +2171,9 @@ invalid line without proper format`;
 			for (const flag of expectedFlags) {
 				expect(unsafe?.[flag]).toBeUndefined();
 			}
-			expect(mockGit.listConfig).not.toHaveBeenCalled();
+			// The guard reads the merged config, then returns before the denylist check, so it
+			// never looks up the repository-local scope.
+			expect(mockGit.listConfig).not.toHaveBeenCalledWith('local');
 		});
 	});
 });

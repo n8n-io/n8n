@@ -1,3 +1,4 @@
+import { escapeODataValue, toODataDateTimeLiteral } from '@utils/query-escaping';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -282,7 +283,7 @@ export function prepareFilterString(filters: IDataObject) {
 	if (selectedFilters.foldersToInclude) {
 		const folders = (selectedFilters.foldersToInclude as string[])
 			.filter((folder) => folder !== '')
-			.map((folder) => `parentFolderId eq '${folder}'`)
+			.map((folder) => `parentFolderId eq '${escapeODataValue(folder)}'`)
 			.join(' or ');
 
 		filterString.push(`(${folders})`);
@@ -290,19 +291,31 @@ export function prepareFilterString(filters: IDataObject) {
 
 	if (selectedFilters.foldersToExclude) {
 		for (const folder of selectedFilters.foldersToExclude as string[]) {
-			filterString.push(`parentFolderId ne '${folder}'`);
+			filterString.push(`parentFolderId ne '${escapeODataValue(folder)}'`);
 		}
 	}
 
 	if (selectedFilters.sender) {
-		const sender = selectedFilters.sender as string;
+		const sender = escapeODataValue(selectedFilters.sender);
 		const byMailAddress = `from/emailAddress/address eq '${sender}'`;
 		const byName = `from/emailAddress/name eq '${sender}'`;
 		filterString.push(`(${byMailAddress} or ${byName})`);
 	}
 
 	if (selectedFilters.hasAttachments) {
-		filterString.push(`hasAttachments eq ${selectedFilters.hasAttachments}`);
+		// A `boolean` parameter is a UI control, not a runtime guarantee: an
+		// expression can resolve one to any value. The guard above took every falsy
+		// value, so only `true` and a string remain to check.
+		const raw = selectedFilters.hasAttachments;
+		const hasAttachments = typeof raw === 'string' ? raw.toLowerCase() : raw;
+
+		if (hasAttachments !== true && hasAttachments !== 'true' && hasAttachments !== 'false') {
+			throw new UserError("'Has Attachments' must be true or false", {
+				description: 'Set it to true or false, or leave the filter unset.',
+			});
+		}
+
+		filterString.push(`hasAttachments eq ${hasAttachments !== 'false'}`);
 	}
 
 	if (selectedFilters.readStatus && selectedFilters.readStatus !== 'both') {
@@ -310,11 +323,16 @@ export function prepareFilterString(filters: IDataObject) {
 	}
 
 	if (selectedFilters.receivedAfter) {
-		filterString.push(`receivedDateTime ge ${selectedFilters.receivedAfter}`);
+		const receivedAfter = toODataDateTimeLiteral('Received After', selectedFilters.receivedAfter);
+		filterString.push(`receivedDateTime ge ${receivedAfter}`);
 	}
 
 	if (selectedFilters.receivedBefore) {
-		filterString.push(`receivedDateTime le ${selectedFilters.receivedBefore}`);
+		const receivedBefore = toODataDateTimeLiteral(
+			'Received Before',
+			selectedFilters.receivedBefore,
+		);
+		filterString.push(`receivedDateTime le ${receivedBefore}`);
 	}
 
 	if (selectedFilters.custom) {

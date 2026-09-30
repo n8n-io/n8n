@@ -1,4 +1,4 @@
-import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
+import type { CredentialsRepository, User, WorkflowRepository } from '@n8n/db';
 import type {
 	INode,
 	IConnections,
@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { NodeTypes } from '@/node-types';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
@@ -18,11 +19,13 @@ describe('WorkflowValidationService', () => {
 	let mockWorkflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
 	let mockCredentialsRepository: ReturnType<typeof mock<CredentialsRepository>>;
 	let mockDynamicCredentialsProxy: ReturnType<typeof mock<DynamicCredentialsProxy>>;
+	let mockCredentialsPermissionChecker: ReturnType<typeof mock<CredentialsPermissionChecker>>;
 
 	beforeEach(() => {
 		mockWorkflowRepository = mock<WorkflowRepository>();
 		mockCredentialsRepository = mock<CredentialsRepository>();
 		mockDynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+		mockCredentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 		// Default to the real semantics with no system resolver seeded:
 		// pass through the workflow override if any, otherwise null.
 		mockDynamicCredentialsProxy.getEffectiveResolverId.mockImplementation(
@@ -33,6 +36,7 @@ describe('WorkflowValidationService', () => {
 			mockCredentialsRepository,
 			mockDynamicCredentialsProxy,
 			mock<CredentialTypes>(),
+			mockCredentialsPermissionChecker,
 		);
 	});
 
@@ -709,13 +713,6 @@ describe('WorkflowValidationService', () => {
 
 		beforeEach(() => {
 			mockNodeTypes = mock<NodeTypes>();
-			// Pin the flag off so the expected copy never depends on the ambient env.
-			// Tests that need it on opt in with `withChatOAuth2(true)`.
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
-		});
-
-		afterEach(() => {
-			vi.unstubAllEnvs();
 		});
 
 		it('should return valid when no credentials are used', async () => {
@@ -1168,9 +1165,6 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(true);
 		});
 
-		const withChatOAuth2 = (enabled: boolean) =>
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
-
 		describe('webhook trigger', () => {
 			const validateWithOAuth2Webhook = async () => {
 				const nodes: INode[] = [
@@ -1294,28 +1288,19 @@ describe('WorkflowValidationService', () => {
 				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
 			};
 
-			// A chat trigger establishes no identity at runtime through `none`/`basicAuth`, so
-			// the flag being on must not let publish accept a configuration that would only
-			// fail later, mid-execution.
-			it.each(['none', 'basicAuth'])(
-				'should reject authentication %s even when chat OAuth2 is enabled',
-				async (authentication) => {
-					withChatOAuth2(true);
+			// A chat trigger establishes no identity at runtime through `none`/`basicAuth`.
+			it.each(['none', 'basicAuth'])('should reject authentication %s', async (authentication) => {
+				const result = await validateWithChatTrigger({ authentication });
 
-					const result = await validateWithChatTrigger({ authentication });
-
-					expect(result.isValid).toBe(false);
-					expect(result.error).toBe(
-						'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
-					);
-				},
-			);
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
 
 			it.each([{}, { mode: 'hostedChat' }])(
-				'should return valid for public n8nUserAuth in hosted-chat mode when chat OAuth2 is enabled (%o)',
+				'should return valid for public n8nUserAuth in hosted-chat mode (%o)',
 				async (modeParams) => {
-					withChatOAuth2(true);
-
 					const result = await validateWithChatTrigger({
 						public: true,
 						authentication: 'n8nUserAuth',
@@ -1325,21 +1310,6 @@ describe('WorkflowValidationService', () => {
 					expect(result.isValid).toBe(true);
 				},
 			);
-
-			// With the flag off (the default), hosted-chat `n8nUserAuth` falls back to a cookie
-			// check that never binds the visitor's identity — publish must not accept an
-			// end-user credential it can't actually resolve at runtime.
-			it('should reject public n8nUserAuth in hosted-chat mode when chat OAuth2 is disabled', async () => {
-				const result = await validateWithChatTrigger({
-					public: true,
-					authentication: 'n8nUserAuth',
-				});
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
-				);
-			});
 
 			// A non-public trigger 404s on every production request and skips auth entirely
 			// in test mode, so it never reaches the code that establishes identity.
@@ -1426,6 +1396,91 @@ describe('WorkflowValidationService', () => {
 		});
 	});
 
+	describe('validatePublisherCredentialAccess', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const nodes: INode[] = [
+			{
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'node-1',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { httpBasicAuth: { id: 'cred-1', name: 'Cred One' } },
+			},
+		];
+
+		it('is valid when the publisher can use every referenced credential', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({ isValid: true });
+			expect(mockCredentialsPermissionChecker.findInaccessibleForUser).toHaveBeenCalledWith(
+				user.id,
+				nodes,
+			);
+		});
+
+		it('names the credential the publisher cannot use', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you.',
+			});
+		});
+
+		it('gives a different message for a credential that no longer exists', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: Credential "Cred One" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('combines both messages when some credentials are unshared and others no longer exist', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you. Credential "Cred Two" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('pluralizes the message when the publisher cannot use several credentials', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: true },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credentials "Cred One", "Cred Two". Ask their owners to share them with you.',
+			});
+		});
+	});
+
 	describe('validateCredentialNodeRestrictions', () => {
 		const buildService = (credentialTypes: CredentialTypes) =>
 			new WorkflowValidationService(
@@ -1433,6 +1488,7 @@ describe('WorkflowValidationService', () => {
 				mock<CredentialsRepository>(),
 				mock<DynamicCredentialsProxy>(),
 				credentialTypes,
+				mock<CredentialsPermissionChecker>(),
 			);
 
 		// The loader sets `supportedNodes` on the credential class to *short* names

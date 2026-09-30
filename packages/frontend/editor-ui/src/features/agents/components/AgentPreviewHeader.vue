@@ -1,39 +1,35 @@
 <script setup lang="ts">
-import {
-	N8nBreadcrumbs,
-	N8nButton,
-	N8nDropdownMenu,
-	N8nIcon,
-	N8nIconButton,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
-import type { DropdownMenuItemProps, PathItem } from '@n8n/design-system';
+import { N8nBreadcrumbs, N8nButton, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+
+import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
 
 interface SessionOption {
 	id: string;
 	title: string;
 	disabled?: boolean;
 	label?: string;
-	when?: string;
+	updatedAt?: string;
 }
 
-interface SessionOptionData {
-	when?: string;
-}
-
-const props = defineProps<{
-	agentName: string;
-	agentHref: string;
-	sessionTitle: string;
-	sessionOptions: SessionOption[];
-	hasTrace: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		agentName: string;
+		agentHref: string;
+		sessionTitle: string;
+		sessionOptions: SessionOption[];
+		hasTrace: boolean;
+		canDeleteSession?: boolean;
+		isDeletingSession?: boolean;
+	}>(),
+	{ canDeleteSession: false, isDeletingSession: false },
+);
 
 const emit = defineEmits<{
 	back: [];
+	'delete-session': [sessionId: string];
 	'new-session': [];
 	'session-select': [sessionId: string];
 	'view-trace': [];
@@ -54,19 +50,6 @@ const breadcrumbItems = computed<PathItem[]>(function getBreadcrumbItems() {
 function goToSessionTrace() {
 	emit('view-trace');
 }
-
-const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
-	function getSessionDropdownOptions() {
-		return props.sessionOptions.map(function mapSessionOption(option) {
-			return {
-				id: option.id,
-				label: option.label ?? option.title,
-				disabled: option.disabled,
-				data: { when: option.when },
-			};
-		});
-	},
-);
 </script>
 
 <template>
@@ -80,12 +63,12 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 			>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-					<N8nDropdownMenu
-						:items="sessionDropdownOptions"
-						placement="bottom-start"
-						:extra-popper-class="$style.sessionDropdownMenu"
-						data-testid="agent-preview-session-switcher"
+					<AgentSessionHistoryDropdown
+						:session-options="props.sessionOptions"
+						:can-delete-session="props.canDeleteSession"
+						:is-deleting-session="props.isDeletingSession"
 						@select="emit('session-select', $event)"
+						@delete="emit('delete-session', $event)"
 					>
 						<template #trigger>
 							<N8nButton
@@ -100,17 +83,7 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 								<N8nIcon icon="chevron-down" color="text-light" :size="12" />
 							</N8nButton>
 						</template>
-						<template #item-label="{ item }">
-							<N8nText bold :class="$style.sessionDropdownName">{{
-								item.label ?? 'New session'
-							}}</N8nText>
-						</template>
-						<template #item-trailing="{ item }">
-							<N8nText v-if="item.data?.when" :class="$style.sessionDropdownDate">
-								{{ item.data.when }}
-							</N8nText>
-						</template>
-					</N8nDropdownMenu>
+					</AgentSessionHistoryDropdown>
 				</template>
 			</N8nBreadcrumbs>
 		</div>
@@ -162,17 +135,16 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 }
 
 .sessionTitle {
-	transform: translateY(1px);
 	min-width: 0;
 	max-width: 40rem;
 	padding-inline: var(--spacing--2xs);
 }
-.sessionTitleLabel,
-.sessionDropdownName {
+.sessionTitleLabel {
 	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-size: var(--font-size--sm);
 }
 
 .crumbSeparator {
@@ -180,25 +152,6 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 	margin-inline: var(--spacing--4xs);
 	user-select: none;
 	font-size: var(--font-size--xl);
-}
-
-.sessionTitleLabel {
-	font-size: var(--font-size--sm);
-}
-
-.sessionDropdownMenu {
-	width: max(var(--reka-dropdown-menu-trigger-width), 16rem);
-}
-
-.sessionDropdownName {
-	max-width: 80%;
-}
-
-.sessionDropdownDate {
-	margin-left: auto;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--xs);
-	white-space: nowrap;
 }
 
 .actions {

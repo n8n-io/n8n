@@ -1,8 +1,9 @@
-import { SECRET_KEYS } from '@n8n/utils/scrub-secrets';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
+import { reportSideCallUsage } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
-import type { AgentExecutionCounter } from '../../types/sdk/agent';
+import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { ObservationCursor } from '../../types/sdk/observation';
@@ -32,14 +33,6 @@ const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
 const REDACTED_VALUE = '[REDACTED]';
-// Built from the shared secret-key vocabulary (@n8n/utils/scrub-secrets) plus
-// a few key names that vocabulary doesn't cover (bare `token`, private keys,
-// client secrets, session cookies) — catches secrets sitting under a
-// sensitive object key regardless of value shape.
-const SENSITIVE_KEY_PATTERN = new RegExp(
-	`(?:^|[_-])(?:${SECRET_KEYS}|token|private[_-]?key|client[_-]?secret|session[_-]?cookie)(?:$|[_-])`,
-	'i',
-);
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -68,6 +61,19 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 	setCursor(cursor: ObservationCursor): Promise<void>;
 }
 
+export async function readObservationState(
+	memory: ObservationLogObserverMemory,
+	observationScopeId: string,
+): Promise<{ cursor: ObservationCursor | null; hasActiveObservations: boolean }> {
+	const [cursor, observations] = await Promise.all([
+		memory.getCursor(observationScopeId),
+		memory.getActiveObservationLog({ observationScopeId, limit: 1, order: 'desc' }),
+	]);
+	const hasActiveObservations = observations.length > 0;
+	// Missing memory is not proof that the processed history was empty.
+	return { cursor: hasActiveObservations ? cursor : null, hasActiveObservations };
+}
+
 export interface RunObservationLogObserverOpts {
 	memory: ObservationLogObserverMemory;
 	observationScopeId: string;
@@ -78,16 +84,27 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Receives the observer model call's usage the moment it resolves, before
+	 * any parsing or persistence. Forwarding it here (rather than only on the
+	 * success return) keeps a billed observer call priced even when later
+	 * post-processing throws. Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type RunObservationLogObserverResult =
-	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
+	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' | 'run-disabled' }
 	| {
 			status: 'ran';
 			observationsWritten: number;
 			cursorAdvanced: boolean;
 			tokenCount: number;
 			skippedLines: string[];
+			/** Normalized token usage from the observer LLM call, when the provider reports it. */
+			usage?: TokenUsage;
+			/** Stable model id string of the model that produced the observations. */
+			model?: string;
 	  };
 
 export function parseObservationLogMarkdown(markdown: string): ParseObservationLogMarkdownResult {
@@ -175,7 +192,7 @@ export async function runObservationLogObserver(
 	opts: RunObservationLogObserverOpts,
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, observationScopeId } = opts;
-	const cursor = await memory.getCursor(observationScopeId);
+	const { cursor, hasActiveObservations } = await readObservationState(memory, observationScopeId);
 	const deltaMessages = await memory.getMessagesForObservationScope(
 		observationScopeId,
 		cursor
@@ -212,7 +229,7 @@ export async function runObservationLogObserver(
 	).reverse();
 	const now = opts.now ?? new Date();
 	const renderedObservationLogTail = renderObservationLog(observationLogTail);
-	const markdown = await opts.observe({
+	const observeResult = await opts.observe({
 		observationScopeId,
 		now,
 		deltaMessages: observable,
@@ -223,10 +240,37 @@ export async function runObservationLogObserver(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
+	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
+	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
+	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
+	// Forward usage immediately after the model call, before parsing or
+	// persistence, so a billed observer turn is priced even when the
+	// post-processing below throws. Fire-and-forget: never block on pricing,
+	// and never let a callback throw or rejection abort observation.
+	reportSideCallUsage(opts.onUsage, observeModel, observeUsage);
 
-	const parsed = parseObservationLogMarkdown(markdown);
+	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
+	const parsed = noObservations
+		? { entries: [], skippedLines: [] }
+		: parseObservationLogMarkdown(markdown);
 	for (const line of parsed.skippedLines) {
 		opts.onMalformedLine?.(line);
+	}
+	if (
+		!noObservations &&
+		(parsed.entries.length === 0 ||
+			parsed.skippedLines.length > 0 ||
+			parsed.entries.some((entry) => entry.text.length === 0))
+	) {
+		return {
+			status: 'ran',
+			observationsWritten: 0,
+			cursorAdvanced: false,
+			tokenCount,
+			skippedLines: parsed.skippedLines,
+			usage: observeUsage,
+			model: observeModel,
+		};
 	}
 
 	const prepared = await Promise.all(
@@ -257,13 +301,17 @@ export async function runObservationLogObserver(
 		inserted.push(row);
 	}
 
-	// Only advance the cursor once the delta is actually represented by
-	// persisted observations. Advancing after an empty or unparseable observe()
-	// result would mark these messages "observed" with no summary standing in
-	// for them, which permanently orphans them from loaded history.
-	const cursorAdvanced = inserted.length > 0;
+	// ponytail: Keep raw history when no observations exist; later runs may review it again.
+	// Add a durable empty-review marker if repeated reviews across runs become costly.
+	const cursorAdvanced = inserted.length > 0 || hasActiveObservations;
 	if (cursorAdvanced) {
-		await advanceObserverCursor(memory, observationScopeId, observable[observable.length - 1], now);
+		const lastMessage = observable[observable.length - 1];
+		await memory.setCursor({
+			observationScopeId,
+			lastObservedMessageId: lastMessage.id,
+			lastObservedAt: lastMessage.createdAt,
+			updatedAt: now,
+		});
 	}
 
 	return {
@@ -272,6 +320,8 @@ export async function runObservationLogObserver(
 		cursorAdvanced,
 		tokenCount,
 		skippedLines: parsed.skippedLines,
+		usage: observeUsage,
+		model: observeModel,
 	};
 }
 
@@ -346,10 +396,6 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	return result;
 }
 
-function isSensitiveKey(key: string): boolean {
-	return SENSITIVE_KEY_PATTERN.test(key);
-}
-
 function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
 	if (typeof value !== 'string') return false;
 	if (value.length <= maxStringChars) return false;
@@ -381,18 +427,4 @@ export function wrapUntrustedObserverData(content: string, source: string): stri
 	const safeSource = escapeXmlAttribute(source);
 	const safeContent = content.replace(/<\/untrusted_tool_data/gi, '&lt;/untrusted_tool_data');
 	return `<untrusted_tool_data source="${safeSource}">${safeContent}</untrusted_tool_data>`;
-}
-
-async function advanceObserverCursor(
-	memory: ObservationLogObserverMemory,
-	observationScopeId: string,
-	lastMessage: AgentDbMessage,
-	now: Date,
-): Promise<void> {
-	await memory.setCursor({
-		observationScopeId,
-		lastObservedMessageId: lastMessage.id,
-		lastObservedAt: lastMessage.createdAt,
-		updatedAt: now,
-	});
 }

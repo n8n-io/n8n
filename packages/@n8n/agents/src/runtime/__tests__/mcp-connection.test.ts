@@ -234,6 +234,27 @@ describe('McpClient — connection failure handling', () => {
 		// The transport that opened before listTools threw was closed.
 		expect(clientClose).toHaveBeenCalledTimes(1);
 	});
+
+	it('retries a failed server on the next tool-list request', async () => {
+		clientConnect
+			.mockRejectedValueOnce(new Error('temporary failure'))
+			.mockResolvedValue(undefined);
+		clientListTools.mockResolvedValue({
+			tools: [{ name: 'echo', description: '', inputSchema: { type: 'object' } }],
+		});
+		clientClose.mockResolvedValue(undefined);
+
+		const client = new McpClient([
+			{ name: 'flaky', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+
+		expect(await client.listTools()).toEqual([]);
+		const tools = await client.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['flaky_echo']);
+		expect(clientConnect).toHaveBeenCalledTimes(2);
+		expect(client.getConnectionFailures()).toEqual([]);
+	});
 });
 
 describe('McpClient — tool name normalization', () => {
@@ -540,5 +561,17 @@ describe('McpConnection — reconnect after disconnect', () => {
 		await conn.connect();
 		await conn.disconnect();
 		expect(clientClose).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('McpConnection — approval declaration', () => {
+	it('declares approval when tool configuration is resolved after discovery', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({ requireApproval: [] }),
+		});
+
+		expect(conn.declaresApproval()).toBe(true);
 	});
 });

@@ -47,7 +47,7 @@ async function openSetupCard(preferNewCredentials?: string[]) {
 	const context = createContext();
 	const suspend = vi.fn();
 	await executeTool(
-		createWorkflowsTool(context, 'full'),
+		createWorkflowsTool(context),
 		{
 			action: 'setup',
 			workflowId: 'wf1',

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -5,11 +6,11 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
-import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
@@ -101,11 +102,13 @@ async function buildImportPackage(
 				},
 			],
 			connections: {},
-			versionId: 'wire-version-id',
 			parentFolderId: null,
-			isPublished: false,
 			isArchived: false,
 		}),
+	);
+	writer.writeFile(
+		`workflows/${wfId}/workflow-metadata.json`,
+		JSON.stringify({ versionId: WIRE_VERSION_ID, publishedVersionId: null }),
 	);
 
 	if (variable) {
@@ -422,7 +425,7 @@ describe('POST /n8n-packages/import', () => {
 					id: 'wf-unknown-node',
 					name: 'Unknown Node Type',
 					// Published in the source, so a publish-intent policy would publish it.
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'unknown-node',

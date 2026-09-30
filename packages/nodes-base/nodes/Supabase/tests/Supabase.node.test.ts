@@ -1,4 +1,3 @@
-import { mock, mockDeep } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import {
 	type ILoadOptionsFunctions,
@@ -8,11 +7,13 @@ import {
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
+	UserError,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as utils from '../GenericFunctions';
 import { Supabase } from '../Supabase.node';
-import type { Mock } from 'vitest';
 
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
@@ -61,6 +62,23 @@ describe('Test Supabase Node', () => {
 			},
 		} as unknown as IExecuteFunctions;
 		return fakeExecuteFunction;
+	};
+
+	// getNodeParameter is only ever asked for these two names on the loadOptions path
+	const createMockLoadOptionsFunction = (
+		schema?: string,
+		getCredentials: typeof mockGetCredentials = mockGetCredentials,
+	) => {
+		const context = mockDeep<ILoadOptionsFunctions>({
+			getCredentials,
+			helpers: {
+				requestWithAuthentication: mockRequestWithAuthentication,
+			},
+		});
+		context.getNodeParameter.mockImplementation((name: string) =>
+			name === 'useCustomSchema' ? schema !== undefined : schema,
+		);
+		return context;
 	};
 
 	describe('filter query builders', () => {
@@ -136,6 +154,102 @@ describe('Test Supabase Node', () => {
 		])('should reject an unsupported $errorType', ({ filter, errorType }) => {
 			expect(() => utils.buildOrQuery(filter)).toThrow(`Unsupported ${errorType}`);
 		});
+	});
+
+	describe('filter string parameters', () => {
+		it('should substitute $1 with a quoted value when it contains reserved characters', () => {
+			const resolved = utils.applyFilterStringParameters('or=(email.eq.$1)', [
+				{ value: 'nobody@x.com,id.gt.0' },
+			]);
+
+			expect(decodeURIComponent(resolved)).toBe('or=(email.eq."nobody@x.com,id.gt.0")');
+		});
+
+		it('should leave a plain substituted value unquoted', () => {
+			expect(utils.applyFilterStringParameters('id.eq.$1', [{ value: '42' }])).toBe('id.eq.42');
+		});
+
+		it('should substitute multiple parameters by position', () => {
+			const resolved = utils.applyFilterStringParameters('or=(a.eq.$1,b.eq.$2)', [
+				{ value: 'x,y' },
+				{ value: 'z' },
+			]);
+
+			expect(decodeURIComponent(resolved)).toBe('or=(a.eq."x,y",b.eq.z)');
+		});
+
+		it('should throw when the filter string references a parameter that was not provided', () => {
+			expect(() => utils.applyFilterStringParameters('email.eq.$2', [{ value: 'x' }])).toThrow(
+				'Filters (String) references parameter $2',
+			);
+		});
+
+		it('should leave the filter string untouched when no parameters are provided, even with a literal $N in it', () => {
+			expect(utils.applyFilterStringParameters('price.eq.$50', [])).toBe('price.eq.$50');
+		});
+
+		it('should escape & and = in a substituted value so it cannot open a new top-level query parameter', () => {
+			const resolved = utils.applyFilterStringParameters('or=(email.eq.$1)', [
+				{ value: 'x@y.com&select=*' },
+			]);
+
+			expect(Array.from(new URLSearchParams(resolved).keys())).toEqual(['or']);
+		});
+
+		it.each(['getAll', 'delete', 'update'])(
+			'should escape an injected parameter value for %s so it cannot append an extra condition',
+			async (operation) => {
+				const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest').mockResolvedValue([]);
+
+				const fakeExecuteFunction = createMockExecuteFunction({
+					resource: 'row',
+					operation,
+					returnAll: true,
+					filterType: 'string',
+					filterString: 'or=(email.eq.$1)',
+					filterStringParameters: { values: [{ value: 'nobody@x.com,id.gt.0' }] },
+					tableId: 'my_table',
+					dataToSend: 'defineBelow',
+					fieldsUi: { fieldValues: [] },
+				});
+
+				await node.execute.call(fakeExecuteFunction);
+
+				// the substituted value is percent-encoded (decodeURI alone leaves
+				// reserved-character escapes like %40/%2C untouched); the receiving
+				// server decodes it the same way before parsing the filter.
+				const endpointArg = supabaseApiRequest.mock.calls[0][1] as string;
+				expect(decodeURIComponent(endpointArg)).toBe(
+					'/my_table?or=(email.eq."nobody@x.com,id.gt.0")',
+				);
+
+				supabaseApiRequest.mockRestore();
+			},
+		);
+
+		it.each(['getAll', 'delete', 'update'])(
+			"should not swallow a $N parameter mismatch under continueOnFail for %s, matching manual mode's unconditional validation errors",
+			async (operation) => {
+				const fakeExecuteFunction = createMockExecuteFunction(
+					{
+						resource: 'row',
+						operation,
+						returnAll: true,
+						filterType: 'string',
+						filterString: 'email.eq.$2',
+						filterStringParameters: { values: [{ value: 'x' }] },
+						tableId: 'my_table',
+						dataToSend: 'defineBelow',
+						fieldsUi: { fieldValues: [] },
+					},
+					true,
+				);
+
+				await expect(node.execute.call(fakeExecuteFunction)).rejects.toThrow(
+					'Filters (String) references parameter $2',
+				);
+			},
+		);
 	});
 
 	describe('getAll pagination', () => {
@@ -391,6 +505,90 @@ describe('Test Supabase Node', () => {
 		);
 	});
 
+	describe('table name path segment', () => {
+		const encodedNames = [
+			['a/b', '/a%2Fb'],
+			['a\\b', '/a%5Cb'],
+			['a?b=c', '/a%3Fb%3Dc'],
+			['a#b', '/a%23b'],
+			['../a', '/..%2Fa'],
+			['my table', '/my%20table'],
+		];
+
+		it.each(encodedNames)(
+			'should send the table name %s as a single path segment',
+			async (tableId, expectedEndpoint) => {
+				const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
+				const fakeExecuteFunction = createMockExecuteFunction({
+					resource: 'row',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					tableId,
+					filterType: 'none',
+					orderBy: '',
+				});
+
+				await node.execute.call(fakeExecuteFunction);
+
+				expect(supabaseApiRequest).toHaveBeenCalledWith(
+					'GET',
+					expectedEndpoint,
+					expect.anything(),
+					expect.anything(),
+					undefined,
+					expect.anything(),
+				);
+				supabaseApiRequest.mockRestore();
+			},
+		);
+
+		const operations: Array<[string, IDataObject]> = [
+			['create', { dataToSend: 'defineBelow', fieldsUi: { fieldValues: [] } }],
+			['delete', { filterType: 'none' }],
+			['get', { filters: { conditions: [{ keyName: 'id', keyValue: '1' }] } }],
+			['update', { filterType: 'none', dataToSend: 'defineBelow', fieldsUi: { fieldValues: [] } }],
+		];
+
+		it.each(operations)(
+			'should encode the table name on the %s operation',
+			async (operation, parameters) => {
+				const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest').mockResolvedValue([]);
+				const fakeExecuteFunction = createMockExecuteFunction({
+					resource: 'row',
+					operation,
+					tableId: 'a/b',
+					...parameters,
+				});
+
+				await node.execute.call(fakeExecuteFunction);
+
+				expect(supabaseApiRequest.mock.calls[0][1]).toBe('/a%2Fb');
+				supabaseApiRequest.mockRestore();
+			},
+		);
+
+		it.each(['', '.', '..'])(
+			'should reject the table name "%s" before any request is made',
+			async (tableId) => {
+				const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest');
+				const fakeExecuteFunction = createMockExecuteFunction({
+					resource: 'row',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					tableId,
+					filterType: 'none',
+					orderBy: '',
+				});
+
+				await expect(node.execute.call(fakeExecuteFunction)).rejects.toThrow(UserError);
+				expect(supabaseApiRequest).not.toHaveBeenCalled();
+				supabaseApiRequest.mockRestore();
+			},
+		);
+	});
+
 	describe('getSchemaHeader function', () => {
 		const mockExecuteContext = {
 			getNodeParameter: vi.fn(),
@@ -517,13 +715,7 @@ describe('Test Supabase Node', () => {
 	describe('loadOptions', () => {
 		describe('getTables', () => {
 			it('should return the tables and skip RPCs', async () => {
-				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getCredentials: mockGetCredentials,
-					helpers: {
-						requestWithAuthentication: mockRequestWithAuthentication,
-					},
-				});
-				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockRequestWithAuthentication.mockResolvedValue({
 					paths: {
 						'/': {
@@ -547,13 +739,7 @@ describe('Test Supabase Node', () => {
 
 		describe('getTableColumns', () => {
 			it('should return table columns with their types', async () => {
-				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getCredentials: mockGetCredentials,
-					helpers: {
-						requestWithAuthentication: mockRequestWithAuthentication,
-					},
-				});
-				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
 				mockRequestWithAuthentication.mockResolvedValue({
 					definitions: {
@@ -578,13 +764,7 @@ describe('Test Supabase Node', () => {
 			});
 
 			it('should return empty array when table definition has no properties', async () => {
-				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
-					getCredentials: mockGetCredentials,
-					helpers: {
-						requestWithAuthentication: mockRequestWithAuthentication,
-					},
-				});
-				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				const mockLoadOptionsFunctions = createMockLoadOptionsFunction();
 				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
 				mockRequestWithAuthentication.mockResolvedValue({
 					definitions: {
@@ -596,6 +776,95 @@ describe('Test Supabase Node', () => {
 					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
 
 				expect(columns).toEqual([]);
+			});
+
+			it('should fetch the schema document once for concurrent calls sharing a schema', async () => {
+				const createColumnsContext = (schema?: string) => {
+					const context = createMockLoadOptionsFunction(schema);
+					context.getCurrentNodeParameter.mockReturnValue('users');
+					return context;
+				};
+
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {
+							properties: {
+								id: { type: 'integer' },
+								email: { type: 'string' },
+							},
+						},
+					},
+				});
+
+				const publicSchemaColumns = await Promise.all(
+					Array.from(
+						{ length: 25 },
+						async () => await node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
+					),
+				);
+
+				for (const columns of publicSchemaColumns) {
+					expect(columns).toEqual([
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-miscased-id
+						{ name: 'id - (integer)', value: 'id' },
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						{ name: 'email - (string)', value: 'email' },
+					]);
+				}
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+
+				await Promise.all(
+					Array.from(
+						{ length: 5 },
+						async () =>
+							await node.methods.loadOptions.getTableColumns.call(
+								createColumnsContext('analytics'),
+							),
+					),
+				);
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('should not share a request between callers whose credentials differ', async () => {
+				const createColumnsContext = (serviceRole: string) => {
+					const context = createMockLoadOptionsFunction(
+						undefined,
+						vi.fn().mockResolvedValue({ host: 'https://api.supabase.io', serviceRole }),
+					);
+					context.getCurrentNodeParameter.mockReturnValue('users');
+					return context;
+				};
+				mockRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
+
+				await Promise.all([
+					node.methods.loadOptions.getTableColumns.call(createColumnsContext('role-a')),
+					node.methods.loadOptions.getTableColumns.call(createColumnsContext('role-b')),
+				]);
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			});
+
+			it('should issue a fresh request after a shared request fails', async () => {
+				const createColumnsContext = () => {
+					const context = createMockLoadOptionsFunction();
+					context.getCurrentNodeParameter.mockReturnValue('users');
+					return context;
+				};
+				mockRequestWithAuthentication.mockRejectedValueOnce(new Error('schema unavailable'));
+
+				await expect(
+					Promise.all([
+						node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
+						node.methods.loadOptions.getTableColumns.call(createColumnsContext()),
+					]),
+				).rejects.toThrow();
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+
+				mockRequestWithAuthentication.mockResolvedValue({ definitions: { users: {} } });
+				await node.methods.loadOptions.getTableColumns.call(createColumnsContext());
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			});
 		});
 	});

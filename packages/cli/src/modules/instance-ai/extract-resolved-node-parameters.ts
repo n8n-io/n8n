@@ -13,6 +13,7 @@ import {
 	type ResolvedExpressionFailure,
 	type ResolvedNodeParametersResult,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import {
 	type IExecuteData,
 	type INode,
@@ -335,7 +336,7 @@ export async function extractResolvedNodeParameters(
 				}
 				return capResolvedLeaf(resolvedValue);
 			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage = getErrorMessage(error);
 				failedExpressions.push({
 					path,
 					raw: value,

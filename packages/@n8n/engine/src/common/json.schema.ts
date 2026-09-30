@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { JsonValue } from './json';
+import type { JsonObject, JsonValue } from './json';
 
 /** Anything that survives a JSON round trip. */
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -13,3 +13,6 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 		z.record(jsonValueSchema),
 	]),
 );
+
+/** A JSON object. Validates the shape and nothing below it. */
+export const jsonObjectSchema: z.ZodType<JsonObject> = z.record(jsonValueSchema);

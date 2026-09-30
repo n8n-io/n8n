@@ -343,6 +343,29 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(row.finishedAt).not.toBeNull();
 		});
 
+		it('completeTask clears the error message of an earlier failed attempt', async () => {
+			const { id, epoch } = await claimOne();
+			expect(
+				await taskRepository.rescheduleTask({ host: HOST_A, id, claimedEpoch: epoch }, 0, 'boom'),
+			).toBe(1);
+			expect((await reload(id)).errorMessage).toBe('boom');
+
+			const [reclaimed] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+			expect(reclaimed.id).toBe(id);
+			expect(
+				await taskRepository.completeTask({
+					host: HOST_A,
+					id,
+					claimedEpoch: reclaimed.leaseEpoch,
+				}),
+			).toBe(1);
+
+			const row = await reload(id);
+			expect(row.status).toBe('succeeded');
+			expect(row.attempts).toBe(1);
+			expect(row.errorMessage).toBeNull();
+		});
+
 		it('failTaskTerminal marks failed and records the error and attempt', async () => {
 			const { id, epoch } = await claimOne();
 
@@ -851,12 +874,13 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		describe('completeExpired', () => {
-			it('completes the task as succeeded, stamping finishedAt without failing it', async () => {
+			it('completes the task as succeeded, stamping finishedAt and clearing an earlier error', async () => {
 				const task = await createExpiredRunning({
-					attempts: 0,
-					maxAttempts: 1,
+					attempts: 1,
+					maxAttempts: 3,
 					leaseEpoch: 1,
 					dispatchedAt: past(),
+					errorMessage: 'boom',
 				});
 
 				expect(await taskRepository.completeExpired({ id: task.id, claimedEpoch: 1 })).toBe(1);

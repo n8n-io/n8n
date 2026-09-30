@@ -12,8 +12,8 @@ import {
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { CacheService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -122,7 +122,6 @@ const authorizeAndMintCode = async (
 };
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
@@ -132,10 +131,6 @@ beforeAll(async () => {
 	codes = Container.get(OAuthAuthorizationCodeService);
 	oauthServer = Container.get(OAuthServerService);
 	tokenService = Container.get(OAuthTokenService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {

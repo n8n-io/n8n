@@ -163,6 +163,8 @@ export const ScheduledJobOwnerType = {
 	Workflow: 'workflow',
 	/** An instance-level maintenance job, self-owned: `ownerId` is the job's own name. */
 	SystemTask: 'system-task',
+	/** A published agent. `ownerId` is the agent id, `ownerMemberId` is the scheduled task id. */
+	Agent: 'agent',
 } as const;
 
 /** Longest accepted `ownerType`. */

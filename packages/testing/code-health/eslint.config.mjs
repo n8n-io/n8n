@@ -1,24 +1,6 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(
-	baseConfig,
-	{
-		ignores: ['coverage/**', 'dist/**'],
-	},
-	{
-		rules: {
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'objectLiteralProperty',
-					format: null,
-					filter: {
-						regex: '^[a-z]+-[a-z-]+$',
-						match: true,
-					},
-				},
-			],
-		},
-	},
-);
+export default defineConfig(backendConfig, {
+	ignores: ['coverage/**', 'dist/**'],
+});

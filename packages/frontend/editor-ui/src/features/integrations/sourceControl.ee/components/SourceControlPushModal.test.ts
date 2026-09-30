@@ -103,11 +103,15 @@ const projects = [
 		id: '1',
 		name: 'Nathan member',
 		type: 'personal',
+		role: 'project:personalOwner',
+		scopes: ['sourceControl:push'],
 	},
 	{
 		id: '2',
 		name: 'Other project',
 		type: 'team',
+		role: 'project:admin',
+		scopes: ['sourceControl:push'],
 	},
 ] as const;
 
@@ -1700,6 +1704,112 @@ describe('SourceControlPushModal', () => {
 
 			const items = getAllByTestId('source-control-push-modal-file-checkbox');
 			expect(items).toHaveLength(1);
+		});
+	});
+
+	describe('owner filter scope check', () => {
+		const ownerStatus: SourceControlledFile[] = [
+			{
+				id: 'wf-owner-filter',
+				name: 'My workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-owner-filter.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+		];
+
+		const renderAndOpenOwnerFilter = async (ownerProjects: ProjectListItem[]) => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.searchProjects.mockResolvedValue({
+				count: ownerProjects.length,
+				data: ownerProjects,
+			});
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(ownerStatus);
+
+			const rendered = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status: ownerStatus,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(rendered.getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(rendered.getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			await userEvent.click(rendered.getByTestId('source-control-filter-dropdown'));
+			await userEvent.click(rendered.getByTestId('source-control-push-modal-project-search'));
+
+			return rendered;
+		};
+
+		it('shows a project where a custom role grants the push scope', async () => {
+			const ownerProjects = [
+				{
+					id: 'custom-role-project',
+					name: 'Custom role project',
+					type: 'team',
+					role: 'project:customRole',
+					scopes: ['sourceControl:push'],
+				},
+			] as unknown as ProjectListItem[];
+
+			const { getAllByTestId } = await renderAndOpenOwnerFilter(ownerProjects);
+
+			await waitFor(() => {
+				const options = getAllByTestId('project-sharing-info');
+				expect(options).toHaveLength(1);
+				expect(options[0]).toHaveTextContent('Custom role project');
+			});
+		});
+
+		it('hides a project whose role does not grant the push scope', async () => {
+			const ownerProjects = [
+				{
+					id: 'viewer-project',
+					name: 'Viewer project',
+					type: 'team',
+					role: 'project:viewer',
+					scopes: ['workflow:read'],
+				},
+			] as unknown as ProjectListItem[];
+
+			const { queryAllByTestId } = await renderAndOpenOwnerFilter(ownerProjects);
+
+			await waitFor(() => {
+				expect(queryAllByTestId('project-sharing-info')).toHaveLength(0);
+			});
+		});
+
+		it('shows a project for an instance admin without a project relation', async () => {
+			const ownerProjects = [
+				{
+					id: 'admin-no-relation-project',
+					name: 'Admin no relation project',
+					type: 'team',
+					role: 'global:admin',
+					scopes: ['sourceControl:push'],
+				},
+			] as unknown as ProjectListItem[];
+
+			const { getAllByTestId } = await renderAndOpenOwnerFilter(ownerProjects);
+
+			await waitFor(() => {
+				const options = getAllByTestId('project-sharing-info');
+				expect(options).toHaveLength(1);
+				expect(options[0]).toHaveTextContent('Admin no relation project');
+			});
 		});
 	});
 

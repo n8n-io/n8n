@@ -72,6 +72,60 @@ describe('RunStateRegistry', () => {
 		mockedNanoid.mockImplementation(() => `id-${++nanoidCounter}`);
 	});
 
+	it('retains mode across internal runs and clears it on a control request', () => {
+		registry.setBuildMode('thread-1', 'progressive');
+		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
+		expect(registry.getBuildMode('thread-1')).toBe('progressive');
+		registry.setBuildMode('thread-1', undefined);
+		expect(registry.getBuildMode('thread-1')).toBeUndefined();
+	});
+
+	it('removes retained mode when a thread is cleared', () => {
+		registry.setBuildMode('thread-1', 'progressive');
+		registry.clearThread('thread-1');
+		expect(registry.getBuildMode('thread-1')).toBeUndefined();
+	});
+
+	it('scopes the observer threshold override to its own thread and clears it', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		// A second thread on the same process keeps the instance default.
+		expect(registry.getObserverThresholdTokens('thread-1')).toBe(8000);
+		expect(registry.getObserverThresholdTokens('thread-2')).toBeUndefined();
+
+		registry.setObserverThresholdTokens('thread-1', undefined);
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('drops the observer threshold override when a thread is cleared', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.clearThread('thread-1');
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('drops every observer threshold override on shutdown', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.shutdown();
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('retains the selected prompt version and metadata until the next explicit selection', () => {
+		const metadata = {
+			version: 'progressive@1',
+			systemPromptVersion: 'instance-agent@1',
+			skillVariants: ['progressive-building@1'],
+			skillsHash: 'selected-skills',
+		};
+		registry.setPromptConfiguration('thread-1', metadata);
+		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
+		expect(registry.getPromptVersion('thread-1')).toBe('progressive@1');
+		expect(registry.getPromptConfiguration('thread-1')).toEqual(metadata);
+		registry.setPromptVersion('thread-1', 'default@1');
+		expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
+		expect(registry.getPromptVersion('thread-1')).toBe('default@1');
+		registry.clearThread('thread-1');
+		expect(registry.getPromptVersion('thread-1')).toBeUndefined();
+	});
+
 	// ── startRun ──────────────────────────────────────────────────────────────
 
 	describe('startRun', () => {
@@ -992,7 +1046,11 @@ describe('RunStateRegistry', () => {
 				createdAt: Date.now(),
 			});
 
+			registry.setSetupPanelEnabled('thread-1', true);
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(true);
+			expect(registry.isSetupPanelEnabled('thread-2')).toBe(false);
 			const result = registry.clearThread('thread-1');
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(false);
 
 			// Confirmations resolved
 			expect(resolve).toHaveBeenCalledWith({ approved: false });
@@ -1034,16 +1092,31 @@ describe('RunStateRegistry', () => {
 	describe('shutdown', () => {
 		it('clears everything and returns all active and suspended runs', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			registry.setPromptConfiguration('thread-1', {
+				version: 'progressive@1',
+				systemPromptVersion: 'instance-agent@1',
+				skillVariants: ['progressive-building@1'],
+				skillsHash: 'selected-skills',
+			});
 			registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });
 			registry.suspendRun(
 				'thread-2',
 				createSuspendedRunState({ threadId: 'thread-2', runId: 'run_suspended' }),
 			);
+			registry.startRun({ threadId: 'thread-3', user: { id: 'u3', name: 'C' } });
+			registry.setPromptVersion('thread-3', 'default@1');
+			expect(registry.getPromptConfiguration('thread-3')).toBeUndefined();
 
 			const result = registry.shutdown();
 
-			expect(result.activeRuns).toHaveLength(1);
+			expect(result.activeRuns).toHaveLength(2);
 			expect(result.activeRuns[0].runId).toBe('run_id-1');
+			expect(result.activeRuns[0].promptVersion).toBe('progressive@1');
+			expect(result.activeRuns.find((run) => run.threadId === 'thread-3')?.promptVersion).toBe(
+				'default@1',
+			);
+			expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
+			expect(registry.getPromptVersion('thread-3')).toBeUndefined();
 			expect(result.suspendedRuns).toHaveLength(1);
 			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
 		});

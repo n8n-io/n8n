@@ -278,6 +278,31 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 		expect(system[1]?.content).toContain('Some memory.');
 	});
 
+	it('merges volatile sections into one system message when split messages are unsupported', () => {
+		const cacheOptions = {
+			anthropic: { cacheControl: { type: 'ephemeral' as const } },
+		};
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			cacheOptions,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+			'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+			false,
+		);
+
+		expect(system).toEqual({
+			role: 'system',
+			content: [
+				'Base instructions',
+				'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+				'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+				'<observations>\n* Some memory.\n</observations>',
+			].join('\n\n'),
+			providerOptions: cacheOptions,
+		});
+	});
+
 	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
 		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
 

@@ -30,6 +30,7 @@ const newJob = (name: string): NewScheduledJob => ({
 	maxAttempts: 5,
 	misfirePolicy: 'coalesce',
 	misfireGraceSeconds: 60,
+	concurrencyLimit: null,
 });
 
 /** A row as the post-insert read-back returns it: id, name and the owner it belongs to. */
@@ -96,6 +97,97 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
+	describe('findPayloadsByOwnerIds', () => {
+		it('reads the owner id and payload of the jobs these owners hold', async () => {
+			const rows = [mock<ScheduledJob>({ ownerId: 'a', payload: { n8nVersion: '1.0.0' } })];
+			entityManager.find.mockResolvedValueOnce(rows);
+
+			const result = await repository.findPayloadsByOwnerIds('system-task', ['a', 'b']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task', ownerId: In(['a', 'b']) },
+				select: ['ownerId', 'payload'],
+			});
+			expect(result).toBe(rows);
+		});
+
+		it('is a no-op with no owner ids', async () => {
+			expect(await repository.findPayloadsByOwnerIds('system-task', [])).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findPayloadsByOwnerType', () => {
+		it('reads the id, owner id and payload of every job owners of one kind hold', async () => {
+			const rows = [mock<ScheduledJob>({ id: 1, ownerId: 'a', payload: { n8nVersion: '1.0.0' } })];
+			entityManager.find.mockResolvedValueOnce(rows);
+
+			const result = await repository.findPayloadsByOwnerType('system-task');
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task' },
+				select: ['id', 'ownerId', 'payload'],
+			});
+			expect(result).toBe(rows);
+		});
+	});
+
+	describe('deleteIfPayloadUnchanged', () => {
+		const OBSERVED = { n8nVersion: '1.0.0' };
+
+		const conditionalDelete = (affected: number | null) => {
+			const qb = {
+				delete: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected, raw: [] }),
+			};
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			return qb;
+		};
+
+		it('deletes the row only while its payload still equals the observed one', async () => {
+			const qb = conditionalDelete(1);
+
+			const removed = await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
+
+			expect(qb.from).toHaveBeenCalledWith(ScheduledJob);
+			expect(qb.where).toHaveBeenCalledWith('"id" = :id', { id: 7 });
+			expect(qb.andWhere).toHaveBeenCalledWith('"payload" = :payload', {
+				payload: JSON.stringify(OBSERVED),
+			});
+			expect(removed).toBe(1);
+		});
+
+		it('reports nothing removed when the payload changed or the row is gone', async () => {
+			conditionalDelete(0);
+
+			const removed = await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
+
+			expect(removed).toBe(0);
+		});
+
+		it('reports nothing removed when the driver does not count affected rows', async () => {
+			conditionalDelete(null);
+
+			const removed = await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
+
+			expect(removed).toBe(0);
+		});
+
+		it('compares the payload as jsonb on Postgres', async () => {
+			const qb = conditionalDelete(1);
+
+			await postgresRepository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
+
+			expect(qb.andWhere).toHaveBeenCalledWith(
+				'CAST("payload" AS jsonb) = CAST(:payload AS jsonb)',
+				{ payload: JSON.stringify(OBSERVED) },
+			);
+		});
+	});
+
 	describe('countByOwner', () => {
 		it('counts the jobs owned by the owner member', async () => {
 			entityManager.count.mockResolvedValueOnce(3);
@@ -104,6 +196,19 @@ describe('ScheduledJobRepository', () => {
 
 			expect(entityManager.count).toHaveBeenCalledWith(ScheduledJob, { where: OWNER });
 			expect(result).toBe(3);
+		});
+	});
+
+	describe('existsRunnableByOwner', () => {
+		it('checks only the enabled jobs of the owner that are not quarantined', async () => {
+			entityManager.exists.mockResolvedValueOnce(true);
+
+			const result = await repository.existsRunnableByOwner(OWNER);
+
+			expect(entityManager.exists).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ...OWNER, enabled: true, orphanedAt: IsNull() },
+			});
+			expect(result).toBe(true);
 		});
 	});
 
@@ -311,13 +416,31 @@ describe('ScheduledJobRepository', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				maxAttempts: 3,
 				misfirePolicy: 'skip',
 				misfireGraceSeconds: 120,
+				concurrencyLimit: 2,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);
 
 			expect(entityManager.update).toHaveBeenCalledWith(ScheduledJob, { id: 10 }, update);
+		});
+	});
+
+	describe('updatePayload', () => {
+		it('rewrites the payload of the given ids, leaving schedule and clock untouched', async () => {
+			await repository.updatePayload(entityManager, [1, 2], { n8nVersion: '1.0.0' });
+
+			expect(entityManager.update).toHaveBeenCalledWith(ScheduledJob, [1, 2], {
+				payload: { n8nVersion: '1.0.0' },
+			});
+		});
+
+		it('is a no-op when there are no ids', async () => {
+			await repository.updatePayload(entityManager, [], { n8nVersion: '1.0.0' });
+
+			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
 

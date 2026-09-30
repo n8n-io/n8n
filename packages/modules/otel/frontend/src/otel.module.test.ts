@@ -1,3 +1,4 @@
+import { i18nInstance, setLanguage } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createPinia, setActivePinia } from 'pinia';
@@ -48,6 +49,44 @@ describe('OtelModule', () => {
 			useRBACStore().addGlobalScope('otel:manage');
 
 			expect(item?.available).toBe(true);
+		});
+	});
+
+	describe('label', () => {
+		const OTEL_LABEL_KEY = 'settings.opentelemetry';
+
+		afterEach(() => {
+			setLanguage('en');
+		});
+
+		it('should read the label from i18n', () => {
+			expect(settingsPage()?.label).toBe('OpenTelemetry');
+		});
+
+		it('should follow a language change after registration', () => {
+			const item = settingsPage();
+			expect(item?.label).toBe('OpenTelemetry');
+
+			// `Object.fromEntries`, because a dotted i18n key is not a lintable
+			// object-literal property name.
+			i18nInstance.global.mergeLocaleMessage(
+				'de',
+				Object.fromEntries([[OTEL_LABEL_KEY, 'OpenTelemetrie']]),
+			);
+			setLanguage('de');
+
+			expect(item?.label).toBe('OpenTelemetrie');
+		});
+
+		it('should read i18n lazily, not when the descriptor is imported', () => {
+			// The descriptor is imported by the shell manifest at boot, before `App.vue`
+			// calls `setLanguage`. A resolved string here would freeze the boot locale,
+			// and would put an i18n read at module scope — which the import-light rule
+			// for `*.module.ts` bans.
+			const descriptor = Object.getOwnPropertyDescriptor(settingsPage(), 'label');
+
+			expect(typeof descriptor?.get).toBe('function');
+			expect(descriptor?.value).toBeUndefined();
 		});
 	});
 

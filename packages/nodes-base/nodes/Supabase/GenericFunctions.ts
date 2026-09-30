@@ -11,6 +11,7 @@ import type {
 	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, UserError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 export function getSchemaHeader(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -83,6 +84,44 @@ export async function supabaseApiRequest(
 			error.message = `${error.message}: ${error.description}`;
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+type SupabaseApiDefinition = {
+	paths?: IDataObject;
+	definitions?: {
+		[table: string]: { properties?: { [column: string]: { type: string } } } | undefined;
+	};
+};
+
+const apiDefinitionsInFlight = new Map<string, Promise<SupabaseApiDefinition>>();
+
+/**
+ * Reads the PostgREST root document, which lists every table and column and so can run to
+ * several megabytes. The editor opens one column dropdown per field and they all ask at
+ * once, so overlapping callers share one request instead of a parsed copy each.
+ */
+export async function getApiDefinition(
+	this: ILoadOptionsFunctions,
+): Promise<SupabaseApiDefinition> {
+	const { host, serviceRole } = await this.getCredentials<{
+		host: string;
+		serviceRole: string;
+	}>('supabaseApi');
+	const header = getSchemaHeader(this, 'GET', 'loadOptions');
+	const key = createHash('sha256')
+		.update(JSON.stringify([host, serviceRole, header]))
+		.digest('hex');
+
+	const inFlight = apiDefinitionsInFlight.get(key);
+	if (inFlight) return await inFlight;
+
+	const request = supabaseApiRequest.call(this, 'GET', '/', {}, {}, undefined, header);
+	apiDefinitionsInFlight.set(key, request);
+	try {
+		return await request;
+	} finally {
+		apiDefinitionsInFlight.delete(key);
 	}
 }
 
@@ -302,6 +341,39 @@ export function getFilters(
 			},
 			default: '',
 			placeholder: 'name=eq.jhon',
+			hint: 'Use $1, $2, etc. and the parameters below to reference dynamic values, rather than building this string with an expression, to avoid PostgREST filter injection',
+		},
+		{
+			displayName: 'Filters (String) Parameters',
+			name: 'filterStringParameters',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					resource: resources,
+					operation: operations,
+					filterType: ['string'],
+				},
+			},
+			default: {},
+			placeholder: 'Add Parameter',
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+			description: 'Values to substitute for $1, $2, etc. in the filter string above.',
 		},
 	];
 }
@@ -362,6 +434,37 @@ export const buildOrQuery = (value: IDataObject) =>
 
 export const buildGetQuery = (query: Map<string, string>, value: IDataObject) =>
 	query.set(quotePostgrestComponent(value.keyName), `eq.${String(value.keyValue)}`);
+
+export function applyFilterStringParameters(filterString: string, parameters: IDataObject[]) {
+	if (parameters.length === 0) return filterString;
+
+	return filterString.replace(/\$(\d+)/g, (_match, index: string) => {
+		const position = Number(index) - 1;
+		if (position < 0 || position >= parameters.length) {
+			throw new UserError(
+				`Filters (String) references parameter $${index}, but only ${parameters.length} parameter(s) were provided`,
+			);
+		}
+
+		return encodeURIComponent(quotePostgrestComponent(parameters[position].value));
+	});
+}
+
+export function appendFilterStringToEndpoint(
+	context: IExecuteFunctions,
+	endpoint: string,
+	itemIndex: number,
+) {
+	const filterString = context.getNodeParameter('filterString', itemIndex) as string;
+	const filterStringParameters = context.getNodeParameter(
+		'filterStringParameters.values',
+		itemIndex,
+		[],
+	) as IDataObject[];
+
+	const encodedTemplate = encodeURI(filterString);
+	return `${endpoint}?${applyFilterStringParameters(encodedTemplate, filterStringParameters)}`;
+}
 
 export async function validateCredentials(
 	this: ICredentialTestFunctions,

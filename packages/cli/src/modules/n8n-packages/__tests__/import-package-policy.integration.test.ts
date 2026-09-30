@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@n8n/errors';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { createOwner } from '@test-integration/db/users';
@@ -52,18 +52,20 @@ const seenTransports: string[] = [];
 class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
 	readonly id = CHECK_ID;
 
-	async onContentImport({ workflow, transport }: ContentImportContext): Promise<PolicyCheckResult> {
-		seenTransports.push(transport);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		seenTransports.push(context.transport);
 
-		if (!deniedWorkflowNames.has(workflow.name)) return { violations: [] };
+		if (!('workflow' in context) || !deniedWorkflowNames.has(context.workflow.name)) {
+			return { violations: [] };
+		}
 
 		return {
 			violations: [
 				{
 					kind: VIOLATION_KIND,
 					checkId: this.id,
-					message: deniedMessage(workflow.name),
-					subject: workflow.name,
+					message: deniedMessage(context.workflow.name),
+					subject: context.workflow.name,
 					subjectType: 'workflow',
 					scope: 'instance',
 				},
@@ -172,7 +174,7 @@ describe('contentImport on a direct package import', () => {
 });
 
 describe('contentImport on a git pull', () => {
-	/** Mirrors what a git-connections pull runs: the working copy is source of truth. */
+	/** Mirrors what a promotions Apply runs: the package is source of truth. */
 	const pullPolicy: Omit<ImportRequest, 'user'> = {
 		projectConflictPolicy: 'overwrite',
 		workflowConflictPolicy: 'new-version',

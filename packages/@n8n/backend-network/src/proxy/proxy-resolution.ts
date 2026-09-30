@@ -25,6 +25,15 @@ export function resolveProxyUrl(
 }
 
 /**
+ * Whether an environment proxy applies to the given target URL, i.e. whether
+ * {@link resolveProxyUrl} resolves to a proxy for it. For callers that only
+ * need the yes/no (e.g. to pick a proxy mode) rather than the proxy URL itself.
+ */
+export function isProxyRequired(targetUrl: string | undefined, fallbackUrl?: string): boolean {
+	return resolveProxyUrl(targetUrl, fallbackUrl) !== undefined;
+}
+
+/**
  * DI-free proxy resolution and Node proxy-agent factory.
  *
  * Kept free of DI / config / `n8n-workflow` so they can back the

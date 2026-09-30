@@ -1,4 +1,4 @@
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 const MAX_DETAIL_LENGTH = 512;
 
@@ -10,7 +10,5 @@ const MAX_DETAIL_LENGTH = 512;
  * shapes, drop URL query strings, and cap the length.
  */
 export function sanitizeFailureDetail(message: string): string {
-	return scrubSecretsInText(message)
-		.replace(/(https?:\/\/[^\s?]+)\?\S*/gi, '$1')
-		.slice(0, MAX_DETAIL_LENGTH);
+	return sanitizeErrorDetail(message, MAX_DETAIL_LENGTH);
 }

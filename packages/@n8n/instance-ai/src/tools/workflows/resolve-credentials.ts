@@ -183,6 +183,7 @@ export async function resolveCredentials(
 	ctx: InstanceAiContext,
 	availableCredentials?: CredentialMap,
 	preferNewCredentialTypes?: readonly string[],
+	setupSelections?: Record<string, ResolvedCredential[]>,
 ): Promise<CredentialResolutionResult> {
 	const preferNewTypes = new Set(preferNewCredentialTypes ?? []);
 	const heldForNewCredentialTypes = new Set<string>();
@@ -275,10 +276,7 @@ export async function resolveCredentials(
 			const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
 			for (const existingNode of existing.nodes ?? []) {
 				if (existingNode.credentials && existingNode.name) {
-					existingCredsByNode.set(
-						existingNode.name,
-						existingNode.credentials as Record<string, unknown>,
-					);
+					existingCredsByNode.set(existingNode.name, existingNode.credentials);
 				}
 			}
 		} catch {
@@ -438,6 +436,14 @@ export async function resolveCredentials(
 				mockCredential();
 			};
 
+			const setupSelection = node.name
+				? setupSelections?.[node.name]?.find((selection) => selection.type === key)
+				: undefined;
+			if (setupSelection?.id === null && (await isGatewayCredentialType(key))) {
+				await attachGatewayCredential();
+				continue;
+			}
+
 			if (value !== undefined && value !== null) {
 				// Templated Custom Auth ids are service-agnostic at the type level, so a
 				// model-attached reference can silently wire another service's credential
@@ -447,7 +453,8 @@ export async function resolveCredentials(
 				if (key === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
 					const suppliedId = getCredentialId(value);
 					const priorId = getCredentialId(existingCreds?.[key]);
-					if (suppliedId !== undefined && suppliedId === priorId) {
+					const selectedByUser = setupSelection?.id === suppliedId;
+					if (suppliedId !== undefined && (suppliedId === priorId || selectedByUser)) {
 						cleanupMockPinData(json, node.name);
 						continue;
 					}

@@ -374,7 +374,7 @@ export function extractDefaultsForDisplayOptions(
 	// Find defaults for referenced properties
 	for (const propName of referencedProps) {
 		const prop = allProperties.find((p) => p.name === propName);
-		if (prop && prop.default !== undefined) {
+		if (prop?.default !== undefined) {
 			defaults[propName] = prop.default;
 		}
 	}

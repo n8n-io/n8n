@@ -153,6 +153,54 @@ describe('useNodeCredentialOptions', () => {
 		]);
 	});
 
+	it('uses the override credentials list instead of the usable slice when provided', () => {
+		// Slice empty — the override must supply the options. This is the
+		// Instance AI setup card's path: it holds the backend-supplied list and
+		// must not depend on a slice that may be empty or cleared.
+		credentialsStore.usableCredentials = {};
+		const node = computed(() => slackNode);
+		const nodeType = computed(() => slackNodeType);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+			createCredential({ id: 'override-2', name: 'Override Cred 2', type: 'slackApi' }),
+		];
+
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(credentialTypesNodeDescriptionDisplayed.value).toHaveLength(1);
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+			'override-2',
+		]);
+	});
+
+	it('filters the override list by credential type', () => {
+		const node = computed(() => slackNode);
+		const nodeType = computed(() => slackNodeType);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+			createCredential({ id: 'other-1', name: 'Other Type', type: 'httpBasicAuth' }),
+		];
+
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+		]);
+	});
+
 	it('keeps mixed credential options in the NDV when no override is set', () => {
 		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('');
 

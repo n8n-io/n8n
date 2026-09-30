@@ -7,6 +7,13 @@ import type { StartExecutionService } from '../execution/start-execution.service
 import type { EngineLogger } from '../logging';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
+/**
+ * Body cap for the engine API. A start request carries the graph, the whole
+ * workflow and the trigger payload, so express's 100kb default is far too
+ * small. Matches n8n's own `N8N_PAYLOAD_SIZE_MAX` default.
+ */
+const MAX_BODY_SIZE = '16mb';
+
 /** Services the engine API is built on, handed in at construction. */
 export interface EngineServerDeps {
 	startExecution: StartExecutionService;
@@ -27,7 +34,7 @@ export function createEngineServer(deps: EngineServerDeps): { app: Application }
 
 	// Mounted on the prefix, not on each router, so a future router cannot forget it.
 	app.use('/api', createAuthenticationMiddleware(deps.identityVerifier, deps.logger));
-	app.use('/api', express.json());
+	app.use('/api', express.json({ limit: MAX_BODY_SIZE }));
 	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(deps));
 
 	return { app };

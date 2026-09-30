@@ -16,7 +16,7 @@ import {
 } from '@n8n/test-impact';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse } from 'yaml';
+import { parseAllDocuments } from 'yaml';
 
 import { getGitRoot } from '../utils/git-operations.js';
 
@@ -37,7 +37,16 @@ function readLockfile(): Lockfile | undefined {
 	const lockPath = join(getGitRoot(process.cwd()), 'pnpm-lock.yaml');
 	if (!existsSync(lockPath)) return undefined;
 	try {
-		return parse(readFileSync(lockPath, 'utf8')) as Lockfile;
+		const documents = parseAllDocuments(readFileSync(lockPath, 'utf8'));
+		if (documents.length === 0 || documents.some((doc) => doc.errors.length > 0)) {
+			return undefined;
+		}
+
+		const document = documents.at(-1);
+		if (!document) return undefined;
+
+		const value: unknown = document.toJS();
+		return typeof value === 'object' && value !== null ? value : undefined;
 	} catch {
 		return undefined;
 	}

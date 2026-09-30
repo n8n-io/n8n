@@ -14,7 +14,6 @@ Great that you are here and you want to contribute to n8n
 			- [Node.js](#nodejs)
 			- [pnpm](#pnpm)
 				- [pnpm workspaces](#pnpm-workspaces)
-			- [corepack](#corepack)
 			- [Build tools](#build-tools)
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
@@ -82,26 +81,21 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 10.22 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
+
+```bash
+npm i -g pnpm@12.4.2
+```
+
+The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.
+
+If `npm` is not available on your machine, use one of the other methods in the [pnpm installation guide](https://pnpm.io/installation).
 
 ##### pnpm workspaces
 
 n8n is split up into different modules which are all in a single mono repository.
 To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
 This automatically sets up file-links between modules which depend on each other.
-
-#### corepack
-
-We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html)  and pnpm with:
-
-```bash
-corepack enable
-corepack prepare pnpm@10.22.0 --activate
-```
-
-**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
-
-**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
 
 #### Build tools
 
@@ -354,6 +348,20 @@ When developing custom nodes or credentials, you can enable hot reload to automa
 ```bash
 N8N_DEV_RELOAD=true pnpm dev:be
 ```
+
+This enables two mechanisms:
+
+- a **file watcher** over the loaded node directories, and
+- `POST /rest/dev/reload`, an unauthenticated (rate-limited) endpoint that re-reads the node
+  files already on disk. `@n8n/node-cli`'s `dev` command uses this to push a
+  reload after each successful compile, because a container cannot watch a bind
+  mount and the Alpine image has no `@parcel/watcher` prebuild.
+
+The variable is honoured regardless of `NODE_ENV`, so it also applies to
+production builds and the published Docker image. Never set it on an instance
+reachable by anyone you would not give a shell to. It also disables the crash
+journal, so a dev container that was killed rather than shut down gracefully
+does not pay the 10 second crash-loop penalty on its next boot.
 
 **Performance considerations:**
 - File watching adds overhead to your system, especially on slower machines

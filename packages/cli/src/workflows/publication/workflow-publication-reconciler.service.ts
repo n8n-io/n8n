@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
@@ -18,7 +19,6 @@ import {
 } from 'n8n-core';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import { PublishedWorkflowTriggerDeactivator } from './published-workflow-trigger-deactivator';
@@ -114,6 +114,10 @@ export class WorkflowPublicationReconciler {
 		this.isShuttingDown = true;
 		clearInterval(this.reconcileInterval);
 		this.reconcileInterval = undefined;
+	}
+
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**
@@ -229,15 +233,32 @@ export class WorkflowPublicationReconciler {
 	private async removeGhostTriggers(workflowIds: WorkflowId[]): Promise<number> {
 		let surplusRepairs = 0;
 		for (const workflowId of workflowIds) {
+			// Never queue on a held lock: a holder that does not release (an
+			// abandoned record's orphaned work) would wedge this pass and every
+			// later tick behind it. Like the stepdown teardown, skip and let the
+			// next tick retry once the lock is free.
+			if (this.lifecycleLock.isLocked(workflowId)) {
+				this.logger.debug('Skipped ghost trigger teardown: workflow publication lock is held', {
+					workflowId,
+				});
+				continue;
+			}
+
 			try {
-				await this.lifecycleLock.runExclusive(workflowId, async () => {
-					const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+				await this.lifecycleLock.runExclusive({
+					workflowId,
+					fn: async () => {
+						const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
 
-					if (workflow?.activeVersionId) return;
-					if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
+						if (workflow?.activeVersionId) return;
+						if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
 
-					await this.activeWorkflowTriggers.remove(workflowId);
-					surplusRepairs++;
+						await this.activeWorkflowTriggers.remove(workflowId);
+						surplusRepairs++;
+					},
+					// The lock was free a moment ago; a holder that took it since is a
+					// record in flight, which settles within its lease.
+					signal: AbortSignal.timeout(this.leaseMs),
 				});
 			} catch (error) {
 				this.errorReporter.error(error, { shouldBeLogged: true });

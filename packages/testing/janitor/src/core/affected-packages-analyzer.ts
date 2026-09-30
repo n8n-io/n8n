@@ -99,6 +99,12 @@ interface WorkspacePackage {
 	workspaceDeps: string[];
 }
 
+/** Optional `janitor` block in a workspace package.json. */
+interface JanitorPackageConfig {
+	/** Workspace deps whose changes never affect this package's tests, e.g. a served asset bundle. */
+	ignoreDepsForScoping?: unknown;
+}
+
 export interface AnalyzeOptions {
 	rootDir?: string;
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
@@ -137,15 +143,37 @@ function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
 	}));
 }
 
+/**
+ * Read `janitor.ignoreDepsForScoping`. A malformed list or a name that is not a
+ * declared workspace dep would silently keep the edge and re-widen CI, so it
+ * throws instead of falling back.
+ */
+function readIgnoredDeps(pkg: Record<string, unknown>, workspaceDeps: Set<string>): Set<string> {
+	const config = pkg.janitor as JanitorPackageConfig | undefined;
+	const list = config?.ignoreDepsForScoping;
+	if (list === undefined) return new Set();
+
+	const where = `janitor.ignoreDepsForScoping in package "${String(pkg.name)}"`;
+	if (!Array.isArray(list) || !list.every((name): name is string => typeof name === 'string')) {
+		throw new Error(`${where} must be an array of package names`);
+	}
+	const unknown = list.filter((name) => !workspaceDeps.has(name));
+	if (unknown.length > 0) {
+		throw new Error(`${where} names non-workspace-dependencies: ${unknown.join(', ')}`);
+	}
+	return new Set(list);
+}
+
 function collectWorkspaceDeps(pkg: Record<string, unknown>, known: Set<string>): string[] {
 	const deps = new Set<string>();
 	for (const field of ['dependencies', 'devDependencies'] as const) {
 		const block = pkg[field];
 		if (!block || typeof block !== 'object') continue;
-		for (const name of Object.keys(block as Record<string, string>)) {
+		for (const name of Object.keys(block)) {
 			if (known.has(name)) deps.add(name);
 		}
 	}
+	for (const name of readIgnoredDeps(pkg, deps)) deps.delete(name);
 	return [...deps];
 }
 

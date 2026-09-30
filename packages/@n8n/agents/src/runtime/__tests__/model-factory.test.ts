@@ -1,6 +1,7 @@
 import type { LanguageModel } from 'ai';
 
 import { createEmbeddingModel, createModel } from '../model/model-factory';
+import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -25,29 +26,43 @@ vi.mock('@ai-sdk/anthropic', () => ({
 	}),
 }));
 
-vi.mock('@ai-sdk/openai', () => ({
-	createOpenAI: (opts?: ProviderOpts) =>
-		Object.assign(
-			(model: string) => ({
+vi.mock('@ai-sdk/openai', () => {
+	// The stubs really call the endpoint: `doGenerate`/`doStream` POST through the
+	// injected fetch to the path their API lives on, and throw an ai-sdk-shaped
+	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
+	const buildModel =
+		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
+			const callEndpoint = async () => {
+				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
+				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
+				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
+				if (!response.ok) {
+					throw Object.assign(new Error(`Endpoint returned ${response.status}`), {
+						statusCode: response.status,
+						url,
+					});
+				}
+				return { api, url };
+			};
+			return {
 				provider: 'openai',
 				modelId: model,
+				api,
 				apiKey: opts?.apiKey,
 				baseURL: opts?.baseURL,
 				fetch: opts?.fetch,
 				headers: opts?.headers,
 				specificationVersion: 'v3',
-			}),
-			{
-				chat: (model: string) => ({
-					provider: 'openai',
-					modelId: model,
-					api: 'chat-completions',
-					apiKey: opts?.apiKey,
-					baseURL: opts?.baseURL,
-					fetch: opts?.fetch,
-					headers: opts?.headers,
-					specificationVersion: 'v3',
-				}),
+				supportedUrls: {},
+				doGenerate: callEndpoint,
+				doStream: callEndpoint,
+			};
+		};
+
+	return {
+		createOpenAI: (opts?: ProviderOpts) =>
+			Object.assign(buildModel(opts), {
+				chat: buildModel(opts, 'chat-completions'),
 				embeddingModel: (model: string) => ({
 					provider: 'openai',
 					modelId: model,
@@ -55,9 +70,9 @@ vi.mock('@ai-sdk/openai', () => ({
 					baseURL: opts?.baseURL,
 					specificationVersion: 'v2',
 				}),
-			},
-		),
-}));
+			}),
+	};
+});
 
 vi.mock('@ai-sdk/google', () => ({
 	createGoogle: (opts?: ProviderOpts) => (model: string) => ({
@@ -261,6 +276,24 @@ vi.mock('undici', () => ({
 	ProxyAgent: mockProxyAgent,
 }));
 
+/** What the mocked OpenAI stubs report back about the endpoint they reached. */
+type EndpointModel = {
+	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
+};
+
+/** Mock HTTP: `routes` maps a request path to the status the fake server answers. */
+function fakeEndpoint(routes: Record<string, number>) {
+	const paths: string[] = [];
+	const fetchFn = (async (input: unknown) => {
+		const { pathname } = new URL(String(input));
+		paths.push(pathname);
+		await Promise.resolve();
+		return new Response('{}', { status: routes[pathname] ?? 404 });
+	}) as typeof globalThis.fetch;
+	return { fetchFn, paths };
+}
+
 describe('createModel', () => {
 	const originalEnv = process.env;
 
@@ -281,23 +314,9 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('claude-opus-5');
 	});
 
-	it('should accept an object config with baseURL', () => {
-		const model = createModel({
-			id: 'openai/gpt-4o',
-			apiKey: 'sk-test',
-			baseURL: 'https://custom.endpoint.com/v1',
-		}) as unknown as Record<string, unknown>;
-		expect(model.provider).toBe('openai');
-		expect(model.baseURL).toBe('https://custom.endpoint.com/v1');
-		// Custom endpoints are OpenAI-COMPATIBLE servers: they speak
-		// /chat/completions, not OpenAI's Responses API.
-		expect(model.api).toBe('chat-completions');
-	});
-
 	it('uses the Responses API when a baseURL explicitly serves it', () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
-		// serve /responses. /chat/completions rejects reasoning effort once tools
-		// are attached, so the heuristic has to be overridable.
+		// serve /responses. An explicit `apiStyle` pins that and skips the probe.
 		const model = createModel({
 			id: 'openai/gpt-5-mini',
 			apiKey: 'gateway-jwt',
@@ -313,6 +332,9 @@ describe('createModel', () => {
 			id: 'openai/mock-model',
 			apiKey: 'sk-test',
 			url: 'http://127.0.0.1:1234/v1',
+			// Pinned, so the alias is asserted on the adapter itself instead of on the
+			// wrapper the automatic choice returns.
+			apiStyle: 'chat',
 		}) as unknown as Record<string, unknown>;
 		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
 		expect(model.api).toBe('chat-completions');
@@ -336,6 +358,107 @@ describe('createModel', () => {
 			apiKey: 'sk-test',
 		}) as unknown as Record<string, unknown>;
 		expect(model.api).toBeUndefined();
+	});
+
+	describe('openai endpoint selection', () => {
+		// Endpoint answers are shared across model instances for the whole process.
+		beforeEach(forgetEndpointApiStyles);
+
+		const build = (creds: Record<string, unknown>, fetchFn: typeof globalThis.fetch) =>
+			createModel(
+				{ id: 'openai/gpt-5.6', apiKey: 'sk-fake', ...creds },
+				fetchFn,
+			) as unknown as EndpointModel;
+
+		it('uses the Responses API on a custom endpoint that serves it', async () => {
+			// Reported failure: a proxy in front of real OpenAI was pinned to
+			// /chat/completions, which rejects reasoning effort once tools are attached.
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				url: 'https://proxy.example/v1/responses',
+			});
+			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('moves to chat completions when the endpoint has no /responses route', async () => {
+			// OpenAI-COMPATIBLE servers (LM Studio, vLLM, Ollama) must keep working.
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				api: 'chat-completions',
+				url: 'http://127.0.0.1:1234/v1/chat/completions',
+			});
+			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
+		});
+
+		it('moves to chat completions on a streaming call too', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+
+			await expect(model.doStream({ prompt: [] })).resolves.toMatchObject({
+				api: 'chat-completions',
+			});
+			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
+		});
+
+		it('probes the endpoint one time, then stays on chat completions', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+
+			await model.doGenerate({ prompt: [] });
+			await model.doStream({ prompt: [] });
+			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions', '/v1/chat/completions']);
+		});
+
+		it.each([401, 403, 429, 500])('reports a %i without a second endpoint', async (status) => {
+			// Auth, rate-limit and server failures say nothing about the API style.
+			const { fetchFn, paths } = fakeEndpoint({
+				'/v1/responses': status,
+				'/v1/chat/completions': 200,
+			});
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow(`Endpoint returned ${status}`);
+			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('reports a network failure without a second endpoint', async () => {
+			const fetchFn = vi.fn(async () => {
+				await Promise.resolve();
+				throw new Error('ECONNREFUSED');
+			}) as unknown as typeof globalThis.fetch;
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('ECONNREFUSED');
+			expect(fetchFn).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps an explicit chat override on /chat/completions', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'https://proxy.example/v1', apiStyle: 'chat' }, fetchFn);
+
+			await model.doGenerate({ prompt: [] });
+			expect(paths).toEqual(['/v1/chat/completions']);
+		});
+
+		it('keeps an explicit responses override on /responses and reports its error', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'https://proxy.example/v1', apiStyle: 'responses' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('Endpoint returned 404');
+			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('keeps the official API on /responses without a probe', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({}, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('Endpoint returned 404');
+			expect(paths).toEqual(['/v1/responses']);
+		});
 	});
 
 	it('should pass through a prebuilt LanguageModel', () => {

@@ -1,0 +1,127 @@
+operationId: createPromotionConnection
+tags:
+  - Promotions
+summary: Create a promotion connection
+description: Creates a connection on an existing provider, with up to one initial configuration for each direction. Only one instance connection can exist.
+x-required-scope: gitConnection:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          scope:
+            type: string
+            enum:
+              - instance
+              - projects
+          providerId:
+            type: string
+            minLength: 1
+            maxLength: 36
+          target:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              remoteUrl:
+                type: string
+                minLength: 1
+            required:
+              - schemaVersion
+              - remoteUrl
+            additionalProperties: false
+          configs:
+            type: object
+            properties:
+              apply:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  settings:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      branchName:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                    required:
+                      - schemaVersion
+                      - branchName
+                    additionalProperties: false
+                required:
+                  - settings
+                additionalProperties: false
+              promote:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  settings:
+                    type: object
+                    properties:
+                      schemaVersion:
+                        type: number
+                        enum:
+                          - 1
+                      baseBranchName:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                      createBranchOnPromotion:
+                        type: boolean
+                    required:
+                      - schemaVersion
+                      - baseBranchName
+                      - createBranchOnPromotion
+                    additionalProperties: false
+                required:
+                  - settings
+                additionalProperties: false
+            additionalProperties: false
+        required:
+          - name
+          - scope
+          - providerId
+          - target
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionConnectionPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

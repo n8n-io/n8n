@@ -7,7 +7,7 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
-import { setTimeout as wait } from 'node:timers/promises';
+import type { IWorkflowSettings } from 'n8n-workflow';
 
 import type { UserCredentials } from '../config/test-users';
 import {
@@ -18,12 +18,14 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { AgentApiHelper } from './agent-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
+import { NodeParameterApiHelper } from './node-parameter-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -31,10 +33,19 @@ import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
 import { TokenExchangeApiHelper } from './token-exchange-api-helper';
+import { TypePolicyApiHelper } from './type-policy-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
+
+export interface ApiHelpersOptions {
+	/**
+	 * Settings merged over every workflow this helper creates. Set per stack, so
+	 * a project that runs engine v2 routes every workflow to it.
+	 */
+	workflowSettings?: Partial<IWorkflowSettings>;
+}
 
 export interface LoginResponseData {
 	id: string;
@@ -77,6 +88,7 @@ export class ApiHelpers {
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	agents: AgentApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
@@ -87,10 +99,16 @@ export class ApiHelpers {
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
 	instanceAi: InstanceAiApiHelper;
+	nodeTypePolicies: TypePolicyApiHelper<'node'>;
+	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
+	nodeParameters: NodeParameterApiHelper;
 
 	publicApi: PublicApiHelper;
 
-	constructor(requestContext: APIRequestContext) {
+	constructor(
+		requestContext: APIRequestContext,
+		readonly options: ApiHelpersOptions = {},
+	) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
@@ -99,6 +117,7 @@ export class ApiHelpers {
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.agents = new AgentApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);
@@ -109,6 +128,9 @@ export class ApiHelpers {
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
 		this.instanceAi = new InstanceAiApiHelper(this);
+		this.nodeTypePolicies = new TypePolicyApiHelper(this, 'node');
+		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');
+		this.nodeParameters = new NodeParameterApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -197,12 +219,12 @@ export class ApiHelpers {
 			},
 		});
 
+		// The endpoint responds only after the reset and the user seeding complete,
+		// so no extra wait is necessary.
 		if (!response.ok()) {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
-		// Adding small delay to ensure database is reset
-		await wait(1000);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {
@@ -360,6 +382,24 @@ export class ApiHelpers {
 		return data.activeModules ?? [];
 	}
 
+	/**
+	 * The engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read from the instance rather than the
+	 * env, so a spec can skip when the instance does not run the engine it needs.
+	 */
+	async getFrontendExpressionEngine(): Promise<string | undefined> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.expressionEngine;
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {
@@ -393,7 +433,7 @@ export class ApiHelpers {
 	 */
 	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
 		const userContext = await request.newContext();
-		const userApi = new ApiHelpers(userContext);
+		const userApi = new ApiHelpers(userContext, this.options);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
 	}

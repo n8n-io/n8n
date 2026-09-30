@@ -29,13 +29,14 @@
 		},
 		{
 			"parameters": {
+				"toolDescription": "Fetches a private resource on behalf of the calling user",
 				"url": "https://example.com/private-resource",
 				"authentication": "predefinedCredentialType",
 				"nodeCredentialType": "oAuth2Api"
 			},
 			"id": "private-api-node",
 			"name": "Private API",
-			"type": "n8n-nodes-base.httpRequest",
+			"type": "n8n-nodes-base.httpRequestTool",
 			"typeVersion": 4.2,
 			"position": [500, 200],
 			"credentials": {}
@@ -43,6 +44,17 @@
 	],
 	"connections": {
 		"Echo Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "MCP Server Trigger",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Private API": {
 			"ai_tool": [
 				[
 					{

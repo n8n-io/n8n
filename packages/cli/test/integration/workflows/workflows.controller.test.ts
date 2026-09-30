@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -13,6 +14,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
+import { WorkflowsConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
@@ -42,8 +44,8 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { EventService } from '@/events/event.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -99,8 +101,19 @@ let eventService: EventService;
 let folderListMissingRole: Role;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
+// This suite asserts on the legacy activation path (`ActiveWorkflowManager` calls,
+// synchronous publish history). The publication service has its own suites under
+// `test/integration/workflows/workflow-publication-*` and `*.publication-status*`.
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await utils.initNodeTypes();
+});
+
+afterAll(() => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(async () => {
@@ -130,6 +143,7 @@ beforeEach(async () => {
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
+	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 
@@ -288,6 +302,9 @@ describe('POST /workflows', () => {
 		expect(id).toBeDefined();
 		expect(scopes).toEqual(
 			[
+				'execution:delete',
+				'execution:list',
+				'execution:read',
 				'execution:reveal',
 				'workflow:delete',
 				'workflow:disableRedaction',
@@ -1166,6 +1183,53 @@ describe('GET /workflows', () => {
 		expect(response.body).toEqual({ count: 0, data: [] });
 	});
 
+	describe('ids filter', () => {
+		test('should omit requested workflows that the user cannot read or that do not exist', async () => {
+			const readableWorkflow = await createWorkflow({ name: 'Readable' }, member);
+			const inaccessibleWorkflow = await createWorkflow({ name: 'Inaccessible' }, owner);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query({
+					filter: JSON.stringify({
+						ids: [readableWorkflow.id, inaccessibleWorkflow.id, uuid()],
+					}),
+				})
+				.expect(200);
+
+			expect(response.body.count).toBe(1);
+			expect(response.body.data).toEqual([
+				expect.objectContaining({ id: readableWorkflow.id, name: 'Readable' }),
+			]);
+		});
+
+		test('should compose requested ids with project and archive filters', async () => {
+			const teamProject = await createTeamProject(undefined, member);
+			const projectWorkflow = await createWorkflow({ name: 'Project workflow' }, teamProject);
+			const archivedWorkflow = await createWorkflow(
+				{ name: 'Archived workflow', isArchived: true },
+				teamProject,
+			);
+			const crossProjectWorkflow = await createWorkflow({ name: 'Cross-project workflow' }, member);
+
+			const response = await authMemberAgent
+				.get('/workflows')
+				.query({
+					filter: JSON.stringify({
+						ids: [projectWorkflow.id, archivedWorkflow.id, crossProjectWorkflow.id],
+						projectId: teamProject.id,
+						isArchived: false,
+					}),
+				})
+				.expect(200);
+
+			expect(response.body.count).toBe(1);
+			expect(response.body.data).toEqual([
+				expect.objectContaining({ id: projectWorkflow.id, name: 'Project workflow' }),
+			]);
+		});
+	});
+
 	test('should return workflows', async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
@@ -1299,6 +1363,9 @@ describe('GET /workflows', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -1318,6 +1385,9 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'workflow:read',
 					'workflow:update',
 					'workflow:execute',
@@ -1342,6 +1412,9 @@ describe('GET /workflows', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual([
+				'execution:delete',
+				'execution:list',
+				'execution:read',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
@@ -1356,6 +1429,9 @@ describe('GET /workflows', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -2672,6 +2748,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -2691,6 +2770,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'workflow:read',
 					'workflow:update',
 					'workflow:execute',
@@ -2720,6 +2802,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
 			expect(wf1.scopes).toEqual([
+				'execution:delete',
+				'execution:list',
+				'execution:read',
 				'workflow:delete',
 				'workflow:execute',
 				'workflow:execute-chat',
@@ -2734,6 +2819,9 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(wf2.id).toBe(savedWorkflow2.id);
 			expect(wf2.scopes).toEqual(
 				[
+					'execution:delete',
+					'execution:list',
+					'execution:read',
 					'execution:reveal',
 					'workflow:delete',
 					'workflow:disableRedaction',
@@ -3826,7 +3914,9 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(response.statusCode).toBe(200);
 
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 	});
 
 	test('should not reactivate when settings unchanged', async () => {
@@ -4199,7 +4289,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: newVersionId });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
@@ -4334,7 +4426,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId, name: newVersionName });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -4355,7 +4449,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId, description: newDescription });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -4379,7 +4475,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -4504,7 +4602,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 		// First remove active version
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
@@ -4516,7 +4616,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId });
 
 		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
 			userId: owner.id,
@@ -4905,6 +5007,40 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 });
 
 describe('POST /workflows/:workflowId/run', () => {
+	test('should reject manual execution when the instance is read-only', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						parameters: {},
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+		const instanceWriteAccess = Container.get(InstanceWriteAccessService);
+		instanceWriteAccess.setReadOnly(true);
+
+		try {
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/run`)
+				.send({ triggerToStartFrom: { name: 'Start' } });
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(
+				'Cannot run workflows manually on a protected instance. This instance is in read-only mode.',
+			);
+		} finally {
+			instanceWriteAccess.setReadOnly(false);
+		}
+	});
+
 	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
 		const dbWorkflow = await createWorkflow(
 			{
@@ -4980,7 +5116,11 @@ describe('POST /workflows/:workflowId/run', () => {
 		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({
+				startExecution,
+				getExecution,
+				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+			});
 		});
 
 		beforeEach(() => {
@@ -5064,7 +5204,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.message).toBe(
-				'Engine 2.0 cannot run a workflow from existing data yet. Run the whole workflow instead.',
+				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
 			);
 			expect(startExecution).not.toHaveBeenCalled();
 		});

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import MessageRating from './MessageRating.vue';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
+import N8nChatActions from '../../N8nChatActions/ChatActions.vue';
 
 interface Props {
 	message: ChatUI.AssistantMessage;
@@ -20,6 +20,11 @@ const emit = defineEmits<{
 }>();
 
 const isUserMessage = computed(() => props.message.role === 'user');
+const messageContent = computed(() =>
+	'content' in props.message && typeof props.message.content === 'string'
+		? props.message.content
+		: '',
+);
 
 function onRate(rating: RatingFeedback) {
 	emit('feedback', rating);
@@ -29,11 +34,13 @@ function onRate(rating: RatingFeedback) {
 <template>
 	<div :class="$style.message">
 		<slot></slot>
-		<MessageRating
+		<N8nChatActions
 			v-if="message.showRating && !isUserMessage"
-			:minimal="message.ratingStyle === 'minimal'"
-			:show-feedback="message.showFeedback"
-			@feedback="onRate"
+			:content="messageContent"
+			:show-copy="false"
+			:show-read-aloud="false"
+			:show-rating="true"
+			:on-rating="onRate"
 		/>
 	</div>
 </template>

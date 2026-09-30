@@ -18,7 +18,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface SlackUserFixture {
@@ -213,6 +212,7 @@ export async function createSlackReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { slack: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
@@ -228,7 +228,7 @@ export async function createSlackReplayContext(
 
 	const webhooks = chat.webhooks as Record<string, ReplayWebhookHandler>;
 	const sendWebhook = async (payload: unknown) =>
-		await sendJsonWebhook(
+		await setup.sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.slack(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 			payload,
@@ -239,8 +239,8 @@ export async function createSlackReplayContext(
 		chat: chat as unknown as ChatInstance,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastPost: () => stub.apiCalls.filter((call) => call.method === 'chat.postMessage').at(-1),
 		shutdown: async () => {
 			try {

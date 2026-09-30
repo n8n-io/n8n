@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
@@ -7,6 +8,7 @@ import {
 	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowReviewActivityRepository,
 	WorkflowReviewLifecycleRepository,
@@ -20,11 +22,11 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -630,14 +632,15 @@ describe('auto-close on source-control pull', () => {
 			mock<PolicyEnforcementService>({
 				// The repository verifies the token, so it has to be a real one. With no backend
 				// registered the real service clears everything, which is what a default pull does.
-				enforceContentImport: async (context) =>
-					await Container.get(PolicyEnforcementService).enforceContentImport(context),
+				enforceContentImport: async (context, actor) =>
+					await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 			}), // policyEnforcementService
 			mock(), // dataTableSizeValidator
-			mock(), // activeWorkflowManager
+			Container.get(WorkflowPublishedVersionRepository),
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
 			Container.get(WorkflowMutationHooksProxy),
+			Container.get(WorkflowFinderService),
 		);
 	});
 

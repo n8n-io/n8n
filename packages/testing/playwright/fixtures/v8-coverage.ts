@@ -10,7 +10,6 @@ import {
 	coverageOptions,
 	COVERAGE_ENABLED,
 	mergeV8CoverageByUrl,
-	type V8CoverageEntry,
 	slugify,
 	specId,
 } from '../coverage-options';
@@ -63,7 +62,7 @@ export const v8CoverageFixtures = {
 				if (coverage?.length) {
 					// Collapse the per-navigation duplicate scripts (resetOnNavigation:false)
 					// before they accumulate, so the worker heap / per-spec raw stay bounded.
-					const merged = mergeV8CoverageByUrl(coverage as V8CoverageEntry[]);
+					const merged = mergeV8CoverageByUrl(coverage);
 					perSpecRaw.push(...merged.map((entry) => structuredClone(entry)));
 					await addV8CoverageInBatches(sharedReport, merged);
 				}

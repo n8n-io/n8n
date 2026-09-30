@@ -155,8 +155,8 @@ export class VariableExporter {
 	}
 
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
-		const owners = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
-		return new Map(owners.map((owner) => [owner.workflowId, owner.project.id]));
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+		return new Map([...owners].map(([workflowId, project]) => [workflowId, project.id]));
 	}
 
 	/**

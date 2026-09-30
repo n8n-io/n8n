@@ -93,6 +93,42 @@ describe('BinaryDataAccessService', () => {
 			expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
 		});
 
+		// A trigger node writes its binary before the execution row exists, so the
+		// path carries the literal `temp` where an execution id normally sits.
+		describe('for a binary in the temp execution dir', () => {
+			const tempId = `filesystem-v2:workflows/wf1/executions/temp/binary_data/${uuid}`;
+
+			beforeEach(() => {
+				// The execution id column is numeric, so a lookup by `temp` fails.
+				executionRepository.existsForAccessibleWorkflows.mockRejectedValue(
+					new Error('SQLITE_ERROR: no such column: NaN'),
+				);
+			});
+
+			test('grants access from the workflow in the path, without an execution lookup', async () => {
+				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf1']);
+
+				expect(await service.hasReadAccess(user, tempId)).toBe(true);
+				expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+			});
+
+			test('denies when the user cannot read the workflow in the path', async () => {
+				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf2']);
+
+				expect(await service.hasReadAccess(user, tempId)).toBe(false);
+			});
+
+			test('denies a database row, which names no workflow to fall back on', async () => {
+				binaryDataRepository.findSourceByFileId.mockResolvedValue({
+					sourceType: 'execution',
+					sourceId: 'temp',
+				});
+
+				expect(await service.hasReadAccess(user, `database:${uuid}`)).toBe(false);
+				expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+			});
+		});
+
 		test('denies a malformed id without a mode separator', async () => {
 			expect(await service.hasReadAccess(user, 'no-separator')).toBe(false);
 			expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();

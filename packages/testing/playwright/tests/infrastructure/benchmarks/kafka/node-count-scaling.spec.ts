@@ -1,15 +1,14 @@
 import { test } from '../../../../fixtures/base';
 import { benchConfig } from '../../../../playwright-projects';
-import { kafkaDriver } from '../../../../utils/benchmark';
-import { runLoadTest } from '../harness/load-harness';
+import { runKafkaLoadTest } from '../harness/kafka-backlog-harness';
 
 const SHAPES = [{ nodeCount: 10 }, { nodeCount: 30 }, { nodeCount: 60 }] as const;
-const MESSAGE_COUNT = 5_000;
+const MESSAGE_COUNT = 500;
 
 test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 1 }) });
 
 test.describe(
-	'How does throughput scale with workflow complexity?',
+	'How does burst throughput scale with workflow complexity?',
 	{
 		tag: '@bench:kafka',
 		annotation: [
@@ -18,7 +17,7 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Kafka trigger + noop, 1KB payload, ramp node count ${SHAPES.map((s) => s.nodeCount).join('→')} (1 main + 1 worker)`, async ({
+		test(`Kafka trigger + noop, 1KB payload, 500-message bursts, ramp node count ${SHAPES.map((s) => s.nodeCount).join('→')} (1 main + 1 worker)`, async ({
 			api,
 			services,
 		}, testInfo) => {
@@ -32,20 +31,15 @@ test.describe(
 
 			for (const { nodeCount } of SHAPES) {
 				console.log(`\n[RAMP] Stage: node count = ${nodeCount}`);
-				const handle = await kafkaDriver.setup({
+				const metrics = await runKafkaLoadTest({
 					api,
 					services,
 					scenario: { nodeCount, payloadSize: '1KB', nodeOutputSize: 'noop', partitions: 3 },
-				});
-				const metrics = await runLoadTest({
-					handle,
-					api,
-					services,
 					testInfo,
 					load: { type: 'preloaded', count: MESSAGE_COUNT },
-					trigger: 'kafka',
 					timeoutMs: 600_000,
 					variant: `${nodeCount} nodes`,
+					minimumCompletionRatio: 0.995,
 				});
 				results.push({
 					nodeCount,
@@ -72,7 +66,7 @@ test.describe(
 				);
 			});
 			console.log(
-				`\n[NODE COUNT SCALING SUMMARY] ${testInfo.title}\n` +
+				`\n[NODE COUNT BURST SCALING SUMMARY] ${testInfo.title}\n` +
 					`  Baseline: ${baseline.nodeCount} nodes = ${baseline.throughputPerSecond.toFixed(1)} exec/s (${baseline.actionsPerSecond.toFixed(0)} actions/s)\n` +
 					lines.join('\n'),
 			);

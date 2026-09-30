@@ -222,6 +222,7 @@ describe('executionData.store', () => {
 				isRedacted: true,
 				reason: 'dynamic_credentials',
 				canReveal: false,
+				provisional: true,
 			});
 		});
 

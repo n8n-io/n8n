@@ -69,6 +69,8 @@ export interface CliOptions {
 	allSpecsFile?: string;
 	/** Path to a newline-separated allowlist of spec paths (distribute). */
 	includeSpecsFile?: string;
+	/** Path to a JSON object mapping spec paths to resolved fixture pools. */
+	groupsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -212,6 +214,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	},
 	'--include-specs-file=': (opts, value) => {
 		opts.includeSpecsFile = value;
+	},
+	'--groups-file=': (opts, value) => {
+		opts.groupsFile = value;
 	},
 };
 

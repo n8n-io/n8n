@@ -3,7 +3,7 @@ import type { CryptoKey } from 'jose';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { OAuthJweDecryptService } from '../oauth-jwe-decrypt.service';
 import type { OAuthJweKeyService } from '../oauth-jwe-key.service';

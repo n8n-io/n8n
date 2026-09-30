@@ -39,6 +39,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -74,10 +75,16 @@ const externalHooks = mock<ExternalHooks>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
+let originalUseWorkflowPublicationService: boolean;
+
 beforeAll(async () => {
 	await testDb.init();
 
 	globalConfig = Container.get(GlobalConfig);
+	// Most of this file asserts on the legacy activation path; the
+	// 'workflow publication outbox' block enables the service itself.
+	originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
@@ -121,7 +128,12 @@ beforeAll(async () => {
 		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
+		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 	);
+});
+
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(() => {
@@ -132,6 +144,7 @@ beforeEach(() => {
 	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
+	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 	webhookServiceMock.findWebhookConflicts.mockReset();
@@ -143,6 +156,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -358,14 +372,17 @@ describe('activateWorkflow()', () => {
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
-		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
-			workflow: {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: expect.any(Array),
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					nodes: expect.any(Array),
+				},
+				projectId: expect.any(String),
 			},
-			projectId: expect.any(String),
-		});
+			{ kind: 'user', user: expect.objectContaining({ id: owner.id }) },
+		);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 	});
 

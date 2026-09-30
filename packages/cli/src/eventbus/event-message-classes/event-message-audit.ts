@@ -1,8 +1,8 @@
 import { EventMessageTypeNames } from 'n8n-workflow';
-import type { JsonObject, JsonValue, WorkflowSettings } from 'n8n-workflow';
+import type { JsonValue, WorkflowSettings } from 'n8n-workflow';
 
 import type { EventNamesAuditType } from '.';
-import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
+import { AbstractEventMessage } from './abstract-event-message';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
 import type { AbstractEventPayload } from './abstract-event-payload';
 
@@ -11,16 +11,18 @@ import type { AbstractEventPayload } from './abstract-event-payload';
 // --------------------------------------
 export interface EventPayloadAudit extends AbstractEventPayload {
 	msg?: JsonValue;
-	userId?: string;
+	/** `null` when the event names no user. */
+	userId?: string | null;
 	userEmail?: string;
 	firstName?: string;
 	lastName?: string;
 	credentialName?: string;
 	credentialType?: string;
-	credentialId?: string;
-	workflowId?: string;
+	credentialId?: string | null;
+	/** `null` when the event has no workflow row, such as a create that was blocked. */
+	workflowId?: string | null;
 	workflowName?: string;
-	projectId?: string;
+	projectId?: string | null;
 	projectName?: string;
 	activeVersionId?: string | null;
 	deactivatedVersionId?: string | null;
@@ -35,6 +37,12 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	rejectionReason?: string;
+	updatedBy?: string;
+	kind?: string;
+	scopeId?: string;
+	policyId?: string;
+	before?: JsonValue;
+	after?: JsonValue;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {
@@ -60,14 +68,6 @@ export class EventMessageAudit extends AbstractEventMessage {
 
 	setPayload(payload: EventPayloadAudit): this {
 		this.payload = payload;
-		return this;
-	}
-
-	deserialize(data: JsonObject): this {
-		if (isEventMessageOptionsWithType(data, this.__type)) {
-			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload as EventPayloadAudit);
-		}
 		return this;
 	}
 }

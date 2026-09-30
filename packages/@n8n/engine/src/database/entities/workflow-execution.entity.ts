@@ -8,11 +8,14 @@ import {
 } from '@n8n/typeorm';
 
 import type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
 	TriggerOutputs,
+	WorkflowDocument,
 } from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
+import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
 @Index('idx_workflow_execution_workflow_id', ['workflowId'])
@@ -33,8 +36,20 @@ export class WorkflowExecution {
 	@Column('jsonb')
 	graph!: WorkflowGraph;
 
+	/** The workflow captured at start. Stored and reported, never read by the engine. */
+	@Column('jsonb')
+	workflow!: WorkflowDocument;
+
 	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
 	triggerOutputs!: TriggerOutputs | null;
+
+	/** Caller-supplied, opaque to the engine. See `CallerContext`. */
+	@Column('jsonb', { name: 'caller_context' })
+	callerContext!: CallerContext;
+
+	/** What kind of a response (if any) the caller expects */
+	@Column('jsonb', { name: 'response_expectation' })
+	responseExpectation!: ResponseExpectation;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

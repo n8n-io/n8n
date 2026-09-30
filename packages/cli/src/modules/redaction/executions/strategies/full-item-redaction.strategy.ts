@@ -28,9 +28,11 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 
 		const reason = context.enforceDynCredRedaction
 			? 'dynamic_credentials'
-			: context.redactExecutionData === true
-				? 'user_requested'
-				: 'workflow_redaction_policy';
+			: context.enforceCredentialUsabilityRedaction
+				? 'credential_inaccessible'
+				: context.redactExecutionData === true
+					? 'user_requested'
+					: 'workflow_redaction_policy';
 
 		for (const nodeName of Object.keys(runData)) {
 			for (const taskData of runData[nodeName]) {

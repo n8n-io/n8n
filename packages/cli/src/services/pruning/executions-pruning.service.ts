@@ -16,23 +16,23 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
  *
  * By default:
  *
- * - Soft deletion (every 60m) identifies all prunable executions based on max
- *   age and/or max count, exempting annotated executions.
+ * - Soft deletion (every 60m, on the `execution-pruning-soft-delete` system
+ *   task) identifies all prunable executions based on max age and/or max
+ *   count, exempting annotated executions.
  * - Hard deletion (every 15m) processes prunable executions in batches of 100,
  *   switching to 1s intervals until the total to prune is back down low enough,
  *   or in case the hard deletion fails.
  * - Once mostly caught up, hard deletion goes back to the 15m schedule.
+ *
+ * Hard deletion keeps its legacy leader-gated timer: its adaptive cadence is
+ * not expressible as a `SystemTask` schedule yet.
  */
 @Service()
 export class ExecutionsPruningService {
-	/** Timer for soft-deleting executions on a rolling basis. */
-	private softDeletionInterval: NodeJS.Timeout | undefined;
-
 	/** Timeout for next hard-deletion of soft-deleted executions. */
 	private hardDeletionTimeout: NodeJS.Timeout | undefined;
 
 	private readonly rates = {
-		softDeletion: this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toMilliseconds,
 		hardDeletion: this.executionsConfig.pruneDataIntervals.hardDelete * Time.minutes.toMilliseconds,
 	};
 
@@ -71,29 +71,19 @@ export class ExecutionsPruningService {
 		const { connectionState } = this.dbConnection;
 		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
 
-		this.scheduleRollingSoftDeletions();
 		this.scheduleNextHardDeletion();
 
-		this.logger.debug('Started pruning timers');
+		this.logger.debug('Started hard-deletion timer');
 	}
 
 	@OnLeaderStepdown()
 	stopPruning() {
-		const hadTimers = this.softDeletionInterval ?? this.hardDeletionTimeout;
+		if (!this.hardDeletionTimeout) return;
 
-		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
+		this.hardDeletionTimeout = undefined;
 
-		if (hadTimers) this.logger.debug('Stopped pruning timers');
-	}
-
-	private scheduleRollingSoftDeletions(rateMs = this.rates.softDeletion) {
-		this.softDeletionInterval = setInterval(
-			async () => await this.softDelete(),
-			this.rates.softDeletion,
-		);
-
-		this.logger.debug(`Soft-deletion every ${rateMs * Time.milliseconds.toMinutes} minutes`);
+		this.logger.debug('Stopped hard-deletion timer');
 	}
 
 	private scheduleNextHardDeletion(rateMs = this.rates.hardDeletion) {

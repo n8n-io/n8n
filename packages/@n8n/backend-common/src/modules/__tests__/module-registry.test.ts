@@ -34,22 +34,34 @@ describe('getModuleEntryUrl', () => {
 describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).not.toContain('agents');
-		expect(eligible).not.toContain('policy-infrastructure');
+		expect(eligible).not.toContain('type-availability-policies');
 	});
 
-	it('should include instance-ai by default', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toContain('instance-ai');
+	it('should include policy-infrastructure by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('policy-infrastructure');
 	});
 
-	it('should allow opting out of a default module via env var', () => {
-		process.env.N8N_DISABLED_MODULES = 'instance-ai';
-		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('instance-ai');
+	it('should allow opting out of policy-infrastructure via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'policy-infrastructure';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
+
+	it.each(['instance-ai', 'agents'])('should include %s by default', (moduleName) => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+	});
+
+	it.each(['instance-ai', 'agents'])(
+		'should allow opting out of the default %s module via env var',
+		(moduleName) => {
+			process.env.N8N_DISABLED_MODULES = moduleName;
+			expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+		},
+	);
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -79,12 +91,15 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'instance-ai',
+			'agents',
+			'inbound-auth-core',
 		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'agents';
+		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
 			'insights',
 			'external-secrets',
 			'community-packages',
@@ -116,6 +131,8 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'inbound-auth-core',
+			'type-availability-policies',
 		]);
 	});
 
@@ -349,6 +366,26 @@ describe('initModules', () => {
 		await moduleRegistry.initModules('main');
 
 		expect(ModuleClass.init).not.toHaveBeenCalled();
+	});
+
+	it('should init only the listed modules when given a list', async () => {
+		const ListedModule = { init: vi.fn() };
+		const OtherModule = { init: vi.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: vi.fn().mockReturnValue([
+				['insights', { class: ListedModule }],
+				['mcp', { class: OtherModule }],
+			]),
+		});
+		Container.get = vi.fn().mockImplementation((moduleClass: unknown) => moduleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+
+		await moduleRegistry.initModules('main', ['insights']);
+
+		expect(ListedModule.init).toHaveBeenCalled();
+		expect(OtherModule.init).not.toHaveBeenCalled();
+		expect(moduleRegistry.getActiveModules()).toEqual(['insights']);
 	});
 
 	it('should accept module without `init` method', async () => {

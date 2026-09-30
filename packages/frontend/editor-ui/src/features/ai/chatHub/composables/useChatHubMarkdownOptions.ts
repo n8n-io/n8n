@@ -82,6 +82,7 @@ export function useChatHubMarkdownOptions(
 
 	const options = {
 		breaks: true,
+		linkify: true,
 		highlight(str: string, lang: string) {
 			if (!lang) {
 				return ''; // use external default escaping

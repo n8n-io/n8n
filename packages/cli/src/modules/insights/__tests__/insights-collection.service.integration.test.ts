@@ -102,9 +102,12 @@ describe('workflowExecuteAfterHandler', () => {
 		});
 
 		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(status === 'success' ? 3 : 2);
+		expect(allInsights).toHaveLength(status === 'success' ? 4 : 3);
 		expect(allInsights).toContainEqual(
 			expect.objectContaining({ metaId: metadata.metaId, type, value: 1 }),
+		);
+		expect(allInsights).toContainEqual(
+			expect.objectContaining({ metaId: metadata.metaId, type: 'billable', value: 1 }),
 		);
 		expect(allInsights).toContainEqual(
 			expect.objectContaining({
@@ -188,16 +191,16 @@ describe('workflowExecuteAfterHandler', () => {
 		expect(allInsights).toHaveLength(0);
 	});
 
-	test.each<{ mode: WorkflowExecuteMode; expectedInsightCount: number }>([
-		{ mode: 'evaluation', expectedInsightCount: 3 },
-		{ mode: 'error', expectedInsightCount: 2 },
-		{ mode: 'cli', expectedInsightCount: 3 },
-		{ mode: 'retry', expectedInsightCount: 3 },
-		{ mode: 'trigger', expectedInsightCount: 3 },
-		{ mode: 'webhook', expectedInsightCount: 3 },
+	test.each<{ mode: WorkflowExecuteMode; expectedInsightCount: number; billable: boolean }>([
+		{ mode: 'evaluation', expectedInsightCount: 4, billable: true },
+		{ mode: 'error', expectedInsightCount: 2, billable: false },
+		{ mode: 'cli', expectedInsightCount: 4, billable: true },
+		{ mode: 'retry', expectedInsightCount: 4, billable: true },
+		{ mode: 'trigger', expectedInsightCount: 4, billable: true },
+		{ mode: 'webhook', expectedInsightCount: 4, billable: true },
 	])(
 		'stores events for executions with the mode `$mode`',
-		async ({ mode, expectedInsightCount }) => {
+		async ({ mode, expectedInsightCount, billable }) => {
 			// ARRANGE
 			const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 			const startedAt = DateTime.utc();
@@ -230,6 +233,13 @@ describe('workflowExecuteAfterHandler', () => {
 			expect(allInsights).toContainEqual(
 				expect.objectContaining({ metaId: metadata.metaId, type: 'success', value: 1 }),
 			);
+			if (billable) {
+				expect(allInsights).toContainEqual(
+					expect.objectContaining({ metaId: metadata.metaId, type: 'billable', value: 1 }),
+				);
+			} else {
+				expect(allInsights).not.toContainEqual(expect.objectContaining({ type: 'billable' }));
+			}
 			expect(allInsights).toContainEqual(
 				expect.objectContaining({
 					metaId: metadata.metaId,
@@ -248,6 +258,24 @@ describe('workflowExecuteAfterHandler', () => {
 			}
 		},
 	);
+
+	test('does not store events for instance_ai verification runs', async () => {
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, source: 'instance_ai' });
+		const startedAt = DateTime.utc();
+		const stoppedAt = startedAt.plus({ seconds: 5 });
+		ctx.runData = mock<IRun>({
+			mode: 'webhook',
+			status: 'success',
+			startedAt: startedAt.toJSDate(),
+			stoppedAt: stoppedAt.toJSDate(),
+		});
+
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		await insightsCollectionService.flushEvents();
+
+		expect(await insightsMetadataRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
+		expect(await insightsRawRepository.find()).toHaveLength(0);
+	});
 });
 
 describe('workflowExecuteAfterHandler - cacheMetadata', () => {
@@ -455,9 +483,9 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		// ACT
-		// each `workflowExecuteAfterHandler` adds 3 insights (status, runtime, time saved);
-		// we call it 333 times be 1 away from the flushBatchSize (1000)
-		for (let i = 0; i < 333; i++) {
+		// each `workflowExecuteAfterHandler` adds 4 insights (status, billable, runtime, time saved);
+		// we call it 249 times to be 4 away from the flushBatchSize (1000)
+		for (let i = 0; i < 249; i++) {
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 		// await for the next tick to ensure the flush is called
@@ -562,9 +590,9 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 		// ASSERT
 		expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(1);
-		// Check that last insert call contains 30 events (10 * 3 insights)
+		// Check that last insert call contains 40 events (10 * 4 insights)
 		const lastCallArgs = repoMocks.insertInsightsRaw.mock.calls.at(-1);
-		expect(lastCallArgs?.[0]).toHaveLength(30);
+		expect(lastCallArgs?.[0]).toHaveLength(40);
 	});
 
 	test('flushes events synchronously while shutting down', async () => {
@@ -585,17 +613,17 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 		// ASSERT
 		expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(2);
-		// Check that last insert call contains 3 events (the synchronous flush after shutdown)
+		// Check that last insert call contains 4 events (the synchronous flush after shutdown)
 		let callArgs = repoMocks.insertInsightsRaw.mock.calls.at(-1);
-		expect(callArgs?.[0]).toHaveLength(3);
+		expect(callArgs?.[0]).toHaveLength(4);
 
 		// ACT
 		// await for the next tick to ensure the flush is called
 		await new Promise(process.nextTick);
 
-		// Check that the one before that contains 30 events (the shutdown flush)
+		// Check that the one before that contains 40 events (the shutdown flush)
 		callArgs = repoMocks.insertInsightsRaw.mock.calls.at(-2);
-		expect(callArgs?.[0]).toHaveLength(30);
+		expect(callArgs?.[0]).toHaveLength(40);
 	});
 
 	test('restore buffer events on flushing error', async () => {
@@ -620,8 +648,8 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 			expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(2);
 			const newInsertArgs = repoMocks.insertInsightsRaw.mock.calls.at(-1);
-			// Check that last insert call contains the same 3 insights as previous failed flush
-			expect(newInsertArgs?.[0]).toHaveLength(3);
+			// Check that last insert call contains the same 4 insights as previous failed flush
+			expect(newInsertArgs?.[0]).toHaveLength(4);
 			expect(newInsertArgs?.[0]).toEqual(insertArgs?.[0]);
 		} finally {
 			vi.useRealTimers();
@@ -715,9 +743,9 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			await flushPromise;
 		});
 
-		// Each `workflowExecuteAfterHandler` adds 3 insights;
-		// we call it 4 times to exceed the flushBatchSize (10)
-		for (let i = 0; i < config.flushBatchSize / 3; i++) {
+		// Each `workflowExecuteAfterHandler` adds 4 insights;
+		// 2 calls leave the buffer under flushBatchSize (10)
+		for (let i = 0; i < 2; i++) {
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		}
 

@@ -3,9 +3,8 @@ import assert from 'node:assert';
 import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
-// @capability:proxy tag ensures that test suite is only run when proxy is available
 test.describe(
-	'Proxy server @capability:proxy',
+	'Proxy server',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

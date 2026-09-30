@@ -1,8 +1,8 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	baseConfig,
+	backendConfig,
 	{
 		// Relax type-aware unsafe rules for untyped mock plumbing, mirroring n8n-core
 		files: ['**/__tests__/**/*.ts'],
@@ -14,8 +14,6 @@ export default defineConfig(
 	},
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
 			/**
 			 * This package is full of AWS SDK params (`Bucket`, `Key`, `Delete`) and
 			 * HTTP header maps (`content-type`, `x-amz-meta-filename`).

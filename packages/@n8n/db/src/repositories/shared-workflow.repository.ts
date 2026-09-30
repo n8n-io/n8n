@@ -25,6 +25,38 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
+	async findOwnedWorkflowRemovalCandidates(
+		projectId: string,
+		workflowIds: string[],
+	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
+		const candidates: Array<{ id: string; name: string; parentFolderId: string | null }> = [];
+
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const rows = await this.find({
+				where: {
+					projectId,
+					workflowId: In(chunk),
+					role: 'workflow:owner',
+					workflow: { isArchived: false },
+				},
+				relations: { workflow: { parentFolder: true } },
+				select: {
+					workflowId: true,
+					workflow: { id: true, name: true, parentFolder: { id: true } },
+				},
+			});
+			for (const { workflow } of rows) {
+				candidates.push({
+					id: workflow.id,
+					name: workflow.name,
+					parentFolderId: workflow.parentFolder?.id ?? null,
+				});
+			}
+		}
+
+		return candidates;
+	}
+
 	/**
 	 * SharedWorkflow maps workflows to projects, so user access is checked through
 	 * project relations with the supplied project roles.
@@ -51,23 +83,6 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		}
 
 		return found;
-	}
-
-	async findByWorkflowIds(workflowIds: string[]) {
-		const rows = new Map<string, SharedWorkflow>();
-
-		for (const chunk of chunkIds(workflowIds)) {
-			const found = await this.find({
-				where: {
-					role: 'workflow:owner',
-					workflowId: In(chunk),
-				},
-				relations: { project: { projectRelations: { user: true, role: true } } },
-			});
-			for (const row of found) rows.set(row.workflowId, row);
-		}
-
-		return [...rows.values()];
 	}
 
 	/** Owner project of each workflow, keyed by workflow id. */

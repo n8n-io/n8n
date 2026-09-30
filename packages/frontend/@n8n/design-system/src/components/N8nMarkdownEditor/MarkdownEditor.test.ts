@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
 import type { Editor } from '@tiptap/core';
 
@@ -95,6 +96,18 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 		expect(wrapper.getByRole('button', { name: 'Text' })).toBeInTheDocument();
 	});
 
+	it('reserves content space for the hover toolbar', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				showToolbar: 'hover',
+			},
+		});
+
+		await waitFor(() => expect(wrapper.getByTestId('markdown-editor-toolbar')).toBeInTheDocument());
+		expect(wrapper.getByTestId('n8n-markdown-editor-content').parentElement).toHaveClass('padTop');
+	});
+
 	it('renders the floating toolbar in a TipTap bubble menu', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {
@@ -108,6 +121,21 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 		);
 		expect(wrapper.getByTestId('markdown-editor-toolbar')).toHaveClass('floating');
 		expect(wrapper.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+	});
+
+	it('keeps raw mode inactive and hides its toggle for the floating toolbar', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				showToolbar: 'floating',
+			},
+		});
+
+		await waitFor(() =>
+			expect(wrapper.getByTestId('markdown-editor-bubble-menu')).toBeInTheDocument(),
+		);
+		expect(wrapper.queryByTestId('n8n-markdown-editor-raw-content')).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('button', { name: 'Raw markdown' })).not.toBeInTheDocument();
 	});
 
 	it('does not add fixed-toolbar padding for the floating toolbar', async () => {
@@ -142,6 +170,10 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 });
 
 describe('components/N8nMarkdownEditor', () => {
+	afterEach(function restoreMocks() {
+		vi.restoreAllMocks();
+	});
+
 	const getEditorElement = (container: Element) =>
 		container.querySelector<HTMLElement>('[data-test-id="n8n-markdown-editor-content"]');
 
@@ -172,6 +204,184 @@ describe('components/N8nMarkdownEditor', () => {
 
 		await waitFor(() => expect(getEditorElement(wrapper.container)).toBeInTheDocument());
 		expect(getEditorElement(wrapper.container)).toHaveTextContent('Content');
+	});
+
+	it('does not show the collapse control by default', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				maxHeight: 100,
+			},
+		});
+
+		await waitFor(() => expect(getEditorElement(wrapper.container)).toBeInTheDocument());
+		expect(wrapper.queryByRole('button', { name: 'Expand editor' })).not.toBeInTheDocument();
+	});
+
+	it('shows the expanded view control only when expanded view is enabled', async function showExpandedViewControl() {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+			},
+		});
+
+		await waitFor(function waitForEditor() {
+			expect(getEditorElement(wrapper.container)).toBeInTheDocument();
+		});
+		expect(wrapper.queryByRole('button', { name: 'Expand editor' })).not.toBeInTheDocument();
+
+		await wrapper.rerender({ modelValue: 'Content', allowExpandedView: true });
+
+		expect(wrapper.getByRole('button', { name: 'Expand editor' })).toBeInTheDocument();
+	});
+
+	it('keeps edited content when the expanded view opens and closes', async function keepExpandedViewContent() {
+		let editor: Editor | undefined;
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: '',
+				allowExpandedView: true,
+				onReady: function setEditor(readyEditor: Editor) {
+					editor = readyEditor;
+				},
+			},
+		});
+
+		await waitFor(function waitForEditor() {
+			expect(editor).toBeDefined();
+		});
+		editor?.commands.insertContent('Inline content');
+		await fireEvent.click(wrapper.getByRole('button', { name: 'Expand editor' }));
+
+		await waitFor(function waitForExpandedView() {
+			expect(wrapper.getByRole('dialog', { name: 'Markdown editor' })).toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Collapse editor' })).toBeInTheDocument();
+			expect(wrapper.getByTestId('n8n-markdown-editor-content')).toHaveTextContent(
+				'Inline content',
+			);
+		});
+
+		editor?.commands.insertContent(' expanded content');
+		await fireEvent.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+
+		await waitFor(function waitForInlineView() {
+			expect(wrapper.queryByRole('dialog', { name: 'Markdown editor' })).not.toBeInTheDocument();
+			expect(wrapper.getByTestId('n8n-markdown-editor-content')).toHaveTextContent(
+				'Inline content expanded content',
+			);
+		});
+		expect(wrapper.emitted<string[]>('update:modelValue')?.at(-1)?.[0]).toBe(
+			'Inline content expanded content',
+		);
+	});
+
+	it('closes the expanded view when Escape is pressed', async function closeExpandedViewWithEscape() {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				allowExpandedView: true,
+			},
+		});
+
+		await fireEvent.click(await wrapper.findByRole('button', { name: 'Expand editor' }));
+		const expandedEditor = await wrapper.findByTestId('n8n-markdown-editor-expanded');
+		await fireEvent.keyDown(expandedEditor, { key: 'Escape' });
+
+		await waitFor(function waitForInlineView() {
+			expect(wrapper.queryByRole('dialog', { name: 'Markdown editor' })).not.toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Expand editor' })).toBeInTheDocument();
+		});
+	});
+
+	it('keeps raw Markdown when the expanded view opens and closes', async function keepExpandedRawMarkdown() {
+		const user = userEvent.setup();
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Initial content',
+				allowExpandedView: true,
+			},
+		});
+
+		await user.click(await wrapper.findByRole('button', { name: 'Raw markdown' }));
+		const rawEditor = wrapper.getByTestId('n8n-markdown-editor-raw-content');
+		await user.clear(rawEditor);
+		await user.type(rawEditor, '# Raw content');
+		await user.click(wrapper.getByRole('button', { name: 'Expand editor' }));
+
+		await waitFor(function waitForExpandedRawEditor() {
+			expect(wrapper.getByTestId('n8n-markdown-editor-raw-content')).toHaveValue('# Raw content');
+		});
+		await user.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+
+		await waitFor(function waitForInlineRawEditor() {
+			expect(wrapper.getByTestId('n8n-markdown-editor-raw-content')).toHaveValue('# Raw content');
+		});
+	});
+
+	it('opens the expanded view from the floating toolbar control', async function openExpandedFloatingView() {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				allowExpandedView: true,
+				showToolbar: 'floating',
+			},
+		});
+
+		await fireEvent.click(await wrapper.findByRole('button', { name: 'Expand editor' }));
+
+		await waitFor(function waitForExpandedView() {
+			expect(wrapper.getByRole('dialog', { name: 'Markdown editor' })).toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Collapse editor' })).toBeInTheDocument();
+		});
+	});
+
+	it('expands and collapses content that exceeds the collapsed height', async function toggleLongContent() {
+		/** The test environment does not calculate content height. */
+		vi.spyOn(HTMLDivElement.prototype, 'scrollHeight', 'get').mockReturnValue(512);
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'A paragraph of agent instructions.\n\n'.repeat(20),
+				isCollapsible: true,
+			},
+		});
+
+		const expandButton = await wrapper.findByRole('button', { name: 'Expand editor' });
+		expect(wrapper.getByTestId('n8n-markdown-editor')).toHaveClass('collapsed');
+		await fireEvent.click(expandButton);
+
+		await waitFor(function waitForExpandedContent() {
+			expect(wrapper.emitted('update:collapsed')).toEqual([[false]]);
+			expect(wrapper.getByTestId('n8n-markdown-editor')).not.toHaveClass('collapsed');
+		});
+		await fireEvent.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+
+		await waitFor(function waitForCollapsedContent() {
+			expect(wrapper.emitted('update:collapsed')).toEqual([[false], [true]]);
+			expect(wrapper.getByTestId('n8n-markdown-editor')).toHaveClass('collapsed');
+			expect(wrapper.getByRole('button', { name: 'Expand editor' })).toBeInTheDocument();
+		});
+	});
+
+	it('does not show expand or collapse controls for short content', async function hideShortContentControls() {
+		const contentHeight = vi
+			.spyOn(HTMLDivElement.prototype, 'scrollHeight', 'get')
+			.mockReturnValue(24);
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				isCollapsible: true,
+			},
+		});
+
+		await waitFor(function waitForContentMeasurement() {
+			expect(contentHeight).toHaveBeenCalled();
+		});
+
+		expect(getEditorElement(wrapper.container)).toHaveTextContent('Content');
+		expect(wrapper.queryByRole('button', { name: 'Expand editor' })).not.toBeInTheDocument();
+		expect(wrapper.queryByRole('button', { name: 'Collapse editor' })).not.toBeInTheDocument();
+		expect(wrapper.getByTestId('n8n-markdown-editor')).not.toHaveClass('collapsed');
+		expect(wrapper.emitted('update:collapsed')).toBeUndefined();
 	});
 
 	it('renders markdown content as editor nodes', async () => {

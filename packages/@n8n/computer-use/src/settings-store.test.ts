@@ -23,6 +23,9 @@ function parseJson<T>(raw: string): T {
 	}
 }
 
+const ORIGIN = 'https://a.app.n8n.cloud';
+const OTHER_ORIGIN = 'https://b.app.n8n.cloud';
+
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
 	allowedOrigins: [],
@@ -69,15 +72,53 @@ describe('SettingsStore.create', () => {
 	it('creates a store when no file exists', async () => {
 		const store = await createStore(tmpDir);
 		// Should not throw; resource permissions are empty
-		expect(store.getResourcePermissions('shell')).toEqual({ allow: [], deny: [] });
+		expect(store.getResourcePermissions(ORIGIN, 'shell')).toEqual({ allow: [], deny: [] });
 	});
 
-	it('loads permissions and resource rules from file', async () => {
+	it('loads resource rules for an origin from file', async () => {
 		const store = await createStore(tmpDir, {
 			permissions: { shell: 'allow' },
+			resourcePermissions: {},
+			resourcePermissionsByOrigin: { [ORIGIN]: { shell: { allow: ['npm'], deny: [] } } },
+		});
+		expect(store.getResourcePermissions(ORIGIN, 'shell')).toEqual({ allow: ['npm'], deny: [] });
+		expect(store.getResourcePermissions(OTHER_ORIGIN, 'shell')).toEqual({ allow: [], deny: [] });
+	});
+
+	it('gives unscoped resource rules to the first origin that claims them', async () => {
+		const store = await createStore(tmpDir, {
+			permissions: {},
+			resourcePermissions: { shell: { allow: ['npm'], deny: ['rm'] } },
+		});
+
+		store.claimUnscopedRules(ORIGIN);
+		store.claimUnscopedRules(OTHER_ORIGIN);
+
+		expect(store.getResourcePermissions(ORIGIN, 'shell')).toEqual({ allow: ['npm'], deny: ['rm'] });
+		expect(store.getResourcePermissions(OTHER_ORIGIN, 'shell')).toEqual({ allow: [], deny: [] });
+	});
+
+	it('merges unscoped resource rules into rules the origin already has', async () => {
+		const store = await createStore(tmpDir, {
+			permissions: {},
+			resourcePermissions: { shell: { allow: ['npm', 'git'], deny: [] } },
+			resourcePermissionsByOrigin: { [ORIGIN]: { shell: { allow: ['git'], deny: [] } } },
+		});
+
+		store.claimUnscopedRules(ORIGIN);
+
+		expect(store.getResourcePermissions(ORIGIN, 'shell').allow).toEqual(['git', 'npm']);
+	});
+
+	it('does not apply unscoped resource rules before they are claimed', async () => {
+		const store = await createStore(tmpDir, {
+			permissions: {},
 			resourcePermissions: { shell: { allow: ['npm'], deny: [] } },
 		});
-		expect(store.getResourcePermissions('shell')).toEqual({ allow: ['npm'], deny: [] });
+
+		store.alwaysAllow(ORIGIN, 'shell', 'git');
+
+		expect(store.getResourcePermissions(ORIGIN, 'shell').allow).toEqual(['git']);
 	});
 
 	it('tolerates a malformed file and starts with empty state', async () => {
@@ -86,7 +127,7 @@ describe('SettingsStore.create', () => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true });
 		await fs.writeFile(filePath, 'not-json', 'utf-8');
 		const store = await SettingsStore.create();
-		expect(store.getResourcePermissions('shell')).toEqual({ allow: [], deny: [] });
+		expect(store.getResourcePermissions(ORIGIN, 'shell')).toEqual({ allow: [], deny: [] });
 	});
 });
 
@@ -194,19 +235,26 @@ describe('getDefaults', () => {
 describe('getResourcePermissions', () => {
 	it('returns empty lists for unknown groups', async () => {
 		const store = await createStore(tmpDir);
-		expect(store.getResourcePermissions('shell')).toEqual({ allow: [], deny: [] });
+		expect(store.getResourcePermissions(ORIGIN, 'shell')).toEqual({ allow: [], deny: [] });
 	});
 
 	it('reflects alwaysAllow additions', async () => {
 		const store = await createStore(tmpDir);
-		store.alwaysAllow('shell', 'npm');
-		expect(store.getResourcePermissions('shell').allow).toContain('npm');
+		store.alwaysAllow(ORIGIN, 'shell', 'npm');
+		expect(store.getResourcePermissions(ORIGIN, 'shell').allow).toContain('npm');
+	});
+
+	it('keeps rules saved for one origin away from other origins', async () => {
+		const store = await createStore(tmpDir);
+		store.alwaysAllow(ORIGIN, 'shell', 'npm');
+		store.alwaysDeny(ORIGIN, 'shell', 'rm');
+		expect(store.getResourcePermissions(OTHER_ORIGIN, 'shell')).toEqual({ allow: [], deny: [] });
 	});
 
 	it('reflects alwaysDeny additions', async () => {
 		const store = await createStore(tmpDir);
-		store.alwaysDeny('shell', 'rm -rf /');
-		expect(store.getResourcePermissions('shell').deny).toContain('rm -rf /');
+		store.alwaysDeny(ORIGIN, 'shell', 'rm -rf /');
+		expect(store.getResourcePermissions(ORIGIN, 'shell').deny).toContain('rm -rf /');
 	});
 });
 
@@ -217,16 +265,20 @@ describe('getResourcePermissions', () => {
 describe('alwaysAllow / alwaysDeny deduplication', () => {
 	it('does not add a duplicate allow entry', async () => {
 		const store = await createStore(tmpDir);
-		store.alwaysAllow('shell', 'npm');
-		store.alwaysAllow('shell', 'npm');
-		expect(store.getResourcePermissions('shell').allow.filter((r) => r === 'npm')).toHaveLength(1);
+		store.alwaysAllow(ORIGIN, 'shell', 'npm');
+		store.alwaysAllow(ORIGIN, 'shell', 'npm');
+		expect(
+			store.getResourcePermissions(ORIGIN, 'shell').allow.filter((r) => r === 'npm'),
+		).toHaveLength(1);
 	});
 
 	it('does not add a duplicate deny entry', async () => {
 		const store = await createStore(tmpDir);
-		store.alwaysDeny('shell', 'rm');
-		store.alwaysDeny('shell', 'rm');
-		expect(store.getResourcePermissions('shell').deny.filter((r) => r === 'rm')).toHaveLength(1);
+		store.alwaysDeny(ORIGIN, 'shell', 'rm');
+		store.alwaysDeny(ORIGIN, 'shell', 'rm');
+		expect(
+			store.getResourcePermissions(ORIGIN, 'shell').deny.filter((r) => r === 'rm'),
+		).toHaveLength(1);
 	});
 });
 
@@ -237,11 +289,32 @@ describe('alwaysAllow / alwaysDeny deduplication', () => {
 describe('flush', () => {
 	it('writes alwaysAllow changes to disk', async () => {
 		const store = await createStore(tmpDir);
-		store.alwaysAllow('shell', 'npm');
+		store.alwaysAllow(ORIGIN, 'shell', 'npm');
 		await store.flush();
 
 		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = parseJson<{ resourcePermissions: { shell: { allow: string[] } } }>(raw);
-		expect(parsed.resourcePermissions.shell.allow).toContain('npm');
+		const parsed = parseJson<{
+			resourcePermissions: object;
+			resourcePermissionsByOrigin: Record<string, { shell: { allow: string[] } }>;
+		}>(raw);
+		expect(parsed.resourcePermissionsByOrigin[ORIGIN].shell.allow).toContain('npm');
+		expect(parsed.resourcePermissions).toEqual({});
+	});
+
+	it('writes moved unscoped rules under the origin', async () => {
+		const store = await createStore(tmpDir, {
+			permissions: {},
+			resourcePermissions: { shell: { allow: ['npm'], deny: [] } },
+		});
+		store.claimUnscopedRules(ORIGIN);
+		await store.flush();
+
+		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
+		const parsed = parseJson<{
+			resourcePermissions: object;
+			resourcePermissionsByOrigin: Record<string, { shell: { allow: string[] } }>;
+		}>(raw);
+		expect(parsed.resourcePermissionsByOrigin[ORIGIN].shell.allow).toEqual(['npm']);
+		expect(parsed.resourcePermissions).toEqual({});
 	});
 });

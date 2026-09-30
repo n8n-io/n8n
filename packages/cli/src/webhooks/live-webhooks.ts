@@ -13,13 +13,14 @@ import {
 } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { authAllowlistedNodes } from './constants';
@@ -49,6 +50,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly expressionEngineConfig: ExpressionEngineConfig,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -115,11 +117,10 @@ export class LiveWebhooks implements IWebhookManager {
 		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
-		const { nodes, connections } = publishedVersion;
+		const { nodes, connections, versionId } = publishedVersion;
 
-		// Create a clean workflowData object with only activeVersion nodes/connections
-		// This prevents any downstream code from accidentally using the draft nodes
-		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections };
+		// Use the published revision for both execution content and metadata.
+		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections, versionId };
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
@@ -137,6 +138,14 @@ export class LiveWebhooks implements IWebhookManager {
 		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
+			// A production webhook is fired by a third party, so the run is attributed
+			// to whoever published the version it runs — the same published revision
+			// used for the content above, not the workflow row's pointer, which can
+			// already name the next version mid-publication.
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				webhook.workflowId,
+				versionId,
+			),
 		});
 
 		const startNode = workflow.getNode(webhook.node);
@@ -207,6 +216,9 @@ export class LiveWebhooks implements IWebhookManager {
 	 * description field of the trigger resolves natively (see
 	 * `webhookDescriptionFields` in n8n-workflow) and the node's own parameters
 	 * contain no expressions. Anything not proven below acquires eagerly.
+	 *
+	 * TODO(native-evaluation rollout, CAT-4699): delete this gate and its flag; under
+	 * lazy acquisition with native evaluation the prediction is unnecessary.
 	 */
 	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
 		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;

@@ -64,7 +64,7 @@ async function searchOwners(
 			'/query',
 			{},
 			{
-				q: `SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = '${queueSobjectType}'`,
+				q: `SELECT Queue.Id, Queue.Name FROM QueuesObject WHERE Queue.Type = 'Queue' AND SobjectType = '${escapeSoqlString(queueSobjectType)}'`,
 			},
 		)) as Array<{ Queue: { Id: string; Name: string } }>;
 		const lowerFilter = (filter ?? '').toLowerCase();
@@ -345,10 +345,10 @@ export class Salesforce implements INodeType {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
 
-				resource = escapeSoqlString(resource as string);
+				const escapedResource = escapeSoqlString(resource as string);
 
 				const qs = {
-					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${resource}'`,
+					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${escapedResource}'`,
 				};
 				const types = await salesforceApiRequestAllItems.call(
 					this,
