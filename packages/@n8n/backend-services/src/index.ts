@@ -1,7 +1,6 @@
 export { EventService, type EventMap } from './events/event.service';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
-export { EventService, type EventMap } from './events/event.service';
 export { RoleCacheService } from './services/role-cache.service';
 export {
 	RoleDeletionCheckProxy,
