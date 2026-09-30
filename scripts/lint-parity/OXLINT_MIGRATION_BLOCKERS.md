@@ -41,6 +41,13 @@ Possible approaches:
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
 
+Phase 3 decisions:
+
+- `@n8n/agents`: retire the enum-member casing selector. It enforces style only.
+- `@n8n/instance-ai`: retire the quoted object-property selector. It only exempts names that require quotes and protects no API contract.
+- `@n8n/instance-ai`: remove the stale package-wide filename exception. The package no longer contains files that need it.
+- `@n8n/instance-ai`: keep `scripts/**` outside type-aware Oxlint. Its standalone legacy tsconfig is not valid under tsgolint and is not part of the package build or typecheck.
+
 ## Retirement exceptions
 
 ### `n8n-node-dev`
