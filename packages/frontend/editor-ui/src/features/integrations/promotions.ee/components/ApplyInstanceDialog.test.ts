@@ -33,7 +33,17 @@ describe('ApplyInstanceDialog', () => {
 	});
 
 	it('applies the whole branch and reports success', async () => {
-		api.applyPromotion.mockResolvedValue(applied);
+		// Everything published, so the report stays a success.
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				workflows: {
+					...applied.counts.workflows,
+					publishing: { published: 3, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+				},
+			},
+		});
 		const { findByTestId, emitted } = renderComponent();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
@@ -45,6 +55,26 @@ describe('ApplyInstanceDialog', () => {
 		expect(mockShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'success', title: 'Instance updated' }),
 		);
+		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
+	});
+
+	it('warns when applied workflows could not be published', async () => {
+		// The fixture imports two workflows that stayed blocked or failed to publish.
+		api.applyPromotion.mockResolvedValue(applied);
+		const { findByTestId, emitted } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					title: 'Instance updated',
+					message: expect.stringContaining('2 could not be published.'),
+				}),
+			),
+		);
+		expect(mockShowMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
 

@@ -3903,6 +3903,7 @@
 	"settings.promotions.apply.dialog.confirm": "Apply",
 	"settings.promotions.apply.toast.success.title": "Instance updated",
 	"settings.promotions.apply.toast.success.message": "{created} created, {updated} updated, {archived} archived, {deleted} deleted.",
+	"settings.promotions.apply.toast.notPublished": "{count} could not be published.",
 	"settings.promotions.apply.toast.sourceChanged.title": "Apply paused",
 	"settings.promotions.apply.toast.sourceChanged.message": "The source changed since this preview. Refresh and review the changes again.",
 	"settings.promotions.apply.toast.error": "Couldn't apply to the instance",
