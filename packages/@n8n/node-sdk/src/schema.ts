@@ -32,6 +32,8 @@ export interface JsonSchema {
 	'x-n8n-ref'?: string;
 	/** Value types by source type (Notion property type), for open `patternProperties`. */
 	'x-n8n-value-types'?: Record<string, JsonSchema>;
+	/** Sample values; the first one seeds verification fixtures. */
+	examples?: readonly unknown[];
 }
 
 declare const phantom: unique symbol;

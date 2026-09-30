@@ -120,8 +120,12 @@ const input = {
 	).optional(),
 };
 
-const page = obj({ id: str(), name: str().hint('The page title'), url: str() }).with({
-	patternProperties: { '^property_': {} },
+const page = obj({
+	id: str().with({ format: 'uuid' }),
+	name: str().hint('The page title'),
+	url: str().with({ format: 'uri' }),
+}).with({
+	patternProperties: { '^property_[a-z0-9_]+$': {} },
 	'x-n8n-value-types': SIMPLIFIED,
 	'x-n8n-hint': 'Keys: property_ + snake_case of the exact property name',
 });
@@ -145,9 +149,13 @@ function guarantees(where: Infer<typeof input.where> | undefined): Array<[string
 			where.match === 'all' &&
 			'value' in item.condition &&
 			!item.condition.op.startsWith('does_not');
-		return [
-			[`property_${snakeCase(item.property)}`, present ? (schema.anyOf?.[0] ?? schema) : schema],
-		];
+		const typed = present ? (schema.anyOf?.[0] ?? schema) : schema;
+		// An equality filter fixes the value every matching page has.
+		const fixed =
+			item.condition.op === 'equals' && 'value' in item.condition
+				? { examples: [item.condition.value] }
+				: {};
+		return [[`property_${snakeCase(item.property)}`, { ...typed, ...fixed }]];
 	});
 }
 

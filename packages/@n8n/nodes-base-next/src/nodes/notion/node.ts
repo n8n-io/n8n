@@ -106,6 +106,7 @@ export function simplifyPage(page: unknown): Record<string, unknown> {
 }
 
 const str: JsonSchema = { type: 'string' };
+const date: JsonSchema = { type: 'string', format: 'date' };
 const nullable = (schema: JsonSchema): JsonSchema => ({ anyOf: [schema, { type: 'null' }] });
 const strings: JsonSchema = { type: 'array', items: str };
 
@@ -113,8 +114,8 @@ const strings: JsonSchema = { type: 'array', items: str };
 export const SIMPLIFIED: Record<string, JsonSchema> = {
 	title: str,
 	rich_text: str,
-	email: nullable(str),
-	url: nullable(str),
+	email: nullable({ type: 'string', format: 'email' }),
+	url: nullable({ type: 'string', format: 'uri' }),
 	phone_number: nullable(str),
 	select: { ...nullable(str), 'x-n8n-hint': 'option name' },
 	status: { ...str, 'x-n8n-hint': 'option name' },
@@ -122,15 +123,19 @@ export const SIMPLIFIED: Record<string, JsonSchema> = {
 	last_edited_by: nullable(str),
 	['number']: nullable({ type: 'number' }),
 	checkbox: { type: 'boolean' },
-	created_time: str,
-	last_edited_time: str,
+	created_time: { type: 'string', format: 'date-time' },
+	last_edited_time: { type: 'string', format: 'date-time' },
 	date: nullable({
 		type: 'object',
-		properties: { start: str, end: nullable(str), time_zone: nullable(str) },
+		properties: { start: date, end: nullable(date), time_zone: nullable(str) },
 		required: ['start', 'end', 'time_zone'],
 		additionalProperties: false,
 	}),
-	people: { ...strings, 'x-n8n-hint': 'one email per person, never a name' },
+	people: {
+		type: 'array',
+		items: { type: 'string', format: 'email' },
+		'x-n8n-hint': 'one email per person, never a name',
+	},
 	multi_select: { ...strings, 'x-n8n-hint': 'option names' },
 	relation: { ...strings, 'x-n8n-hint': 'page IDs' },
 	files: { ...strings, 'x-n8n-hint': 'file URLs' },

@@ -13,7 +13,10 @@ interface Mode {
 	indent: string;
 }
 
+/** `^property_[a-z0-9_]+$` → `property_${Lowercase<string>}`; `^x_` → `x_${string}`. */
 function patternKey(pattern: string): string {
+	const lower = /^\^([\w-]+)\[a-z0-9_\]\+\$$/.exec(pattern)?.[1];
+	if (lower) return `\`${lower}\${Lowercase<string>}\``;
 	const prefix = /^\^([\w-]+)$/.exec(pattern.replace(/\.\*$/, ''))?.[1];
 	return prefix ? `\`${prefix}\${string}\`` : 'string';
 }

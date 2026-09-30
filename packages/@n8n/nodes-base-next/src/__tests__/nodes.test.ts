@@ -1,6 +1,6 @@
 import { lintContract, toContract, toNodeType, validate, type Action } from '@n8n/node-sdk';
 import type { IExecuteFunctions } from 'n8n-workflow';
- 
+
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
 import { actions, nodeTypeOf } from '../index';

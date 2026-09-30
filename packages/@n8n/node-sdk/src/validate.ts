@@ -137,6 +137,14 @@ export function validate(
 export const matches = <S extends AnySchema>(schema: S, value: unknown): value is Infer<S> =>
 	validate(value, schema.json).length === 0;
 
+const FORMAT_EXAMPLES: Record<string, string> = {
+	date: '2026-09-15',
+	'date-time': '2026-09-15T09:30:00.000Z',
+	email: 'ada@example.com',
+	uri: 'https://example.com/item/1',
+	uuid: '8f14e45f-ceea-467a-9575-2a3b4c5d6e7f',
+};
+
 /** One plausible value for `schema`, for verification fixtures when a node declares none. */
 export function exampleOf(schema: JsonSchema): unknown {
 	if (schema.const !== undefined) return schema.const;
@@ -147,9 +155,11 @@ export function exampleOf(schema: JsonSchema): unknown {
 		const first = union.find((option) => option.type !== 'null') ?? union[0];
 		return first ? exampleOf(first) : null;
 	}
+	const examples = (schema as { examples?: readonly unknown[] }).examples;
+	if (examples?.length) return examples[0];
 	switch (schema.type) {
 		case 'string':
-			return schema.format === 'date' ? '2026-01-01' : 'example';
+			return FORMAT_EXAMPLES[schema.format ?? ''] ?? 'example';
 		case 'number':
 		case 'integer':
 			return 1;
