@@ -581,7 +581,9 @@ export class AgentChatBridge {
 		// Some integration types (see `AgentIntegrationConfig`) carry no
 		// `settings` field at all, hence the `in` check before reading it.
 		const configuredIdleTimeoutMinutes =
-			'settings' in this.integration ? this.integration.settings?.sessionIdleTimeoutMinutes : undefined;
+			'settings' in this.integration
+				? this.integration.settings?.sessionIdleTimeoutMinutes
+				: undefined;
 		const idleTimeoutMinutes =
 			configuredIdleTimeoutMinutes !== undefined
 				? configuredIdleTimeoutMinutes
