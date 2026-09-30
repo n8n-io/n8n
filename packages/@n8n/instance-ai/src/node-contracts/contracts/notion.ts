@@ -188,7 +188,7 @@ const SIMPLIFIED_SCHEMA_BY_TYPE: Record<string, JsonSchema> = {
 			'time_zone',
 		]),
 	),
-	people: { type: 'array', items: { anyOf: [str(), { type: 'object', properties: {} }] } },
+	people: strArray,
 	multi_select: strArray,
 	relation: strArray,
 	files: strArray,

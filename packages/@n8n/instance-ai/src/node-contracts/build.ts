@@ -186,7 +186,8 @@ export function compileContractNodes(json: WorkflowJSON): {
 				nodeName: node.name,
 				message:
 					`'${node.name ?? contract.id}' does not match the ${contract.id} contract: ${inputIssues.join('; ')}. ` +
-					`Read it with nodes(action="type-definition", nodeTypes=["${contract.id}"]).`,
+					`Valid parameters look like ${JSON.stringify(contract.example)}. ` +
+					`For every field, read nodes(action="type-definition", nodeTypes=["${contract.id}"]).`,
 			});
 		}
 		if (node.name) contractNodes.set(node.name, { contract, input });

@@ -472,6 +472,24 @@ export default workflow('w', 'W').add(start).to(order).to(large).onTrue(high).on
 		]);
 	});
 
+	it('shows valid contract parameters in an input error', async () => {
+		const { issues } = await build(
+			workflowOf([
+				{
+					name: 'Tax',
+					type: 'set.fields',
+					parameters: { mode: 'manual', fields: { values: [{ name: 't', type: 'numberValue' }] } },
+				},
+			]),
+		);
+		expect(issues).toEqual([
+			expect.objectContaining({
+				code: 'CONTRACT_INPUT_INVALID',
+				message: expect.stringContaining('Valid parameters look like {"fields":[{"name":"email"'),
+			}),
+		]);
+	});
+
 	it('keeps reads of non-contract nodes loose', async () => {
 		const code = { name: 'Code', type: 'n8n-nodes-base.code', parameters: {} };
 		expect(
@@ -548,7 +566,7 @@ export default workflow('w', 'W').add(start).to(order).to(large).onTrue(high).on
 		const notion = CONTRACTS.find(({ id }) => id === 'notion.databasePage.getAll');
 		const view = JSON.stringify(notion && contractView(notion));
 
-		expect(view).toContain('people: Array<string | {  }>');
+		expect(view).toContain('people | multi_select | relation | files: Array<string>');
 		expect(view).toContain('date: { \\"start\\": string; \\"end\\": string | null;');
 		expect(view).toContain('[key: `property_');
 	});
