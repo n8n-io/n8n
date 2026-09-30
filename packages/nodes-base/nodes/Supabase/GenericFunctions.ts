@@ -1,14 +1,12 @@
 import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, toPathSegment, UserError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
@@ -36,7 +34,6 @@ function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions) {
 	return authentication === 'oAuth2' ? 'supabaseOAuth2Api' : 'supabaseApi';
 }
 
-// TODO: not throw but return undefined instead?
 function getProjectRef(context: IExecuteFunctions | ILoadOptionsFunctions) {
 	const project = context.getNodeParameter('projectRef', 0);
 	if (typeof project !== 'string' || !project) throw new UserError('Select a Supabase project');
@@ -53,17 +50,16 @@ async function supabaseManagementApiRequest<T>(
 	body: IDataObject = {},
 ) {
 	try {
-		const options: IRequestOptions = {
+		const options: IHttpRequestOptions = {
 			method,
-			uri: `https://api.supabase.com/v1${resource}`,
+			url: `https://api.supabase.com/v1${resource}`,
 			qs,
 			body,
 			json: true,
 		};
 		if (Object.keys(body).length === 0) delete options.body;
 
-		// TODO: this is deprecated
-		return (await context.helpers.requestWithAuthentication.call(
+		return (await context.helpers.httpRequestWithAuthentication.call(
 			context,
 			'supabaseOAuth2Api',
 			options,
@@ -216,7 +212,7 @@ export async function supabaseApiRequest(
 		host = credentials.host;
 	}
 
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Prefer: 'return=representation',
 			...(projectKey
@@ -229,7 +225,7 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `${host.replace(/\/$/, '')}/rest/v1${resource}`,
+		url: uri ?? `${host.replace(/\/$/, '')}/rest/v1${resource}`,
 		json: true,
 	};
 
@@ -238,12 +234,11 @@ export async function supabaseApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		// TODO: these are deprecated
 		if (credentialType === 'supabaseOAuth2Api') {
 			try {
-				return await this.helpers.request(options);
+				return await this.helpers.httpRequest(options);
 			} catch (error) {
-				if (error.statusCode !== 401 || !projectRef || !projectKey) throw error;
+				if (error.response?.status !== 401 || !projectRef || !projectKey) throw error;
 
 				await invalidateProjectSecretKey(this, projectRef, projectKey);
 				projectKey = await getProjectSecretKey(this, projectRef);
@@ -252,10 +247,10 @@ export async function supabaseApiRequest(
 					apikey: projectKey,
 					Authorization: `Bearer ${projectKey}`,
 				};
-				return await this.helpers.request(options);
+				return await this.helpers.httpRequest(options);
 			}
 		}
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		if (error.description) {
 			error.message = `${error.message}: ${error.description}`;
@@ -645,29 +640,6 @@ export function appendFilterStringToEndpoint(
 
 	const encodedTemplate = encodeURI(filterString);
 	return `${endpoint}?${applyFilterStringParameters(encodedTemplate, filterStringParameters)}`;
-}
-
-export async function validateCredentials(
-	this: ICredentialTestFunctions,
-	decryptedCredentials: ICredentialDataDecryptedObject,
-): Promise<any> {
-	const credentials = decryptedCredentials;
-
-	const { serviceRole } = credentials as {
-		serviceRole: string;
-	};
-
-	const options: IRequestOptions = {
-		headers: {
-			apikey: serviceRole,
-			Authorization: 'Bearer ' + serviceRole,
-		},
-		method: 'GET',
-		uri: `${credentials.host}/rest/v1/`,
-		json: true,
-	};
-
-	return await this.helpers.request(options);
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

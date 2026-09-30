@@ -1,11 +1,7 @@
 import type {
 	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -23,7 +19,6 @@ import {
 	getSupabaseProjects,
 	mapPairedItemsFrom,
 	supabaseApiRequest,
-	validateCredentials,
 } from './GenericFunctions';
 import { rowFields, rowOperations } from './RowDescription';
 
@@ -51,7 +46,6 @@ export class Supabase implements INodeType {
 			{
 				name: 'supabaseApi',
 				required: true,
-				testedBy: 'supabaseApiCredentialTest',
 				displayOptions: {
 					show: {
 						authentication: ['secretKey'],
@@ -190,26 +184,6 @@ export class Supabase implements INodeType {
 					});
 				}
 				return returnData;
-			},
-		},
-		credentialTest: {
-			async supabaseApiCredentialTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The Service Key is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
 			},
 		},
 	};
