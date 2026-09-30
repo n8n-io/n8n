@@ -132,6 +132,23 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
+	describe('findScheduleStatesByOwnerType', () => {
+		it('reads the owner id and schedule state of every job owners of one kind hold', async () => {
+			const rows = [
+				mock<ScheduledJob>({ ownerId: 'a', enabled: true, nextRunAt: CLOCK, orphanedAt: null }),
+			];
+			entityManager.find.mockResolvedValueOnce(rows);
+
+			const result = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task' },
+				select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
+			});
+			expect(result).toBe(rows);
+		});
+	});
+
 	describe('deleteIfPayloadUnchanged', () => {
 		const OBSERVED = { n8nVersion: '1.0.0' };
 

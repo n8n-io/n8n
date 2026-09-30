@@ -156,6 +156,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await this.find({ where: { ownerType }, select: ['id', 'ownerId', 'payload'] });
 	}
 
+	/** The owner id and schedule state of every job owners of one kind hold. */
+	async findScheduleStatesByOwnerType(
+		ownerType: string,
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'enabled' | 'nextRunAt' | 'orphanedAt'>>> {
+		return await this.find({
+			where: { ownerType },
+			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
+		});
+	}
+
 	/**
 	 * The member ids under which an owner holds jobs of one task type, each once.
 	 * A caller uses them to tell which of its parts still provision a job.
