@@ -6693,10 +6693,11 @@ describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
 		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 	});
 
-	it('says no tabs are open when the block that listed tabs was compacted out of the replay window', async () => {
+	it('says no tabs are open again when the same block was compacted out of the replay window', async () => {
 		const service = createService();
+		// The full history has the same block, so only a replay-window read sends it again.
 		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })),
 		]);
 		service.agentMemory.getCursor.mockResolvedValue({
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
