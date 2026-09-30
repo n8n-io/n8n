@@ -1967,24 +1967,11 @@ describe('WorkflowValidationService', () => {
 		});
 
 		it('ignores a subnode whose only consumer is disabled', async () => {
-			// A disabled agent never resolves its parser, so this workflow runs
-			// today and must stay publishable.
+			// The trigger reaches the disabled agent, so the parser counts as
+			// executable. A disabled agent never resolves it though, so only the
+			// disabled-consumer exemption keeps this workflow publishable.
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser'), node('Agent', 'agent', true)],
-				{
-					Parser: {
-						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
-					},
-				} as unknown as IConnections,
-				nodeTypes,
-			);
-
-			expect(result).toEqual({ isValid: true });
-		});
-
-		it('still checks a subnode whose consumer is enabled', async () => {
-			const result = await service.validateRequiredInputsConnected(
-				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Agent', 'agent')],
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Agent', 'agent', true)],
 				{
 					...startedAt('Agent'),
 					Parser: {
@@ -1994,8 +1981,7 @@ describe('WorkflowValidationService', () => {
 				nodeTypes,
 			);
 
-			expect(result.isValid).toBe(false);
-			expect(result.error).toContain("'Parser'");
+			expect(result).toEqual({ isValid: true });
 		});
 
 		it('still checks a subnode that also supplies an enabled consumer', async () => {

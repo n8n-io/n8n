@@ -73,8 +73,25 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
+		const cleanupWorkflowIds: string[] = [];
+
+		test.afterEach(async ({ api }) => {
+			// The published case leaves a daily schedule active, which would keep
+			// firing on a persistent stack.
+			while (cleanupWorkflowIds.length > 0) {
+				const workflowId = cleanupWorkflowIds.pop();
+				try {
+					await api.workflows.deactivate(workflowId!);
+					await api.workflows.delete(workflowId!);
+				} catch {
+					// ignore potential errors in the cleanup process
+				}
+			}
+		});
+
 		test('publishes when the nodes with unmet inputs cannot be reached', async ({ api }) => {
 			const created = await api.workflows.createWorkflow(buildWorkflow(false));
+			cleanupWorkflowIds.push(created.id);
 
 			const response = await api.workflows.activateRaw(created.id, created.versionId);
 
@@ -83,7 +100,8 @@ test.describe(
 				`publish was refused over nodes no run can reach: ${await response.text()}`,
 			).toBe(true);
 
-			// Activation lands through the publication outbox, so poll for it.
+			// Activation lands through the publication outbox. Poll for it before the
+			// teardown deactivates, so cleanup cannot race the publish.
 			await expect
 				.poll(async () => (await api.workflows.getPublicationStatus(created.id)).status, {
 					timeout: 15_000,
@@ -93,6 +111,7 @@ test.describe(
 
 		test('refuses to publish when the same nodes are reachable', async ({ api }) => {
 			const created = await api.workflows.createWorkflow(buildWorkflow(true));
+			cleanupWorkflowIds.push(created.id);
 
 			const response = await api.workflows.activateRaw(created.id, created.versionId);
 
