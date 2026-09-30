@@ -41,6 +41,10 @@ describe('system task durable job metrics', () => {
 			name: 'prune',
 			mode: 'durable',
 		});
+		emitSystemTaskMetric(Container.get(EventService), 'system-task-next-run-planned', {
+			name: 'prune',
+			nextRunAtMs: Date.now(),
+		});
 	});
 
 	afterAll(async () => {
