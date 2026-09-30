@@ -20,7 +20,11 @@ import {
 } from '../agent-chat-integration';
 import { channelRateLimitMessage } from '../channel-rate-limit';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
-import { componentTextToString, type SuspendComponent } from '../component-mapper';
+import {
+	componentTextToString,
+	type NormalizeComponentsContext,
+	type SuspendComponent,
+} from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
 import { deriveWhatsAppVerifyToken, stringValue } from '../integration-helpers';
@@ -282,21 +286,47 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	 * through unchanged. Only reply buttons need handling here: the Cloud API
 	 * caps interactive messages at 3 buttons and otherwise rejects the send.
 	 */
-	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
+	normalizeComponents(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): SuspendComponent[] {
 		const buttons = components.filter((c) => c.type === 'button');
 		if (buttons.length <= WHATSAPP_MAX_REPLY_BUTTONS) return components;
 
+		const existingSelect = components.find((c) => c.type === 'select' || c.type === 'radio_select');
+		if (existingSelect) {
+			// Merge into it instead of pushing a second one: WhatsApp's list
+			// message only supports one set of rows. Its options already resume
+			// through the native select decode path, so the overflow buttons
+			// fall back to that same raw encoding here — one select can't mix
+			// a button-style and a select-style resume under a single id.
+			const overflowOptions = buttons.map((b) => ({
+				label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
+				value: b.value ?? b.label ?? '',
+			}));
+			return components
+				.filter((c) => c.type !== 'button')
+				.map((c) =>
+					c === existingSelect ? { ...c, options: [...(c.options ?? []), ...overflowOptions] } : c,
+				);
+		}
+
 		// More than 3 options don't fit WhatsApp's reply-button limit, but
 		// WhatsApp list messages allow far more entries — convert the overflow
-		// into a `select` so the action stays completable from WhatsApp, instead
-		// of dropping the options behind unreachable text.
+		// into a `select` so the action stays completable from WhatsApp. Each
+		// option's value is wrapped exactly as a real button's would be, and
+		// the select's id uses that same `resume:` encoding (see
+		// `NormalizeComponentsContext`), so tapping an option resumes with the
+		// shape the tool's schema expects instead of a select's fixed
+		// `{ type, id, value }`.
 		const normalized = components.filter((c) => c.type !== 'button');
 		normalized.push({
 			type: 'select',
+			id: `resume:${context.runId}:${context.toolCallId}:0`,
 			label: 'Choose an option',
 			options: buttons.map((b) => ({
 				label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
-				value: b.value ?? b.label ?? '',
+				value: context.wrapResumeValue(b.value ?? b.label ?? ''),
 			})),
 		});
 		return normalized;
