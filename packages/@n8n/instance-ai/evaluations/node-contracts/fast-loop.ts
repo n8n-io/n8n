@@ -24,7 +24,11 @@
  *     --arm off=http://localhost:5701 --arm off=http://localhost:5703 \
  *     --arm on=http://localhost:5702 --arm on=http://localhost:5704 --iterations 3
  *   pnpm exec tsx evaluations/node-contracts/fast-loop.ts --grade <results.json | workflow.json> [--case <slug>] \
- *     [--instance-db <database.sqlite> ...] [--server-log <n8n.log>]
+ *     [--instance-db <database.sqlite> ...] [--server-log <n8n.log>] [--composition --arm <name>=<baseUrl>]
+ *
+ * `--composition` splits each run-debug step's input into blocks and counts each block with the
+ * Anthropic count_tokens API (needs ANTHROPIC_API_KEY, else a chars / 3.5 estimate). It is off by
+ * default because it sends API requests.
  */
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -53,6 +57,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+
+import {
+	printComposition,
+	tokenComposition,
+	tokenCounter,
+	type TokenComposition,
+} from './token-composition';
 import { N8nClient, type WorkflowNodeResponse, type WorkflowResponse } from '../clients/n8n-client';
 import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { buildWorkflow } from '../harness/build-workflow';
@@ -1249,15 +1261,39 @@ const stepFromRunDebug = (output: unknown): StepDiagnostics => ({
 });
 
 /** Empty when the instance runs without N8N_INSTANCE_AI_RUN_DEBUG_ENABLED (the routes answer 404). */
-async function runDebugSteps(client: N8nClient, threadId: string): Promise<StepDiagnostics[]> {
+async function runDebugRecords(
+	client: N8nClient,
+	threadId: string,
+): Promise<InstanceAiRunDebugResponse[]> {
 	try {
 		const { runs } = await client.listThreadDebugRuns(threadId, 30_000);
-		const records = await Promise.all(
-			runs.map(async (run) => await client.getRunDebug(run.runId, 30_000)),
-		);
-		return records.flatMap((record) => record.steps.map((step) => stepFromRunDebug(step.output)));
+		return await Promise.all(runs.map(async (run) => await client.getRunDebug(run.runId, 30_000)));
 	} catch {
 		return [];
+	}
+}
+
+const runDebugSteps = (records: InstanceAiRunDebugResponse[]): StepDiagnostics[] =>
+	records.flatMap((record) => record.steps.map((step) => stepFromRunDebug(step.output)));
+
+type Counter = ReturnType<typeof tokenCounter>;
+
+/** Per-block input tokens of the run-debug steps; undefined without steps or on a count error. */
+async function compositionOf(
+	counter: Counter,
+	records: InstanceAiRunDebugResponse[],
+	label: string,
+): Promise<TokenComposition | undefined> {
+	const steps = records.flatMap((record) => record.steps);
+	if (steps.length === 0) {
+		console.log(`[${label}] composition: no run-debug steps (instance restarted or debug off)`);
+		return undefined;
+	}
+	try {
+		return await tokenComposition(counter, steps);
+	} catch (error) {
+		console.log(`[${label}] composition failed: ${errorText(error)}`);
+		return undefined;
 	}
 }
 
@@ -1583,6 +1619,9 @@ function printDiagnostics(rows: DiagnosticsRow[]) {
 
 // ── Runner ──────────────────────────────────────────────────────────────────
 
+/** Token counts by request hash, shared by runs that write to the same out dir. */
+const COUNT_CACHE_FILE = 'token-counts.json';
+
 interface Arm {
 	name: string;
 	baseUrl: string;
@@ -1604,7 +1643,7 @@ function parseArgs(argv: string[]) {
 	const cases = expandCases(flagValues(argv, '--case'));
 	if (cases.length === 0 || arms.length === 0) {
 		throw new Error(
-			'Usage: --case <slug|all> [--case ...] --arm <name>=<baseUrl> [--arm ...] [--iterations N] [--concurrency N] [--out dir]',
+			'Usage: --case <slug|all> [--case ...] --arm <name>=<baseUrl> [--arm ...] [--iterations N] [--concurrency N] [--out dir] [--composition]',
 		);
 	}
 	const ungraded = cases.filter((slug) => !GRADERS[slug]);
@@ -1615,6 +1654,7 @@ function parseArgs(argv: string[]) {
 		iterations: Number(value('--iterations') ?? 3),
 		concurrency: Number(value('--concurrency') ?? 4),
 		serverLog: value('--server-log'),
+		composition: argv.includes('--composition'),
 		out:
 			value('--out') ??
 			path.join('/tmp', 'node-contracts-fast-loop', new Date().toISOString().replace(/[:.]/g, '-')),
@@ -1654,6 +1694,7 @@ async function runBuild(
 	testCase: WorkflowTestCaseWithFile,
 	iteration: number,
 	serverLog?: string,
+	counter?: Counter,
 ) {
 	const started = Date.now();
 	const before = await scrapeTokens(session.arm.baseUrl);
@@ -1671,12 +1712,20 @@ async function runBuild(
 	const seconds = Math.round((Date.now() - started) / 1000);
 	const events = withServerTime(build.events ?? []);
 	const toolCalls = extractOutcomeFromEvents(events).toolCalls.map((call) => call.toolName);
+	const records = build.threadId ? await runDebugRecords(session.client, build.threadId) : [];
 	const diagnostics = build.threadId
 		? buildDiagnostics(
 				events,
-				await runDebugSteps(session.client, build.threadId),
+				runDebugSteps(records),
 				build.threadId,
 				serverLog ? readFileSync(serverLog, 'utf8').split('\n') : undefined,
+			)
+		: undefined;
+	const composition = counter
+		? await compositionOf(
+				counter,
+				records,
+				`${testCase.fileSlug} ${session.arm.name} #${iteration}`,
 			)
 		: undefined;
 	const workflow = build.workflowJsons[0];
@@ -1700,6 +1749,7 @@ async function runBuild(
 		workflowId: build.workflowId,
 		threadId: build.threadId,
 		diagnostics,
+		composition,
 		workflow,
 	};
 	console.log(
@@ -1778,15 +1828,23 @@ const savedTokens = (tokens: unknown) =>
 			}
 		: undefined;
 
+interface GradeComposition {
+	counter: Counter;
+	/** Logged-in clients by arm name, from `--arm`: the run debug buffer lives in the instance. */
+	clients: Map<string, N8nClient>;
+	out: string;
+}
+
 /**
  * `--grade <file> [--case <slug>]` regrades a saved workflow JSON, or every build in a results.json.
  * For a results.json it also prints build diagnostics; `--instance-db` and `--server-log` fill them
- * in for builds saved without diagnostics.
+ * in for builds saved without diagnostics. `--composition` with `--arm <name>=<baseUrl>` adds token
+ * composition from the instance's run debug buffer and writes it to composition.json.
  */
 async function gradeFile(
 	caseSlugs: string[],
 	file: string,
-	options: { databasePaths: string[]; logLines?: string[] },
+	options: { databasePaths: string[]; logLines?: string[]; composition?: GradeComposition },
 ) {
 	const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
 	const targets: Array<{
@@ -1821,7 +1879,9 @@ async function gradeFile(
 						: [];
 				});
 	if (targets.length === 0) throw new Error(`Nothing to grade in ${file}; pass --case <slug>`);
-	const rows = await targets.reduce<Promise<DiagnosticsRow[]>>(async (previous, target) => {
+	const rows = await targets.reduce<
+		Promise<Array<DiagnosticsRow & { composition?: TokenComposition; threadId?: string }>>
+	>(async (previous, target) => {
 		const done = await previous;
 		const checks = await gradeSafely(target.caseSlug, target.workflow);
 		console.log(`[${target.label}] ${buildPasses(checks) ? 'PASS' : 'FAIL'}`);
@@ -1830,20 +1890,68 @@ async function gradeFile(
 				`   ${check.ungraded ? '? ' : check.pass ? 'ok' : 'x '} ${check.name}: ${check.detail.slice(0, 300)}`,
 			);
 		}
-		return target.build
-			? [
-					...done,
-					{
-						label: target.label,
-						arm: String(target.build.arm),
-						pass: buildPasses(checks),
-						tokens: savedTokens(target.build.tokens),
-						diagnostics: savedBuildDiagnostics(target.build, options),
-					},
-				]
-			: done;
+		if (!target.build) return done;
+		const threadId = stringOrUndefined(target.build.threadId);
+		const client = options.composition?.clients.get(String(target.build.arm));
+		if (options.composition && !client) {
+			console.log(`   composition: pass --arm ${String(target.build.arm)}=<baseUrl>`);
+		}
+		const composition =
+			options.composition && client && threadId
+				? await compositionOf(
+						options.composition.counter,
+						await runDebugRecords(client, threadId),
+						target.label,
+					)
+				: undefined;
+		return [
+			...done,
+			{
+				label: target.label,
+				arm: String(target.build.arm),
+				pass: buildPasses(checks),
+				tokens: savedTokens(target.build.tokens),
+				diagnostics: savedBuildDiagnostics(target.build, options),
+				threadId,
+				composition,
+			},
+		];
 	}, Promise.resolve([]));
 	if (rows.length) printDiagnostics(rows);
+	const composed = rows.flatMap(({ label, threadId, composition }) =>
+		composition ? [{ label, threadId, composition }] : [],
+	);
+	for (const { label, composition } of composed) printComposition(label, composition);
+	if (options.composition && composed.length) {
+		const out = path.join(options.composition.out, 'composition.json');
+		writeFileSync(out, JSON.stringify(composed, null, 2));
+		console.log(`\nComposition: ${out}`);
+	}
+}
+
+/** Clients for `--arm` instances in grade mode, only when `--composition` needs them. */
+async function gradeComposition(argv: string[], file: string): Promise<GradeComposition> {
+	const out = flagValues(argv, '--out')[0] ?? path.dirname(file);
+	mkdirSync(out, { recursive: true });
+	const clients = await Promise.all(
+		flagValues(argv, '--arm').flatMap((spec) => {
+			const [name, baseUrl] = spec.split('=');
+			return name && baseUrl
+				? [
+						(async (): Promise<[string, N8nClient]> => {
+							const client = new N8nClient(baseUrl);
+							await client.login();
+							return [name, client];
+						})(),
+					]
+				: [];
+		}),
+	);
+	return {
+		counter: tokenCounter(path.join(out, COUNT_CACHE_FILE)),
+		clients: new Map(clients),
+		out,
+	};
 }
 
 function isWorkflowResponse(value: unknown): value is WorkflowResponse {
@@ -1858,6 +1966,9 @@ async function main() {
 		await gradeFile(expandCases(flagValues(argv, '--case')), gradeTarget, {
 			databasePaths: flagValues(argv, '--instance-db'),
 			logLines: serverLog ? readFileSync(serverLog, 'utf8').split('\n') : undefined,
+			composition: argv.includes('--composition')
+				? await gradeComposition(argv, gradeTarget)
+				: undefined,
 		});
 		return;
 	}
@@ -1870,6 +1981,9 @@ async function main() {
 	);
 	if (missing.length) throw new Error(`Case not found: ${missing.join(', ')}`);
 	mkdirSync(args.out, { recursive: true });
+	const counter = args.composition
+		? tokenCounter(path.join(args.out, COUNT_CACHE_FILE))
+		: undefined;
 
 	const sessions = await Promise.all(args.arms.map(openArm));
 	const limit = pLimit(args.concurrency);
@@ -1886,7 +2000,7 @@ async function main() {
 		const job = queues.get(session.arm.name)?.shift();
 		if (!job) return [];
 		const build = await limit(
-			async () => await runBuild(session, job.testCase, job.iteration, args.serverLog),
+			async () => await runBuild(session, job.testCase, job.iteration, args.serverLog, counter),
 		);
 		return [build, ...(await drain(session))];
 	};
@@ -1899,6 +2013,11 @@ async function main() {
 			...build,
 		})),
 	);
+	for (const build of builds) {
+		if (build.composition) {
+			printComposition(`${build.case} ${build.arm} #${build.iteration}`, build.composition);
+		}
+	}
 	console.log(`\nResults: ${path.join(args.out, 'results.json')}`);
 }
 
