@@ -61,15 +61,11 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 
 	async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
-		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
 		const workflow = await manager.findOne(WorkflowEntity, {
 			where: { id: workflowId },
-			// Allow transfer FK checks while the transfer holds the owner row.
-			...(lockRows ? { lock: { mode: 'for_no_key_update' as const } } : {}),
 		});
 		const owner = await manager.findOne(SharedWorkflow, {
 			where: { workflowId, role: 'workflow:owner' },
-			...(lockRows ? { lock: { mode: 'pessimistic_read' as const } } : {}),
 		});
 		return { workflow, projectId: owner?.projectId };
 	}

@@ -8,9 +8,9 @@
 | closedAt | timestamp(3) with time zone |  | true |  |  |  |
 | closedReason | varchar(16) |  | true |  |  | Reason the suggestion closed |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| expectedBaseline | json |  | false |  |  | Original saved and published version IDs and checksum |
-| id | varchar |  | false | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
-| payload | json |  | false |  |  | Independent baseline, graph, explanation, and error context |
+| expectedBaseline | json |  | false |  |  | savedVersionId, publishedVersionId, and checksum captured from the original workflow |
+| id | varchar(36) |  | false | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
+| payload | json |  | false |  |  | Original workflow snapshot, candidate nodes and connections, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -62,7 +62,7 @@ erDiagram
   varchar_16_ closedReason
   timestamp_3__with_time_zone createdAt
   json expectedBaseline
-  varchar id
+  varchar_36_ id
   json payload
   varchar_36_ projectId FK
   varchar_16_ state
@@ -90,8 +90,8 @@ erDiagram
   varchar_16_ action
   varchar_16_ author
   timestamp_3__with_time_zone createdAt
-  varchar id
-  varchar suggestionId FK
+  varchar_36_ id
+  varchar_36_ suggestionId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {

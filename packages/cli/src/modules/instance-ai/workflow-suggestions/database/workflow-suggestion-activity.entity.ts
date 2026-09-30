@@ -6,7 +6,7 @@ import { WorkflowSuggestion } from './workflow-suggestion.entity';
 @Entity('workflow_suggestion_activity')
 @Index(['suggestionId', 'action'], { unique: true })
 export class WorkflowSuggestionActivityEntity extends WithTimestampsAndStringId {
-	@Column({ type: 'varchar' })
+	@Column({ type: 'varchar', length: 36 })
 	suggestionId: string;
 
 	@ManyToOne(() => WorkflowSuggestion, { nullable: false, onDelete: 'CASCADE' })

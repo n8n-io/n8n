@@ -4,7 +4,6 @@ import type {
 	WorkflowSuggestionGraph,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
 import { TransactionRunner, UserRepository } from '@n8n/db';
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -14,9 +13,9 @@ import pick from 'lodash/pick';
 import { calculateWorkflowChecksum, WORKFLOW_CHECKSUM_FIELDS } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 
@@ -47,24 +46,20 @@ export class WorkflowSuggestionService {
 		private readonly users: UserRepository,
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
-		private readonly modules: ModuleRegistry,
+		private readonly workflowFinder: WorkflowFinderService,
 	) {}
 
-	private requireEnabled() {
-		if (!this.modules.isActive('instance-ai'))
-			throw new NotFoundError('Workflow suggestions are not enabled.');
-	}
-
-	private async requireEditor(userId: string, workflowId: string) {
+	private async getWorkflowForEditor(userId: string, workflowId: string) {
 		const user = await this.users.findByIdWithRole(userId);
-		if (
-			!user ||
-			user.disabled ||
-			!(await userHasScopes(user, ['workflow:read', 'workflow:update'], false, { workflowId }))
-		) {
+		if (!user || user.disabled) {
 			throw new ForbiddenError('Workflow edit access is required.');
 		}
-		return user;
+		const workflow = await this.workflowFinder.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+			'workflow:update',
+		]);
+		if (!workflow) throw new ForbiddenError('Workflow edit access is required.');
+		return workflow;
 	}
 
 	private async isPublished(workflow: WorkflowEntity, ctx: OperationContext) {
@@ -82,25 +77,22 @@ export class WorkflowSuggestionService {
 		workflowId: string,
 		backgroundUserId: string,
 	): Promise<WorkflowSuggestionBaseline> {
-		this.requireEnabled();
-		await this.requireEditor(backgroundUserId, workflowId);
-		return await this.txRunner.run({}, async (ctx) => {
-			const { workflow, projectId } = await this.suggestions.readWorkflowTarget(workflowId, ctx);
-			if (!workflow || !projectId || !(await this.isPublished(workflow, ctx))) {
-				throw new ConflictError('The workflow must be fully published without saved changes.');
-			}
-			return {
-				workflowId,
-				projectId,
-				backgroundUserId,
-				expectedBaseline: {
-					savedVersionId: workflow.versionId,
-					publishedVersionId: workflow.versionId,
-					checksum: await calculateWorkflowChecksum(workflow),
-				},
-				original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
-			};
-		});
+		const workflow = await this.getWorkflowForEditor(backgroundUserId, workflowId);
+		const projectId = workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId;
+		if (!projectId || !(await this.isPublished(workflow, {}))) {
+			throw new ConflictError('The workflow must be fully published without saved changes.');
+		}
+		return {
+			workflowId,
+			projectId,
+			backgroundUserId,
+			expectedBaseline: {
+				savedVersionId: workflow.versionId,
+				publishedVersionId: workflow.versionId,
+				checksum: await calculateWorkflowChecksum(workflow),
+			},
+			original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
+		};
 	}
 
 	async prepareSuggestion(
@@ -111,11 +103,10 @@ export class WorkflowSuggestionService {
 			errorContext?: WorkflowSuggestionContent['errorContext'];
 		},
 	): Promise<PreparedWorkflowSuggestion> {
-		this.requireEnabled();
 		const { explanation, errorContext } = suggestionInputSchema.parse(input);
 		baseline = structuredClone(baseline);
 		const { workflowId, backgroundUserId, expectedBaseline, original } = baseline;
-		await this.requireEditor(backgroundUserId, workflowId);
+		await this.getWorkflowForEditor(backgroundUserId, workflowId);
 		if ((await calculateWorkflowChecksum(original)) !== expectedBaseline.checksum) {
 			throw new ConflictError('The captured workflow baseline has changed.');
 		}
@@ -137,7 +128,6 @@ export class WorkflowSuggestionService {
 
 	// Prepare immediately before the caller opens its completion transaction.
 	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
-		this.requireEnabled();
 		const { baseline, payload } = prepared;
 		const { workflowId, projectId, expectedBaseline } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
@@ -164,16 +154,14 @@ export class WorkflowSuggestionService {
 		workflowId: string,
 		suggestionId: string,
 	): Promise<WorkflowSuggestionProposalDetail> {
-		this.requireEnabled();
-		await this.requireEditor(viewer.id, workflowId);
+		const workflow = await this.getWorkflowForEditor(viewer.id, workflowId);
+		if (workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId !== projectId) {
+			throw new NotFoundError('Proposal not found.');
+		}
 		const suggestion = await this.suggestions.getSuggestion(suggestionId, {
 			workflowId,
 			projectId,
 		});
-		const current = await this.suggestions.readWorkflowTarget(workflowId, {});
-		if (!current.workflow || current.projectId !== projectId) {
-			throw new NotFoundError('Proposal not found.');
-		}
 		const activity = await this.suggestions.getActivity(suggestionId);
 		return {
 			suggestionId,

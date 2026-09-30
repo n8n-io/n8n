@@ -35,4 +35,4 @@ A workflow transfer does not transfer its suggestions. Creation rejects a change
 
 Pending and closed suggestions remain until a parent record is deleted. There is no time-based expiry or suggestion cleanup task. Workspace files, investigation reports, and execution evidence have separate retention policies.
 
-Creation rechecks the workflow baseline and records the suggestion and activity in one transaction. PostgreSQL locks the workflow and owner rows. SQLite uses its existing immediate write transaction. The edit permission check runs just before the transaction. Apply must check current permissions again.
+Creation rechecks the workflow baseline and records the suggestion and activity in one transaction. It does not explicitly lock the workflow or its owner. A concurrent edit can make a new suggestion outdated. INS-1516 must recheck the baseline before Apply. The edit permission check runs just before the transaction. Apply must check current permissions again.

@@ -1830,7 +1830,7 @@ erDiagram
   varchar_16_ closedReason
   datetime_3_ createdAt
   TEXT expectedBaseline
-  varchar id PK
+  varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
   varchar_16_ state
@@ -1841,8 +1841,8 @@ erDiagram
   varchar_16_ action
   varchar_16_ author
   datetime_3_ createdAt
-  varchar id PK
-  varchar suggestionId FK
+  varchar_36_ id PK
+  varchar_36_ suggestionId FK
   datetime_3_ updatedAt
 }
 "workflows_tags" {

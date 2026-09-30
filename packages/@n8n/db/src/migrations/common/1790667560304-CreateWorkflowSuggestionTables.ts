@@ -8,12 +8,12 @@ export class CreateWorkflowSuggestionTables1790667560304 implements ReversibleMi
 		} = ctx;
 		await createTable('workflow_suggestion')
 			.withColumns(
-				column('id').varchar().primary,
+				column('id').varchar(36).primary,
 				column('workflowId').varchar(36).notNull.comment('Target workflow'),
 				column('projectId').varchar(36).notNull.comment('Original owner project'),
 				column('backgroundUserId').uuid.notNull.comment('User who enabled the investigation'),
 				column('expectedBaseline').json.notNull.comment(
-					'Original saved and published version IDs and checksum',
+					'savedVersionId, publishedVersionId, and checksum captured from the original workflow',
 				),
 				column('state')
 					.varchar(16)
@@ -25,7 +25,7 @@ export class CreateWorkflowSuggestionTables1790667560304 implements ReversibleMi
 					.comment('Reason the suggestion closed'),
 				column('closedAt').timestampTimezone(),
 				column('payload').json.notNull.comment(
-					'Independent baseline, graph, explanation, and error context',
+					'Original workflow snapshot, candidate nodes and connections, explanation, and error context',
 				),
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				column('updatedAt').timestampTimezone().notNull.default('NOW()'),
@@ -57,8 +57,8 @@ export class CreateWorkflowSuggestionTables1790667560304 implements ReversibleMi
 		);
 		await createTable('workflow_suggestion_activity')
 			.withColumns(
-				column('id').varchar().primary,
-				column('suggestionId').varchar().notNull,
+				column('id').varchar(36).primary,
+				column('suggestionId').varchar(36).notNull,
 				column('action')
 					.varchar(16)
 					.notNull.withEnumCheck(['submitted'])
