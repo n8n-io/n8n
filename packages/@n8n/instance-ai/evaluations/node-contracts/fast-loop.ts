@@ -396,18 +396,47 @@ function pairedIndex(pairedItem: unknown): number | undefined {
 	return typeof index === 'number' ? index : undefined;
 }
 
-/** Outputs of `node` after `walked`, run by the node class's own execute code at the saved typeVersion. */
-async function executeOutputs(
-	nodeClass: unknown,
-	node: WorkflowNodeResponse,
-	walked: PathStep[],
-): Promise<Emitted[]> {
-	const { items } = walked[walked.length - 1];
-	const instance: unknown =
-		typeof nodeClass === 'function'
-			? Reflect.construct(nodeClass, [{ displayName: node.name, name: node.type }])
-			: {};
+/**
+ * Nodes the grader runs on the path to the POST with their own execute code. They need no
+ * credentials and have no side effects. Code is not here: its sandbox is not available.
+ */
+const RUNNABLE_NODE_TYPES = new Set(
+	[
+		'set',
+		'if',
+		'filter',
+		'limit',
+		'splitOut',
+		'aggregate',
+		'summarize',
+		'sort',
+		'removeDuplicates',
+		'itemLists',
+	].map((name) => `n8n-nodes-base.${name}`),
+);
+
+/** The node type for the saved typeVersion, loaded from nodes-base/dist as the node loader does. */
+function loadNodeType(node: WorkflowNodeResponse): Record<string, unknown> {
+	const known: unknown = nodesBaseRequire('./dist/known/nodes.json');
+	const entry = isRecord(known) ? known[node.type.replace(/^n8n-nodes-base\./, '')] : undefined;
+	if (!isRecord(entry)) throw new Error(`${node.type} not found in nodes-base`);
+	const className = String(entry.className);
+	const loaded = loadDist(nodesBaseRequire, `./${String(entry.sourcePath)}`, [className]);
+	const nodeClass = loaded[className];
+	const instance: unknown = typeof nodeClass === 'function' ? Reflect.construct(nodeClass, []) : {};
 	if (!isRecord(instance)) throw new Error(`${node.type} did not construct`);
+	const versioned: unknown =
+		typeof instance.getNodeType === 'function'
+			? invoke(instance.getNodeType, instance, node.typeVersion ?? 1)
+			: instance;
+	if (!isRecord(versioned)) throw new Error(`${node.type} has no v${node.typeVersion ?? 1}`);
+	return versioned;
+}
+
+/** Outputs of `node` after `walked`, run by the node's own execute code at the saved typeVersion. */
+async function executeOutputs(node: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted[]> {
+	const { items } = walked[walked.length - 1];
+	const instance = loadNodeType(node);
 	const parameters = withDefaults(node);
 	const once = node.executeOnce === true;
 	const output = await withChildContext(
@@ -437,6 +466,7 @@ async function executeOutputs(
 				getMode: () => 'manual',
 				continueOnFail: () => false,
 				getWorkflowSettings: () => ({}),
+				addExecutionHints: () => undefined,
 			};
 			return await invoke(instance.execute, context);
 		},
@@ -456,27 +486,10 @@ async function executeOutputs(
 	});
 }
 
-/** Output of a Set node after `walked`, run by the node's own execute code at the saved typeVersion. */
-async function setOutput(set: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
-	const { SetV2 } = loadDist(nodesBaseRequire, './dist/nodes/Set/v2/SetV2.node.js', ['SetV2']);
-	const [firstOutput] = await executeOutputs(SetV2, set, walked);
-	return firstOutput ?? { items: [] };
-}
-
-const FILTER_NODE_CLASSES: Record<string, [file: string, className: string]> = {
-	'n8n-nodes-base.if': ['./dist/nodes/If/V2/IfV2.node.js', 'IfV2'],
-	'n8n-nodes-base.filter': ['./dist/nodes/Filter/V2/FilterV2.node.js', 'FilterV2'],
-};
-
-const isFilterNodeV2 = (node: WorkflowNodeResponse) =>
-	node.type in FILTER_NODE_CLASSES && (node.typeVersion ?? 1) >= 2;
-
-/** Items on output 0 (IF true branch, Filter kept items), run by the node's own V2 execute code. */
-async function filterOutput(node: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
-	const [file, className] = FILTER_NODE_CLASSES[node.type];
-	const loaded = loadDist(nodesBaseRequire, file, [className]);
-	const [kept] = await executeOutputs(loaded[className], node, walked);
-	return kept ?? { items: [] };
+/** Items on output 0 of `node` after `walked` (for IF the true branch, for Filter the kept items). */
+async function firstOutput(node: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
+	const [output] = await executeOutputs(node, walked);
+	return output ?? { items: [] };
 }
 
 const toDataValue = (value: unknown): IDataObject[string] =>
@@ -493,17 +506,9 @@ const toDataValue = (value: unknown): IDataObject[string] =>
 					? undefined
 					: JSON.stringify(value);
 
-function limitOutput(limit: WorkflowNodeResponse, items: IDataObject[]): Emitted {
-	const parameters = withDefaults(limit);
-	const maxItems = Number(parameters.maxItems);
-	const kept = parameters.keep === 'lastItems' ? items.slice(-maxItems) : items.slice(0, maxItems);
-	const offset = parameters.keep === 'lastItems' ? items.length - kept.length : 0;
-	return { items: kept, paired: kept.map((_, index) => offset + index) };
-}
-
 /**
- * Walks from `startName` through Set, Limit, IF and Filter nodes to the first HTTP Request,
- * carrying items along. After an IF or Filter it follows output 0 only; `filtered` is that output.
+ * Walks from `startName` through RUNNABLE_NODE_TYPES nodes to the first HTTP Request, carrying
+ * items along. After an IF or Filter it follows output 0 only; `filtered` is that output.
  * `walked` holds every node from `startName` to the parent of `node` with the items it emitted.
  */
 async function followToHttp(
@@ -516,7 +521,7 @@ async function followToHttp(
 	let filtered: IDataObject[] | undefined;
 	const path: string[] = [];
 	for (let hop = 0; hop < 5; hop++) {
-		const { name: sourceName, items } = walked[walked.length - 1];
+		const { name: sourceName } = walked[walked.length - 1];
 		const [child] = childrenOf(workflow, sourceName, outputIndex);
 		if (!child)
 			return {
@@ -532,8 +537,7 @@ async function followToHttp(
 				filtered,
 				path: path.length ? `via ${path.join(' → ')}:` : '',
 			};
-		const isFilter = isFilterNodeV2(child);
-		if (!isFilter && child.type !== 'n8n-nodes-base.set' && child.type !== 'n8n-nodes-base.limit') {
+		if (!RUNNABLE_NODE_TYPES.has(child.type)) {
 			return {
 				node: undefined,
 				walked,
@@ -541,11 +545,8 @@ async function followToHttp(
 				path: `ungraded: ${child.type} v${child.typeVersion ?? 1} between ${startName} and the POST`,
 			};
 		}
-		const emitted = isFilter
-			? await filterOutput(child, walked)
-			: child.type === 'n8n-nodes-base.limit'
-				? limitOutput(child, items)
-				: await setOutput(child, walked);
+		const emitted = await firstOutput(child, walked);
+		const isFilter = child.type === 'n8n-nodes-base.if' || child.type === 'n8n-nodes-base.filter';
 		if (isFilter) filtered = emitted.items;
 		outputIndex = isFilter ? 0 : undefined;
 		path.push(child.name);
@@ -821,7 +822,7 @@ const gradeSetKeepAllPassthrough: Grader = async (workflow) => {
 	if (!set) return [{ name: 'set-node', pass: false, detail: 'no Set node after the GET' }];
 	const {
 		items: [output],
-	} = await setOutput(set, sourceStep(get.name, [ORDER]));
+	} = await firstOutput(set, sourceStep(get.name, [ORDER]));
 	const posted = await postedBodies(workflow, get.name, [ORDER]);
 	const setParameters = withDefaults(set);
 	return [
