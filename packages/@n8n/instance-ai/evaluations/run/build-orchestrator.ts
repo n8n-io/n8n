@@ -514,20 +514,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// rather than the agent's miss. Both readers of this map (the row outputs
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
+		// A budget ended the conversation: every verdict of the iteration is kept
+		// for the record but counts neither way, same as its scenario rows (see
+		// `attachExpectations`). The deterministic ones too, or the iteration
+		// would still score on them.
+		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) =>
-				// A budget ended the conversation: the judge's verdict on the partial
-				// transcript is kept for the record but counts neither way, same as
-				// the iteration's scenario rows (see `attachExpectations`).
-				build.timeout
-					? { ...v, incomplete: true, attribution: 'timeout' as const }
-					: {
-							// An attribution already set is a decision the caller made with more
-							// context than this closure has; don't overwrite it.
-							...v,
-							attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
-						},
-			);
+			build.timeout
+				? timedOut(verdicts)
+				: verdicts.map((v) => ({
+						// An attribution already set is a decision the caller made with more
+						// context than this closure has; don't overwrite it.
+						...v,
+						attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
+					}));
 		// The lane's deterministic verdicts ride along on EVERY path, including the
 		// unjudged one: they describe what the run actually did to the provider and
 		// to n8n, which stays true whether or not the author expectations got judged.
@@ -535,8 +536,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// agent's miss or infra's", and these are measurements, not judgements.
 		const withInjected = async (
 			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
-		): Promise<BuildExpectationResult[]> =>
-			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
+		): Promise<BuildExpectationResult[]> => {
+			const own = await verdicts;
+			if (!injected) return own;
+			const measured = await injected;
+			return [...own, ...(build.timeout ? timedOut(measured) : measured)];
+		};
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
 		if (unjudged.length > 0) {
@@ -544,7 +549,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			return;
 		}
 		if (expectations.length === 0) {
-			if (injected) buildExpectationsByKey.set(key, injected);
+			if (injected) buildExpectationsByKey.set(key, withInjected([]));
 			return;
 		}
 		buildExpectationsByKey.set(
