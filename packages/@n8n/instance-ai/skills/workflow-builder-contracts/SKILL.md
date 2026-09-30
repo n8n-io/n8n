@@ -68,8 +68,17 @@ pass `folderPath`.
 
 ## Nodes
 
-Write a node that has a contract with `action`, exactly as the contract view
-shows. A complete source has this form:
+These nodes have action contracts. Always write them with `action`, never
+with `node()`, also when you know the legacy node:
+
+- Set: `set.fields`. IF: `if.condition`. HTTP Request: `httpRequest.request`.
+- Gmail: `gmail.message.send`, `gmail.message.get`, `gmail.message.getAll`.
+- Notion: `notion.databasePage.getAll`, `notion.databasePage.get`.
+- Google Sheets: `googleSheets.sheet.read`, `googleSheets.sheet.append`,
+  `googleSheets.sheet.appendOrUpdate`.
+- Google Gemini: `googleGemini.text.message`.
+
+Write each action exactly as its contract view shows. A complete source has this form:
 
 ```ts
 import { workflow, trigger, action, newCredential, expr } from '@n8n/workflow-sdk';
