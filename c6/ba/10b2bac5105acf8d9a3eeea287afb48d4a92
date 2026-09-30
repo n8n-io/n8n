@@ -1,0 +1,45 @@
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_aaa596f5a4b613::t_1e5c205dcfa40d 346
+  s_aaa596f5a4b613::t_2f99be081a926b 24,26,32
+  s_aaa596f5a4b613::t_cb02e5a14f20fb 2,15-18,29-31,33
+  h_ed1b2d65e81e8e 23,25,71,98,223
+  s_aaa596f5a4b613::t_ebebcea898e203 70,76-78
+  s_aaa596f5a4b613::t_fccac5795b8b14 72-74
+  s_aaa596f5a4b613::t_f216fa810fc743 109
+  s_aaa596f5a4b613::t_6ceb2d21ca6927 1
+  s_aaa596f5a4b613::t_0ad6714d23b2a1 34
+  s_aaa596f5a4b613::t_759fd95d367352 164
+  s_aaa596f5a4b613::t_225a05622456f0 196-199
+  s_aaa596f5a4b613::t_fa8539b764b011 27-28
+  s_aaa596f5a4b613::t_54e7ce3a5b122e 222,224
+  s_aaa596f5a4b613::t_dbb47437cdd802 75
+  s_aaa596f5a4b613::t_aa57cac6f058ea 97,101-102
+  s_aaa596f5a4b613::t_4087d7c1136951 163,165,168
+  s_aaa596f5a4b613::t_c065bd00678c70 99-100
+  s_aaa596f5a4b613::t_f824b4ffc520b3 306
+  s_aaa596f5a4b613::t_9b563d919a86b9 35
+packages/cli/test/integration/saml/sample-metadata.ts
+  s_aaa596f5a4b613::t_9b69bc3b89dea3 5
+  s_aaa596f5a4b613::t_ebc0b17fba8340 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c6ba10b2bac5105acf8d9a3eeea287afb48d4a92",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_aaa596f5a4b613": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1a15da90-db1a-41b9-8206-a0a9b69b4891",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
