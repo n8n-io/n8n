@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -117,8 +118,22 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 it('opens the applied version in the editor without changing the published version', async () => {
 	const { original, graph, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const observedStates: string[] = [];
+	vi.spyOn(Container.get(ExternalHooks), 'run').mockImplementation(async (name) => {
+		if (name !== 'workflow.afterUpdate') return;
+		const stored = await suggestions.findOneByOrFail({ id: suggestion.id });
+		observedStates.push(stored.closedReason ?? stored.state);
+		expect(await workflows.findOneByOrFail({ id: original.id })).toMatchObject({
+			nodes: graph.nodes,
+		});
+		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
+	});
+	const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 	const detail = await act('open-in-editor');
+
+	expect(observedStates).toEqual(['applied']);
+	expect(emit.mock.calls.filter(([event]) => event === 'workflow-saved')).toHaveLength(1);
 
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	expect(saved.nodes).toEqual(graph.nodes);
@@ -391,6 +406,8 @@ it('checks the current user state before applying or discarding', async () => {
 it('rolls back the graph and history when the action activity cannot be saved', async () => {
 	const { original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const hooks = vi.spyOn(Container.get(ExternalHooks), 'run');
+	const emit = vi.spyOn(Container.get(EventService), 'emit');
 	vi.spyOn(suggestions, 'appendActivity').mockRejectedValueOnce(new Error('Activity unavailable.'));
 
 	await expect(act('open-in-editor')).rejects.toThrow('Activity unavailable.');
@@ -402,6 +419,8 @@ it('rolls back the graph and history when the action activity cannot be saved', 
 		appliedVersion: null,
 	});
 	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
+	expect(hooks).not.toHaveBeenCalledWith('workflow.afterUpdate', expect.anything());
+	expect(emit).not.toHaveBeenCalledWith('workflow-saved', expect.anything());
 });
 
 it('resolves concurrent apply and discard actions to one terminal state', async () => {

@@ -12,7 +12,6 @@ import type {
 	OperationContext,
 } from '@n8n/db';
 import {
-	TransactionRunner,
 	SharedWorkflow,
 	WorkflowEntity,
 	FolderRepository,
@@ -98,6 +97,24 @@ export type GetManyOptions = {
 	requiredScopes?: Scope[];
 };
 
+type WorkflowUpdateOptions = {
+	tagIds?: string[];
+	parentFolderId?: string;
+	forceSave?: boolean;
+	publicApi?: boolean;
+	publishIfActive?: boolean;
+	/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+	apiKeyScopes?: readonly string[];
+	aiBuilderAssisted?: boolean;
+	expectedChecksum?: string;
+	autosaved?: boolean;
+	source?: WorkflowActionSource;
+	versionName?: string;
+	versionDescription?: string;
+	/** Allows a package import to update archived content. */
+	allowArchivedUpdate?: boolean;
+};
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -137,7 +154,6 @@ export class WorkflowService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
-		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async getMany(
@@ -400,34 +416,24 @@ export class WorkflowService {
 	 * For explicit activation or deactivation, use the activate/deactivate methods.
 	 */
 
-	// eslint-disable-next-line complexity
 	async update(
 		user: User,
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
-		options: {
-			tagIds?: string[];
-			parentFolderId?: string;
-			forceSave?: boolean;
-			publicApi?: boolean;
-			publishIfActive?: boolean;
-			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
-			apiKeyScopes?: readonly string[];
-			aiBuilderAssisted?: boolean;
-			expectedChecksum?: string;
-			autosaved?: boolean;
-			source?: WorkflowActionSource;
-			versionName?: string;
-			versionDescription?: string;
-			/** Allows a package import to update archived content. */
-			allowArchivedUpdate?: boolean;
-			/** Commit a related state change with the prepared workflow and its history. */
-			guardedUpdate?: {
-				beforeSave: (ctx: OperationContext, prepared: WorkflowEntity) => Promise<void>;
-				afterSave: (ctx: OperationContext, saved: WorkflowEntity) => Promise<void>;
-			};
-		} = {},
+		options: WorkflowUpdateOptions = {},
 	): Promise<WorkflowEntity> {
+		const update = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
+		return await update.afterSave(await update.save());
+	}
+
+	/** Validate before opening a transaction. Run afterSave only after the caller commits. */
+	// eslint-disable-next-line complexity
+	async prepareUpdate(
+		user: User,
+		workflowUpdateData: WorkflowEntity,
+		workflowId: string,
+		options: WorkflowUpdateOptions = {},
+	) {
 		const {
 			expectedChecksum,
 			tagIds,
@@ -442,7 +448,6 @@ export class WorkflowService {
 			versionName,
 			versionDescription,
 			allowArchivedUpdate = false,
-			guardedUpdate,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -456,10 +461,6 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
-		}
-
-		if (guardedUpdate && tagIds) {
-			throw new BadRequestError('A guarded workflow save cannot change tags.');
 		}
 
 		if (workflow.isArchived && !allowArchivedUpdate) {
@@ -682,13 +683,7 @@ export class WorkflowService {
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
 		const tagsDisabled = this.globalConfig.tags.disabled;
-		const persist = async (ctx: OperationContext) => {
-			if (guardedUpdate) {
-				await guardedUpdate.beforeSave(
-					ctx,
-					Object.assign(new WorkflowEntity(), workflow, updatePayload),
-				);
-			}
+		const save = async (ctx: OperationContext = {}) => {
 			if (saveNewVersion) {
 				await this.workflowHistoryService.saveVersion(
 					user,
@@ -700,7 +695,7 @@ export class WorkflowService {
 					versionName || versionDescription
 						? { name: versionName, description: versionDescription }
 						: undefined,
-					guardedUpdate ? ctx : undefined,
+					ctx.trx ? ctx : undefined,
 				);
 			}
 			await this.workflowRepository.updateContent(workflowId, updatePayload, {
@@ -708,7 +703,7 @@ export class WorkflowService {
 				policyCleared: cleared,
 			});
 			if (tagIds && !tagsDisabled) {
-				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
 			}
 			const savedWorkflow = await this.workflowRepository.findSavedWorkflow(
 				workflowId,
@@ -720,64 +715,60 @@ export class WorkflowService {
 					`Workflow with ID "${workflowId}" could not be found to be updated.`,
 				);
 			}
-			if (guardedUpdate) {
-				await guardedUpdate.afterSave(ctx, savedWorkflow);
-			}
 			return savedWorkflow;
 		};
-		const updatedWorkflow = guardedUpdate
-			? await this.transactionRunner.run({}, persist)
-			: await persist({});
-
-		if (updatedWorkflow.tags?.length && tagIds?.length) {
-			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tagIds,
-			});
-		}
-		await this.externalHooks.run('workflow.afterUpdate', [
-			updatedWorkflow,
-			this.workflowHookContextService,
-			toWorkflowLifecycleHookActor(user),
-		]);
-
-		const settingsChangesDetail = this.calculateSettingsChanges(
-			workflow.settings,
-			updatedWorkflow.settings,
-		);
-
-		this.eventService.emit('workflow-saved', {
-			user,
-			workflow: updatedWorkflow,
-			publicApi,
-			previousWorkflow: workflow,
-			aiBuilderAssisted,
-			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
-			source,
-		});
-
-		if (versionIdToPublish) {
-			// Putting a different version live is a publication, so it has to clear the same bars as an
-			// explicit publish. A caller who may write but not publish keeps the draft they just saved,
-			// and the refusal names it. Re-applying the version that is already live publishes nothing
-			// new, so it stays a plain update.
-			if (versionIdToPublish !== workflow.activeVersionId) {
-				await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
+		const afterSave = async (updatedWorkflow: WorkflowEntity) => {
+			if (updatedWorkflow.tags?.length && tagIds?.length) {
+				updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {
+					requestOrder: tagIds,
+				});
 			}
+			await this.externalHooks.run('workflow.afterUpdate', [
+				updatedWorkflow,
+				this.workflowHookContextService,
+				toWorkflowLifecycleHookActor(user),
+			]);
 
-			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
-				versionId: versionIdToPublish,
+			const settingsChangesDetail = this.calculateSettingsChanges(
+				workflow.settings,
+				updatedWorkflow.settings,
+			);
+
+			this.eventService.emit('workflow-saved', {
+				user,
+				workflow: updatedWorkflow,
+				publicApi,
+				previousWorkflow: workflow,
+				aiBuilderAssisted,
+				...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
 				source,
 			});
-			updatedWorkflow.active = publishedWorkflow.active;
-			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
-			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
-		} else if (settingsChanged && workflow.activeVersionId) {
-			await this.activateWorkflow(user, workflowId, {
-				versionId: workflow.activeVersionId,
-				source,
-			});
-		}
-		return updatedWorkflow;
+
+			if (versionIdToPublish) {
+				// Putting a different version live is a publication, so it has to clear the same bars as an
+				// explicit publish. A caller who may write but not publish keeps the draft they just saved,
+				// and the refusal names it. Re-applying the version that is already live publishes nothing
+				// new, so it stays a plain update.
+				if (versionIdToPublish !== workflow.activeVersionId) {
+					await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
+				}
+
+				const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
+					versionId: versionIdToPublish,
+					source,
+				});
+				updatedWorkflow.active = publishedWorkflow.active;
+				updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
+				updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
+			} else if (settingsChanged && workflow.activeVersionId) {
+				await this.activateWorkflow(user, workflowId, {
+					versionId: workflow.activeVersionId,
+					source,
+				});
+			}
+			return updatedWorkflow;
+		};
+		return { save, afterSave };
 	}
 
 	/**
