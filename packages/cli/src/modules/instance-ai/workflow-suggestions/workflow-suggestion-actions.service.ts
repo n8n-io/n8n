@@ -37,6 +37,11 @@ export class WorkflowSuggestionActionsService {
 		action: WorkflowSuggestionAction,
 		clientId?: string,
 	) {
+		if (action === 'discard') {
+			await this.discard(actor, projectId, workflowId, suggestionId);
+			return await this.service.getProposal(actor, projectId, workflowId, suggestionId);
+		}
+
 		const user = await this.service.requireEditor(actor.id, workflowId);
 		const scope = { workflowId, projectId };
 		const { suggestion, target } = await this.service.reconcilePending(suggestionId, scope);
@@ -48,9 +53,7 @@ export class WorkflowSuggestionActionsService {
 			}
 		}
 
-		if (action === 'discard') {
-			await this.discard(user, projectId, workflowId, suggestionId);
-		} else if (action === 'retry-publication') {
+		if (action === 'retry-publication') {
 			if (suggestion.appliedVersion?.action !== 'approve-and-publish') {
 				throw new ConflictError(
 					'Approve and publish is required before publication can be retried.',
