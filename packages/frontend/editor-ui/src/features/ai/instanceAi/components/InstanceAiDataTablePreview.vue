@@ -22,9 +22,20 @@ const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
 
-const dataTable = ref<DataTable | null>(null);
+type TablePreview = {
+	key: number;
+	dataTable: DataTable;
+	readOnly: boolean;
+};
+
+const displayedTable = ref<TablePreview | null>(null);
+const pendingTable = ref<TablePreview | null>(null);
+const tables = computed(() =>
+	[displayedTable.value, pendingTable.value].filter((table) => table !== null),
+);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
+let nextTableKey = 0;
 
 // === Editing lock ===
 // The grid is editable only while the AI is not running, so user edits can't
@@ -38,41 +49,38 @@ const isReadOnly = computed(
 	() => isAgentWorking.value || sourceControlStore.preferences.branchReadOnly,
 );
 
-async function fetchDataTable(id: string, projectId: string) {
-	const isRefresh = dataTable.value?.id === id;
-
-	fetchError.value = null;
-	if (!isRefresh) {
-		isLoading.value = true;
-		dataTable.value = null;
-	}
-
-	try {
-		// Always fetch fresh details (never the store cache): the grid is
-		// editable, so stale columns would let the user edit against a schema
-		// the agent has since changed.
-		const result = await dataTableStore.fetchDataTableDetails(id, projectId);
-		dataTable.value = result ?? null;
-		if (!result) {
-			fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
-		}
-	} catch {
-		dataTable.value = null;
-		fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
-	} finally {
-		isLoading.value = false;
-	}
+function showTable(key: number) {
+	if (pendingTable.value?.key !== key) return;
+	displayedTable.value = pendingTable.value;
+	pendingTable.value = null;
+	isLoading.value = false;
 }
 
-// Re-fetch when dataTableId changes OR when refreshKey increments (same table modified).
 watch(
-	() => [props.dataTableId, props.refreshKey] as const,
-	async ([id]) => {
-		if (id && props.projectId) {
-			await fetchDataTable(id, props.projectId);
+	() => [props.dataTableId, props.projectId, props.refreshKey, isReadOnly.value] as const,
+	async ([id, projectId, , readOnly], _previous, onCleanup) => {
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+
+		pendingTable.value = null;
+		fetchError.value = null;
+		isLoading.value = !!id && !!projectId;
+		if (!id || !projectId) {
+			displayedTable.value = null;
+			return;
+		}
+
+		// Fetch the current schema before the replacement grid permits edits.
+		const result = await dataTableStore.fetchDataTableDetails(id, projectId).catch(() => null);
+		if (cancelled) return;
+		if (result) {
+			pendingTable.value = { key: nextTableKey++, dataTable: result, readOnly };
 		} else {
-			dataTable.value = null;
-			fetchError.value = null;
+			displayedTable.value = null;
+			isLoading.value = false;
+			fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
 		}
 	},
 	{ immediate: true },
@@ -80,23 +88,33 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.content">
-		<!-- Error (only when no data table to show) -->
-		<div v-if="fetchError && !dataTable" :class="$style.centerState">
+	<div :class="$style.content" :aria-busy="isLoading">
+		<div v-if="fetchError" :class="$style.centerState">
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Data table grid. readOnly is part of the key because the grid bakes it
-		     into its column defs at grid-ready, so flipping it requires a remount. -->
-		<DataTableTable
-			v-if="dataTable"
-			:key="`${props.refreshKey}-${isReadOnly}`"
-			:data-table="dataTable"
-			:read-only="isReadOnly"
-		/>
+		<!-- Keep the previous grid visible until the replacement has rendered its rows. -->
+		<div
+			v-for="table in tables"
+			:key="table.key"
+			:class="{ [$style.pendingTable]: table.key !== displayedTable?.key }"
+			:aria-hidden="table.key !== displayedTable?.key"
+			:inert="isLoading || undefined"
+			:data-table-id="table.dataTable.id"
+			data-test-id="instance-ai-data-table-grid"
+		>
+			<DataTableTable
+				:data-table="table.dataTable"
+				:read-only="table.readOnly || (isLoading && table.key === displayedTable?.key)"
+				@ready="showTable(table.key)"
+			/>
+		</div>
 
-		<!-- Loading overlay (shown during initial load or when no data table yet) -->
-		<div v-if="isLoading && !dataTable" :class="$style.centerState">
+		<div
+			v-if="isLoading && !displayedTable"
+			:class="$style.centerState"
+			data-test-id="instance-ai-data-table-loading"
+		>
 			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
 	</div>
@@ -108,6 +126,12 @@ watch(
 	min-height: 0;
 	position: relative;
 	height: 100%;
+}
+
+.pendingTable {
+	position: absolute;
+	inset: 0;
+	visibility: hidden;
 }
 
 .centerState {

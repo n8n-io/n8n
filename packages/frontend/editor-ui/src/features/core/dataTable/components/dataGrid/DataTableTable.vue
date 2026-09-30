@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import type {
 	DataTable,
 	DataTableColumnCreatePayload,
@@ -41,6 +41,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
+	ready: [];
 }>();
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
@@ -107,7 +108,7 @@ const dataTableOperations = useDataTableOperations({
 	setTotalItems,
 	ensureItemOnPage,
 	focusFirstEditableCell: agGrid.focusFirstEditableCell,
-	toggleSave: emit.bind(null, 'toggleSave'),
+	toggleSave: (value) => emit('toggleSave', value),
 	currentPage,
 	pageSize,
 	currentSortBy: agGrid.currentSortBy,
@@ -144,6 +145,11 @@ const initialize = async (params: GridReadyEvent) => {
 	dataTableColumns.loadColumns(props.dataTable.columns);
 	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
 	await dataTableOperations.fetchDataTableRows();
+	// Empty tables do not emit AG Grid's first-data-rendered event.
+	if (!hasRecords.value) {
+		await nextTick();
+		emit('ready');
+	}
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
@@ -202,6 +208,7 @@ defineExpose({
 				:overlay-loading-template="customLoadingOverlay"
 				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
+				@first-data-rendered="emit('ready')"
 				@cell-value-changed="dataTableOperations.onCellValueChanged"
 				@column-moved="dataTableOperations.onColumnMoved"
 				@cell-clicked="agGrid.onCellClicked"
