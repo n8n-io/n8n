@@ -73,6 +73,8 @@ describe('Expression - fast native evaluation parity', () => {
 				bigger: 'y'.repeat(150_000),
 				manyEmpty: new Array<string>(20_000).fill(''),
 				manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
+				huge: 'h'.repeat(MAX_RESULT_LENGTH + 1),
+				hugeArr: new Array<number>(MAX_RESULT_LENGTH + 1).fill(0),
 				re: /o/g,
 			},
 		},
@@ -158,6 +160,15 @@ describe('Expression - fast native evaluation parity', () => {
 			const nativeResult = evaluate(expr, true);
 			expect(nativeResult).toStrictEqual(engineResult);
 		});
+
+		// concat is bounded by receiver plus arguments. Asserted natively only:
+		// the engine would marshal a million-element result.
+		test('concat bails when receiver plus arguments exceed the limit', () => {
+			expect(nativeOutcome('={{ $json.item.names.concat($json.item.hugeArr) }}').handled).toBe(
+				false,
+			);
+			expect(nativeOutcome('={{ $json.item.names.concat($json.item.names) }}').handled).toBe(true);
+		});
 	});
 
 	describe('non-simple expressions are declined', () => {
@@ -174,6 +185,15 @@ describe('Expression - fast native evaluation parity', () => {
 			const engineResult = evaluate(expr, false);
 			const nativeResult = evaluate(expr, true);
 			expect(nativeResult).toStrictEqual(engineResult);
+		});
+
+		// concat is bounded by receiver plus arguments. Asserted natively only:
+		// the engine would marshal a million-element result.
+		test('concat bails when receiver plus arguments exceed the limit', () => {
+			expect(nativeOutcome('={{ $json.item.names.concat($json.item.hugeArr) }}').handled).toBe(
+				false,
+			);
+			expect(nativeOutcome('={{ $json.item.names.concat($json.item.names) }}').handled).toBe(true);
 		});
 	});
 

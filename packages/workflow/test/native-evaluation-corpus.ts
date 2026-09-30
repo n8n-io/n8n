@@ -173,6 +173,12 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 	"={{ $json.item.big.replaceAll('', $json.item.filler) }}",
 	// `$\`` splices the text before each match into the result.
 	"={{ $json.item.name.replaceAll('o', '$`') }}",
+	// A receiver above MAX_RESULT_LENGTH is the engine's work, whatever the
+	// method. (concat is bounded the same way, by receiver plus arguments; a
+	// corpus entry would make quickjs marshal a million-element result.)
+	'={{ $json.item.huge.toUpperCase() }}',
+	'={{ $json.item.huge.slice(0, 1) }}',
+	'={{ $json.item.hugeArr.at(0) }}',
 	// join('') is bounded by the elements, not the separator.
 	"={{ $json.item.manyBig.join('') }}",
 	// Several chunks obey the same limit as one.

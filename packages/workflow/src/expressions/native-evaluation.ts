@@ -447,12 +447,19 @@ function isAllowedArgument(method: string, arg: unknown): boolean {
 	return method === 'concat' && Array.isArray(arg);
 }
 
-// The two amplifying methods can allocate far beyond MAX_RESULT_LENGTH before
-// bounded() gets to see the result. Bail on an upper bound first.
+// The engine runs under a timeout; a synchronous native call cannot be
+// interrupted, so the input size is the budget. A receiver above the result
+// cap goes to the engine before any work is done, and the amplifying methods
+// (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
+// result) bail on an upper bound of their output.
 function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
-	let upperBound = 0;
+	let upperBound = typeof receiver === 'number' ? 0 : (receiver as { length: number }).length;
 
-	if (method === 'replaceAll' && typeof receiver === 'string') {
+	if (method === 'concat') {
+		for (const arg of args) {
+			upperBound += Array.isArray(arg) ? arg.length : 1;
+		}
+	} else if (method === 'replaceAll' && typeof receiver === 'string') {
 		// A missing replacement inserts the string "undefined".
 		const replacement = args.length < 2 ? 'undefined' : String(args[1]);
 
