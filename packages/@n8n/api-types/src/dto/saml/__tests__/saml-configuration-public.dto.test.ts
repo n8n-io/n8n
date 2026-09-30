@@ -10,7 +10,7 @@ import {
 } from '../saml-configuration-public.dto';
 import { UpdateSamlConfigurationDto } from '../saml-preferences.dto';
 
-const fullBody = {
+const fullBody: z.input<typeof UpdateSamlConfigurationPublicDto.schema> = {
 	mapping: {
 		email: 'user@example.com',
 		firstName: 'John',
