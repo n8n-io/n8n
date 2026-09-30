@@ -251,7 +251,7 @@ describe('generateNodeModule', () => {
 		const text = moduleOf(listTasks);
 		expect(text).toContain('project: Value<I, C, string>;');
 		expect(text).toContain('status?: "open" | "done";');
-		expect(text).toContain('export const todo = {\n\ttask: {\n\t\t/** Get many tasks.');
+		expect(text).toContain('export const todo = {\n task: {\n  /** Get many tasks.');
 		expect(text).toContain('contractStep("@n8n/nodes-base-next.todo.task.getAll", config)');
 	});
 
@@ -264,7 +264,7 @@ describe('generateNodeModule', () => {
 	it('shows the action flow once, on the factory', () => {
 		const text = moduleOf(listTasks);
 		expect(text).toContain(
-			'/** Get many tasks. List tasks in a project. (read, 1:N) */\n\t\tgetAll:',
+			'/** Get many tasks. List tasks in a project. (read, 1:N) */\n  getAll:',
 		);
 		expect(text.match(/List tasks in a project/g)).toHaveLength(1);
 	});
@@ -275,12 +275,29 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('/** Numeric list ID */');
 	});
 
+	it('prints a field that every union branch shares once, beside the union', () => {
+		expect(moduleOf(listAction('todo.task.search'))).toContain(
+			' sort: {\n  /** Exact field name */\n  field: Value<I, C, string>;\n } & ({ by: "field"; direction: "asc" | "desc" } | { by: "rank"; weight: Value<I, C, number> });',
+		);
+	});
+
+	it('shows a field doc that an earlier action shows on the first action only', () => {
+		const text = moduleOf(
+			listTasks,
+			listAction('todo.task.search', { project: str().hint('Project ID') }),
+		);
+		expect(text.match(/Project ID/g)).toHaveLength(1);
+		expect(text).toContain(
+			'export type TodoTaskSearchInput<I, C> = {\n project: Value<I, C, string>;',
+		);
+	});
+
 	it('names a repeated type once and references the name', () => {
 		const text = moduleOf(
 			listAction('todo.task.search'),
 			listAction('todo.task.find', { limit: num() }),
 		);
-		expect(text).toContain('type TodoTaskSearchList<I, C> = {\n\tmode: "name";');
+		expect(text).toContain('type TodoTaskSearchList<I, C> = {\n mode: "name";');
 		expect(text.match(/list: TodoTaskSearchList<I, C>;/g)).toHaveLength(2);
 		expect(text.match(/Exact list name/g)).toHaveLength(1);
 		expect(text).toContain('export type TodoTaskFindOutput = TodoTaskSearchOutput;');

@@ -1,5 +1,5 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { getManyGmailMessages } from './gmail/message.get-all';
+import { versionsOf } from '../registry';
 
-export class GmailMessageGetAll extends toNodeType(getManyGmailMessages) {}
+export class GmailMessageGetAll extends toVersionedNodeType(versionsOf('gmail.message.getAll')) {}

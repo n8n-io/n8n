@@ -1,5 +1,7 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { readSheetRows } from './google-sheets/sheet.read';
+import { versionsOf } from '../registry';
 
-export class GoogleSheetsSheetRead extends toNodeType(readSheetRows) {}
+export class GoogleSheetsSheetRead extends toVersionedNodeType(
+	versionsOf('googleSheets.sheet.read'),
+) {}

@@ -1,5 +1,9 @@
+import { compileFunction } from 'node:vm';
 import {
 	NodeOperationError,
+	safeRegex,
+	UnexpectedError,
+	VersionedNodeType,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestOptions,
@@ -12,6 +16,7 @@ import {
 import type { Action, Http, HttpRequest } from './define';
 import type { AnySchema, JsonSchema, ObjectOf, Shape } from './schema';
 import { validate } from './validate';
+import { NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is IDataObject =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -100,62 +105,28 @@ const AUTHENTICATION = 'authentication';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const hasSelector = (action: Action) =>
+	action.credentialTypes.length > 1 || action.node.authOptional === true;
+
+type Execute = (this: IExecuteFunctions) => Promise<INodeExecutionData[][]>;
+
 /**
- * An n8n node type for one action. The platform part lives here: parameters are resolved per
- * item and validated against `input`, output items are validated against `output` and paired
- * with their input item, and continue-on-fail routes failed items to the error output.
+ * The ABI 1 executor. Parameters are resolved per item and validated against `input`, output
+ * items are validated against `output` and paired with their input item, and continue-on-fail
+ * routes failed items to the error output.
  */
-export function toNodeType<S extends Shape, O extends AnySchema>(
-	action: Action<S, O>,
-): new () => INodeType {
+function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>): Execute {
 	const inputKeys = Object.keys(action.input);
 	const outputSchema: JsonSchema = action.output.json;
 	const isInput = (value: unknown): value is ObjectOf<S> =>
 		validate(value, action.inputSchema).length === 0;
-
-	// A selector lets setup see one credential slot; each credential shows for its own value.
 	const { credentialTypes } = action;
-	const optional = action.node.authOptional === true;
-	const selector: INodeProperties[] =
-		credentialTypes.length > 1 || optional
-			? [
-					{
-						displayName: 'Authentication',
-						name: AUTHENTICATION,
-						type: 'options',
-						options: [...(optional ? ['none'] : []), ...credentialTypes].map((value) => ({
-							name: value,
-							value,
-						})),
-						default: optional ? 'none' : (credentialTypes[0] ?? 'none'),
-					},
-				]
-			: [];
 
-	const description: INodeTypeDescription = {
-		displayName: `${action.node.displayName}: ${action.action}`,
-		name: nodeNameOf(action.id),
-		group: [action.flow.effect === 'write' ? 'output' : 'input'],
-		version: 1,
-		description: action.summary,
-		defaults: { name: action.action },
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: credentialTypes.map((name) => ({
-			name,
-			required: !optional,
-			...(selector.length > 0 ? { displayOptions: { show: { [AUTHENTICATION]: [name] } } } : {}),
-		})),
-		properties: [
-			...selector,
-			...Object.entries(action.input).map(([name, schema]) => toProperty(name, schema)),
-		],
-	};
-
-	async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	return async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = this.getNode().credentials ?? {};
-		const selected: unknown =
-			selector.length > 0 ? this.getNodeParameter(AUTHENTICATION, 0, undefined) : undefined;
+		const selected: unknown = hasSelector(action)
+			? this.getNodeParameter(AUTHENTICATION, 0, undefined)
+			: undefined;
 		const credentialType =
 			credentialTypes.find((type) => type === selected) ??
 			(selected === 'none'
@@ -212,11 +183,138 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 			Promise.resolve([]),
 		);
 		return [results];
-	}
+	};
+}
 
+/** An n8n node type for one action; the platform part is `executorOf`. */
+export function toNodeType<S extends Shape, O extends AnySchema>(
+	action: Action<S, O>,
+): new () => INodeType {
+	// A selector lets setup see one credential slot; each credential shows for its own value.
+	const { credentialTypes } = action;
+	const optional = action.node.authOptional === true;
+	const selector: INodeProperties[] = hasSelector(action)
+		? [
+				{
+					displayName: 'Authentication',
+					name: AUTHENTICATION,
+					type: 'options',
+					options: [...(optional ? ['none'] : []), ...credentialTypes].map((value) => ({
+						name: value,
+						value,
+					})),
+					default: optional ? 'none' : (credentialTypes[0] ?? 'none'),
+				},
+			]
+		: [];
+
+	const description: INodeTypeDescription = {
+		displayName: `${action.node.displayName}: ${action.action}`,
+		name: nodeNameOf(action.id),
+		group: [action.flow.effect === 'write' ? 'output' : 'input'],
+		version: action.version,
+		description: action.summary,
+		defaults: { name: action.action },
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: credentialTypes.map((name) => ({
+			name,
+			required: !optional,
+			...(selector.length > 0 ? { displayOptions: { show: { [AUTHENTICATION]: [name] } } } : {}),
+		})),
+		properties: [
+			...selector,
+			...Object.entries(action.input).map(([name, schema]) => toProperty(name, schema)),
+		],
+	};
+
+	const execute = executorOf(action);
 	return class implements INodeType {
 		description = description;
 
 		execute = execute;
+	};
+}
+
+/** A frozen action version: its manifest and a reader for its bundle. */
+export interface FrozenVersion {
+	readonly manifest: VersionManifest;
+	readBundle(): Promise<string>;
+}
+
+/** Host modules a frozen bundle may import. They are part of ABI 1. */
+const HOST_MODULES: Readonly<Record<string, unknown>> = { 'n8n-workflow': { safeRegex } };
+
+const isAction = (value: unknown): value is Action =>
+	isRecord(value) &&
+	typeof value.id === 'string' &&
+	typeof value.version === 'number' &&
+	typeof value.run === 'function';
+
+/** Runs a CommonJS bundle from `freezeAction` and returns the action it exports. */
+export function evaluateBundle(code: string): Action {
+	const module: { exports: unknown } = { exports: {} };
+	const hostRequire = (id: string) => {
+		if (!(id in HOST_MODULES)) throw new UnexpectedError(`A frozen action cannot import ${id}`);
+		return HOST_MODULES[id];
+	};
+	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
+	const action = isRecord(module.exports) ? module.exports.default : undefined;
+	if (!isAction(action)) throw new UnexpectedError('The bundle does not export an action');
+	return action;
+}
+
+/** Executors by bundle hash. A bundle loads on its first execution only. */
+const executors = new Map<string, Promise<Execute>>();
+
+async function loadExecutor({ manifest, readBundle }: FrozenVersion): Promise<Execute> {
+	const code = await readBundle();
+	if (sha256(code) !== manifest.bundleHash) {
+		throw new UnexpectedError(
+			`The bundle of ${manifest.id}@${manifest.version} does not match ${manifest.bundleHash}`,
+		);
+	}
+	return executorOf(evaluateBundle(code));
+}
+
+/**
+ * An n8n node type with one version per frozen action version. The description comes from
+ * the manifest; the bundle loads on the first execution of its version.
+ */
+export function toVersionedNodeType(
+	versions: readonly FrozenVersion[],
+): new () => VersionedNodeType {
+	const unsupported = versions.find(({ manifest }) => manifest.abi !== NODE_CONTRACT_ABI);
+	if (unsupported) {
+		const { id, version, abi } = unsupported.manifest;
+		throw new UnexpectedError(
+			`${id}@${version} needs ABI ${abi}; this host runs ABI ${NODE_CONTRACT_ABI}`,
+		);
+	}
+	const latest = versions.reduce<FrozenVersion | undefined>(
+		(best, frozen) => (best && best.manifest.version > frozen.manifest.version ? best : frozen),
+		undefined,
+	);
+	if (!latest) throw new UnexpectedError('A versioned node type needs at least one version');
+	const nodeVersions = Object.fromEntries(
+		versions.map((frozen): [number, INodeType] => [
+			frozen.manifest.version,
+			{
+				description: frozen.manifest.description,
+				async execute(this: IExecuteFunctions) {
+					const { bundleHash } = frozen.manifest;
+					const executor = executors.get(bundleHash) ?? loadExecutor(frozen);
+					executors.set(bundleHash, executor);
+					return await (await executor).call(this);
+				},
+			},
+		]),
+	);
+	const { displayName, name, group, description } = latest.manifest.description;
+	const base = { displayName, name, group, description, defaultVersion: latest.manifest.version };
+	return class extends VersionedNodeType {
+		constructor() {
+			super(nodeVersions, base);
+		}
 	};
 }

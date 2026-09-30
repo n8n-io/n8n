@@ -22,6 +22,8 @@ interface Mode {
 	compact?: boolean;
 	/** Local types by `shapeKey`. */
 	aliases?: ReadonlyMap<string, Alias>;
+	/** `name: doc` pairs that an earlier action of the module shows. */
+	hiddenDocs?: ReadonlySet<string>;
 }
 
 /** Objects at most this long print on one line in compact mode. */
@@ -69,7 +71,8 @@ function objectTs(
 	const properties = Object.entries(schema.properties ?? {}).filter(([name]) => name !== tag?.name);
 	const shownDoc = (name: string, child: JsonSchema) => {
 		const text = docOf(child);
-		return text && !hiddenDocs.has(`${name}: ${text}`) ? text : undefined;
+		const docKey = `${name}: ${text}`;
+		return text && !hiddenDocs.has(docKey) && !mode.hiddenDocs?.has(docKey) ? text : undefined;
 	};
 	const members = [
 		...(tag ? [{ doc: '', body: `${key(tag.name)}: ${tag.values}` }] : []),
@@ -123,19 +126,55 @@ const docKeys = (schema: JsonSchema) =>
 		return text ? [`${name}: ${text}`] : [];
 	});
 
+/** The doc keys of a schema and of all its sub-schemas. */
+const allDocKeys = (schema: JsonSchema): string[] => [
+	...docKeys(schema),
+	...[
+		...Object.values(schema.properties ?? {}),
+		...(schema.oneOf ?? schema.anyOf ?? []),
+		...(schema.items ? [schema.items] : []),
+		...Object.values(schema.patternProperties ?? {}),
+		...(typeof schema.additionalProperties === 'object' ? [schema.additionalProperties] : []),
+	].flatMap(allDocKeys),
+];
+
 /** A field doc that repeats across branches shows on the first branch only. */
 function variantTs(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mode): string {
 	const { name, groups } = variantGroups(schema, branches, mode);
-	return groups
+	const [first, ...rest] = groups.map(({ branch }) => branch);
+	const member = (branch: JsonSchema, field: string) => {
+		const child = branch.properties?.[field];
+		return child && `${branch.required?.includes(field)} ${docOf(child)} ${shapeOf(child, mode)}`;
+	};
+	// A field that every branch has with the same type prints once, beside the union.
+	const shared = new Set(
+		first && rest.length
+			? Object.keys(first.properties ?? {}).filter(
+					(field) =>
+						field !== name &&
+						rest.every((branch) => member(branch, field) === member(first, field)),
+				)
+			: [],
+	);
+	const pick = (branch: JsonSchema, keep: boolean): JsonSchema => ({
+		...branch,
+		properties: Object.fromEntries(
+			Object.entries(branch.properties ?? {}).filter(([field]) => shared.has(field) === keep),
+		),
+	});
+	const union = groups
 		.map(({ branch, tags }, index) =>
 			objectTs(
-				branch,
+				pick(branch, false),
 				mode,
 				{ name, values: tags.map((t) => JSON.stringify(t)).join(' | ') },
 				new Set(groups.slice(0, index).flatMap((group) => docKeys(group.branch))),
 			),
 		)
 		.join(' | ');
+	if (!first || !shared.size) return union;
+	const common = objectTs({ ...pick(first, true), additionalProperties: false }, mode);
+	return `${common} & (${union})`;
 }
 
 function renderTs(schema: JsonSchema, mode: Mode): string {
@@ -330,38 +369,55 @@ export function generateNodeModule(nodeId: string, actions: readonly GeneratedAc
 			? renderTs(schema, withAliases(mode))
 			: toTs(schema, withAliases(mode));
 
-	const types = named.map(({ contract, name }) => {
+	// A field doc that an earlier action shows is not repeated.
+	const types = named.map(({ contract, name }, index) => {
+		const earlier = named.slice(0, index).map((action) => action.contract);
+		const actionInput = {
+			...input,
+			hiddenDocs: new Set(earlier.flatMap((action) => allDocKeys(action.input))),
+		};
+		const actionOutput = {
+			...output,
+			hiddenDocs: new Set(earlier.flatMap((action) => allDocKeys(action.output))),
+		};
 		const locals = hoisted.flatMap(([shapeId, shape]) => {
 			const alias = aliases.get(shapeId);
 			if (shape.owner !== name || shape.root || !alias) return [];
 			const params = alias.generic ? '<I, C>' : '';
-			const mode = withAliases(shape.input ? input : output);
+			const mode = withAliases(shape.input ? actionInput : actionOutput);
 			return [`type ${alias.name}${params} = ${renderTs(shape.schema, mode)};`];
 		});
 		return [
-			`export type ${name}Input<I, C> = ${rootTs(contract.input, input, `${name}Input`)};`,
-			`export type ${name}Output = ${rootTs(contract.output, output, `${name}Output`)};`,
+			`export type ${name}Input<I, C> = ${rootTs(contract.input, actionInput, `${name}Input`)};`,
+			`export type ${name}Output = ${rootTs(contract.output, actionOutput, `${name}Output`)};`,
 			...locals,
 		].join('\n');
 	});
 	const factories = named.map(({ contract, name, nodeType }): Factory => {
 		const [, ...path] = contract.id.split('.');
 		const flow = `${contract.flow.effect}, ${contract.flow.cardinality}`;
+		// Version 1 is the default, so most modules stay as short as before.
+		const version = contract.version === 1 ? '' : `, ${contract.version}`;
 		const text = [
 			'<In, Ctx, const N extends string>(',
 			`\tconfig: { name: N; sample?: ${name}Output[] } & ${name}Input<In, Ctx>,`,
 			`): Step<In, Ctx, OutputOf<N, ${name}Output>, N> =>`,
-			`\tcontractStep(${JSON.stringify(nodeType)}, config)`,
+			`\tcontractStep(${JSON.stringify(nodeType)}, config${version})`,
 		].join('\n');
 		return { path, summary: `${contract.action}. ${contract.summary} (${flow})`, text };
 	});
-	return [
-		`// Generated from the ${nodeId} action contracts. Do not edit.`,
-		"import { contractStep, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
-		'',
-		types.join('\n\n'),
-		'',
-		`export const ${nodeId} = ${nest(factories, '')};`,
-		'',
-	].join('\n');
+	return (
+		[
+			`// Generated from the ${nodeId} action contracts. Do not edit.`,
+			"import { contractStep, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			'',
+			types.join('\n\n'),
+			'',
+			`export const ${nodeId} = ${nest(factories, '')};`,
+			'',
+		]
+			.join('\n')
+			// The agent reads the module in a JSON string, where a space costs fewer tokens than a tab.
+			.replace(/^\t+/gm, (tabs) => ' '.repeat(tabs.length))
+	);
 }

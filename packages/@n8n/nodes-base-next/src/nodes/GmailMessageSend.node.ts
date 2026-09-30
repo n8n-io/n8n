@@ -1,5 +1,5 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { sendGmailMessage } from './gmail/message.send';
+import { versionsOf } from '../registry';
 
-export class GmailMessageSend extends toNodeType(sendGmailMessage) {}
+export class GmailMessageSend extends toVersionedNodeType(versionsOf('gmail.message.send')) {}

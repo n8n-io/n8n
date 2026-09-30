@@ -13,7 +13,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "versions/**/*"
   ],
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -23,6 +24,7 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
+    "freeze": "tsx scripts/freeze.ts",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
@@ -38,6 +40,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "n8n-nodes-base": "workspace:*",
+    "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },

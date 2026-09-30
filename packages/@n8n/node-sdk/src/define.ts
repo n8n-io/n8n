@@ -1,3 +1,10 @@
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
+
 import {
 	obj,
 	type AnySchema,
@@ -21,6 +28,60 @@ export interface NodeDefinition {
 }
 
 export const defineNode = <const N extends NodeDefinition>(node: N): N => node;
+
+/** An n8n credential type. `defineCredential` builds one. */
+export type CredentialDefinition = ICredentialType;
+
+export interface CredentialField {
+	readonly name: string;
+	readonly displayName: string;
+	readonly type: 'string';
+	readonly typeOptions?: { readonly password?: boolean };
+	readonly default?: string;
+	readonly required?: boolean;
+	readonly description?: string;
+}
+
+export interface CredentialSpec {
+	/** The credential type a node lists in `credentials`, e.g. `todoApi`. */
+	readonly name: string;
+	readonly displayName: string;
+	readonly documentationUrl?: string;
+	readonly properties: readonly CredentialField[];
+	/** Header and query values are templates, e.g. `'=Bearer {{$credentials.apiKey}}'`. */
+	readonly authenticate:
+		| {
+				readonly headers?: Readonly<Record<string, string>>;
+				readonly qs?: Readonly<Record<string, string>>;
+		  }
+		| ((
+				credentials: ICredentialDataDecryptedObject,
+				request: IHttpRequestOptions,
+		  ) => Promise<IHttpRequestOptions>);
+	readonly test?: ICredentialTestRequest;
+}
+
+export function defineCredential(spec: CredentialSpec): CredentialDefinition {
+	const { authenticate } = spec;
+	return {
+		name: spec.name,
+		displayName: spec.displayName,
+		...(spec.documentationUrl ? { documentationUrl: spec.documentationUrl } : {}),
+		properties: spec.properties.map((field) => ({
+			...field,
+			typeOptions: { ...field.typeOptions },
+			default: field.default ?? '',
+		})),
+		authenticate:
+			typeof authenticate === 'function'
+				? authenticate
+				: {
+						type: 'generic',
+						properties: { headers: { ...authenticate.headers }, qs: { ...authenticate.qs } },
+					},
+		...(spec.test ? { test: spec.test } : {}),
+	};
+}
 
 /** What the action does to the item stream. */
 export interface ActionFlow {
@@ -68,6 +129,8 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 	readonly node: NodeDefinition;
 	/** `<node>.<resource>.<operation>`, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
+	/** Integer major, 1 when omitted. A frozen version never changes: any change needs a new one. */
+	readonly version?: number;
 	/** The label users pick, e.g. "Get many database pages". */
 	readonly action: string;
 	/** At most 120 characters. */
@@ -97,6 +160,7 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 
 export interface Action<S extends Shape = Shape, O extends AnySchema = AnySchema>
 	extends ActionDefinition<S, O> {
+	readonly version: number;
 	readonly inputSchema: JsonSchema;
 	readonly credentialTypes: readonly string[];
 }
@@ -106,6 +170,7 @@ export function defineAction<S extends Shape, O extends AnySchema>(
 ): Action<S, O> {
 	return {
 		...definition,
+		version: definition.version ?? 1,
 		inputSchema: obj(definition.input).json,
 		credentialTypes: definition.credentials ?? definition.node.credentials,
 	};
@@ -114,6 +179,7 @@ export function defineAction<S extends Shape, O extends AnySchema>(
 /** The JSON document agents and tools read. Execution details are never part of it. */
 export interface ContractDocument {
 	readonly id: string;
+	readonly version: number;
 	readonly node: string;
 	readonly action: string;
 	readonly summary: string;
@@ -125,6 +191,7 @@ export interface ContractDocument {
 
 export const toContract = (action: Action): ContractDocument => ({
 	id: action.id,
+	version: action.version,
 	node: action.node.id,
 	action: action.action,
 	summary: action.summary,

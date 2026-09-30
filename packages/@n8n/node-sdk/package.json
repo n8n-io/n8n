@@ -3,12 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "description": "Define n8n nodes as typed action contracts",
+  "bin": {
+    "n8n-node-next": "./src/cli/n8n-node-next"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./freeze": {
+      "types": "./dist/freeze.d.ts",
+      "default": "./dist/freeze.js"
     },
     "./package.json": "./package.json"
   },
@@ -30,13 +41,15 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "n8n-workflow": "workspace:*"
+    "esbuild": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

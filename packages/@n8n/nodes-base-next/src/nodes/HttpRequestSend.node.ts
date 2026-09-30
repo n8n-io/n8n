@@ -1,5 +1,5 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { sendRequest } from './http/request';
+import { versionsOf } from '../registry';
 
-export class HttpRequestSend extends toNodeType(sendRequest) {}
+export class HttpRequestSend extends toVersionedNodeType(versionsOf('httpRequest.send')) {}

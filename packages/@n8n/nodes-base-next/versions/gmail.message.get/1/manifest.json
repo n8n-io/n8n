@@ -1,0 +1,151 @@
+{
+	"id": "gmail.message.get",
+	"version": 1,
+	"abi": 1,
+	"contractHash": "e262c4c612d415151d7eb49fa375bc2c7f178ff04d5672bacec2511d7ecba8f8",
+	"bundleHash": "cdb34cea21394bd567175e698773ed0e2dff4eea292bfabe39d26ddf1dd86aec",
+	"contract": {
+		"id": "gmail.message.get",
+		"version": 1,
+		"node": "gmail",
+		"action": "Get a message",
+		"summary": "Get one message by ID.",
+		"flow": {
+			"effect": "read",
+			"cardinality": "per-item",
+			"passthrough": "replace",
+			"idempotent": true
+		},
+		"credentials": [
+			"gmailOAuth2"
+		],
+		"input": {
+			"type": "object",
+			"properties": {
+				"messageId": {
+					"type": "string",
+					"x-n8n-hint": "Gmail message ID, e.g. 182b676d244938bd"
+				}
+			},
+			"required": [
+				"messageId"
+			],
+			"additionalProperties": false
+		},
+		"output": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"threadId": {
+					"type": "string"
+				},
+				"snippet": {
+					"type": "string"
+				},
+				"historyId": {
+					"type": "string"
+				},
+				"internalDate": {
+					"type": "string",
+					"x-n8n-hint": "Epoch milliseconds as a string"
+				},
+				"sizeEstimate": {
+					"type": "integer"
+				},
+				"labels": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"additionalProperties": false
+					}
+				},
+				"payload": {
+					"type": "object",
+					"properties": {
+						"mimeType": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"mimeType"
+					],
+					"additionalProperties": true
+				},
+				"From": {
+					"type": "string",
+					"x-n8n-hint": "A string such as \"Ada <ada@example.com>\""
+				},
+				"To": {
+					"type": "string"
+				},
+				"Cc": {
+					"type": "string"
+				},
+				"Bcc": {
+					"type": "string"
+				},
+				"Subject": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"threadId",
+				"snippet",
+				"historyId",
+				"internalDate",
+				"sizeEstimate"
+			],
+			"additionalProperties": true,
+			"x-n8n-hint": "Metadata and snippet only; no body"
+		}
+	},
+	"description": {
+		"displayName": "Gmail: Get a message",
+		"name": "gmailMessageGet",
+		"group": [
+			"input"
+		],
+		"version": 1,
+		"description": "Get one message by ID.",
+		"defaults": {
+			"name": "Get a message"
+		},
+		"inputs": [
+			"main"
+		],
+		"outputs": [
+			"main"
+		],
+		"credentials": [
+			{
+				"name": "gmailOAuth2",
+				"required": true
+			}
+		],
+		"properties": [
+			{
+				"displayName": "messageId",
+				"name": "messageId",
+				"required": true,
+				"description": "Gmail message ID, e.g. 182b676d244938bd",
+				"type": "string",
+				"default": ""
+			}
+		]
+	}
+}

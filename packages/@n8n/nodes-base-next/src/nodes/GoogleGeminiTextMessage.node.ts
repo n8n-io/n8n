@@ -1,5 +1,7 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { messageGemini } from './google-gemini/text.message';
+import { versionsOf } from '../registry';
 
-export class GoogleGeminiTextMessage extends toNodeType(messageGemini) {}
+export class GoogleGeminiTextMessage extends toVersionedNodeType(
+	versionsOf('googleGemini.text.message'),
+) {}

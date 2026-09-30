@@ -1,5 +1,7 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { appendSheetRow } from './google-sheets/sheet.append';
+import { versionsOf } from '../registry';
 
-export class GoogleSheetsSheetAppend extends toNodeType(appendSheetRow) {}
+export class GoogleSheetsSheetAppend extends toVersionedNodeType(
+	versionsOf('googleSheets.sheet.append'),
+) {}

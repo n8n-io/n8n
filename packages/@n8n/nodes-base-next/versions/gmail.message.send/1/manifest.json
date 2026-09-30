@@ -1,0 +1,214 @@
+{
+	"id": "gmail.message.send",
+	"version": 1,
+	"abi": 1,
+	"contractHash": "267791b9a0354dd2d254c8f494d4ff558623969c542bc1da0d8ecbfe36dda395",
+	"bundleHash": "5290b095b6384f192743159f4ec44ffcadeb0c58b9a1da0520804183447c6b98",
+	"contract": {
+		"id": "gmail.message.send",
+		"version": 1,
+		"node": "gmail",
+		"action": "Send a message",
+		"summary": "Send an email.",
+		"flow": {
+			"effect": "write",
+			"cardinality": "per-item",
+			"passthrough": "replace",
+			"idempotent": false
+		},
+		"credentials": [
+			"gmailOAuth2"
+		],
+		"input": {
+			"type": "object",
+			"properties": {
+				"to": {
+					"type": "string",
+					"x-n8n-hint": "Comma-separated addresses"
+				},
+				"subject": {
+					"type": "string"
+				},
+				"body": {
+					"type": "object",
+					"discriminator": {
+						"propertyName": "format"
+					},
+					"oneOf": [
+						{
+							"type": "object",
+							"properties": {
+								"format": {
+									"const": "text",
+									"x-n8n-literal": true
+								},
+								"text": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"format",
+								"text"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"format": {
+									"const": "html",
+									"x-n8n-literal": true
+								},
+								"html": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"format",
+								"html"
+							],
+							"additionalProperties": false
+						}
+					]
+				},
+				"cc": {
+					"type": "string",
+					"x-n8n-hint": "Comma-separated addresses"
+				},
+				"bcc": {
+					"type": "string",
+					"x-n8n-hint": "Comma-separated addresses"
+				},
+				"senderName": {
+					"type": "string",
+					"x-n8n-hint": "Display name; the address is the account address"
+				},
+				"replyTo": {
+					"type": "string",
+					"x-n8n-hint": "Comma-separated addresses"
+				},
+				"appendAttribution": {
+					"type": "boolean",
+					"default": true,
+					"x-n8n-hint": "Adds a \"sent with n8n\" footer"
+				}
+			},
+			"required": [
+				"to",
+				"subject",
+				"body"
+			],
+			"additionalProperties": false
+		},
+		"output": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"threadId": {
+					"type": "string"
+				},
+				"labelIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": [
+				"id",
+				"threadId"
+			],
+			"additionalProperties": true
+		}
+	},
+	"description": {
+		"displayName": "Gmail: Send a message",
+		"name": "gmailMessageSend",
+		"group": [
+			"output"
+		],
+		"version": 1,
+		"description": "Send an email.",
+		"defaults": {
+			"name": "Send a message"
+		},
+		"inputs": [
+			"main"
+		],
+		"outputs": [
+			"main"
+		],
+		"credentials": [
+			{
+				"name": "gmailOAuth2",
+				"required": true
+			}
+		],
+		"properties": [
+			{
+				"displayName": "to",
+				"name": "to",
+				"required": true,
+				"description": "Comma-separated addresses",
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "subject",
+				"name": "subject",
+				"required": true,
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "body",
+				"name": "body",
+				"required": true,
+				"type": "json",
+				"default": "{}"
+			},
+			{
+				"displayName": "cc",
+				"name": "cc",
+				"required": false,
+				"description": "Comma-separated addresses",
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "bcc",
+				"name": "bcc",
+				"required": false,
+				"description": "Comma-separated addresses",
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "senderName",
+				"name": "senderName",
+				"required": false,
+				"description": "Display name; the address is the account address",
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "replyTo",
+				"name": "replyTo",
+				"required": false,
+				"description": "Comma-separated addresses",
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "appendAttribution",
+				"name": "appendAttribution",
+				"required": false,
+				"description": "Adds a \"sent with n8n\" footer",
+				"type": "boolean",
+				"default": true
+			}
+		]
+	}
+}

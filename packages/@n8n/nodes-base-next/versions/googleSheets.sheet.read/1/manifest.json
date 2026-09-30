@@ -1,0 +1,230 @@
+{
+	"id": "googleSheets.sheet.read",
+	"version": 1,
+	"abi": 1,
+	"contractHash": "a78e7a0214d6033123ac0982a37040121044ea4476bf35391bf0849ce34d8c6e",
+	"bundleHash": "b58b45e980c1597be5a166083d88e82a9f11e8e546b32cbd8008e40fc51b6a2a",
+	"contract": {
+		"id": "googleSheets.sheet.read",
+		"version": 1,
+		"node": "googleSheets",
+		"action": "Get rows",
+		"summary": "Read rows, optionally only those matching column filters.",
+		"flow": {
+			"effect": "read",
+			"cardinality": "1:N",
+			"passthrough": "replace",
+			"idempotent": true
+		},
+		"credentials": [
+			"googleSheetsOAuth2Api"
+		],
+		"input": {
+			"type": "object",
+			"properties": {
+				"spreadsheet": {
+					"type": "string",
+					"pattern": "[-_a-zA-Z0-9]{25,}",
+					"x-n8n-hint": "Spreadsheet ID or Google Sheets URL",
+					"x-n8n-ref": "googleSheets.spreadsheet"
+				},
+				"sheet": {
+					"type": "object",
+					"discriminator": {
+						"propertyName": "mode"
+					},
+					"oneOf": [
+						{
+							"type": "object",
+							"properties": {
+								"mode": {
+									"const": "name",
+									"x-n8n-literal": true
+								},
+								"name": {
+									"type": "string",
+									"x-n8n-hint": "Exact tab name the user gave"
+								}
+							},
+							"required": [
+								"mode",
+								"name"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"mode": {
+									"const": "id",
+									"x-n8n-literal": true
+								},
+								"id": {
+									"type": "string",
+									"pattern": "^(gid=)?[0-9]+$",
+									"x-n8n-hint": "A numeric sheet gid"
+								}
+							},
+							"required": [
+								"mode",
+								"id"
+							],
+							"additionalProperties": false
+						}
+					],
+					"x-n8n-hint": "Never assume \"Sheet1\"; ask when the tab name is unknown"
+				},
+				"filters": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"column": {
+								"type": "string",
+								"x-n8n-hint": "Exact header text"
+							},
+							"value": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"column",
+							"value"
+						],
+						"additionalProperties": false
+					}
+				},
+				"combine": {
+					"enum": [
+						"AND",
+						"OR"
+					],
+					"default": "AND"
+				},
+				"allMatches": {
+					"type": "boolean",
+					"default": true,
+					"x-n8n-hint": "false returns only the first match"
+				},
+				"header": {
+					"type": "object",
+					"properties": {
+						"headerRow": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						},
+						"firstDataRow": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 2
+						}
+					},
+					"additionalProperties": false,
+					"x-n8n-hint": "Omit to detect the table; set to read fixed rows"
+				}
+			},
+			"required": [
+				"spreadsheet",
+				"sheet"
+			],
+			"additionalProperties": false
+		},
+		"output": {
+			"type": "object",
+			"properties": {
+				"row_number": {
+					"type": "integer",
+					"x-n8n-hint": "Sheet row of this item"
+				}
+			},
+			"required": [
+				"row_number"
+			],
+			"additionalProperties": true,
+			"x-n8n-hint": "Keys are the header cell texts, exactly as written"
+		}
+	},
+	"description": {
+		"displayName": "Google Sheets: Get rows",
+		"name": "googleSheetsSheetRead",
+		"group": [
+			"input"
+		],
+		"version": 1,
+		"description": "Read rows, optionally only those matching column filters.",
+		"defaults": {
+			"name": "Get rows"
+		},
+		"inputs": [
+			"main"
+		],
+		"outputs": [
+			"main"
+		],
+		"credentials": [
+			{
+				"name": "googleSheetsOAuth2Api",
+				"required": true
+			}
+		],
+		"properties": [
+			{
+				"displayName": "spreadsheet",
+				"name": "spreadsheet",
+				"required": true,
+				"description": "Spreadsheet ID or Google Sheets URL",
+				"type": "string",
+				"default": ""
+			},
+			{
+				"displayName": "sheet",
+				"name": "sheet",
+				"required": true,
+				"description": "Never assume \"Sheet1\"; ask when the tab name is unknown",
+				"type": "json",
+				"default": "{}"
+			},
+			{
+				"displayName": "filters",
+				"name": "filters",
+				"required": false,
+				"type": "json",
+				"default": ""
+			},
+			{
+				"displayName": "combine",
+				"name": "combine",
+				"required": false,
+				"type": "options",
+				"options": [
+					{
+						"name": "AND",
+						"value": "AND"
+					},
+					{
+						"name": "OR",
+						"value": "OR"
+					}
+				],
+				"default": "AND"
+			},
+			{
+				"displayName": "allMatches",
+				"name": "allMatches",
+				"required": false,
+				"description": "false returns only the first match",
+				"type": "boolean",
+				"default": true
+			},
+			{
+				"displayName": "header",
+				"name": "header",
+				"required": false,
+				"description": "Omit to detect the table; set to read fixed rows",
+				"type": "json",
+				"default": ""
+			}
+		]
+	}
+}

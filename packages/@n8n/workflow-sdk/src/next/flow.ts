@@ -232,6 +232,8 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	id: string,
 	// The generated module types `sample`; `Out` comes from its declared return type.
 	config: { readonly name: N; readonly sample?: readonly unknown[] },
+	/** The action version the workflow pins. */
+	version = 1,
 ): Step<In, Ctx, Out, N> {
 	const { name, sample, ...parameters } = config;
 	return {
@@ -239,7 +241,7 @@ export function contractStep<In, Ctx, Out, N extends string>(
 		spec: {
 			name,
 			type: id,
-			version: 1,
+			version,
 			sample,
 			parameters: (compiler) => {
 				const compiled = compiler.value(parameters);

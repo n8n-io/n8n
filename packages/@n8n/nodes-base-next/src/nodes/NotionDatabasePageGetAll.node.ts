@@ -1,5 +1,7 @@
-import { toNodeType } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk';
 
-import { getManyDatabasePages } from './notion/database-page.get-all';
+import { versionsOf } from '../registry';
 
-export class NotionDatabasePageGetAll extends toNodeType(getManyDatabasePages) {}
+export class NotionDatabasePageGetAll extends toVersionedNodeType(
+	versionsOf('notion.databasePage.getAll'),
+) {}

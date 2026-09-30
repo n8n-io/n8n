@@ -128,6 +128,13 @@ describe('workflow', () => {
 		});
 	});
 
+	it('pins the action version of a contract step', () => {
+		const pinned = contractStep('notion.databasePage.getAll', { name: 'Tasks' }, 2);
+		const json = workflow('Pinned', manual().andThen(pinned)).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Tasks')?.typeVersion).toBe(2);
+		expect(contractStep('x.y.z', { name: 'Default' }).spec.version).toBe(1);
+	});
+
 	it('returns build problems instead of throwing while composing', () => {
 		const secret = 'x';
 		const wf = workflow(
