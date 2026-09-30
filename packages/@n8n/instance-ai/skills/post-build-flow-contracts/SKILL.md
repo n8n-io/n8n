@@ -91,8 +91,17 @@ delete, reorder, or copy nodes or workflows to reach a branch.
 
 ## Final reply
 
-Keep it short. Name the workflow, its ID, and what changed. State the claim
-level: what ran, what was simulated or not reached, and what stays
-unconfigured. End with one next step: setup, a live test, or publishing when
-the rules above allow it. Do not say fixed, working, or ready without a
-`verified` claim or an inspected passing execution.
+Write only these lines, in this order:
+
+1. What you built or changed and its save state, in one line: the workflow
+   name, its ID, and unpublished, draft only, or published.
+2. One line for each part that is not confirmed. Name the simulated, not
+   reached, or unconfigured nodes, and put the notes and warnings from the
+   rules above in this line. Say what makes it real: a credential, setup, or
+   a live test. Parts with the same fix share one line.
+3. One next action: setup, a live test, or publishing when the rules above
+   allow it.
+
+Do not list the nodes, the parameters, or the request again unless the user
+asks. Do not say fixed, working, or ready without a `verified` claim or an
+inspected passing execution.

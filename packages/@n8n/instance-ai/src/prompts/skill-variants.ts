@@ -16,8 +16,6 @@ export interface SkillVariant {
 		/** Use the fragment's instructions, description and recommended tools instead of the original's. Linked files merge. */
 		replace?: boolean;
 	}>;
-	/** Catalog descriptions keyed by skill id. They replace the description only. */
-	descriptions?: Readonly<Record<string, string>>;
 	disabledSkills?: readonly string[];
 	disabledTools?: readonly string[];
 }
@@ -52,7 +50,6 @@ export async function composeSkillVariants(
 		string,
 		{ variant: SkillVariant; change: SkillVariant['changes'][number] }
 	>();
-	const descriptions = new Map<string, string>();
 	const excluded = new Set(hiddenSkills);
 	const disabledTools = new Set<string>();
 	const variantIds = new Set<string>();
@@ -68,13 +65,8 @@ export async function composeSkillVariants(
 			changes.set(change.skillId, { variant, change });
 			excluded.add(change.appendFrom);
 		}
-		for (const [id, description] of Object.entries(variant.descriptions ?? {})) {
-			if (descriptions.has(id))
-				throw new UnexpectedError(`Conflicting descriptions for skill "${id}"`);
-			descriptions.set(id, description);
-		}
 	}
-	for (const id of new Set([...changes.keys(), ...descriptions.keys()])) {
+	for (const id of changes.keys()) {
 		if (excluded.has(id)) throw new UnexpectedError(`Variant changes disabled skill "${id}"`);
 		if (!source.registry.skills.some((skill) => skill.id === id)) {
 			throw new UnexpectedError(`Unknown variant target skill "${id}"`);
@@ -88,8 +80,7 @@ export async function composeSkillVariants(
 				const original = await source.loadSkill(id);
 				if (!original) throw new UnexpectedError(`Runtime skill "${id}" is missing`);
 				const selected = changes.get(id);
-				const description = descriptions.get(id);
-				if (!selected) return description === undefined ? original : { ...original, description };
+				if (!selected) return original;
 				const fragment = await source.loadSkill(selected.change.appendFrom);
 				if (!fragment)
 					throw new UnexpectedError(`Skill fragment "${selected.change.appendFrom}" is missing`);
@@ -97,9 +88,7 @@ export async function composeSkillVariants(
 				return {
 					...original,
 					version: selected.variant.id,
-					description:
-						description ??
-						(replace || useDescription ? fragment.description : original.description),
+					description: replace || useDescription ? fragment.description : original.description,
 					instructions: replace
 						? fragment.instructions
 						: `${original.instructions}\n\n${fragment.instructions}`,

@@ -191,85 +191,7 @@ const nodeUsageAction = z.object({
 /** Both node usage and folder exploration on. */
 const listAction = listActionWithoutFolderScope.extend(folderScopeFields);
 
-// Node contracts: the compact variants keep every action and field and use shorter text.
-// A shared field must keep one text in all actions, because `sanitizeInputSchema` rejects conflicts.
-const COMPACT_PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID from `workspace(action="list-projects")`. For `list` and `node-usage`: read only that project. It does not widen access or change where you write. For `setup`: create credentials in that project.';
-
-const COMPACT_QUERY_FIELD_DESCRIPTION =
-	'Filter on the workflow NAME only. Omit it to get the complete inventory. Use it only when the user named a workflow, or to find one you know exists.';
-
-const compactListFields = {
-	action: listActionBase.shape.action.describe(
-		'List workflows the user can access. Omit `query` for the complete inventory. The result reports how many workflows a filter or the limit left out.',
-	),
-	query: listActionBase.shape.query.describe(COMPACT_QUERY_FIELD_DESCRIPTION),
-	scope: listActionBase.shape.scope.describe(
-		"Projects to read. Default: this conversation's project. Use 'instance' only for a clear reason to read all projects.",
-	),
-	projectId: listActionBase.shape.projectId.describe(COMPACT_PROJECT_ID_FIELD_DESCRIPTION),
-};
-
-const compactNodeTypesField = {
-	nodeTypes: listActionWithoutFolderScope.shape.nodeTypes.describe(
-		'Full node types, e.g. ["n8n-nodes-base.slack"]. Keeps only workflows that contain one of them. It reads an index, so one call finds every user of a node.',
-	),
-};
-
-const compactFolderScopeFields = {
-	query: folderScopeFields.query.describe(
-		`${COMPACT_QUERY_FIELD_DESCRIPTION} If the user named a FOLDER, use \`folderPath\`.`,
-	),
-	folderPath: folderScopeFields.folderPath.describe(
-		'Folder as the user named it, e.g. "Clients/Acme". Use it, not `query`, for a folder: workflow names do not show folder membership. When it does not resolve, the result lists the real folders.',
-	),
-	folderId: folderScopeFields.folderId.describe(
-		'Folder ID from an earlier listing. Prefer `folderPath` for a folder the user named. `folderId` wins when both are set.',
-	),
-	recursive: folderScopeFields.recursive.describe(
-		'Include nested subfolders. Default true. Set false to read one level.',
-	),
-};
-
-const compactListActionBase = listActionBase.extend(compactListFields);
-const compactListActionWithoutFolderScope = listActionWithoutFolderScope.extend({
-	...compactListFields,
-	...compactNodeTypesField,
-});
-const compactListActionWithFolderScope = listActionWithFolderScope.extend({
-	...compactListFields,
-	...compactFolderScopeFields,
-});
-const compactListAction = listAction.extend({
-	...compactListFields,
-	...compactNodeTypesField,
-	...compactFolderScopeFields,
-});
-
-function pickCompactListAction(context: InstanceAiContext, hasNodeUsage: boolean) {
-	if (hasNodeUsage) {
-		return context.folderExplorationEnabled === true
-			? compactListAction
-			: compactListActionWithoutFolderScope;
-	}
-	return context.folderExplorationEnabled === true
-		? compactListActionWithFolderScope
-		: compactListActionBase;
-}
-
-const compactNodeUsageAction = nodeUsageAction.extend({
-	action: nodeUsageAction.shape.action.describe(
-		'Count the node types that workflows in scope use, most-used first. Use it before you open workflows to learn what a project uses. With `nodeType`, return the workflows that use that type, most recently updated first.',
-	),
-	nodeType: nodeUsageAction.shape.nodeType.describe(
-		'One full node type, e.g. "n8n-nodes-base.slack". Omit it for the overview.',
-	),
-	scope: compactListFields.scope,
-	projectId: compactListFields.projectId,
-});
-
 function pickListAction(context: InstanceAiContext, hasNodeUsage: boolean) {
-	if (context.nodeContractsEnabled === true) return pickCompactListAction(context, hasNodeUsage);
 	if (hasNodeUsage) {
 		return context.folderExplorationEnabled === true ? listAction : listActionWithoutFolderScope;
 	}
@@ -412,54 +334,6 @@ const publishExtendedAction = publishBaseAction.extend({
 	name: z.string().optional().describe('Name for the version'),
 	description: z.string().optional().describe('Description for the version'),
 });
-
-const compactGetAction = getAction.extend({
-	action: getAction.shape.action.describe(
-		'Inspect a workflow: metadata and its structure as SDK code. Large workflows omit node parameters unless `full` is set. Pass versionId for a past version.',
-	),
-});
-
-const compactGetAsCodeAction = getAsCodeAction.extend({
-	action: getAsCodeAction.shape.action.describe(
-		'Write a workflow as TypeScript SDK source into the workspace, bind the file to the workflow, and return the file path and a node index with line numbers. Edit the file and build with that filePath. Pass versionId for a past version.',
-	),
-});
-
-const compactSetupAction = setupAction.extend({
-	projectId: compactListFields.projectId,
-	credentialHints: setupAction.shape.credentialHints.describe(
-		'Recipes for the Simplified Custom Auth credentials the user creates in setup, one per templated credential. The form pre-fills the template. REQUIRED first: load the `credential-recipe-research` skill and run its lookup. Take the template and testUrl from the provider pages it fetched, never from memory.',
-	),
-	allowPlainGenericAuth: setupAction.shape.allowPlainGenericAuth.describe(
-		'Set ONLY when the user chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow already had it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes.',
-	),
-	preferNewCredentials: setupAction.shape.preferNewCredentials.describe(
-		'Credential types (e.g. ["slackApi"]) that open on credential creation. Pass them only when the user asked for a new credential or must replace an invalid or rotated secret. Never pass as a default. Pass the same list you passed to build-workflow.',
-	),
-	reopenSkipped: setupAction.shape.reopenSkipped.describe(
-		'Credential types or node names that the user skipped and now asks to configure, e.g. ["slackApi"]. Use the `reopenWith` value from setup. Other skipped items stay out of the card.',
-	),
-	includeAllNodes: setupAction.shape.includeAllNodes.describe(
-		'Cover every node, not only the nodes the last build changed. Set true ONLY when the user asked to set up the whole workflow or a node the last build did not touch.',
-	),
-});
-
-const compactValidateAction = validateAction.extend({
-	action: validateAction.shape.action.describe(
-		'Return the per-node configuration issues of a workflow, e.g. missing credentials or parameter errors. It does not run the workflow.',
-	),
-});
-
-const compactPublishFields = {
-	approvalSummary: approvalSummarySchema.describe(
-		"One plain line for the approval card, in the user's language. Name the concrete effects. Do not repeat the workflow name or ID.",
-	),
-	acknowledgeUnverified: publishBaseAction.shape.acknowledgeUnverified.describe(
-		'Set true only after you told the user the workflow is not fully verified and they still asked to publish. Never set it to skip that disclosure.',
-	),
-};
-const compactPublishBaseAction = publishBaseAction.extend(compactPublishFields);
-const compactPublishExtendedAction = publishExtendedAction.extend(compactPublishFields);
 
 const unpublishAction = z.object({
 	action: z.literal('unpublish').describe('Unpublish a workflow — stop it from running'),
@@ -607,26 +481,6 @@ function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToo
 	return typeof options === 'string' ? { surface: options } : options;
 }
 
-const workflowActionSchemas = {
-	nodeUsage: nodeUsageAction,
-	get: getAction,
-	getAsCode: getAsCodeAction,
-	setup: setupAction,
-	validate: validateAction,
-	publishBase: publishBaseAction,
-	publishExtended: publishExtendedAction,
-};
-
-const compactWorkflowActionSchemas = {
-	nodeUsage: compactNodeUsageAction,
-	get: compactGetAction,
-	getAsCode: compactGetAsCodeAction,
-	setup: compactSetupAction,
-	validate: compactValidateAction,
-	publishBase: compactPublishBaseAction,
-	publishExtended: compactPublishExtendedAction,
-};
-
 function getSupportedWorkflowActionSchemas(
 	context: InstanceAiContext,
 ): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
@@ -637,19 +491,16 @@ function getSupportedWorkflowActionSchemas(
 	// action or a filter it would get an error from.
 	const hasNodeUsage = !!context.workflowService.nodeUsage;
 
-	const schemas =
-		context.nodeContractsEnabled === true ? compactWorkflowActionSchemas : workflowActionSchemas;
-
 	return {
 		list: pickListAction(context, hasNodeUsage),
-		...(hasNodeUsage ? { 'node-usage': schemas.nodeUsage } : {}),
-		get: schemas.get,
-		'get-as-code': schemas.getAsCode,
+		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
+		get: getAction,
+		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
-		setup: schemas.setup,
-		validate: schemas.validate,
-		publish: hasNamedVersions ? schemas.publishExtended : schemas.publishBase,
+		setup: setupAction,
+		validate: validateAction,
+		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublish: unpublishAction,
 		...(hasVersions
 			? {

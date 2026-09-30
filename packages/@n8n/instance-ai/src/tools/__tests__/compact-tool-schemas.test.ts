@@ -29,17 +29,35 @@ const jsonOf = (tool: { inputSchema?: unknown }) =>
 
 describe('node contracts tool schemas', () => {
 	it.each([false, true])(
-		'workflows keeps every action and field (folder exploration %s)',
+		'workflows is unchanged (folder exploration %s)',
 		(folderExplorationEnabled) => {
-			const on = jsonOf(
-				createWorkflowsTool(context({ nodeContractsEnabled: true, folderExplorationEnabled })),
+			const on = createWorkflowsTool(
+				context({ nodeContractsEnabled: true, folderExplorationEnabled }),
 			);
-			const off = jsonOf(createWorkflowsTool(context({ folderExplorationEnabled })));
+			const off = createWorkflowsTool(context({ folderExplorationEnabled }));
 
-			expect(withoutDescriptions(on)).toEqual(withoutDescriptions(off));
-			expect(JSON.stringify(on).length).toBeLessThan(JSON.stringify(off).length);
+			expect(on.description).toBe(off.description);
+			expect(jsonOf(on)).toEqual(jsonOf(off));
 		},
 	);
+
+	it('nodes changes only the build discovery text', () => {
+		const on = jsonOf(createNodesTool(context({ nodeContractsEnabled: true }))).properties ?? {};
+		const off = jsonOf(createNodesTool(context({}))).properties ?? {};
+		const discovery = ['action', 'connectionType', 'limit', 'nodeTypes', 'queries'];
+		const actionText = (properties: Record<string, unknown>, action: string) =>
+			String((properties.action as { description?: string }).description)
+				.split(/(?="[a-z-]+": )/)
+				.find((part) => part.startsWith(`"${action}": `));
+
+		for (const key of Object.keys(off).filter((name) => !discovery.includes(name))) {
+			expect(on[key]).toEqual(off[key]);
+		}
+		for (const action of ['list', 'explore-resources', 'execute']) {
+			expect(actionText(on, action)).toBeDefined();
+			expect(actionText(on, action)).toBe(actionText(off, action));
+		}
+	});
 
 	it('nodes keeps every action and field', () => {
 		const on = jsonOf(createNodesTool(context({ nodeContractsEnabled: true })));

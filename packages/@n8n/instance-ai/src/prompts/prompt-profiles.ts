@@ -38,17 +38,6 @@ export const NODE_CONTRACTS_SKILL_VARIANT: SkillVariant = {
 		{ skillId: 'workflow-builder', appendFrom: 'workflow-builder-contracts', replace: true },
 		{ skillId: 'post-build-flow', appendFrom: 'post-build-flow-contracts', replace: true },
 	],
-	// The catalog is sent on every model step. The skill bodies keep the rules cut here.
-	descriptions: {
-		'model-selection':
-			'Guides AI model choices in new or existing workflows, pasted workflow JSON, and model-availability questions. Load before you recommend, select, replace, or judge a model, and when you inspect a model-bearing node. Keep working or requested model IDs.',
-		'one-off-operations':
-			'Handles one-off operations: a concrete effect that happens once, e.g. an export, a copy, a migration, a backfill, or a cleanup, with no trigger, schedule, or reuse intent. Load before you build such a request, or when a build-workflow result has postBuildFlow.reason "direct-one-off-build-succeeded". Not for automations that run again.',
-		'data-table-manager':
-			'Load before data-tables or parse-file calls: list, create, inspect, import, seed, query, update, or delete data tables, rows, or columns, e.g. "what data tables do I have?" or a CSV/XLSX/JSON attachment. Also load before you build or plan workflows that write Data Tables, then load workflow-builder.',
-		planning:
-			'ONLY for coordinated multi-artifact work: several workflows with dependencies, shared data-table schema or migration across tasks, or the user asks to review a plan first. Do NOT use for single workflows, edits, verification, or standalone data-table work: use workflow-builder or data-table-manager.',
-	},
 };
 
 /** Published versions are immutable. Add a new entry to change a profile. */

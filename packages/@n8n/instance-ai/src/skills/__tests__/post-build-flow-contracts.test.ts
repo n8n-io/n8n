@@ -70,6 +70,8 @@ describe('post-build-flow-contracts skill', () => {
 			'references/verify-again.md',
 			'references/setup.md',
 			'references/live-test-and-publishing.md',
+			'Do not list the nodes',
+			'without a `verified` claim',
 		]) {
 			expect(text).toContain(phrase);
 		}
@@ -113,20 +115,15 @@ describe('post-build-flow-contracts skill', () => {
 		}
 	});
 
-	it('shortens catalog descriptions only when node contracts are enabled', async () => {
-		const runtime = loadInstanceAiRuntimeSkillSource();
+	it('keeps every skill outside the build path unchanged with node contracts', async () => {
 		const { profile } = resolvePromptProfile({});
-		const off = (await loadInstanceAiPromptSkills(profile)).source.registry.skills;
-		const on = (await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled: true })).source
-			.registry.skills;
+		const off = (await loadInstanceAiPromptSkills(profile)).source;
+		const on = (await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled: true })).source;
+		const changed = new Set(NODE_CONTRACTS_SKILL_VARIANT.changes.map(({ skillId }) => skillId));
 
-		for (const [id, description] of Object.entries(
-			NODE_CONTRACTS_SKILL_VARIANT.descriptions ?? {},
-		)) {
-			const original = (await runtime.loadSkill(id))?.description ?? '';
-			expect(off.find((skill) => skill.id === id)?.description).toBe(original);
-			expect(on.find((skill) => skill.id === id)?.description).toBe(description);
-			expect(description.length).toBeLessThan(original.length * 0.8);
+		for (const entry of off.registry.skills.filter(({ id }) => !changed.has(id))) {
+			expect(on.registry.skills.find(({ id }) => id === entry.id)).toEqual(entry);
+			expect(await on.loadSkill(entry.id)).toEqual(await off.loadSkill(entry.id));
 		}
 	});
 
