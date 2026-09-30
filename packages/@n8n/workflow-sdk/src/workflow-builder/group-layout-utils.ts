@@ -31,6 +31,10 @@ export interface CollapsedGroup {
 
 interface FoldNodeGroupsDependencies {
 	createSubGraph: (nodeIds: string[], parent: dagre.graphlib.Graph) => dagre.graphlib.Graph;
+	/** Layout the complete member set before the parent graph replaces it with a chip. */
+	layoutSubGraph?: (nodeIds: string[], parent: dagre.graphlib.Graph) => dagre.graphlib.Graph;
+	/** Reject groups that another layout owner cannot represent safely. */
+	canFoldMembers?: (nodeIds: readonly string[], parent: dagre.graphlib.Graph) => boolean;
 }
 
 interface PlaceGroupMembersDependencies {
@@ -248,7 +252,7 @@ export function collapseNodeGroups(
 	nodes: ReadonlyMap<string, GraphNode>,
 	keyByNodeId: ReadonlyMap<string, string>,
 	excludedKeys: ReadonlySet<string>,
-	{ createSubGraph }: FoldNodeGroupsDependencies,
+	{ canFoldMembers, createSubGraph, layoutSubGraph }: FoldNodeGroupsDependencies,
 ): CollapsedGroup[] {
 	const collapsed: CollapsedGroup[] = [];
 	const resolvedGroups = nodeGroups
@@ -262,7 +266,8 @@ export function collapseNodeGroups(
 
 	for (const group of resolvedGroups) {
 		if (
-			!isEligibleGroup(group, conflictingIndexes, parentGraph, excludedKeys, nodes, keyByNodeId)
+			!isEligibleGroup(group, conflictingIndexes, parentGraph, excludedKeys, nodes, keyByNodeId) ||
+			(canFoldMembers !== undefined && !canFoldMembers(group.memberKeys, parentGraph))
 		) {
 			continue;
 		}
@@ -274,8 +279,10 @@ export function collapseNodeGroups(
 			.edges()
 			.filter((edge) => memberKeySet.has(edge.v) !== memberKeySet.has(edge.w));
 
-		const graph = createSubGraph(group.regularMemberKeys, parentGraph);
-		dagre.layout(graph, { disableOptimalOrderHeuristic: true });
+		const graph = layoutSubGraph
+			? layoutSubGraph(group.regularMemberKeys, parentGraph)
+			: createSubGraph(group.regularMemberKeys, parentGraph);
+		if (!layoutSubGraph) dagre.layout(graph, { disableOptimalOrderHeuristic: true });
 
 		group.regularMemberKeys.forEach((key) => parentGraph.removeNode(key));
 
