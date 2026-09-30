@@ -80,10 +80,7 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import {
-	EngineV2WebhookResponseRegistry,
-	type WebhookResponseWait,
-} from '@/services/engine-v2-webhook-response-registry.service';
+import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -1244,6 +1241,10 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
 			const engineExecutionId = createExecutionIdV2();
+			// Loaded here, because only an engine v2 run needs the module code.
+			const { EngineV2WebhookResponseRegistry } = await import(
+				'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
+			);
 			pendingEngineV2Response = await Container.get(
 				EngineV2WebhookResponseRegistry,
 			).waitForResponse(engineExecutionId, toResponseExpectation(responseMode));

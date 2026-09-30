@@ -10,7 +10,7 @@ import {
 	EngineV2WebhookResponseRegistry,
 	MAX_PENDING_WEBHOOKS,
 	SUBSCRIBE_TIMEOUT_MS,
-} from '@/services/engine-v2-webhook-response-registry.service';
+} from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 
 const TIMEOUT_MS = 50_000;
 

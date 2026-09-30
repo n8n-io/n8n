@@ -1,7 +1,7 @@
 import type { ExecutionResponse, JsonValue } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY } from 'n8n-core';
 
-import { toWebhookOutcome } from '@/services/engine-v2-webhook-outcome';
+import { toWebhookOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 
 const runEnd = { kind: 'runEnd' } as const;
 const stepResponse = { kind: 'stepResponse' } as const;

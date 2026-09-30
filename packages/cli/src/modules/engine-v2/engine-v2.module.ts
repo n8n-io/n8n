@@ -48,7 +48,7 @@ export class EngineV2Module implements ModuleInterface {
 
 		const logger = Container.get(Logger).scoped('engine-v2');
 		const { EngineV2WebhookResponseRegistry } = await import(
-			'@/services/engine-v2-webhook-response-registry.service.js'
+			'./webhook-response/webhook-response-registry.service.js'
 		);
 
 		if (engineConfig.mode === 'in-process') {

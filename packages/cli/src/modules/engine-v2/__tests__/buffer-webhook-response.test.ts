@@ -11,7 +11,7 @@ import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
-import { EngineV2WebhookResponseRegistry } from '@/services/engine-v2-webhook-response-registry.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 
 import { InMemoryExecutionResponseChannel } from '../response-channel/in-memory-execution-response-channel';
 import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory-execution-response-receiver';

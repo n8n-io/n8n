@@ -24,7 +24,7 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
-import type { WebhookRunOutcome } from '@/services/engine-v2-webhook-outcome';
+import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine

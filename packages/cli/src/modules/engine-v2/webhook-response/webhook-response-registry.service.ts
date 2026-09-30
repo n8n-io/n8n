@@ -6,11 +6,12 @@ import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
-} from '@/modules/engine-v2/response-channel/execution-response-receiver';
-import { toWebhookOutcome, type WebhookRunOutcome } from '@/services/engine-v2-webhook-outcome';
+} from '../response-channel/execution-response-receiver';
+import { toWebhookOutcome, type WebhookRunOutcome } from './webhook-outcome';
 
 /** The caller's view of an open webhook request that waits for its run. */
 export interface WebhookResponseWait {
