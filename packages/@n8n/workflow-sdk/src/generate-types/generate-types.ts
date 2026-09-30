@@ -23,12 +23,14 @@ import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
 
+// oxlint-disable import/no-cycle -- TODO: Refactor shared types/utils to break cycle
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
 	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
+// oxlint-enable import/no-cycle
 import { NODE_DEPRECATION_NOTICE } from '../node-deprecation';
 import { checkConditions } from '../validation/display-options';
 

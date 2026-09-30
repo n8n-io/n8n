@@ -65,6 +65,7 @@ const JS_PLUGIN_NAMESPACES = new Set([
 	'unused-imports',
 	'n8n-local-rules',
 	'playwright',
+	'@n8n/community-nodes',
 ]);
 
 function splitId(id) {
@@ -155,13 +156,14 @@ async function declaredJsPluginRules() {
 	const declared = new Map();
 	const overrideOnly = new Map();
 	const plugins = new Set();
+	const addPlugin = (plugin) => plugins.add(typeof plugin === 'string' ? plugin : plugin.name);
 
 	const visit = (config) => {
 		for (const parent of config.extends ?? []) visit(parent);
-		for (const name of config.jsPlugins ?? []) plugins.add(name);
+		for (const plugin of config.jsPlugins ?? []) addPlugin(plugin);
 		for (const [id, severity] of Object.entries(config.rules ?? {})) declared.set(id, severity);
 		for (const override of config.overrides ?? []) {
-			for (const name of override.jsPlugins ?? []) plugins.add(name);
+			for (const plugin of override.jsPlugins ?? []) addPlugin(plugin);
 			for (const [id, severity] of Object.entries(override.rules ?? {})) {
 				// An override that turns a rule off still leaves it enforced elsewhere
 				// in the package, and this comparison is a union.
