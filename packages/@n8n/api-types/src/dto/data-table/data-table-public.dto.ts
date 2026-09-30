@@ -19,9 +19,10 @@ import {
 	updateDataTableRowFieldDocs,
 	upsertDataTableRowFieldDocs,
 } from './data-table-public.openapi';
+import { booleanFromString } from '../../schemas/boolean-from-string';
 import {
-	FilterConditionSchema,
 	dataTableFilterRecordSchema,
+	dataTableFilterSchema,
 	dataTableFilterTypeSchema,
 } from '../../schemas/data-table-filter.schema';
 import {
@@ -270,13 +271,6 @@ export class UpdateDataTableRowResponsePublicDto {
 	}
 }
 
-const publicDeleteFilterSchema = z.object({
-	type: dataTableFilterTypeSchema.default('and'),
-	filters: z
-		.array(dataTableFilterRecordSchema.extend({ condition: FilterConditionSchema }))
-		.min(1, 'filter must not be empty'),
-});
-
 const publicRowFilterQueryValidator = z.string().transform((val, ctx) => {
 	let parsed: unknown;
 	try {
@@ -290,7 +284,7 @@ const publicRowFilterQueryValidator = z.string().transform((val, ctx) => {
 		return z.NEVER;
 	}
 
-	const result = publicDeleteFilterSchema.safeParse(parsed);
+	const result = dataTableFilterSchema.safeParse(parsed);
 	if (!result.success) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
@@ -299,19 +293,29 @@ const publicRowFilterQueryValidator = z.string().transform((val, ctx) => {
 		});
 		return z.NEVER;
 	}
+
+	if (result.data.filters.length === 0) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'At least one filter condition is required for delete operations',
+			path: ['filter'],
+		});
+		return z.NEVER;
+	}
+
 	return result.data;
 });
 
-const booleanQueryValidator = z
-	.union([z.string(), z.boolean()])
-	.optional()
-	.default(false)
-	.transform((val) => (typeof val === 'string' ? val === 'true' : val));
-
 export class DeleteDataTableRowsPublicQueryDto extends Z.class({
 	filter: publicRowFilterQueryValidator.openapi(deleteDataTableRowsQueryDocs.filter),
-	returnData: booleanQueryValidator.openapi(deleteDataTableRowsQueryDocs.returnData),
-	dryRun: booleanQueryValidator.openapi(deleteDataTableRowsQueryDocs.dryRun),
+	returnData: booleanFromString
+		.optional()
+		.default('false')
+		.openapi(deleteDataTableRowsQueryDocs.returnData),
+	dryRun: booleanFromString
+		.optional()
+		.default('false')
+		.openapi(deleteDataTableRowsQueryDocs.dryRun),
 }) {}
 
 const deleteDataTableRowsResponseSchema = z.union([

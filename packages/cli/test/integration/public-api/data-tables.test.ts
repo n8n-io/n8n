@@ -1568,10 +1568,10 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		testWithAPIKey('delete', '/data-tables/123/rows/delete', 'abcXYZ'),
 	);
 
-	test('should reject a filter entry missing condition', async () => {
+	test('should default a filter entry missing condition to eq', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'status', type: 'string' }],
-			data: [{ status: 'old' }],
+			data: [{ status: 'old' }, { status: 'active' }],
 		});
 
 		const filter = JSON.stringify({
@@ -1581,9 +1581,11 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 
 		const response = await authOwnerAgent
 			.delete(`/data-tables/${dataTable.id}/rows/delete`)
-			.query({ filter });
+			.query({ filter, returnData: 'true' });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0]).toHaveProperty('status', 'old');
 	});
 
 	test('should accept isEmpty condition', async () => {
@@ -1718,6 +1720,46 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		expect(response.body).toHaveProperty(
 			'message',
 			"request/query must have required property 'filter'",
+		);
+	});
+
+	test('should reject a non-boolean dryRun value instead of coercing it', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'eq', value: 'old' }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, dryRun: '1' });
+
+		expect(response.statusCode).toBe(400);
+
+		// Verify data was not actually deleted
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
+		expect(getResponse.body.data).toHaveLength(1);
+	});
+
+	test('should reject an empty filters array with the delete-specific message', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }],
+		});
+
+		const filter = JSON.stringify({ type: 'and', filters: [] });
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain(
+			'At least one filter condition is required for delete operations',
 		);
 	});
 });

@@ -25,19 +25,21 @@ parameters:
     name: filter
     in: query
   - schema:
-      anyOf:
-        - type: string
-        - type: boolean
-      default: false
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
     required: false
     description: If true, return the deleted rows. If false, return true on success.
     name: returnData
     in: query
   - schema:
-      anyOf:
-        - type: string
-        - type: boolean
-      default: false
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
     required: false
     description: If true, preview which rows would be deleted without actually deleting them.
     name: dryRun
