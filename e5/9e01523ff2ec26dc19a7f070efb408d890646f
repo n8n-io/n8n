@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c5954c3047b5ed::t_f9029c7deda387 129
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c5954c3047b5ed::t_f9029c7deda387 3605-3619,3642,3669,3675
+  s_c5954c3047b5ed::t_9ac2d690aac605 3538-3577
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_c5954c3047b5ed::t_54ca63f1706ed3 243-244
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c5954c3047b5ed::t_a4415a1c40386e 365,710,785,881,1278
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_c5954c3047b5ed::t_a4415a1c40386e 1479,1519-1527,1550-1557
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_c5954c3047b5ed::t_3129745372c8f7 121-138
+packages/cli/src/modules/agents/PREVIEW_CHAT_RECOVERY.md
+  s_c5954c3047b5ed::t_d237dd2930eaf9 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e59e01523ff2ec26dc19a7f070efb408d890646f",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
