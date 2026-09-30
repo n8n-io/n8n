@@ -36,7 +36,7 @@ function ruleResult(ruleId: string): BreakingChangeWorkflowRuleResult {
 		ruleId,
 		ruleTitle: 'Title',
 		ruleDescription: 'Description',
-		ruleImpact: 'high',
+		ruleImpact: 'behaviorChanges',
 		ruleDocumentationUrl: 'https://docs.n8n.io',
 		affectedWorkflows: [],
 		recommendations: [],
