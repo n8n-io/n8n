@@ -62,6 +62,9 @@
 		"@n8n/ai-node-sdk#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/agents#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/ai-utilities#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -111,6 +114,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/imap#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/instance-ai#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/local-gateway#lint": {
