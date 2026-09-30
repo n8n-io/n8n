@@ -837,6 +837,93 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
+	describe('with workspace SDK linking enabled', () => {
+		const linkedTarballs = [
+			{
+				filename: 'n8n-utils.tgz',
+				tarball: Buffer.from('utils'),
+				version: '1.41.0',
+				packageName: '@n8n/utils',
+				packagePath: '/host/utils',
+			},
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		];
+		const tarballArgs =
+			"'/home/daytona/workspace/n8n-utils.tgz' '/home/daytona/workspace/workflow-sdk.tgz'";
+
+		async function runLinkedSetup(
+			nodeContractsEnabled: boolean,
+			failCachedInstall = false,
+		): Promise<string[]> {
+			const runInSandbox: RunInSandboxMock =
+				vi.fn<
+					(
+						...args: [SandboxWorkspace, string, string?]
+					) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+				>();
+			runInSandbox.mockImplementation(async (_workspace, command) => {
+				await Promise.resolve();
+				if (failCachedInstall && command.includes('--prefer-offline')) {
+					return { exitCode: 1, stdout: '', stderr: 'npm error code ETARGET' };
+				}
+				return { exitCode: 0, stdout: '', stderr: '' };
+			});
+			const readFileViaSandbox: ReadFileViaSandboxMock =
+				vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+			readFileViaSandbox.mockResolvedValue(null);
+			const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+				runInSandbox,
+				readFileViaSandbox,
+			);
+			packWorkspaceSdkMockState.isEnabled = true;
+			packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockResolvedValue(
+				linkedTarballs,
+			);
+			const writeFile = vi.fn<
+				(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+			>(async () => {});
+
+			const initialized = await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), {
+				...createSetupContext(),
+				nodeContractsEnabled,
+			});
+
+			expect(initialized).toBe(true);
+			expect(writeFile).toHaveBeenCalledWith(
+				'/home/daytona/workspace/n8n-utils.tgz',
+				linkedTarballs[0].tarball,
+				{ recursive: true },
+			);
+			return installCommandsFrom(runInSandbox);
+		}
+
+		it('runs one npm install with the linked tarballs when node contracts are enabled', async () => {
+			expect(await runLinkedSetup(true)).toEqual([
+				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
+			]);
+		});
+
+		it('keeps the linked tarballs when the combined install retries with fresh metadata', async () => {
+			expect(await runLinkedSetup(true, true)).toEqual([
+				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
+				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-online`,
+			]);
+		});
+
+		it('runs the base install and then the tarball install when node contracts are disabled', async () => {
+			expect(await runLinkedSetup(false)).toEqual([
+				'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
+				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
+			]);
+		});
+	});
+
 	it('retries packing linked workspace packages after a null pack result', async () => {
 		const utilsTarball = Buffer.from('utils');
 		const workflowTarball = Buffer.from('workflow');

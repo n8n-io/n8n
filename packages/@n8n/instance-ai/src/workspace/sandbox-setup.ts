@@ -233,13 +233,17 @@ export const PACKAGE_JSON = buildPackageJson(
 
 let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
-export async function linkWorkspaceSdkIfEnabled(
+interface UploadedWorkspacePackages {
+	packedPackages: WorkspacePackageTarball[];
+	/** Quoted remote tarball paths, ready for an `npm install` command line. */
+	tarballArgs: string;
+}
+
+async function uploadLinkedWorkspacePackages(
 	workspace: SandboxWorkspace,
 	root: string,
 	logger: Logger,
-): Promise<void> {
-	if (!isLinkWorkspaceSdkEnabled()) return;
-
+): Promise<UploadedWorkspacePackages> {
 	linkedPackagesPromise ??= packSandboxLinkedWorkspacePackages(logger).catch((error: unknown) => {
 		linkedPackagesPromise = null;
 		throw error;
@@ -266,6 +270,31 @@ export async function linkWorkspaceSdkIfEnabled(
 	const tarballArgs = remotePaths
 		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
 		.join(' ');
+	return { packedPackages, tarballArgs };
+}
+
+function logLinkedWorkspacePackages(logger: Logger, packedPackages: WorkspacePackageTarball[]) {
+	logger.info('Linked workspace packages into sandbox', {
+		packages: packedPackages.map((packed) => ({
+			name: packed.packageName,
+			version: packed.version,
+			path: packed.packagePath,
+		})),
+	});
+}
+
+export async function linkWorkspaceSdkIfEnabled(
+	workspace: SandboxWorkspace,
+	root: string,
+	logger: Logger,
+): Promise<void> {
+	if (!isLinkWorkspaceSdkEnabled()) return;
+
+	const { packedPackages, tarballArgs } = await uploadLinkedWorkspacePackages(
+		workspace,
+		root,
+		logger,
+	);
 	const install = await runInSandbox(
 		workspace,
 		`npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`,
@@ -279,13 +308,7 @@ export async function linkWorkspaceSdkIfEnabled(
 		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
 	}
 
-	logger.info('Linked workspace packages into sandbox', {
-		packages: packedPackages.map((packed) => ({
-			name: packed.packageName,
-			version: packed.version,
-			path: packed.packagePath,
-		})),
-	});
+	logLinkedWorkspacePackages(logger, packedPackages);
 }
 
 /**
@@ -532,13 +555,26 @@ export async function setupSandboxWorkspace(
 			);
 			await materializeKnowledgeBaseStep(workspace, root, context);
 
+			// With node contracts, one install covers package.json and the linked tarballs.
+			// A separate base install only repeats the same work.
+			const mergeLinkedInstall = context.nodeContractsEnabled && isLinkWorkspaceSdkEnabled();
+			const linkedPackages = mergeLinkedInstall
+				? await setupStep(
+						'link-workspace-sdk',
+						async () => await uploadLinkedWorkspacePackages(workspace, root, context.logger),
+					)
+				: null;
+			const linkedInstallArgs = linkedPackages
+				? `${linkedPackages.tarballArgs} --no-save --force `
+				: '';
+
 			// npm install (must run after package.json is in place)
 			await setupStep('install-dependencies', async () => {
 				// One deadline covers both attempts. The signal stops us waiting; it does not kill
 				// the remote command, which the sandbox collects at its own timeout.
 				const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
 				const install = async (flags: string) =>
-					await runInSandbox(workspace, `npm install ${flags}`, {
+					await runInSandbox(workspace, `npm install ${linkedInstallArgs}${flags}`, {
 						cwd: root,
 						abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
 					});
@@ -564,8 +600,11 @@ export async function setupSandboxWorkspace(
 					throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 				}
 			});
+			if (linkedPackages) {
+				logLinkedWorkspacePackages(context.logger, linkedPackages.packedPackages);
+			}
 
-			if (isLinkWorkspaceSdkEnabled()) {
+			if (isLinkWorkspaceSdkEnabled() && !mergeLinkedInstall) {
 				await setupStep(
 					'link-workspace-sdk',
 					async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),

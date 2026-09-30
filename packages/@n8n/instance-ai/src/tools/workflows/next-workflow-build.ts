@@ -94,14 +94,15 @@ function outputOf(
 type Fixtures = NonNullable<WorkflowJSON['pinData']>;
 
 /**
- * One example item for each read node without declared output, so verification simulates it
- * instead of calling the service. Write nodes keep the existing simulation classification.
+ * One example item for each contract node without declared output. Verification then
+ * simulates read nodes instead of calling the service, and needs no LLM to invent the output
+ * of simulated write nodes.
  */
 export function synthesizedFixtures(workflow: WorkflowJSON, declared: Fixtures = {}): Fixtures {
 	const types = byNodeType();
 	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
 		const action = types.get(node.type);
-		if (action?.flow.effect !== 'read' || !node.name || declared[node.name]) return [];
+		if (!action || !node.name || declared[node.name]) return [];
 		const example = exampleOf(outputOf(action, node.parameters ?? {}));
 		return typeof example === 'object' && example !== null && !Array.isArray(example)
 			? [[node.name, [Object.fromEntries(Object.entries(example))]]]
