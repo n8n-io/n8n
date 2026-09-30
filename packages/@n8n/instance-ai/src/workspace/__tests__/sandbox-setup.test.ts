@@ -435,7 +435,7 @@ describe('setupSandboxWorkspace', () => {
 		['a new', null],
 		['an initialized', '2024-01-01T00:00:00.000Z'],
 	])(
-		'skips the knowledge base and node-types catalog for %s workspace when node contracts are enabled',
+		'keeps the knowledge base and skips the node-types catalog for %s workspace when node contracts are enabled',
 		async (_label, marker) => {
 			const runInSandbox: RunInSandboxMock = vi.fn();
 			runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
@@ -466,9 +466,8 @@ describe('setupSandboxWorkspace', () => {
 
 			expect(initialized).toBe(marker === null);
 			const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-			expect(writtenPaths.some((p) => p.includes('/knowledge-base/'))).toBe(false);
 			expect(writtenPaths).not.toContain('/sandbox/node-types/index.txt');
-			expect(context.templatesService?.getBundle).not.toHaveBeenCalled();
+			expect(context.templatesService?.getBundle).toHaveBeenCalled();
 			expect(context.nodeService.listSearchable).not.toHaveBeenCalled();
 			if (marker === null) {
 				expect(writtenPaths).toEqual(

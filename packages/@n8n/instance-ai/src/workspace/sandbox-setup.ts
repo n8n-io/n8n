@@ -483,8 +483,6 @@ async function materializeKnowledgeBaseStep(
 	root: string,
 	context: InstanceAiContext,
 ): Promise<void> {
-	// The node-contracts build and skill do not read the legacy SDK knowledge base.
-	if (context.nodeContractsEnabled) return;
 	await setupStep('materialize-knowledge-base', async () => {
 		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
 		await materializeKnowledgeBaseIntoWorkspace({
