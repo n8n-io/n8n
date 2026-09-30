@@ -3,17 +3,14 @@ import { Container } from '@n8n/di';
 
 import { WorkflowSuggestionsController } from '../workflow-suggestions.controller';
 
-it('requires edit or publish scope for every suggestion route', () => {
+it('exposes only the proposal read route and requires edit access', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		WorkflowSuggestionsController as never,
 	);
-	expect(metadata.routes.size).toBe(5);
-	for (const [method, route] of metadata.routes) {
+	expect([...metadata.routes.keys()]).toEqual(['detail']);
+	for (const route of metadata.routes.values()) {
 		expect(route.accessScope).toEqual({
-			scope:
-				method === 'approveAndPublish' || method === 'retryPublication'
-					? 'workflow:publish'
-					: 'workflow:update',
+			scope: 'workflow:update',
 			globalOnly: false,
 		});
 		expect(route.skipAuth).not.toBe(true);

@@ -25,7 +25,7 @@ The tests under `__tests__` include a sample fix against a published workflow. T
 
 `GET /projects/:projectId/workflows/:workflowId/suggestions/:suggestionId` returns a proposal and its activity. The caller must be an enabled user with current workflow read and edit access, including access through sharing. Publish access is not required. The route checks both the proposal's original project and the workflow's current owner project.
 
-The response includes the original snapshot and the proposed snapshot. The stored content does not change after creation. The shared inbox lists investigation results through a self-healing source. INS-1517 owns that integration. Self-healing owns result details and actions, including the optional suggestion diff. Needs attention offers Continue in chat and Dismiss; it does not offer Apply.
+The response includes the original snapshot and the proposed snapshot. The stored content does not change after creation. The shared inbox lists investigation results through a self-healing source. INS-1517 owns that integration. INS-1496 owns the result review API, including the optional suggestion diff. It will review whether this standalone read route is still needed. Needs attention offers Continue in chat and Dismiss; it does not offer Apply.
 
 ## Storage and deletion
 
@@ -39,9 +39,9 @@ Creation rechecks the workflow baseline and records the suggestion and activity 
 
 ## Review actions
 
-Each POST route uses the proposal detail path plus an action suffix:
+Call `WorkflowSuggestionActionsService.act()` from trusted backend code. These actions have no standalone HTTP routes. INS-1496 will expose them through the self-healing result review API. That API must resolve the attached suggestion and pass the acting user and editor client ID (`push-ref`) to this service. The frontend will send one request for each review action. The backend must coordinate the result and suggestion state and return the updated review.
 
-| Suffix | Action |
+| Internal action | Behavior |
 | --- | --- |
 | `approve-and-publish` | Save the reviewed graph once. Publish that exact saved version. |
 | `open-in-editor` | Save the reviewed graph once without publication. |
@@ -60,4 +60,4 @@ The detail exposes `appliedVersion` and the recorded publication outcome. Public
 
 INS-1496 owns shared result dismissal. Pass its transaction context to `discard(user, projectId, workflowId, suggestionId, ctx)` to commit result changes and suggestion closure together. Permission reads use the same transaction. A caller rollback also restores the suggestion and its activity. Calls without a context keep their own transaction.
 
-INS-1496 must reflect the persisted suggestion state in result reads and actions, including closure through the standalone suggestion routes. INS-1480 uses that state to reconcile investigation claims. An applied suggestion stays closed if publication fails. INS-1518 supplies all three review screens and editor navigation.
+INS-1496 must reflect the persisted suggestion state in result reads and actions. The frontend must not make a second request to update result state after a suggestion action. INS-1480 uses that state to reconcile investigation claims. An applied suggestion stays closed if publication fails. INS-1518 supplies all three review screens and editor navigation through the result review API.
