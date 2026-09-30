@@ -28,7 +28,9 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		loadExecution: vi.fn().mockResolvedValue({ ...execution, status: 'cancelled' }),
 		transitionStatus: vi.fn(),
 		finishExecution: vi.fn(),
-		cancelExecution: vi.fn().mockResolvedValue(true),
+		cancelExecution: vi
+			.fn()
+			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
@@ -60,7 +62,7 @@ describe('CancelExecutionService', () => {
 			type: 'execution:cancelled',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
-			at: expect.any(String),
+			at: '2026-09-30T08:00:00.000Z',
 		});
 	});
 
@@ -68,7 +70,7 @@ describe('CancelExecutionService', () => {
 		'reports the status of an execution that already ended %s and announces nothing',
 		async (status) => {
 			const executionStore = makeExecutionStore({
-				cancelExecution: vi.fn().mockResolvedValue(false),
+				cancelExecution: vi.fn().mockResolvedValue(null),
 				loadExecution: vi.fn().mockResolvedValue({ ...execution, status }),
 			});
 			const { service, stepStore, publisher } = makeService(executionStore);
@@ -83,7 +85,7 @@ describe('CancelExecutionService', () => {
 
 	it('throws for an unknown execution', async () => {
 		const executionStore = makeExecutionStore({
-			cancelExecution: vi.fn().mockResolvedValue(false),
+			cancelExecution: vi.fn().mockResolvedValue(null),
 			loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-404')),
 		});
 		const { service, stepStore } = makeService(executionStore);
