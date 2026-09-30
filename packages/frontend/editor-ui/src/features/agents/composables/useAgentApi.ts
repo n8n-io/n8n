@@ -6,6 +6,7 @@ import type {
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
+	AgentChatResumeDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -544,6 +545,21 @@ export const getAgentBackgroundJobs = async (
 		context,
 		'GET',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
+	);
+};
+
+export const resumeAgentBackgroundJob = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	payload: AgentChatResumeDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
+		payload,
 	);
 };
 

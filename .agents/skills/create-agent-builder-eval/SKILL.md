@@ -70,6 +70,41 @@ or outcome expectations can prove the behavior.
 Use the substitution test for every expectation. A correct alternative build
 must pass. A build that misses the requested behavior must fail.
 
+## Write expectations about the Agent, not the builder's internals
+
+Agent Builder runs as a delegated sub-agent architecture today. That design
+can change. Do not write an expectation that depends on it. Follow
+"Keep expectations free of internal mechanics" in
+[create-instance-ai-eval](../create-instance-ai-eval/SKILL.md).
+
+Do not write:
+
+- "The sub-agent runs/tests the Agent before it responds."
+- "Instance AI delegates to `build-agent`" or "calls `build-agent` once."
+- "The builder calls `call_agent` to verify the Agent."
+- "The sub-agent reads the skill, then sets the model."
+
+Write what a user or a reviewer can observe:
+
+| ❌ mechanical | ✅ intent |
+|---|---|
+| "The sub-agent tests the Agent before it reports" | "The final response says the Agent was tested only if a test ran, and it reports the result of that test honestly" |
+| "`build-agent` is called with the Slack credential" | "The Agent uses the Slack credential the user has" |
+| "The sub-agent adds a tool for the lookup" | "The Agent can look up the order status when a user asks for it" |
+| "The builder sets `model` after the catalog lookup" | "The Agent uses a model that the connected credential supports" |
+
+Put each one where it belongs:
+
+- The Agent's configuration, tools, skills, and behavior go in
+  `outcomeExpectations`.
+- What the user is told, asked, or shown goes in `processExpectations`.
+- The final response is the place to check claims ("says it is ready",
+  "lists the tools it added"). Do not check which component made the claim.
+
+The calibration steps below ask you to confirm that `build-agent` ran. That is
+a check for you, to be sure the case reached Agent Builder. Do not add it to the
+case.
+
 For multi-turn, seeded, or capability-gap cases, follow the case-shape and
 calibration rules in [create-instance-ai-eval](../create-instance-ai-eval/SKILL.md).
 This skill overrides its workflow directory and suite guidance for Agent cases.
@@ -184,6 +219,8 @@ after a successful push.
 - A local run captures a standalone Agent.
 - The transcript proves each process expectation was exercised.
 - The rendered Agent artifact proves each outcome expectation.
+- No expectation names a sub-agent, an internal tool, or a delegation step.
+  Each one passes for a correct build from a different architecture.
 - Repeated runs are stable enough for the selected tier.
 - The case is pushed to `Instance AI capabilities — agents` with suite slug `agents`.
 - Agent Builder PR changes select the `agents` suite in CI.

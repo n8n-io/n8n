@@ -66,6 +66,7 @@ function makeExecutionStore(
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
+		cancelExecution: vi.fn().mockResolvedValue(true),
 		refreshLiveStatus: vi.fn(),
 		...storeOverrides,
 	};
@@ -614,21 +615,24 @@ describe('StepSettledHandler lifecycle events', () => {
 			);
 		});
 
-		it('sends no outputs when the caller expects a step response', async () => {
-			const { handler, responseSender } = makeHandler(finishingStore(), {
-				executionStore: makeExecutionStore({ responseExpectation: { kind: 'stepResponse' } }),
-			});
+		it.each(['stepResponse', 'stream'] as const)(
+			'sends no outputs when the caller expects %s',
+			async (kind) => {
+				const { handler, responseSender } = makeHandler(finishingStore(), {
+					executionStore: makeExecutionStore({ responseExpectation: { kind } }),
+				});
 
-			await handler.handle({ ...event, stepId: 'step-m' });
+				await handler.handle({ ...event, stepId: 'step-m' });
 
-			expect(responseSender.send).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({
-					type: 'ended',
-					status: 'completed',
-					lastStep: expect.objectContaining({ nodeId: 'm', outputs: null }) as unknown,
-				}),
-			);
-		});
+				expect(responseSender.send).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						type: 'ended',
+						status: 'completed',
+						lastStep: expect.objectContaining({ nodeId: 'm', outputs: null }) as unknown,
+					}),
+				);
+			},
+		);
 	});
 
 	it('announces nothing when finishExecution loses the compare-and-set', async () => {

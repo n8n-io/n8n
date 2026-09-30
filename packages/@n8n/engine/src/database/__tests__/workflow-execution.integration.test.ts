@@ -1,4 +1,4 @@
-import type { DataSource } from '@n8n/typeorm';
+import type { DataSource, Repository } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -240,6 +240,37 @@ describe('workflow_execution table (integration)', () => {
 		},
 	);
 
+	it.each<ExecutionStatus>(['queued', 'running', 'waiting'])(
+		'TypeOrmExecutionStore.cancelExecution ends a %j execution',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status, finishedAt: null });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			expect(cancelled).toBe(true);
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe('cancelled');
+			expect(row.finishedAt).toBeInstanceOf(Date);
+		},
+	);
+
+	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
+		'TypeOrmExecutionStore.cancelExecution leaves a %j execution alone',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
+			const { id } = await saveExecution(repo, { status, finishedAt });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			expect(cancelled).toBe(false);
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
 	describe('TypeOrmExecutionStore.refreshLiveStatus', () => {
 		/** One execution with one step for each status given. */
 		async function seed(status: ExecutionStatus, stepStatuses: StepStatus[]): Promise<string> {
@@ -319,3 +350,22 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 });
+
+async function saveExecution(
+	repo: Repository<WorkflowExecution>,
+	fields: { status: ExecutionStatus; finishedAt: Date | null },
+): Promise<WorkflowExecution> {
+	return await repo.save(
+		repo.create({
+			id: generateId(),
+			workflowId: 'wf-7',
+			mode: 'production',
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: null,
+			...fields,
+		}),
+	);
+}
