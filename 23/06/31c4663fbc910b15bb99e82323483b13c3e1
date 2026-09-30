@@ -4,7 +4,7 @@ packages/frontend/@n8n/frontend-constants/src/agents.test.ts
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.4",
-  "base_commit_sha": "1e0519ad533f208b354b2bf68ac18285d2829ec8",
+  "base_commit_sha": "230631c4663fbc910b15bb99e82323483b13c3e1",
   "prompts": {},
   "sessions": {
     "s_14d6c74486cc9e": {
