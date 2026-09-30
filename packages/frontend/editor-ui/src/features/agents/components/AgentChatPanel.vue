@@ -47,6 +47,8 @@ import {
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
+import AgentChatPlan from './AgentChatPlan.vue';
+import { selectLatestAgentPlan } from '../utils/agent-plan';
 import type {
 	AgentContinueLoadedEvent,
 	AgentSendToAssistantEvent,
@@ -145,6 +147,8 @@ const {
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
+
+const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
 
 const queueEdit = ref<{
 	item: AgentChatQueueItem;
@@ -981,8 +985,13 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="displayedQueueRows.length" #header>
-					<div ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
+				<template v-if="currentPlan || displayedQueueRows.length" #header>
+					<AgentChatPlan
+						v-if="currentPlan"
+						:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+						:plan="currentPlan"
+					/>
+					<div v-if="displayedQueueRows.length" ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
 						<Draggable
 							:id="queueListId"
 							:model-value="visibleQueueRows"
