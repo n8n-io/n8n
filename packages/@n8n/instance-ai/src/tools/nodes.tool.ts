@@ -51,7 +51,8 @@ const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 const MODULE_NODE_TYPES_ARRAY_DESCRIPTION =
-	'Max 5. A module id ("notion") or an action id ("notion.databasePage.getAll") returns the node module. For other split nodes, pass the object form with resource/operation (or mode).';
+	'Max 5. A module id ("notion") or an action id ("notion.databasePage.getAll") returns the module. For other split nodes, pass the object form with resource/operation (or mode).';
+const MODULE_QUERY_DESCRIPTION = 'Search text, e.g. "slack" or "notion get many pages"';
 const GATEWAY_SEARCH_DESCRIPTION =
 	'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.';
 
@@ -97,24 +98,32 @@ const searchAction = z.object({
 		.describe('Maximum number of results to return (default: 10)'),
 });
 
+// Node contracts: the flag-on variants below keep every action and field and use shorter text.
+const moduleListAction = listAction.extend({
+	action: listAction.shape.action.describe('List available node types.'),
+	query: listAction.shape.query.describe(MODULE_QUERY_DESCRIPTION),
+	gatewayCreditsOnly: listAction.shape.gatewayCreditsOnly.describe(
+		'True: return only nodes that run on Gateway credits (no API key). Use it when a task fits these services, e.g. web search, scraping, document parsing.',
+	),
+});
+
 const moduleSearchAction = searchAction.extend({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by service name and operation, e.g. "notion get many pages", or by AI connection type. ' +
-				'`nodeModules` holds the typed module of each service the query names: import it and call its actions. ' +
-				'`otherNodes` lists up to 3 other catalog nodes beside a module. ' +
-				'Without a module, `otherActions` lists related typed actions by id, and `results` lists nodes to use with `node({ type, version, parameters })`. ' +
+			'Search nodes by service and operation, e.g. "notion get many pages", or by AI connection type. ' +
+				'`nodeModules` holds the typed module of each service: import it and call its actions. ' +
 				'Pass `queries` to search for all services in one call.',
 		),
+	query: searchAction.shape.query.describe(MODULE_QUERY_DESCRIPTION),
+	connectionType: searchAction.shape.connectionType.describe('AI sub-node connection type'),
+	limit: searchAction.shape.limit.describe('Max results (default 10)'),
 	queries: z
 		.array(z.string())
 		.min(1)
 		.max(6)
 		.optional()
-		.describe(
-			'One short query per service, e.g. ["notion get many pages", "http request"]. Returns one result list per query.',
-		),
+		.describe('One short query per service, e.g. ["notion get many pages", "http request"]'),
 });
 
 const describeAction = z.object({
@@ -138,7 +147,7 @@ export const nodeRequestSchema = z.union([
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
 const moduleNodeRequestSchema = z.union([
-	z.string().describe(`${NODE_TYPE_ID_DESCRIPTION}, a module id, or an action id`),
+	z.string().describe('Node type ID, module id, or action id'),
 	nodeRequestObjectSchema,
 ]);
 
@@ -155,7 +164,7 @@ const moduleTypeDefinitionAction = z.object({
 	action: z
 		.literal('type-definition')
 		.describe(
-			"Get node definitions. A module id or an action id returns the module text: import it with `import { <id> } from '@n8n/nodes/<id>'`. Other nodes return TypeScript definitions.",
+			'Get node definitions. A module id or an action id returns the module text. Other nodes return TypeScript definitions.',
 		),
 	nodeTypes: z
 		.array(moduleNodeRequestSchema)
@@ -251,6 +260,45 @@ const executeAction = z.object({
 
 type ExecuteInput = z.infer<typeof executeAction>;
 
+const moduleSuggestedAction = suggestedAction.extend({
+	action: suggestedAction.shape.action.describe(
+		'Get curated nodes by category. Call first when the workflow fits a known category. The list is not complete: also consider nodes that run on Gateway credits.',
+	),
+});
+
+const moduleExploreResourcesAction = exploreResourcesAction.extend({
+	methodName: exploreResourcesAction.shape.methodName.describe(
+		'Method name from a @searchListMethod/@loadOptionsMethod annotation in the type definition. Never guess it.',
+	),
+	methodType: exploreResourcesAction.shape.methodType.describe(
+		'"listSearch" for @searchListMethod, "loadOptions" for @loadOptionsMethod',
+	),
+	filter: exploreResourcesAction.shape.filter.describe('Text to narrow results'),
+	paginationToken: exploreResourcesAction.shape.paginationToken.describe(
+		'Token from the previous call for more results',
+	),
+	currentNodeParameters: exploreResourcesAction.shape.currentNodeParameters.describe(
+		'Parameters for dependent lookups, e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }',
+	),
+});
+
+const moduleExecuteAction = executeAction.extend({
+	action: executeAction.shape.action.describe(
+		'Run one node standalone with real credentials and return its output items. Use it to learn an output shape or to test one node. ' +
+			'Take the type, version, and parameters from its type definition. Never guess them. ' +
+			'Side effects are real. Expressions that read other nodes do not resolve. Binary output returns as metadata.',
+	),
+	config: executeAction.shape.config
+		.extend({
+			parameters: executeAction.shape.config.shape.parameters.describe('Node parameters'),
+			credentials: executeAction.shape.config.shape.credentials.describe(
+				'Credentials by type, e.g. { slackApi: { id, name } }. When several fit, ask the user which one to use.',
+			),
+		})
+		.describe('Node config'),
+	input: executeAction.shape.input.describe('Input items (default: one empty item)'),
+});
+
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
@@ -258,25 +306,29 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-function buildFullInputSchema(
-	search: typeof searchAction | typeof moduleSearchAction,
-	typeDefinition: typeof typeDefinitionAction | typeof moduleTypeDefinitionAction,
-) {
-	return sanitizeInputSchema(
-		z.discriminatedUnion('action', [
-			listAction,
-			search,
-			describeAction,
-			typeDefinition,
-			suggestedAction,
-			exploreResourcesAction,
-			executeAction,
-		]),
-	);
-}
+const fullInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		listAction,
+		searchAction,
+		describeAction,
+		typeDefinitionAction,
+		suggestedAction,
+		exploreResourcesAction,
+		executeAction,
+	]),
+);
 
-const fullInputSchema = buildFullInputSchema(searchAction, typeDefinitionAction);
-const moduleFullInputSchema = buildFullInputSchema(moduleSearchAction, moduleTypeDefinitionAction);
+const moduleFullInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		moduleListAction,
+		moduleSearchAction,
+		describeAction,
+		moduleTypeDefinitionAction,
+		moduleSuggestedAction,
+		moduleExploreResourcesAction,
+		moduleExecuteAction,
+	]),
+);
 
 type FullInput = z.infer<typeof moduleFullInputSchema>;
 

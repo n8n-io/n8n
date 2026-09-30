@@ -2,11 +2,10 @@
 name: workflow-builder-contracts
 description: >-
   Load before calling build-workflow. Default path for all single-workflow
-  work: new workflows, edits, and repairs. Write typed TypeScript with
-  @n8n/workflow-sdk/next and pass it to build-workflow as sourceCode. Load
-  data-table-manager first when the workflow writes Data Tables. Load planning
-  only for several coordinated workflows. For one-off tasks that one node
-  execution can do, load one-off-operations and use nodes(action="execute").
+  work: new workflows, edits, and repairs. Load data-table-manager first when
+  the workflow writes Data Tables. Load planning only for several coordinated
+  workflows. For one-off tasks that one node execution can do, load
+  one-off-operations.
 recommended_tools:
   - build-workflow
   - workflows
@@ -25,19 +24,17 @@ visible output until the final step, unless blocked.
 ## Process
 
 1. Call `nodes(action="search")` ONCE with `queries`: one short query per
-   service, e.g. `["notion get many pages", "http request", "slack"]`.
-   `nodeModules` holds the typed module of each service that has one. Import
-   it and call its actions. Other nodes come back in `results`. Use them with
-   `node()`.
-2. Get the remaining definitions in ONE `nodes(action="type-definition")` call.
-   A module id (`notion`) or an action id returns the module text.
-3. Write the complete source. Call `build-workflow` with a stable `filePath`
-   (e.g. `src/workflows/main.workflow.ts`) and the source as `sourceCode`.
-4. The host writes the file and runs `tsc`. Errors come back as `file:line`.
-   Fix all of them. Pass the full source again, or edit the file with
+   service, e.g. `["notion get many pages", "http request", "slack"]`. Use the
+   returned `nodeModules`. Use nodes from `results` with `node()`.
+2. Get missing definitions in ONE `nodes(action="type-definition")` call.
+3. Call `build-workflow` with a stable `filePath`
+   (e.g. `src/workflows/main.workflow.ts`) and the complete source as
+   `sourceCode`.
+4. The build runs `tsc` and returns errors as `file:line`. Fix all of them.
+   Pass the full source again, or edit the file with
    `workspace_str_replace_file` and build with `filePath` only.
-5. After a successful build, if the output has `postBuildFlow.required: true`,
-   follow `postBuildFlow.instructions`.
+5. If the result has `postBuildFlow.required: true`, follow
+   `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
 make the smallest change, and build with the returned `filePath`.
@@ -45,12 +42,12 @@ make the smallest change, and build with the returned `filePath`.
 ## Imports and actions
 
 Import the flow API from `@n8n/workflow-sdk/next` and each module from
-`@n8n/nodes/<id>`. Typed actions: `notion.databasePage.getAll`,
-`httpRequest.get`, `httpRequest.send`, `googleSheets.sheet.read`,
-`googleSheets.sheet.append`, `googleSheets.sheet.appendOrUpdate`,
-`gmail.message.send`, `gmail.message.getAll`, `gmail.message.get`,
-`googleGemini.text.message`. Every action takes `name` and its input fields
-in one object.
+`@n8n/nodes/<id>` with the `import` line that search returns. Typed actions:
+`notion.databasePage.getAll`, `httpRequest.get`, `httpRequest.send`,
+`googleSheets.sheet.read`, `googleSheets.sheet.append`,
+`googleSheets.sheet.appendOrUpdate`, `gmail.message.send`,
+`gmail.message.getAll`, `gmail.message.get`, `googleGemini.text.message`.
+Every action takes `name` and its input fields in one object.
 
 ```ts
 import { workflow, manual } from '@n8n/workflow-sdk/next';
@@ -90,10 +87,10 @@ export default workflow(
   node fails on. `failed` items carry `error.message`.
 - `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
   makes new fields. `keep: 'all'` also keeps the input fields.
-- `node({ name, type, version, parameters })` adds a node without a module.
-  Take the parameters from its type definition. Its output is untyped. Pass
-  `sample` items to type it. Use `trigger({ name, type, version, parameters })`
-  for triggers other than `manual()`.
+- `node({ name, type, version, parameters })` adds a node without a module,
+  with parameters from its type definition. Pass `sample` items to type its
+  output. Use `trigger({ name, type, version, parameters })` for triggers
+  other than `manual()`.
 
 ## Lambdas
 
@@ -112,9 +109,8 @@ A lambda becomes an n8n expression that runs for each item.
 - Keep real values that the user gave or that you discovered. Never invent
   IDs, emails, or URLs. When a resource is unknown, write one clear
   placeholder string, e.g. `'<Notion tasks database ID>'`, and tell the user.
-- Do not write credentials in the source. When exactly one stored credential
-  fits a node, the build binds it and reports it in
-  `resolvedCredentialsByNode`. Otherwise it stays open for setup.
+- Do not write credentials in the source. The build binds the one stored
+  credential that fits a node. Other credentials stay open for setup.
 - Never ask for secrets.
 
 ## Workflow rules
@@ -124,10 +120,4 @@ A lambda becomes an n8n expression that runs for each item.
    `$('Node Name')` to read earlier data after it.
 3. With more than {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} top-level items,
    pass `groupingDecision: 'not_warranted'` with a `groupingReason`.
-
-## Verification and completion
-
-Build success is not proof. Say that a workflow works only after
-`verify-built-workflow` or `executions` ran the claimed path. Do not publish
-automatically. Finish with one sentence that names the workflow, what
-changed, and its ID. If setup is necessary, say so.
+4. Build success is not proof. Do not publish automatically.
