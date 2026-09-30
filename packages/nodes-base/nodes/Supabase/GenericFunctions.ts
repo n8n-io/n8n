@@ -36,24 +36,13 @@ function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions) {
 	return authentication === 'oAuth2' ? 'supabaseOAuth2Api' : 'supabaseApi';
 }
 
+// TODO: not throw but return undefined instead?
 function getProjectRef(context: IExecuteFunctions | ILoadOptionsFunctions) {
-	// Use { extractValue: true }? Or make it `options` instead of RLC?
 	const project = context.getNodeParameter('projectRef', 0);
-	let projectRef: string | undefined;
-	if (typeof project === 'string') projectRef = project;
-	if (
-		typeof project === 'object' &&
-		project !== null &&
-		'value' in project &&
-		typeof project.value === 'string'
-	) {
-		projectRef = project.value;
-	}
+	if (typeof project !== 'string' || !project) throw new UserError('Select a Supabase project');
+	if (!/^[a-z0-9]+$/.test(project)) throw new UserError('The Supabase project ID is invalid');
 
-	if (!projectRef) throw new UserError('Select a Supabase project');
-	if (!/^[a-z0-9]+$/.test(projectRef)) throw new UserError('The Supabase project ID is invalid');
-
-	return projectRef;
+	return project;
 }
 
 async function supabaseManagementApiRequest<T>(

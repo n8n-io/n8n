@@ -7,7 +7,6 @@ import type {
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -97,35 +96,35 @@ export class Supabase implements INodeType {
 				default: 'secretKey',
 			},
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Row',
+						value: 'row',
+					},
+				],
+				default: 'row',
+			},
+			...rowOperations,
+			{
 				displayName: 'Project Name or ID',
 				name: 'projectRef',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
 				required: true,
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				displayOptions: {
 					show: {
 						authentication: ['oAuth2'],
 					},
 				},
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select a project...',
-						typeOptions: {
-							searchListMethod: 'searchProjects',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						placeholder: 'abcdefghijklmnopqrst',
-					},
-				],
-				description: 'The Supabase project to use. Choose from the list, or specify an ID.',
+				default: '',
 			},
 			{
 				displayName: 'Use Custom Schema',
@@ -145,49 +144,19 @@ export class Supabase implements INodeType {
 				noDataExpression: false,
 				displayOptions: { show: { useCustomSchema: [true] } },
 			},
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Row',
-						value: 'row',
-					},
-				],
-				default: 'row',
-			},
-			...rowOperations,
 			...rowFields,
 		],
 	};
 
 	methods = {
-		listSearch: {
-			async searchProjects(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-			): Promise<INodeListSearchResult> {
-				const projects = await getSupabaseProjects.call(this);
-				const normalizedFilter = filter?.toLowerCase();
-
-				return {
-					results: projects
-						.filter(
-							(project) =>
-								!normalizedFilter ||
-								project.name.toLowerCase().includes(normalizedFilter) ||
-								project.ref.toLowerCase().includes(normalizedFilter),
-						)
-						.map((project) => ({
-							name: project.name,
-							value: project.ref,
-						})),
-				};
-			},
-		},
 		loadOptions: {
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const projects = await getSupabaseProjects.call(this);
+				return projects.map((project) => ({
+					name: project.name,
+					value: project.ref,
+				}));
+			},
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { paths } = await getApiDefinition.call(this);
