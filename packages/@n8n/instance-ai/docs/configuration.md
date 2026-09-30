@@ -264,7 +264,7 @@ INSTANCE_AI_BRAVE_SEARCH_API_KEY=BSA-xxx
 
 # With sandbox (n8n sandbox service)
 # CI can start it with:
-# pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
+# pnpm tsx packages/quality/environments/containers/start-sandbox.ts --network n8n-eval-net
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com

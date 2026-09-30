@@ -255,13 +255,13 @@ volatile request body.
 
 | File | Purpose |
 |------|---------|
-| `packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts` | Test fixtures — proxy setup, recording/replay orchestration |
+| `packages/quality/testing/playwright/tests/e2e/instance-ai/fixtures.ts` | Test fixtures — proxy setup, recording/replay orchestration |
 | `packages/@n8n/instance-ai/src/tracing/trace-replay.ts` | `TraceIndex`, `IdRemapper`, `TraceWriter`, JSONL parsing |
 | `packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts` | Tool wrapping — `replayWrapTools`, `recordWrapTools` |
 | `packages/@n8n/instance-ai/src/types.ts` | `InstanceAiTraceContext`, `TraceReplayMode` |
 | `packages/cli/src/modules/instance-ai/instance-ai.service.ts` | Trace mode initialization, shared state management |
 | `packages/cli/src/modules/instance-ai/instance-ai.controller.ts` | Test-only REST endpoints for trace delivery |
-| `packages/testing/containers/services/proxy.ts` | `ProxyServer` class (MockServer client) |
+| `packages/quality/environments/containers/services/proxy.ts` | `ProxyServer` class (MockServer client) |
 
 ### Test-Only Endpoints
 
@@ -323,7 +323,7 @@ stack entirely. Tests hit the real Anthropic API directly. This mode does
 **not** record proxy expectations.
 
 ```bash
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm test:local:instance-ai                  # full suite
 pnpm test:local:instance-ai --grep "preview" # single test
