@@ -229,6 +229,18 @@ export class WaitingWebhooks implements IWebhookManager {
 		return { valid, webhookPath };
 	}
 
+	/**
+	 * Removes the waiting token from the request's query so it never reaches
+	 * the resumed node's own output data.
+	 */
+	private stripTokenFromRequest(req: express.Request) {
+		delete req.query[WAITING_TOKEN_QUERY_PARAM];
+
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		url.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+		req.url = `${url.pathname}${url.search}`;
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -250,7 +262,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (execution?.data.resumeToken) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
-			const isSendAndWait = this.isSendAndWaitRequest(nodes, suffix);
+			// Send-and-wait node ids carried in the signature query value require HMAC validation too.
+			const effectiveSuffix = suffix ?? this.parseSignatureParam(req).webhookPath;
+			const isSendAndWait = this.isSendAndWaitRequest(nodes, effectiveSuffix);
 
 			// Send-and-wait uses HMAC to protect tamper-sensitive query params (e.g. approved=true).
 			// All other waiting URLs use a simple random token comparison.
@@ -267,6 +281,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				}
 				return { noWebhookResponse: true };
 			}
+			this.stripTokenFromRequest(req);
 			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;

@@ -519,6 +519,210 @@ describe('AuthService', () => {
 		});
 	});
 
+	describe('createAssetAuthMiddleware', () => {
+		const mockReq = () =>
+			mock<AuthenticatedRequest>({
+				cookies: {},
+				user: undefined,
+				browserId,
+			});
+		const res = mock<Response>();
+		const next = vi.fn() as NextFunction;
+
+		const tokenWithPayload = (payload: object, options: jwt.SignOptions = { expiresIn: '1h' }) =>
+			jwtService.sign(payload, options);
+
+		it('should 404 if no cookie is set', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+			expect(res.json).not.toHaveBeenCalled();
+		});
+
+		it('should 404 if the token signature does not verify', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = `${validToken}tampered`;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+			expect(res.clearCookie).not.toHaveBeenCalled();
+		});
+
+		it('should 404 if the token has expired', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token with an empty payload', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({});
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload has an id but no hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload has a hash but no id', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload id is not a string', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: 123, hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload hash is not a string', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123', hash: { value: 'x' } });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token without an expiry whose payload carries no id or hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ sub: '123', scope: 'mcp' }, {});
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should call next for a payload carrying a string id and hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123', hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		});
+
+		it('should call next for a valid token without any database query', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should call next for a token whose user is gone or whose session was invalidated', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			userRepository.findOne.mockResolvedValue(null);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		});
+
+		it('should call next with no cookie when preview mode is enabled', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).toHaveBeenCalled();
+				expect(res.sendStatus).not.toHaveBeenCalled();
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+
+		it('should call next with a cookie that fails the check when preview mode is enabled', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = `${validToken}tampered`;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).toHaveBeenCalled();
+				expect(res.sendStatus).not.toHaveBeenCalled();
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+
+		it('should 404 with no cookie when preview mode is unset', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			delete process.env.N8N_PREVIEW_MODE;
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).not.toHaveBeenCalled();
+				expect(res.sendStatus).toHaveBeenCalledWith(404);
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+	});
+
 	describe('issueCookie', () => {
 		const res = mock<Response>();
 		it('should issue a cookie with the correct options', () => {

@@ -15,7 +15,6 @@ import {
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nButton,
-	N8nTooltip,
 	type ActionDropdownItem,
 	type ResizeData,
 } from '@n8n/design-system';
@@ -46,6 +45,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useKeybindings } from '@/app/composables/useKeybindings';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
@@ -2616,6 +2617,17 @@ function onSwitchAgent(nextAgentId: string) {
 		query: isStandalonePreview.value ? {} : query,
 	});
 }
+
+useKeybindings({
+	ctrl_j: {
+		disabled: function isAiPanelShortcutDisabled() {
+			return !instanceAiAvailable.value;
+		},
+		run: toggleAiPanel,
+		/** Enables closing with command whilst panel input is focused */
+		allowInInputs: true,
+	},
+});
 </script>
 
 <template>
@@ -2664,7 +2676,10 @@ function onSwitchAgent(nextAgentId: string) {
 			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
 			:class="$style.aiToggleBar"
 		>
-			<N8nTooltip :content="locale.baseText('agents.builder.header.editWithAi')">
+			<KeyboardShortcutTooltip
+				:label="locale.baseText('agents.builder.header.editWithAi')"
+				:shortcut="{ metaKey: true, keys: ['J'] }"
+			>
 				<N8nButton
 					variant="subtle"
 					size="medium"
@@ -2678,7 +2693,7 @@ function onSwitchAgent(nextAgentId: string) {
 						<N8nAssistantIcon size="large" />
 					</template>
 				</N8nButton>
-			</N8nTooltip>
+			</KeyboardShortcutTooltip>
 		</div>
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill
@@ -2726,6 +2741,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:width="renderedSidePanelWidths.ai"
 					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
 					:max-width="720"
+					:default-width="460"
 					:supported-directions="['right']"
 					@resize="onAiPanelResize"
 				>
