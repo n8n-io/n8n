@@ -75,5 +75,48 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 
 			expect(warnings).toEqual([]);
 		});
+
+		it('warns when an open-ended JSON field does not declare required', () => {
+			const code = createNodeCode(`{
+				displayName: 'Configuration',
+				name: 'configuration',
+				type: 'json',
+				default: '{}',
+			}`);
+
+			expect(
+				lintNode(code, config).filter(
+					({ ruleId }) => ruleId === '@n8n/community-nodes/open-ended-node-fields',
+				),
+			).toHaveLength(1);
+		});
+
+		it('does not warn about required JSON fields', () => {
+			const code = createNodeCode(`{
+				displayName: 'Request Body',
+				name: 'body',
+				type: 'json',
+				required: true,
+				default: '{}',
+			}`);
+
+			expect(
+				lintNode(code, config).filter(
+					({ ruleId }) => ruleId === '@n8n/community-nodes/open-ended-node-fields',
+				),
+			).toEqual([]);
+		});
+
+		it('does not inspect classes that are not nodes', () => {
+			const code = `class Helper {
+				description = { properties: [{ type: 'json', required: false }] };
+			}`;
+
+			expect(
+				lintNode(code, config).filter(
+					({ ruleId }) => ruleId === '@n8n/community-nodes/open-ended-node-fields',
+				),
+			).toEqual([]);
+		});
 	},
 );
