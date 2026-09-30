@@ -31,7 +31,7 @@ type PendingWebhook = {
 	expectation: ResponseExpectation;
 	answer: IDeferredPromise<WebhookRunOutcome>;
 	/** Held so an answered run does not leave a timer behind for the whole hold. */
-	timer: NodeJS.Timeout;
+	timeoutTimer: NodeJS.Timeout;
 	/** Set when the subscription is ready. */
 	unsubscribe?: UnsubscribeExecutionResponse;
 	released: boolean;
@@ -114,7 +114,7 @@ export class EngineV2WebhookResponseRegistry {
 			executionId,
 			expectation,
 			answer: createDeferredPromise<WebhookRunOutcome>(),
-			timer: setTimeout(
+			timeoutTimer: setTimeout(
 				() => this.settle(pending, { status: 'timeout' }),
 				this.engineConfig.webhookResponseTimeout,
 			).unref(),
@@ -149,9 +149,9 @@ export class EngineV2WebhookResponseRegistry {
 		const subscription = receiver.receive(executionId, (received) =>
 			this.handle(received, pending),
 		);
-		let timeoutTimer: NodeJS.Timeout | undefined;
+		let subscribeTimeoutTimer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {
-			timeoutTimer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
+			subscribeTimeoutTimer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
 		});
 
 		let result: UnsubscribeExecutionResponse | 'timed-out';
@@ -161,7 +161,7 @@ export class EngineV2WebhookResponseRegistry {
 			this.release(pending);
 			throw error;
 		} finally {
-			clearTimeout(timeoutTimer);
+			clearTimeout(subscribeTimeoutTimer);
 		}
 
 		if (result === 'timed-out') {
@@ -177,13 +177,15 @@ export class EngineV2WebhookResponseRegistry {
 			);
 		}
 
+		const unsubscribe = result;
+
 		// The wait can settle while the subscription is still pending.
 		if (pending.released) {
-			result();
+			unsubscribe();
 			return;
 		}
 
-		pending.unsubscribe = result;
+		pending.unsubscribe = unsubscribe;
 	}
 
 	private handle(received: ExecutionResponse, pending: PendingWebhook): void {
@@ -214,7 +216,7 @@ export class EngineV2WebhookResponseRegistry {
 		if (pending.released) return;
 		pending.released = true;
 
-		clearTimeout(pending.timer);
+		clearTimeout(pending.timeoutTimer);
 		pending.unsubscribe?.();
 		this.pendingWebhooks.delete(pending.executionId);
 	}

@@ -1,5 +1,6 @@
 import type { ExecutionResponse, ResponseExpectation, StepSlots } from '@n8n/engine';
 import { decodeBufferBody } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 /** The last node that ran, as the `lastNode` response mode answers with. */
 export type LastNode = { nodeName: string; outputs: StepSlots };
@@ -40,17 +41,29 @@ export function toWebhookOutcome(
 		case 'ended': {
 			const { nodeName, outputs, error } = received.lastStep;
 
-			if (received.status === 'failed') {
-				// The step that ended a failed run is the one that failed, so its name
-				// and error are what the caller reports.
-				return { status: 'failed', nodeName, error };
-			}
+			switch (received.status) {
+				case 'failed':
+					// The step that ended a failed run is the one that failed, so its name
+					// and error are what the caller reports.
+					return { status: 'failed', nodeName, error };
 
-			return {
-				status: 'completed',
-				// A skipped or failed step carries nothing to answer with.
-				lastNode: outputs ? { nodeName, outputs } : undefined,
-			};
+				case 'completed':
+					return {
+						status: 'completed',
+						// A skipped or failed step carries nothing to answer with.
+						lastNode: outputs ? { nodeName, outputs } : undefined,
+					};
+
+				default: {
+					const exhaustive: never = received.status;
+					throw new UnexpectedError(`Unexpected run status: ${JSON.stringify(exhaustive)}`);
+				}
+			}
+		}
+
+		default: {
+			const exhaustive: never = received;
+			throw new UnexpectedError(`Unexpected response type: ${JSON.stringify(exhaustive)}`);
 		}
 	}
 }
