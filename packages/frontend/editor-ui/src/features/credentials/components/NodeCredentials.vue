@@ -1468,6 +1468,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:filter-method="setFilter"
 							:popper-class="$style.selectPopper"
 							:class="{
+								[$style.selectWithIcon]: !!selectedCredentialIcon(type.name),
 								[$style.selectWithDynamic]: isCredentialResolvable(type.name),
 								[$style.selectWithBalance]: showBalanceIndicator(type.name),
 							}"
@@ -1775,7 +1776,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		left: var(--credential-select-side-padding);
 	}
 
-	:global(.el-select .el-input.el-input--prefix .el-input__inner) {
+	// Element Plus does not update `el-input--prefix` when the prefix slot
+	// appears or disappears after mount, so key the padding on our own class.
+	:global(.el-select .el-input .el-input__inner) {
+		padding-left: var(--credential-select-side-padding);
+	}
+
+	.selectWithIcon :global(.el-select .el-input .el-input__inner) {
 		padding-left: var(--credential-select-label-padding);
 	}
 }
