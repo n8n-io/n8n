@@ -15,6 +15,9 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
+type EventBoundary = { dateTime?: string; date?: string; timeZone?: string };
+type CalendarEvent = { start?: EventBoundary; end?: EventBoundary };
+
 export class GoogleCalendarTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Calendar Trigger',
@@ -226,14 +229,30 @@ export class GoogleCalendarTrigger implements INodeType {
 				if (triggerOn === 'eventCancelled') {
 					events = events.filter((event: { status: string }) => event.status === 'cancelled');
 				}
-			} else if (triggerOn === 'eventStarted') {
-				events = events.filter((event: { start: { dateTime: string } }) =>
-					moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'),
-				);
-			} else if (triggerOn === 'eventEnded') {
-				events = events.filter((event: { end: { dateTime: string } }) =>
-					moment(event.end.dateTime).isBetween(startDate, endDate, null, '[]'),
-				);
+			} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
+				const getBoundary = (event: CalendarEvent) =>
+					triggerOn === 'eventStarted' ? event.start : event.end;
+				const needsCalendarTimeZone = events.some((event: CalendarEvent) => {
+					const boundary = getBoundary(event);
+					return !!boundary?.date && !boundary.dateTime && !boundary.timeZone;
+				});
+				const calendarTimeZone = needsCalendarTimeZone
+					? (await googleApiRequest.call(this, 'GET', `/calendar/v3/calendars/${calendarId}`))
+							.timeZone
+					: undefined;
+
+				events = events.filter((event: CalendarEvent) => {
+					const boundary = getBoundary(event);
+					if (boundary?.dateTime) {
+						return moment(boundary.dateTime).isBetween(startDate, endDate, null, '[]');
+					}
+					if (boundary?.date) {
+						return moment
+							.tz(boundary.date, boundary.timeZone || calendarTimeZone || this.getTimezone())
+							.isBetween(startDate, endDate, null, '[]');
+					}
+					return false;
+				});
 			}
 		}
 
