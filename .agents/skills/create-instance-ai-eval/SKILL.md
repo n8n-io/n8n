@@ -712,8 +712,9 @@ Both are natural-language assertions graded by the same Sonnet judge, and each
   They run everywhere, including prebuilt/MCP runs (no transcript needed).
 - **`processExpectations`** — **how the agent behaved during the build**, judged
   from the transcript. Assert clarifying questions asked (or not re-asked),
-  tool-call behaviour, plan/approval handling, batching, honouring a correction,
-  ordering. They need a transcript, so they're **skipped in prebuilt/MCP runs**.
+  user-visible behaviour, plan/approval handling, batching, honouring a
+  correction, ordering. Do not assert internal mechanics such as sub-agents or
+  tool names (see "Keep expectations free of internal mechanics"). They need a transcript, so they're **skipped in prebuilt/MCP runs**.
 
 Rule of thumb: an assertion about *the artifact* is an outcome expectation; an
 assertion about *the conversation or the agent's choices along the way* is a
@@ -750,6 +751,54 @@ case, where the source and channel were **left unspecified**):
 
 Put intent the conversation only *implied* (a preferred but unstated channel) in
 `processExpectations`, not `outcomeExpectations`.
+
+## Keep expectations free of internal mechanics
+
+An expectation describes what the user or the artifact sees. It does not
+describe how Instance AI is built inside. The internal architecture changes:
+sub-agents, tool names, delegation, planning steps, and run ordering all move.
+An expectation that names them goes red when the design changes, although the
+behavior is still correct. It also stops proving the behavior: a build that
+solves the problem by another route fails it.
+
+**Do not name these in an expectation:**
+
+- Sub-agents, delegation, or hand-off ("the sub-agent runs ...", "the
+  orchestrator delegates ...").
+- Internal tool names or call counts ("calls `build-agent`", "calls
+  `search-nodes` twice").
+- Internal stages, task lists, or step order that the user cannot see.
+- Which component produced a result.
+
+**Do name these:**
+
+- What the user sees in the conversation: the question asked, the plan shown
+  for approval, the claim in the final response.
+- What the artifact contains: the workflow or Agent, its configuration, and
+  how it behaves.
+- A user-visible sequence, only when the user asked for it ("asks before it
+  builds").
+
+Rewrite test. Delete the internal term. State the result the term produced.
+
+| ❌ mechanical | ✅ intent |
+|---|---|
+| "The sub-agent runs the workflow before it reports success" | "The final response reports only results that the build verified; it does not claim an untested step works" |
+| "The orchestrator calls `ask-user` before delegating" | "The agent asks for the missing Slack channel before it builds, and does not guess one" |
+| "The builder calls `search-nodes` for the trigger" | "The workflow starts from a trigger that matches the requested schedule" |
+
+Second test. Imagine the internals are replaced by one agent with different
+tools. A correct build must still pass. If the expectation would fail or become
+meaningless, rewrite it.
+
+Some mechanics are a legitimate subject: a case whose purpose is to guard a
+specific tool contract (for example, a regression in how a tool reports an
+error). Keep these rare. State the reason in `description`. Do not mix them with
+intent expectations in the same case.
+
+**Calibration steps are not expectations.** Reading the transcript to confirm
+that a build ran, or that a sub-agent was reached, is a good calibration check.
+Keep it in your own run notes. Do not copy it into the case JSON.
 
 ## Robust design vs harness flakiness
 
