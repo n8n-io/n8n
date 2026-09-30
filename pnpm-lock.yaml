@@ -1807,6 +1807,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../backend-common
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -1837,6 +1840,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
