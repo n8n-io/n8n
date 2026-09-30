@@ -163,6 +163,28 @@ export class MicrosoftSharePointTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				required: true,
+				default: ['changed', 'deleted'],
+				description: 'Which changes in the library start the workflow',
+				options: [
+					{
+						name: 'Changed',
+						value: 'changed',
+						description:
+							"A file was added, edited, renamed, or moved. Graph reports each item's latest state rather than every change, so a new file and an edited one arrive the same way.",
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+						description:
+							'A file was deleted. Graph drops most fields from a deletion entry, so it carries little beyond the ID.',
+					},
+				],
+			},
 		],
 	};
 
