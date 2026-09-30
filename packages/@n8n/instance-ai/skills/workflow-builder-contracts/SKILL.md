@@ -67,15 +67,35 @@ pass `folderPath`.
 ## Nodes
 
 Write a node that has a contract with `action`, exactly as the contract view
-shows:
+shows. A complete source has this form:
 
 ```ts
+import { workflow, trigger, action, newCredential, expr } from '@n8n/workflow-sdk';
+
+const start = trigger({
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: { name: 'Start' },
+});
+
 const pages = action('notion.databasePage.getAll', {
   name: 'Get Tasks',
   parameters: { /* the contract input */ },
   credentials: { notionApi: newCredential('Notion') },
 });
+
+const report = action('httpRequest.request', {
+  name: 'Post Report',
+  parameters: { method: 'POST', url: 'https://…', body: { kind: 'json', json: { id: expr('{{ $json.id }}') } } },
+});
+
+export default workflow('tasks-report', 'Tasks Report').add(start).to(pages).to(report);
 ```
+
+The host parses a subset of JavaScript. Do not use arrow functions, type
+annotations, `as`, or loops. `trigger()` and `node()` take one object
+`{ type, version, config }`. The manual trigger above needs no type
+definition.
 
 Use `node()` and `trigger()` only for nodes without a contract, for example
 triggers, IF, Switch, Merge and Code. Use the type definition for their

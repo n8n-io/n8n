@@ -1075,6 +1075,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
+					hostSource: context.nodeContractsEnabled && sourceCode !== undefined,
 				});
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {

@@ -134,6 +134,8 @@ export function createSaveFailureRemediation(
 export function createSourceCompileRemediation(input: {
 	reason: WorkflowSourceCompileFailureReason;
 	editable: boolean;
+	/** The host compiled `sourceCode`; no workspace file exists to edit. */
+	hostSource?: boolean;
 }): RemediationMetadata {
 	if (!input.editable) {
 		return createRemediation({
@@ -150,8 +152,10 @@ export function createSourceCompileRemediation(input: {
 
 	return createCodeFixableRemediation({
 		reason: input.reason,
-		guidance: isWorkflowJsonFailure
-			? 'Edit the workspace WorkflowJSON file using filePath, then call build-workflow again with the same filePath.'
-			: 'Edit the workspace source file using filePath, then call build-workflow again with the same filePath.',
+		guidance: input.hostSource
+			? 'Fix every error in the source, then call build-workflow again with the same filePath and the complete corrected sourceCode.'
+			: isWorkflowJsonFailure
+				? 'Edit the workspace WorkflowJSON file using filePath, then call build-workflow again with the same filePath.'
+				: 'Edit the workspace source file using filePath, then call build-workflow again with the same filePath.',
 	});
 }
