@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  h_9c8f56e3400786 216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef9716c37dc6c5854018646e7d33c51bff1783ac",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
