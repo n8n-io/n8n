@@ -46,7 +46,6 @@ export const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid sort format, expected <columnName>:<asc/desc>',
-				path: ['sort'],
 			});
 			return z.NEVER;
 		}
@@ -61,7 +60,6 @@ export const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: errorMessage,
-				path: ['sortBy'],
 			});
 			return z.NEVER;
 		}
@@ -71,7 +69,6 @@ export const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid sort direction',
-				path: ['sort'],
 			});
 
 			return z.NEVER;

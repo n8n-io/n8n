@@ -968,7 +968,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
-			'request/query/sortBy/sort Invalid sort format, expected <columnName>:<asc/desc>',
+			'request/query/sortBy Invalid sort format, expected <columnName>:<asc/desc>',
 		);
 	});
 
@@ -983,7 +983,7 @@ describe('GET /data-tables/:dataTableId/rows', () => {
 			.query({ sortBy: 'name:invalid' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('request/query/sortBy/sort Invalid sort direction');
+		expect(response.body.message).toBe('request/query/sortBy Invalid sort direction');
 	});
 
 	test('should reject an unknown sort column', async () => {
