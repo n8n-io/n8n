@@ -50,7 +50,7 @@ const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 const MODULE_NODE_TYPES_ARRAY_DESCRIPTION =
-	'Every node you need, in one call (max 5). A module id ("notion") or an action id ("notion.databasePage.getAll") returns the node module. For other split nodes, pass the object form with resource/operation (or mode).';
+	'Max 5. A module id ("notion") or an action id ("notion.databasePage.getAll") returns the node module. For other split nodes, pass the object form with resource/operation (or mode).';
 const GATEWAY_SEARCH_DESCRIPTION =
 	'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.';
 
@@ -100,12 +100,11 @@ const moduleSearchAction = searchAction.extend({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use a short service name and the operation, e.g. "notion get many pages" or "http request". ' +
-				'A service with a typed node module returns it in `nodeModules`: import it and call its actions. `otherActions` lists other typed actions by id. ' +
-				'When a module covers the query, `otherNodes` lists up to 3 other catalog nodes as `<nodeType>: <displayName>`. Search one by name to get its details. ' +
-				'Otherwise `results` lists nodes without a module: use them with `node({ type, version, parameters })`. ' +
-				'To find every service a workflow needs in one call, pass `queries` instead of `query`. ' +
-				GATEWAY_SEARCH_DESCRIPTION,
+			'Search node types by service name and operation, e.g. "notion get many pages", or by AI connection type. ' +
+				'`nodeModules` holds the typed module of each service the query names: import it and call its actions. ' +
+				'`otherNodes` lists up to 3 other catalog nodes beside a module. ' +
+				'Without a module, `otherActions` lists related typed actions by id, and `results` lists nodes to use with `node({ type, version, parameters })`. ' +
+				'Pass `queries` to search for all services in one call.',
 		),
 	queries: z
 		.array(z.string())
@@ -138,11 +137,7 @@ export const nodeRequestSchema = z.union([
 export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
 const moduleNodeRequestSchema = z.union([
-	z
-		.string()
-		.describe(
-			`${NODE_TYPE_ID_DESCRIPTION}, a module id such as "notion", or an action id such as "notion.databasePage.getAll"`,
-		),
+	z.string().describe(`${NODE_TYPE_ID_DESCRIPTION}, a module id, or an action id`),
 	nodeRequestObjectSchema,
 ]);
 
@@ -159,7 +154,7 @@ const moduleTypeDefinitionAction = z.object({
 	action: z
 		.literal('type-definition')
 		.describe(
-			"Get node definitions. Request every node you need in one call. A module id or an action id returns the node module text: import it with `import { <id> } from '@n8n/nodes/<id>'`. Other nodes return TypeScript definitions for `node({ type, version, parameters })`.",
+			"Get node definitions. A module id or an action id returns the module text: import it with `import { <id> } from '@n8n/nodes/<id>'`. Other nodes return TypeScript definitions.",
 		),
 	nodeTypes: z
 		.array(moduleNodeRequestSchema)
@@ -840,9 +835,8 @@ export function createNodesTool(
 			.description(
 				context.nodeContractsEnabled
 					? "Read node definitions or query real resources for a node's RLC parameters " +
-							'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` for ' +
-							'every node you need in one call. `explore-resources` needs the method name ' +
-							'from a `@searchListMethod` / `@loadOptionsMethod` annotation in a TypeScript definition.'
+							'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` for all nodes in one call. ' +
+							'`explore-resources` needs the method name from a `@searchListMethod` / `@loadOptionsMethod` annotation in a TypeScript definition.'
 					: "Read node type definitions or query real resources for a node's RLC parameters " +
 							'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
 							'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
@@ -863,7 +857,7 @@ export function createNodesTool(
 	return new Tool('nodes')
 		.description(
 			context.nodeContractsEnabled
-				? 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery (it returns typed node modules inline), `type-definition` for each other node you configure (all of them in one call), `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).'
+				? 'Work with n8n node types. Use `suggested` for known workflow categories, `search` to find services and their typed node modules, `type-definition` for all other nodes you configure in one call, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).'
 				: 'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
 		.input(context.nodeContractsEnabled ? moduleFullInputSchema : fullInputSchema)

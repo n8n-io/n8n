@@ -1,7 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { z } from 'zod';
 
-import { withBuildVerification } from '../build-and-verify';
+import { asReverifyTool, withBuildVerification } from '../build-and-verify';
 
 const tool = (name: string, handler: BuiltTool['handler']): BuiltTool => ({
 	name,
@@ -18,9 +18,26 @@ const ready = {
 	setupRequirement: { status: 'not_required' },
 };
 
+describe('asReverifyTool', () => {
+	it('describes a re-run and keeps the input schema and handler', () => {
+		const handler = vi.fn();
+		const verify = { ...tool('verify-built-workflow', handler), inputSchema: z.object({}) };
+		const reverify = asReverifyTool(verify);
+		expect(reverify.description).toMatch(/^Re-run verification/);
+		expect(reverify.description).toContain('`inputData` shape depends on the trigger type');
+		expect(reverify).toMatchObject({
+			name: 'verify-built-workflow',
+			inputSchema: verify.inputSchema,
+			handler,
+		});
+	});
+});
+
 describe('withBuildVerification', () => {
 	it('verifies a ready build in the same call', async () => {
-		const verify = vi.fn(async () => await Promise.resolve({ success: true, claim: { level: 'partial' } }));
+		const verify = vi.fn(
+			async () => await Promise.resolve({ success: true, claim: { level: 'partial' } }),
+		);
 		const composite = withBuildVerification(
 			tool('build-workflow', async () => await Promise.resolve(ready)),
 			tool('verify-built-workflow', verify),

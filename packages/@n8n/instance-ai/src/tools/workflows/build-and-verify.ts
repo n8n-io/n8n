@@ -24,6 +24,16 @@ function isReadyBuild(result: unknown): result is ReadyBuild & Record<string, un
 const VERIFIED_NOTE =
 	'Verification already ran for this build; its result is in `verification`. Do not call verify-built-workflow again unless you change the workflow.';
 
+const REVERIFY_DESCRIPTION =
+	'Re-run verification after a change, or with different inputData or fixtures. build-workflow already verifies each successful build. ' +
+	'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
+	'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.';
+
+/** Node contracts: the build already verifies, so the verify tool only describes a re-run. */
+export function asReverifyTool(verify: BuiltTool): BuiltTool {
+	return { ...verify, description: REVERIFY_DESCRIPTION };
+}
+
 /**
  * Node contracts: a successful build also runs verification, so the response carries the next
  * state and the agent saves a round trip. The verify tool stays available for later runs.

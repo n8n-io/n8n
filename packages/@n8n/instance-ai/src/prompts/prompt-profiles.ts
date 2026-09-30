@@ -36,6 +36,7 @@ export const NODE_CONTRACTS_SKILL_VARIANT: SkillVariant = {
 	id: 'node-contracts@1',
 	changes: [
 		{ skillId: 'workflow-builder', appendFrom: 'workflow-builder-contracts', replace: true },
+		{ skillId: 'post-build-flow', appendFrom: 'post-build-flow-contracts', replace: true },
 	],
 };
 

@@ -92,11 +92,13 @@ export function findNextActions(query: string): Action[] {
 		.map(({ action }) => action);
 }
 
-const MAX_OTHER_ACTIONS = 5;
+const MAX_OTHER_ACTIONS = 3;
 
 /**
  * One search query: the nodes whose module the query names, and one-line rows for other
  * matching actions. `coveredNodes` are module nodes that the catalog search found.
+ * When the query names a module, other actions match only generic words such as "get",
+ * so they are not listed.
  */
 export function searchNextActions(query: string, coveredNodes: readonly string[] = []) {
 	const terms = termsOf(query);
@@ -108,9 +110,9 @@ export function searchNextActions(query: string, coveredNodes: readonly string[]
 				.map((action) => action.node.id),
 		),
 	];
-	const others = [...new Set([...matches, ...coveredNodes.flatMap(actionsOfNode)])].filter(
-		(action) => !nodes.includes(action.node.id),
-	);
+	const others = nodes.length
+		? []
+		: [...new Set([...matches, ...coveredNodes.flatMap(actionsOfNode)])];
 	return { nodes, otherActions: others.slice(0, MAX_OTHER_ACTIONS).map(actionRow) };
 }
 

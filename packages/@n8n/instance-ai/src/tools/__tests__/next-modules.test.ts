@@ -63,6 +63,13 @@ describe('next-modules', () => {
 		);
 	});
 
+	it('lists no other actions when the query names a module node', () => {
+		expect(searchNextActions('notion get many pages', ['gmail', 'googleSheets'])).toEqual({
+			nodes: ['notion'],
+			otherActions: [],
+		});
+	});
+
 	it('lists the actions of module nodes that the catalog search found', () => {
 		expect(searchNextActions('tasks', ['notion']).otherActions).toEqual([
 			'notion.databasePage.getAll: List pages of a Notion database, optionally filtered and sorted.',
