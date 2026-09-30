@@ -1,4 +1,4 @@
-import type { SelectRootEmits, SelectRootProps } from 'reka-ui';
+import type { SelectContentProps, SelectRootEmits, SelectRootProps } from 'reka-ui';
 
 import type { IconName } from '../../../components/N8nIcon/icons';
 
