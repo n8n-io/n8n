@@ -13,6 +13,7 @@ import type {
 	IRun,
 	INodeExecutionData,
 	INode,
+	INodeType,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -27,6 +28,7 @@ import {
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
@@ -37,6 +39,7 @@ import {
 	getWorkflowData,
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';
@@ -230,17 +233,31 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		describe('credential permission check routing', () => {
+			const nodeTypes = mockInstance(NodeTypes);
+			const workflowStaticDataService = mockInstance(WorkflowStaticDataService);
+			const nodeType = mock<INodeType>({ description: { properties: [] } });
+			const nodes: INode[] = [
+				{
+					id: 'trigger',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: {},
+				},
+			];
 			const subWorkflowData = () =>
 				mock<IWorkflowBase>({
 					id: 'sub-id',
 					name: 'Sub Workflow',
-					nodes: [],
+					nodes,
 					connections: {},
 					staticData: {},
 					settings: {},
 				});
 
 			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 				jest.mocked(credentialsPermissionChecker.check).mockClear();
 				jest.mocked(credentialsPermissionChecker.checkForUser).mockClear();
 				jest.mocked(WorkflowExecute).mockClear();
@@ -250,11 +267,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
-					mock<ExecuteWorkflowOptions>({
-						loadedWorkflowData: subWorkflowData(),
-						doNotWaitToFinish: false,
-						parentWorkflowId: 'parent-1',
-					}),
+					{ parentWorkflowId: 'parent-1' },
 				);
 
 				expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
@@ -282,15 +295,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
-					mock<ExecuteWorkflowOptions>({
-						loadedWorkflowData: subWorkflowData(),
-						doNotWaitToFinish: false,
-						parentWorkflowId: 'parent-1',
-					}),
+					{ parentWorkflowId: 'parent-1' },
 				);
 
-				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.check).toHaveBeenCalledWith('parent-1', nodes);
 				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+				expect(activeExecutions.add.mock.lastCall?.[0].workflowData.id).toBe('parent-1');
+				expect(processRunExecutionData.mock.lastCall?.[0].id).toBe('parent-1');
+			});
+
+			it('keeps the parent identity for nested inline sub-workflows', async () => {
+				await executeWorkflow(
+					{ code: subWorkflowData() },
+					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
+					{ parentWorkflowId: 'parent-1' },
+				);
+				const [integratedAdditionalData] = jest.mocked(WorkflowExecute).mock.calls[0];
+				const parentWorkflowId = processRunExecutionData.mock.lastCall?.[0].id;
+				if (typeof parentWorkflowId !== 'string') throw new Error('Expected a parent workflow ID');
+
+				await executeWorkflow({ code: subWorkflowData() }, integratedAdditionalData, {
+					parentWorkflowId,
+				});
+
+				expect(credentialsPermissionChecker.check).toHaveBeenNthCalledWith(1, 'parent-1', nodes);
+				expect(credentialsPermissionChecker.check).toHaveBeenNthCalledWith(2, 'parent-1', nodes);
+			});
+
+			it('preserves parent static-data persistence for inline definitions without an id', async () => {
+				await executeWorkflow(
+					{ code: mock<IWorkflowBase>({ ...subWorkflowData(), id: undefined }) },
+					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
+					{ parentWorkflowId: 'parent-1' },
+				);
+				const [integratedAdditionalData, , runExecutionData] =
+					jest.mocked(WorkflowExecute).mock.calls[0];
+				if (!integratedAdditionalData.hooks || !runExecutionData) {
+					throw new Error('Expected sub-workflow hooks and run data');
+				}
+				const staticData = { global: { lastProcessedId: 123 } };
+
+				await integratedAdditionalData.hooks.runHook('workflowExecuteAfter', [
+					{ ...runWithData, data: runExecutionData, mode: 'integrated' },
+					staticData,
+				]);
+
+				expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith(
+					'parent-1',
+					staticData,
+				);
 			});
 
 			it('preserves the triggering user in the sub-workflow additional data for inline sub-workflows so nested inline calls stay scoped to that user', async () => {
@@ -414,6 +467,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 	});
 
 	describe('getWorkflowData', () => {
+		it.each(['embedded-id', undefined])(
+			'uses the parent identity with inline id %s',
+			async (id) => {
+				const workflowCode = mock<IWorkflowBase>({ id, nodes: [], connections: {} });
+
+				const result = await getWorkflowData({ code: workflowCode }, 'parent-workflow-id');
+
+				expect(result.id).toBe('parent-workflow-id');
+			},
+		);
+
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
 		});
@@ -556,7 +620,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			const result = await getWorkflowData({ code: workflowCode }, 'parent-workflow-id');
 
-			expect(result).toEqual(workflowCode);
+			expect(result.id).toBe('parent-workflow-id');
+			expect(result.nodes).toEqual(workflowCode.nodes);
 			expect(workflowRepository.get).not.toHaveBeenCalled();
 		});
 

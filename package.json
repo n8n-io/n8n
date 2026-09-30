@@ -195,8 +195,7 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
-      "lodash@4.18.0": "patches/lodash@4.18.0.patch",
-      "@n8n/tournament@1.9.1": "patches/@n8n__tournament@1.9.1.patch"
+      "lodash@4.18.0": "patches/lodash@4.18.0.patch"
     }
   }
 }

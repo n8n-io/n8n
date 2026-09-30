@@ -6,7 +6,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
@@ -146,6 +146,55 @@ export class AuthService {
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	/**
+	 * Gates a route on the auth cookie's signature and expiry, without the revocation
+	 * or user lookups, so a request costs no database query.
+	 */
+	createAssetAuthMiddleware() {
+		return (req: Request, res: Response, next: NextFunction) => {
+			const token = this.getAssetAuthToken(req);
+
+			if (token) {
+				try {
+					const payload = this.jwtService.verify<unknown>(token, { algorithms: ['HS256'] });
+					if (this.isAuthJwtPayload(payload)) {
+						next();
+						return;
+					}
+				} catch {}
+			}
+
+			if (process.env.N8N_PREVIEW_MODE === 'true') {
+				next();
+				return;
+			}
+
+			res.sendStatus(404);
+		};
+	}
+
+	/**
+	 * Every JWT this instance signs shares one secret, so a valid signature alone does
+	 * not make a token an auth cookie. Only that cookie carries both `id` and `hash`.
+	 */
+	private isAuthJwtPayload(payload: unknown): payload is AuthJwtPayload {
+		return (
+			typeof payload === 'object' &&
+			payload !== null &&
+			typeof (payload as AuthJwtPayload).id === 'string' &&
+			typeof (payload as AuthJwtPayload).hash === 'string'
+		);
+	}
+
+	private getAssetAuthToken(req: Request) {
+		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
+		if (typeof req.cookies === 'object' && req.cookies !== null) {
+			const cookies = req.cookies as Record<string, string | undefined>;
+			return cookies[AUTH_COOKIE_NAME];
+		}
+		return undefined;
 	}
 
 	clearCookie(res: Response) {

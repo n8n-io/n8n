@@ -1,5 +1,5 @@
 import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, isDomainAllowed } from 'n8n-workflow';
 
 import { createHmac, timingSafeEqual } from 'crypto';
 
@@ -33,10 +33,30 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 	return channel.channel.name;
 }
 
+// Slack serves file downloads only from these hosts.
+const SLACK_FILE_DOMAINS = '*.slack.com, *.slack-gov.com';
+
+function isSlackFileUrl(url: string): boolean {
+	try {
+		return (
+			new URL(url).protocol === 'https:' &&
+			isDomainAllowed(url, { allowedDomains: SLACK_FILE_DOMAINS })
+		);
+	} catch {
+		return false;
+	}
+}
+
 export async function downloadFile(this: IWebhookFunctions, url: string): Promise<any> {
+	if (!isSlackFileUrl(url)) {
+		throw new NodeOperationError(this.getNode(), 'The file URL is not an HTTPS Slack file URL');
+	}
+
 	let options: IHttpRequestOptions = {
 		method: 'GET',
 		url,
+		allowedDomains: SLACK_FILE_DOMAINS,
+		sendCredentialsOnCrossOriginRedirect: false,
 	};
 
 	const requestOptions = {
