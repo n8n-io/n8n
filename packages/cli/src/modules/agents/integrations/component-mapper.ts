@@ -489,6 +489,16 @@ function selectComponentId(
 	runId: string,
 	toolCallId: string,
 ): string {
-	if (component.id?.startsWith('resume:')) return component.id;
+	// Only an id matching the exact generated shape for *this* run/tool call
+	// passes through — a user-supplied id that merely starts with "resume:"
+	// (a different run, or not one of ours at all) would otherwise be parsed
+	// as button data and resume with the wrong shape.
+	const generatedResumePrefix = `resume:${runId}:${toolCallId}:`;
+	if (
+		component.id?.startsWith(generatedResumePrefix) &&
+		/^\d+$/.test(component.id.slice(generatedResumePrefix.length))
+	) {
+		return component.id;
+	}
 	return `ri-sel:${component.id ?? kind}:${runId}:${toolCallId}`;
 }
