@@ -1,5 +1,6 @@
 import {
 	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
+	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
 	type InstanceAiThreadTab,
 	type InstanceAiThreadTabRef,
 	type InstanceAiThreadTabsState,
@@ -26,6 +27,32 @@ type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;
 
 function tabKey(tab: InstanceAiThreadTabRef) {
 	return `${tab.type}:${tab.id}`;
+}
+
+/**
+ * Close the leftmost tabs over the stored limit, but never a tab in `keepKeys`.
+ * A state over the limit fails to save, and the tabs would be lost on reload.
+ */
+function fitWithinTabLimit(layout: TabsLayout, keepKeys: Set<string>): TabsLayout {
+	if (layout.tabs.length <= MAX_INSTANCE_AI_THREAD_OPEN_TABS) return layout;
+	const tabs = [...layout.tabs];
+	const dropped: InstanceAiThreadTabRef[] = [];
+	for (let i = 0; i < tabs.length && tabs.length > MAX_INSTANCE_AI_THREAD_OPEN_TABS; ) {
+		if (keepKeys.has(tabKey(tabs[i]))) {
+			i++;
+			continue;
+		}
+		const [tab] = tabs.splice(i, 1);
+		dropped.push({ type: tab.type, id: tab.id });
+	}
+	const droppedKeys = new Set(dropped.map(tabKey));
+	return {
+		tabs,
+		closedTabs: [
+			...layout.closedTabs.filter((closed) => !droppedKeys.has(tabKey(closed))),
+			...dropped,
+		].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
+	};
 }
 
 function toStoredTab(tab: ArtifactTab): InstanceAiThreadTab {
@@ -143,18 +170,41 @@ export function useOpenArtifactTabs({
 		return true;
 	}
 
+	/**
+	 * Open a tab for any resource, for example one picked from the project.
+	 * The tab opens at the end, or stays where it is when it is open already.
+	 */
+	function openTab(tab: ArtifactTab) {
+		const current = currentLayout();
+		const key = tabKey(tab);
+		const isOpen = openTabs.value.some((open) => tabKey(open) === key);
+		layout.value = fitWithinTabLimit(
+			{
+				tabs: isOpen ? current.tabs : [...openTabs.value.map(toStoredTab), toStoredTab(tab)],
+				closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
+			},
+			new Set([key]),
+		);
+	}
+
 	// --- Storage ---
 
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 	let pendingActiveTabId: string | undefined;
 
 	function buildState(activeTabId: string | undefined): InstanceAiThreadTabsState {
-		const tabs = openTabs.value;
-		const active = tabs.find((tab) => tab.id === activeTabId);
+		const active = openTabs.value.find((tab) => tab.id === activeTabId);
+		// New artifacts join the tabs on their own, so the tabs can pass the limit here too.
+		const current = {
+			tabs: openTabs.value.map(toStoredTab),
+			closedTabs: currentLayout().closedTabs,
+		};
+		const fitted = fitWithinTabLimit(current, new Set(active ? [tabKey(active)] : []));
+		if (fitted !== current) layout.value = fitted;
 		const isPreviewOpen = previewOpen?.();
 		return {
-			tabs: tabs.map(toStoredTab),
-			closedTabs: currentLayout().closedTabs,
+			tabs: fitted.tabs,
+			closedTabs: fitted.closedTabs,
 			activeTab: active ? { type: active.type, id: active.id } : null,
 			...(isPreviewOpen !== undefined ? { previewOpen: isPreviewOpen } : {}),
 		};
@@ -216,6 +266,7 @@ export function useOpenArtifactTabs({
 		storedPreviewOpen,
 		closeTab,
 		reopenTab,
+		openTab,
 		saveTabs,
 	};
 }

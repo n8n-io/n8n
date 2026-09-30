@@ -156,6 +156,65 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.reopenTab('wf-1')).toBe(false);
 	});
 
+	it('opens a picked resource at the end and removes it from the closed tabs', () => {
+		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')]);
+		tabs.closeTab('wf-2');
+
+		tabs.openTab(dataTableTab('dt-1'));
+		tabs.openTab(workflowTab('wf-2'));
+
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'dt-1', 'wf-2']);
+		expect(tabs.openTabs.value[1]).toEqual(dataTableTab('dt-1'));
+		// reopenTab only returns false once wf-2 is no longer closed.
+		expect(tabs.reopenTab('wf-2')).toBe(false);
+	});
+
+	it('closes the leftmost tab when a picked resource passes the tab limit', () => {
+		const artifacts = Array.from({ length: 100 }, (_, index) => workflowTab(`wf-${index}`));
+		const { tabs } = setup(artifacts);
+
+		tabs.openTab(dataTableTab('dt-new'));
+
+		expect(tabs.openTabs.value).toHaveLength(100);
+		expect(ids(tabs.openTabs.value)[0]).toBe('wf-1');
+		expect(ids(tabs.openTabs.value).at(-1)).toBe('dt-new');
+		// The closed tab stays closed instead of joining the end again.
+		expect(ids(tabs.openTabs.value)).not.toContain('wf-0');
+	});
+
+	it('keeps the place of a picked resource that is open already', () => {
+		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')]);
+
+		tabs.openTab(workflowTab('wf-1'));
+
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2']);
+	});
+
+	it('saves at most 100 tabs, and keeps the active one, when new artifacts pass the limit', async () => {
+		const { storage, save, finishLoad } = createStorage();
+		const artifacts = ref(Array.from({ length: 100 }, (_, index) => workflowTab(`wf-${index}`)));
+		scope = effectScope();
+		const tabs = scope.run(() =>
+			useOpenArtifactTabs({ artifactTabs: () => artifacts.value, storage }),
+		)!;
+		await finishLoad(null);
+		tabs.saveTabs('wf-0');
+		await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+		save.mockClear();
+
+		// The agent builds two more workflows, so the tabs pass the limit on their own.
+		artifacts.value = [...artifacts.value, workflowTab('wf-100'), workflowTab('wf-101')];
+		tabs.saveTabs('wf-0');
+		await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+
+		const saved = save.mock.calls[0][0];
+		expect(saved.tabs).toHaveLength(100);
+		expect(saved.tabs.map((tab) => tab.id)).toContain('wf-0');
+		expect(saved.tabs.map((tab) => tab.id)).not.toContain('wf-1');
+		expect(saved.activeTab).toEqual({ type: 'workflow', id: 'wf-0' });
+		expect(tabs.openTabs.value.map((tab) => tab.id)).toEqual(saved.tabs.map((tab) => tab.id));
+	});
+
 	it('waits for the save delay and sends one save for many changes', async () => {
 		const { storage, save, finishLoad } = createStorage();
 		const { tabs } = setup([workflowTab('wf-1'), workflowTab('wf-2')], storage);
