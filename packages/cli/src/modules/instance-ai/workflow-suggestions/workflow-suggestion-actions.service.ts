@@ -68,57 +68,65 @@ export class WorkflowSuggestionActionsService {
 			);
 			let applied: WorkflowSuggestionAppliedVersion | undefined;
 			try {
-				const update = await this.workflows.prepareUpdate(
+				await this.workflows.update(
 					user,
 					Object.assign(new WorkflowEntity(), structuredClone(suggestion.payload.candidate)),
 					workflowId,
-					{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
+					{
+						expectedChecksum: suggestion.expectedBaseline.checksum,
+						source: 'n8n-ai',
+						guardedUpdate: {
+							beforeSave: async (ctx, prepared) => {
+								const target = await this.suggestions.readWorkflowTargetForApply(workflowId, ctx);
+								const current = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
+								if (
+									current.state !== 'pending' ||
+									!target.workflow ||
+									!(await this.service.matchesBaseline(
+										current,
+										target.workflow,
+										target.projectId,
+										target.publicationId,
+									))
+								) {
+									throw new ConflictError('The suggestion no longer matches the workflow.');
+								}
+								const status = await this.publication.getStatus(workflowId, ctx);
+								if (
+									status.status !== 'published' ||
+									status.liveVersionId !== current.expectedBaseline.publishedVersionId
+								) {
+									throw new ConflictError('The original workflow is no longer fully published.');
+								}
+								const reviewed = { ...current.payload.original, ...current.payload.candidate };
+								if (
+									(await calculateWorkflowChecksum(prepared)) !==
+										(await calculateWorkflowChecksum(reviewed)) ||
+									!isEqual(prepared.staticData, target.workflow.staticData) ||
+									prepared.versionId === target.workflow.versionId
+								) {
+									throw new ConflictError('Workflow save preparation changed the reviewed fix.');
+								}
+							},
+							afterSave: async (ctx, saved) => {
+								applied = {
+									versionId: saved.versionId,
+									checksum: await calculateWorkflowChecksum(saved),
+									action,
+									actorId: user.id,
+								};
+								const closed = await this.suggestions.closePending(
+									suggestion,
+									'applied',
+									user.id,
+									ctx,
+									applied,
+								);
+								if (!closed) throw new ConflictError('The suggestion has already closed.');
+							},
+						},
+					},
 				);
-				const saved = await this.txRunner.run({}, async (ctx) => {
-					const target = await this.suggestions.readWorkflowTargetForApply(workflowId, ctx);
-					const current = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
-					if (
-						current.state !== 'pending' ||
-						!target.workflow ||
-						!(await this.service.matchesBaseline(
-							current,
-							target.workflow,
-							target.projectId,
-							target.publicationId,
-						))
-					) {
-						throw new ConflictError('The suggestion no longer matches the workflow.');
-					}
-					const status = await this.publication.getStatus(workflowId, ctx);
-					if (
-						status.status !== 'published' ||
-						status.liveVersionId !== current.expectedBaseline.publishedVersionId
-					) {
-						throw new ConflictError('The original workflow is no longer fully published.');
-					}
-
-					const saved = await update.save(ctx);
-					const checksum = await calculateWorkflowChecksum(saved);
-					const reviewed = { ...current.payload.original, ...current.payload.candidate };
-					if (
-						checksum !== (await calculateWorkflowChecksum(reviewed)) ||
-						!isEqual(saved.staticData, target.workflow.staticData) ||
-						saved.versionId === target.workflow.versionId
-					) {
-						throw new ConflictError('Workflow save preparation changed the reviewed fix.');
-					}
-					applied = { versionId: saved.versionId, checksum, action, actorId: user.id };
-					const closed = await this.suggestions.closePending(
-						suggestion,
-						'applied',
-						user.id,
-						ctx,
-						applied,
-					);
-					if (!closed) throw new ConflictError('The suggestion has already closed.');
-					return saved;
-				});
-				await update.afterSave(saved);
 			} catch (error) {
 				// A committed result also survives an after-update hook or a response failure.
 				const current = await this.suggestions.getSuggestion(suggestionId, scope);
