@@ -22,7 +22,8 @@ import {
  * `disconnected` for a channel that isn't set up at all, and `unknown` when we
  * failed to ask.
  */
-type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
+export type AgentChannelClientStatus = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
+type Status = AgentChannelClientStatus;
 
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
@@ -38,6 +39,8 @@ interface AgentIntegrationStatusState {
 	 * two have different lifetimes and are shown in different places.
 	 */
 	runtimeErrors: Ref<Record<string, string>>;
+	/** When a channel last received a message, from the server; configuration never knows it. */
+	lastVerifiedAt: Ref<Record<string, string>>;
 	/**
 	 * Channel types the server has actually answered for. A failed refetch must
 	 * not overwrite what the server said, but it must not protect a guess either:
@@ -70,6 +73,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			errorMessages: ref({}),
 			errorIsConflict: ref({}),
 			runtimeErrors: ref({}),
+			lastVerifiedAt: ref({}),
 			serverConfirmed: ref(new Set()),
 			fetchInFlight: null,
 		};
@@ -106,6 +110,7 @@ function applyStatus(
 	const fromServer = source === 'server';
 	const previousStatuses = { ...state.statuses.value };
 	const previousRuntimeErrors = { ...state.runtimeErrors.value };
+	const previousLastVerifiedAt = { ...state.lastVerifiedAt.value };
 	// An answer of `disconnected` was about a channel that did not exist then. If
 	// configuration has one now, the seed is the fresher account of it.
 	const answeredFor = (type: string) =>
@@ -119,6 +124,7 @@ function applyStatus(
 		state.integrationSettings.value[type] = undefined;
 		state.integrationApproval.value[type] = undefined;
 		state.runtimeErrors.value[type] = '';
+		state.lastVerifiedAt.value[type] = '';
 	}
 	for (const integration of integrations) {
 		// Only `starting` is the seed guessing at runtime state, and only a guess
@@ -138,6 +144,9 @@ function applyStatus(
 		state.runtimeErrors.value[integration.type] = keepServerAnswer
 			? (previousRuntimeErrors[integration.type] ?? '')
 			: (integration.errorMessage ?? '');
+		state.lastVerifiedAt.value[integration.type] = fromServer
+			? (integration.lastVerifiedAt ?? '')
+			: (previousLastVerifiedAt[integration.type] ?? '');
 	}
 	for (const type of integrationTypes) {
 		if (fromServer) {
@@ -260,6 +269,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.integrationSettings.value[type] = undefined;
 			state.integrationApproval.value[type] = undefined;
 			state.runtimeErrors.value[type] = '';
+			state.lastVerifiedAt.value[type] = '';
 			state.serverConfirmed.value.add(type);
 			return result;
 		} finally {
@@ -302,6 +312,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		errorMessages: state.errorMessages,
 		errorIsConflict: state.errorIsConflict,
 		runtimeErrors: state.runtimeErrors,
+		lastVerifiedAt: state.lastVerifiedAt,
 		fetchStatus,
 		connect,
 		disconnect,

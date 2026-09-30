@@ -44,6 +44,7 @@ const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
+const lastVerifiedAt = ref<Record<string, string>>({});
 const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialModalOpen = ref(false);
 
@@ -66,7 +67,16 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
-		props: ['modelValue', 'mode', 'isPublished', 'runtime', 'ensureAgentPersisted'],
+		props: [
+			'modelValue',
+			'mode',
+			'isPublished',
+			'runtime',
+			'ensureAgentPersisted',
+			'runtimeStatus',
+			'runtimeError',
+			'lastVerifiedAt',
+		],
 		emits: ['update:modelValue', 'connect', 'connected'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
@@ -88,6 +98,9 @@ vi.mock('../channels/registry', async () => {
 				:data-mode="mode"
 				:data-published="isPublished"
 				:data-setup-kind="runtime.setupKind?.value"
+				:data-runtime-status="runtimeStatus"
+				:data-runtime-error="runtimeError"
+				:data-last-verified-at="lastVerifiedAt"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
@@ -171,6 +184,8 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		errorMessages: ref({}),
 		errorIsConflict,
 		runtimeErrors,
+		lastVerifiedAt,
+		statuses,
 		isConnected: (type: string) => statuses.value[type] === 'connected',
 		isConfigured: (type: string) =>
 			['configured', 'starting', 'connected', 'error'].includes(
@@ -300,6 +315,7 @@ describe('AgentChannelModal', () => {
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};
+		lastVerifiedAt.value = {};
 		errorIsConflict.value = {};
 		credentialModalOpen.value = false;
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
@@ -373,6 +389,21 @@ describe('AgentChannelModal', () => {
 			'data-connected': 'false',
 			'data-not-running': 'true',
 			'data-runtime-error': 'Credential cred-1 not found',
+		});
+	});
+
+	it('tells the settings view how the running channel is doing', async () => {
+		statuses.value.example = 'error';
+		connectedCredentials.value.example = 'credential-old';
+		runtimeErrors.value.example = 'Credential cred-1 not found';
+		lastVerifiedAt.value.example = '2026-09-11T10:00:00.000Z';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="platform-view"]').attributes()).toMatchObject({
+			'data-runtime-status': 'error',
+			'data-runtime-error': 'Credential cred-1 not found',
+			'data-last-verified-at': '2026-09-11T10:00:00.000Z',
 		});
 	});
 

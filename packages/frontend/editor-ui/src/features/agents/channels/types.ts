@@ -10,6 +10,7 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import type { Component, Ref, VNode } from 'vue';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
+import type { AgentChannelClientStatus } from '../composables/useAgentIntegrationStatus';
 
 export type AgentChannelMode = 'setup' | 'edit';
 export type AgentChannelView = 'list' | `${string}_${AgentChannelMode}`;
@@ -53,6 +54,11 @@ export interface AgentChannelViewProps {
 	disabled?: boolean;
 	connected: boolean;
 	connectedDescription: string;
+	/** What the server says about the running channel; `connected` only means configured. */
+	runtimeStatus?: AgentChannelClientStatus;
+	runtimeError?: string;
+	/** ISO time the channel last received a message. */
+	lastVerifiedAt?: string;
 	errorMessage: string;
 	errorIsConflict: boolean;
 	savedSettings?: AgentIntegrationSettings;

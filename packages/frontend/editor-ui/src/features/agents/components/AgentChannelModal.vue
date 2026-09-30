@@ -68,6 +68,8 @@ const {
 	errorMessages,
 	errorIsConflict,
 	runtimeErrors,
+	lastVerifiedAt,
+	statuses: integrationStatuses,
 	isConnected: isIntegrationConnected,
 	isConfigured: isIntegrationConfigured,
 	hasRuntimeError,
@@ -554,6 +556,9 @@ watch(
 					:loading="isLoading(currentIntegration.type)"
 					:connected="isConfigured(currentIntegration.type)"
 					:connected-description="integrationConnectedText(currentIntegration.type)"
+					:runtime-status="integrationStatuses[currentIntegration.type]"
+					:runtime-error="runtimeErrors[currentIntegration.type]"
+					:last-verified-at="lastVerifiedAt[currentIntegration.type]"
 					:error-message="
 						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
 					"
