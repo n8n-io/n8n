@@ -3,8 +3,9 @@ name: suggest-automations
 description: >-
   Offer the three most common automations for a user as a single-choice card,
   from your own knowledge of their team and their apps, then build the one
-  they choose or offer more. The system preloads it on onboarding threads,
-  where the opening card already asked the user about themselves.
+  they choose once they confirm, or offer more. The system preloads it on
+  onboarding threads, where the opening card already asked the user about
+  themselves.
   Use it on other threads when the user asks what they could automate or
   wants ideas for a first workflow.
 recommended_tools:
@@ -25,14 +26,14 @@ block with the user's team and apps, one line per question. Use every line of
 the block. The answers are final: use them as they come and do not ask these
 questions again. Two openings:
 
-- The block is followed by your message "Got it. Finally, tell me a little
-  about how you use <their apps>." and the user's reply. The reply describes how they
+- The block is followed by your message "Last one: what do you usually do in
+  <their apps>?" and the user's reply. The reply describes how they
   work, names a task in their own words, or names none. Start at step 1.
 - The block is the latest message and one answer is free text the user typed
   into the card. Read that text first. A tool name is one of their apps: ask
-  "Got it. Finally, tell me a little about how you use <their apps>." and end
-  the turn. A task: start at step 1 with it. Anything else, for example a wish to
-  stop, a request about something else, a refusal or an insult: call
+  "Last one: what do you usually do in <their apps>?" and end the turn. A
+  task: start at step 1 with it. Anything else, for example a wish to stop, a
+  request about something else, a refusal or an insult: call
   `leave-onboarding`, then write a one-sentence reply that invites the user to
   explore the app and to come back with a task.
 
@@ -50,7 +51,7 @@ Slack or Google Sheets. Never run a command or read a file to find them.
    complete one, suggestion one is that task in their words and the other two
    are what people on their team set up next to it. Otherwise pick the three
    that people on the team most often set up with the user's apps. The card
-   always comes before a build: a specific task gets confirmed with one click,
+   always comes before a build: a specific task gets picked and confirmed,
    never built unasked. Decide in one step: do not run a command, read a file
    or write the reasoning out.
 2. Write short text and no list: the card carries the options. First
@@ -93,17 +94,30 @@ Slack or Google Sheets. Never run a command or read a file to find them.
    Example option: "Capture new leads\nMove new enquiries into your sales
    process so nothing gets missed."
 3. Read the answer.
-   - A suggestion: its first line, the title, names the automation to build.
+   - A suggestion: its first line, the title, names the automation. Go to
+     step 4.
    - `Show me other ideas`: repeat step 2 with three automations not shown in
      this thread yet, after one sentence such as "Here are three more."
-   - Free text that describes a task: that is the user's request; build it.
+   - Free text that describes a task: that is the user's request. Give it a
+     title as in step 2 and go to step 4.
    - Free text that asks for a change, for example another app or a topic:
      repeat step 2 with three automations that fit it.
    - Free text that names no task and no change, for example "skip", "no" or
      "later", or `answered: false`: do not build. On an onboarding thread call
      `leave-onboarding`, then write a one-sentence reply, for example "No
      problem. Explore the app and tell me when you want to automate something."
-4. Write exactly one line before the first tool call, `Building <title> now.`,
+4. Ask before you build. Write no text, and make ONE `ask-user` call with
+   `questions` only: a `single` question "Nice! Should I build this now?",
+   `required: true`, with the options `Yes, build it` and `Not now`. Leave
+   `introMessage` and `freeTextLabel` out: the card's own "Something else"
+   row lets the user ask for another automation. Read the answer:
+   - `Yes, build it`: go to step 5.
+   - `Not now`: do not build, and stay in the flow. Repeat step 2 with the
+     same three automations, after one sentence such as "No problem. Pick
+     another one, or ask for other ideas."
+   - `answered: false`: do not build. Reply as for a skip in step 3.
+   - Free text: read it as in step 3.
+5. Write exactly one line before the first tool call, `Building <title> now.`,
    and no other text until the `build-workflow` result. Load `workflow-builder`
    and build the automation with the user's apps the normal way, then follow
    `postBuildFlow.instructions` from the result. Ask about an app only for a
@@ -112,8 +126,9 @@ Slack or Google Sheets. Never run a command or read a file to find them.
 ## Rules
 
 - One `ask-user` call per turn. Keep every message to four sentences or fewer.
-- A build needs a picked suggestion or a task in the user's words. Never
-  start one after a skip, a dismissal, or free text that names nothing.
+- A build needs `Yes, build it` from the user on the step 4 card, for a
+  picked suggestion and for a task in the user's words alike. Never start one
+  after a skip, a dismissal, or free text that names nothing.
 - No apps given: suggest what people on the team most often automate, and
   name no app.
 - Talk about the automation, never about the mechanics. Do not say
