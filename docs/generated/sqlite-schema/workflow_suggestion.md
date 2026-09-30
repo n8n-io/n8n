@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "expectedBaseline" text NOT NULL, "state" varchar(16) NOT NULL, "closedReason" varchar(16), "closedAt" datetime(3), "payload" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resultKind" varchar(16) NOT NULL, "appliedVersion" text, "publication" text, CONSTRAINT "CHK_workflow_suggestion_state" CHECK (("state" IN ('pending', 'closed'))), CONSTRAINT "CHK_workflow_suggestion_closedReason" CHECK (("closedReason" IN ('outdated', 'applied', 'discarded'))), CONSTRAINT "CHK_workflow_suggestion_resultKind" CHECK ("resultKind" IN ('fix_ready', 'needs_you')), CONSTRAINT "FK_b415d749769e092f51575def2d2" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0f273c2cd9e1a097a8ba044fe9a" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_f6289858234727cdff168626dc9" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "backgroundUserId" varchar NOT NULL, "expectedBaseline" text NOT NULL, "state" varchar(16) NOT NULL, "closedReason" varchar(16), "closedAt" datetime(3), "payload" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resultKind" varchar(16) NOT NULL, "appliedVersion" text, CONSTRAINT "CHK_workflow_suggestion_state" CHECK (("state" IN ('pending', 'closed'))), CONSTRAINT "CHK_workflow_suggestion_closedReason" CHECK (("closedReason" IN ('outdated', 'applied', 'discarded'))), CONSTRAINT "CHK_workflow_suggestion_resultKind" CHECK ("resultKind" IN ('fix_ready', 'needs_you')), CONSTRAINT "FK_b415d749769e092f51575def2d2" FOREIGN KEY ("backgroundUserId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0f273c2cd9e1a097a8ba044fe9a" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_f6289858234727cdff168626dc9" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -24,7 +24,6 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | id | varchar(36) |  | false | [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
 | payload | TEXT |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
-| publication | TEXT |  | true |  |  |  |
 | resultKind | varchar(16) |  | false |  |  |  |
 | state | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -73,7 +72,6 @@ erDiagram
   varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
-  TEXT publication
   varchar_16_ resultKind
   varchar_16_ state
   datetime_3_ updatedAt

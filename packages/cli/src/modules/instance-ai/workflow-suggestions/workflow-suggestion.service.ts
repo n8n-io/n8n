@@ -19,7 +19,6 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
-import { WorkflowSuggestionPublicationService } from './workflow-suggestion-publication.service';
 
 const suggestionInputSchema = z
 	.object({
@@ -51,7 +50,6 @@ export class WorkflowSuggestionService {
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinder: WorkflowFinderService,
-		private readonly suggestionPublication: WorkflowSuggestionPublicationService,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -253,16 +251,6 @@ export class WorkflowSuggestionService {
 		if (!current.workflow || current.projectId !== projectId) {
 			throw new NotFoundError('Proposal not found.');
 		}
-		if (suggestion.appliedVersion && suggestion.publication?.status !== 'published') {
-			const observed = await this.suggestionPublication.reconcile(
-				workflowId,
-				suggestion.appliedVersion,
-			);
-			suggestion.publication = await this.txRunner.run(
-				{},
-				async (ctx) => await this.suggestions.recordPublication(suggestion.id, observed, null, ctx),
-			);
-		}
 		const activity = await this.suggestions.getActivity(suggestionId);
 		return {
 			suggestionId,
@@ -274,7 +262,6 @@ export class WorkflowSuggestionService {
 			closedReason: suggestion.closedReason,
 			resultKind: suggestion.resultKind,
 			appliedVersion: suggestion.appliedVersion ?? null,
-			publication: suggestion.publication ?? null,
 			author: 'assistant',
 			payload: {
 				...suggestion.payload,

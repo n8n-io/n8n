@@ -45,12 +45,11 @@ Call `WorkflowSuggestionActionsService.act()` from trusted backend code. These a
 
 | Internal action | Behavior |
 | --- | --- |
-| `approve-and-publish` | Save the reviewed graph once. Publish that exact saved version. |
+| `approve-and-publish` | Save the reviewed graph once. Request normal publication of that saved version. |
 | `open-in-editor` | Save the reviewed graph once without publication. |
 | `discard` | Close a pending suggestion without changing the workflow. |
-| `retry-publication` | Retry publication of the recorded version without another save. |
 
-Use **Approve and publish** as the action label. All actions require an enabled user with current edit access. Approval and publication retry also require publish access. Save and publication respect editor write locks. Publication keeps the existing credential checks and enterprise review guards.
+Use **Approve and publish** as the action label. All actions require an enabled user with current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication keeps the existing credential checks and enterprise review guards.
 
 Apply locks the workflow and rechecks the suggestion baseline after normal save preparation. It commits workflow content, required history, the applied-version record, and activity together. A failed transaction cannot leave a saved fix with a pending suggestion. History records the human editor and Assistant authorship. Activity keeps the background user separate from the human actor.
 
@@ -58,8 +57,12 @@ Suggestion reads do not request row locks. Closure updates only pending suggesti
 
 Ordinary saves keep their existing conflict checks. An ordinary save that started before Apply can still finish after Apply commits. This feature does not add a new conflict check to every workflow save.
 
-The detail exposes `appliedVersion` and the recorded publication outcome. Publication uses the existing outbox and trigger status. It distinguishes unpublished, pending, partial, successful, failed, and unknown outcomes. A lost response or active-version pointer alone does not prove success or failure. Retries reject later saved content, ownership changes, and intervening publication. Confirmed publication outcomes remain recorded after outbox cleanup.
+The detail exposes `appliedVersion`. Approve and publish calls `WorkflowService.activateWorkflow()` with that version and its saved checksum. It uses the same conflict checks, permission checks, publication guards, and recovery behavior as the editor. It adds no publication queue or stronger publication guarantee.
+
+Apply failures leave the workflow unchanged and the suggestion pending unless its baseline became outdated. After Apply commits, the suggestion stays closed as applied even if publication fails. The action returns an optional `publicationError` for the current request. An error does not establish whether the version is live. No error does not establish that trigger registration finished. The UI must show Applied and open the editor after either Apply action. The editor owns publication status, errors, and retries.
+
+Only the request that applies the fix can start publication. Repeated actions return the recorded Apply result without another save or publish request. The service does not store publication status or reconstruct a publication outcome on reads. A closed page or a lost response can leave a saved fix unpublished. The user can recover in the editor.
 
 INS-1496 owns shared result dismissal. Pass its transaction context to `discard(user, projectId, workflowId, suggestionId, ctx)` to commit result changes and suggestion closure together. Permission reads use the same transaction. A caller rollback also restores the suggestion and its activity. Calls without a context keep their own transaction.
 
-INS-1496 must reflect the persisted suggestion state in result reads and actions. The frontend must not make a second request to update result state after a suggestion action. INS-1480 uses that state to reconcile investigation claims. An applied suggestion stays closed if publication fails. INS-1518 supplies all three review screens and editor navigation through the result review API.
+INS-1496 must reflect the persisted suggestion state in result reads and actions. The frontend must not make a second request to update result state after a suggestion action. INS-1480 uses that state to reconcile investigation claims. An applied suggestion stays closed if publication fails. INS-1518 supplies all three review screens and editor navigation through the result review API. Applied does not mean published or verified fixed.

@@ -28,31 +28,19 @@ export type WorkflowSuggestionContent = {
 
 export type WorkflowSuggestionActivity = {
 	id: string;
-	action: 'submitted' | 'applied' | 'discarded' | 'outdated' | 'published' | 'publish_failed';
+	action: 'submitted' | 'applied' | 'discarded' | 'outdated';
 	author: 'assistant' | 'human' | 'system';
 	actorId: string | null;
 	createdAt: string;
 };
 
-export type WorkflowSuggestionAction =
-	| 'approve-and-publish'
-	| 'open-in-editor'
-	| 'discard'
-	| 'retry-publication';
+export type WorkflowSuggestionAction = 'approve-and-publish' | 'open-in-editor' | 'discard';
 
 export type WorkflowSuggestionAppliedVersion = {
 	versionId: string;
-	projectId: string;
-	baselinePublicationId: number | null;
-	previousPublishedVersionId: string;
 	checksum: string;
 	action: 'approve-and-publish' | 'open-in-editor';
 	actorId: string;
-};
-
-export type WorkflowSuggestionPublication = {
-	status: 'unpublished' | 'in_progress' | 'published' | 'partial' | 'failed' | 'unknown';
-	message?: string;
 };
 
 export type WorkflowSuggestionProposalDetail = {
@@ -65,8 +53,12 @@ export type WorkflowSuggestionProposalDetail = {
 	closedReason: 'outdated' | 'applied' | 'discarded' | null;
 	resultKind: 'fix_ready' | 'needs_you';
 	appliedVersion: WorkflowSuggestionAppliedVersion | null;
-	publication: WorkflowSuggestionPublication | null;
 	author: 'assistant';
 	payload: WorkflowSuggestionContent & { proposed: WorkflowSuggestionSnapshot };
 	activity: WorkflowSuggestionActivity[];
+};
+
+export type WorkflowSuggestionActionResult = WorkflowSuggestionProposalDetail & {
+	/** A publish request error does not establish whether the version is live. */
+	publicationError?: string;
 };

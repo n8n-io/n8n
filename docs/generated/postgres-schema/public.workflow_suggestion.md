@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| appliedVersion | json |  | true |  |  | Saved version, original published version, checksum, action, and human actor |
+| appliedVersion | json |  | true |  |  | Saved version, checksum, action, and human actor |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | closedAt | timestamp(3) with time zone |  | true |  |  |  |
 | closedReason | varchar(16) |  | true |  |  | Reason the suggestion closed |
@@ -13,7 +13,6 @@
 | id | varchar(36) |  | false | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) |  |  |
 | payload | json |  | false |  |  | Original workflow snapshot, candidate nodes and connections, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
-| publication | json |  | true |  |  | Last observed publication status for the applied version |
 | resultKind | varchar(16) |  | false |  |  | Investigation outcome; only fix_ready permits Apply |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -71,7 +70,6 @@ erDiagram
   varchar_36_ id
   json payload
   varchar_36_ projectId FK
-  json publication
   varchar_16_ resultKind
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt

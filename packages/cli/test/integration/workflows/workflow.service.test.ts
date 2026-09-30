@@ -811,28 +811,6 @@ describe('workflow publication outbox', () => {
 			expect(publishedVersion).toBeNull();
 		});
 
-		test('rolls back publication state when the outbox write fails', async () => {
-			const owner = await createOwner();
-			const workflow = await createWorkflowWithHistory({}, owner);
-			const original = await workflowRepository.findOneByOrFail({ id: workflow.id });
-			const publishHistory = await workflowPublishHistoryRepository.findBy({
-				workflowId: workflow.id,
-			});
-			vi.spyOn(outboxRepository, 'enqueue').mockRejectedValueOnce(new Error('Outbox unavailable'));
-			workflowPublicationNotifier.requestDrain.mockClear();
-
-			await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
-				'Outbox unavailable',
-			);
-
-			expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toEqual(original);
-			expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
-				publishHistory,
-			);
-			expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
-			expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
-		});
-
 		test('should supersede the pending outbox record when activating a new version', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
@@ -1387,34 +1365,6 @@ describe('publishAsSystem()', () => {
 		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 
-	it('rolls back the system version and publication state when the outbox write fails', async () => {
-		const owner = await createOwner();
-		const workflow = await createActiveWorkflow({}, owner);
-		const original = await workflowRepository.findOneByOrFail({ id: workflow.id });
-		const history = Container.get(WorkflowHistoryRepository);
-		const versions = await history.findBy({ workflowId: workflow.id });
-		const publishHistory = await workflowPublishHistoryRepository.findBy({
-			workflowId: workflow.id,
-		});
-		vi.spyOn(outboxRepository, 'enqueue').mockRejectedValueOnce(new Error('Outbox unavailable'));
-
-		await expect(
-			workflowService.publishAsSystem(
-				workflow.id,
-				{ nodes: systemNodes(), connections: {} },
-				workflow.activeVersionId as string,
-			),
-		).rejects.toThrow('Outbox unavailable');
-
-		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toEqual(original);
-		expect(await history.findBy({ workflowId: workflow.id })).toEqual(versions);
-		expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
-			publishHistory,
-		);
-		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
-		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
-	});
-
 	it('returns superseded for a workflow without an active version and writes nothing', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
@@ -1442,57 +1392,44 @@ describe('publishAsSystem()', () => {
 		).resolves.toEqual({ published: false, reason: 'superseded' });
 	});
 
-	it.each(['before lookup', 'after lookup'] as const)(
-		'refuses to publish when the active version moves %s',
-		async (timing) => {
-			// The caller (the applier) baselines on the version it healed. A user
-			// publishing a newer clean version while that record was in flight must
-			// win: the healed copy of the older version is discarded, not published
-			// over the newer one.
-			const owner = await createOwner();
-			const workflow = await createActiveWorkflow({}, owner);
-			const healedSourceVersionId = workflow.activeVersionId as string;
-			const interloperVersionId = uuid();
-			await createWorkflowHistoryItem(workflow.id, { versionId: interloperVersionId });
-			const publishHistoryBefore = await workflowPublishHistoryRepository.findBy({
-				workflowId: workflow.id,
-			});
-			const versionRowsBefore = await Container.get(WorkflowHistoryRepository).countBy({
-				workflowId: workflow.id,
-			});
+	it('refuses to publish when the active version moved past the caller baseline', async () => {
+		// The caller (the applier) baselines on the version it healed. A user
+		// publishing a newer clean version while that record was in flight must
+		// win: the healed copy of the older version is discarded, not published
+		// over the newer one.
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const healedSourceVersionId = workflow.activeVersionId as string;
+		const interloperVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: interloperVersionId });
+		const publishHistoryBefore = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+		});
+		const versionRowsBefore = await Container.get(WorkflowHistoryRepository).countBy({
+			workflowId: workflow.id,
+		});
 
-			if (timing === 'before lookup') {
-				await workflowRepository.update(workflow.id, { activeVersionId: interloperVersionId });
-			} else {
-				const findOne = workflowRepository.findOne.bind(workflowRepository);
-				vi.spyOn(workflowRepository, 'findOne').mockImplementationOnce(async (options) => {
-					const stale = await findOne(options);
-					await workflowRepository.update(workflow.id, { activeVersionId: interloperVersionId });
-					return stale;
-				});
-			}
-			const saveVersion = vi.spyOn(workflowHistoryService, 'saveVersion');
+		// The user's newer publish lands before the system publish is attempted.
+		await workflowRepository.update({ id: workflow.id }, { activeVersionId: interloperVersionId });
 
-			const result = await workflowService.publishAsSystem(
-				workflow.id,
-				{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
-				healedSourceVersionId,
-			);
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+			healedSourceVersionId,
+		);
 
-			expect(result).toEqual({ published: false, reason: 'superseded' });
-			expect(saveVersion).toHaveBeenCalledTimes(timing === 'after lookup' ? 1 : 0);
-			const after = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
-			expect(after.activeVersionId).toBe(interloperVersionId);
-			// A lost race writes nothing — including the system-authored version row,
-			// which would otherwise linger as a phantom entry in version history.
-			expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
-				publishHistoryBefore,
-			);
-			expect(
-				await Container.get(WorkflowHistoryRepository).countBy({ workflowId: workflow.id }),
-			).toBe(versionRowsBefore);
-			expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
-			expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
-		},
-	);
+		expect(result).toEqual({ published: false, reason: 'superseded' });
+		const after = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(after.activeVersionId).toBe(interloperVersionId);
+		// A lost race writes nothing — including the system-authored version row,
+		// which would otherwise linger as a phantom entry in version history.
+		expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
+			publishHistoryBefore,
+		);
+		expect(
+			await Container.get(WorkflowHistoryRepository).countBy({ workflowId: workflow.id }),
+		).toBe(versionRowsBefore);
+		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
+		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
 });

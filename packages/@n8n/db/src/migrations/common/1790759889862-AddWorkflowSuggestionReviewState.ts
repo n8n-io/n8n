@@ -10,14 +10,7 @@ export class AddWorkflowSuggestionReviewState1790759889862 implements Reversible
 					.varchar(16)
 					.notNull.withEnumCheck(['fix_ready', 'needs_you'])
 					.comment('Investigation outcome; only fix_ready permits Apply'),
-				s
-					.column('appliedVersion')
-					.json.comment(
-						'Saved version, original published version, checksum, action, and human actor',
-					),
-				s
-					.column('publication')
-					.json.comment('Last observed publication status for the applied version'),
+				s.column('appliedVersion').json.comment('Saved version, checksum, action, and human actor'),
 			],
 			{ recreatesOnSqlite: true },
 		);
@@ -50,7 +43,7 @@ export class AddWorkflowSuggestionReviewState1790759889862 implements Reversible
 		await s.dropIndex('workflow_suggestion_activity', ['actorId']);
 		await s.dropColumns('workflow_suggestion_activity', ['actorId'], { recreatesOnSqlite: true });
 		await s.dropEnumCheck('workflow_suggestion', 'resultKind', { recreatesOnSqlite: true });
-		await s.dropColumns('workflow_suggestion', ['resultKind', 'appliedVersion', 'publication'], {
+		await s.dropColumns('workflow_suggestion', ['resultKind', 'appliedVersion'], {
 			recreatesOnSqlite: true,
 		});
 	}

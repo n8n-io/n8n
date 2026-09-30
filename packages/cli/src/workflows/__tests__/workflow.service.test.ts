@@ -1496,103 +1496,6 @@ describe('WorkflowService', () => {
 			},
 		);
 
-		test.each([{ versionId: 'later-save' }, { activeVersionId: 'other-published-version' }])(
-			'rejects exact-version publication after identity drift: %s',
-			async (change) => {
-				globalConfigMock.workflows.useWorkflowPublicationService = true;
-				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity(change));
-
-				await expect(
-					workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
-						versionId: TARGET_VERSION_ID,
-						expectedVersions: {
-							savedVersionId: TARGET_VERSION_ID,
-							activeVersionId: PREVIOUS_VERSION_ID,
-							projectId: 'project-1',
-							baselinePublicationId: null,
-						},
-					}),
-				).rejects.toBeInstanceOf(ConflictError);
-				expect(outboxRepositoryMock.enqueuePublishIfCurrent).not.toHaveBeenCalled();
-			},
-		);
-
-		test('uses the guarded outbox commit for exact-version publication', async () => {
-			globalConfigMock.workflows.useWorkflowPublicationService = true;
-			const workflow = makeWorkflowEntity();
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
-			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
-			outboxRepositoryMock.enqueuePublishIfCurrent.mockResolvedValue(true);
-			const actor = mock<User>({ id: 'publisher' });
-
-			await workflowService.activateWorkflow(actor, WORKFLOW_ID, {
-				versionId: TARGET_VERSION_ID,
-				expectedVersions: {
-					savedVersionId: TARGET_VERSION_ID,
-					activeVersionId: PREVIOUS_VERSION_ID,
-					projectId: 'project-1',
-					baselinePublicationId: null,
-				},
-			});
-
-			expect(outboxRepositoryMock.enqueuePublishIfCurrent).toHaveBeenCalledExactlyOnceWith({
-				workflowId: WORKFLOW_ID,
-				versionId: TARGET_VERSION_ID,
-				previousActiveVersionId: PREVIOUS_VERSION_ID,
-				checksum: expect.any(String),
-				userId: actor.id,
-				projectId: 'project-1',
-				baselinePublicationId: null,
-			});
-			expect(outboxRepositoryMock.enqueue).not.toHaveBeenCalled();
-			expect(workflowMutationHooksMock.afterWorkflowPublished).toHaveBeenCalledOnce();
-		});
-
-		test('does not report publication when the exact-version commit loses a race', async () => {
-			globalConfigMock.workflows.useWorkflowPublicationService = true;
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity());
-			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
-			outboxRepositoryMock.enqueuePublishIfCurrent.mockResolvedValue(false);
-
-			await expect(
-				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
-					versionId: TARGET_VERSION_ID,
-					expectedVersions: {
-						savedVersionId: TARGET_VERSION_ID,
-						activeVersionId: PREVIOUS_VERSION_ID,
-						projectId: 'project-1',
-						baselinePublicationId: null,
-					},
-				}),
-			).rejects.toBeInstanceOf(ConflictError);
-			expect(workflowMutationHooksMock.afterWorkflowPublished).not.toHaveBeenCalled();
-			expect(eventServiceMock.emit).not.toHaveBeenCalled();
-		});
-
-		test('rechecks the review guard when retrying the same requested version', async () => {
-			globalConfigMock.workflows.useWorkflowPublicationService = true;
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(
-				makeWorkflowEntity({ activeVersionId: TARGET_VERSION_ID }),
-			);
-			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
-			workflowPublishGuardMock.assertCanPublish.mockRejectedValue(new ConflictError('Open review'));
-
-			await expect(
-				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
-					versionId: TARGET_VERSION_ID,
-					expectedVersions: {
-						savedVersionId: TARGET_VERSION_ID,
-						activeVersionId: TARGET_VERSION_ID,
-						projectId: 'project-1',
-						baselinePublicationId: null,
-					},
-				}),
-			).rejects.toThrow('Open review');
-			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
-			expect(outboxRepositoryMock.enqueuePublishIfCurrent).not.toHaveBeenCalled();
-		});
-
 		test('keeps the previous version running when an open review blocks a replacement', async () => {
 			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
@@ -1841,7 +1744,16 @@ describe('WorkflowService', () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			outboxRepositoryMock.recordPublish.mockResolvedValue(true);
+			const trx = mock<EntityManager>();
+			const managerMock = mock<EntityManager>();
+			(managerMock.transaction as unknown as Mock).mockImplementation(
+				async (runInTransaction: (entityManager: EntityManager) => Promise<unknown>) =>
+					await runInTransaction(trx),
+			);
+			Object.defineProperty(workflowRepositoryMock, 'manager', {
+				value: managerMock,
+				configurable: true,
+			});
 
 			const addToActiveWorkflowManagerSpy = vi.spyOn(
 				workflowService as never,
@@ -1854,13 +1766,29 @@ describe('WorkflowService', () => {
 				versionId: TARGET_VERSION_ID,
 			});
 
-			expect(outboxRepositoryMock.recordPublish).toHaveBeenCalledExactlyOnceWith({
-				workflowId: WORKFLOW_ID,
-				versionId: TARGET_VERSION_ID,
-				previousActiveVersionId: PREVIOUS_VERSION_ID,
-				updatedAt: workflow.updatedAt,
-				userId: user.id,
-			});
+			// activeVersionId + active are updated inside the transaction
+			expect(trx.update).toHaveBeenCalledWith(
+				WorkflowEntity,
+				{ id: WORKFLOW_ID },
+				expect.objectContaining({ active: true, activeVersionId: TARGET_VERSION_ID }),
+			);
+			// the outbox record is enqueued in the same transaction
+			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				TARGET_VERSION_ID,
+				'publish',
+				trx,
+			);
+			// publish-history records (deactivated for the previous version, activated for the
+			// target) are written in the same transaction
+			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ event: 'deactivated', versionId: PREVIOUS_VERSION_ID }),
+				trx,
+			);
+			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ event: 'activated', versionId: TARGET_VERSION_ID }),
+				trx,
+			);
 			expect(eventServiceMock.emit).toHaveBeenNthCalledWith(1, 'workflow-deactivated', {
 				user,
 				workflowId: WORKFLOW_ID,

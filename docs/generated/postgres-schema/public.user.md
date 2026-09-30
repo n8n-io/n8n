@@ -453,7 +453,6 @@ erDiagram
   varchar_36_ id
   json payload
   varchar_36_ projectId FK
-  json publication
   varchar_16_ resultKind
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt

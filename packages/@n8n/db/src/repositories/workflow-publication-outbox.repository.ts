@@ -1,8 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, In, IsNull, MoreThan, Not } from '@n8n/typeorm';
+import { Brackets, DataSource, In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { calculateWorkflowChecksum, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import {
@@ -12,9 +12,6 @@ import {
 	WorkflowPublicationReason,
 } from '../entities/workflow-publication-outbox';
 import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
-import { WorkflowEntity } from '../entities/workflow-entity';
-import { WorkflowPublishHistory } from '../entities/workflow-publish-history';
-import { SharedWorkflow } from '../entities/shared-workflow';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -45,155 +42,6 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			status: In([Status.InProgress, Status.Pending]),
 		});
 		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
-	}
-
-	async findLatestForVersion(
-		workflowId: string,
-		versionId: string,
-		ctx: OperationContext = {},
-	): Promise<WorkflowPublicationOutbox | null> {
-		return await this.managerFor(ctx).findOne(WorkflowPublicationOutbox, {
-			where: { workflowId, publishedVersionId: versionId },
-			order: { id: 'DESC' },
-		});
-	}
-
-	async hasPublicationChangedSince(
-		workflowId: string,
-		versionId: string,
-		baselinePublicationId: number | null,
-		ctx: OperationContext = {},
-	): Promise<boolean> {
-		const since = { workflowId, id: MoreThan(baselinePublicationId ?? 0) };
-		return await this.managerFor(ctx).exists(WorkflowPublishHistory, {
-			where: [
-				{ ...since, event: 'activated', versionId: Not(versionId) },
-				{ ...since, event: 'activated', versionId: IsNull() },
-				{ ...since, event: 'deactivated', versionId },
-			],
-		});
-	}
-
-	/** Commit the workflow version, publication history, and queued work together. */
-	async recordPublish(
-		input: {
-			workflowId: string;
-			versionId: string;
-			previousActiveVersionId: string | null;
-			updatedAt: Date;
-			userId: string | null;
-			expectedActiveVersionId?: string;
-		},
-		ctx: OperationContext = {},
-	): Promise<boolean> {
-		return await this.runInTransaction(ctx, async (manager) => {
-			const result = await manager.update(
-				WorkflowEntity,
-				input.expectedActiveVersionId === undefined
-					? { id: input.workflowId }
-					: { id: input.workflowId, activeVersionId: input.expectedActiveVersionId },
-				{
-					active: true,
-					activeVersionId: input.versionId,
-					updatedAt: input.updatedAt,
-				},
-			);
-			if (input.expectedActiveVersionId !== undefined && (result.affected ?? 0) === 0) {
-				return false;
-			}
-			if (input.previousActiveVersionId) {
-				await manager.insert(WorkflowPublishHistory, {
-					workflowId: input.workflowId,
-					versionId: input.previousActiveVersionId,
-					event: 'deactivated',
-					userId: input.userId,
-				});
-			}
-			await manager.insert(WorkflowPublishHistory, {
-				workflowId: input.workflowId,
-				versionId: input.versionId,
-				event: 'activated',
-				userId: input.userId,
-			});
-			await this.enqueue(
-				input.workflowId,
-				input.versionId,
-				WorkflowPublicationReason.Publish,
-				manager,
-			);
-			return true;
-		});
-	}
-
-	/** Commit an exact-version publication only while its saved baseline still matches. */
-	async enqueuePublishIfCurrent(input: {
-		workflowId: string;
-		versionId: string;
-		previousActiveVersionId: string | null;
-		checksum: string;
-		userId: string;
-		projectId: string;
-		baselinePublicationId: number | null;
-	}): Promise<boolean> {
-		return await this.runInTransaction({}, async (manager, ctx) => {
-			const workflow = await manager.findOne(WorkflowEntity, {
-				where: { id: input.workflowId },
-				...(manager.connection.options.type === 'postgres'
-					? { lock: { mode: 'for_no_key_update' as const } }
-					: {}),
-			});
-			if (
-				!workflow ||
-				workflow.isArchived ||
-				workflow.versionId !== input.versionId ||
-				workflow.activeVersionId !== input.previousActiveVersionId ||
-				(await calculateWorkflowChecksum(workflow)) !== input.checksum ||
-				(await this.findInFlightByWorkflowId(input.workflowId, ctx))
-			) {
-				return false;
-			}
-			const owner = await manager.findOne(SharedWorkflow, {
-				where: { workflowId: input.workflowId, role: 'workflow:owner' },
-				...(manager.connection.options.type === 'postgres'
-					? { lock: { mode: 'pessimistic_read' as const } }
-					: {}),
-			});
-			if (owner?.projectId !== input.projectId) return false;
-			if (
-				await this.hasPublicationChangedSince(
-					input.workflowId,
-					input.versionId,
-					input.baselinePublicationId,
-					ctx,
-				)
-			) {
-				return false;
-			}
-			const previousAttempt = await this.findLatestForVersion(
-				input.workflowId,
-				input.versionId,
-				ctx,
-			);
-			if (
-				previousAttempt?.status === Status.Completed ||
-				previousAttempt?.status === Status.PartialSuccess
-			) {
-				return false;
-			}
-			return await this.recordPublish(
-				{
-					workflowId: input.workflowId,
-					versionId: input.versionId,
-					previousActiveVersionId:
-						input.previousActiveVersionId === input.versionId
-							? null
-							: input.previousActiveVersionId,
-					updatedAt: workflow.updatedAt,
-					userId: input.userId,
-				},
-				ctx,
-			);
-		});
 	}
 
 	/**

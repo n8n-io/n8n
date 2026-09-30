@@ -155,7 +155,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 5 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
-| [workflow_suggestion](workflow_suggestion.md) | 14 |  | table |
+| [workflow_suggestion](workflow_suggestion.md) | 13 |  | table |
 | [workflow_suggestion_activity](workflow_suggestion_activity.md) | 7 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
@@ -1868,7 +1868,6 @@ erDiagram
   varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
-  TEXT publication
   varchar_16_ resultKind
   varchar_16_ state
   datetime_3_ updatedAt

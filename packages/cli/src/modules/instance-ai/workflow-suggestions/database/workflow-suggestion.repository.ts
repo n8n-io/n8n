@@ -3,7 +3,6 @@ import type {
 	WorkflowSuggestionBaseline,
 	WorkflowSuggestionActivity,
 	WorkflowSuggestionAppliedVersion,
-	WorkflowSuggestionPublication,
 } from '@n8n/api-types';
 import {
 	BaseRepository,
@@ -81,7 +80,6 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			closedAt: null,
 			resultKind,
 			appliedVersion: null,
-			publication: null,
 			payload,
 		});
 		try {
@@ -178,47 +176,6 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		if (result.affected !== 1) return false;
 		await this.appendActivity(suggestion.id, reason, actorId, ctx);
 		return true;
-	}
-
-	async recordPublication(
-		suggestionId: string,
-		publication: WorkflowSuggestionPublication,
-		actorId: string | null,
-		ctx: OperationContext,
-	) {
-		const manager = this.managerFor(ctx);
-		const current = await manager.findOne(WorkflowSuggestion, {
-			where: { id: suggestionId, closedReason: 'applied' },
-			select: ['id', 'publication'],
-			...(ctx.trx && manager.connection.options.type === 'postgres'
-				? { lock: { mode: 'pessimistic_write' as const } }
-				: {}),
-		});
-		if (!current) throw new NotFoundError('Applied suggestion not found.');
-		// A later status read cannot undo a confirmed publication result.
-		if (
-			current.publication?.status === 'published' ||
-			(current.publication?.status === 'partial' && publication.status !== 'published')
-		) {
-			return current.publication;
-		}
-		if (publication.status === 'unpublished' && current.publication?.status === 'failed') {
-			return current.publication;
-		}
-		await manager.update(
-			WorkflowSuggestion,
-			{ id: suggestionId, closedReason: 'applied' },
-			{ publication },
-		);
-		if (publication.status === 'published' || publication.status === 'failed') {
-			await this.appendActivity(
-				suggestionId,
-				publication.status === 'published' ? 'published' : 'publish_failed',
-				actorId,
-				ctx,
-			);
-		}
-		return publication;
 	}
 
 	async getPendingForWorkflow(workflowId: string, ctx: OperationContext = {}) {

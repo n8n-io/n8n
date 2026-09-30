@@ -17,7 +17,6 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import type { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
-import type { WorkflowSuggestionPublicationService } from '../workflow-suggestion-publication.service';
 
 const suggestions = mock<WorkflowSuggestionRepository>();
 const users = mock<UserRepository>();
@@ -25,15 +24,7 @@ const publication = mock<WorkflowPublicationStatusService>();
 const finder = mock<WorkflowFinderService>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
-const suggestionPublication = mock<WorkflowSuggestionPublicationService>();
-const service = new WorkflowSuggestionService(
-	suggestions,
-	users,
-	publication,
-	tx,
-	finder,
-	suggestionPublication,
-);
+const service = new WorkflowSuggestionService(suggestions, users, publication, tx, finder);
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
 const graph: WorkflowSuggestionGraph = {

@@ -284,7 +284,6 @@ erDiagram
   varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
-  TEXT publication
   varchar_16_ resultKind
   varchar_16_ state
   datetime_3_ updatedAt

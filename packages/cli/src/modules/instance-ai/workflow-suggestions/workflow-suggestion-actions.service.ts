@@ -1,8 +1,13 @@
-import type { WorkflowSuggestionAction, WorkflowSuggestionAppliedVersion } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionAction,
+	WorkflowSuggestionActionResult,
+	WorkflowSuggestionAppliedVersion,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowEntity, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
@@ -11,9 +16,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
-import { WorkflowSuggestionPublicationService } from './workflow-suggestion-publication.service';
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
 @Service()
@@ -24,7 +27,6 @@ export class WorkflowSuggestionActionsService {
 		private readonly workflows: WorkflowService,
 		private readonly collaboration: CollaborationService,
 		private readonly publication: WorkflowPublicationStatusService,
-		private readonly publisher: WorkflowSuggestionPublicationService,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
 	) {}
@@ -36,7 +38,7 @@ export class WorkflowSuggestionActionsService {
 		suggestionId: string,
 		action: WorkflowSuggestionAction,
 		clientId?: string,
-	) {
+	): Promise<WorkflowSuggestionActionResult> {
 		if (action === 'discard') {
 			await this.discard(actor, projectId, workflowId, suggestionId);
 			return await this.service.getProposal(actor, projectId, workflowId, suggestionId);
@@ -47,20 +49,14 @@ export class WorkflowSuggestionActionsService {
 		const { suggestion, target } = await this.service.reconcilePending(suggestionId, scope);
 		if (!target.workflow || target.projectId !== projectId)
 			throw new NotFoundError('Suggestion not found.');
-		if (action === 'approve-and-publish' || action === 'retry-publication') {
+		if (action === 'approve-and-publish') {
 			if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
 				throw new ForbiddenError('Workflow publish access is required.');
 			}
 		}
 
-		if (action === 'retry-publication') {
-			if (suggestion.appliedVersion?.action !== 'approve-and-publish') {
-				throw new ConflictError(
-					'Approve and publish is required before publication can be retried.',
-				);
-			}
-			await this.publish(user, suggestion, clientId);
-		} else if (suggestion.state === 'pending') {
+		let publicationError: string | undefined;
+		if (suggestion.state === 'pending') {
 			if (suggestion.resultKind !== 'fix_ready') {
 				throw new ConflictError('Only a Fix ready suggestion can be applied.');
 			}
@@ -115,9 +111,6 @@ export class WorkflowSuggestionActionsService {
 							afterSave: async (ctx, saved) => {
 								applied = {
 									versionId: saved.versionId,
-									projectId,
-									previousPublishedVersionId: suggestion.expectedBaseline.publishedVersionId,
-									baselinePublicationId: suggestion.expectedBaseline.publicationId,
 									checksum: await calculateWorkflowChecksum(saved),
 									action,
 									actorId: user.id,
@@ -141,7 +134,8 @@ export class WorkflowSuggestionActionsService {
 					await this.service.reconcilePending(suggestionId, scope);
 					throw error;
 				}
-				applied = current.appliedVersion ?? undefined;
+				// Only the request that saved this version can start publication.
+				if (applied?.versionId !== current.appliedVersion?.versionId) applied = undefined;
 			}
 			if (applied) {
 				try {
@@ -153,11 +147,30 @@ export class WorkflowSuggestionActionsService {
 					});
 				}
 				if (action === 'approve-and-publish' && applied.action === action) {
-					await this.publish(user, { ...suggestion, appliedVersion: applied }, clientId);
+					try {
+						const publisher = await this.service.requireEditor(user.id, workflowId);
+						await this.collaboration.validateWriteLock(
+							publisher.id,
+							clientId ?? suggestionId,
+							workflowId,
+							'publish',
+						);
+						await this.workflows.activateWorkflow(publisher, workflowId, {
+							versionId: applied.versionId,
+							expectedChecksum: applied.checksum,
+							source: 'n8n-ai',
+						});
+					} catch (error) {
+						// Apply is committed. The editor owns publication status and recovery.
+						publicationError = ensureError(error).message;
+					}
 				}
 			}
 		}
-		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
+		return {
+			...(await this.service.getProposal(user, projectId, workflowId, suggestionId)),
+			...(publicationError !== undefined ? { publicationError } : {}),
+		};
 	}
 
 	async discard(
@@ -180,31 +193,5 @@ export class WorkflowSuggestionActionsService {
 				await this.suggestions.closePending(suggestion, 'discarded', user.id, ctx);
 			}
 		});
-	}
-
-	private async publish(user: User, suggestion: WorkflowSuggestion, clientId?: string) {
-		if (!suggestion.appliedVersion) throw new ConflictError('The suggestion has not been applied.');
-		if (
-			suggestion.publication?.status === 'published' ||
-			suggestion.publication?.status === 'partial'
-		) {
-			return;
-		}
-		await this.collaboration.validateWriteLock(
-			user.id,
-			clientId ?? suggestion.id,
-			suggestion.workflowId,
-			'publish',
-		);
-		const publication = await this.publisher.publish(
-			user,
-			suggestion.workflowId,
-			suggestion.appliedVersion,
-		);
-		await this.txRunner.run(
-			{},
-			async (ctx) =>
-				await this.suggestions.recordPublication(suggestion.id, publication, user.id, ctx),
-		);
 	}
 }
