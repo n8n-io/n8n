@@ -108,7 +108,15 @@ export class WorkflowComposer {
 			await this.selectFolderInMoveModal(folder);
 		}
 
+		// The list only refetches after the transfer has completed. Waiting for the
+		// request keeps the next navigation from reading the pre-move state.
+		const transferred = this.n8n.page.waitForResponse(
+			(response) =>
+				response.request().method() === 'PUT' &&
+				/\/rest\/workflows\/[^/]+\/transfer$/.test(response.url()),
+		);
 		await this.n8n.resourceMoveModal.clickConfirmMoveButton();
+		expect((await transferred).ok()).toBe(true);
 	}
 
 	private async selectProjectInMoveModal(projectNameOrEmail: string): Promise<void> {

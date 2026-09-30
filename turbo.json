@@ -125,7 +125,10 @@
 		"@n8n/syslog-client#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
-		"@n8n/test-impact#lint": {
+		"@n8n/task-runner#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-core#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n#lint": {

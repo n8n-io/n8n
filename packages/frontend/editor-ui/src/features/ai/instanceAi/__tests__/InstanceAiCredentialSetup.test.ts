@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { computed, defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
@@ -14,16 +14,17 @@ import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 
-// Toggleable state for the 094 experiment and easy-setup detection.
+// Toggleable state for the "Set up automatically" switch and easy-setup detection.
 const experiment = vi.hoisted(() => ({ enabled: false }));
 const easySetup = vi.hoisted(() => ({ available: false }));
 const mockTelemetryTrack = vi.hoisted(() => vi.fn());
 const mockBrowserModalOpened = vi.hoisted(() => vi.fn());
 
-vi.mock('@/experiments/instanceAiBrowserCredentialSetup', () => ({
-	useInstanceAiBrowserCredentialSetupExperiment: () => ({
-		isFeatureEnabled: computed(() => experiment.enabled),
-	}),
+vi.mock('../constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../constants')>()),
+	get INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED() {
+		return experiment.enabled;
+	},
 }));
 
 vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
@@ -895,7 +896,7 @@ describe('InstanceAiCredentialSetup', () => {
 		});
 	});
 
-	describe('browser-use setup choice (094 experiment)', () => {
+	describe('browser-use setup choice', () => {
 		let settingsStore: ReturnType<typeof useInstanceAiSettingsStore>;
 
 		beforeEach(() => {
@@ -905,6 +906,8 @@ describe('InstanceAiCredentialSetup', () => {
 			mockBrowserModalOpened.mockClear();
 
 			settingsStore = useInstanceAiSettingsStore();
+			// @ts-expect-error Getters are writable in testing pinia
+			settingsStore.isBrowserUseAvailable = true;
 			vi.spyOn(settingsStore, 'fetchBrowserStatus').mockResolvedValue(undefined);
 			settingsStore.browserConnected = false;
 			settingsStore.browserStatusLoaded = true;
@@ -933,6 +936,17 @@ describe('InstanceAiCredentialSetup', () => {
 					browser_connection_state: 'disconnected',
 				}),
 			);
+		});
+
+		it('hides the choice when Browser Use is unavailable', () => {
+			experiment.enabled = true;
+			// @ts-expect-error Getters are writable in testing pinia
+			settingsStore.isBrowserUseAvailable = false;
+
+			const { queryByTestId, getByTestId } = renderCard(makeCredentialRequests(1));
+
+			expect(queryByTestId('setup-choice-ai')).toBeNull();
+			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
 		});
 
 		it('reports the connected state on the shown event', () => {

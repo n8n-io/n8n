@@ -1,4 +1,5 @@
 import type { INodeTypeDescription, NodeConnectionType, IConnections } from 'n8n-workflow';
+import { isUsableObjectKey } from 'n8n-workflow';
 
 import { createConnection } from '@/tools/utils/connection.utils';
 import type { SimpleWorkflow } from '@/types';
@@ -141,6 +142,11 @@ function findCandidateSubNodes(
 	const candidates: string[] = [];
 
 	for (const [subNodeName, outputs] of ctx.subNodeOutputs) {
+		// The source name becomes a key of the connection map, so a name that cannot be an
+		// own key is not a candidate. Dropping it here lets the caller report honestly
+		// instead of counting a connection that the write path would refuse.
+		if (!isUsableObjectKey(subNodeName)) continue;
+
 		if (outputs.has(missingType)) {
 			// Check if this sub-node is already connected to THIS specific target
 			const alreadyConnectedToTarget = connectionExistsBetweenNodes(
@@ -173,6 +179,17 @@ function processMissingInputViolation(ctx: AutoFixContext, violation: Programmat
 
 	// Only auto-fix AI connections (ai_*)
 	if (!missingType.startsWith('ai_')) return;
+
+	if (!isUsableObjectKey(nodeName)) {
+		ctx.result.unfixable.push({
+			nodeName: String(nodeName),
+			missingInputType: missingType as NodeConnectionType,
+			// String(): the check rejects a value that need not be a string at all.
+			reason: `Node name "${String(nodeName)}" cannot be used in a connection`,
+			candidateCount: 0,
+		});
+		return;
+	}
 
 	const candidates = findCandidateSubNodes(ctx, nodeName, missingType as NodeConnectionType);
 
@@ -222,6 +239,9 @@ function findTargetCandidates(
 
 	for (const node of ctx.workflow.nodes) {
 		if (node.disabled || node.name === subNodeName) continue;
+		// The target name is stored as a connection's `node`, which traversal helpers use
+		// as a key when they invert the graph.
+		if (!isUsableObjectKey(node.name)) continue;
 
 		const nodeType = getNodeTypeForNode(node, ctx.nodeTypeMap, ctx.nodeTypesByName);
 		if (!nodeType) continue;
@@ -268,6 +288,16 @@ function processDisconnectedSubNodeViolation(
 	if (!subNode || subNode.disabled) return;
 
 	if (ctx.connectedSubNodes.has(subNodeName)) return;
+
+	if (!isUsableObjectKey(subNodeName)) {
+		ctx.result.unfixable.push({
+			nodeName: String(subNodeName),
+			missingInputType: outputType as NodeConnectionType,
+			reason: `Node name "${String(subNodeName)}" cannot be used in a connection`,
+			candidateCount: 0,
+		});
+		return;
+	}
 
 	const nowConnected = findExistingOutgoingConnection(
 		ctx.result.updatedConnections,

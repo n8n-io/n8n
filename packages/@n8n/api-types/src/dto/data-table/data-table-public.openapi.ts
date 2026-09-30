@@ -36,6 +36,10 @@ export const dataTableListFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+const dataTableColumnNameDescription =
+	'Column name. Must start with a letter; only letters, digits, and underscores after that; ' +
+	'maximum 63 characters.';
+
 export const createDataTableColumnFieldDocs = {
 	csvColumnName: {
 		description:
@@ -43,6 +47,14 @@ export const createDataTableColumnFieldDocs = {
 			'CSV columns by position.',
 		example: 'Email Address',
 	},
+	name: { description: dataTableColumnNameDescription },
+	type: { description: 'Column data type' },
+	index: { description: 'Column position (optional, appended to end if omitted)' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const updateDataTableColumnFieldDocs = {
+	name: { description: dataTableColumnNameDescription },
+	index: { description: 'New zero-based position for the column' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const createDataTableFieldDocs = {

@@ -16,6 +16,8 @@ export const SANDBOX_PROVIDER_LABELS = {
 
 export type InstanceAiConnectionKind = 'model' | 'sandbox' | 'search';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
+/** Offers "Set up automatically" (Browser Use) on the credential setup card. Off until the option ships again. */
+export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED = false;
 export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 export const INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY = 'instanceAiAgentPreviewView';
 /** Mirrors `AGENT_PREVIEW_SESSION_METADATA_KEY` in `@n8n/instance-ai`. */

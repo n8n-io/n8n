@@ -58,6 +58,14 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return result.affected === 1;
 	}
 
+	async cancelExecution(id: string): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
+			{ status: 'cancelled', finishedAt: new Date() },
+		);
+		return result.affected === 1;
+	}
+
 	async refreshLiveStatus(id: string): Promise<void> {
 		// The probes read the steps before the UPDATE takes the row's lock, so a
 		// step can change in between.

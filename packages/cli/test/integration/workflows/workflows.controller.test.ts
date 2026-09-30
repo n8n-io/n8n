@@ -3914,7 +3914,9 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(response.statusCode).toBe(200);
 
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 	});
 
 	test('should not reactivate when settings unchanged', async () => {
@@ -4287,7 +4289,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: newVersionId });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
@@ -4422,7 +4426,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId, name: newVersionName });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -4443,7 +4449,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId, description: newDescription });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -4467,7 +4475,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -4592,7 +4602,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 		// First remove active version
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
@@ -4604,7 +4616,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId });
 
 		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
+			actor: expect.objectContaining({ kind: 'user' }),
+		});
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
 			userId: owner.id,
