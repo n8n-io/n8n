@@ -427,6 +427,90 @@ describe('GoogleCalendarTrigger', () => {
 			expect(result?.[0]).toHaveLength(1);
 			expect(result?.[0][0].json.id).toBe('1');
 		});
+
+		describe('all-day events (NODE-6081)', () => {
+			// The end date is exclusive and both dates use the calendar's time zone.
+			const allDayEvent = {
+				id: 'all-day',
+				summary: 'All-day event',
+				start: { date: '2026-09-29' },
+				end: { date: '2026-09-30' },
+			};
+
+			beforeEach(() => {
+				vi.useFakeTimers();
+				mockPollFunctions.getTimezone.mockReturnValue('UTC');
+				googleApiRequestSpy.mockResolvedValue({ timeZone: 'America/New_York' });
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			async function pollAllDayEvent(triggerOn: string, lastTimeChecked: string, now: string) {
+				vi.setSystemTime(new Date(now));
+				googleApiRequestAllItemsSpy.mockImplementation(async () => {
+					// The request completes after the poll window ends.
+					vi.setSystemTime(new Date(new Date(now).getTime() + 1000));
+					return [allDayEvent];
+				});
+				const webhookData = { lastTimeChecked };
+				mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
+				mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, string | Array<{ hour: number }>> = {
+						'pollTimes.item': [{ hour: 0 }],
+						triggerOn,
+						calendarId: 'test@example.com',
+						'options.matchTerm': '',
+					};
+					return params[paramName] ?? '';
+				});
+
+				const result = await trigger.poll.call(mockPollFunctions);
+				return { result, webhookData };
+			}
+
+			it.each([
+				{
+					triggerOn: 'eventStarted',
+					lastTimeChecked: '2026-09-29T03:55:00Z',
+					now: '2026-09-29T04:05:00Z',
+				},
+				{
+					triggerOn: 'eventEnded',
+					lastTimeChecked: '2026-09-30T03:55:00Z',
+					now: '2026-09-30T04:05:00Z',
+				},
+			])(
+				'emits an all-day event for $triggerOn at New York midnight',
+				async ({ triggerOn, lastTimeChecked, now }) => {
+					const { result, webhookData } = await pollAllDayEvent(triggerOn, lastTimeChecked, now);
+
+					expect(webhookData.lastTimeChecked).toBe(now);
+					expect(result?.[0].map((item) => item.json.id)).toEqual(['all-day']);
+				},
+			);
+
+			it.each([
+				{
+					triggerOn: 'eventStarted',
+					lastTimeChecked: '2026-09-28T23:55:00Z',
+					now: '2026-09-29T00:05:00Z',
+				},
+				{
+					triggerOn: 'eventEnded',
+					lastTimeChecked: '2026-09-29T03:55:00Z',
+					now: '2026-09-29T04:05:00Z',
+				},
+			])(
+				'does not emit an all-day event for $triggerOn before its boundary',
+				async ({ triggerOn, lastTimeChecked, now }) => {
+					const { result } = await pollAllDayEvent(triggerOn, lastTimeChecked, now);
+
+					expect(result).toBeNull();
+				},
+			);
+		});
 	});
 
 	describe('Poll Function - Manual Mode', () => {
