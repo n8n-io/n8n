@@ -20,7 +20,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@n8n/backend-services';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 
 /** Root-level (no `/rest` prefix) agent authenticated as `user` — `authAgentFor` always

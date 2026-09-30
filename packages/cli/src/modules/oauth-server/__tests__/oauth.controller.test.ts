@@ -3,10 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry';
+import type { ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 
 import { OAuthServerService } from '../oauth-server.service';

@@ -31,9 +31,10 @@ and infrastructure services that need the persistence layer or that only
 - `UrlService`: instance and webhook URLs.
 - `CacheService`: application cache access.
 - `RedisClientService`: shared Redis connections and support code.
+- `ProtectedResourceRegistry`: protected OAuth resource registration and lookup.
+- `RoleService`: role and scope resolution.
+- Finder services and scope checks: resource access queries.
 
-The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
-and the scope checks here, one area at a time.
 
 ### Register event payloads
 

@@ -17,7 +17,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@n8n/backend-services';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
