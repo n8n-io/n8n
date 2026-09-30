@@ -9,7 +9,16 @@ import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
+
+/** One case of the running suite: its live status and, once settled, its answer. */
+export type SuiteCaseRun = {
+	rowId: number;
+	input: string;
+	status: AgentAvatarKind;
+	output: string | null;
+};
 
 const props = defineProps<{
 	previewInput: string;
@@ -17,11 +26,19 @@ const props = defineProps<{
 	/** Already fetched in full (up to 10) — the slider only trims the display. */
 	examples: AgentEvalDraftCase[];
 	addingExample?: boolean;
+	/** Set once "Check your agent" has committed the suite to a run — replaces
+	 *  the slider/editor with each case's live status. Null beforehand. */
+	caseRuns: SuiteCaseRun[] | null;
+	/** True from the "Check your agent" click until the run has actually started. */
+	startingRun?: boolean;
+	/** True once every case in `caseRuns` has settled (no case still "waiting"). */
+	runSettled?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'add-example': [input: string];
 	'check-agent': [count: number];
+	'view-evals': [];
 }>();
 
 const i18n = useI18n();
@@ -66,6 +83,10 @@ function cancelAddOwn() {
 function onCheckYourAgent() {
 	emit('check-agent', sliderValue.value);
 }
+
+function onViewEvals() {
+	emit('view-evals');
+}
 </script>
 
 <template>
@@ -84,76 +105,102 @@ function onCheckYourAgent() {
 
 		<hr :class="$style.divider" />
 
-		<N8nText color="text-dark" :class="$style.checkMoreExamplesHint">
-			{{ i18n.baseText('instanceAi.testAgentPreview.checkMoreExamples') }}
-		</N8nText>
+		<template v-if="!caseRuns">
+			<N8nText color="text-dark" :class="$style.checkMoreExamplesHint">
+				{{ i18n.baseText('instanceAi.testAgentPreview.checkMoreExamples') }}
+			</N8nText>
 
-		<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
-			<ElSlider
-				v-model="sliderValue"
-				:min="1"
-				:max="maxSliderValue"
-				:step="1"
-				:show-tooltip="false"
-				:class="$style.slider"
-			/>
-			<div :class="$style.sliderLabels">
-				<span :class="$style.sliderCount">
-					{{
-						i18n.baseText('instanceAi.testAgentPreview.examplesCount', {
-							adjustToNumber: sliderValue,
-							interpolate: { count: String(sliderValue) },
-						})
-					}}
-				</span>
+			<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
+				<ElSlider
+					v-model="sliderValue"
+					:min="1"
+					:max="maxSliderValue"
+					:step="1"
+					:show-tooltip="false"
+					:class="$style.slider"
+				/>
+				<div :class="$style.sliderLabels">
+					<span :class="$style.sliderCount">
+						{{
+							i18n.baseText('instanceAi.testAgentPreview.examplesCount', {
+								adjustToNumber: sliderValue,
+								interpolate: { count: String(sliderValue) },
+							})
+						}}
+					</span>
+				</div>
 			</div>
-		</div>
 
-		<div :class="$style.exampleList">
-			<AgentEvalTryRow
-				v-for="(example, index) in visibleExamples"
-				:key="index"
-				status="idle"
-				:input="example.input"
-				:output="null"
-				test-id="instance-ai-test-agent-examples-example"
-			/>
-			<AgentEvalTryRow
-				v-for="(example, index) in ownExamples"
-				:key="`own-${index}`"
-				status="idle"
-				:input="example"
-				:output="null"
-				test-id="instance-ai-test-agent-examples-own-example"
-			/>
-		</div>
+			<div :class="$style.exampleList">
+				<AgentEvalTryRow
+					v-for="(example, index) in visibleExamples"
+					:key="index"
+					status="idle"
+					:input="example.input"
+					:output="null"
+					test-id="instance-ai-test-agent-examples-example"
+				/>
+				<AgentEvalTryRow
+					v-for="(example, index) in ownExamples"
+					:key="`own-${index}`"
+					status="idle"
+					:input="example"
+					:output="null"
+					test-id="instance-ai-test-agent-examples-own-example"
+				/>
+			</div>
 
-		<div :class="$style.addOwnForm">
-			<N8nInput
-				v-model="ownInput"
-				:class="$style.addOwnInput"
-				:style="addOwnInputStyle"
-				:autosize="{ minRows: 1, maxRows: 4 }"
-				:placeholder="i18n.baseText('instanceAi.testAgentPreview.addYourOwnExample')"
-				data-test-id="instance-ai-test-agent-examples-add-own-input"
-				@keydown.meta.enter="submitOwnExample"
-				@keydown.enter="submitOwnExample"
-				@keydown.esc="cancelAddOwn"
+			<div :class="$style.addOwnForm">
+				<N8nInput
+					v-model="ownInput"
+					:class="$style.addOwnInput"
+					:style="addOwnInputStyle"
+					:autosize="{ minRows: 1, maxRows: 4 }"
+					:placeholder="i18n.baseText('instanceAi.testAgentPreview.addYourOwnExample')"
+					data-test-id="instance-ai-test-agent-examples-add-own-input"
+					@keydown.meta.enter="submitOwnExample"
+					@keydown.enter="submitOwnExample"
+					@keydown.esc="cancelAddOwn"
+				>
+					<template #prefix>
+						<N8nIcon icon="plus" size="small" />
+					</template>
+				</N8nInput>
+			</div>
+
+			<N8nButton
+				variant="solid"
+				size="small"
+				:loading="startingRun"
+				data-test-id="instance-ai-test-agent-examples-check-agent"
+				@click="onCheckYourAgent"
 			>
-				<template #prefix>
-					<N8nIcon icon="plus" size="small" />
-				</template>
-			</N8nInput>
-		</div>
+				{{ i18n.baseText('instanceAi.testAgentPreview.checkYourAgent') }}
+			</N8nButton>
+		</template>
 
-		<N8nButton
-			variant="solid"
-			size="small"
-			data-test-id="instance-ai-test-agent-examples-check-agent"
-			@click="onCheckYourAgent"
-		>
-			{{ i18n.baseText('instanceAi.testAgentPreview.checkYourAgent') }}
-		</N8nButton>
+		<template v-else>
+			<div :class="$style.exampleList">
+				<AgentEvalTryRow
+					v-for="run in caseRuns"
+					:key="run.rowId"
+					:status="run.status"
+					:input="run.input"
+					:output="run.output"
+					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
+				/>
+			</div>
+
+			<N8nButton
+				v-if="runSettled"
+				variant="outline"
+				size="small"
+				data-test-id="instance-ai-test-agent-examples-view-evals"
+				@click="onViewEvals"
+			>
+				{{ i18n.baseText('instanceAi.testAgentPreview.viewInEvals') }}
+			</N8nButton>
+		</template>
 	</div>
 </template>
 

@@ -9,17 +9,36 @@
  * `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
-import type { AgentEvalDraftCase } from '@n8n/api-types';
+import type { AgentEvalDraftCase, AgentEvalResultStatus } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
 import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-eval-review';
 import { isDataTableDataset, toCaseSource } from '@/features/agents/utils/agentEvalCases.utils';
+import type { AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
-import InstanceAiTestAgentExamplesPanel from './InstanceAiTestAgentExamplesPanel.vue';
+import InstanceAiTestAgentExamplesPanel, {
+	type SuiteCaseRun,
+} from './InstanceAiTestAgentExamplesPanel.vue';
 import CapabilityChip from '@/features/agents/components/CapabilityChip.vue';
+
+/** How a settled result's status reads as a row's avatar state. */
+function resultStatusToKind(status: AgentEvalResultStatus): AgentAvatarKind {
+	switch (status) {
+		case 'success':
+			return 'pass';
+		case 'error':
+			return 'fail';
+		case 'cancelled':
+			return 'work';
+		case 'new':
+		case 'running':
+			return 'waiting';
+	}
+}
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
@@ -52,8 +71,17 @@ type Phase =
 const phase = ref<Phase>(props.initialCase ? 'awaiting-confirmation' : 'generating-preview');
 const previewRunId = ref<string | null>(null);
 const suiteCases = ref<AgentEvalDraftCase[]>([]);
+// Frozen once the suite is generated — `suiteCases` itself keeps growing as the
+// user adds their own examples, so this is the only record of how many of its
+// entries are the generated batch the slider trims, versus the user's own.
+const generatedCaseCount = ref(0);
 const suiteDatasetId = ref<string | null>(null);
 const addingExample = ref(false);
+// Null until "Check your agent" has trimmed the dataset to its cap — set, it
+// replaces the slider/editor view with each case's live run status.
+const suiteCaseRows = ref<AgentEvalCase[] | null>(null);
+const suiteRunId = ref<string | null>(null);
+const startingSuiteRun = ref(false);
 const sampleInput = ref('');
 // Cleared once the user submits their own sample, so the display switches
 // over to that new run instead of sticking with the builder's original test.
@@ -71,6 +99,32 @@ const previewOutput = computed(() =>
 	useInitialCase.value
 		? (props.initialCase?.response ?? '')
 		: readAgentAnswer(previewResult.value?.output ?? null),
+);
+
+// Each row's live state: "waiting" until its case has a settled result, then
+// the outcome the result recorded. Kept as one derived list rather than
+// mutated in place, so a case update never has to be reconciled by hand.
+const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
+	const rows = suiteCaseRows.value;
+	if (!rows) return null;
+	const results = suiteRunId.value ? store.getReview(suiteRunId.value).results : [];
+	return rows.map((row) => {
+		const result = results.find((r) => r.sourceRowId === String(row.rowId));
+		if (!result || result.status === 'new' || result.status === 'running') {
+			return { rowId: row.rowId, input: row.input, status: 'waiting', output: null };
+		}
+		return {
+			rowId: row.rowId,
+			input: row.input,
+			status: resultStatusToKind(result.status),
+			output: readAgentAnswer(result.output),
+		};
+	});
+});
+
+const isSuiteRunSettled = computed(
+	() =>
+		suiteCaseRuns.value !== null && suiteCaseRuns.value.every((run) => run.status !== 'waiting'),
 );
 // Not reactive by design — nothing templates off it. It only guards async
 // continuations against acting after the panel is gone, since the store's
@@ -189,6 +243,7 @@ async function onConfirm() {
 		const result = await store.generateDraftCases(projectId, agentId, { count: 10 });
 		if (!isMounted) return;
 		suiteCases.value = result.cases;
+		generatedCaseCount.value = result.cases.length;
 		suiteDatasetId.value = result.datasetId;
 		phase.value = 'suite-ready';
 	} catch (error) {
@@ -196,12 +251,19 @@ async function onConfirm() {
 	}
 }
 
+/** Resolves the suite dataset's case source, once it has one. */
+function resolveSuiteSource() {
+	if (!suiteDatasetId.value) return null;
+	const dataset = store
+		.getDatasets(props.target.agentId)
+		.find((d) => d.id === suiteDatasetId.value);
+	return dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
+}
+
 async function onAddExample(input: string) {
-	if (!suiteDatasetId.value) return;
-	const { projectId, agentId } = props.target;
-	const dataset = store.getDatasets(agentId).find((d) => d.id === suiteDatasetId.value);
-	const source = dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
+	const source = resolveSuiteSource();
 	if (!source) return;
+	const { projectId } = props.target;
 	addingExample.value = true;
 	try {
 		const created = await store.createCase(projectId, source, { input, whatToCheck: '' });
@@ -215,13 +277,43 @@ async function onAddExample(input: string) {
 	}
 }
 
-// `count` (the slider's current value) isn't used yet — `startRun` always runs
-// every row in the dataset. Running only the first N is a real gap, left for
-// when partial-dataset runs are needed.
-async function onCheckAgent(_count: number) {
-	if (!suiteDatasetId.value) return;
+/**
+ * Trims the generated batch down to the slider's cap (the user's own examples,
+ * appended after it, are always kept), then runs the agent over what remains.
+ * From here the panel shows each case's live status instead of the editor.
+ */
+async function onCheckAgent(count: number) {
+	if (suiteCaseRows.value) return;
+	const source = resolveSuiteSource();
+	if (!source || !suiteDatasetId.value) return;
 	const { projectId, agentId } = props.target;
-	await store.startRun(projectId, agentId, suiteDatasetId.value);
+
+	startingSuiteRun.value = true;
+	try {
+		const cases = await store.fetchCases(projectId, source);
+		if (!isMounted) return;
+
+		const overflow = cases.slice(count, generatedCaseCount.value);
+		await Promise.all(overflow.map((c) => store.deleteCase(projectId, source, c.rowId)));
+		if (!isMounted) return;
+
+		const overflowRowIds = new Set(overflow.map((c) => c.rowId));
+		suiteCaseRows.value = cases.filter((c) => !overflowRowIds.has(c.rowId));
+
+		const run = await store.startRun(projectId, agentId, suiteDatasetId.value);
+		if (!isMounted) return;
+		suiteRunId.value = run.id;
+		await store.openRun(projectId, agentId, run.id);
+		if (!isMounted) return;
+		if (store.isRunInFlight(run.id)) {
+			store.startPollingRun(projectId, agentId, run.id);
+		}
+	} finally {
+		if (isMounted) startingSuiteRun.value = false;
+	}
+}
+
+function onViewEvals() {
 	emit('open-evals');
 }
 
@@ -351,8 +443,12 @@ function onDontCreateEvals() {
 				:preview-output="previewOutput ?? ''"
 				:examples="suiteCases"
 				:adding-example="addingExample"
+				:case-runs="suiteCaseRuns"
+				:starting-run="startingSuiteRun"
+				:run-settled="isSuiteRunSettled"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
+				@view-evals="onViewEvals"
 			/>
 		</template>
 	</div>
