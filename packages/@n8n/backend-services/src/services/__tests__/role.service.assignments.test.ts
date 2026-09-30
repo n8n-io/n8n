@@ -1,6 +1,6 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { RoleRepository, ScopeRepository } from '@n8n/db';
-import { NotFoundError } from '../../errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '../../events/event.service';
