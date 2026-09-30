@@ -21,30 +21,38 @@ import {
 // only fields that exist. The switch has no default branch: adding a kind to
 // the grammar stops compilation until it is handled here.
 
-// Thrown when a runtime value falls outside what parsing proved statically
-// (a whitelisted string method on a non-string receiver, an operator on an
-// object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
-// abandoned and the caller re-runs the expression through the regular engine
-// pipeline. Anything evaluated before the bail runs again in the engine: a
-// nested `$parameter` expression, or a getter on a data object. Expressions
-// are pure and workflow data is JSON, so the only cost is the repeated work.
+/**
+ * Thrown when a runtime value falls outside what parsing proved statically
+ * (a whitelisted string method on a non-string receiver, an operator on an
+ * object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
+ * abandoned and the caller re-runs the expression through the regular engine
+ * pipeline. Anything evaluated before the bail runs again in the engine: a
+ * nested `$parameter` expression, or a getter on a data object. Expressions
+ * are pure and workflow data is JSON, so the only cost is the repeated work.
+ */
 export class EngineFallbackError extends Error {}
 
-// Thrown by an optional member/call on a nullish receiver and caught by the
-// enclosing chain node, which yields undefined for the whole chain. One
-// shared instance: a missing optional hop is ordinary data, not an error.
+/**
+ * Thrown by an optional member/call on a nullish receiver and caught by the
+ * enclosing chain node, which yields undefined for the whole chain. One
+ * shared instance: a missing optional hop is ordinary data, not an error.
+ */
 class ChainShortCircuit extends Error {}
 const chainShortCircuit = new ChainShortCircuit();
 
-// Property lookup on a non-nullish primitive is well-defined and side-effect
-// free, so primitives are indexable here even though the predicate's type
-// only names objects.
+/**
+ * Property lookup on a non-nullish primitive is well-defined and side-effect
+ * free, so primitives are indexable here even though the predicate's type
+ * only names objects.
+ */
 const isIndexable = (value: unknown): value is Record<string | number, unknown> =>
 	value !== null && value !== undefined;
 
-// Operators only ever see primitives. An object operand would coerce through
-// its valueOf/toString on the host, where the engine sees a structured-clone
-// copy; a reference comparison would differ from the engine's copy semantics.
+/**
+ * Operators only ever see primitives. An object operand would coerce through
+ * its valueOf/toString on the host, where the engine sees a structured-clone
+ * copy; a reference comparison would differ from the engine's copy semantics.
+ */
 const isPrimitive = (value: unknown): boolean =>
 	value === null || (typeof value !== 'object' && typeof value !== 'function');
 
@@ -118,9 +126,11 @@ function evalMember(
 	return value;
 }
 
-// Parsing only proves the method name; the receiver's type is data. A
-// receiver whose type has no allowlist entry for the method could be
-// intercepted by extensions, so it hands the whole expression to the engine.
+/**
+ * Parsing only proves the method name; the receiver's type is data. A
+ * receiver whose type has no allowlist entry for the method could be
+ * intercepted by extensions, so it hands the whole expression to the engine.
+ */
 function methodFor(receiver: unknown, name: string): NativeMethod {
 	let method: NativeMethod | undefined;
 
@@ -137,21 +147,25 @@ function methodFor(receiver: unknown, name: string): NativeMethod {
 	return method;
 }
 
-// Arguments are primitives, plus arrays for concat. An object argument would
-// compare by live reference where the isolate compares copies (includes/
-// indexOf) or coerce on the host where the isolate sees a copy.
+/**
+ * Arguments are primitives, plus arrays for concat. An object argument would
+ * compare by live reference where the isolate compares copies (includes/
+ * indexOf) or coerce on the host where the isolate sees a copy.
+ */
 function isAllowedArgument(method: string, arg: unknown): boolean {
 	if (isPrimitive(arg)) return true;
 
 	return method === 'concat' && isArray(arg);
 }
 
-// The engine runs under a timeout; a synchronous native call cannot be
-// interrupted, so the input size is the budget. A receiver above the result
-// cap goes to the engine before any work is done, and the amplifying methods
-// (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
-// result) bail on an upper bound of their output.
-function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
+/**
+ * The engine runs under a timeout; a synchronous native call cannot be
+ * interrupted, so the input size is the budget. A receiver above the result
+ * cap goes to the engine before any work is done, and the amplifying methods
+ * (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
+ * result) bail on an upper bound of their output.
+ */
+function assertPreflightSize(receiver: unknown, method: string, args: unknown[]): void {
 	let upperBound = typeof receiver === 'number' ? 0 : (receiver as { length: number }).length;
 
 	if (method === 'concat') {
@@ -185,9 +199,11 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 	}
 }
 
-// Element count of `array.flat(depth)`, stopping early once past the cap
-// (a nested structure can flatten to far more elements than the outer
-// array holds).
+/**
+ * Element count of `array.flat(depth)`, stopping early once past the cap
+ * (a nested structure can flatten to far more elements than the outer
+ * array holds).
+ */
 function flatSize(array: unknown[], depth: number): number {
 	let size = 0;
 	for (const element of array) {
@@ -225,7 +241,7 @@ function evalCall(
 		throw new EngineFallbackError();
 	}
 
-	preflightSize(receiver, node.method, args);
+	assertPreflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args));
 }
@@ -317,9 +333,11 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 	}
 }
 
-// Tournament wraps each code chunk in try/catch and routes errors to the E()
-// handler, which rethrows ExpressionErrors and swallows everything else (the
-// chunk then yields undefined). Mirror that exactly.
+/**
+ * Tournament wraps each code chunk in try/catch and routes errors to the E()
+ * handler, which rethrows ExpressionErrors and swallows everything else (the
+ * chunk then yields undefined). Mirror that exactly.
+ */
 export function evalChunk(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 	try {
 		return evalNode(node, data);
