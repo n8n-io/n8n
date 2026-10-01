@@ -59,6 +59,8 @@ import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
+import { EXECUTION_METADATA_KEY, type AgentExecutionAdmission } from './types/agent-queued-message';
+import { bindExecutionInput } from './utils/execution-input';
 import {
 	WorkflowAgentStreamAdapter,
 	type WorkflowAgentStreamObserver,
@@ -70,6 +72,7 @@ interface WorkflowSandboxScope {
 }
 
 interface WorkflowAgentStreamParams {
+	admission?: AgentExecutionAdmission;
 	agentInstance: BuiltAgent;
 	message: string;
 	threadId: string;
@@ -368,7 +371,10 @@ export class AgentWorkflowExecutionService {
 	): Promise<void> {
 		const options = await this.getWorkflowStreamOptions(params, hasParentContext);
 		state.executionStarted = true;
-		const resultStream = await params.agentInstance.stream(params.message, options);
+		const resultStream = await params.agentInstance.stream(
+			bindExecutionInput(params.message, params.admission?.inputMessageIds ?? []),
+			options,
+		);
 		for await (const value of streamAgentChunks(resultStream.stream)) {
 			this.recordWorkflowChunk(value, params.outputSchema, recorder, state);
 			await streamAdapter.observe(value);
@@ -417,6 +423,7 @@ export class AgentWorkflowExecutionService {
 				resourceId: threadId,
 				threadId,
 				hostMetadata: {
+					...(params.admission && { [EXECUTION_METADATA_KEY]: params.admission.executionId }),
 					...(sandboxScope ? encodeAgentSandboxHostMetadata(sandboxScope) : {}),
 					...encodeIntegrationMessageContext(messageContext),
 				},
@@ -472,20 +479,22 @@ export class AgentWorkflowExecutionService {
 		const { recordingParams } = params;
 		const streamAdapter = new WorkflowAgentStreamAdapter(params.streamObserver);
 		let agentExecutionId: string | undefined;
+		let admission: AgentExecutionAdmission | undefined;
 		const recorder = this.turnExecutionService.createRecorder(
 			undefined,
 			() => agentExecutionId,
 			recordingParams,
 		);
 		if (recordingParams) {
-			agentExecutionId = await this.turnExecutionService.startExecution(
+			admission = await this.turnExecutionService.startExecution(
 				recordingParams,
 				recorder.startedAt,
 			);
+			agentExecutionId = admission.executionId;
 		}
 
 		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
-			await this.consumeWorkflowAgentStream(params, recorder, streamAdapter);
+			await this.consumeWorkflowAgentStream({ ...params, admission }, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
 		if (recordingParams && agentExecutionId) {
@@ -651,6 +660,7 @@ export class AgentWorkflowExecutionService {
 			agentName: agentData.schema?.name ?? agentData.name,
 			projectId,
 			userMessage: message,
+			resourceId: threadId,
 			sessionMode,
 			source: AGENT_WORKFLOW_TRIGGER_TYPE,
 			telemetry: { userId: telemetryUserId, runType, configuration: telemetryConfiguration },

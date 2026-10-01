@@ -1,5 +1,5 @@
 import { NodeError } from './abstract/node.error';
-import { OperationalError } from './base/operational.error';
+import { OperationalError } from '@n8n/errors';
 import type { NodeOperationErrorOptions } from './node-api.error';
 import type { INode, JsonObject } from '../interfaces';
 

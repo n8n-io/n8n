@@ -10,7 +10,7 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useViewStacks } from '../../composables/useViewStacks';
 import NodeItem from './NodeItem.vue';

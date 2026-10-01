@@ -7,9 +7,8 @@ import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { I18nT } from 'vue-i18n';
 
-import { N8nActionDropdown, N8nButton, N8nText, type ActionDropdownItem } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, type ActionDropdownItem } from '@n8n/design-system';
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
 	mouseleave: [event: MouseEvent];
@@ -48,7 +47,7 @@ const selectableTriggerNodes = computed(() =>
 );
 const label = computed(() => {
 	if (!props.executing) {
-		return props.label ?? i18n.baseText('nodeView.runButtonText.executeWorkflow');
+		return props.label ?? i18n.baseText('nodeView.runButtonText.execute');
 	}
 
 	if (props.waitingForWebhook) {
@@ -77,6 +76,27 @@ const isSplitButton = computed(
 	() => selectableTriggerNodes.value.length > 1 && props.selectedTriggerNodeName !== undefined,
 );
 
+// The button has no room for the trigger name, so the icon and the tooltip identify it
+const currentTriggerNode = computed(
+	() =>
+		props.triggerNodes.find((node) => node.name === props.selectedTriggerNodeName) ??
+		selectableTriggerNodes.value[0],
+);
+const currentTriggerNodeType = computed(() =>
+	currentTriggerNode.value
+		? props.getNodeType(currentTriggerNode.value.type, currentTriggerNode.value.typeVersion)
+		: null,
+);
+const tooltipLabel = computed(() =>
+	isSplitButton.value && currentTriggerNode.value
+		? i18n.baseText('nodeView.runButtonText.executeWorkflowFrom', {
+				interpolate: { nodeName: truncateBeforeLast(currentTriggerNode.value.name, 50) },
+			})
+		: i18n.baseText('nodeView.runButtonText.executeWorkflow'),
+);
+const buttonSize = computed(() => props.size ?? 'large');
+const triggerIconSize = computed(() => (buttonSize.value === 'large' ? 20 : 16));
+
 function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	const node = props.triggerNodes.find((trigger) => trigger.name === name);
 
@@ -86,12 +106,17 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 	return props.getNodeType(node.type, node.typeVersion);
 }
+
+function onSelectTriggerNode(name: string) {
+	emit('selectTriggerNode', name);
+	emit('execute');
+}
 </script>
 
 <template>
 	<div :class="[$style.component, isSplitButton ? $style.split : '']">
 		<KeyboardShortcutTooltip
-			:label="label"
+			:label="tooltipLabel"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
 			:disabled="executing || hideTooltip"
 		>
@@ -100,63 +125,59 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:class="$style.button"
 				:loading="executing"
 				:iconOnly="executing"
-				:aria-label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
+				:aria-label="tooltipLabel"
 				:disabled="disabled"
-				:size="size ?? 'large'"
+				:size="buttonSize"
 				icon="flask-conical"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
 				@click="emit('execute')"
 			>
-				<span :class="$style.buttonContent">
-					{{ label }}
-					<N8nText v-if="isSplitButton" :class="$style.subText" :bold="false">
-						<I18nT keypath="nodeView.runButtonText.from" scope="global">
-							<template #nodeName>
-								<N8nText bold size="mini">
-									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
-								</N8nText>
-							</template>
-						</I18nT>
-					</N8nText>
-				</span>
-			</N8nButton>
-		</KeyboardShortcutTooltip>
-		<template v-if="isSplitButton">
-			<div role="presentation" :class="$style.divider" />
-			<N8nActionDropdown
-				:class="$style.menu"
-				:items="actions"
-				:disabled="disabled"
-				placement="top"
-				:extra-popper-class="$style.menuPopper"
-				@select="emit('selectTriggerNode', $event)"
-			>
-				<template #activator>
-					<N8nButton
-						:variant="buttonVariant"
-						icon-size="large"
-						:disabled="disabled"
-						:class="$style.chevron"
-						aria-label="Select trigger node"
-						icon="chevron-down"
+				<template v-if="currentTriggerNodeType" #icon>
+					<NodeIcon
+						:class="$style.triggerIcon"
+						:size="triggerIconSize"
+						:node-type="currentTriggerNodeType"
+						data-test-id="execute-workflow-button-trigger-icon"
 					/>
 				</template>
-				<template #menuItem="item">
-					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
-						<NodeIcon :class="$style.menuIcon" :size="16" :node-type="getNodeTypeByName(item.id)" />
-						<span>
-							<I18nT keypath="nodeView.runButtonText.from" scope="global">
-								<template #nodeName>
-									<N8nText bold size="small">{{ item.label }}</N8nText>
-								</template>
-							</I18nT>
-						</span>
-					</div>
-				</template>
-			</N8nActionDropdown>
-		</template>
+				{{ label }}
+			</N8nButton>
+		</KeyboardShortcutTooltip>
+		<N8nActionDropdown
+			v-if="isSplitButton"
+			:class="$style.menu"
+			:items="actions"
+			:disabled="disabled"
+			placement="top"
+			:extra-popper-class="$style.menuPopper"
+			@select="onSelectTriggerNode"
+		>
+			<template #activator>
+				<N8nButton
+					:variant="buttonVariant"
+					:size="buttonSize"
+					icon-size="large"
+					:disabled="disabled"
+					:class="$style.chevron"
+					aria-label="Select trigger node"
+					icon="chevron-down"
+				/>
+			</template>
+			<template #menuItem="item">
+				<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
+					<NodeIcon :class="$style.menuIcon" :size="16" :node-type="getNodeTypeByName(item.id)" />
+					<span>
+						{{
+							i18n.baseText('nodeView.runButtonText.from', {
+								interpolate: { nodeName: item.label },
+							})
+						}}
+					</span>
+				</div>
+			</template>
+		</N8nActionDropdown>
 	</div>
 </template>
 
@@ -167,32 +188,38 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 	align-items: stretch;
 }
 
-.button {
-	.split & {
-		height: var(--height--xl);
-
-		padding-inline-start: var(--spacing--xs);
-		padding-block: 0;
-		border-top-right-radius: 0;
-		border-bottom-right-radius: 0;
-	}
-
-	.split &[data-icon-only] {
-		padding-inline-start: 0;
-		width: var(--height--xl);
-	}
+.component .button:not([data-icon-only]) {
+	padding-inline: var(--spacing--xs);
 }
 
-.divider {
-	width: 1px;
-	background-color: var(--button--color--text, var(--button--color--text--primary));
+.split .button {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
-.chevron {
-	width: 40px;
-	height: var(--height--xl);
+.triggerIcon {
+	// Tint font icons with the button text color and tone image icons to match the button
+	--node-creator--icon--color: currentColor;
+	mix-blend-mode: luminosity;
+}
+
+.component .chevron {
+	position: relative;
+	width: var(--height--sm);
+	padding: 0;
+	// Overlap the button border so the two halves share one edge
+	margin-inline-start: -1px;
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+
+	&::before {
+		content: '';
+		position: absolute;
+		inset-block: 0;
+		inset-inline-start: 0;
+		width: 1px;
+		background-color: var(--color--black-alpha-100);
+	}
 }
 
 .menu :global(.el-dropdown) {
@@ -212,16 +239,5 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .menuItem.disabled .menuIcon {
 	opacity: 0.2;
-}
-
-.buttonContent {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start !important;
-	gap: var(--spacing--5xs);
-}
-
-.subText {
-	font-size: var(--font-size--2xs);
 }
 </style>

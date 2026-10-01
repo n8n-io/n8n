@@ -74,6 +74,20 @@ splitting fragments by stability:
   sees the instruction the moment the tool loads, just outside the cached
   prefix.
 
+Runtime skills follow the same principle. `ActiveSkills.modelMessages()`
+appends the current skill body to the tool result that activated it: a
+`load_skill` call, or any tool that calls `ctx.loadSkill`. Recorded `load_skill`
+results are collapsed to `{ skillId, active }` first, so an obsolete persisted
+body is never replayed. A programmatic activation stamps its tool call with the
+skill id, so the skill re-anchors to the same result on later turns. The
+top-level system prompt does not mention an anchored skill, so activating and
+carrying a skill never rewrites the cached prefix. The `<active_skills>` block
+is a recovery path. `instructions()` moves a skill into it only when no
+visible, successfully resolved tool result can carry it: observational memory
+masked the result, the activating call failed, or no record of the activation
+exists. When observational memory masked the result, it already rewrote the
+prefix, so the move costs no extra cache invalidation.
+
 Other prefix-stability hygiene, already true or verified: tool ordering is
 append-only (`getCurrentTools()` only ever appends), and none of the current
 built-in `systemInstruction` sources (`delegate_subagent`, `write_todos`,

@@ -1,4 +1,6 @@
 export { StartExecutionService } from './start-execution.service';
+export { CancelExecutionService } from './cancel-execution.service';
+export type { CancelExecutionResult } from './cancel-execution.service';
 export type {
 	StartExecutionRequest,
 	StartExecutionResult,

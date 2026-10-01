@@ -11,10 +11,11 @@ import {
 } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@n8n/frontend-constants/workflows';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
@@ -29,7 +30,9 @@ const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const router = useRouter();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const mcpStore = useMCPStore();
 
 const workflowsLoading = ref(false);

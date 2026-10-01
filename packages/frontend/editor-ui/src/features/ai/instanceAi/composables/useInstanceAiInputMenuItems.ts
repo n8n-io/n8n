@@ -272,7 +272,7 @@ export function useInstanceAiInputMenuItems(
 	}
 
 	function openPreferenceSettings() {
-		void router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
+		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }).href, '_blank');
 	}
 
 	const disconnectedConnectionCount = computed(() => {

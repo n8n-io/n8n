@@ -1,6 +1,8 @@
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { CommunityPackageRequestDto } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Body, Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
 
-import { NodeRequest } from '@/requests';
+import type { NodeRequest } from '@/requests';
 
 import { CommunityPackagesLifecycleService } from './community-packages.lifecycle.service';
 
@@ -10,10 +12,12 @@ export class CommunityPackagesController {
 
 	@Post('/')
 	@GlobalScope('communityPackage:install')
-	async installPackage(req: NodeRequest.Post) {
-		const { name, verify, version } = req.body;
-
-		return await this.communityPackagesLifecycle.install({ name, verify, version }, req.user, 'ui');
+	async installPackage(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: CommunityPackageRequestDto,
+	) {
+		return await this.communityPackagesLifecycle.install(body, req.user, 'ui');
 	}
 
 	@Get('/')
@@ -32,13 +36,11 @@ export class CommunityPackagesController {
 
 	@Patch('/')
 	@GlobalScope('communityPackage:update')
-	async updatePackage(req: NodeRequest.Update) {
-		const { name, version, checksum } = req.body;
-
-		return await this.communityPackagesLifecycle.update(
-			{ name, version, checksum },
-			req.user,
-			'badRequest',
-		);
+	async updatePackage(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: CommunityPackageRequestDto,
+	) {
+		return await this.communityPackagesLifecycle.update(body, req.user, 'badRequest');
 	}
 }
