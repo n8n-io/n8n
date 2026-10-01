@@ -985,6 +985,19 @@ describe('get_endpoint_quirks tool', () => {
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();
 		expect(result).toContain('No specific quirks');
+		expect(result).not.toMatch(/API docs/i);
+	});
+
+	it('points the model at its own API knowledge, never at attached docs', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const { instructions } = vi.mocked(createEvalAgent).mock.calls.at(-1)![1] as {
+			instructions: string;
+		};
+		expect(instructions).not.toMatch(/\bdocs\b|documentation/i);
 	});
 });
 
