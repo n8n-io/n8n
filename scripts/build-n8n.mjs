@@ -328,8 +328,17 @@ try {
 	// for AI node lookups, instance-ai skills/knowledge-base *.md), so broader globs
 	// like '*.ts' or '*.md' must not come back here. .js.map is also kept —
 	// source-map-support needs it for production stack traces.
+	// The AI builder packs the sandbox-linked packages (SANDBOX_LINKED_WORKSPACE_PACKAGES in
+	// instance-ai) into its sandbox and type-checks workflow code against them, so their
+	// declarations must stay.
+	const sandboxTypedPackages = ['@n8n/errors', '@n8n/utils', 'n8n-workflow', '@n8n/workflow-sdk'];
+	const keepSandboxTypes = sandboxTypedPackages.flatMap((name) => [
+		'-not',
+		'-path',
+		`*/node_modules/${name}/*`,
+	]);
 	echo(chalk.yellow('INFO: Stripping TypeScript declaration files from production closure...'));
-	await $`find ${config.compiledAppDir} -type f \\( -name '*.d.ts' -o -name '*.d.ts.map' \\) -delete 2>/dev/null || true`;
+	await $`find ${config.compiledAppDir} -type f \\( -name '*.d.ts' -o -name '*.d.ts.map' \\) ${keepSandboxTypes} -delete 2>/dev/null || true`;
 	echo(chalk.green('✅ Declaration files stripped'));
 
 	// A build that loses these runtime-data trees (a strip regression, a package.json
@@ -416,6 +425,7 @@ try {
 		'*/@n8n/instance-ai/skills/*',
 		'*/@n8n/instance-ai/knowledge-base/*',
 		'*/dist/node-definitions/*',
+		'*/node_modules/@n8n/workflow-sdk/dist/next/index.d.ts',
 		// source-map-support reads these for our own stack traces.
 		`${workspacePackageGlob}/dist/*.js.map`,
 		// The only agent-browser binary the Alpine image can run.
