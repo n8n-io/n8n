@@ -11,7 +11,7 @@ const meta = {
 		},
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',

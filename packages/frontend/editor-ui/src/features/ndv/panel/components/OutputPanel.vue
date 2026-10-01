@@ -423,7 +423,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					<NodeExecuteButton
 						icon-only
 						hide-label
-						variant="subtle"
+						variant="outline"
 						size="medium"
 						:node-name="activeNode?.name ?? ''"
 						:aria-label="noOutputActionLabel"

@@ -2,13 +2,13 @@
 
 exports[`Icon > should render correctly with a custom color 1`] = `
 "<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
-  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
+  <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with a custom size 1`] = `
 "<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="24px" width="24px" data-icon="check">
-  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
+  <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
@@ -20,18 +20,18 @@ exports[`Icon > should render correctly with a deprecated icon 1`] = `
 
 exports[`Icon > should render correctly with default props 1`] = `
 "<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
-  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
+  <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with predefined size 1`] = `
 "<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon" aria-hidden="true" focusable="false" role="img" height="16px" width="16px" data-icon="check">
-  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
+  <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;
 
 exports[`Icon > should render correctly with spin enabled 1`] = `
 "<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" height="1em" width="1em" data-icon="check">
-  <path fill-opacity=".87" d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
+  <path d="M15.56 3.25 6 12.81.44 7.25 1.5 6.19l4.5 4.5 8.5-8.5z"></path>
 </svg>"
 `;

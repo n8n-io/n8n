@@ -1,18 +1,10 @@
 <script lang="ts" setup>
-import type {
-	FormFieldValue,
-	IFormInput,
-	FormFieldValueUpdate,
-	FormValues,
-	ButtonProps,
-} from '../../types';
+import type { FormFieldValue, IFormInput, FormFieldValueUpdate, FormValues } from '../../types';
 import { createFormEventBus } from '../../utils';
 import N8nButton from '../N8nButton';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
-
-type ButtonVariant = Pick<ButtonProps, 'variant'>;
 
 interface FormBoxProps {
 	title?: string;

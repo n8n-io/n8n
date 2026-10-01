@@ -66,7 +66,6 @@ exports[`N8nChatInput > rendering > should render correctly with default props 1
                 >
                   <path
                     d="M15.56 8 14.5 9.06 8.75 3.31v11.94h-1.5V3.31L1.5 9.06.44 8 8 .44z"
-                    fill-opacity=".87"
                   />
                 </svg>
                 
