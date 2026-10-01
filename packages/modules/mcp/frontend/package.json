@@ -36,7 +36,9 @@
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
+    "reka-ui": "^2.5.0",
     "vue": "catalog:frontend",
+    "vue-i18n": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },
   "devDependencies": {
@@ -54,7 +56,9 @@
     "@testing-library/vue": "catalog:frontend",
     "@types/lodash": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
+    "jsdom": "catalog:",
     "stylelint": "catalog:",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
