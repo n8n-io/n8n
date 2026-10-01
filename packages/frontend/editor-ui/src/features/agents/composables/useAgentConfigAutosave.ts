@@ -5,7 +5,8 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 export type SaveStatus = 'idle' | 'saving' | 'saved';
 export type AutosaveResult = 'skipped' | 'stale' | 'outdated' | undefined;
 
-/** True only when the save persisted. A skipped, stale, or outdated result means the server still holds the prior state. */
+/** True only when the save persisted. A skipped, stale,
+ * or outdated result means the server still holds the prior state. */
 export function isPersistedSave(result: AutosaveResult): boolean {
 	return result === undefined;
 }
@@ -67,9 +68,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 	const latestRevisionByGeneration = new Map<number, number>();
 	const staleThroughRevisionByGeneration = new Map<number, number>();
 	let lastSaveError: Error | null = null;
-	/** Outcome of the most recent settled save — lets a flush with no queued
-	 * snapshot of its own report whether the in-flight tail actually persisted. */
-	let lastSettledResult: AutosaveResult;
+	let lastSettledResult: AutosaveResult = undefined;
 	/**
 	 * Bumped by `reset()`. A save captures the generation at the start of `runSave`
 	 * and re-checks it after each `await` before touching `saveStatus`, so a save
@@ -114,13 +113,14 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		}
 		try {
 			const result = await params.save(snapshot);
-			lastSettledResult = result;
 			// A `reset()` between schedule and resolution (e.g. an A→B target
 			// switch) detaches this save from `saveStatus`: the snapshot still
 			// persists for A and its `onSaved`/`onError` side-effects still fire
-			// for A, but it must not flip B's indicator, queue a `saved → idle`
-			// timer against B, or seed B's `lastSaveError`.
+			// for A, but it must not flip B's indicator, queue a `saved -> idle`
+			// timer against B, seed B's `lastSaveError`, or become the outcome
+			// B's next flush reports.
 			const detached = gen !== generation;
+			if (!detached) lastSettledResult = result;
 			if (result === 'stale') {
 				const staleThroughRevision = latestRevisionByGeneration.get(gen) ?? snapshotRevision;
 				staleThroughRevisionByGeneration.set(gen, staleThroughRevision);
@@ -299,6 +299,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			saveStatusResetTimer = null;
 		}
 		lastSaveError = null;
+		lastSettledResult = undefined;
 		generation += 1;
 		saveStatus.value = 'idle';
 	}

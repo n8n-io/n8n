@@ -707,10 +707,22 @@ function clearBudgetStops(fields: BudgetAmountField[]) {
 
 async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
 	if (!props.increaseBudget || budgetIncreasePending.value) return;
+	// The save outlives this panel. A session switch reuses the instance, and
+	// clearing then would drop the new session's stop and unblock its Send.
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
 	budgetIncreasePending.value = true;
 	try {
 		const saved = await props.increaseBudget(payload);
-		if (!saved) return;
+		const stillCurrent =
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		if (!saved || !stillCurrent) return;
 		clearBudgetStops([payload.field]);
 	} finally {
 		budgetIncreasePending.value = false;

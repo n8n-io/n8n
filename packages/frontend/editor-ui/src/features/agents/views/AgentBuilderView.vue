@@ -1651,10 +1651,24 @@ async function onBudgetSettingsSave(updates: Partial<AgentJsonConfig>) {
 	const after = localConfig.value?.config?.guardrails?.budget;
 	const clearedFields = raisedBudgetCaps(before, after);
 	if (clearedFields.length === 0) return;
+	// The flush awaits the network. The preview may show another agent or
+	// session by the time it returns; that chat keeps its own stop.
+	const target = {
+		projectId: projectId.value,
+		agentId: agentId.value,
+		sessionId: effectiveSessionId.value,
+	};
 	try {
 		if (!isPersistedSave(await flushConfigAutosave())) return;
 	} catch {
 		// The autosave onError toast already surfaced the failure.
+		return;
+	}
+	if (
+		target.projectId !== projectId.value ||
+		target.agentId !== agentId.value ||
+		target.sessionId !== effectiveSessionId.value
+	) {
 		return;
 	}
 	clearPreviewBudgetStops(clearedFields);

@@ -275,7 +275,7 @@ const sessionValue = computed(() => {
 .track {
 	height: var(--spacing--2xs);
 	border-radius: var(--radius--sm);
-	background: var(--background--light);
+	background: var(--background--subtle);
 	overflow: hidden;
 }
 
