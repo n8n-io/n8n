@@ -3,7 +3,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { assertPathSegment } from '../../../helpers/utils';
 import { itemRLC, untilListSelected } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
+import { listRLC, untilSiteSelected } from '../../../list';
 import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequest } from '../../../transport';
 

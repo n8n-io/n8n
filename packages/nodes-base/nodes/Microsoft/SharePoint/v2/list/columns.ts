@@ -9,7 +9,7 @@ import type {
 import { assertPathSegment } from '../../helpers/utils';
 import { resolveSiteId } from '../../site';
 import { microsoftApiRequest } from '../../transport';
-import { untilListSelected, untilSiteSelected } from './index';
+import { untilListSelected, untilSiteSelected } from '../../list/index';
 
 export interface SharePointListColumn {
 	name: string;

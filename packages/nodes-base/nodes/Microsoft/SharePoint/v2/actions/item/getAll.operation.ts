@@ -10,7 +10,7 @@ import {
 	nonIndexedFilterThresholdError,
 	simplifyItem,
 } from '../../../helpers/utils';
-import { listRLC, untilSiteSelected } from '../../list';
+import { listRLC, untilSiteSelected } from '../../../list';
 import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequestAllItems } from '../../../transport';
 

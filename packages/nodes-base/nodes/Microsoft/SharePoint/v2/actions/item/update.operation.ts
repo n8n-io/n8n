@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { assertPathSegment } from '../../../helpers/utils';
 import { resolveItemMapperValues, resolveMatchedItemIds, updateItemFields } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
+import { listRLC, untilSiteSelected } from '../../../list';
 import { itemColumns } from '../../list/columns';
 import { resolveSiteId, siteRLC } from '../../../site';
 
