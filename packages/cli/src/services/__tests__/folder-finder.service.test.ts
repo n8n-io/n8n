@@ -84,12 +84,25 @@ describe('FolderFinderService', () => {
 		expect(roleService.rolesWithScope).not.toHaveBeenCalled();
 	});
 
+	it('returns only the folder when descendants are not requested', async () => {
+		accessRepository.findExistingFolderIds.mockResolvedValue(new Set(['folder-1']));
+
+		await expect(service.findFolderFilterIdsWithoutAccessCheck('folder-1', false)).resolves.toEqual(
+			['folder-1'],
+		);
+		expect(accessRepository.findDescendantIds).not.toHaveBeenCalled();
+	});
+
 	it('resolves subtrees in one descendant query', async () => {
 		const ctx = mock<OperationContext>();
+		const parent = mock<Folder>({ id: 'parent', parentFolderId: null });
+		const child = mock<Folder>({ id: 'child', parentFolderId: 'parent' });
 		accessRepository.findDescendantIds.mockResolvedValue(['child']);
-		accessRepository.findFoldersByIdsForUser.mockResolvedValue([]);
+		accessRepository.findFoldersByIdsForUser.mockResolvedValue([parent, child]);
 
-		await service.findFolderSubtreesForUser(['parent'], member, ['folder:read'], ctx);
+		await expect(
+			service.findFolderSubtreesForUser(['parent'], member, ['folder:read'], ctx),
+		).resolves.toEqual([parent, child]);
 
 		expect(accessRepository.findDescendantIds).toHaveBeenCalledWith(['parent'], ctx);
 		expect(accessRepository.findFoldersByIdsForUser).toHaveBeenCalledWith(
@@ -97,6 +110,14 @@ describe('FolderFinderService', () => {
 			expect.any(Object),
 			ctx,
 		);
+	});
+
+	it('short-circuits an empty subtree request', async () => {
+		await expect(service.findFolderSubtreesForUser([], member, ['folder:read'])).resolves.toEqual(
+			[],
+		);
+		expect(accessRepository.findDescendantIds).not.toHaveBeenCalled();
+		expect(accessRepository.findFoldersByIdsForUser).not.toHaveBeenCalled();
 	});
 
 	it('builds root-first ancestor chains', async () => {
@@ -153,6 +174,30 @@ describe('FolderFinderService', () => {
 		]);
 
 		expect(chains).toEqual(new Map());
+	});
+
+	it('short-circuits an empty ancestor request', async () => {
+		await expect(
+			service.findFolderAncestorChainsForUser([], member, ['folder:read']),
+		).resolves.toEqual(new Map());
+		expect(accessRepository.findFoldersByIdsForUser).not.toHaveBeenCalled();
+	});
+
+	it('short-circuits an empty existing-folder request', async () => {
+		await expect(service.findExistingFolderIds([])).resolves.toEqual(new Set());
+		expect(accessRepository.findExistingFolderIds).not.toHaveBeenCalled();
+	});
+
+	it('returns existing folder ids without an access check', async () => {
+		accessRepository.findExistingFolderIds.mockResolvedValue(new Set(['folder-1']));
+
+		await expect(service.findExistingFolderIds(['folder-1', 'missing'])).resolves.toEqual(
+			new Set(['folder-1']),
+		);
+		expect(accessRepository.findExistingFolderIds).toHaveBeenCalledWith(
+			['folder-1', 'missing'],
+			{},
+		);
 	});
 
 	it('forwards context when listing project folder ids', async () => {
