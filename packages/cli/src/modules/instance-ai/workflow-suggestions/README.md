@@ -4,9 +4,9 @@ These internal Instance AI services store proposed workflow changes for human re
 
 A suggestion is separate from the workflow's saved editor draft. The Assistant edits files in its workspace during an investigation. The service stores proposed changes when the investigation ends. The agent chooses the outcome. Self-healing stores that outcome and its handoff report. Both Fix ready and Needs attention results can reference a suggestion. Suggestion storage does not decide whether a fix is ready to apply.
 
-Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` and restart n8n to enable these services and the read endpoint. The flag defaults to `false`. When it is off, the `instance-ai` module does not load the suggestion controller or services. Database entities and migrations remain registered in either state.
+The `instance-ai` module registers the database entities. This storage has no HTTP endpoints or startup tasks. No Enterprise license is required. There is no separate suggestion module. Self-healing configuration and opt-in belong to INS-1481; this storage does not start investigations.
 
-The `instance-ai` module must also be enabled. No Enterprise license is required. There is no separate suggestion module. Disabling the Assistant in settings does not hide saved suggestions when the environment flag is on. Self-healing configuration and opt-in belong to INS-1481; this storage does not start investigations.
+Runtime integrations in INS-1516 use `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED`. The flag defaults to `false`. Set it to `true` and restart n8n to enable those integrations. Database entities and migrations remain registered in either state.
 
 ## Internal operations
 
@@ -25,9 +25,9 @@ The tests under `__tests__` include a sample fix against a published workflow. T
 
 ## Proposal detail
 
-`GET /projects/:projectId/workflows/:workflowId/suggestions/:suggestionId` returns a proposal and its activity. The caller must be an enabled user with current workflow read and edit access, including access through sharing. Publish access is not required. The route checks both the proposal's original project and the workflow's current owner project.
+`WorkflowSuggestionService.getProposal()` returns a proposal and its activity to trusted backend callers. The supplied user must be enabled and have current workflow read and edit access, including access through sharing. Publish access is not required. The service checks both the proposal's original project and the workflow's current owner project.
 
-The response includes the original snapshot and the proposed snapshot. The stored content does not change after creation. The shared inbox lists investigation results through a self-healing source. INS-1517 owns that integration. Self-healing owns result details and actions, including the optional suggestion diff. Needs attention offers Continue in chat and Dismiss; it does not offer Apply.
+The result includes the original snapshot and the proposed snapshot. The stored content does not change after creation. The shared inbox lists investigation results through a self-healing source. INS-1517 owns that integration. The self-healing result review API in INS-1496 will call this service internally and return the optional suggestion diff with the handoff report. Needs attention offers Continue in chat and Dismiss; it does not offer Apply.
 
 ## Storage and deletion
 

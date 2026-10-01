@@ -1,4 +1,9 @@
-import { createWorkflowWithHistory, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
+import {
+	createWorkflowWithHistory,
+	shareWorkflowWithUsers,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import {
 	TransactionRunner,
 	UserRepository,
@@ -11,27 +16,25 @@ import {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 
 import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
-const testServer = setupTestServer({
-	endpointGroups: ['instance-ai'],
-	modules: ['instance-ai'],
-	setupTimeout: 30_000,
-});
 let service: WorkflowSuggestionService;
 let suggestions: WorkflowSuggestionRepository;
 
 beforeAll(async () => {
+	await testModules.loadModules(['instance-ai']);
+	await testDb.init();
 	suggestions = Container.get(WorkflowSuggestionRepository);
 	service = Container.get(WorkflowSuggestionService);
 });
+afterAll(async () => await testDb.terminate());
 afterEach(async () => {
 	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
@@ -179,7 +182,7 @@ it('lets another editor review after the background identity is disabled', async
 	).toBe(user.id);
 });
 
-it('serves shared editors and checks their current access on each detail request', async () => {
+it('lets shared editors read suggestions and checks their current access on each read', async () => {
 	const { project, baseline, graph } = await fixture();
 	const editor = await createUser();
 	const workflow = await Container.get(WorkflowRepository).findOneByOrFail({
@@ -188,10 +191,8 @@ it('serves shared editors and checks their current access on each detail request
 	await shareWorkflowWithUsers(workflow, [editor]);
 	const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Sample fix' });
 	const suggestion = await service.createSuggestion(prepared);
-	const url = `/projects/${project.id}/workflows/${workflow.id}/suggestions/${suggestion.id}`;
-	const agent = testServer.authAgentFor(editor);
-	const response = await agent.get(url).expect(200);
-	expect(response.body.data.suggestionId).toBe(suggestion.id);
+	const detail = await service.getProposal(editor, project.id, workflow.id, suggestion.id);
+	expect(detail.suggestionId).toBe(suggestion.id);
 	const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		editor.id,
 	);
@@ -199,10 +200,12 @@ it('serves shared editors and checks their current access on each detail request
 		workflowId: workflow.id,
 		projectId: editorProject.id,
 	});
-	await agent.get(url).expect(403);
+	await expect(service.getProposal(editor, project.id, workflow.id, suggestion.id)).rejects.toThrow(
+		ForbiddenError,
+	);
 });
 
-it('requires detail requests to match the suggestion workflow and project', async () => {
+it('requires proposal reads to match the suggestion workflow and project', async () => {
 	const { user, project, baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Sample fix' });
 	const suggestion = await service.createSuggestion(prepared);
@@ -211,18 +214,15 @@ it('requires detail requests to match the suggestion workflow and project', asyn
 	const otherProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		otherUser.id,
 	);
-	const agent = testServer.authAgentFor(user);
-	await agent
-		.get(`/projects/${project.id}/workflows/${otherWorkflow.id}/suggestions/${suggestion.id}`)
-		.expect(404);
-	await agent
-		.get(
-			`/projects/${otherProject.id}/workflows/${baseline.workflowId}/suggestions/${suggestion.id}`,
-		)
-		.expect(404);
-	const url = `/projects/${project.id}/workflows/${baseline.workflowId}/suggestions/${suggestion.id}`;
-	await testServer.authAgentFor(otherUser).get(url).expect(403);
-	await testServer.authlessAgent.get(url).expect(401);
+	await expect(
+		service.getProposal(user, project.id, otherWorkflow.id, suggestion.id),
+	).rejects.toThrow(NotFoundError);
+	await expect(
+		service.getProposal(user, otherProject.id, baseline.workflowId, suggestion.id),
+	).rejects.toThrow(NotFoundError);
+	await expect(
+		service.getProposal(otherUser, project.id, baseline.workflowId, suggestion.id),
+	).rejects.toThrow(ForbiddenError);
 });
 
 describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves', () => {
