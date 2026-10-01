@@ -226,6 +226,10 @@ function flatSize(array: unknown[], depth: number): number {
 function assertPrimitiveElements(receiver: unknown[], method: string): void {
 	if (method !== 'join' && method !== 'toSorted') return;
 
+	// The receiver cap applies before the scan, so the scan never walks more
+	// than the cap either.
+	if (receiver.length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
 	for (const element of receiver) {
 		if (!isPrimitive(element)) throw new EngineFallbackError();
 	}
@@ -242,9 +246,19 @@ function contentWeight(value: unknown, budget: number, depth = 0): number {
 	if (!isObj(value)) return 1;
 
 	let weight = 1;
-	const entries = isArray(value) ? value : Object.entries(value).flat();
-	for (const entry of entries) {
-		weight += contentWeight(entry, budget - weight, depth + 1);
+	if (isArray(value)) {
+		for (const element of value) {
+			weight += contentWeight(element, budget - weight, depth + 1);
+			if (weight > budget) break;
+		}
+		return weight;
+	}
+
+	// Walk keys without materialising an entries array: an object with many
+	// keys would otherwise be copied before the budget is checked.
+	for (const key in value) {
+		if (!hasOwn(value, key)) continue;
+		weight += key.length + contentWeight(value[key], budget - weight, depth + 1);
 		if (weight > budget) break;
 	}
 	return weight;

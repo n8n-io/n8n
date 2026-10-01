@@ -298,6 +298,21 @@ describe('Expression - fast native evaluation parity', () => {
 			const rows = { $json: { rows: [big, big], flat: [3, 1, 2] } };
 			expect(nativeOn('{{ $json.rows.join() }}', rows)).toEqual({ handled: false });
 			expect(nativeOn('{{ $json.rows.toSorted() }}', rows)).toEqual({ handled: false });
+			// The hand-off happens before any element is stringified.
+			let stringified = false;
+			const spy = {
+				toString() {
+					stringified = true;
+					return 'spy';
+				},
+			};
+			expect(nativeOn('{{ $json.list.join() }}', { $json: { list: [spy, 1] } })).toEqual({
+				handled: false,
+			});
+			expect(nativeOn('{{ $json.list.toSorted() }}', { $json: { list: [spy, 1] } })).toEqual({
+				handled: false,
+			});
+			expect(stringified).toBe(false);
 			expect(nativeOn('{{ $json.flat.toSorted() }}', rows)).toEqual({
 				handled: true,
 				value: [1, 2, 3],
