@@ -76,15 +76,8 @@ export function compareWorkflowsNodes<T extends DiffableNode>(
 	target: T[],
 	nodesEqual: (base: T | undefined, target: T | undefined) => boolean = compareNodes,
 ): WorkflowDiff<T> {
-	const baseNodes = base.reduce<Map<string, T>>((acc, node) => {
-		acc.set(node.id, node);
-		return acc;
-	}, new Map());
-
-	const targetNodes = target.reduce<Map<string, T>>((acc, node) => {
-		acc.set(node.id, node);
-		return acc;
-	}, new Map());
+	const baseNodes = new Map(base.map((node) => [node.id, node]));
+	const targetNodes = new Map(target.map((node) => [node.id, node]));
 
 	const diff: WorkflowDiff<T> = new Map();
 
