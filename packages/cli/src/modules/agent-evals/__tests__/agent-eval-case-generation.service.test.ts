@@ -203,6 +203,63 @@ describe('AgentEvalCaseGenerationService', () => {
 		);
 	});
 
+	it('passes suggestion + previous input/output through as revision context', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 1,
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+			previousOutput: 'SSO is down for some users.',
+		});
+
+		expect(generateMock).toHaveBeenCalledWith(
+			expect.stringContaining('Write exactly 1 replacement test case'),
+			expect.anything(),
+		);
+	});
+
+	it('ignores a partial revision (suggestion with no prior input/output) and generates fresh cases', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 1,
+			suggestion: 'It should have included the ticket number.',
+		});
+
+		expect(generateMock).toHaveBeenCalledWith(
+			expect.not.stringContaining('replacement test case'),
+			expect.anything(),
+		);
+	});
+
+	it('passes an approved example pair through to the prompt', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(6) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			exampleInput: 'Summarize the Acme outage thread',
+			exampleOutput: 'Ticket #48219 · SSO failing for 340 users.',
+		});
+
+		expect(generateMock).toHaveBeenCalledWith(
+			expect.stringContaining('Summarize the Acme outage thread'),
+			expect.anything(),
+		);
+	});
+
+	it('ignores a partial example (only one of input/output given)', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(6) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			exampleInput: 'Summarize the Acme outage thread',
+		});
+
+		expect(generateMock).toHaveBeenCalledWith(
+			expect.not.stringContaining('already approved'),
+			expect.anything(),
+		);
+	});
+
 	it('retries once on invalid structured output, then succeeds', async () => {
 		generateMock
 			.mockResolvedValueOnce({ structuredOutput: { not: 'valid' } })

@@ -138,39 +138,24 @@ function failAndDismiss(error: unknown) {
 	emit('dismiss');
 }
 
-// Overwrites the freshly generated case's request with the user's own text,
-// keeping its AI-authored grading criteria — there is no endpoint to create a
-// dataset from a literal input directly, and the criteria isn't shown or used
-// anywhere in this panel, only the request and its answer are.
-async function applyCustomInput(
-	projectId: string,
-	agentId: string,
-	datasetId: string,
-	input: string,
-) {
-	const dataset = store.getDatasets(agentId).find((d) => d.id === datasetId);
-	const source = dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
-	if (!source) return;
-	const cases = await store.fetchCases(projectId, source);
-	if (!isMounted) return;
-	const existing = cases[0];
-	if (!existing) return;
-	await store.updateCase(projectId, source, existing.rowId, {
-		input,
-		whatToCheck: existing.whatToCheck,
-	});
-}
+/** Feedback on a case that already ran, asking for a replacement that addresses it. */
+type PreviewRevision = { suggestion: string; previousInput: string; previousOutput: string };
 
-async function runGeneratedPreview(customInput?: string) {
+async function runGeneratedPreview(revision?: PreviewRevision) {
 	try {
 		const { projectId, agentId } = props.target;
-		const result = await store.generateDraftCases(projectId, agentId, { count: 1 });
+		const result = await store.generateDraftCases(projectId, agentId, {
+			count: 1,
+			...(revision
+				? {
+						suggestion: revision.suggestion,
+						previousInput: revision.previousInput,
+						previousOutput: revision.previousOutput,
+					}
+				: {}),
+		});
 		if (!isMounted) return;
 		previewScenario.value = result.cases[0]?.scenario ?? null;
-		if (customInput) {
-			await applyCustomInput(projectId, agentId, result.datasetId, customInput);
-			if (!isMounted) return;
-		}
 		const run = await store.startRun(projectId, agentId, result.datasetId);
 		if (!isMounted) return;
 		previewRunId.value = run.id;
@@ -238,10 +223,18 @@ async function onConfirm() {
 	phase.value = 'generating-suite';
 	try {
 		const { projectId, agentId } = props.target;
+		// The just-confirmed try is a known-good input/output pair — pass it along
+		// so the batch is grounded in the style and scope the user already
+		// approved, not just whatever the agent's config implies. Omitted rather
+		// than sent blank: the schema requires non-empty strings when present.
+		const example =
+			previewInput.value && previewOutput.value
+				? { exampleInput: previewInput.value, exampleOutput: previewOutput.value }
+				: {};
 		// Fetches a full batch of 10 up front — the examples panel's slider
 		// only trims how many are displayed, no repeated generation calls as
 		// the user drags it.
-		const result = await store.generateDraftCases(projectId, agentId, { count: 10 });
+		const result = await store.generateDraftCases(projectId, agentId, { count: 10, ...example });
 		if (!isMounted) return;
 		suiteCases.value = result.cases;
 		generatedCaseCount.value = result.cases.length;
@@ -339,12 +332,16 @@ function onNeedsWork() {
 }
 
 async function onSubmitSampleInput() {
-	const value = sampleInput.value.trim();
-	if (!value || phase.value !== 'awaiting-sample-input') return;
+	const suggestion = sampleInput.value.trim();
+	if (!suggestion || phase.value !== 'awaiting-sample-input') return;
+	// Read before resetting state below — once `previewRunId` is cleared these
+	// computeds have nothing left to read the prior try's input/output from.
+	const previousInput = previewInput.value;
+	const previousOutput = previewOutput.value ?? '';
 	useInitialCase.value = false;
 	previewRunId.value = null;
 	phase.value = 'generating-preview';
-	await runGeneratedPreview(value);
+	await runGeneratedPreview({ suggestion, previousInput, previousOutput });
 }
 
 function onDontCreateEvals() {

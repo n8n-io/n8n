@@ -238,9 +238,10 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(emitted().dismiss).toEqual([[]]);
 	});
 
-	it('submits a sample input and shows the newly generated answer', async () => {
+	it('submits a suggestion, regenerates the case with it, and shows the new answer', async () => {
 		const store = useAgentEvalsStore();
-		vi.spyOn(store, 'generateDraftCases')
+		const generateDraftCases = vi
+			.spyOn(store, 'generateDraftCases')
 			.mockResolvedValueOnce({
 				datasetId: 'dataset-1',
 				dataTableId: 'table-1',
@@ -262,57 +263,42 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			.mockResolvedValueOnce({ id: 'run-2' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
 		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
-		vi.spyOn(store, 'getDatasets').mockReturnValue([
-			{
-				id: 'dataset-2',
-				name: 'dataset-2',
-				description: null,
-				agentId: 'agent-1',
-				columnMapping: { input: 'input', criteria: 'whatToCheck' },
-				createdById: null,
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				datasetSource: 'data_table',
-				datasetRef: { dataTableId: 'table-2' },
-			} as never,
-		]);
-		const fetchCases = vi
-			.spyOn(store, 'fetchCases')
-			.mockResolvedValue([
-				{ rowId: 1, input: 'What is the refund policy?', whatToCheck: 'mentions 30 days' },
-			] as never);
-		const updateCase = vi.spyOn(store, 'updateCase').mockResolvedValue(true);
-		vi.spyOn(store, 'getReview')
-			.mockReturnValueOnce({
-				run: { status: 'completed' } as never,
-				results: [
-					{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never,
-				],
-				resultsCount: 1,
-				ratingsByResultId: {},
-				pendingByResultId: {},
-				draftsByResultId: {},
-				counts: null,
-				loading: false,
-				loadingMore: false,
-			})
-			.mockReturnValue({
-				run: { status: 'completed' } as never,
-				results: [
-					{
-						status: 'success',
-						input: { input: 'Can I get my money back?' },
-						output: { finalText: 'Yes, within 30 days.' },
-					} as never,
-				],
-				resultsCount: 1,
-				ratingsByResultId: {},
-				pendingByResultId: {},
-				draftsByResultId: {},
-				counts: null,
-				loading: false,
-				loadingMore: false,
-			});
+		// Keyed on `runId`, not call order: the preview's computeds re-read
+		// `getReview` on every render, so a call-order mock would exhaust its
+		// first-run value before the "Needs work" suggestion is even captured.
+		vi.spyOn(store, 'getReview').mockImplementation((runId) =>
+			runId === 'run-2'
+				? {
+						run: { status: 'completed' } as never,
+						results: [
+							{
+								status: 'success',
+								input: { input: 'What is the refund policy?' },
+								output: { finalText: 'Yes, within 30 days.' },
+							} as never,
+						],
+						resultsCount: 1,
+						ratingsByResultId: {},
+						pendingByResultId: {},
+						draftsByResultId: {},
+						counts: null,
+						loading: false,
+						loadingMore: false,
+					}
+				: {
+						run: { status: 'completed' } as never,
+						results: [
+							{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never,
+						],
+						resultsCount: 1,
+						ratingsByResultId: {},
+						pendingByResultId: {},
+						draftsByResultId: {},
+						counts: null,
+						loading: false,
+						loadingMore: false,
+					},
+		);
 
 		const user = userEvent.setup();
 		const { findByTestId, findByText } = renderComponent();
@@ -323,21 +309,12 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(await findByTestId('instance-ai-test-agent-preview-submit-sample'));
 
 		expect(await findByText('Yes, within 30 days.')).toBeInTheDocument();
-		expect(fetchCases).toHaveBeenCalledWith('project-1', {
-			datasetId: 'dataset-2',
-			dataTableId: 'table-2',
-			columns: { input: 'input', whatToCheck: 'whatToCheck' },
+		expect(generateDraftCases).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {
+			count: 1,
+			suggestion: 'Can I get my money back?',
+			previousInput: 'x',
+			previousOutput: 'y',
 		});
-		expect(updateCase).toHaveBeenCalledWith(
-			'project-1',
-			{
-				datasetId: 'dataset-2',
-				dataTableId: 'table-2',
-				columns: { input: 'input', whatToCheck: 'whatToCheck' },
-			},
-			1,
-			{ input: 'Can I get my money back?', whatToCheck: 'mentions 30 days' },
-		);
 	});
 
 	it('generates a batch of examples and shows the examples panel on "Looks good"', async () => {
@@ -443,6 +420,8 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
 		expect(store.generateDraftCases).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {
 			count: 10,
+			exampleInput: 'x',
+			exampleOutput: 'y',
 		});
 
 		// Default slider value is 2, so only 2 of the generated examples show.

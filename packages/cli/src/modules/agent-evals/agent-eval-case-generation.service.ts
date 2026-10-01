@@ -25,6 +25,8 @@ import {
 	CASE_GENERATION_SYSTEM_PROMPT,
 	deriveCapabilities,
 	generatedCasesSchema,
+	type CaseExampleContext,
+	type CaseRevisionContext,
 } from './case-generation/case-generation-prompt';
 import { sampleDimensionTuples } from './case-generation/dimensions';
 import { isSupportedAgentProvider } from '../agents/json-config/credential-field-mapping';
@@ -110,11 +112,13 @@ export class AgentEvalCaseGenerationService {
 		const count = clampCount(options.count);
 		const capabilities = deriveCapabilities(config);
 		const tuples = sampleDimensionTuples(capabilities, count);
+		const revision = toRevisionContext(options);
+		const example = toExampleContext(options);
 
 		const summary = buildAgentSummary(config);
 		const generated = await this.invokeModel(
 			modelConfig,
-			buildCaseGenerationUserPrompt(summary, tuples),
+			buildCaseGenerationUserPrompt(summary, tuples, revision, example),
 			tuples.length,
 		);
 		// Cap to the requested count and bound each field: the model output is
@@ -320,6 +324,26 @@ function boundCases(cases: AgentEvalDraftCase[], limit: number): AgentEvalDraftC
 
 function truncateText(text: string, max: number): string {
 	return text.length > max ? text.slice(0, max) : text;
+}
+
+/**
+ * Only a revision when the caller sent all three fields — a suggestion alone,
+ * with no case to revise, has nothing to replace.
+ */
+function toRevisionContext(options: GenerateDraftCasesOptions): CaseRevisionContext | undefined {
+	const suggestion = options.suggestion?.trim();
+	const previousInput = options.previousInput?.trim();
+	const previousOutput = options.previousOutput?.trim();
+	if (!suggestion || !previousInput || !previousOutput) return undefined;
+	return { suggestion, previousInput, previousOutput };
+}
+
+/** Only an example when the caller sent both fields — one without the other is unusable. */
+function toExampleContext(options: GenerateDraftCasesOptions): CaseExampleContext | undefined {
+	const input = options.exampleInput?.trim();
+	const output = options.exampleOutput?.trim();
+	if (!input || !output) return undefined;
+	return { input, output };
 }
 
 function clampCount(count: number | undefined): number {

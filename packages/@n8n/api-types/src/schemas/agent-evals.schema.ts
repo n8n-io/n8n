@@ -246,9 +246,22 @@ export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 
 // Request body for the generate-cases endpoint. `count` is a positive int; the
 // service clamps it to its supported maximum rather than rejecting.
+//
+// `suggestion`/`previousInput`/`previousOutput` ask for a single replacement
+// case instead of fresh ones: feedback on a case that already ran, plus what it
+// ran with. The service only treats this as a revision when all three are set.
+//
+// `exampleInput`/`exampleOutput` are a known-good pair — one the user already
+// approved — grounding fresh generations in that same style and scope. The
+// service only uses this when both are set.
 const generateDraftCasesOptionsShape = {
 	count: z.number().int().min(1).optional(),
 	datasetName: z.string().min(1).optional(),
+	suggestion: z.string().min(1).optional(),
+	previousInput: z.string().min(1).optional(),
+	previousOutput: z.string().min(1).optional(),
+	exampleInput: z.string().min(1).optional(),
+	exampleOutput: z.string().min(1).optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;
