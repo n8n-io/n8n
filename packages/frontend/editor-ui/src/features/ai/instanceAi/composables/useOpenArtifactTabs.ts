@@ -70,9 +70,10 @@ function fromStoredTab(tab: InstanceAiThreadTab): ArtifactTab {
 
 /**
  * The tabs a user has open in a thread, on top of the artifacts the thread
- * produced. Until the user changes the tabs, every artifact is open. After
+ * produced. Until the thread has stored tabs, every artifact is open. After
  * that, the stored layout keeps its order and its closed tabs, and artifacts
- * that are new since then open at the end.
+ * that are new since then open at the end. The server stores the tabs when the
+ * agent changes an artifact.
  */
 export function useOpenArtifactTabs({
 	artifactTabs,
@@ -84,7 +85,7 @@ export function useOpenArtifactTabs({
 	/** Whether the preview panel is open. Each save stores the value at that time. */
 	previewOpen?: () => boolean | undefined;
 }) {
-	// `null` until the user changes the tabs or a stored layout loads.
+	// `null` until a stored layout loads or the tabs are stored for the first time.
 	const layout = shallowRef<TabsLayout | null>(null);
 	const storedActiveTab = ref<InstanceAiThreadTabRef | null>(null);
 	// `undefined` when the stored state has no preview preference.
@@ -232,8 +233,8 @@ export function useOpenArtifactTabs({
 	}
 
 	/**
-	 * Save the tabs after a short delay. Saving starts to store a layout for the
-	 * thread, so call it only for changes the user makes.
+	 * Save the tabs after a short delay. The save stores the active tab and the
+	 * preview state too, so call it only for changes the user makes.
 	 */
 	function saveTabs(activeTabId: string | undefined) {
 		if (!storage) return;
@@ -245,6 +246,20 @@ export function useOpenArtifactTabs({
 			if (!isLoaded.value) return;
 			flushSave();
 		}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+	}
+
+	/**
+	 * Store the tabs of a thread that has no stored tabs yet. The server adds the
+	 * artifacts the agent changes next after them, also when no browser shows the
+	 * thread. Stores no active tab and no preview state, because the user did not
+	 * pick them.
+	 */
+	function storeDefaultTabs() {
+		if (!storage || !isLoaded.value || layout.value || openTabs.value.length === 0) return;
+		const fitted = fitWithinTabLimit(currentLayout(), new Set());
+		layout.value = fitted;
+		// A failed save keeps the default tabs; the server or the next change stores them.
+		void storage.save({ ...fitted, activeTab: null }).catch(() => {});
 	}
 
 	async function loadTabs() {
@@ -282,5 +297,6 @@ export function useOpenArtifactTabs({
 		openTab,
 		moveTab,
 		saveTabs,
+		storeDefaultTabs,
 	};
 }

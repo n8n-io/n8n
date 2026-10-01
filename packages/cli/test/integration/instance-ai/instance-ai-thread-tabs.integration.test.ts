@@ -4,6 +4,7 @@ import { UserRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { InstanceAiThreadTabsService } from '@/modules/instance-ai/instance-ai-thread-tabs.service';
 import { InstanceAiThreadTabsRepository } from '@/modules/instance-ai/repositories/instance-ai-thread-tabs.repository';
 import { InstanceAiThreadRepository } from '@/modules/instance-ai/repositories/instance-ai-thread.repository';
 
@@ -30,6 +31,7 @@ const secondState: InstanceAiThreadTabsState = {
 
 describe('Instance AI thread tabs', () => {
 	let tabsRepository: InstanceAiThreadTabsRepository;
+	let tabsService: InstanceAiThreadTabsService;
 	let threadRepository: InstanceAiThreadRepository;
 	let project: Project;
 	let user: User;
@@ -40,6 +42,7 @@ describe('Instance AI thread tabs', () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
 		tabsRepository = Container.get(InstanceAiThreadTabsRepository);
+		tabsService = Container.get(InstanceAiThreadTabsService);
 		threadRepository = Container.get(InstanceAiThreadRepository);
 		project = await createTeamProject();
 		user = await createMember();
@@ -109,5 +112,36 @@ describe('Instance AI thread tabs', () => {
 		await expect(tabsRepository.findState(threadId, deletedUser.id)).resolves.toBeNull();
 		await expect(tabsRepository.findState(threadId, user.id)).resolves.toEqual(secondState);
 		await expect(threadRepository.existsBy({ id: threadId })).resolves.toBe(true);
+	});
+
+	it('creates the stored tabs when the agent changes the first artifact of a thread', async () => {
+		await tabsService.openArtifactTab(threadId, user.id, {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'First Workflow',
+		});
+
+		await expect(tabsRepository.findState(threadId, user.id)).resolves.toEqual({
+			tabs: [{ type: 'workflow', id: 'wf-1', name: 'First Workflow' }],
+			closedTabs: [],
+			activeTab: null,
+		});
+	});
+
+	it('reopens a closed tab when the agent changes its artifact, and keeps the rest', async () => {
+		await tabsRepository.saveState(threadId, user.id, firstState);
+
+		await tabsService.openArtifactTab(threadId, user.id, {
+			type: 'agent',
+			id: 'agent-1',
+			name: 'Helper',
+		});
+
+		await expect(tabsRepository.findState(threadId, user.id)).resolves.toEqual({
+			...firstState,
+			tabs: [...firstState.tabs, { type: 'agent', id: 'agent-1', name: 'Helper' }],
+			closedTabs: [],
+		});
+		await expect(tabsRepository.count()).resolves.toBe(1);
 	});
 });

@@ -1426,6 +1426,34 @@ describe('useCanvasPreview', () => {
 			}
 		});
 
+		test('stores the default tabs once the messages of a thread without stored tabs load', async () => {
+			const save = vi.fn().mockResolvedValue(undefined);
+			const ctx = setup({
+				threadOverrides: { isHydratingThread: true },
+				tabsStorage: { load: vi.fn().mockResolvedValue(null), save },
+			});
+			await flushPromises();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			await nextTick();
+
+			expect(save).not.toHaveBeenCalled();
+
+			ctx.thread.isHydratingThread = false;
+			await nextTick();
+
+			expect(save).toHaveBeenCalledTimes(1);
+			expect(save).toHaveBeenCalledWith({
+				tabs: [
+					{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+					{ type: 'workflow', id: 'wf-2', name: 'Workflow wf-2' },
+				],
+				closedTabs: [],
+				activeTab: null,
+			});
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
 		test('shows a resource picked from the project in a new tab', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
