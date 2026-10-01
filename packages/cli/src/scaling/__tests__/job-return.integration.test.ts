@@ -3,7 +3,7 @@ import { Redis } from 'ioredis';
 import { once } from 'node:events';
 
 import { JOB_TYPE_NAME } from '../constants';
-import { returnJobToQueue } from '../job-return';
+import { getLockToken, returnJobToQueue, returnUnstartedJobsToQueue } from '../job-return';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
 
 const REDIS_HOST = process.env.N8N_TEST_REDIS_HOST;
@@ -16,11 +16,11 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 	let control: Redis;
 	let queues: JobQueue[];
 
-	const createQueue = (): JobQueue => {
+	const createQueue = (settings: Bull.AdvancedSettings = {}): JobQueue => {
 		const queue: JobQueue = new Bull<JobData>(QUEUE_NAME, {
 			prefix: PREFIX,
 			redis: { host: REDIS_HOST, port: REDIS_PORT },
-			settings: { maxStalledCount: 0 },
+			settings: { maxStalledCount: 0, ...settings },
 		});
 		queues.push(queue);
 		return queue;
@@ -28,47 +28,6 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 
 	const subscribe = async (queue: JobQueue, event: 'global:failed' | 'global:completed') =>
 		await once(queue, `registered:${event}`);
-
-	const addJob = async (queue: JobQueue, name: string, priority: number) =>
-		await queue.add(
-			JOB_TYPE_NAME,
-			{ executionId: `exec-${name}`, workflowId: `wf-${name}`, loadStaticData: false } as JobData,
-			{ priority },
-		);
-
-	const holdNextJob = async (queue: JobQueue) => {
-		let release: () => void = () => {};
-		const released = new Promise<void>((resolve) => (release = resolve));
-		let markStarted: (activeJob: Job) => void = () => {};
-		const started = new Promise<Job>((resolve) => (markStarted = resolve));
-		const failed = once(queue, 'failed') as Promise<[Job, Error]>;
-
-		void queue.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
-			await queue.pause(true, true);
-			markStarted(activeJob);
-			await released;
-			await returnJobToQueue(activeJob);
-		});
-
-		const heldJob = await started;
-		const returnToQueue = async () => {
-			release();
-			const [returnedJob] = await failed;
-			return returnedJob;
-		};
-		return { heldJob, returnToQueue };
-	};
-
-	const runOrder = async (queue: JobQueue, count: number) => {
-		const ran: JobId[] = [];
-		await new Promise<void>((resolve) => {
-			void queue.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
-				ran.push(activeJob.id);
-				if (ran.length === count) resolve();
-			});
-		});
-		return ran;
-	};
 
 	beforeAll(() => {
 		control = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
@@ -110,7 +69,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			await returnJobToQueue(activeJob);
+			returnJobToQueue(activeJob);
 		});
 
 		const [returnedJob] = await failedOnWorkerA;
@@ -148,7 +107,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			markStarted(activeJob);
 			await released;
-			await returnJobToQueue(activeJob);
+			returnJobToQueue(activeJob);
 		});
 
 		const activeJob = await started;
@@ -168,7 +127,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		expect(await control.exists(activeJob.lockKey())).toBe(0);
 	});
 
-	it('fails the returned job once, without a retry, when the next worker throws', async () => {
+	it('fails the handed-back job once, without a retry, when the next worker throws', async () => {
 		const producer = createQueue();
 
 		const globallyFailed: JobId[] = [];
@@ -191,7 +150,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			await returnJobToQueue(activeJob);
+			returnJobToQueue(activeJob);
 		});
 
 		const [returnedJob] = await failedOnWorkerA;
@@ -212,77 +171,143 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		expect(waiting.map((waitingJob) => waitingJob.id)).not.toContain(job.id);
 	});
 
-	it('runs a returned job before jobs of its priority that arrived while it was active', async () => {
-		const producer = createQueue();
+	describe('returnUnstartedJobsToQueue', () => {
+		const addJob = async (queue: JobQueue, executionId: string) =>
+			await queue.add(
+				JOB_TYPE_NAME,
+				{ executionId, workflowId: 'wf-sweep', loadStaticData: false } as JobData,
+				{ priority: 50 },
+			);
 
-		const globallyFailed: JobId[] = [];
-		const failedRegistered = subscribe(producer, 'global:failed');
-		producer.on('global:failed', (jobId: JobId) => globallyFailed.push(jobId));
-		await failedRegistered;
+		const lockTokenOf = (queue: JobQueue) => {
+			const token = getLockToken(queue);
+			expect(token).toEqual(expect.any(String));
+			return token ?? '';
+		};
 
-		const held = await addJob(producer, 'held', 100);
+		const stateOf = async (queue: JobQueue, jobId: JobId) =>
+			await (await queue.getJob(jobId))?.getState();
 
-		const workerA = createQueue();
-		const { heldJob, returnToQueue } = await holdNextJob(workerA);
-		expect(heldJob.id).toBe(held.id);
+		const attemptsMadeOf = async (jobId: JobId) =>
+			await control.hget(`${PREFIX}:${QUEUE_NAME}:${jobId}`, 'attemptsMade');
 
-		const behind1 = await addJob(producer, 'behind-1', 100);
-		const behind2 = await addJob(producer, 'behind-2', 100);
-		const urgent = await addJob(producer, 'urgent', 50);
+		const fetchNextJobOnCompletion = async (worker: JobQueue, expectedJobId: JobId) => {
+			const first = await worker.getNextJob();
+			expect(first?.id).toBe(expectedJobId);
+			await first?.moveToCompleted('x');
+		};
 
-		await returnToQueue();
+		it('leaves a job fetched by a completion to fail as stalled when nothing hands it back', async () => {
+			const producer = createQueue();
+			const job1 = await addJob(producer, 'exec-c1');
+			const job2 = await addJob(producer, 'exec-c2');
 
-		const workerB = createQueue();
-		const ran = await runOrder(workerB, 4);
+			const worker = createQueue({ lockDuration: 500 });
+			await fetchNextJobOnCompletion(worker, job1.id);
 
-		expect(ran).toEqual([urgent.id, held.id, behind1.id, behind2.id]);
-		expect(globallyFailed).not.toContain(held.id);
-	});
+			expect(await stateOf(producer, job2.id)).toBe('active');
+			expect(await control.get(job2.lockKey())).toBe(Reflect.get(worker, 'token'));
 
-	it('runs a later job of a higher priority before a returned job', async () => {
-		const producer = createQueue();
+			const stallChecker = createQueue({ stalledInterval: 200 });
+			const failedOnStallChecker = new Promise<Job>((resolve) => {
+				stallChecker.on('failed', (failedJob: Job) => {
+					if (failedJob.id === job2.id) resolve(failedJob);
+				});
+			});
+			void stallChecker.process(JOB_TYPE_NAME, 1, async () => {});
 
-		const held = await addJob(producer, 'held', 100);
+			await failedOnStallChecker;
 
-		const workerA = createQueue();
-		const { heldJob, returnToQueue } = await holdNextJob(workerA);
-		expect(heldJob.id).toBe(held.id);
+			expect(await stateOf(producer, job2.id)).toBe('failed');
+			expect((await producer.getJob(job2.id))?.failedReason).toMatch(/stalled/);
+		});
 
-		const behind = await addJob(producer, 'behind', 100);
+		it('returns a job fetched by a completion to the wait list so another worker completes it', async () => {
+			const producer = createQueue();
 
-		await returnToQueue();
+			const globallyFailed: JobId[] = [];
+			const failedRegistered = subscribe(producer, 'global:failed');
+			producer.on('global:failed', (jobId: JobId) => globallyFailed.push(jobId));
+			const completedRegistered = subscribe(producer, 'global:completed');
+			const job2Completed = new Promise<JobId>((resolve) => {
+				producer.on('global:completed', (jobId: JobId) => {
+					if (String(jobId) === String(job2.id)) resolve(jobId);
+				});
+			});
+			await Promise.all([failedRegistered, completedRegistered]);
 
-		const later = await addJob(producer, 'later', 50);
+			const job1 = await addJob(producer, 'exec-c1');
+			const job2 = await addJob(producer, 'exec-c2');
 
-		const workerB = createQueue();
-		const ran = await runOrder(workerB, 3);
+			const worker = createQueue();
+			await fetchNextJobOnCompletion(worker, job1.id);
 
-		expect(ran).toEqual([later.id, held.id, behind.id]);
-	});
+			const handedBack = await returnUnstartedJobsToQueue(worker, lockTokenOf(worker), () => false);
 
-	it('keeps the priority of a job returned twice from drifting past the next priority', async () => {
-		const producer = createQueue();
+			expect(handedBack).toEqual([String(job2.id)]);
+			expect(await stateOf(producer, job2.id)).toBe('waiting');
+			expect(await control.exists(job2.lockKey())).toBe(0);
+			expect(globallyFailed).not.toContain(job2.id);
 
-		const held = await addJob(producer, 'held', 100);
+			const nextWorker = createQueue();
+			void nextWorker.process(JOB_TYPE_NAME, 1, async () => {});
 
-		const workerA1 = createQueue();
-		const first = await holdNextJob(workerA1);
-		expect(first.heldJob.id).toBe(held.id);
-		await first.returnToQueue();
+			await expect(job2Completed).resolves.toBe(job2.id);
+			expect(globallyFailed).not.toContain(job2.id);
+		});
 
-		const workerA2 = createQueue();
-		const second = await holdNextJob(workerA2);
-		expect(second.heldJob.id).toBe(held.id);
+		it('leaves a job locked by another queue instance untouched', async () => {
+			const producer = createQueue();
+			const job = await addJob(producer, 'exec-other');
 
-		const behind = await addJob(producer, 'behind', 100);
+			const otherWorker = createQueue();
+			const taken = await otherWorker.getNextJob();
+			expect(taken?.id).toBe(job.id);
+			const attemptsBefore = await attemptsMadeOf(job.id);
 
-		await second.returnToQueue();
+			const worker = createQueue();
+			const handedBack = await returnUnstartedJobsToQueue(worker, lockTokenOf(worker), () => false);
 
-		const next = await addJob(producer, 'next', 99);
+			expect(handedBack).toEqual([]);
+			expect(await stateOf(producer, job.id)).toBe('active');
+			expect(await attemptsMadeOf(job.id)).toBe(attemptsBefore);
+			expect(await control.get(job.lockKey())).toBe(lockTokenOf(otherWorker));
+		});
 
-		const workerB = createQueue();
-		const ran = await runOrder(workerB, 3);
+		it('leaves an active job with no lock untouched', async () => {
+			const producer = createQueue();
+			const job = await addJob(producer, 'exec-unlocked');
 
-		expect(ran).toEqual([next.id, held.id, behind.id]);
+			await control.rpoplpush(`${PREFIX}:${QUEUE_NAME}:wait`, `${PREFIX}:${QUEUE_NAME}:active`);
+			const attemptsBefore = await attemptsMadeOf(job.id);
+
+			const worker = createQueue();
+			const handedBack = await returnUnstartedJobsToQueue(worker, lockTokenOf(worker), () => false);
+
+			expect(handedBack).toEqual([]);
+			expect(await stateOf(producer, job.id)).toBe('active');
+			expect(await attemptsMadeOf(job.id)).toBe(attemptsBefore);
+		});
+
+		it('leaves a locked job that reached the handler untouched', async () => {
+			const producer = createQueue();
+			const job = await addJob(producer, 'exec-started');
+
+			const worker = createQueue();
+			const taken = await worker.getNextJob();
+			expect(taken?.id).toBe(job.id);
+			const attemptsBefore = await attemptsMadeOf(job.id);
+
+			const handedBack = await returnUnstartedJobsToQueue(
+				worker,
+				lockTokenOf(worker),
+				(jobId: string) => jobId === String(job.id),
+			);
+
+			expect(handedBack).toEqual([]);
+			expect(await stateOf(producer, job.id)).toBe('active');
+			expect(await attemptsMadeOf(job.id)).toBe(attemptsBefore);
+			expect(await control.exists(job.lockKey())).toBe(1);
+		});
 	});
 });
