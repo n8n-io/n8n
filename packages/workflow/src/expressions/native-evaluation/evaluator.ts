@@ -182,8 +182,10 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 		// `$&`, `$\``, `$'` splice match context into every replacement, so
 		// the result is not bounded by the replacement's length. With a string
 		// pattern the other `$` forms (`$$`, `$1`, `$<name>`, a lone `$`) are
-		// literal, so a plain `$` in the replacement stays native.
-		if (/\$[&`']/.test(replacement)) throw new EngineFallbackError();
+		// literal, so a plain `$` in the replacement stays native. `$$` pairs
+		// are consumed first, as the replacement parser does, so `$$&` is the
+		// literal `$&` and not a token.
+		if (/\$[&`']/.test(replacement.replaceAll('$$', ''))) throw new EngineFallbackError();
 
 		upperBound =
 			method === 'replace'
