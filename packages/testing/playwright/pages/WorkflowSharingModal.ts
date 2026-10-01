@@ -1,3 +1,5 @@
+import { expect, type Locator } from '@playwright/test';
+
 import { BasePage } from './BasePage';
 
 export class WorkflowSharingModal extends BasePage {
@@ -9,25 +11,33 @@ export class WorkflowSharingModal extends BasePage {
 		return this.container.getByTestId('project-sharing-select').filter({ visible: true });
 	}
 
-	async addUser(emailOrName: string) {
-		await this.clickByTestId('project-sharing-select');
-		// Try to find by email or name (personal projects now show "Personal space" instead of email)
-		const dropdown = this.page.locator('.el-select-dropdown__item');
-		const byEmail = dropdown.filter({ hasText: emailOrName.toLowerCase() });
-		if ((await byEmail.count()) > 0) {
-			await byEmail.click();
-		} else {
-			// For personal projects, the email is not shown, so try matching by name part of email
-			const namePart = emailOrName.split('@')[0].replace(/[.-]/g, ' ');
-			await dropdown
-				.filter({ hasText: new RegExp(namePart, 'i') })
-				.first()
-				.click();
-		}
+	/**
+	 * Pick a sharee through the select's remote search. The dropdown shows one
+	 * page of personal projects, so a user created a moment ago may not be on
+	 * it. A personal project is named `First Last <email>`, so searching by
+	 * email narrows the page to that user.
+	 */
+	async addUser(email: string) {
+		const select = this.getUsersSelect();
+		await select.click();
+		await select.locator('input').fill(email);
+		await this.dropdownOption(email).click();
 	}
 
+	/** Save, wait for the share request to succeed, then wait for the modal to close. */
 	async save() {
+		const shared = this.page.waitForResponse(
+			(response) =>
+				/\/rest\/workflows\/[^/]+\/share$/.test(response.url()) &&
+				response.request().method() === 'PUT',
+		);
 		await this.clickByTestId('workflow-sharing-modal-save-button');
+		expect((await shared).ok()).toBe(true);
 		await this.container.waitFor({ state: 'hidden' });
+	}
+
+	/** An entry of the open select dropdown. The dropdown is teleported to the body. */
+	private dropdownOption(text: string): Locator {
+		return this.page.locator('.el-select-dropdown__item').filter({ hasText: text });
 	}
 }

@@ -44,6 +44,8 @@ import {
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -539,7 +541,10 @@ export class ActiveWorkflowManager {
 		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ shouldPublish } = { shouldPublish: true },
+		{
+			shouldPublish = true,
+			actor = { kind: 'system', reason: 'activation' },
+		}: { shouldPublish?: boolean; actor?: PolicyActor } = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -600,14 +605,12 @@ export class ActiveWorkflowManager {
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.
-			if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-				const project = await this.ownershipService.getWorkflowProjectCached(dbWorkflow.id);
-
-				await this.policyEnforcementService.enforceWorkflowPublish({
-					workflow: { id: dbWorkflow.id, name: dbWorkflow.name, nodes },
-					projectId: project.id,
-				});
-			}
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
+				actor,
+			);
 
 			workflow = new Workflow({
 				id: dbWorkflow.id,
@@ -633,6 +636,9 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// Carries no user: a registration outlives any number of republishes, so
+			// the publishing user is resolved at emit instead, next to the fresh
+			// workflow data the run actually uses.
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 				workflowSettings: dbWorkflow.settings,

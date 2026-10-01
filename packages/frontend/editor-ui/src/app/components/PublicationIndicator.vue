@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nStatusDot, N8nText, N8nTooltip, type StatusDotVariant } from '@n8n/design-system';
+import { N8nStatusDot, N8nTooltip, N8nBadge, type StatusDotVariant } from '@n8n/design-system';
 
 /**
  * "Published" chip shown on list cards. Attributes such as `data-test-id`
@@ -24,28 +24,29 @@ withDefaults(
 	<N8nTooltip v-if="tooltip" placement="top" as-child>
 		<template #content>{{ tooltip }}</template>
 		<!-- tabindex makes the explanation keyboard-reachable: the tooltip opens on focus. -->
-		<div v-bind="$attrs" :class="$style.indicator" tabindex="0">
-			<N8nStatusDot :variant="variant" />
-			<N8nText size="small" color="text-base">{{ label }}</N8nText>
-		</div>
+		<N8nBadge v-bind="$attrs" :class="$style.indicator" tabindex="0">
+			<template #leading>
+				<N8nStatusDot :variant="variant" />
+			</template>
+			{{ label }}
+		</N8nBadge>
 	</N8nTooltip>
-	<div v-else v-bind="$attrs" :class="$style.indicator">
-		<N8nStatusDot :variant="variant" />
-		<N8nText size="small" color="text-base">{{ label }}</N8nText>
-	</div>
+	<N8nBadge v-else v-bind="$attrs" :class="$style.indicator">
+		<template #leading>
+			<N8nStatusDot :variant="variant" />
+		</template>
+		{{ label }}
+	</N8nBadge>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .indicator {
-	display: flex;
-	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
 
 	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
+		@include focus.focus-ring-with-border;
 	}
 
 	* {

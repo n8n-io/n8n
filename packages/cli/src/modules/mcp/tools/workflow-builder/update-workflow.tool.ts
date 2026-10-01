@@ -16,7 +16,7 @@ import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metr
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
@@ -41,6 +41,10 @@ import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
 import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
+import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
 	versionDescriptionInputSchema,
@@ -58,7 +62,7 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 
@@ -366,6 +370,8 @@ type UpdateWorkflowOutput = z.infer<z.ZodObject<typeof outputSchema>>;
  * Trigger node, or cannot be called by this workflow due to its sub-workflow
  * caller policy — each of which would otherwise silently prevent the error
  * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
+ * An archived target, or one that is not available in MCP, is rejected like in
+ * the by-id MCP tools.
  */
 async function assertErrorWorkflowIsUsable({
 	errorWorkflowId,
@@ -413,6 +419,7 @@ async function assertErrorWorkflowIsUsable({
 			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
 		);
 	}
+	validateMcpWorkflow(errorWorkflow);
 
 	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
 	// resolves it differently depending on the publication service flag — mirror
@@ -1112,6 +1119,16 @@ export const createUpdateWorkflowTool = (
 	subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	aiGatewayService: AiGatewayService,
+	options: {
+		/**
+		 * Reports which node types are verified community nodes not installed
+		 * here, so an update that adds one can warn that it will not run. Supplied
+		 * only on surfaces that offer community-node discovery.
+		 */
+		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+		/** Whether this session can call the install tool; steers the warning text. */
+		installToolAvailable?: boolean;
+	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<typeof inputSchema> => {
@@ -1290,6 +1307,14 @@ export const createUpdateWorkflowTool = (
 					workflowUpdateData,
 					existingWorkflow,
 					nodeTypes,
+				);
+
+				validationWarnings.push(
+					...(await buildUninstalledNodeWarnings(
+						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						options.findUninstalledNodeTypes,
+						options.installToolAvailable,
+					)),
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);

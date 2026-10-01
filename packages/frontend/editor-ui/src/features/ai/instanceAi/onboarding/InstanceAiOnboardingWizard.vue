@@ -45,11 +45,11 @@ const DAYTONA_API_URL = 'https://app.daytona.io/api';
 const N8N_SANDBOX_HEADER = 'x-api-key';
 const STATIC_SECRET_MASK = '••••••••••••';
 const SANDBOX_DOCS_URL =
-	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#configure-a-sandbox-provider';
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant#setup-2-self-host-the-sandbox-manually-advanced';
 const SEARCH_DOCS_URL =
-	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#enable-web-search';
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant#enable-web-search';
 const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
-const ENV_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
+const ENV_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 const SUCCESS_PAUSE_MS = TIME.SECOND * 1.5;
 const DEFAULT_MODEL_PROVIDER = INSTANCE_AI_MODEL_PROVIDERS[0]!;
 const DEFAULT_MODEL_NAME = INSTANCE_AI_CURATED_MODELS[DEFAULT_MODEL_PROVIDER.id][0] ?? '';
@@ -988,11 +988,8 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							<span :class="$style.optionTitle">
 								<N8nText bold step="sm">{{ provider.onboardingLabel }}</N8nText>
 								<N8nBadge
-									:theme="provider.id === 'n8n-sandbox' ? 'secondary' : 'default'"
-									size="small"
-									:show-border="provider.id !== 'n8n-sandbox'"
+									:variant="provider.id === 'n8n-sandbox' ? 'secondary' : 'outline'"
 									:class="$style.optionBadge"
-									bold
 								>
 									{{
 										provider.id === 'n8n-sandbox'
@@ -1163,11 +1160,8 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 								<N8nText bold step="sm">{{ provider.label }}</N8nText>
 								<N8nBadge
 									v-if="provider.id === 'searxng'"
-									theme="secondary"
-									size="small"
-									:show-border="false"
+									variant="secondary"
 									:class="$style.optionBadge"
-									bold
 								>
 									{{ i18n.baseText('instanceAi.onboarding.search.free') }}
 								</N8nBadge>

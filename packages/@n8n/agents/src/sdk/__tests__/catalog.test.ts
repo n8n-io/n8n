@@ -68,12 +68,15 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
+		expect(catalog.openai.models['gpt-5'].toolCallKnown).toBe(true);
 		expect(catalog.openai.models['gpt-5'].modalities).toEqual({
 			input: ['text', 'image'],
 			output: ['text'],
 		});
 		expect(catalog.openai.models['gpt-5']).not.toHaveProperty('reasoning');
 		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
+		expect(catalog.openai.models['gpt-4.1-mini'].toolCall).toBe(false);
+		expect(catalog.openai.models['gpt-4.1-mini'].toolCallKnown).toBe(false);
 		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
 			'Claude Sonnet 4.5',
 		);
@@ -137,6 +140,7 @@ describe('fetchProviderCatalog', () => {
 				id: 'gpt-valid',
 				name: 'GPT Valid',
 				toolCall: true,
+				toolCallKnown: true,
 			},
 		});
 		expect(catalog.openai.deprecatedModelIds).toEqual([]);
@@ -177,6 +181,7 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
 		expect(catalog.anthropic.models['claude-sonnet-4-6'].name).toBe('Claude Sonnet 4.6');
 		expect(catalog.anthropic.models['claude-beta-model'].name).toBe('Claude Beta Model');
+		expect(catalog.anthropic.models['claude-beta-model'].status).toBe('beta');
 	});
 
 	it('retains a provider that only has deprecated models so callers can detect them', async () => {

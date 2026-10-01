@@ -34,6 +34,26 @@ export type {
 	LifecycleEventBatch,
 } from './lifecycle-events';
 
+export {
+	createResponseEmitter,
+	executionResponseSchema,
+	noopExecutionResponseSender,
+	noopResponseEmitter,
+	RESPONSE_EXPECTATION_KINDS,
+	responseExpectationSchema,
+} from './response-channel';
+export type {
+	ChunkMessage,
+	EndedMessage,
+	ExecutionResponse,
+	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseExpectation,
+	ResponseExpectationKind,
+	ResponseMessage,
+	UndeliverableMessage,
+} from './response-channel';
+
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
@@ -79,6 +99,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
@@ -89,11 +110,13 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 

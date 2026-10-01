@@ -24,7 +24,6 @@ import {
 	type ReplayApiCall,
 	type ReplayContextSetup,
 	type ReplayWebhookHandler,
-	sendJsonWebhook,
 } from '../replay-test-helpers';
 
 export interface WhatsAppContactFixture {
@@ -105,6 +104,7 @@ export interface WhatsAppReplayContext extends Omit<ReplayContextSetup, 'nextStr
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
+		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	/** The guarded adapter instance actually wired into `chat` (see `WhatsAppIntegration.createAdapter`). */
@@ -136,7 +136,10 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),
 		mock<AgentRepository>(),
-		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+		mock<InstanceSettings>({
+			encryptionKey: 'test-encryption-key',
+			hmacSignatureSecret: 'test-hmac-signature-secret',
+		}),
 	);
 }
 
@@ -308,8 +311,9 @@ export async function createWhatsAppReplayContext(
 		const signature = `sha256=${createHmac('sha256', WHATSAPP_APP_SECRET).update(rawBody).digest('hex')}`;
 		const headers = new Headers();
 		headers.set('x-hub-signature-256', signature);
-		return await sendJsonWebhook(
-			async (request, requestOptions) => await webhooks.whatsapp(request, requestOptions),
+		return await setup.sendJsonWebhook(
+			async (request: Request, requestOptions?: { waitUntil?: (task: Promise<unknown>) => void }) =>
+				await webhooks.whatsapp(request, requestOptions),
 			ctx.webhookUrlFor('whatsapp'),
 			payload,
 			headers,

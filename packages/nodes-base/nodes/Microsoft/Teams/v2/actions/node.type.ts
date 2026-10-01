@@ -1,6 +1,7 @@
 import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
+	activityNotification: 'send';
 	channel: 'create' | 'deleteChannel' | 'get' | 'getAll' | 'update';
 	channelMessage:
 		| 'create'

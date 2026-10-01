@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { JwtService } from '@/services/jwt.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -35,6 +35,20 @@ beforeAll(async () => {
 	oauthClientRepository = Container.get(OAuthClientRepository);
 	supportedScopes = Container.get(ProtectedResourceRegistry).getDefaultResource()?.scopes ?? [];
 });
+
+/**
+ * Advertised scopes minus the ones this instance cannot actually grant.
+ * `communityPackage:install` is advertised in discovery (which is
+ * unauthenticated and describes what the resource supports) but withheld at
+ * consent here, because the community-packages module is inactive in the test
+ * instance so `install_community_node` would never register. `aiPreference:*`
+ * is withheld too: the test instance has no PostHog, so no user is in the
+ * preferences experiment arm and the preference tools never register.
+ */
+const grantable = (scopes: string[]) =>
+	scopes.filter(
+		(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+	);
 
 afterEach(async () => {
 	await testDb.truncate(['OAuthClient', 'AuthorizationCode', 'UserConsent']);
@@ -69,7 +83,7 @@ describe('GET /rest/consent/details', () => {
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
-			scopes: supportedScopes,
+			scopes: grantable(supportedScopes),
 			scopeTools: expect.objectContaining({
 				'workflow:read': expect.arrayContaining(['search_workflows']),
 			}),

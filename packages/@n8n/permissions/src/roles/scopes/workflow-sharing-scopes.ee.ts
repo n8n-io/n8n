@@ -14,7 +14,10 @@ export const WORKFLOW_SHARING_OWNER_SCOPES: Scope[] = [
 	'workflow:execute-chat',
 	'workflow:enableRedaction',
 	'workflow:disableRedaction',
+	'execution:read',
+	'execution:list',
 	'execution:reveal',
+	'execution:delete',
 ];
 
 export const WORKFLOW_SHARING_EDITOR_SCOPES: Scope[] = [
@@ -25,4 +28,7 @@ export const WORKFLOW_SHARING_EDITOR_SCOPES: Scope[] = [
 	'workflow:unpublish',
 	'workflow:execute',
 	'workflow:execute-chat',
+	'execution:read',
+	'execution:list',
+	'execution:delete',
 ];

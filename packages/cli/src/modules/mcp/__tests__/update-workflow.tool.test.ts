@@ -18,13 +18,13 @@ import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-op
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -218,6 +218,7 @@ describe('update-workflow MCP tool', () => {
 			subworkflowPolicyChecker,
 			workflowPublishedDataService,
 			aiGatewayService,
+			{},
 			logger,
 			postSaveMetrics,
 		);
@@ -2074,6 +2075,42 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
+			// Ref: ADO-5928. Error workflow references must respect MCP availability.
+			test('rejects an error workflow that is not available in MCP', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { settings: { availableInMCP: false } })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain('not available in MCP');
+				expect(parseResult(result).error).toContain('/workflow/err-wf?settings=true');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects an archived error workflow', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { isArchived: true })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain("Workflow 'err-wf' is archived");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('rejects when the error workflow is not found or inaccessible', async () => {
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1' ? buildExistingWorkflow() : null,
@@ -2099,6 +2136,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'draft-only-wf',
 							name: 'Draft Only Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: null,
@@ -2165,6 +2203,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'no-trigger-wf',
 							name: 'Not An Error Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: 'no-trigger-wf-v1',
@@ -2489,6 +2528,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3850,6 +3890,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3889,6 +3930,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3928,6 +3970,7 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);

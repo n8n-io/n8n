@@ -5,13 +5,19 @@ import { useI18n } from '@n8n/i18n';
 defineProps<{
 	value: string;
 	max: number;
+	showWhenEmpty?: boolean;
 }>();
 
 const i18n = useI18n();
 </script>
 
 <template>
-	<N8nText v-if="value" size="xsmall" color="text-light" :class="$style.characterCount">
+	<N8nText
+		v-if="value || showWhenEmpty"
+		size="xsmall"
+		color="text-light"
+		:class="$style.characterCount"
+	>
 		{{
 			i18n.baseText('generic.characterCount', {
 				interpolate: { count: String(value.length), max: String(max) },

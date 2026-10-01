@@ -8,7 +8,7 @@ import { defineTelemetryEvents } from '../define';
  * dialog's client slug is. Null when the name matches no known brand.
  */
 const clientBrand = z
-	.enum(['claude', 'cursor', 'vscode', 'openai'])
+	.enum(['claude', 'cursor', 'vscode', 'openai', 'mistral'])
 	.nullable()
 	.describe('Client brand, mirroring MCP_CLIENT_BRAND_MATCHERS in @n8n/api-types');
 

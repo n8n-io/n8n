@@ -2,10 +2,12 @@ import type { FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
+import type { ReferencedToolKind } from './tool-registry';
+
 export interface AgentToolInstrumentationContext {
 	/** Sanitized tool name — the same identifier the model calls and `GenerateResult.toolCalls` reports. */
 	toolName: string;
-	toolKind: 'node' | 'workflow';
+	toolKind: ReferencedToolKind;
 }
 
 export interface AgentMcpToolCallSettledContext extends McpToolCallSettledEvent {

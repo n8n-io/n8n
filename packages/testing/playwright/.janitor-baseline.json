@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-07-27T03:21:27.407Z",
-	"totalViolations": 56,
+	"totalViolations": 52,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -24,19 +24,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 61,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 85,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 109,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			},
@@ -69,12 +57,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 170,
-				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "713916b2be0f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 360,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
@@ -153,12 +135,6 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 84,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 92,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			},
@@ -259,28 +235,6 @@
 				"hash": "652001b1476b"
 			}
 		],
-		"tests/e2e/ai/assistant-credential-help.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 80,
-				"message": "Raw API call detected: fetch(",
-				"hash": "eb977c9c5bb7"
-			},
-			{
-				"rule": "api-purity",
-				"line": 122,
-				"message": "Raw API call detected: fetch(",
-				"hash": "eb977c9c5bb7"
-			}
-		],
-		"tests/e2e/app-config/nps-survey.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 51,
-				"message": "Raw API call detected: fetch(",
-				"hash": "39b87c0d6566"
-			}
-		],
 		"tests/e2e/capabilities/proxy-server.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -293,28 +247,6 @@
 				"line": 65,
 				"message": "Raw API call detected: fetch(",
 				"hash": "fa2bb9ca3bdb"
-			}
-		],
-		"tests/e2e/credentials/crud.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 299,
-				"message": "Raw API call detected: fetch(",
-				"hash": "34b1d021857e"
-			}
-		],
-		"tests/e2e/nodes/community-nodes.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 20,
-				"message": "Raw API call detected: fetch(",
-				"hash": "974d7953dd83"
-			},
-			{
-				"rule": "api-purity",
-				"line": 35,
-				"message": "Raw API call detected: fetch(",
-				"hash": "974d7953dd83"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [

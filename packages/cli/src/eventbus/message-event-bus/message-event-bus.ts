@@ -56,8 +56,6 @@ export class MessageEventBus extends EventEmitter {
 
 	logWriter: MessageEventBusLogWriter;
 
-	private pushIntervalTimer: NodeJS.Timeout;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -113,16 +111,6 @@ export class MessageEventBus extends EventEmitter {
 
 		await this.performStartupRecovery();
 
-		// if configured, run this test every n ms
-		if (this.globalConfig.eventBus.checkUnsentInterval > 0) {
-			if (this.pushIntervalTimer) {
-				clearInterval(this.pushIntervalTimer);
-			}
-			this.pushIntervalTimer = setInterval(async () => {
-				await this.trySendingUnsent();
-			}, this.globalConfig.eventBus.checkUnsentInterval);
-		}
-
 		this.logger.debug('MessageEventBus initialized');
 		this.isInitialized = true;
 	}
@@ -151,7 +139,8 @@ export class MessageEventBus extends EventEmitter {
 		}
 	}
 
-	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
+	/** Emits again the given messages, or else every message the log still holds as unsent. */
+	async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
 			this.logger.debug(`Found unsent event messages: ${unsentMessages.length}`);
@@ -309,7 +298,7 @@ export class MessageEventBus extends EventEmitter {
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
 		if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
-			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds);
+			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds, 'startup-recovery');
 			// if we end up here, it means that the previous recovery process did not finish
 			// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
 			// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed

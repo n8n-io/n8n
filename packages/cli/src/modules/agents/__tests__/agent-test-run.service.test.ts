@@ -12,7 +12,6 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
 const agentId = 'agent-1';
@@ -67,6 +66,7 @@ function makeService() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
+	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
 	return {
@@ -123,6 +123,22 @@ describe('AgentTestRunService', () => {
 				],
 			}),
 		);
+	});
+
+	it('flags a run that stopped on the iteration cap', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+			config.onExecutionRecorded?.('execution-1');
+			yield { type: 'text-delta', id: 'text-1', delta: 'Working on it' };
+			yield { type: 'finish', finishReason: 'max-iterations' };
+		});
+
+		await expect(service.executePreparedDraftRun(preparedDraftRunInput)).resolves.toEqual({
+			status: 'completed',
+			response: 'Working on it',
+			executionId: 'execution-1',
+			maxIterations: true,
+		});
 	});
 
 	it('resumes a prepared draft run with its selected memory scope', async () => {
@@ -246,8 +262,9 @@ describe('AgentTestRunService', () => {
 				resumeSchema: { type: 'object' },
 			},
 		];
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 			yield* chunks;
+			config.onExecutionRecorded?.('execution-1');
 		});
 
 		await expect(
@@ -263,6 +280,7 @@ describe('AgentTestRunService', () => {
 			status: 'suspended',
 			response: 'I can do that. ',
 			sessionId: 'session-1',
+			executionId: 'execution-1',
 			suspensions: [
 				{
 					runId: 'run-1',
@@ -411,11 +429,7 @@ describe('AgentTestRunService', () => {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 		} = makeService();
-		agentExecutionService.findThreadById.mockResolvedValue({
-			id: 'session-1',
-			projectId: 'another-project',
-			agentId,
-		} as AgentExecutionThread);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
 
 		await expect(
 			service.executeDraftRun({

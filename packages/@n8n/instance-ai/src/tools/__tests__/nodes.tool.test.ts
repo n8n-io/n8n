@@ -525,6 +525,65 @@ describe('nodes tool', () => {
 	});
 
 	describe('type-definition action', () => {
+		it.each(['full', 'orchestrator'] as const)(
+			'activates model selection for model-bearing definitions on the %s surface',
+			async (surface) => {
+				const context = createMockContext();
+				context.nodeService.getNodeTypeDefinition = vi.fn().mockResolvedValue({
+					content: 'export interface Params {\n  modelId?: string;\n}',
+				});
+				vi.mocked(context.nodeService.listSearchable).mockResolvedValue([
+					{
+						name: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						displayName: 'OpenRouter Chat Model',
+						description: '',
+						version: 1,
+						inputs: [],
+						outputs: ['ai_languageModel'],
+					},
+				]);
+				const loadSkill = vi.fn().mockResolvedValue(null);
+				const tool = createNodesTool(context, surface);
+				for (const nodeType of [
+					'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+					'@n8n/n8n-nodes-langchain.openAi',
+					'@n8n/n8n-nodes-langchain.googleGemini',
+					'@n8n/n8n-nodes-langchain.anthropic',
+				]) {
+					loadSkill.mockClear();
+					const result = await executeTool(
+						tool,
+						{ action: 'type-definition', nodeTypes: [nodeType] },
+						{ loadSkill },
+					);
+					expect(result.definitions).toEqual([
+						expect.objectContaining({ nodeType, content: expect.stringContaining('modelId') }),
+					]);
+					expect(loadSkill).toHaveBeenCalledExactlyOnceWith('model-selection');
+				}
+			},
+		);
+
+		it('keeps model selection inactive for unrelated operations and failed definitions', async () => {
+			const context = createMockContext();
+			context.nodeService.getNodeTypeDefinition = vi
+				.fn()
+				.mockResolvedValueOnce({ content: 'export type Params = { fileId: string };' })
+				.mockResolvedValueOnce({ error: 'Unknown node type' });
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+			const loadSkill = vi.fn();
+			const tool = createNodesTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'type-definition',
+					nodeTypes: ['@n8n/n8n-nodes-langchain.openAi', 'missing.node'],
+				},
+				{ loadSkill },
+			);
+			expect(loadSkill).not.toHaveBeenCalled();
+		});
+
 		it('should return a Zod-derived error when nodeTypes is missing', async () => {
 			// The discriminated union is flattened for Anthropic, so `nodeTypes`
 			// becomes optional at the top-level schema. The handler re-validates
@@ -894,11 +953,11 @@ describe('nodes tool', () => {
 			});
 		});
 
-		it('should deny without suspending when the admin policy blocks workflow runs', async () => {
+		it('should deny without suspending when the admin policy blocks node execution', async () => {
 			const executeNodeService = { execute: vi.fn() };
 			const suspendFn = vi.fn();
 			const tool = createNodesTool(
-				createMockContext({ executeNodeService, permissions: { runWorkflow: 'blocked' } as never }),
+				createMockContext({ executeNodeService, permissions: { executeNode: 'blocked' } as never }),
 				'full',
 			);
 
@@ -922,7 +981,31 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(
 				createMockContext({
 					executeNodeService,
-					permissions: { runWorkflow: 'always_allow' } as never,
+					permissions: { executeNode: 'always_allow' } as never,
+				}),
+				'full',
+			);
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					suspend: suspendFn,
+				} as never,
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toEqual(serviceResult);
+		});
+
+		it('should not consult the runWorkflow policy', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({
+					executeNodeService,
+					permissions: { runWorkflow: 'blocked', executeNode: 'always_allow' } as never,
 				}),
 				'full',
 			);
@@ -945,7 +1028,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(
 				createMockContext({
 					executeNodeService,
-					permissions: { runWorkflow: 'always_allow' } as never,
+					permissions: { executeNode: 'always_allow' } as never,
 					allowedRunWorkflowIds: new Set(['wf-under-verification']),
 				}),
 				'full',

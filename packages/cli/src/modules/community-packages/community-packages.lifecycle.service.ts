@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -10,11 +11,8 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';
 
@@ -38,7 +36,7 @@ const isCommunityPackageInstallClientError = (error: Error) =>
 		(msg) => typeof error.message === 'string' && error.message.includes(msg),
 	);
 
-export type CommunityPackageInstallPresentation = 'ui' | 'publicApi';
+export type CommunityPackageInstallPresentation = 'ui' | 'publicApi' | 'mcp';
 
 export type MissingInstalledPackageBehavior = 'badRequest' | 'notFound';
 
@@ -62,6 +60,37 @@ export class CommunityPackagesLifecycleService {
 		if (this.instanceSettingsLoaderConfig.communityPackagesManagedByEnv) {
 			throw new BadRequestError(MANAGED_BY_ENV_MESSAGE);
 		}
+	}
+
+	/**
+	 * Version and checksum the registry vetted for this package, in one lookup.
+	 * The pair must come from the same catalog read: two separate reads can
+	 * straddle a catalog refresh and pair a pinned version with the checksum of
+	 * a newer release, failing a legitimate install. No requested version means
+	 * the latest vetted one.
+	 */
+	private async resolveVetted(
+		name: string,
+		version?: string,
+	): Promise<{ version: string; checksum: string }> {
+		const vettedPackage = await this.communityNodeTypesService.findVetted(name);
+		if (!vettedPackage) {
+			throw new BadRequestError(`Package ${name} is not vetted for installation`);
+		}
+
+		const resolvedVersion = version ?? vettedPackage.npmVersion;
+		const checksum =
+			resolvedVersion === vettedPackage.npmVersion
+				? vettedPackage.checksum
+				: vettedPackage.nodeVersions?.find((v) => v.npmVersion === resolvedVersion)?.checksum;
+
+		if (!checksum) {
+			throw new BadRequestError(
+				`Version ${resolvedVersion} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
+			);
+		}
+
+		return { version: resolvedVersion, checksum };
 	}
 
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
@@ -117,12 +146,13 @@ export class CommunityPackagesLifecycleService {
 		}
 
 		let checksum: string | undefined;
+		let resolvedVersion = version;
 
 		if (verify) {
-			checksum = (await this.communityNodeTypesService.findVetted(name))?.checksum;
-			if (!checksum) {
-				throw new BadRequestError(`Package ${name} is not vetted for installation`);
-			}
+			// Pins the vetted version too: without it, npm would install its own
+			// `latest` while the checksum describes the registry's latest, and the
+			// two can differ while a new release awaits vetting.
+			({ version: resolvedVersion, checksum } = await this.resolveVetted(name, version));
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -167,7 +197,7 @@ export class CommunityPackagesLifecycleService {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
-		const packageVersion = version ?? parsed.version;
+		const packageVersion = resolvedVersion ?? parsed.version;
 		let installedPackage: InstalledPackages;
 
 		try {
@@ -236,20 +266,7 @@ export class CommunityPackagesLifecycleService {
 		let checksum = args.checksum;
 
 		if (verify) {
-			const vettedPackage = await this.communityNodeTypesService.findVetted(name ?? '');
-			if (!vettedPackage) {
-				throw new BadRequestError(`Package ${name} is not vetted for installation`);
-			}
-			if (!version || version === vettedPackage.npmVersion) {
-				checksum = vettedPackage.checksum;
-			} else {
-				checksum = vettedPackage.nodeVersions?.find((v) => v.npmVersion === version)?.checksum;
-			}
-			if (!checksum) {
-				throw new BadRequestError(
-					`Version ${version} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
-				);
-			}
+			({ checksum } = await this.resolveVetted(name ?? '', version));
 		}
 
 		if (!name) {

@@ -201,6 +201,10 @@ export const description: INodeProperties[] = [
 		default: true,
 		displayOptions: { show: { resource: ['page'], operation: ['archive', 'create', 'search'] } },
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'When true, pages under another page or the workspace return only id, name, and url. Database pages also return property_ keys with snake_case names, such as property_status and property_owner. Status values use the status name when present. Rich-text values are strings. People values are arrays of email addresses, with {} for missing emails; handle those entries when mapping to the type the destination expects. Match downstream expressions and verification output fixtures to the returned page type. When false, read the native properties object. Use raw output when you need person names or other native page fields.',
+		},
 	},
 ];
 

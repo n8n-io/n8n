@@ -31,7 +31,7 @@ type WorkflowPackageKeyHandling = {
 	tagMappings: 'exclude';
 	shared: 'exclude';
 	pinData: 'exclude';
-	versionId: 'copy';
+	versionId: 'exclude';
 	activeVersionId: 'transform';
 	activeVersion: 'exclude';
 	versionCounter: 'exclude';
@@ -54,9 +54,10 @@ const serializePayload = definePackageSerializationPayload<
 
 /** The same decisions from the metadata file's side. */
 type WorkflowMetadataKeyHandling = Record<
-	Exclude<keyof WorkflowPackageKeyHandling, 'activeVersionId'>,
+	Exclude<keyof WorkflowPackageKeyHandling, 'versionId' | 'activeVersionId'>,
 	'exclude'
 > & {
+	versionId: 'copy';
 	activeVersionId: 'transform';
 };
 
@@ -82,7 +83,6 @@ export class WorkflowSerializer {
 				nodes: workflow.nodes,
 				connections: workflow.connections,
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
-				versionId: workflow.versionId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
 				isArchived: workflow.isArchived,
 				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
@@ -93,14 +93,17 @@ export class WorkflowSerializer {
 
 	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
 		return serializedWorkflowMetadataSchema.parse(
-			serializeMetadataPayload({ publishedVersionId: workflow.activeVersionId }),
+			serializeMetadataPayload({
+				versionId: workflow.versionId,
+				publishedVersionId: workflow.activeVersionId,
+			}),
 		);
 	}
 
 	/**
 	 * Turns a workflow from a package back into something we can save on the
-	 * target instance. We drop anything the target owns — its id, versionId,
-	 * where it lives, timestamps — so the caller can set those fresh.
+	 * target instance. We drop anything the target owns — its id, where it
+	 * lives, timestamps — so the caller can set those fresh.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
 		const parsed = serializedWorkflowSchema.parse(wire);

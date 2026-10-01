@@ -1,6 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
@@ -31,6 +32,7 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -41,16 +43,12 @@ import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
@@ -58,6 +56,7 @@ import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -129,6 +128,7 @@ export class WorkflowService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 	) {}
 
 	async getMany(
@@ -517,6 +517,11 @@ export class WorkflowService {
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
 			});
+			// Only a workflow with groups needs the flags.
+			const rules = workflowUpdateData.nodeGroups?.length
+				? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
+				: {};
+
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
 					nodes: workflowUpdateData.nodes,
@@ -524,6 +529,7 @@ export class WorkflowService {
 					connections: workflowUpdateData.connections,
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+				rules,
 			);
 		}
 
@@ -606,15 +612,18 @@ export class WorkflowService {
 		// Gate the save on policy before persisting, so the author learns about a violation
 		// while editing rather than at runtime. Carries the stored workflow alongside the
 		// submitted one so a check can restrict its verdict to what this save adds.
-		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: {
-				id: workflow.id,
-				name: workflowUpdateData.name ?? workflow.name,
-				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflowUpdateData.name ?? workflow.name,
+					nodes: workflowUpdateData.nodes ?? workflow.nodes,
+				},
+				storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+				projectId: ownerProject.id,
 			},
-			storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
-			projectId: ownerProject.id,
-		});
+			{ kind: 'user', user },
+		);
 
 		const fieldsToUpdate = [
 			'name',
@@ -787,7 +796,9 @@ export class WorkflowService {
 	): Promise<void> {
 		let didPublish = false;
 		try {
-			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
+				actor: { kind: 'user', user },
+			});
 			didPublish = true;
 		} catch (error) {
 			// Activation failed partway through. It may already have registered triggers
@@ -986,6 +997,9 @@ export class WorkflowService {
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
+		if (versionIdToActivate !== previousActiveVersionId) {
+			await this._validatePublisherCredentialAccess(workflowId, user, versionToActivate.nodes);
+		}
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
@@ -1021,20 +1035,12 @@ export class WorkflowService {
 
 		// Polices what gets registered — the version row, not the hook's candidate.
 		// Enforced on a same-version republish too.
-		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-			// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is
-			// not a passed one, so a failed lookup fails the publish.
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-			await this.policyEnforcementService.enforceWorkflowPublish({
-				workflow: {
-					id: workflowId,
-					name: workflow.name,
-					nodes: nodesToPublish,
-				},
-				projectId: project.id,
-			});
-		}
+		await enforceWorkflowPublishPolicy(
+			this.policyEnforcementService,
+			this.ownershipService,
+			{ id: workflowId, name: workflow.name, nodes: nodesToPublish },
+			{ kind: 'user', user },
+		);
 
 		// re-applying the already-published version (e.g. a settings-only update)
 		// publishes no new version, so the review gate must not block it.
@@ -1821,6 +1827,24 @@ export class WorkflowService {
 			});
 			throw new WorkflowValidationError(
 				validation.error ?? 'Dynamic credentials validation failed',
+			);
+		}
+	}
+
+	private async _validatePublisherCredentialAccess(workflowId: string, user: User, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validatePublisherCredentialAccess(
+			user,
+			nodes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed publisher credential access validation', {
+				workflowId,
+				userId: user.id,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Publisher credential access validation failed',
 			);
 		}
 	}

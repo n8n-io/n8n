@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, reactive } from 'vue';
+import { defineComponent, h, nextTick, provide, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -82,6 +82,7 @@ describe('InstanceAiConversation', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		localStorage.clear();
 	});
@@ -90,15 +91,95 @@ describe('InstanceAiConversation', () => {
 	// doesn't re-emit the child's events, so DOM-only assertions use it, while emit
 	// assertions mount a small host directly with `@vue/test-utils` and read the
 	// child wrapper's own `emitted()`.
-	function mountConversation() {
+	function mountConversation(
+		props: { mentionsEnabled?: boolean } = {},
+		openWorkflowPreview = vi.fn(),
+	) {
 		const Host = defineComponent({
 			setup() {
 				provideThread(thread);
-				return () => h(InstanceAiConversation);
+				provide('openWorkflowPreview', openWorkflowPreview);
+				return () => h(InstanceAiConversation, props);
 			},
 		});
 		return mount(Host, { global: { stubs: { InstanceAiInput: InstanceAiInputStub } } });
 	}
+
+	it('routes mention references and workflow opening through the thread host', async () => {
+		thread.producedArtifacts.set('wf-1', {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'Orders',
+		});
+		const openWorkflowPreview = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, openWorkflowPreview);
+		const input = wrapper.findComponent(InstanceAiInputStub);
+		const reference = {
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		};
+
+		input.vm.$emit('mention-reference-added', reference);
+		input.vm.$emit('mention-workflow-open', 'wf-1');
+		await nextTick();
+
+		expect(thread.upsertTransientWorkflowReference).toHaveBeenCalledWith({
+			...reference,
+			projectId: 'thread-project',
+		});
+		expect(thread.transientWorkflowReferences.get('draft-1')).toMatchObject(reference);
+		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
+		expect(input.props('mentionArtifacts')).toEqual([{ id: 'wf-1', name: 'Orders' }]);
+
+		input.vm.$emit('mention-reference-removed', 'draft-1');
+		expect(thread.removeTransientWorkflowReference).toHaveBeenCalledWith('draft-1');
+		expect(thread.transientWorkflowReferences.has('draft-1')).toBe(false);
+	});
+
+	it('accepts the submitted mention draft only after the message is admitted', async () => {
+		const wrapper = mountConversation();
+		const input = wrapper.findComponent(InstanceAiInputStub);
+		const acceptDraft = vi.fn();
+		let admit!: (sent: boolean) => void;
+		vi.mocked(thread.sendMessage).mockReturnValueOnce(
+			new Promise<boolean>((resolve) => {
+				admit = resolve;
+			}),
+		);
+
+		input.vm.$emit(
+			'submit',
+			'Compare orders',
+			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
+			vi.fn(),
+			USER_TYPED_MESSAGE,
+			Date.now(),
+			acceptDraft,
+			{
+				total: 1,
+				workflow: 1,
+				node: 0,
+				group: 0,
+			},
+		);
+		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Compare orders',
+			expect.objectContaining({
+				mentionCounts: {
+					total: 1,
+					workflow: 1,
+					node: 0,
+					group: 0,
+				},
+			}),
+		);
+		expect(acceptDraft).not.toHaveBeenCalled();
+
+		admit(true);
+		await vi.waitFor(() => expect(acceptDraft).toHaveBeenCalledOnce());
+	});
 
 	it('renders visible messages from the thread', () => {
 		thread.messages = [
@@ -130,6 +211,29 @@ describe('InstanceAiConversation', () => {
 		const { getByTestId } = renderer();
 		expect(getByTestId('above-input-slot')).toBeInTheDocument();
 		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
+	});
+
+	it('keeps the chat input while the onboarding follow-up is held', async () => {
+		vi.useFakeTimers();
+		store.isOnboardingChromeHidden.mockReturnValue(true);
+		const createdAt = '2026-04-01T00:00:00.000Z';
+		thread.messages = [
+			{ id: 'greeting', role: 'assistant', content: 'Hi there', createdAt },
+		] as InstanceAiMessage[];
+		const wrapper = mountConversation();
+		// Past the greeting's lines and thinking beats.
+		await vi.advanceTimersByTimeAsync(5000);
+
+		thread.messages = [
+			...thread.messages,
+			{ id: 'follow-up', role: 'assistant', content: 'Got it.', createdAt },
+		] as InstanceAiMessage[];
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('Got it.');
+		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
 	});
 
 	it('emits thread-missing when the thread cannot be found', async () => {

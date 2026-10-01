@@ -9,7 +9,7 @@ import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-
 import { parseBaseBranchFiles, parsePackageFiles } from '../base-branch-files';
 import { diffPackageFiles } from '../diff-package-files';
 
-it('compares Git and writer output without losing scoped identities or workflow metadata', async () => {
+it('compares Git and writer output without losing scoped identities, and ignores workflow metadata', async () => {
 	const root = await mkdtemp(path.join(tmpdir(), 'promotion-diff-'));
 	try {
 		const project = 'n8n-export/projects/orders-Project1';
@@ -85,20 +85,14 @@ it('compares Git and writer output without losing scoped identities or workflow 
 				{ entityId: 'Move', type: 'workflow', change: 'renamed' },
 				{ entityId: 'Both', type: 'workflow', change: 'renamed-and-modified' },
 				{ entityId: 'Delete', type: 'workflow', change: 'deleted' },
-				{ entityId: 'Published', type: 'workflow', change: 'modified' },
 				{ entityId: 'New', type: 'workflow', change: 'added' },
 				{ entityId: '2', type: 'variable', change: 'modified' },
 			]),
 		);
-		expect(changes).toHaveLength(7);
-		expect(changes).toContainEqual(
-			expect.objectContaining({
-				change: 'modified',
-				desired: expect.objectContaining({
-					entityId: 'Published',
-					fileName: 'workflow-metadata.json',
-				}),
-			}),
+		expect(changes).toHaveLength(6);
+		// The metadata file changed on both sides, but it never enters the listing.
+		expect([...baseFiles, ...desiredFiles].map(({ path }) => path)).not.toContainEqual(
+			expect.stringContaining('workflow-metadata.json'),
 		);
 		expect(diffPackageFiles(baseFiles, baseFiles)).toEqual([]);
 	} finally {

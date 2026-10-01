@@ -34,6 +34,7 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Teams from './custom/teams.svg';
 import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
@@ -62,6 +63,7 @@ import IconLucideBlocks from '~icons/lucide/blocks';
 import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
+import IconLucideBookmark from '~icons/lucide/bookmark';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
 import IconLucideBraces from '~icons/lucide/braces';
@@ -316,6 +318,7 @@ export const deprecatedIconSet = {
 	telegram: Telegram,
 	discord: Discord,
 	whatsapp: WhatsApp,
+	teams: Teams,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -538,6 +541,7 @@ export const updatedIconSet = {
 	telegram: Telegram,
 	discord: Discord,
 	whatsapp: WhatsApp,
+	teams: Teams,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -574,6 +578,7 @@ export const updatedIconSet = {
 	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
+	bookmark: IconLucideBookmark,
 	bot: IconLucideBot,
 	box: IconLucideBox,
 	brain: IconLucideBrain,

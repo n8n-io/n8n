@@ -3,6 +3,8 @@
 // seeding). Pure — no network — so the create/update/unchanged partitioning is
 // unit-testable against in-memory suite state.
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { LangTracerUpdateCaseBody } from './client';
 import { normalizeExportedCase } from './normalize';
 import { unsupportedPushReason, type LangTracerCreateCaseBody } from './to-exported';
@@ -139,6 +141,10 @@ function projectComparable(src: unknown): Record<string, unknown> {
 			out[key] = seedWithoutMessageIds(value);
 			continue;
 		}
+		if (key === 'executionScenarios') {
+			out[key] = scenariosWithoutEmptyRows(value);
+			continue;
+		}
 		out[key] = value;
 	}
 	return out;
@@ -166,6 +172,20 @@ function seedWithoutMessageIds(value: unknown): unknown {
 		return rest;
 	});
 	return seed;
+}
+
+/** lang-tracer stores a seed table's empty `rows` as absent, so `[]` must compare equal to it. */
+function scenariosWithoutEmptyRows(value: unknown): unknown {
+	if (!Array.isArray(value)) return value;
+	return value.map((scenario: unknown) => {
+		if (!isRecord(scenario) || !Array.isArray(scenario.seedDataTables)) return scenario;
+		const seedDataTables = scenario.seedDataTables.map((table: unknown) => {
+			if (!isRecord(table) || !Array.isArray(table.rows) || table.rows.length > 0) return table;
+			const { rows, ...rest } = table;
+			return rest;
+		});
+		return { ...scenario, seedDataTables };
+	});
 }
 
 /** Stable JSON with sorted object keys, so field/scenario ordering never affects equality. */

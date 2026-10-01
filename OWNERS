@@ -231,6 +231,7 @@ packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
 packages/@n8n/permissions/                              @n8n-io/iam
 packages/@n8n/client-oauth2/                            @n8n-io/iam
+packages/@n8n/inbound-auth/                             @n8n-io/iam
 
 # LiGo
 
@@ -266,7 +267,4 @@ packages/cli/src/modules/encryption-key-manager/        @n8n-io/iam required
 packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
 packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required

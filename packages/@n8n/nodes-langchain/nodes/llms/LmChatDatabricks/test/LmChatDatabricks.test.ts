@@ -17,11 +17,11 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
-import { getDatabricksTokenProvider } from '../token-provider';
+import { getDatabricksTokenProvider } from '@utils/databricks/token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('../token-provider');
+vi.mock('@utils/databricks/token-provider');
 
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);

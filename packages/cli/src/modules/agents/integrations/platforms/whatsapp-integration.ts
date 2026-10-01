@@ -20,11 +20,17 @@ import {
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type UnauthenticatedWebhookContext,
+	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
-import { componentTextToString, type SuspendComponent } from '../component-mapper';
+import {
+	componentTextToString,
+	type NormalizeComponentsContext,
+	type SuspendComponent,
+} from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
-import { deriveWhatsAppVerifyToken } from '../integration-helpers';
+import { deriveWhatsAppVerifyToken, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
@@ -80,6 +86,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'WhatsApp';
 
 	readonly displayIcon = 'whatsapp';
+
+	/**
+	 * Hidden from the public catalog and the add-trigger UI until the
+	 * follow-on work (rate limiting, media handling, setup UX) lands —
+	 * without it this channel would go live with only the bare MVP.
+	 */
+	readonly internal = true;
 
 	readonly builderGuidance = {
 		capabilities: [
@@ -145,6 +158,33 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+	}
+
+	/**
+	 * Answer Meta's webhook verification handshake (`hub.mode` / `hub.verify_token`
+	 * / `hub.challenge`) before a credential is connected. The verify token is
+	 * derivable from the agent ID alone (see `deriveVerifyToken`), so unlike a
+	 * live conversation there is nothing here that needs a credential — the same
+	 * reasoning Slack's `url_verification` handling already relies on.
+	 *
+	 * Once a credential *is* connected, the real adapter answers this handshake
+	 * itself (its own `handleWebhook` branches on `request.method === 'GET'`), so
+	 * this only ever fires for the pre-connection case.
+	 */
+	handleUnauthenticatedWebhook(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined {
+		if (context.method !== 'GET') return undefined;
+
+		const mode = stringValue(context.query['hub.mode']);
+		const token = stringValue(context.query['hub.verify_token']);
+		const challenge = stringValue(context.query['hub.challenge']);
+		if (mode !== 'subscribe' || !token || !challenge) return undefined;
+
+		if (token !== this.deriveVerifyToken(context.agentId)) {
+			return { status: 403, body: 'Forbidden', raw: true };
+		}
+		return { status: 200, body: challenge, raw: true };
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -213,21 +253,47 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	 * through unchanged. Only reply buttons need handling here: the Cloud API
 	 * caps interactive messages at 3 buttons and otherwise rejects the send.
 	 */
-	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
+	normalizeComponents(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): SuspendComponent[] {
 		const buttons = components.filter((c) => c.type === 'button');
 		if (buttons.length <= WHATSAPP_MAX_REPLY_BUTTONS) return components;
 
+		const existingSelect = components.find((c) => c.type === 'select' || c.type === 'radio_select');
+		if (existingSelect) {
+			// Merge into it instead of pushing a second one: WhatsApp's list
+			// message only supports one set of rows. Its options already resume
+			// through the native select decode path, so the overflow buttons
+			// fall back to that same raw encoding here — one select can't mix
+			// a button-style and a select-style resume under a single id.
+			const overflowOptions = buttons.map((b) => ({
+				label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
+				value: b.value ?? b.label ?? '',
+			}));
+			return components
+				.filter((c) => c.type !== 'button')
+				.map((c) =>
+					c === existingSelect ? { ...c, options: [...(c.options ?? []), ...overflowOptions] } : c,
+				);
+		}
+
 		// More than 3 options don't fit WhatsApp's reply-button limit, but
 		// WhatsApp list messages allow far more entries — convert the overflow
-		// into a `select` so the action stays completable from WhatsApp, instead
-		// of dropping the options behind unreachable text.
+		// into a `select` so the action stays completable from WhatsApp. Each
+		// option's value is wrapped exactly as a real button's would be, and
+		// the select's id uses that same `resume:` encoding (see
+		// `NormalizeComponentsContext`), so tapping an option resumes with the
+		// shape the tool's schema expects instead of a select's fixed
+		// `{ type, id, value }`.
 		const normalized = components.filter((c) => c.type !== 'button');
 		normalized.push({
 			type: 'select',
+			id: `resume:${context.runId}:${context.toolCallId}:0`,
 			label: 'Choose an option',
 			options: buttons.map((b) => ({
 				label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
-				value: b.value ?? b.label ?? '',
+				value: context.wrapResumeValue(b.value ?? b.label ?? ''),
 			})),
 		});
 		return normalized;
@@ -282,7 +348,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	}
 
 	private deriveVerifyToken(agentId: string): string {
-		return deriveWhatsAppVerifyToken(this.instanceSettings.encryptionKey, agentId);
+		return deriveWhatsAppVerifyToken(this.instanceSettings.hmacSignatureSecret, agentId);
 	}
 
 	private requireCredentialField(
@@ -323,12 +389,19 @@ async function assertCustomerServiceWindowOpen(
 }
 
 /**
- * Reads the same persistent per-thread history cache the SDK backfills
- * `thread.allMessages` from for adapters that set `persistThreadHistory`
- * (WhatsApp has no server-side history API of its own). `ChatInstance` — the
- * adapter-facing interface, not the consumer-facing `Chat` class — exposes no
- * thread/message accessors, so this reads the cache directly off its state
- * adapter instead.
+ * Reads the same per-thread history cache the SDK backfills `thread.allMessages`
+ * from for adapters that set `persistThreadHistory` (WhatsApp has no
+ * server-side history API of its own). `ChatInstance` — the adapter-facing
+ * interface, not the consumer-facing `Chat` class — exposes no thread/message
+ * accessors, so this reads the cache directly off its state adapter instead.
+ *
+ * That state is the in-memory adapter `chat-integration.service.ts` builds
+ * each connection on (`createMemoryState()`) — it does not survive a process
+ * restart or move between mains. A cold cache after a restart means this
+ * returns `undefined`, and {@link assertCustomerServiceWindowOpen} already
+ * treats that the same as a genuinely fresh conversation: it lets the Cloud
+ * API be the authority on whether the 24-hour window is actually open,
+ * instead of blocking on an absence this can't verify.
  */
 async function lastInboundMessageAt(
 	chat: ChatInstance | null,

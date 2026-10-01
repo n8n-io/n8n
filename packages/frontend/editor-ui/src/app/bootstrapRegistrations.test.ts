@@ -8,9 +8,11 @@ import { join } from 'node:path';
  * - drop `registerUpgradeRedirectGuard` and an upgrade CTA raised from a module
  *   package skips the AI-builder confirmation, because the registry fails open;
  * - drop `registerComponentSlots` and the insights dashboard renders no project
- *   picker, because an unregistered slot resolves to `undefined`.
+ *   picker, because an unregistered slot resolves to `undefined`;
+ * - drop `registerShellCapabilities` and the first `use()` from a module throws;
+ *   nothing else boots `main.ts`.
  *
- * Both failures are invisible to every other test, so this asserts the call sites
+ * These failures are invisible to every other test, so this asserts the call sites
  * exist. It is the same shape as `vite/aliases.test.ts`, which reads config files
  * to hold two of them in step.
  */
@@ -20,6 +22,7 @@ describe('main.ts bootstrap registrations', () => {
 	it.each([
 		['registerUpgradeRedirectGuard', '@/app/upgradeRedirectGuard.manifest'],
 		['registerComponentSlots', '@/app/componentSlots.manifest'],
+		['registerShellCapabilities', '@/app/capabilities.manifest'],
 	])('imports %s from %s and calls it', (fn, from) => {
 		expect(mainTs).toContain(`import { ${fn} } from '${from}';`);
 		expect(mainTs).toMatch(new RegExp(`^${fn}\\(\\);$`, 'm'));

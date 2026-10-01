@@ -11,6 +11,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import { computed, type ComputedRef } from 'vue';
@@ -55,9 +56,11 @@ const mockedUseRoute = vi.mocked(useRoute);
 
 describe('CanvasNodeStatusIcons', () => {
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+	let typeAvailabilityPoliciesStore: MockedStore<typeof useTypeAvailabilityPoliciesStore>;
 
 	beforeEach(() => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		typeAvailabilityPoliciesStore = mockedStore(useTypeAvailabilityPoliciesStore);
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 		for (const key of Object.keys(pinnedDataByNodeName)) {
 			delete pinnedDataByNodeName[key];
@@ -341,5 +344,43 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+	});
+
+	describe('restricted node type', () => {
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				available: false,
+				scope: 'instance',
+			});
+		});
+
+		it('should render the lock badge for a restricted node type', () => {
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-base.slack' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('node-restricted')).toBeInTheDocument();
+		});
+
+		it('should keep the lock badge ahead of the not-installed badge', () => {
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { type: 'n8n-nodes-base.slack' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('node-restricted')).toBeInTheDocument();
+			expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+		});
 	});
 });

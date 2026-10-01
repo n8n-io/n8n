@@ -8,11 +8,12 @@ import { PostgresHelper, type PostgresResult } from './postgres';
 import type { HelperContext, Service, StartContext } from './types';
 
 const HOSTNAME = 'engine-postgres';
-const USERNAME = 'n8n_user';
-const PASSWORD = 'test_password';
+const USERNAME = 'engine_user';
+const PASSWORD = 'engine_test_password';
 
 export const enginePostgres: Service<PostgresResult> = {
 	description: 'Engine PostgreSQL database',
+	shouldStart: (ctx) => ctx.config.engine === 'container',
 
 	async start(
 		network: StartedNetwork,

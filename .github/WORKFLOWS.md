@@ -575,14 +575,15 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 
 ## ci-master.yml
 
-Runs on push to `master` or `1.x`:
+Runs on push to `master`:
 
 ```
-Push to master/1.x
-├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.23.2, 24.18.1)
+Push to master
+├─ build-and-format (Blacksmith: build, then format check; populate master cache)
+├─ unit-test (matrix: Node 24.18.1, 26.5.1)
 │   └─ Coverage only on 24.18.1
 ├─ lint
+├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -914,6 +915,14 @@ so only `master` is trusted input. A PR cannot lift its own review
 requirement. A retarget re-evaluates the PR, so a verdict computed against the
 old base does not carry over.
 
+Members of the `large-scale-changes` GitHub team can make the **Required
+Reviews** status succeed without required OWNERS team approvals. A team member
+must apply the `large-scale-change` label. The gate checks the actor from the
+label event and verifies their current team membership. The label alone is not
+sufficient. Label changes re-evaluate the status. Removing the label removes
+the exemption. During the CODEOWNERS trial, GitHub still enforces its separate
+code-owner review requirement.
+
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive
 through `pull_request_target`, which is safe here because no step checks out
@@ -959,7 +968,7 @@ from the master ruleset, and delete this section (tracked in DEVP-887).
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
-**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads
+**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads. The PR `install-and-build` job uses it with the default runner provider. Most PR jobs wait for that job, and a cold build keeps all 4 vCPUs of a smaller runner busy.
 
 ### Runner Provider Toggle
 

@@ -13,7 +13,7 @@ import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
@@ -26,6 +26,25 @@ import type {
 	WorkflowDetectionReport,
 } from './types';
 import { N8N_VERSION } from '../../constants';
+
+/** One rule check on one workflow that threw, so its result is unknown. */
+export interface FailedRuleCheck {
+	ruleId: string;
+	workflowId: string;
+}
+
+/**
+ * Result of one full scan. `failedChecks` lists the rule checks that threw, so the report
+ * is incomplete for those pairs. The public report type does not carry this field.
+ */
+export interface BreakingChangeDetectionResult extends BreakingChangeReportResult {
+	failedChecks: FailedRuleCheck[];
+}
+
+interface WorkflowRulesScan {
+	results: BreakingChangeWorkflowRuleResult[];
+	failedChecks: FailedRuleCheck[];
+}
 
 interface WorkflowMetadata {
 	name: string;
@@ -43,6 +62,14 @@ export class BreakingChangeService {
 	private readonly ongoingDetections = new Map<
 		BreakingChangeVersion,
 		Promise<BreakingChangeReportResult>
+	>();
+	/**
+	 * In-flight scans per version. Batch rules keep state between `reset()` and
+	 * `produceReport()`, so two scans of one version must never overlap.
+	 */
+	private readonly ongoingScans = new Map<
+		BreakingChangeVersion,
+		Promise<BreakingChangeDetectionResult>
 	>();
 
 	constructor(
@@ -77,7 +104,7 @@ export class BreakingChangeService {
 						ruleId: rule.id,
 						ruleTitle: rule.getMetadata().title,
 						ruleDescription: rule.getMetadata().description,
-						ruleSeverity: rule.getMetadata().severity,
+						ruleImpact: rule.getMetadata().impact,
 						ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 						instanceIssues: ruleResult.instanceIssues,
 						recommendations: ruleResult.recommendations,
@@ -105,7 +132,7 @@ export class BreakingChangeService {
 					ruleId: rule.id,
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
-					ruleSeverity: rule.getMetadata().severity,
+					ruleImpact: rule.getMetadata().impact,
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
@@ -154,7 +181,7 @@ export class BreakingChangeService {
 					ruleId: rule.id,
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
-					ruleSeverity: rule.getMetadata().severity,
+					ruleImpact: rule.getMetadata().impact,
 					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows,
 					recommendations: await rule.getRecommendations(affectedWorkflows),
@@ -169,9 +196,10 @@ export class BreakingChangeService {
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
 		batchRules: IBreakingChangeBatchWorkflowRule[],
 		totalWorkflows: number,
-	): Promise<BreakingChangeWorkflowRuleResult[]> {
+	): Promise<WorkflowRulesScan> {
 		const allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]> = new Map();
 		const workflowMetadataMap: Map<string, WorkflowMetadata> = new Map();
+		const failedChecks: FailedRuleCheck[] = [];
 
 		// Reset batch rules internal state before processing
 		batchRules.forEach((rule) => rule.reset());
@@ -185,7 +213,7 @@ export class BreakingChangeService {
 
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'settings', 'updatedAt'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
@@ -232,6 +260,7 @@ export class BreakingChangeService {
 						result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 					} catch (error) {
 						this.reportRuleError(error, rule.id, workflow.id);
+						failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
 						continue;
 					}
 					if (result.isAffected) {
@@ -254,6 +283,7 @@ export class BreakingChangeService {
 						await rule.collectWorkflowData(workflow, nodesGroupedByType);
 					} catch (error) {
 						this.reportRuleError(error, rule.id, workflow.id);
+						failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
 					}
 				}
 			}
@@ -265,40 +295,57 @@ export class BreakingChangeService {
 		);
 		const batchResults = await this.aggregateBatchRuleResults(batchRules, workflowMetadataMap);
 
-		return regularResults.concat(batchResults);
+		return { results: regularResults.concat(batchResults), failedChecks };
 	}
 
 	async refreshDetectionResults(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		await this.cacheService.delete(`${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`);
+		await this.cacheService.delete(this.getCacheKey(targetVersion));
 		return await this.getDetectionResults(targetVersion);
 	}
 
 	async getDetectionResults(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		// Check if there's already an ongoing detection for this version
-		const existingDetection = this.ongoingDetections.get(targetVersion);
-		if (existingDetection) {
+		return await this.shareInFlight(
+			this.ongoingDetections,
+			targetVersion,
+			async () => await this.detectWithCache(targetVersion),
+		);
+	}
+
+	/** Joins the promise already in `inFlight` for the version, or starts and registers a new one. */
+	private async shareInFlight<T>(
+		inFlight: Map<BreakingChangeVersion, Promise<T>>,
+		targetVersion: BreakingChangeVersion,
+		start: () => Promise<T>,
+	): Promise<T> {
+		const existing = inFlight.get(targetVersion);
+		if (existing) {
 			this.logger.debug('Reusing ongoing detection', { targetVersion });
-			return await existingDetection;
+			return await existing;
 		}
 
-		const detectionPromise = this.detectWithCache(targetVersion);
-		this.ongoingDetections.set(targetVersion, detectionPromise);
-
+		const promise = start();
+		inFlight.set(targetVersion, promise);
 		try {
-			return await detectionPromise;
+			return await promise;
 		} finally {
-			this.ongoingDetections.delete(targetVersion);
+			inFlight.delete(targetVersion);
 		}
+	}
+
+	// The rule set changes with every release, so a report from an older build is stale.
+	// The n8n version in the key rotates the entry on deploy; the old key ages out by TTL.
+	private getCacheKey(targetVersion: BreakingChangeVersion): string {
+		return `${BreakingChangeService.CACHE_KEY_PREFIX}${N8N_VERSION}:${targetVersion}`;
 	}
 
 	private async detectWithCache(
 		targetVersion: BreakingChangeVersion,
 	): Promise<BreakingChangeReportResult> {
-		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
+		const cacheKey = this.getCacheKey(targetVersion);
 
 		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
 		if (cachedResult) {
@@ -306,7 +353,9 @@ export class BreakingChangeService {
 			return cachedResult;
 		}
 
-		const result = await this.detect(targetVersion);
+		// The public report type has no `failedChecks`, so the field is dropped here.
+		const { report, totalWorkflows, shouldCache } = await this.detect(targetVersion);
+		const result: BreakingChangeReportResult = { report, totalWorkflows, shouldCache };
 		if (result.shouldCache) {
 			await this.cacheService.set(cacheKey, result);
 		}
@@ -322,7 +371,18 @@ export class BreakingChangeService {
 		return durationMs > BreakingChangeService.REPORT_DURATION_CACHE_THRESHOLD;
 	}
 
-	async detect(targetVersion: BreakingChangeVersion): Promise<BreakingChangeReportResult> {
+	/** Runs a full, uncached scan. Concurrent calls for one version share a single scan. */
+	async detect(targetVersion: BreakingChangeVersion): Promise<BreakingChangeDetectionResult> {
+		return await this.shareInFlight(
+			this.ongoingScans,
+			targetVersion,
+			async () => await this.runScan(targetVersion),
+		);
+	}
+
+	private async runScan(
+		targetVersion: BreakingChangeVersion,
+	): Promise<BreakingChangeDetectionResult> {
 		const startTime = Date.now();
 		this.logger.debug('Starting breaking change detection', { targetVersion });
 
@@ -340,7 +400,7 @@ export class BreakingChangeService {
 
 		const totalWorkflows = await this.workflowRepository.count();
 
-		const [instanceLevelResults, workflowLevelResults] = await Promise.all([
+		const [instanceLevelResults, workflowScan] = await Promise.all([
 			this.getAllInstanceRulesResults(instanceLevelRules),
 			this.getAllWorkflowRulesResults(workflowLevelRules, batchWorkflowRules, totalWorkflows),
 		]);
@@ -348,7 +408,7 @@ export class BreakingChangeService {
 		const report = this.createDetectionReport(
 			targetVersion,
 			instanceLevelResults,
-			workflowLevelResults,
+			workflowScan.results,
 		);
 
 		const duration = Date.now() - startTime;
@@ -360,6 +420,7 @@ export class BreakingChangeService {
 			report,
 			totalWorkflows,
 			shouldCache: this.shouldCacheDetection(duration),
+			failedChecks: workflowScan.failedChecks,
 		};
 	}
 
@@ -374,10 +435,10 @@ export class BreakingChangeService {
 		const totalWorkflows = await this.workflowRepository.count();
 
 		if ('detectWorkflow' in rule) {
-			return (await this.getAllWorkflowRulesResults([rule], [], totalWorkflows))[0];
+			return (await this.getAllWorkflowRulesResults([rule], [], totalWorkflows)).results[0];
 		}
 		if ('collectWorkflowData' in rule) {
-			return (await this.getAllWorkflowRulesResults([], [rule], totalWorkflows))[0];
+			return (await this.getAllWorkflowRulesResults([], [rule], totalWorkflows)).results[0];
 		}
 		return (await this.getAllInstanceRulesResults([rule]))[0];
 	}

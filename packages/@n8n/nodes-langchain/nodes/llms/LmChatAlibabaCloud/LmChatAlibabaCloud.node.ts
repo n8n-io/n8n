@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -17,6 +18,8 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { COMPATIBLE_MODE_SUFFIX } from './alibaba-cloud-base-url';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -79,7 +82,8 @@ const modelRLC: INodeProperties = {
 	default: 'qwen-plus',
 	builderHint: {
 		propertyHint:
-			'Default to the latest Qwen flagship (qwen3.6-max-preview or qwen3.6-plus). Use qwen-plus for cost-efficient builds. Avoid qwen-turbo, Qwen 3.5 and earlier, and older dated snapshots.',
+			'Prefer a stable Qwen model or rolling alias such as qwen-plus when the connected credential offers it. Do not select a preview model by default. ' +
+			MODEL_SELECTION_HINT,
 	},
 };
 
@@ -317,6 +321,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL,
+			fetch: aiClientFetch,
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,

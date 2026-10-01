@@ -73,6 +73,12 @@ Write a regression test that:
 - Asserts the CORRECT behavior (test will fail on current code)
 - Also includes a "happy path" test to prove the setup works
 
+Complete the test safety gate in `/AGENTS.md` before you run the test:
+- Trace side effects from imports, constructors, hooks, and mocked branches
+- Keep filesystem access in a test-owned temporary directory
+- Set `N8N_USER_FOLDER` before importing modules that resolve it
+- When a mock changes a state check, inspect and isolate the branch that it activates
+
 ## Step 8: Run and Score
 
 Run the test from the package directory (e.g., `cd packages/nodes-base && pnpm test <file>`).

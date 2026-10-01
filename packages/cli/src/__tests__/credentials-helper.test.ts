@@ -6,14 +6,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import {
-	type InstanceSettings,
-	type Credentials,
-	Cipher,
-	CipherAes256GCM,
-	CipherAes256CBC,
-	EncryptionKeyProxy,
-} from 'n8n-core';
+import { type InstanceSettings, type Credentials, Cipher, EncryptionKeyProxy } from 'n8n-core';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 import { WekanApi } from 'n8n-nodes-base/credentials/WekanApi.credentials';
 import type {
@@ -73,8 +66,6 @@ describe('CredentialsHelper', () => {
 	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
-		new CipherAes256GCM(),
-		new CipherAes256CBC(),
 		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
@@ -1038,7 +1029,7 @@ describe('CredentialsHelper', () => {
 				id: 'cred-123',
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
-				data: cipher.encrypt(existingCredentialData),
+				data: cipher.encryptWithInstanceKey(existingCredentialData),
 				usageScope: 'project',
 			};
 
@@ -1056,13 +1047,10 @@ describe('CredentialsHelper', () => {
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith(
 				{ id: 'cred-123', type: 'oAuth2Api' },
-				expect.objectContaining({
-					id: 'cred-123',
-					name: 'Test OAuth2 Credential',
-					type: 'oAuth2Api',
+				{
 					data: expect.any(String),
 					updatedAt: expect.any(Date),
-				}),
+				},
 			);
 
 			const updateCall = credentialsRepository.update.mock.calls[0];
@@ -1072,7 +1060,9 @@ describe('CredentialsHelper', () => {
 			expect(updatedAt).toBeInstanceOf(Date);
 			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
 
-			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
+			const decryptedUpdatedData = cipher.decryptWithInstanceKey(
+				updatedCredentialData.data as string,
+			);
 			const parsedUpdatedData = JSON.parse(decryptedUpdatedData);
 
 			expect(parsedUpdatedData).toEqual({
@@ -1141,7 +1131,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
 					usageScope: 'project',
@@ -1196,7 +1186,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: null,
 					usageScope: 'project',
@@ -1252,7 +1242,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
 					usageScope: 'project',
@@ -1284,16 +1274,15 @@ describe('CredentialsHelper', () => {
 				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
 				expect(credentialsRepository.update).toHaveBeenCalledWith(
 					{ id: 'cred-789', type: 'oAuth2Api' },
-					expect.objectContaining({
-						id: 'cred-789',
+					{
 						data: expect.any(String),
 						updatedAt: expect.any(Date),
-					}),
+					},
 				);
 
 				// Verify OAuth token was updated in database
 				const updateCall = credentialsRepository.update.mock.calls[0];
-				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const updatedData = cipher.decryptWithInstanceKey(updateCall[1].data as string);
 				const parsedData = JSON.parse(updatedData);
 				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
 			});
@@ -1304,7 +1293,7 @@ describe('CredentialsHelper', () => {
 					id: 'cred-789',
 					name: 'Test OAuth2 Credential',
 					type: 'oAuth2Api',
-					data: cipher.encrypt(existingCredentialData),
+					data: cipher.encryptWithInstanceKey(existingCredentialData),
 					isResolvable: true,
 					resolverId: 'resolver-123',
 					usageScope: 'project',
@@ -1331,16 +1320,15 @@ describe('CredentialsHelper', () => {
 				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
 				expect(credentialsRepository.update).toHaveBeenCalledWith(
 					{ id: 'cred-789', type: 'oAuth2Api' },
-					expect.objectContaining({
-						id: 'cred-789',
+					{
 						data: expect.any(String),
 						updatedAt: expect.any(Date),
-					}),
+					},
 				);
 
 				// Verify OAuth token was updated in database
 				const updateCall = credentialsRepository.update.mock.calls[0];
-				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const updatedData = cipher.decryptWithInstanceKey(updateCall[1].data as string);
 				const parsedData = JSON.parse(updatedData);
 				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
 			});
@@ -1621,7 +1609,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-license-test',
 			name: 'License Test Credential',
 			type: 'testApi',
-			data: cipher.encrypt({ apiKey: 'test' }),
+			data: cipher.encryptWithInstanceKey({ apiKey: 'test' }),
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
@@ -1731,7 +1719,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-456',
 			name: 'Test Credentials',
 			type: credentialType,
-			data: cipher.encrypt({ apiKey: 'static-key' }),
+			data: cipher.encryptWithInstanceKey({ apiKey: 'static-key' }),
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
@@ -2349,7 +2337,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-aaa',
 			name: 'Account A Credential',
 			type: credentialType,
-			data: cipher.encrypt(credentialDataA),
+			data: cipher.encryptWithInstanceKey(credentialDataA),
 			isResolvable: false,
 			resolverId: null,
 			usageScope: 'project',
@@ -2359,7 +2347,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-bbb',
 			name: 'Account B Credential',
 			type: credentialType,
-			data: cipher.encrypt(credentialDataB),
+			data: cipher.encryptWithInstanceKey(credentialDataB),
 			isResolvable: false,
 			resolverId: null,
 			usageScope: 'project',
@@ -2528,7 +2516,7 @@ describe('CredentialsHelper', () => {
 
 			// Simulate saving credential B with updated data (re-encrypt with new values)
 			const updatedDataB = { apiKey: 'key_account_B_UPDATED', accountId: 'pn_B_UPDATED' };
-			credEntityB.data = cipher.encrypt(updatedDataB);
+			credEntityB.data = cipher.encryptWithInstanceKey(updatedDataB);
 
 			const resultA_after = await credentialsHelper.getDecrypted(
 				additionalData,
@@ -3024,7 +3012,7 @@ describe('CredentialsHelper', () => {
 			id: 'cred-policy',
 			name: 'Policy Test Credential',
 			type: 'testApi',
-			data: cipher.encrypt({ apiKey: 'test' }),
+			data: cipher.encryptWithInstanceKey({ apiKey: 'test' }),
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
@@ -3061,7 +3049,11 @@ describe('CredentialsHelper', () => {
 				source: null,
 			} as IExecuteData;
 
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: 'proj-1',
+				executionId: 'exec-1',
+				userId: 'user-1',
+			});
 
 			await helper.getDecrypted(
 				additionalData,
@@ -3072,16 +3064,69 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith({
-				credentialType: 'testApi',
-				credentialId: 'cred-policy',
-				consumer: { nodeType: 'n8n-nodes-base.slack' },
-				projectId: 'proj-1',
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				{
+					credentialType: 'testApi',
+					credentialId: 'cred-policy',
+					consumer: { nodeType: 'n8n-nodes-base.slack' },
+					projectId: 'proj-1',
+				},
+				{ kind: 'system', reason: 'execution', executionId: 'exec-1' },
+			);
+		});
+
+		test('names the user when the decrypt is outside a run, e.g. an OAuth flow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: 'user-1',
 			});
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'internal',
+				undefined,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				{ kind: 'user', user: { id: 'user-1' } },
+			);
+		});
+
+		test('uses the actor the caller names over the derived one', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: undefined,
+			});
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'internal',
+				undefined,
+				true,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				{ kind: 'system', reason: 'log-streaming' },
+			);
 		});
 
 		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: undefined });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				projectId: undefined,
+				executionId: undefined,
+				userId: undefined,
+			});
 
 			await helper.getDecrypted(
 				additionalData,
@@ -3094,6 +3139,7 @@ describe('CredentialsHelper', () => {
 
 			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
 				expect.objectContaining({ consumer: null, projectId: null }),
+				{ kind: 'system', reason: 'execution' },
 			);
 		});
 
