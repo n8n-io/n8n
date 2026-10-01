@@ -242,6 +242,97 @@ describe('gmail.message.send parity with Gmail v2.2 message send', () => {
 	});
 });
 
+describe('gmail.message.send with an attachment, against Gmail v2.2', () => {
+	const UPLOAD = 'https://www.googleapis.com/upload/gmail/v1/users/me/messages/send';
+	const bytes = Buffer.from(Array.from({ length: 700 }, (_, index) => (index * 7) % 256));
+	const sent = { id: 'sent-2', threadId: 'thread-sent-2', labelIds: ['SENT'] };
+	const parityCase: ParityCase = {
+		credential,
+		input: [{}],
+		binary: {
+			data: { data: bytes.toString('base64'), mimeType: 'image/png', fileName: 'chart.png' },
+		},
+		routes: [
+			{ method: 'POST', url: `${API}/messages/send`, json: sent },
+			{ method: 'POST', url: UPLOAD, query: { uploadType: 'media' }, json: sent },
+		],
+	};
+
+	interface ParsedAttachment {
+		readonly filename?: string;
+		readonly contentType: string;
+		readonly content: Buffer;
+	}
+	const { simpleParser } = requireBuilt('nodes-base/node_modules/mailparser') as {
+		simpleParser(source: Buffer | string): Promise<{
+			subject?: string;
+			text?: string;
+			to?: { text: string };
+			attachments: ParsedAttachment[];
+		}>;
+	};
+	const mailOf = async (source: Buffer | string) => {
+		const mail = await simpleParser(source);
+		return {
+			subject: mail.subject,
+			to: mail.to?.text,
+			text: mail.text?.trimEnd(),
+			attachments: mail.attachments.map(({ filename, contentType, content }) => ({
+				filename,
+				contentType,
+				content: content.toString('base64'),
+			})),
+		};
+	};
+
+	it('sends the same mail through the media upload, not as JSON', async () => {
+		const legacy = await runNode(
+			legacyNode({
+				operation: 'send',
+				sendTo: 'grace@example.com',
+				subject: 'Chart',
+				emailType: 'text',
+				message: 'See the chart.',
+				options: {
+					appendAttribution: false,
+					attachmentsUi: { attachmentsBinary: [{ property: 'data' }] },
+				},
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				sendGmailMessage,
+				{
+					to: 'grace@example.com',
+					subject: 'Chart',
+					body: { format: 'text', text: 'See the chart.' },
+					appendAttribution: false,
+					attachments: ['data'],
+				},
+				'gmailOAuth2',
+			),
+			parityCase,
+		);
+		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+		expect(next.error, next.unmatched.join('; ')).toBeUndefined();
+
+		const legacyRaw = (legacy.requests[`POST ${API}/messages/send #0`]?.body as { raw: string })
+			.raw;
+		const upload = next.requests[`POST ${UPLOAD} #0`];
+		expect(upload?.query).toEqual({ uploadType: 'media' });
+		expect(upload?.headers['content-type']).toBe('message/rfc822');
+		expect(typeof upload?.body).toBe('string');
+
+		const expected = await mailOf(Buffer.from(legacyRaw, 'base64url'));
+		expect(expected.attachments).toEqual([
+			{ filename: 'chart.png', contentType: 'image/png', content: bytes.toString('base64') },
+		]);
+		expect(await mailOf(upload?.body as string)).toEqual(expected);
+		expect(next.items).toEqual(legacy.items);
+	});
+});
+
 describe('gmail.message.getAll parity with Gmail v2.2 message getAll', () => {
 	const parityCase: ParityCase = {
 		credential,

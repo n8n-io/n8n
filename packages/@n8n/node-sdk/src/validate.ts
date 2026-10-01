@@ -195,6 +195,7 @@ const FORMAT_EXAMPLES: Record<string, string> = {
 /** One plausible value for `schema`, for verification fixtures when a node declares none. */
 export function exampleOf(schema: JsonSchema): unknown {
 	if (schema.const !== undefined) return schema.const;
+	if (schema['x-n8n-binary']) return 'data';
 	if (schema.default !== undefined) return schema.default;
 	if (schema.enum) return schema.enum[0];
 	const union = schema.oneOf ?? schema.anyOf;

@@ -1,10 +1,12 @@
 import type { GlobalConfig } from '@n8n/config';
+import { versionsOf } from '@n8n/nodes-base-next';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription, IVersionedNodeType } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { composeContractNodes } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
 const NOTION = 'n8n-nodes-base.notion';
@@ -84,6 +86,35 @@ describe('composeContractNodes', () => {
 		expect(next.length).toBeGreaterThan(0);
 		expect(next.every(({ hidden }) => hidden === true)).toBe(true);
 		expect(instance.getNode('@n8n/nodes-base-next.notionDatabasePageGetAll').type).toBeDefined();
+	});
+
+	it('adds a stored trigger major beside the bundled HEAD', async () => {
+		const instance = await postProcessed(true);
+		const id = 'notion.dataSource.pageAdded';
+		const nodeType = '@n8n/nodes-base-next.notionDataSourcePageAdded';
+		const [head] = versionsOf(id);
+		if (!head) throw new Error(`${id} has no bundled HEAD`);
+		const { manifest } = head;
+		const stored = {
+			...head,
+			manifest: {
+				...manifest,
+				contract: { ...manifest.contract, version: 2 },
+				description: { ...manifest.description, version: 2 },
+			},
+		};
+
+		const { nodes, types } = composeContractNodes(
+			instance.loaders,
+			instance.types.nodes,
+			new Map([[id, [stored]]]),
+		);
+
+		const loaded = nodes.get(nodeType)?.type;
+		expect(Object.keys(loaded?.nodeVersions ?? {})).toEqual(['1', '2']);
+		expect(loaded?.description.defaultVersion).toBe(1);
+		expect(loaded?.getNodeType(2).webhook ?? loaded?.getNodeType(2).poll).toBeDefined();
+		expect(types.filter(({ name }) => name === nodeType).map(versionOf)).toEqual(['1', '2']);
 	});
 
 	it('keeps the types unchanged when node contracts are off', async () => {

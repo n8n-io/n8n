@@ -6,6 +6,8 @@
 
 export interface JsonSchema {
 	type?: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null';
+	/** The label n8n shows for the field, e.g. `API Key`. The field name when not set. */
+	title?: string;
 	description?: string;
 	enum?: readonly unknown[];
 	const?: unknown;
@@ -30,8 +32,12 @@ export interface JsonSchema {
 	'x-n8n-literal'?: boolean;
 	/** A resource reference, e.g. `notion.database`. */
 	'x-n8n-ref'?: string;
+	/** Each output item is an input item, passed on unchanged, so it keeps the input item type. */
+	'x-n8n-passed'?: boolean;
 	/** Value types by source type (Notion property type), for open `patternProperties`. */
 	'x-n8n-value-types'?: Record<string, JsonSchema>;
+	/** A file in the n8n binary data store. `run()` gets and gives a `Binary` handle. */
+	'x-n8n-binary'?: true;
 	/** Sample values; the first one seeds verification fixtures. */
 	examples?: readonly unknown[];
 }
@@ -133,6 +139,16 @@ export const record = <S extends AnySchema>(values: S) =>
 		false,
 	);
 
+/** Any JSON value; it is not checked. */
+export const jsonValue = () => new Schema<unknown>({}, false);
+
+/** The output of an action that passes input items on unchanged (filter, sort, route). */
+export const passedItem = () =>
+	new Schema<Record<string, unknown>>(
+		{ type: 'object', additionalProperties: true, 'x-n8n-passed': true },
+		false,
+	);
+
 /** Any JSON object; its fields are not checked. */
 export const json = () =>
 	new Schema<Record<string, unknown>>({ type: 'object', additionalProperties: true }, false);
@@ -160,6 +176,42 @@ export function variant<const Tag extends string, B extends Record<string, Shape
 		false,
 	);
 }
+
+/** What n8n knows about a file without reading it. */
+export interface BinaryMeta {
+	readonly mimeType: string;
+	readonly fileName?: string;
+	/** The size in bytes, when the host knows it. */
+	readonly bytes?: number;
+}
+
+/**
+ * A host handle to a file in the n8n binary data store. Pass it on as an output field or as
+ * an `http.request` body, so the bytes never enter the action. Read it only to change bytes.
+ */
+export interface Binary {
+	readonly meta: BinaryMeta;
+	/** The bytes in chunks, from the first byte. Each call reads again. */
+	read(): AsyncIterable<Uint8Array>;
+}
+
+/**
+ * A file. In `input`, the user names a binary of the input item; `run()` gets its handle. In
+ * `output`, a top-level field becomes a binary of the output item under the same name.
+ */
+export const binary = () => new Schema<Binary>({ 'x-n8n-binary': true }, false);
+
+/** The schema or one of its sub-schemas is a `binary()`. */
+export const hasBinary = (schema: JsonSchema): boolean =>
+	schema['x-n8n-binary'] === true ||
+	[
+		...Object.values(schema.properties ?? {}),
+		...Object.values(schema.patternProperties ?? {}),
+		...(schema.items ? [schema.items] : []),
+		...(schema.oneOf ?? []),
+		...(schema.anyOf ?? []),
+		...(typeof schema.additionalProperties === 'object' ? [schema.additionalProperties] : []),
+	].some(hasBinary);
 
 /** A resource the user owns (a database, a channel), checked against its ID shape. */
 export interface Resource {

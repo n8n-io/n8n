@@ -44,10 +44,13 @@ the ids of the two sides never collide.
 | host → guest | `action.run.new` | `{ input }` → handle |
 | host → guest | `action.run.next` | `{ self }` → `{ "some": item }`, or `null` at the end |
 | host → guest | `action.run.drop` | `{ self }` → `null` |
+| host → guest | `action.item-run.new` (2.1.0) | `{ input, items }` → handle |
+| host → guest | `action.item-run.next` (2.1.0) | `{ self }` → `{ "some": { to, output } }`, or `null` at the end |
+| host → guest | `action.item-run.drop` (2.1.0) | `{ self }` → `null` |
 | guest → host | `http.request` | `{ request }` → `{ status, headers, body }` |
 | guest → host | `log.log` | `{ level, message }` → `null` |
 | guest → host | `limits.get` | `{}` → `{ maxRequests, maxItems }` |
-| guest → host | `binary.*` (2.1.0, draft) | see `n8n-action@2.wit` |
+| guest → host | `binary.*` (2.2.0) | see `n8n-action@2.wit`. A binary in the run input or in an item is `{ "$binary": <id> }`. |
 
 `n8n:action@1` has `action.describe`, `action.run` (`{ input }` → `null`) and the import
 `emit` (`{ item }` → `null`). The host runs it through the @1 adapter.

@@ -43,6 +43,7 @@ import {
 } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
+import { prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -253,6 +254,7 @@ export class ActiveWorkflowManager {
 
 		const { nodes, connections } = workflowData.activeVersion;
 
+		await prepareNodeContractsRun({ id: workflowId, nodes });
 		const workflow = new Workflow({
 			id: workflowId,
 			name: workflowData.name,
@@ -612,6 +614,7 @@ export class ActiveWorkflowManager {
 				actor,
 			);
 
+			await prepareNodeContractsRun({ id: dbWorkflow.id, nodes });
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,

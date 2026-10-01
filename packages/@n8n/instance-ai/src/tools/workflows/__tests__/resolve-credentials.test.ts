@@ -1963,6 +1963,65 @@ describe('resolveCredentials with node contracts enabled', () => {
 		expect(json.nodes[0].credentials).toBeUndefined();
 		expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
 		expect(result.resolvedCredentialsByNode).toEqual({});
+		expect(result.mockedCredentialsByNode).toEqual({ 'Create page': ['notionApi'] });
+	});
+
+	it('holds the declared slot for setup when no stored credential fits, as newCredential() does', async () => {
+		const flagOn = makeWorkflow({ nodes: [makeNotionNode()] });
+		const onResult = await resolveCredentials(flagOn, undefined, createNotionContext(), new Map());
+
+		const classic = makeWorkflow({ nodes: [makeNotionNode({ notionApi: undefined })] });
+		const classicContext = createNotionContext();
+		classicContext.nodeContractsEnabled = false;
+		const classicResult = await resolveCredentials(classic, undefined, classicContext, new Map());
+
+		expect(onResult).toEqual({
+			mockedNodeNames: ['Create page'],
+			mockedCredentialTypes: ['notionApi'],
+			mockedCredentialsByNode: { 'Create page': ['notionApi'] },
+			heldForNewCredentialTypes: [],
+			resolvedCredentialsByNode: {},
+		});
+		expect(onResult).toEqual(classicResult);
+	});
+
+	it('leaves an omitted slot unreported with node contracts disabled', async () => {
+		const json = makeWorkflow({ nodes: [makeNotionNode()] });
+		const context = createNotionContext();
+		context.nodeContractsEnabled = false;
+
+		const result = await resolveCredentials(json, undefined, context, new Map());
+
+		expect(result.mockedCredentialsByNode).toEqual({});
+		expect(result.mockedNodeNames).toEqual([]);
+	});
+
+	it('keeps the saved credential of a node that an edit rebuilds from source', async () => {
+		const saved = makeWorkflow({
+			nodes: [
+				{
+					...makeNotionNode(),
+					credentials: { notionApi: { id: 'cred-1', name: 'Notion account' } },
+				},
+			],
+		});
+		const context = createNotionContext();
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(saved);
+		const json = makeWorkflow({ nodes: [makeNotionNode()] });
+		const map = makeCredentialMap([
+			{ id: 'cred-1', name: 'Notion account', type: 'notionApi' },
+			{ id: 'cred-2', name: 'Other Notion', type: 'notionApi' },
+		]);
+
+		const result = await resolveCredentials(json, 'wf-1', context, map);
+
+		expect(json.nodes[0].credentials).toEqual({
+			notionApi: { id: 'cred-1', name: 'Notion account' },
+		});
+		expect(result.mockedNodeNames).toEqual([]);
+		expect(result.resolvedCredentialsByNode).toEqual({
+			'Create page': [{ type: 'notionApi', id: 'cred-1', name: 'Notion account' }],
+		});
 	});
 });
 

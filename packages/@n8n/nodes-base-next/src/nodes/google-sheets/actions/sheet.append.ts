@@ -14,7 +14,7 @@ import {
 } from '../table';
 
 export const appendSheetRow = sheet.action('append', {
-	patch: 3,
+	patch: 4,
 	action: 'Append row',
 	summary: 'Append one row per item. Never updates existing rows; use appendOrUpdate to upsert.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },

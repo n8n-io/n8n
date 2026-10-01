@@ -1,0 +1,329 @@
+import { Readable } from 'node:stream';
+import type { IBinaryData, IHttpRequestOptions, INode } from 'n8n-workflow';
+
+import {
+	arr,
+	binary,
+	defineNode,
+	generateNodeModule,
+	json,
+	lintContract,
+	nullable,
+	obj,
+	record,
+	str,
+	toContract,
+	variant,
+	type Binary,
+} from '../index';
+import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
+
+const files = defineNode({ id: 'files', displayName: 'Files' });
+
+const node: INode = {
+	id: '1',
+	name: 'Files',
+	type: 'files',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
+
+const once = { effect: 'write', cardinality: 'per-item' } as const;
+
+const csv: IBinaryData = {
+	data: Buffer.from('id,total\n1,42\n').toString('base64'),
+	mimeType: 'text/csv',
+	fileName: 'q3.csv',
+};
+
+async function bytesOf(stream: AsyncIterable<unknown>) {
+	const chunks: Uint8Array[] = [];
+	for await (const chunk of stream) chunks.push(chunk as Uint8Array);
+	return Buffer.concat(chunks).toString();
+}
+
+/** A store in memory. `writes` counts the files it stored. */
+function memoryStore(input: Record<string, IBinaryData> = {}) {
+	const writes: IBinaryData[] = [];
+	const store: BinaryStore = {
+		input: async (_itemIndex, value) => {
+			const found = typeof value === 'string' ? input[value] : undefined;
+			if (!found) throw new Error(`The item has no binary field '${String(value)}'`);
+			return { ...found, bytes: Buffer.from(found.data, 'base64').length };
+		},
+		read: async (entry) => Readable.from([Buffer.from(entry.data, 'base64')]),
+		write: async (stream, meta) => {
+			const text = await bytesOf(stream);
+			const entry = {
+				data: Buffer.from(text).toString('base64'),
+				mimeType: meta.mimeType ?? 'application/octet-stream',
+				...(meta.fileName ? { fileName: meta.fileName } : {}),
+				bytes: text.length,
+			};
+			writes.push(entry);
+			return entry;
+		},
+	};
+	return { store, writes };
+}
+
+function hostOf(
+	parameters: Record<string, unknown>,
+	replies: unknown[],
+	overrides: Partial<ExecutorHost> = {},
+) {
+	const requests: IHttpRequestOptions[] = [];
+	const bodies: string[] = [];
+	const host: ExecutorHost = {
+		items: [{ json: {} }],
+		node,
+		parameter: (name) => parameters[name],
+		request: async (options) => {
+			requests.push(options);
+			if (options.body instanceof Readable) bodies.push(await bytesOf(options.body));
+			const reply = replies[requests.length - 1];
+			if (reply instanceof Error) throw reply;
+			return typeof reply === 'function' ? reply() : reply;
+		},
+		continueOnFail: () => false,
+		wait: async () => {},
+		...overrides,
+	};
+	return { host, requests, bodies };
+}
+
+const streamed = (text: string, headers: Record<string, string>) => () => ({
+	body: Readable.from([Buffer.from(text)]),
+	headers,
+	statusCode: 200,
+});
+
+describe('binary data', () => {
+	const convert = files.action('convert', {
+		action: 'Convert a file',
+		summary: 'Convert a file.',
+		flow: once,
+		input: { file: binary() },
+		output: obj({ converted: binary(), size: str() }),
+		async run({ input, http }) {
+			const converted = await http.request({
+				method: 'POST',
+				url: 'https://convert.test/png',
+				body: input.file,
+				response: 'binary',
+			});
+			return { converted, size: String(input.file.meta.bytes) };
+		},
+	});
+
+	it('streams an input binary as the body and stores a binary response', async () => {
+		const { store, writes } = memoryStore({ data: csv });
+		const { host, requests, bodies } = hostOf(
+			{ file: 'data' },
+			[
+				streamed('PNG', {
+					'content-type': 'image/png; charset=binary',
+					'content-disposition': 'attachment; filename="chart 1.png"',
+				}),
+			],
+			{ binary: store },
+		);
+
+		const [items] = await executorOf(convert)(host);
+
+		expect(bodies).toEqual(['id,total\n1,42\n']);
+		expect(requests[0]).toMatchObject({
+			headers: { 'content-type': 'text/csv', 'content-length': 14, accept: '*/*' },
+			json: false,
+			encoding: 'stream',
+			returnFullResponse: true,
+			// A redirect needs the whole body in memory.
+			disableFollowRedirect: true,
+		});
+		expect(writes).toHaveLength(1);
+		expect(items).toEqual([
+			{
+				json: { size: '14' },
+				binary: {
+					converted: {
+						data: Buffer.from('PNG').toString('base64'),
+						mimeType: 'image/png',
+						fileName: 'chart 1.png',
+						bytes: 3,
+					},
+				},
+				pairedItem: { item: 0 },
+			},
+		]);
+	});
+
+	it('opens the body again for a retry', async () => {
+		const upload = files.action('upload', {
+			action: 'Upload a file',
+			summary: 'Upload a file.',
+			flow: { ...once, idempotent: true },
+			input: { file: binary() },
+			output: json(),
+			async run({ input, http }) {
+				const body = await http.request({
+					method: 'PUT',
+					url: 'https://up.test',
+					body: input.file,
+				});
+				return { body };
+			},
+		});
+		const errorBody = Readable.from(['busy']);
+		const unavailable = Object.assign(new Error('503'), {
+			response: { status: 503, headers: {}, data: errorBody },
+		});
+		const { store } = memoryStore({ data: csv });
+		const { host, bodies } = hostOf({ file: 'data' }, [unavailable, { ok: true }], {
+			binary: store,
+		});
+
+		expect(await executorOf(upload)(host)).toEqual([
+			[{ json: { body: { ok: true } }, pairedItem: { item: 0 } }],
+		]);
+		expect(bodies).toEqual(['id,total\n1,42\n', 'id,total\n1,42\n']);
+		expect(errorBody.destroyed).toBe(true);
+	});
+
+	it('creates a binary from chunks, reads it back, and resolves binaries in variants and lists', async () => {
+		const bundle = files.action('bundle', {
+			action: 'Bundle files',
+			summary: 'Bundle files.',
+			flow: once,
+			input: {
+				parts: arr(binary()),
+				cover: variant('kind', { file: { file: binary() }, none: {} }),
+			},
+			output: obj({ bundle: binary() }),
+			async run({ input, binary: binaries }) {
+				const cover = input.cover.kind === 'file' ? [input.cover.file] : [];
+				async function* chunks() {
+					for (const part of [...cover, ...input.parts]) {
+						yield `${part.meta.fileName}:`;
+						yield* part.read();
+					}
+				}
+				const created = await binaries.create({ mimeType: 'text/plain' }, chunks());
+				const again = await bytesOf(created.read());
+				return {
+					bundle: await binaries.create({ mimeType: 'text/plain', fileName: 'all.txt' }, [again]),
+				};
+			},
+		});
+		const { store } = memoryStore({ data: csv, note: { ...csv, fileName: 'note.txt' } });
+		const { host } = hostOf({ parts: ['data'], cover: { kind: 'file', file: 'note' } }, [], {
+			binary: store,
+		});
+
+		const [[item] = []] = await executorOf(bundle)(host);
+
+		expect(Buffer.from(item?.binary?.bundle?.data ?? '', 'base64').toString()).toBe(
+			'note.txt:id,total\n1,42\nq3.csv:id,total\n1,42\n',
+		);
+		expect(item?.binary?.bundle).toMatchObject({ fileName: 'all.txt', mimeType: 'text/plain' });
+	});
+
+	it('refuses a binary that is not from the run, a missing binary, and a host without a store', async () => {
+		const forged = files.action('forge', {
+			action: 'Forge',
+			summary: 'Forge.',
+			flow: once,
+			input: {},
+			output: obj({ file: binary() }),
+			async run() {
+				const file: Binary = { meta: { mimeType: 'text/plain' }, async *read() {} };
+				return { file };
+			},
+		});
+		const { store } = memoryStore();
+		await expect(executorOf(forged)(hostOf({}, [], { binary: store }).host)).rejects.toThrow(
+			'output[0].file: must be a binary of this run',
+		);
+		await expect(
+			executorOf(convert)(hostOf({ file: 'other' }, [], { binary: store }).host),
+		).rejects.toThrow("The item has no binary field 'other'");
+		await expect(executorOf(convert)(hostOf({ file: 'data' }, []).host)).rejects.toThrow(
+			'this host has no binary store',
+		);
+	});
+
+	it('gives no binary data to an action without a binary field', async () => {
+		const sneaky = files.action('sneaky', {
+			action: 'Sneaky',
+			summary: 'Sneaky.',
+			flow: once,
+			input: {},
+			output: json(),
+			async run({ http }) {
+				return { file: await http.request({ url: 'https://x.test', response: 'binary' }) };
+			},
+		});
+		const { store } = memoryStore();
+		await expect(executorOf(sneaky)(hostOf({}, [], { binary: store }).host)).rejects.toThrow(
+			'files.sneaky has no binary() field, so it targets n8n:action@2.1.0',
+		);
+	});
+});
+
+describe('binary contracts', () => {
+	it('lint a binary output below the top level and a JSON field named binary', () => {
+		const nested = files.action('nested', {
+			action: 'Nested',
+			summary: 'Nested.',
+			flow: once,
+			input: { file: nullable(binary()) },
+			output: obj({ result: obj({ file: binary() }), binary: str() }),
+			async run() {
+				throw new Error('not run');
+			},
+		});
+		expect(lintContract(toContract(nested))).toEqual([
+			'files.nested: output.result holds a binary below the top level',
+			'files.nested: output field "binary" is reserved for binaries',
+			'files.nested: an input binary must be a field, a list item, or in a variant branch',
+		]);
+		const keyed = files.action('keyed', {
+			action: 'Keyed',
+			summary: 'Keyed.',
+			flow: once,
+			input: {},
+			output: record(binary()),
+			async run() {
+				throw new Error('not run');
+			},
+		});
+		expect(lintContract(toContract(keyed))).toEqual([
+			'files.keyed: a binary output must be a top-level field of an object',
+		]);
+	});
+
+	it('generate Binary fields: a lambda input and item.binary in the output', () => {
+		const download = files.action('download', {
+			action: 'Download',
+			summary: 'Download.',
+			flow: once,
+			input: { url: str(), file: binary().optional() },
+			output: obj({ data: binary(), status: str() }),
+			async run() {
+				throw new Error('not run');
+			},
+		});
+		const text = generateNodeModule('files', [
+			{ contract: toContract(download), operation: 'download', nodeType: 'files.download' },
+		]);
+		expect(text).toContain(
+			"import { contractStep, type Binary, type Dollar, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+		);
+		expect(text).toContain(
+			'export type FilesDownloadInput<I, C> = { url: Value<I, C, string>; file?: ((item: I, $: Dollar<C>) => Binary) };',
+		);
+		expect(text).toContain(
+			'export type FilesDownloadOutput = { status: string; binary: { data: Binary } };',
+		);
+	});
+});

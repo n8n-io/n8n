@@ -83,7 +83,7 @@ const FORMAT_PARAGRAPH: Record<Format, readonly string[]> = {
 	new: [
 		'Format: use @n8n/node-sdk. The project in the current directory was created with `n8n-node-next new`.',
 		'First read AGENTS.md and README.md (if it exists) in the current directory.',
-		'`src/index.ts` exports `node`, `actions`, and `credentials`.',
+		'`src/index.ts` exports `node` and `actions`. The node lists its credential types.',
 		'An operation `<resource>.<operation>` means the action ID `<node name>.<resource>.<operation>` (for example `{{node}}.{{example}}`).',
 		'Every field is an action input field with exactly the given name.',
 		'Test actions with `runAction` from `@n8n/node-sdk/testing`. `npx n8n-node-next check` and `npx tsc --noEmit` must pass.',

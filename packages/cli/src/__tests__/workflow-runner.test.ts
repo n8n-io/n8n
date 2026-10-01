@@ -52,6 +52,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { prepareNodeContractsRun } from '@/node-contracts-run';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
@@ -83,6 +84,8 @@ class MockScalingService {
 vi.mock('@/scaling/scaling.service', () => ({
 	ScalingService: MockScalingService,
 }));
+
+vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -867,6 +870,7 @@ describe('run', () => {
 			expect(executionId).toBe('dp-uuid');
 			expect(startSpy).toHaveBeenCalledWith(data);
 			expect(addSpy).not.toHaveBeenCalled();
+			expect(prepareNodeContractsRun).toHaveBeenCalledWith(data.workflowData);
 		});
 
 		it('leaves the v1 path alone when the run does not route to engine v2', async () => {

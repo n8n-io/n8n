@@ -4,6 +4,7 @@ import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { resolve } from 'node:path';
 
+import { nextNodeIds } from '@/tools/next-modules';
 import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
 
 import {
@@ -23,6 +24,7 @@ const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>(
 const SKILL_PLACEHOLDER_TEXT: Record<string, string> = {
 	GROUPING_GUIDANCE_PLACEHOLDER: GROUPING_GUIDANCE,
 	TOP_LEVEL_ITEM_CEILING_PLACEHOLDER: String(TOP_LEVEL_ITEM_CEILING),
+	NODE_CONTRACT_MODULES_PLACEHOLDER: nextNodeIds.map((id) => `\`${id}\``).join(', '),
 };
 
 export function substituteSkillPlaceholders(instructions: string): string {

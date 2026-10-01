@@ -7,13 +7,13 @@ import type {
 } from 'n8n-workflow';
 
 import { composeVersion } from '../compose';
-import { defineNode, int, obj, str } from '../index';
+import { compat, credential, defineNode, int, obj, str } from '../index';
 import { toNodeType } from '../runtime';
 
 const tasks = defineNode({
 	id: 'tasks',
 	displayName: 'Tasks',
-	credentials: ['tasksApi', 'tasksOAuth2Api'],
+	credential: credential({ types: [compat('tasksApi'), compat('tasksOAuth2Api')] }),
 	baseUrl: 'https://tasks.test',
 });
 

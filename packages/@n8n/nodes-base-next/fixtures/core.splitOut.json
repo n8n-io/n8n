@@ -1,0 +1,31 @@
+{
+	"executions": [
+		{
+			"name": "splits a list and keeps other fields",
+			"params": {
+				"field": "tags",
+				"into": "tag",
+				"include": {
+					"mode": "all"
+				}
+			},
+			"items": [
+				{
+					"id": 1,
+					"tags": ["a", "b"]
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"id": 1,
+					"tag": "a"
+				},
+				{
+					"id": 1,
+					"tag": "b"
+				}
+			]
+		}
+	]
+}

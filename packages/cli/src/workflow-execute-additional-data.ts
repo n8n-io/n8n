@@ -70,6 +70,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import type { UpdateExecutionPayload } from '@/interfaces';
+import { prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
@@ -559,6 +560,7 @@ async function startExecution(
 	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowName = workflowData ? workflowData.name : undefined;
+	await prepareNodeContractsRun(workflowData);
 	const workflow = new Workflow({
 		id: workflowData.id,
 		name: workflowName,

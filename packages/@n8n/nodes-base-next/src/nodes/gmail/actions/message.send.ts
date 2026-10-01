@@ -1,11 +1,14 @@
-import { arr, bool, isRecord, matches, obj, str, variant, type Http } from '@n8n/node-sdk';
+import { arr, binary, bool, isRecord, matches, obj, str, variant, type Http } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
-import { addressList, displayName, encodeWords, oneLine } from '../mime';
+import { addressList, displayName, encodeWords, mixedMessage, oneLine } from '../mime';
 
 const ATTRIBUTION = 'This email was sent automatically with ';
 const LINK =
 	'https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.gmail';
+
+/** The media upload takes the MIME message as the body, so an attachment never goes into JSON. */
+const UPLOAD_URL = 'https://www.googleapis.com/upload/gmail/v1/users/me/messages/send';
 
 const addresses = str().hint('Comma-separated addresses');
 
@@ -22,7 +25,7 @@ async function senderAddress(http: Http) {
 }
 
 export const sendGmailMessage = message.action('send', {
-	patch: 3,
+	minor: 1,
 	action: 'Send a message',
 	summary: 'Send an email.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
@@ -35,9 +38,12 @@ export const sendGmailMessage = message.action('send', {
 		senderName: str().hint('Display name; the address is the account address').optional(),
 		replyTo: addresses.optional(),
 		appendAttribution: bool().default(true).hint('Adds a "sent with n8n" footer'),
+		attachments: arr(binary())
+			.hint('Files to attach, e.g. [(item) => item.binary.data]')
+			.optional(),
 	},
 	output: sent,
-	async run({ input, http }) {
+	async run({ input, http, binary: binaries }) {
 		const html = input.body.format === 'html';
 		const text = (input.body.format === 'html' ? input.body.html : input.body.text).trim();
 		const footer = html
@@ -55,11 +61,24 @@ export const sendGmailMessage = message.action('send', {
 			['Reply-To', input.replyTo && addressList(input.replyTo, 'ReplyTo')],
 			['Subject', encodeWords(oneLine(input.subject))],
 			['MIME-Version', '1.0'],
-			['Content-Type', `text/${html ? 'html' : 'plain'}; charset=utf-8`],
-			['Content-Transfer-Encoding', 'base64'],
 		];
+		const textType = `text/${html ? 'html' : 'plain'}; charset=utf-8`;
+		if (input.attachments?.length) {
+			const mixed = mixedMessage(headers, { type: textType, content }, input.attachments);
+			const raw = await binaries.create({ mimeType: 'message/rfc822' }, mixed);
+			const uploaded = await http.request({
+				method: 'POST',
+				url: UPLOAD_URL,
+				query: { uploadType: 'media' },
+				body: raw,
+			});
+			if (!matches(sent, uploaded)) throw new Error('Gmail returned no message ID');
+			return uploaded;
+		}
 		const mime = [
-			...headers.flatMap(([name, value]) => (value ? [`${name}: ${value}`] : [])),
+			...[...headers, ['Content-Type', textType], ['Content-Transfer-Encoding', 'base64']].flatMap(
+				([name, value]) => (value ? [`${name}: ${value}`] : []),
+			),
 			'',
 			Buffer.from(content).toString('base64').replace(/.{76}/g, '$&\r\n'),
 		].join('\r\n');

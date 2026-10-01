@@ -1,6 +1,7 @@
 import { HttpHeaderAuth } from 'n8n-nodes-base/dist/credentials/HttpHeaderAuth.credentials';
 import { HttpRequest } from 'n8n-nodes-base/dist/nodes/HttpRequest/HttpRequest.node';
 
+import { downloadFile } from '../../nodes/http-request/actions/download';
 import { getRequest } from '../../nodes/http-request/actions/get';
 import { sendRequest } from '../../nodes/http-request/actions/send';
 import {
@@ -185,5 +186,111 @@ describe('httpRequest.send parity with HTTP Request v4.5 POST', () => {
 		);
 		expect(legacy.error).toBeUndefined();
 		expect(compareRuns(legacy, next, ALLOWED)).toEqual({ unexplained: [], stale: [] });
+	});
+});
+
+const CSV = Buffer.from('id,title\n1,Ship\n');
+
+describe('httpRequest.download parity with HTTP Request v4.5 file response', () => {
+	const parityCase: ParityCase = {
+		credential,
+		headers: HEADERS,
+		input: [{}],
+		routes: [
+			{
+				method: 'GET',
+				url: URL,
+				raw: {
+					body: CSV,
+					headers: {
+						'content-type': 'text/csv; charset=utf-8',
+						'content-disposition': 'attachment; filename="tasks.csv"',
+					},
+				},
+			},
+		],
+	};
+
+	const ALLOWED: readonly AllowedDifference[] = [
+		{
+			path: `requests.GET ${URL} #0.headers.accept`,
+			kind: 'intended',
+			reason: 'The action takes a file of any type, so it asks for */*.',
+		},
+		{
+			path: 'items[0].binary.data.directory',
+			kind: 'intended',
+			reason: 'The query of a URL can hold a token, so the file does not keep the URL.',
+		},
+	];
+
+	it('sends the same request and emits the same file', async () => {
+		const legacy = await runNode(
+			legacyNode({
+				method: 'GET',
+				options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } } },
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				downloadFile,
+				{
+					authentication: 'httpHeaderAuth',
+					url: URL,
+					query: { status: 'open' },
+					headers: { 'X-Trace': 'parity' },
+				},
+				'httpHeaderAuth',
+			),
+			parityCase,
+		);
+		expect(legacy.error).toBeUndefined();
+		expect(next.items[0]?.binary?.data).toMatchObject({
+			data: CSV.toString('base64'),
+			mimeType: 'text/csv',
+			fileName: 'tasks.csv',
+		});
+		expect(compareRuns(legacy, next, ALLOWED)).toEqual({ unexplained: [], stale: [] });
+	});
+});
+
+describe('httpRequest.send parity with HTTP Request v4.5 binary body', () => {
+	const parityCase: ParityCase = {
+		credential,
+		headers: [...HEADERS, 'content-length'],
+		input: [{}],
+		binary: { data: { data: CSV.toString('base64'), mimeType: 'text/csv', fileName: 'tasks.csv' } },
+		routes: [{ method: 'POST', url: URL, json: { id: 8 } }],
+	};
+
+	it('sends the same body and headers', async () => {
+		const legacy = await runNode(
+			legacyNode({
+				method: 'POST',
+				sendBody: true,
+				contentType: 'binaryData',
+				inputDataFieldName: 'data',
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				sendRequest,
+				{
+					authentication: 'httpHeaderAuth',
+					method: 'POST',
+					url: URL,
+					query: { status: 'open' },
+					headers: { 'X-Trace': 'parity' },
+					body: { kind: 'binary', file: 'data' },
+				},
+				'httpHeaderAuth',
+			),
+			parityCase,
+		);
+		expect(legacy.error).toBeUndefined();
+		expect(next.requests[`POST ${URL} #0`]?.body).toBe(CSV.toString());
+		expect(compareRuns(legacy, next, jsonOnly('POST', 1))).toEqual({ unexplained: [], stale: [] });
 	});
 });

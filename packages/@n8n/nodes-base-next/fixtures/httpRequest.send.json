@@ -24,6 +24,34 @@
 					"name": "Ada"
 				}
 			]
+		},
+		{
+			"name": "binary body",
+			"params": {
+				"method": "PUT",
+				"url": "https://api.test/files/q3.csv",
+				"body": {
+					"kind": "binary",
+					"file": "data"
+				}
+			},
+			"binary": {
+				"data": {
+					"data": "aWQsdG90YWwKMSw0Mgo=",
+					"mimeType": "text/csv",
+					"fileName": "q3.csv"
+				}
+			},
+			"responses": [
+				{
+					"stored": true
+				}
+			],
+			"output": [
+				{
+					"stored": true
+				}
+			]
 		}
 	]
 }

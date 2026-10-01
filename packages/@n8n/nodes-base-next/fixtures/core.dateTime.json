@@ -1,0 +1,26 @@
+{
+	"executions": [
+		{
+			"name": "adds a month and clamps the day",
+			"params": {
+				"date": "2026-01-31T10:00:00Z",
+				"operation": {
+					"op": "add",
+					"amount": 1,
+					"unit": "months"
+				}
+			},
+			"items": [
+				{
+					"id": 1
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"newDate": "2026-02-28T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

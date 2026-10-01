@@ -198,7 +198,12 @@ export async function createInstanceAgent(
 	if (domainContext.nodeContractsEnabled && buildTool) {
 		allOrchestratorTools.set(
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-			withBuildVerification(buildTool, verifyTool),
+			withBuildVerification(buildTool, verifyTool, {
+				getWorkflow: async (workflowId) =>
+					await domainContext.workflowService.getAsWorkflowJSON(workflowId),
+				getBuildOutcome: async (workItemId) =>
+					await orchestrationContext?.workflowTaskService?.getBuildOutcome(workItemId),
+			}),
 		);
 		if (verifyTool) {
 			allOrchestratorTools.set(

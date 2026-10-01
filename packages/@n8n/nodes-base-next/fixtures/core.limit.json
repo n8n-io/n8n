@@ -1,0 +1,46 @@
+{
+	"executions": [
+		{
+			"name": "keeps the last two items",
+			"params": {
+				"maxItems": 2,
+				"keep": "last"
+			},
+			"items": [
+				{
+					"name": "Ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				},
+				{
+					"name": "Linus",
+					"age": 17,
+					"team": "kernel",
+					"tags": []
+				},
+				{
+					"name": "ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"name": "Linus",
+					"age": 17,
+					"team": "kernel",
+					"tags": []
+				},
+				{
+					"name": "ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				}
+			]
+		}
+	]
+}

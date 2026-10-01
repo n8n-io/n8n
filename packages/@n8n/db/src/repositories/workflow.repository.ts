@@ -524,6 +524,30 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows.map(({ id }) => id);
 	}
 
+	/**
+	 * Up to `take` workflows with an `id` greater than `afterId`, with their `meta`, for the node
+	 * contracts sync. `published` picks workflows with or without a published version.
+	 */
+	async findNodeContractMetaPage({
+		published,
+		afterId,
+		take,
+	}: {
+		published: boolean;
+		afterId: string | undefined;
+		take: number;
+	}): Promise<Array<Pick<WorkflowEntity, 'id' | 'name' | 'meta'>>> {
+		return await this.find({
+			select: ['id', 'name', 'meta'],
+			where: {
+				activeVersionId: published ? Not(IsNull()) : IsNull(),
+				...(afterId === undefined ? {} : { id: MoreThan(afterId) }),
+			},
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
 	/** The subset of `workflowIds` that still exists, in no particular order. */
 	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
 		if (workflowIds.length === 0) return [];

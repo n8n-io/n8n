@@ -1,0 +1,53 @@
+{
+	"executions": [
+		{
+			"name": "counts and sums by team",
+			"params": {
+				"fields": [
+					{
+						"aggregation": "count",
+						"field": "name"
+					},
+					{
+						"aggregation": "sum",
+						"field": "age"
+					}
+				],
+				"groupBy": ["team"]
+			},
+			"items": [
+				{
+					"name": "Ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				},
+				{
+					"name": "Linus",
+					"age": 17,
+					"team": "kernel",
+					"tags": []
+				},
+				{
+					"name": "ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"count_name": 2,
+					"sum_age": 72,
+					"team": "core"
+				},
+				{
+					"count_name": 1,
+					"sum_age": 17,
+					"team": "kernel"
+				}
+			]
+		}
+	]
+}

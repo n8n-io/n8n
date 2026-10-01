@@ -3,23 +3,27 @@ import { sign } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 import { gzipSync } from 'node:zlib';
-import { UserError, type INode } from 'n8n-workflow';
+import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
 import { freezeAction, type FrozenAction } from './freeze';
-import { evaluateBundle, executorOf, type ExecutorHost } from './runtime';
+import { evaluateBundle, executorOf, type BinaryStore, type ExecutorHost } from './runtime';
 import { validate } from './validate';
 import {
 	canonicalJson,
 	compareSemver,
 	diffContracts,
+	isFixtureBinary,
 	openContractPackage,
 	packageNameOf,
 	parseSemver,
 	type ChangeKind,
 	type ContractDiff,
 	type ContractFixtures,
+	type ExecutionFixture,
+	type FixtureBinary,
 	type VersionManifest,
 } from './version';
 
@@ -28,16 +32,95 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const bytesOf = ({ data }: FixtureBinary) => Buffer.from(data, 'base64');
+
+async function bufferOf(stream: AsyncIterable<unknown>): Promise<Buffer> {
+	const chunks: Uint8Array[] = [];
+	for await (const chunk of stream) {
+		if (!(chunk instanceof Uint8Array)) throw new UnexpectedError('A binary stream gave text');
+		chunks.push(chunk);
+	}
+	return Buffer.concat(chunks);
+}
+
+/** A binary store in memory, with the input binaries of the fixture. */
+const fixtureBinaryStore = ({ binary }: ExecutionFixture): BinaryStore => ({
+	input: async (itemIndex, value) => {
+		const found = typeof value === 'string' && itemIndex === 0 ? binary?.[value] : value;
+		if (!isFixtureBinary(found)) throw new UserError('The input item has no such binary');
+		return { ...found, bytes: bytesOf(found).length };
+	},
+	read: async (entry) => Readable.from([Buffer.from(entry.data, 'base64')]),
+	write: async (stream, { mimeType, fileName }) => {
+		const bytes = await bufferOf(stream);
+		return {
+			data: bytes.toString('base64'),
+			mimeType: mimeType ?? 'application/octet-stream',
+			...(fileName === undefined ? {} : { fileName }),
+			bytes: bytes.length,
+		};
+	},
+});
+
+/** The recorded binary as the HTTP client gives a streamed response. */
+function streamedResponse(recorded: unknown) {
+	if (!isFixtureBinary(recorded)) {
+		throw new UserError('A binary response needs a recorded { data, mimeType, fileName? }');
+	}
+	const { mimeType, fileName } = recorded;
+	return {
+		body: Readable.from([bytesOf(recorded)]),
+		headers: {
+			'content-type': mimeType,
+			...(fileName ? { 'content-disposition': `attachment; filename="${fileName}"` } : {}),
+		},
+		statusCode: 200,
+	};
+}
+
+/** The binaries of each output item as a fixture records them, or none when no item has one. */
+function outputBinaryOf(items: readonly INodeExecutionData[]) {
+	const binaries = items.map(({ binary }) =>
+		binary
+			? Object.fromEntries(
+					Object.entries(binary).map(([key, { data, mimeType, fileName }]) => [
+						key,
+						{ data, mimeType, ...(fileName === undefined ? {} : { fileName }) },
+					]),
+				)
+			: undefined,
+	);
+	return binaries.some((binary) => binary !== undefined) ? binaries : undefined;
+}
+
 /**
  * Replays fixtures through the current host executor: execution fixtures against the bundle,
  * migration pairs against its `migrate`. An executor change that alters an old version fails.
+ * A trigger replays only its migration pairs.
  */
 export async function replayFixtures(
 	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
 	fixtures: ContractFixtures,
 ): Promise<string[]> {
-	const action = evaluateBundle(bundle, manifest.apiVersion);
-	const run = executorOf(action);
+	const contract = evaluateBundle(bundle, manifest.apiVersion);
+	const migrations = (fixtures.migrations ?? []).flatMap(({ fromMajor, params, expected }) => {
+		const at = `${manifest.id}@${manifest.semver} migration from ${fromMajor}`;
+		if (!contract.migrate) return [`${at}: the contract has no migrate`];
+		const migrated = contract.migrate(fromMajor, params);
+		return [
+			...(canonicalJson(migrated) === canonicalJson(expected)
+				? []
+				: [`${at}: got ${JSON.stringify(migrated)}`]),
+			...validate(migrated, contract.inputSchema).map((issue) => `${at}: ${issue}`),
+		];
+	});
+	if ('kind' in contract) {
+		const executions = fixtures.executions.length
+			? [`${manifest.id}@${manifest.semver}: trigger execution fixtures do not replay`]
+			: [];
+		return [...executions, ...migrations];
+	}
+	const run = executorOf(contract);
 	// n8n fills each property default into the parameters it runs with.
 	const defaults = new Map(manifest.description.properties.map((p) => [p.name, p.default]));
 	const node: INode = {
@@ -55,22 +138,31 @@ export async function replayFixtures(
 		fixtures.executions.map(async (fixture) => {
 			const responses = [...fixture.responses];
 			const host: ExecutorHost = {
-				itemCount: 1,
+				items: (fixture.items ?? [{}]).map((json) => ({ json: { ...json } })),
 				node,
 				parameter: (name) => fixture.params[name] ?? defaults.get(name),
-				request: async () => {
+				request: async (options) => {
 					if (responses.length === 0) throw new UserError('No recorded response is left');
-					return responses.shift();
+					const recorded = responses.shift();
+					return options.encoding === 'stream' ? streamedResponse(recorded) : recorded;
 				},
 				continueOnFail: () => false,
+				binary: fixtureBinaryStore(fixture),
 			};
 			const at = `${manifest.id}@${manifest.semver} fixture "${fixture.name}"`;
 			try {
-				const output = (await run(host)).map((item) => item.json);
+				const items = await run(host);
+				const outputs = items.map((output) => output.map((item) => item.json));
+				const output = fixture.outputs ? outputs : outputs[0];
+				// Named outputs record no binaries, so any binary there fails the check.
+				const outputBinary = outputBinaryOf(fixture.outputs ? items.flat() : (items[0] ?? []));
 				return [
-					...(canonicalJson(output) === canonicalJson(fixture.output)
+					...(canonicalJson(output) === canonicalJson(fixture.outputs ?? fixture.output)
 						? []
 						: [`${at}: output ${JSON.stringify(output)}`]),
+					...(canonicalJson(outputBinary) === canonicalJson(fixture.outputBinary)
+						? []
+						: [`${at}: output binaries ${JSON.stringify(outputBinary)}`]),
 					...(responses.length ? [`${at}: ${responses.length} responses not requested`] : []),
 				];
 			} catch (error) {
@@ -78,17 +170,6 @@ export async function replayFixtures(
 			}
 		}),
 	);
-	const migrations = (fixtures.migrations ?? []).flatMap(({ fromMajor, params, expected }) => {
-		const at = `${manifest.id}@${manifest.semver} migration from ${fromMajor}`;
-		if (!action.migrate) return [`${at}: the action has no migrate`];
-		const migrated = action.migrate(fromMajor, params);
-		return [
-			...(canonicalJson(migrated) === canonicalJson(expected)
-				? []
-				: [`${at}: got ${JSON.stringify(migrated)}`]),
-			...validate(migrated, action.inputSchema).map((issue) => `${at}: ${issue}`),
-		];
-	});
 	return [...executions.flat(), ...migrations];
 }
 
@@ -114,7 +195,10 @@ export async function checkPublish(
 ): Promise<ContractDiff | undefined> {
 	const { manifest, action } = frozen;
 	const at = `${manifest.id}@${manifest.semver}`;
-	if (fixtures.executions.length === 0) throw new UserError(`${at} needs an execution fixture`);
+	const isTrigger = 'kind' in action;
+	if (fixtures.executions.length === 0 && !isTrigger) {
+		throw new UserError(`${at} needs an execution fixture`);
+	}
 	const diff = previous ? diffContracts(previous.contract, manifest.contract) : undefined;
 	if (previous && diff) {
 		const bump = bumpOf(previous.semver, manifest.semver);
@@ -129,7 +213,9 @@ export async function checkPublish(
 		}
 		const fromMajor = previous.contract.version;
 		if (bump === 'major' && diff.breaksInput) {
-			if (!action.migrate) throw new UserError(`${at} breaks old input, so it needs migrate`);
+			if (!action.migrate) {
+				throw new UserError(`${at} breaks old input, so it needs migrate`);
+			}
 			if (!fixtures.migrations?.some((pair) => pair.fromMajor === fromMajor)) {
 				throw new UserError(`${at} needs a migration fixture from major ${fromMajor}`);
 			}

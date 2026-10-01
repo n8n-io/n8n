@@ -17,7 +17,7 @@ function cursorAt(body: unknown, path: string): string | undefined {
 }
 
 export const getRequest = httpRequest.action('get', {
-	patch: 3,
+	patch: 4,
 	action: 'GET a URL',
 	summary: 'Read from any HTTP API. Use a dedicated action when one exists for the service.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

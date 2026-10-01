@@ -10,14 +10,53 @@ import isEqual from 'lodash/isEqual';
 import {
 	BRANCH_NODE,
 	branchParameters,
+	edgeKey,
+	filterFragment,
+	Flow,
+	forEachFragment,
+	loopFragment,
 	MANUAL_NODE,
+	mergeFragment,
 	SET_NODE,
 	setParameters,
 	startFlow,
-	type Flow,
+	SUBNODE_SLOTS,
+	switchFragment,
+	type Fragment,
 	type Step,
+	type SubnodeSlot,
 } from './flow';
 import { BUILTINS, childNodes, compileLambdaSource } from './lambda';
+import {
+	caseRouter,
+	CHECK_DONE,
+	FILTER_NODE,
+	filterParameters,
+	forEachParameters,
+	LOOP_DONE,
+	LOOP_EACH,
+	LOOP_NODE,
+	LOOP_STATE_NODE,
+	loopCheckParameters,
+	loopCheckSuffix,
+	loopHeadParameters,
+	loopLimitParameters,
+	loopNextParameters,
+	loopNextSuffix,
+	loopNodeNames,
+	MERGE_NODE,
+	mergeParameters,
+	noNextPage,
+	samePass,
+	STOP_NODE,
+	SWITCH_NODE,
+	WAIT_NODE,
+	waitParameters,
+	type Interval,
+	type CaseRouter,
+	type MergeJoin,
+	type WaitUnit,
+} from './regions';
 import { prepareSourceForLint } from '../lint/sdk/workflow-sdk-lint';
 import type { IConnections, NodeJSON, WorkflowJSON } from '../types/base';
 
@@ -51,6 +90,7 @@ interface Edge {
 	readonly from: string;
 	readonly output: number;
 	readonly to: string;
+	readonly input: number;
 }
 
 interface Tail {
@@ -63,15 +103,48 @@ class Code {
 	constructor(readonly text: string) {}
 }
 
-type Tree = string | number | boolean | null | Code | Tree[] | { [key: string]: Tree };
+/** A call such as `subnode({ … })` inside a parameter tree. */
+class Call {
+	constructor(
+		readonly callee: string,
+		readonly argument: Tree,
+	) {}
+}
+
+type Tree = string | number | boolean | null | Code | Call | Tree[] | { [key: string]: Tree };
+
+/** A loop region read from its head node and the nodes named after it. */
+type LoopShape = {
+	readonly kind: 'loop';
+	readonly maxIterations: number;
+	/** The node that returns to the head. */
+	readonly back: string;
+	readonly check: string;
+} & (
+	| { readonly variant: 'loop'; readonly until: string; readonly next: string }
+	| { readonly variant: 'paginate'; readonly next: string }
+	| { readonly variant: 'pollUntil'; readonly until: string; readonly every: Interval }
+);
 
 type Shape =
 	| { readonly kind: 'manual' }
 	| { readonly kind: 'trigger' }
 	| { readonly kind: 'branch'; readonly condition: string }
+	| { readonly kind: 'filter'; readonly condition: string }
 	| { readonly kind: 'set'; readonly fields: Tree; readonly keepAll: boolean }
 	| { readonly kind: 'contract'; readonly factory: ContractFactory; readonly parameters: Tree }
-	| { readonly kind: 'node'; readonly parameters: Tree };
+	| { readonly kind: 'node'; readonly parameters: Tree }
+	| { readonly kind: 'forEach'; readonly batchSize: number; readonly returns: readonly string[] }
+	| LoopShape
+	/** A node that a loop region owns: its check, next, wait, or limit node. */
+	| { readonly kind: 'loopPart' }
+	| {
+			readonly kind: 'switch';
+			readonly field: string;
+			readonly keys: readonly string[];
+			readonly router: CaseRouter;
+	  }
+	| { readonly kind: 'merge'; readonly join: MergeJoin };
 
 type Segment =
 	| { readonly kind: 'step'; readonly node: NamedNode }
@@ -81,17 +154,43 @@ type Segment =
 			readonly then: readonly Segment[];
 			readonly else?: readonly Segment[];
 	  }
-	| { readonly kind: 'orElse'; readonly handler: readonly Segment[] };
+	| { readonly kind: 'orElse'; readonly handler: readonly Segment[] }
+	| {
+			readonly kind: 'forEach' | 'loop';
+			readonly node: NamedNode;
+			readonly body: readonly Segment[];
+	  }
+	| {
+			readonly kind: 'switch';
+			readonly node: NamedNode;
+			readonly cases: ReadonlyArray<readonly Segment[]>;
+			readonly fallback?: readonly Segment[];
+	  }
+	| {
+			readonly kind: 'merge';
+			readonly node: NamedNode;
+			readonly branches: ReadonlyArray<readonly Segment[]>;
+	  };
 
 interface Chain {
 	readonly segments: readonly Segment[];
 	readonly tails: readonly Tail[];
 }
 
+/** A sub-node and the slot of its parent that it fills. */
+interface Child {
+	readonly slot: SubnodeSlot;
+	readonly node: NamedNode;
+}
+
 interface Graph {
+	/** The nodes on main connections. Sub-nodes are in `children`. */
 	readonly nodes: ReadonlyMap<string, NamedNode>;
 	readonly edges: readonly Edge[];
 	readonly shapes: ReadonlyMap<string, Shape>;
+	/** The sub-nodes of each AI node and sub-node, by parent name. */
+	readonly children: ReadonlyMap<string, readonly Child[]>;
+	readonly names: ReadonlySet<string>;
 }
 
 interface FlowPlan {
@@ -101,6 +200,14 @@ interface FlowPlan {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const parseJson = (text: string | undefined): unknown => {
+	try {
+		return text === undefined ? undefined : JSON.parse(text);
+	} catch {
+		return undefined;
+	}
+};
 
 // ── Expressions to lambdas ──────────────────────────────────────────────────
 
@@ -114,20 +221,24 @@ interface Rewrite {
 	readonly reads: 'item' | '$';
 }
 
-/** The quoted name in `$("Node").item.json`, the compiled form of `$("Node")`. */
+/**
+ * The lambda text of `$("Node").item.json` and `$("Node").item.binary`, the compiled forms of
+ * `$("Node")` and `$("Node").binary`.
+ */
 function nodeReference(node: acorn.MemberExpression, js: string): string | undefined {
 	const item = node.object;
-	if (node.computed || node.property.type !== 'Identifier' || node.property.name !== 'json') {
-		return undefined;
-	}
+	const part = node.property.type === 'Identifier' ? node.property.name : '';
+	if (node.computed || (part !== 'json' && part !== 'binary')) return undefined;
 	if (item.type !== 'MemberExpression' || item.computed) return undefined;
 	if (item.property.type !== 'Identifier' || item.property.name !== 'item') return undefined;
 	const call = item.object;
 	if (call.type !== 'CallExpression' || call.callee.type !== 'Identifier') return undefined;
 	const [arg] = call.arguments;
-	return call.callee.name === '$' && call.arguments.length === 1 && arg?.type === 'Literal'
-		? js.slice(arg.start, arg.end)
-		: undefined;
+	if (call.callee.name !== '$' || call.arguments.length !== 1 || arg?.type !== 'Literal') {
+		return undefined;
+	}
+	const reference = `$(${js.slice(arg.start, arg.end)})`;
+	return part === 'json' ? reference : `${reference}.binary`;
 }
 
 const combine = (parts: ReadonlyArray<Rewrite[] | undefined>): Rewrite[] | undefined =>
@@ -139,6 +250,7 @@ function rewritesOf(node: acorn.AnyNode, js: string): Rewrite[] | undefined {
 	switch (node.type) {
 		case 'Identifier': {
 			if (node.name === '$json') return [{ ...at, text: 'item', reads: 'item' }];
+			if (node.name === '$binary') return [{ ...at, text: 'item.binary', reads: 'item' }];
 			const builtin = FROM_EXPRESSION.get(node.name);
 			if (builtin) return [{ ...at, text: builtin, reads: '$' }];
 			// Other n8n variables ($input, $node, …) have no lambda form.
@@ -146,7 +258,7 @@ function rewritesOf(node: acorn.AnyNode, js: string): Rewrite[] | undefined {
 		}
 		case 'MemberExpression': {
 			const reference = nodeReference(node, js);
-			if (reference) return [{ ...at, text: `$(${reference})`, reads: '$' }];
+			if (reference) return [{ ...at, text: reference, reads: '$' }];
 			const builtin =
 				!node.computed && node.object.type === 'Identifier' && node.property.type === 'Identifier'
 					? FROM_EXPRESSION.get(`${node.object.name}.${node.property.name}`)
@@ -283,31 +395,179 @@ const plainTree = (value: unknown) => convert(value, { arrayLambdas: false }).tr
 
 // ── Node shapes ─────────────────────────────────────────────────────────────
 
+const isNodeType = (node: NodeJSON | undefined, type: { type: string; version: number }) =>
+	node?.type === type.type && node.typeVersion === type.version && node.onError === undefined;
+
+const expressionJs = (value: unknown) =>
+	typeof value === 'string' ? /^=\{\{ ([\s\S]*) \}\}$/.exec(value)?.[1] : undefined;
+
+/** The first condition of `list`, which `branch` and `filter` build with one condition. */
+const firstOf = (list: unknown): unknown => (Array.isArray(list) ? list[0] : undefined);
+
+/** The condition lambda of the IF contract that `branch` built. */
 function branchShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
-	if (node.type !== BRANCH_NODE.type || node.typeVersion !== BRANCH_NODE.version) return undefined;
-	if (node.onError !== undefined) return undefined;
-	const conditions: unknown = node.parameters?.conditions;
-	const list = isRecord(conditions) ? conditions.conditions : undefined;
-	const first: unknown = Array.isArray(list) ? list[0] : undefined;
-	const leftValue = isRecord(first) ? first.leftValue : undefined;
-	const js =
-		typeof leftValue === 'string' ? /^=\{\{ ([\s\S]*) \}\}$/.exec(leftValue)?.[1] : undefined;
+	if (!isNodeType(node, BRANCH_NODE)) return undefined;
+	const where: unknown = node.parameters?.where;
+	const first = firstOf(isRecord(where) ? where.conditions : undefined);
+	const js = expressionJs(isRecord(first) ? first.left : undefined);
 	if (js === undefined || !isEqual(branchParameters(js), node.parameters)) return undefined;
 	const condition = lambdaForJs(js, names);
 	return condition ? { kind: 'branch', condition } : undefined;
 }
 
-/** A Set field: its JSON value, or the lambda that compiles to its JavaScript. */
-function fieldOf(js: string, names: ReadonlySet<string>): Tree | undefined {
-	const value = (() => {
-		try {
-			const parsed: unknown = JSON.parse(js);
-			return JSON.stringify(parsed) === js ? plainTree(parsed) : undefined;
-		} catch {
-			return undefined;
-		}
-	})();
-	if (value !== undefined) return value;
+/** The condition lambda of the legacy Filter node that `filter` built. */
+function filterShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
+	if (!isNodeType(node, FILTER_NODE)) return undefined;
+	const conditions: unknown = node.parameters?.conditions;
+	const first = firstOf(isRecord(conditions) ? conditions.conditions : undefined);
+	const js = expressionJs(isRecord(first) ? first.leftValue : undefined);
+	if (js === undefined || !isEqual(filterParameters(js), node.parameters)) return undefined;
+	const condition = lambdaForJs(js, names);
+	return condition ? { kind: 'filter', condition } : undefined;
+}
+
+function forEachShape(node: NamedNode): Shape | undefined {
+	if (!isNodeType(node, LOOP_NODE)) return undefined;
+	const { batchSize, options } = node.parameters ?? {};
+	const reset = isRecord(options) ? options.reset : undefined;
+	const list =
+		typeof reset === 'string'
+			? /^=\{\{ !(\[.*\])\.includes\(\$prevNode\.name\) \}\}$/.exec(reset)?.[1]
+			: undefined;
+	const returns = parseJson(list);
+	if (typeof batchSize !== 'number' || !Array.isArray(returns)) return undefined;
+	const names = returns.filter((name): name is string => typeof name === 'string');
+	return isEqual(forEachParameters(batchSize, names), node.parameters)
+		? { kind: 'forEach', batchSize, returns: names }
+		: undefined;
+}
+
+/** The text between `prefix` and `suffix`, or `undefined` if `text` does not fit them. */
+const between = (text: unknown, prefix: string, suffix: string) =>
+	typeof text === 'string' &&
+	text.length >= prefix.length + suffix.length &&
+	text.startsWith(prefix) &&
+	text.endsWith(suffix)
+		? text.slice(prefix.length, text.length - suffix.length)
+		: undefined;
+
+const WAIT_UNITS: readonly WaitUnit[] = ['seconds', 'minutes', 'hours', 'days'];
+
+function waitOf(node: NodeJSON | undefined): Interval | undefined {
+	if (!isNodeType(node, WAIT_NODE)) return undefined;
+	const { amount, unit } = node?.parameters ?? {};
+	const known = WAIT_UNITS.find((each) => each === unit);
+	if (typeof amount !== 'number' || !known) return undefined;
+	const every = { amount, unit: known };
+	return isEqual(waitParameters(every), node?.parameters) ? every : undefined;
+}
+
+/** A loop region whose head is `node`, read back from the nodes that `loopFragment` names. */
+function loopShape(
+	node: NamedNode,
+	nodes: ReadonlyMap<string, NamedNode>,
+	edges: readonly Edge[],
+	names: ReadonlySet<string>,
+): LoopShape | undefined {
+	if (!isNodeType(node, LOOP_STATE_NODE)) return undefined;
+	const head = node.name;
+	const parts = loopNodeNames(head);
+	const every = waitOf(nodes.get(parts.wait));
+	const back = every ? parts.wait : parts.next;
+	if (!isEqual(loopHeadParameters(head, back), node.parameters)) return undefined;
+
+	const check = nodes.get(parts.check);
+	const output = check?.parameters?.output;
+	const max =
+		typeof output === 'string' ? / >= (\d+) \? \d+ : \d+ \}\}$/.exec(output)?.[1] : undefined;
+	const maxIterations = Number(max);
+	const until = between(output, '={{ (', `)${loopCheckSuffix(head, maxIterations)}`);
+	if (!isNodeType(check, SWITCH_NODE) || until === undefined) return undefined;
+	if (!isEqual(loopCheckParameters(head, until, maxIterations), check?.parameters))
+		return undefined;
+
+	const nextNode = nodes.get(parts.next);
+	const next = between(nextNode?.parameters?.jsonOutput, '={{ ({ ...(', loopNextSuffix(head));
+	if (!isNodeType(nextNode, LOOP_STATE_NODE) || next === undefined) return undefined;
+	if (!isEqual(loopNextParameters(head, next), nextNode?.parameters)) return undefined;
+
+	const limit = nodes.get(parts.limit);
+	if (!isNodeType(limit, STOP_NODE)) return undefined;
+	if (!isEqual(loopLimitParameters(head, maxIterations), limit?.parameters)) return undefined;
+
+	const kind = 'loop';
+	const base = { maxIterations, back, check: parts.check };
+	const untilLambda = lambdaForJs(until, names);
+	if (every) {
+		return next === samePass(head) && untilLambda
+			? { kind, ...base, variant: 'pollUntil', until: untilLambda, every }
+			: undefined;
+	}
+	const nextLambda = lambdaForJs(next, names);
+	if (!nextLambda) return undefined;
+	const emitsLast = edges.some((edge) => edge.from === parts.check && edge.output === CHECK_DONE);
+	if (!emitsLast && until === noNextPage(next)) {
+		return { kind, ...base, variant: 'paginate', next: nextLambda };
+	}
+	return untilLambda
+		? { kind, ...base, variant: 'loop', until: untilLambda, next: nextLambda }
+		: undefined;
+}
+
+/** The node names a loop region owns besides its head. */
+const loopParts = (head: string, shape: LoopShape) => {
+	const parts = loopNodeNames(head);
+	return [
+		parts.check,
+		parts.next,
+		parts.limit,
+		...(shape.variant === 'pollUntil' ? [parts.wait] : []),
+	];
+};
+
+function switchShape(node: NamedNode): Shape | undefined {
+	const { rules, options } = node.parameters ?? {};
+	const values: unknown = isRecord(rules) ? rules.values : undefined;
+	if (!Array.isArray(values)) return undefined;
+	const keys = values.map((rule: unknown) => (isRecord(rule) ? rule.outputKey : undefined));
+	const first: unknown = values[0];
+	const conditions = isRecord(first) && isRecord(first.conditions) ? first.conditions : undefined;
+	const condition: unknown = Array.isArray(conditions?.conditions)
+		? conditions.conditions[0]
+		: undefined;
+	const leftValue = isRecord(condition) ? condition.leftValue : undefined;
+	const quoted = between(leftValue, '={{ $json[', '] }}');
+	const field = parseJson(quoted);
+	const caseKeys = keys.filter((key): key is string => typeof key === 'string');
+	if (typeof field !== 'string' || caseKeys.length !== keys.length) return undefined;
+	const hasDefault = isRecord(options) && options.fallbackOutput === 'extra';
+	const router = caseRouter(field, caseKeys, hasDefault);
+	return isNodeType(node, router) && isEqual(router.parameters, node.parameters)
+		? { kind: 'switch', field, keys: caseKeys, router }
+		: undefined;
+}
+
+function mergeShape(node: NamedNode): Shape | undefined {
+	if (!isNodeType(node, MERGE_NODE)) return undefined;
+	const { mode, combineBy, mergeByFields } = node.parameters ?? {};
+	const values: unknown = isRecord(mergeByFields) ? mergeByFields.values : undefined;
+	const pair: unknown = Array.isArray(values) ? values[0] : undefined;
+	const fields =
+		isRecord(pair) && typeof pair.field1 === 'string' && typeof pair.field2 === 'string'
+			? { left: pair.field1, right: pair.field2 }
+			: undefined;
+	const join: MergeJoin | undefined =
+		mode === 'append' ? 'append' : combineBy === 'combineByPosition' ? 'position' : fields;
+	return join && isEqual(mergeParameters(join), node.parameters)
+		? { kind: 'merge', join }
+		: undefined;
+}
+
+/** A Set field: its JSON value, or the lambda that compiles to its `={{ js }}` text. */
+function fieldOf(value: unknown, names: ReadonlySet<string>): Tree | undefined {
+	const js = typeof value === 'string' ? /^=\{\{ ([\s\S]*) \}\}$/.exec(value)?.[1] : undefined;
+	if (js === undefined)
+		return typeof value === 'string' && value.startsWith('=') ? undefined : plainTree(value);
 	const lambda = lambdaForJs(js, names);
 	return lambda ? new Code(lambda) : undefined;
 }
@@ -315,44 +575,16 @@ function fieldOf(js: string, names: ReadonlySet<string>): Tree | undefined {
 function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
 	if (node.type !== SET_NODE.type || node.typeVersion !== SET_NODE.version) return undefined;
 	const parameters = node.parameters ?? {};
-	const { jsonOutput } = parameters;
-	const body =
-		typeof jsonOutput === 'string'
-			? /^=\{\{ \(\{ ([\s\S]*) \}\) \}\}$/.exec(jsonOutput)?.[1]
-			: undefined;
-	const source = `({ ${body ?? ''} })`;
-	const object = (() => {
-		try {
-			return body === undefined
-				? undefined
-				: acorn.parseExpressionAt(source, 0, { ecmaVersion: 'latest' });
-		} catch {
-			return undefined;
-		}
-	})();
-	if (object?.type !== 'ObjectExpression') return undefined;
-	const entries = object.properties.map((property) =>
-		property.type === 'Property' &&
-		!property.computed &&
-		!property.shorthand &&
-		property.key.type === 'Literal' &&
-		typeof property.key.value === 'string'
-			? { key: property.key.value, js: source.slice(property.value.start, property.value.end) }
-			: undefined,
-	);
-	const keepAll = parameters.includeOtherFields === true;
-	const fields = entries.flatMap((entry) => {
-		const value = entry ? fieldOf(entry.js, names) : undefined;
-		return entry && value !== undefined ? [{ ...entry, value }] : [];
+	const { fields, include } = parameters;
+	if (!isRecord(fields) || !isRecord(include)) return undefined;
+	const keepAll = include.mode === 'all';
+	const converted = Object.entries(fields).flatMap(([key, value]) => {
+		const tree = /[.[\]]/.test(key) ? undefined : fieldOf(value, names);
+		return tree === undefined ? [] : [[key, tree] as const];
 	});
-	if (fields.length !== entries.length) return undefined;
-	const rebuilt = fields.map(({ key, js }) => `${JSON.stringify(key)}: ${js}`);
-	if (!isEqual(setParameters(rebuilt, keepAll), parameters)) return undefined;
-	return {
-		kind: 'set',
-		fields: Object.fromEntries(fields.map(({ key, value }) => [key, value])),
-		keepAll,
-	};
+	if (converted.length !== Object.keys(fields).length) return undefined;
+	if (!isEqual(setParameters(fields, keepAll), parameters)) return undefined;
+	return { kind: 'set', fields: Object.fromEntries(converted), keepAll };
 }
 
 function contractShape(
@@ -385,7 +617,10 @@ function shapeOf(
 	isRoot: boolean,
 	names: ReadonlySet<string>,
 	factories: ReadonlyMap<string, ContractFactory>,
+	regions: ReadonlyMap<string, Shape>,
 ): Shape {
+	const region = regions.get(node.name);
+	if (region) return region;
 	if (isRoot) {
 		const isManual =
 			node.type === MANUAL_NODE.type &&
@@ -395,6 +630,10 @@ function shapeOf(
 	}
 	return (
 		branchShape(node, names) ??
+		filterShape(node, names) ??
+		forEachShape(node) ??
+		switchShape(node) ??
+		mergeShape(node) ??
 		setShape(node, names) ??
 		contractShape(node, names, factoryOf(node, factories)) ?? {
 			kind: 'node',
@@ -405,8 +644,22 @@ function shapeOf(
 
 // ── Graph to flows ──────────────────────────────────────────────────────────
 
-/** Main connections into the first input. Others have no flow form. */
-function edgesOf(connections: IConnections): Edge[] | undefined {
+const SLOT_OF_CONNECTION = new Map<string, SubnodeSlot>(
+	SUBNODE_SLOTS.map(([slot, connectionType]) => [connectionType, slot]),
+);
+
+/** A sub-node connection: `from` fills `slot` of `to`. */
+interface SubnodeEdge {
+	readonly from: string;
+	readonly slot: SubnodeSlot;
+	readonly to: string;
+}
+
+/**
+ * Main connections, and sub-node connections into the first input of their slot. Others have
+ * no flow form.
+ */
+function edgesOf(connections: IConnections): { main: Edge[]; subnodes: SubnodeEdge[] } | undefined {
 	const edges = Object.entries(connections).flatMap(([from, byType]) =>
 		Object.entries(byType).flatMap(([type, outputs]) =>
 			outputs.flatMap((targets, output) =>
@@ -414,14 +667,60 @@ function edgesOf(connections: IConnections): Edge[] | undefined {
 					from,
 					output,
 					to: target.node,
-					fits: type === 'main' && target.type === 'main' && target.index === 0,
+					input: target.index,
+					slot: SLOT_OF_CONNECTION.get(type),
+					fits: target.type === type && (type === 'main' || (target.index === 0 && output === 0)),
+					main: type === 'main',
 				})),
 			),
 		),
 	);
-	return edges.every(({ fits }) => fits)
-		? edges.map(({ from, output, to }) => ({ from, output, to }))
-		: undefined;
+	if (!edges.every(({ fits, main, slot }) => fits && (main || slot !== undefined))) {
+		return undefined;
+	}
+	return {
+		main: edges
+			.filter(({ main }) => main)
+			.map(({ from, output, to, input }) => ({ from, output, to, input })),
+		subnodes: edges.flatMap(({ from, to, slot }) => (slot ? [{ from, slot, to }] : [])),
+	};
+}
+
+/** Slots that take more than one sub-node. */
+const LIST_SLOTS: ReadonlySet<SubnodeSlot> = new Set(['tools']);
+
+/**
+ * Sub-nodes by parent, when they form trees under main nodes: each sub-node fills one slot of
+ * one parent and has no main connection.
+ */
+function childrenOf(
+	nodes: ReadonlyMap<string, NamedNode>,
+	main: readonly Edge[],
+	subnodeEdges: readonly SubnodeEdge[],
+): Map<string, Child[]> | undefined {
+	const subnodeNames = new Set(subnodeEdges.map(({ from }) => from));
+	const onMain = new Set(main.flatMap(({ from, to }) => [from, to]));
+	const parentOf = new Map(subnodeEdges.map(({ from, to }) => [from, to]));
+	const reachesMain = (name: string, depth: number): boolean => {
+		const parent = parentOf.get(name);
+		if (parent === undefined || depth > subnodeNames.size) return false;
+		return subnodeNames.has(parent) ? reachesMain(parent, depth + 1) : true;
+	};
+	const fits =
+		parentOf.size === subnodeEdges.length &&
+		[...subnodeNames].every((name) => !onMain.has(name) && reachesMain(name, 0));
+	if (!fits) return undefined;
+	const children = new Map<string, Child[]>();
+	for (const node of nodes.values()) {
+		const edge = subnodeEdges.find(({ from }) => from === node.name);
+		if (edge) children.set(edge.to, [...(children.get(edge.to) ?? []), { slot: edge.slot, node }]);
+	}
+	const crowded = [...children.values()].some((list) =>
+		list.some(
+			({ slot }) => !LIST_SLOTS.has(slot) && list.filter((child) => child.slot === slot).length > 1,
+		),
+	);
+	return crowded ? undefined : children;
 }
 
 /** Node keys that the build sets or keeps from the saved workflow. */
@@ -446,11 +745,37 @@ const isPlainNode = (node: NodeJSON): node is NamedNode =>
 
 const fromTail = (edge: Edge, tail: Tail) => edge.from === tail.node && edge.output === tail.output;
 
+const shapeKind = (graph: Graph, name: string) => graph.shapes.get(name)?.kind;
+
+/** A return edge of a region: from the body back to its Loop Over Items or loop head. */
+function isBackEdge(graph: Graph, edge: Edge): boolean {
+	const shape = graph.shapes.get(edge.to);
+	if (shape?.kind === 'forEach') return shape.returns.includes(edge.from);
+	return shape?.kind === 'loop' && shape.back === edge.from;
+}
+
+/**
+ * The edges a chain follows from `tails`. A loop part is reached only from inside its loop
+ * body, where it is in `seen` and ends the body. Elsewhere its edge is not a way on.
+ */
+const edgesFrom = (graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>) =>
+	graph.edges.filter(
+		(edge) =>
+			tails.some((tail) => fromTail(edge, tail)) &&
+			(shapeKind(graph, edge.to) !== 'loopPart' || seen.has(edge.to)),
+	);
+
+const forwardInto = (graph: Graph, name: string) =>
+	graph.edges.filter((edge) => edge.to === name && !isBackEdge(graph, edge));
+
 function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Chain {
-	if (graph.shapes.get(node.name)?.kind === 'branch') {
-		const onTrue = chain(graph, [{ node: node.name, output: 0 }], seen);
+	const shape = graph.shapes.get(node.name);
+	const from = (output: number, inside = seen) =>
+		chain(graph, [{ node: node.name, output }], inside);
+	if (shape?.kind === 'branch') {
+		const onTrue = from(0);
 		const hasElse = graph.edges.some((edge) => edge.from === node.name && edge.output === 1);
-		const onFalse = hasElse ? chain(graph, [{ node: node.name, output: 1 }], seen) : undefined;
+		const onFalse = hasElse ? from(1) : undefined;
 		return {
 			segments: [
 				{
@@ -463,11 +788,42 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 			tails: [...onTrue.tails, ...(onFalse?.tails ?? [])],
 		};
 	}
+	if (shape?.kind === 'switch') {
+		const { caseOutputs, defaultOutput } = shape.router;
+		const cases = caseOutputs.map((output) => from(output));
+		const fallback = defaultOutput === undefined ? undefined : from(defaultOutput);
+		return {
+			segments: [
+				{
+					kind: 'switch',
+					node,
+					cases: cases.map(({ segments }) => segments),
+					...(fallback ? { fallback: fallback.segments } : {}),
+				},
+			],
+			tails: [...cases, ...(fallback ? [fallback] : [])].flatMap(({ tails }) => tails),
+		};
+	}
+	if (shape?.kind === 'forEach') {
+		const body = from(LOOP_EACH);
+		return {
+			segments: [{ kind: 'forEach', node, body: body.segments }],
+			tails: [{ node: node.name, output: LOOP_DONE }],
+		};
+	}
+	if (shape?.kind === 'loop') {
+		const body = from(0, new Set([...seen, shape.check]));
+		return {
+			segments: [{ kind: 'loop', node, body: body.segments }],
+			tails:
+				shape.variant === 'paginate' ? body.tails : [{ node: shape.check, output: CHECK_DONE }],
+		};
+	}
 	const main = { node: node.name, output: 0 };
 	if (node.onError !== 'continueErrorOutput') {
 		return { segments: [{ kind: 'step', node }], tails: [main] };
 	}
-	const handler = chain(graph, [{ node: node.name, output: 1 }], seen);
+	const handler = from(1);
 	return {
 		segments: [
 			{ kind: 'step', node },
@@ -477,17 +833,88 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 	};
 }
 
+/**
+ * Branches that start at `tails` and meet again at one Merge node, one branch per Merge
+ * input. A branch that goes straight to the Merge is empty.
+ */
+function mergeChain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>): Chain {
+	const none = { segments: [], tails };
+	const next = edgesFrom(graph, tails, seen);
+	const targets = [...new Set(next.map((edge) => edge.to))];
+	const fedByAll = (target: string) =>
+		tails.every((tail) => next.some((edge) => edge.to === target && fromTail(edge, tail)));
+	if (targets.length === 0 || !targets.every(fedByAll)) return none;
+
+	const merges = targets.filter((target) => shapeKind(graph, target) === 'merge');
+	const directInputs = new Map(
+		next
+			.filter((edge) => merges.includes(edge.to))
+			.map((edge) => [`${edge.to}\u0000${edge.input}`, edge]),
+	);
+	const direct = [...directInputs.values()].map((edge) => ({
+		merge: edge.to,
+		input: edge.input,
+		chain: none,
+	}));
+	const stepped = targets
+		.filter((target) => !merges.includes(target))
+		.map((target) => {
+			const node = graph.nodes.get(target);
+			if (!node || seen.has(target) || forwardInto(graph, target).length !== tails.length) {
+				return undefined;
+			}
+			const inner = new Set([...seen, target]);
+			const own = stepChain(graph, node, inner);
+			const rest = chain(graph, own.tails, inner);
+			const into = edgesFrom(graph, rest.tails, inner);
+			const [first] = into;
+			const oneInput =
+				first && into.every((edge) => edge.to === first.to && edge.input === first.input);
+			return oneInput
+				? {
+						merge: first.to,
+						input: first.input,
+						chain: { segments: [...own.segments, ...rest.segments], tails: rest.tails },
+					}
+				: undefined;
+		});
+	const branches = [...direct, ...stepped];
+	const [first] = branches;
+	if (!first || branches.some((branch) => branch?.merge !== first.merge)) return none;
+	const node = graph.nodes.get(first.merge);
+	const inputs = branches
+		.flatMap((branch) => (branch ? [branch] : []))
+		.sort((a, b) => a.input - b.input);
+	const complete = inputs.every((branch, index) => branch.input === index);
+	if (!node || seen.has(node.name) || inputs.length !== 2 || !complete) return none;
+	if (
+		forwardInto(graph, node.name).length !== inputs.reduce((n, b) => n + b.chain.tails.length, 0)
+	) {
+		return none;
+	}
+	const inner = new Set([...seen, node.name]);
+	const rest = chain(graph, [{ node: node.name, output: 0 }], inner);
+	return {
+		segments: [
+			{ kind: 'merge', node, branches: inputs.map((branch) => branch.chain.segments) },
+			...rest.segments,
+		],
+		tails: rest.tails,
+	};
+}
+
 /** The flow from `tails` on. It stops at a node that another path also leads into. */
 function chain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>): Chain {
-	const next = graph.edges.filter((edge) => tails.some((tail) => fromTail(edge, tail)));
+	const next = edgesFrom(graph, tails, seen);
 	const targets = [...new Set(next.map((edge) => edge.to))];
 	const node = targets.length === 1 && targets[0] ? graph.nodes.get(targets[0]) : undefined;
 	const ready =
 		node !== undefined &&
 		!seen.has(node.name) &&
-		graph.edges.filter((edge) => edge.to === node.name).length === next.length &&
+		shapeKind(graph, node.name) !== 'merge' &&
+		forwardInto(graph, node.name).length === next.length &&
 		tails.every((tail) => next.some((edge) => fromTail(edge, tail)));
-	if (!node || !ready) return { segments: [], tails };
+	if (!node || !ready) return mergeChain(graph, tails, seen);
 	const inner = new Set([...seen, node.name]);
 	const own = stepChain(graph, node, inner);
 	const rest = chain(graph, own.tails, inner);
@@ -499,30 +926,75 @@ const placeholderStep = (node: NamedNode): Step<unknown, unknown, unknown, strin
 	spec: { name: node.name, type: node.type, version: node.typeVersion, parameters: () => ({}) },
 });
 
+/** Rebuild the graph of `segments` with the flow builders, without parameters. */
 function replay(
-	flow: Flow<unknown, unknown>,
+	graph: Graph,
+	from: Fragment,
 	segments: readonly Segment[],
 ): Flow<unknown, unknown> {
-	return segments.reduce<Flow<unknown, unknown>>((current, segment) => {
-		if (segment.kind === 'step') return current.andThen(placeholderStep(segment.node));
-		if (segment.kind === 'orElse') {
-			return current.orElse((failed) => replay(failed, segment.handler));
+	const again = (body: readonly Segment[]) => (flow: Fragment) => replay(graph, flow, body);
+	const end = segments.reduce<Fragment>((current, segment) => {
+		const flow = new Flow<unknown, unknown>(current.graph, current.tails);
+		const shape = graph.shapes.get(segment.kind === 'orElse' ? '' : segment.node.name);
+		switch (segment.kind) {
+			case 'step':
+				return shape?.kind === 'filter'
+					? filterFragment(current, segment.node.name, () => '')
+					: flow.andThen(placeholderStep(segment.node));
+			case 'orElse':
+				return flow.orElse(again(segment.handler));
+			case 'branch': {
+				const { node, then, else: otherwise } = segment;
+				const config = { name: node.name, if: () => true, then: again(then) };
+				return otherwise ? flow.branch({ ...config, else: again(otherwise) }) : flow.branch(config);
+			}
+			case 'forEach':
+				return shape?.kind === 'forEach'
+					? forEachFragment(current, segment.node.name, shape.batchSize, again(segment.body))
+					: current;
+			case 'loop':
+				return shape?.kind === 'loop'
+					? loopFragment(
+							current,
+							{
+								name: segment.node.name,
+								maxIterations: shape.maxIterations,
+								emit: shape.variant === 'paginate' ? 'each' : 'last',
+								...(shape.variant === 'pollUntil' ? { wait: shape.every } : {}),
+								until: () => '',
+								next: () => '',
+							},
+							again(segment.body),
+						)
+					: current;
+			case 'switch':
+				return shape?.kind === 'switch'
+					? switchFragment(
+							current,
+							segment.node.name,
+							shape.field,
+							shape.keys.map((key, index): readonly [string, (flow: Fragment) => Fragment] => [
+								key,
+								again(segment.cases[index] ?? []),
+							]),
+							segment.fallback ? again(segment.fallback) : undefined,
+						)
+					: current;
+			case 'merge':
+				return shape?.kind === 'merge'
+					? mergeFragment(current, segment.node.name, shape.join, segment.branches.map(again))
+					: current;
 		}
-		const { node, then, else: otherwise } = segment;
-		const config = { name: node.name, if: () => true, then: (f: typeof flow) => replay(f, then) };
-		return otherwise
-			? current.branch({ ...config, else: (f) => replay(f, otherwise) })
-			: current.branch(config);
-	}, flow);
+	}, from);
+	return new Flow(end.graph, end.tails);
 }
-
-const edgeKey = (edge: Edge) => `${edge.from}\u0000${edge.output}\u0000${edge.to}`;
 
 /** The flows build the saved graph: the same nodes, edges, and error outputs. */
 function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
 	const built = flows.map(
 		({ root, segments }) =>
 			replay(
+				graph,
 				startFlow({
 					name: root.name,
 					type: root.type,
@@ -555,6 +1027,7 @@ const keyText = (key: string) => (/^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.st
 
 function renderTree(tree: Tree, indent: string): string {
 	if (tree instanceof Code) return tree.text;
+	if (tree instanceof Call) return `${tree.callee}(${renderTree(tree.argument, indent)})`;
 	const inner = indent + INDENT;
 	if (Array.isArray(tree)) {
 		if (tree.length === 0) return '[]';
@@ -570,19 +1043,41 @@ function renderTree(tree: Tree, indent: string): string {
 	return `{\n${lines.join('\n')}\n${indent}}`;
 }
 
-const typedNode = (node: NamedNode, parameters: Tree): Tree => ({
-	name: node.name,
-	type: node.type,
-	version: node.typeVersion,
-	...(isRecord(parameters) && Object.keys(parameters).length === 0 ? {} : { parameters }),
-});
+/** The `subnodes` of a node, in slot order, or `undefined` when it has none. */
+function subnodesTree(graph: Graph, name: string): Tree | undefined {
+	const children = graph.children.get(name) ?? [];
+	if (children.length === 0) return undefined;
+	const call = (child: NamedNode): Tree =>
+		new Call('subnode', typedNode(graph, child, subnodeParameters(child, graph.names)));
+	return Object.fromEntries(
+		SUBNODE_SLOTS.flatMap(([slot]) => {
+			const filled = children.filter((child) => child.slot === slot).map(({ node }) => call(node));
+			if (filled.length === 0) return [];
+			return [[slot, LIST_SLOTS.has(slot) ? filled : filled[0]]];
+		}),
+	);
+}
 
-function renderCall(node: NamedNode, shape: Shape, indent: string): string {
+const subnodeParameters = (node: NamedNode, names: ReadonlySet<string>) =>
+	convert(node.parameters ?? {}, { names, arrayLambdas: false }).tree;
+
+function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
+	const subnodes = subnodesTree(graph, node.name);
+	return {
+		name: node.name,
+		type: node.type,
+		version: node.typeVersion,
+		...(isRecord(parameters) && Object.keys(parameters).length === 0 ? {} : { parameters }),
+		...(subnodes ? { subnodes } : {}),
+	};
+}
+
+function renderCall(graph: Graph, node: NamedNode, shape: Shape, indent: string): string {
 	switch (shape.kind) {
 		case 'manual':
 			return `manual({ name: ${JSON.stringify(node.name)} })`;
 		case 'trigger':
-			return `trigger(${renderTree(typedNode(node, plainTree(node.parameters ?? {})), indent)})`;
+			return `trigger(${renderTree(typedNode(graph, node, plainTree(node.parameters ?? {})), indent)})`;
 		case 'set': {
 			const config = {
 				name: node.name,
@@ -597,10 +1092,86 @@ function renderCall(node: NamedNode, shape: Shape, indent: string): string {
 			return `${call}(${renderTree({ name: node.name, ...parameters }, indent)})`;
 		}
 		case 'node':
-			return `node(${renderTree(typedNode(node, shape.parameters), indent)})`;
-		case 'branch':
+			return `node(${renderTree(typedNode(graph, node, shape.parameters), indent)})`;
+		default:
+			// A region renders as a flow method, not as a step.
 			return '';
 	}
+}
+
+/** The method call of a region segment, such as `.forEach({ … })`. */
+function renderRegion(
+	graph: Graph,
+	segment: Exclude<Segment, { kind: 'step' | 'orElse' }>,
+	indent: string,
+): string {
+	const shape = graph.shapes.get(segment.node.name);
+	const inner = indent + INDENT + INDENT;
+	const flowOf = (param: string, body: readonly Segment[], at = inner) =>
+		new Code(`(${param}) => ${param}${renderSegments(graph, body, at)}`);
+	const call = (method: string, config: Tree) =>
+		`\n${indent}.${method}(${renderTree(config, indent)})`;
+	const name = segment.node.name;
+	if (segment.kind === 'branch' && shape?.kind === 'branch') {
+		return call('branch', {
+			name,
+			if: new Code(shape.condition),
+			then: flowOf('flow', segment.then),
+			...(segment.else ? { else: flowOf('flow', segment.else) } : {}),
+		});
+	}
+	if (segment.kind === 'forEach' && shape?.kind === 'forEach') {
+		return call('forEach', {
+			name,
+			batchSize: shape.batchSize,
+			body: flowOf('each', segment.body),
+		});
+	}
+	if (segment.kind === 'loop' && shape?.kind === 'loop') {
+		const max = shape.maxIterations;
+		switch (shape.variant) {
+			case 'loop':
+				return call('loop', {
+					name,
+					maxIterations: max,
+					body: flowOf('pass', segment.body),
+					until: new Code(shape.until),
+					next: new Code(shape.next),
+				});
+			case 'paginate':
+				return call('paginate', {
+					name,
+					maxPages: max,
+					request: flowOf('page', segment.body),
+					next: new Code(shape.next),
+				});
+			case 'pollUntil':
+				return call('pollUntil', {
+					name,
+					maxAttempts: max,
+					every: { ...shape.every },
+					attempt: flowOf('attempt', segment.body),
+					until: new Code(shape.until),
+				});
+		}
+	}
+	if (segment.kind === 'switch' && shape?.kind === 'switch') {
+		const cases = shape.keys.map((key, index) => [key, flowOf('flow', segment.cases[index] ?? [])]);
+		return call('switch', {
+			name,
+			on: shape.field,
+			cases: Object.fromEntries(cases),
+			...(segment.fallback ? { default: flowOf('flow', segment.fallback) } : {}),
+		});
+	}
+	if (segment.kind === 'merge' && shape?.kind === 'merge') {
+		return call('merge', {
+			name,
+			join: typeof shape.join === 'string' ? shape.join : { ...shape.join },
+			branches: segment.branches.map((branch) => flowOf('flow', branch, inner + INDENT)),
+		});
+	}
+	return '';
 }
 
 function renderSegments(graph: Graph, segments: readonly Segment[], indent: string): string {
@@ -609,32 +1180,40 @@ function renderSegments(graph: Graph, segments: readonly Segment[], indent: stri
 			if (segment.kind === 'orElse') {
 				return `\n${indent}.orElse((failed) => failed${renderSegments(graph, segment.handler, indent + INDENT)})`;
 			}
+			if (segment.kind !== 'step') return renderRegion(graph, segment, indent);
 			const shape = graph.shapes.get(segment.node.name);
-			if (segment.kind === 'step') {
-				return shape ? `\n${indent}.andThen(${renderCall(segment.node, shape, indent)})` : '';
+			if (shape?.kind === 'filter') {
+				const config = { name: segment.node.name, if: new Code(shape.condition) };
+				return `\n${indent}.filter(${renderTree(config, indent)})`;
 			}
-			if (shape?.kind !== 'branch') return '';
-			const inner = indent + INDENT + INDENT;
-			const flowOf = (branch: readonly Segment[]) =>
-				new Code(`(flow) => flow${renderSegments(graph, branch, inner)}`);
-			const config = {
-				name: segment.node.name,
-				if: new Code(shape.condition),
-				then: flowOf(segment.then),
-				...(segment.else ? { else: flowOf(segment.else) } : {}),
-			};
-			return `\n${indent}.branch(${renderTree(config, indent)})`;
+			return shape ? `\n${indent}.andThen(${renderCall(graph, segment.node, shape, indent)})` : '';
 		})
 		.join('');
 }
 
-const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node'];
+const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node', 'subnode'];
 
 function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 	return segments.flatMap((segment) => {
-		if (segment.kind === 'orElse') return segmentNodes(segment.handler);
-		if (segment.kind === 'step') return [segment.node];
-		return [segment.node, ...segmentNodes(segment.then), ...segmentNodes(segment.else ?? [])];
+		switch (segment.kind) {
+			case 'orElse':
+				return segmentNodes(segment.handler);
+			case 'step':
+				return [segment.node];
+			case 'branch':
+				return [segment.node, ...segmentNodes(segment.then), ...segmentNodes(segment.else ?? [])];
+			case 'forEach':
+			case 'loop':
+				return [segment.node, ...segmentNodes(segment.body)];
+			case 'switch':
+				return [
+					segment.node,
+					...segment.cases.flatMap(segmentNodes),
+					...segmentNodes(segment.fallback ?? []),
+				];
+			case 'merge':
+				return [segment.node, ...segment.branches.flatMap(segmentNodes)];
+		}
 	});
 }
 
@@ -645,7 +1224,11 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 			const shape = graph.shapes.get(node.name);
 			return shape ? [shape] : [];
 		});
-	const kinds = new Set<string>(['workflow', ...shapes.map(({ kind }) => kind)]);
+	const kinds = new Set<string>([
+		'workflow',
+		...shapes.map(({ kind }) => kind),
+		...(graph.children.size > 0 ? ['subnode'] : []),
+	]);
 	const factories = [
 		...new Map(
 			shapes
@@ -662,7 +1245,7 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 	const body = flows.map(({ root, segments }) => {
 		const shape = graph.shapes.get(root.name) ?? { kind: 'trigger' };
 		const indent = INDENT + INDENT;
-		return `${INDENT}${renderCall(root, shape, INDENT)}${renderSegments(graph, segments, indent)},`;
+		return `${INDENT}${renderCall(graph, root, shape, INDENT)}${renderSegments(graph, segments, indent)},`;
 	});
 	return [
 		...imports,
@@ -677,9 +1260,10 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 
 /**
  * `@n8n/workflow-sdk/next` source for a saved workflow, or `undefined` when the typed format
- * cannot express it (for example a Merge input, a sticky note, or a node setting such as
- * `retryOnFail`). `factories` maps each contract node type, and each `composedFactoryKey`, to
- * its typed module factory.
+ * cannot express it (for example a sticky note, or a node setting such as `retryOnFail`).
+ * Loop Over Items, Switch, Filter, and Merge nodes read back as regions when their wiring
+ * and parameters are what the region builds. `factories` maps each contract node type, and
+ * each `composedFactoryKey`, to its typed module factory.
  */
 export function decompileWorkflow(
 	json: WorkflowJSON,
@@ -687,21 +1271,43 @@ export function decompileWorkflow(
 ): string | undefined {
 	const edges = edgesOf(json.connections ?? {});
 	const plain = json.nodes.filter(isPlainNode);
-	const nodes = new Map(plain.map((node) => [node.name, node]));
+	const all = new Map(plain.map((node) => [node.name, node]));
 	const fits =
 		edges !== undefined &&
 		plain.length === json.nodes.length &&
-		nodes.size === plain.length &&
+		all.size === plain.length &&
 		(json.nodeGroups?.length ?? 0) === 0 &&
-		edges.every((edge) => nodes.has(edge.from) && nodes.has(edge.to));
-	if (!fits) return undefined;
+		[...edges.main, ...edges.subnodes].every((edge) => all.has(edge.from) && all.has(edge.to));
+	const children = fits ? childrenOf(all, edges.main, edges.subnodes) : undefined;
+	if (!edges || !children) return undefined;
+	const subnodeNames = new Set(edges.subnodes.map(({ from }) => from));
+	const mainNodes = plain.filter((node) => !subnodeNames.has(node.name));
+	const nodes = new Map(mainNodes.map((node) => [node.name, node]));
 	const names = new Set(nodes.keys());
-	const targets = new Set(edges.map(({ to }) => to));
+	const targets = new Set(edges.main.map(({ to }) => to));
+	const loops = mainNodes.flatMap((node) => {
+		const shape = loopShape(node, nodes, edges.main, names);
+		return shape ? [{ head: node.name, shape }] : [];
+	});
+	const regions = new Map<string, Shape>([
+		...loops.map(({ head, shape }): [string, Shape] => [head, shape]),
+		...loops.flatMap(({ head, shape }) =>
+			loopParts(head, shape).map((part): [string, Shape] => [part, { kind: 'loopPart' }]),
+		),
+	]);
 	const shapes = new Map(
-		plain.map((node) => [node.name, shapeOf(node, !targets.has(node.name), names, factories)]),
+		mainNodes.map((node) => [
+			node.name,
+			shapeOf(node, !targets.has(node.name), names, factories, regions),
+		]),
 	);
-	const graph: Graph = { nodes, edges, shapes };
-	const flows = plain
+	// Only node() takes sub-nodes.
+	const hosted = [...children.keys()].every(
+		(parent) => subnodeNames.has(parent) || shapes.get(parent)?.kind === 'node',
+	);
+	if (!hosted) return undefined;
+	const graph: Graph = { nodes, edges: edges.main, shapes, children, names };
+	const flows = mainNodes
 		.filter((node) => !targets.has(node.name))
 		.map((root) => ({
 			root,

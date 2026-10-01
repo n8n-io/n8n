@@ -1,0 +1,27 @@
+{
+	"executions": [
+		{
+			"name": "file response",
+			"params": {
+				"url": "https://files.test/reports/q3.csv"
+			},
+			"responses": [
+				{
+					"data": "aWQsdG90YWwKMSw0Mgo=",
+					"mimeType": "text/csv",
+					"fileName": "q3.csv"
+				}
+			],
+			"output": [{}],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "aWQsdG90YWwKMSw0Mgo=",
+						"mimeType": "text/csv",
+						"fileName": "q3.csv"
+					}
+				}
+			]
+		}
+	]
+}

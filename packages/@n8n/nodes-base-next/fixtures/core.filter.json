@@ -1,0 +1,36 @@
+{
+	"executions": [
+		{
+			"name": "keeps a matching item",
+			"params": {
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"type": "number",
+							"left": 30,
+							"test": {
+								"op": "gte",
+								"right": 18
+							}
+						}
+					]
+				}
+			},
+			"items": [
+				{
+					"id": 1
+				}
+			],
+			"responses": [],
+			"outputs": [
+				[
+					{
+						"id": 1
+					}
+				],
+				[]
+			]
+		}
+	]
+}

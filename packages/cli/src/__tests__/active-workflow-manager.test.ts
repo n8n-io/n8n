@@ -35,6 +35,7 @@ import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { ExecutionService } from '@/executions/execution.service';
+import { prepareNodeContractsRun } from '@/node-contracts-run';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -52,6 +53,8 @@ import type { WorkflowExecutionService } from '@/workflows/workflow-execution.se
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
 
 describe('ActiveWorkflowManager', () => {
 	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
@@ -413,6 +416,26 @@ describe('ActiveWorkflowManager', () => {
 			await activeWorkflowManager.addActiveWorkflows('init');
 
 			expect(queueSpy).not.toHaveBeenCalled();
+		});
+
+		test('prepares the node contracts of the published version before it registers the workflow', async () => {
+			workflowRepository.findById.mockResolvedValue(makeWorkflow());
+			const addWebhooksSpy = vi.spyOn(activeWorkflowManager, 'addWebhooks');
+			vi.mocked(prepareNodeContractsRun).mockRejectedValueOnce(new Error('Cannot get send@1.0.2'));
+
+			await expect(activeWorkflowManager.add('wf-1', 'activate')).rejects.toThrow(
+				'Cannot get send@1.0.2',
+			);
+
+			expect(prepareNodeContractsRun).toHaveBeenCalledExactlyOnceWith({
+				id: 'wf-1',
+				nodes: VERSION_NODES,
+			});
+			expect(addWebhooksSpy).not.toHaveBeenCalled();
+			expect(activationErrorsService.register).toHaveBeenCalledWith(
+				'wf-1',
+				'Cannot get send@1.0.2',
+			);
 		});
 	});
 

@@ -1,9 +1,11 @@
 import { lintContract, toContract, toNodeType, validate, type Action } from '@n8n/node-sdk';
+import { runAction } from '@n8n/node-sdk/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
 import { actions, nodeTypeOf } from '../index';
+import { dateTime } from '../nodes/core/actions/date-time';
 import { getRequest } from '../nodes/http-request/actions/get';
 import { sendRequest } from '../nodes/http-request/actions/send';
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
@@ -71,6 +73,23 @@ describe('contracts', () => {
 	});
 });
 
+describe('core.dateTime', () => {
+	it('refuses a fraction of a calendar unit and adds a fraction of a fixed unit', async () => {
+		const add = async (amount: number, unit: string) =>
+			await runAction(dateTime, {
+				input: { date: '2026-01-15T00:00:00Z', operation: { op: 'add', amount, unit } },
+			});
+		expect(await add(1.5, 'months')).toMatchObject({
+			ok: false,
+			error: { message: expect.stringContaining('whole number') },
+		});
+		expect(await add(1.5, 'hours')).toEqual({
+			ok: true,
+			items: [{ newDate: '2026-01-15T01:30:00.000Z' }],
+		});
+	});
+});
+
 describe('notion.databasePage.getAll', () => {
 	const where = {
 		match: 'all',
@@ -117,6 +136,21 @@ describe('notion.databasePage.getAll', () => {
 		});
 		expect(items.map((item) => item.json.id)).toEqual(['p1', 'p2', 'p3']);
 		expect(items[0]?.json).toEqual(simplifyObjects([page('p1')], false, 3)[0]);
+	});
+
+	it('names the fields a page in another shape misses', async () => {
+		const { url: _url, ...withoutUrl } = page('p1');
+		const { execute } = run(
+			getManyDatabasePages,
+			{ database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e' },
+			({ options }) =>
+				options.url.includes('/databases/')
+					? { data_sources: [{ id: 'ds-1' }] }
+					: { results: [withoutUrl], next_cursor: null },
+		);
+		await expect(execute).rejects.toThrow(
+			'Notion returned a page in another shape: page.url: is required',
+		);
 	});
 
 	it('derives the fields an AND filter guarantees', () => {

@@ -5,6 +5,8 @@ import {
 	type InstanceAiSetupCredentialSelection,
 } from '@n8n/api-types';
 
+import { manual, node, subnode, workflow } from '@n8n/workflow-sdk/next';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
@@ -595,6 +597,56 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workflowVersionId: 'v-1',
 			sourceHash: hashWorkflowSource(source),
+		});
+	});
+
+	it('builds an Agent with its chat model from a typed source with node contracts on', async () => {
+		const built = workflow(
+			'Answer questions',
+			manual({ sample: [{ question: 'What is n8n?' }] }).andThen(
+				node({
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					parameters: { promptType: 'define', text: (item) => item.question },
+					subnodes: {
+						model: subnode({
+							name: 'Chat Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: 1.2,
+							parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
+						}),
+					},
+				}),
+			),
+		);
+		vi.mocked(compileWorkflowSource).mockResolvedValue({
+			success: true,
+			workflow: built.toJSON(),
+			declaredOutputFixtures: built.generatePinData().toJSON().pinData,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ overrides: { nodeContractsEnabled: true } });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Answer questions',
+		});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-1' });
+		const [saved] = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0];
+		expect(saved.nodes.map(({ name, type }) => [name, type])).toEqual([
+			['Start', 'n8n-nodes-base.manualTrigger'],
+			['Agent', '@n8n/n8n-nodes-langchain.agent'],
+			['Chat Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+		]);
+		expect(saved.connections['Chat Model']).toEqual({
+			ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+		});
+		expect(saved.nodes[1].parameters).toEqual({
+			promptType: 'define',
+			text: '={{ $json.question }}',
 		});
 	});
 

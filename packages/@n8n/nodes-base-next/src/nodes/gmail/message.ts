@@ -1,4 +1,15 @@
-import { arr, int, isRecord, list, matches, obj, str, type Http, type Infer } from '@n8n/node-sdk';
+import {
+	arr,
+	int,
+	isRecord,
+	list,
+	matches,
+	obj,
+	str,
+	validate,
+	type Http,
+	type Infer,
+} from '@n8n/node-sdk';
 
 const label = obj({ id: str(), name: str() });
 
@@ -61,6 +72,7 @@ export async function getMessage(
 		query: METADATA,
 	});
 	const simplified = simplifyMessage(message, labels);
-	if (!matches(simplifiedMessage, simplified)) throw new Error(`Gmail returned no message ${id}`);
-	return simplified;
+	if (matches(simplifiedMessage, simplified)) return simplified;
+	const issues = validate(simplified, simplifiedMessage.json, { path: 'message' });
+	throw new Error(`Gmail returned message ${id} in another shape: ${issues.join('; ')}`);
 }

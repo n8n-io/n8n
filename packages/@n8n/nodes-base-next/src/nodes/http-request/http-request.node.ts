@@ -1,8 +1,12 @@
-import { defineNode } from '@n8n/node-sdk';
+import { compat, credential, defineNode } from '@n8n/node-sdk';
 
 export const httpRequest = defineNode({
 	id: 'httpRequest',
 	displayName: 'HTTP Request',
-	credentials: ['httpHeaderAuth', 'httpBearerAuth', 'httpBasicAuth', 'httpQueryAuth', 'oAuth2Api'],
-	authOptional: true,
+	credential: credential({
+		types: ['httpHeaderAuth', 'httpBearerAuth', 'httpBasicAuth', 'httpQueryAuth', 'oAuth2Api'].map(
+			(name) => compat(name),
+		),
+		optional: true,
+	}),
 });

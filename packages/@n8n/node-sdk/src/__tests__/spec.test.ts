@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import type { RunContextV1 } from '../action-api-v1';
 import type {
+	BatchContext,
+	Emit,
 	HttpError,
 	HttpMethod,
 	HttpRequest,
@@ -10,6 +12,7 @@ import type {
 	RunContext,
 	RunLimits,
 } from '../define';
+import type { BinaryMeta } from '../schema';
 import { ACTION_API_VERSION, apiSemverOf, compareSemver } from '../version';
 
 /** The keys of `T`. A missing key fails `tsc`. */
@@ -60,8 +63,10 @@ function witShape(file: string, implemented: string) {
 		Object.entries(blocks('variant')).map(([name, body]) => [
 			name,
 			body
+				// A payload type can hold a comma, e.g. `made(tuple<json, list<u32>>)`.
+				.replace(/\([^)]*\)/g, '')
 				.split(',')
-				.map((entry) => entry.trim().replace(/\(.*$/, ''))
+				.map((entry) => entry.trim())
 				.filter(Boolean),
 		]),
 	);
@@ -76,12 +81,13 @@ function witShape(file: string, implemented: string) {
 		(records[record] ?? []).flatMap((field) =>
 			field === 'target' ? (variants['http-target'] ?? []) : [field],
 		);
-	return { records, enums, variants, imports, fieldsOf };
+	return { text, records, enums, variants, imports, fieldsOf };
 }
 
 const sorted = (values: readonly string[]) => [...values].sort();
 
 // The JS shim keeps `fullResponse`: the WIT response always has status, headers, and body.
+// It maps `response: 'binary'` to `binary.fetch`.
 const httpRequestKeys = keysOf<HttpRequest>()([
 	'method',
 	'url',
@@ -92,7 +98,8 @@ const httpRequestKeys = keysOf<HttpRequest>()([
 	'timeoutMs',
 	'retry',
 	'fullResponse',
-]).filter((key) => key !== 'fullResponse');
+	'response',
+]).filter((key) => key !== 'fullResponse' && key !== 'response');
 
 const httpErrorKeys = keysOf<Pick<HttpError, Exclude<keyof HttpError, keyof Error> | 'message'>>()([
 	'message',
@@ -106,9 +113,34 @@ const methods = membersOf<HttpMethod>()(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'
 describe('spec/n8n-action@2.wit', () => {
 	const wit = witShape('n8n-action@2.wit', apiSemverOf(ACTION_API_VERSION));
 
-	it('has one RunContext field per host import, plus input', () => {
-		const context = keysOf<RunContext<unknown>>()(['input', 'http', 'log', 'limits']);
-		expect(sorted(['input', ...wit.imports])).toEqual(sorted(context));
+	it('has one run context field per host import, plus input and the items of the run', () => {
+		const context = keysOf<RunContext<unknown>>()([
+			'input',
+			'item',
+			'http',
+			'log',
+			'limits',
+			'binary',
+		]);
+		const batch = keysOf<BatchContext<unknown>>()([
+			'input',
+			'items',
+			'http',
+			'log',
+			'limits',
+			'binary',
+		]);
+		expect(sorted(['input', 'item', ...wit.imports])).toEqual(sorted(context));
+		expect(sorted(['input', 'items', ...wit.imports])).toEqual(sorted(batch));
+		expect(wit.text).toContain('constructor(input: json, items: list<json>);');
+	});
+
+	it('has one output case per form of a routed emit', () => {
+		type Routed = Emit<'batch', { id: string }, readonly ['a']>;
+		const fields = keysOf<{ to: unknown; output: unknown }>()(['to', 'output']);
+		expect(sorted(wit.records['routed-output'] ?? [])).toEqual(sorted(fields));
+		expect(wit.variants.output).toEqual(['item', 'passed', 'made']);
+		expectTypeOf<Routed['to']>().toEqualTypeOf<'a'>();
 	});
 
 	it('has the fields of the TS types', () => {
@@ -121,14 +153,17 @@ describe('spec/n8n-action@2.wit', () => {
 		expect(wit.enums.level).toEqual(membersOf<LogLevel>()(['debug', 'info', 'warn', 'error']));
 	});
 
-	it('keeps binary for 2.1.0, which this host does not implement yet', () => {
-		expect(witShape('n8n-action@2.wit', '2.1.0').imports).toContain('binary');
-		expect(wit.imports).not.toContain('binary');
+	it('imports binary from 2.2.0 only', () => {
+		expect(wit.imports).toContain('binary');
+		expect(witShape('n8n-action@2.wit', '2.1.0').imports).not.toContain('binary');
 	});
 
-	it('sends a binary with an http-request that has no body', () => {
+	it('has the binary types of the TS types', () => {
 		expect(sorted(wit.fieldsOf('binary-request'))).toEqual(
 			sorted(httpRequestKeys.filter((key) => key !== 'body')),
+		);
+		expect(sorted(wit.records['binary-meta'] ?? [])).toEqual(
+			sorted(keysOf<BinaryMeta>()(['mimeType', 'fileName', 'bytes'])),
 		);
 	});
 });

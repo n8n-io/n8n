@@ -1,7 +1,9 @@
 /**
  * Typed workflow SDK. A workflow is a chain of immutable `Flow` values: start at a trigger,
- * then `andThen`, `branch`, and `orElse`. Lambdas compile to n8n expressions, and `tsc`
- * checks every read against the item type of the node before it.
+ * then `andThen`, `branch`, and `orElse`, and the regions `forEach`, `loop`, `paginate`,
+ * `pollUntil`, `switch`, `filter`, and `merge`. Lambdas compile to n8n expressions, and `tsc`
+ * checks every read against the item type of the node before it. AI nodes take their chat
+ * model, memory, tools, and output parser as `subnodes`.
  *
  * @example
  * ```typescript
@@ -13,34 +15,52 @@
  * );
  * ```
  */
+import { SPLIT_OUT_NODE, splitOutParameters } from './regions';
 import {
 	MANUAL_NODE,
 	SET_NODE,
 	setParameters,
 	startFlow,
+	subnodeSpecs,
+	type Compiler,
 	type Dollar,
 	type Flow,
 	type Loose,
 	type Step,
+	type Subnode,
+	type Subnodes,
 } from './flow';
 
-export { workflow, Flow, contractStep } from './flow';
+export { workflow, Flow, contractStep, contractTrigger, routedStep } from './flow';
+export { placeholder } from '../workflow-builder/node-builders/node-builder';
 export {
 	composedFactoryKey,
 	decompileWorkflow,
 	locateNextNodes,
 	type ContractFactory,
 } from './decompile';
+export { validateLoopWiring } from '../workflow-builder/plugins/validators/loop-wiring-validator';
+export type { Interval, WaitUnit } from './regions';
 export type {
+	Binary,
+	CaseField,
+	CaseItem,
 	DateTime,
 	Dollar,
 	ErrorItem,
 	Loose,
 	NodeOutputs,
+	OpenValue,
+	OutputNames,
 	OutputOf,
+	Requires,
+	RoutedStep,
 	Step,
+	Subnode,
+	Subnodes,
 	Value,
 	Workflow,
+	WorkflowOptions,
 } from './flow';
 
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -56,24 +76,35 @@ export type Params<Item, Ctx> = {
 };
 
 type Lambda<Item, Ctx> = (item: Item, $: Dollar<Ctx>) => unknown;
+
+/** n8n reads text that starts with "=" as an expression, so such a constant is quoted. */
+const startsExpression = (value: unknown): boolean =>
+	typeof value === 'string'
+		? value.startsWith('=')
+		: typeof value === 'object' && value !== null && Object.values(value).some(startsExpression);
 type Fields<F> = {
 	-readonly [K in keyof F]: F[K] extends Lambda<never, never> ? ReturnType<F[K]> : F[K];
 };
 
-/** Start a workflow when the user clicks Execute. It emits one empty item. */
-export function manual<const N extends string = 'Start'>(config?: {
+/**
+ * Start a workflow when the user clicks Execute. It emits one empty item. Pass `sample` items
+ * when a run gets input data: they type the output, and verification uses them as the output.
+ */
+export function manual<const N extends string = 'Start', Out = Record<string, never>>(config?: {
 	name?: N;
-}): Flow<Record<string, never>, Record<N, Record<string, never>>> {
+	sample?: readonly Out[];
+}): Flow<Out, Record<N, Out>> {
 	return startFlow({
 		name: config?.name ?? 'Start',
 		...MANUAL_NODE,
+		...(config?.sample ? { sample: config.sample } : {}),
 		parameters: () => ({}),
 	});
 }
 
 /**
- * Emit new fields for each item. A lambda field keeps its runtime type (a number stays a
- * number). `keep: 'all'` also keeps every input field.
+ * Emit new fields for each item (the Edit Fields contract). A lambda field keeps its runtime
+ * type (a number stays a number). `keep: 'all'` also keeps every input field.
  */
 export function set<
 	In,
@@ -92,29 +123,47 @@ export function set<
 		spec: {
 			name,
 			...SET_NODE,
-			parameters: (compiler) =>
-				setParameters(
-					Object.entries(fields).map(
-						([key, value]) => `${JSON.stringify(key)}: ${compiler.js(value)}`,
+			parameters: (compiler) => {
+				// The node reads a field name as a path, so a literal key keeps the type true.
+				Object.keys(fields)
+					.filter((key) => /[.[\]]/.test(key))
+					.forEach((key) => compiler.issue(`set field "${key}" cannot hold "." or "["`));
+				return setParameters(
+					Object.fromEntries(
+						Object.entries(fields).map(([key, value]) => [
+							key,
+							typeof value === 'function' || startsExpression(value)
+								? `={{ ${compiler.js(value)} }}`
+								: value,
+						]),
 					),
 					keep === 'all',
-				),
+				);
+			},
 		},
 	};
 }
 
+const compiledParameters = (compiler: Compiler, parameters: unknown) => {
+	const compiled = compiler.value(parameters ?? {});
+	return typeof compiled === 'object' && compiled !== null && !Array.isArray(compiled)
+		? Object.fromEntries(Object.entries(compiled))
+		: {};
+};
+
 /**
  * Any n8n node by type and version, for nodes without a typed module. Its output is `Loose`
- * unless you pass `sample` items.
+ * unless you pass `sample` items. An AI node takes its sub-nodes in `subnodes`.
  */
 export function node<In, Ctx, const N extends string, Out = Loose>(config: {
 	name: N;
 	type: string;
 	version: number;
 	parameters?: Params<In, Ctx>;
+	subnodes?: Subnodes<In, Ctx>;
 	sample?: readonly Out[];
 }): Step<In, Ctx, Out, N> {
-	const { name, type, version, parameters, sample } = config;
+	const { name, type, version, parameters, subnodes, sample } = config;
 	return {
 		name,
 		spec: {
@@ -122,12 +171,32 @@ export function node<In, Ctx, const N extends string, Out = Loose>(config: {
 			type,
 			version,
 			sample,
-			parameters: (compiler) => {
-				const compiled = compiler.value(parameters ?? {});
-				return typeof compiled === 'object' && compiled !== null && !Array.isArray(compiled)
-					? Object.fromEntries(Object.entries(compiled))
-					: {};
-			},
+			parameters: (compiler) => compiledParameters(compiler, parameters),
+			...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
+		},
+	};
+}
+
+/**
+ * A sub-node of an AI node: a chat model, memory, tool, output parser, embedding, vector
+ * store, retriever, document loader, text splitter, or reranker. Pass it in `node({ subnodes })`.
+ * Its lambdas read the item of the AI node that uses it.
+ */
+export function subnode<In, Ctx>(config: {
+	name: string;
+	type: string;
+	version: number;
+	parameters?: Params<In, Ctx>;
+	subnodes?: Subnodes<In, Ctx>;
+}): Subnode<In, Ctx> {
+	const { name, type, version, parameters, subnodes } = config;
+	return {
+		spec: {
+			name,
+			type,
+			version,
+			parameters: (compiler) => compiledParameters(compiler, parameters),
+			...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
 		},
 	};
 }
@@ -142,4 +211,29 @@ export function trigger<const N extends string, Out = Loose>(config: {
 }): Flow<Out, Record<N, Out>> {
 	const { name, type, version, parameters, sample } = config;
 	return startFlow({ name, type, version, sample, parameters: () => ({ ...parameters }) });
+}
+
+/** Keys of `In` whose value is an array. */
+export type ListField<In> = {
+	[K in keyof In]-?: NonNullable<In[K]> extends readonly unknown[] ? K : never;
+}[keyof In] &
+	string;
+
+/** One item per element of `In[F]`: the element itself, or `{ [F]: element }` for a primitive. */
+export type ElementOf<In, F extends keyof In> = NonNullable<In[F]> extends ReadonlyArray<infer E>
+	? E extends object
+		? E
+		: { [P in F]: E }
+	: never;
+
+/** Emit one item per element of the list field `field` (a Split Out node). */
+export function splitOut<In, Ctx, const N extends string, const F extends ListField<In>>(config: {
+	name: N;
+	field: F;
+}): Step<In, Ctx, ElementOf<In, F>, N> {
+	const { name, field } = config;
+	return {
+		name,
+		spec: { name, ...SPLIT_OUT_NODE, parameters: () => splitOutParameters(field) },
+	};
 }

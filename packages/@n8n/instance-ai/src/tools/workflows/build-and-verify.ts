@@ -1,9 +1,17 @@
 import type { BuiltTool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { REVERIFY_DESCRIPTION, reverifyInputSchema } from './reverify-description';
+import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
 
 interface ReadyBuild {
 	success: true;
@@ -28,6 +36,87 @@ const credentialsByNodeSchema = z.record(z.array(resolvedCredentialSchema));
 
 const VERIFIED_NOTE =
 	'Verification already ran for this build; its result is in `verification`. Do not call verify-built-workflow again unless you change the workflow.';
+
+const VERIFIED_BY_TRIGGER_NOTE =
+	'Verification already ran once for each trigger; the results are in `verificationByTrigger`, and coverage is the union of those runs. Do not call verify-built-workflow again for a verified trigger unless you change the workflow.';
+
+/** Triggers that deliver what a run gets as input, so a run without it reads nothing. */
+const INPUT_TRIGGER_TYPES = new Set([
+	MANUAL_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+]);
+
+const triggerNodesSchema = z.array(z.object({ nodeName: z.string(), nodeType: z.string() }));
+
+/** What the build-time verification reads besides the build result. */
+export interface BuildVerificationSources {
+	getWorkflow(workflowId: string): Promise<WorkflowJSON | undefined>;
+	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+}
+
+const allStrings = (value: unknown): string[] => {
+	if (typeof value === 'string') return [value];
+	if (Array.isArray(value)) return value.flatMap(allStrings);
+	return isRecord(value) ? Object.values(value).flatMap(allStrings) : [];
+};
+
+/** `$('Name')` or `$("Name")` in an expression. */
+const readsByName = (text: string, name: string) =>
+	["'", '"', '`'].some((quote) => text.includes(`$(${quote}${name}${quote})`));
+
+/** True when a node reads the trigger output: `$('Trigger')` anywhere, or `$json` right after it. */
+function readsTriggerOutput(workflow: WorkflowJSON, triggerName: string): boolean {
+	const children = new Set(
+		(workflow.connections?.[triggerName]?.main ?? []).flatMap((targets) =>
+			(targets ?? []).map(({ node }) => node),
+		),
+	);
+	return workflow.nodes.some((node) =>
+		allStrings(node.parameters).some(
+			(text) =>
+				text.startsWith('=') &&
+				(readsByName(text, triggerName) ||
+					(node.name !== undefined && children.has(node.name) && text.includes('$json'))),
+		),
+	);
+}
+
+interface TriggerRun {
+	readonly triggerNodeName: string;
+	/** The nodes read the trigger output, and no sample stands in for it. */
+	readonly needsInput: boolean;
+}
+
+/** One entry per trigger of the build. A trigger with a declared sample runs on that sample. */
+async function triggerRunsOf(
+	build: ReadyBuild & Record<string, unknown>,
+	sources: BuildVerificationSources | undefined,
+): Promise<TriggerRun[]> {
+	const parsed = triggerNodesSchema.safeParse(build.triggerNodes);
+	const triggers = parsed.success ? parsed.data : [];
+	const [workflow, outcome] = sources
+		? await Promise.all([
+				sources.getWorkflow(build.workflowId).catch(() => undefined),
+				sources.getBuildOutcome(build.workItemId).catch(() => undefined),
+			])
+		: [undefined, undefined];
+	return triggers.map(({ nodeName, nodeType }) => ({
+		triggerNodeName: nodeName,
+		needsInput:
+			workflow !== undefined &&
+			INPUT_TRIGGER_TYPES.has(nodeType) &&
+			!outcome?.simulationFixtures?.[nodeName]?.length &&
+			readsTriggerOutput(workflow, nodeName),
+	}));
+}
+
+/** The result for a trigger that verification skipped because it has no input. */
+const needsInputResult = (triggerNodeName: string) => ({
+	skipped: 'needs_input',
+	guidance: `Verification did not run: the workflow reads the output of trigger "${triggerNodeName}", and it has no sample. This is not a workflow error. Call verify-built-workflow with triggerNodeName "${triggerNodeName}" and inputData shaped like its output, or add a \`sample\` to the trigger and build again.`,
+});
 
 /** Node contracts: the build already verifies, so the verify tool only describes a re-run. */
 export function asReverifyTool(verify: BuiltTool): BuiltTool {
@@ -108,8 +197,10 @@ function compactSuccessField(
 ): Array<[string, unknown]> {
 	switch (key) {
 		case 'sourceHash':
-		case 'verificationNote':
 			return [];
+		case 'verificationNote':
+			// Each per-trigger run asks to verify the other triggers; this note says they already ran.
+			return result.verificationByTrigger === undefined ? [] : [[key, field]];
 		case 'grouping':
 			return isRecord(field) && field.decision === 'under_ceiling' ? [] : [[key, field]];
 		case 'postBuildFlow':
@@ -139,6 +230,20 @@ function compactSuccessField(
 			return [[key, compactCredentialNote(field, result.resolvedCredentialsByNode)]];
 		case 'verification':
 			return [[key, compactVerification(field, result.workItemId)]];
+		case 'verificationByTrigger':
+			return isRecord(field)
+				? [
+						[
+							key,
+							Object.fromEntries(
+								Object.entries(field).map(([trigger, verification]) => [
+									trigger,
+									compactVerification(verification, result.workItemId),
+								]),
+							),
+						],
+					]
+				: [[key, field]];
 		default:
 			return [[key, field]];
 	}
@@ -155,9 +260,15 @@ export function toBuildModelOutput(output: unknown): unknown {
 
 /**
  * Node contracts: a successful build also runs verification, so the response carries the next
- * state and the agent saves a round trip. The verify tool stays available for later runs.
+ * state and the agent saves a round trip. Each trigger runs once. A trigger whose output the
+ * nodes read and that has no sample does not run: the run would read nothing and report a
+ * failure that the workflow does not have. The verify tool stays available for later runs.
  */
-export function withBuildVerification(build: BuiltTool, verify: BuiltTool | undefined): BuiltTool {
+export function withBuildVerification(
+	build: BuiltTool,
+	verify: BuiltTool | undefined,
+	sources?: BuildVerificationSources,
+): BuiltTool {
 	const buildHandler = build.handler;
 	const verifyHandler = verify?.handler;
 	if (!buildHandler || !verifyHandler) return build;
@@ -165,23 +276,39 @@ export function withBuildVerification(build: BuiltTool, verify: BuiltTool | unde
 		build.outputSchema instanceof z.ZodObject
 			? build.outputSchema.extend({
 					verification: z.unknown().optional(),
+					verificationByTrigger: z.record(z.unknown()).optional(),
 					verificationNote: z.string().optional(),
 				})
 			: build.outputSchema;
 	return {
 		...build,
-		description: `${build.description} A successful build also runs verification and returns it in \`verification\`; verify again only after a change.`,
+		description: `${build.description} A successful build also runs verification and returns it in \`verification\` (\`verificationByTrigger\` for several triggers); verify again only after a change.`,
 		outputSchema,
 		toModelOutput: (output) =>
 			toBuildModelOutput(build.toModelOutput ? build.toModelOutput(output) : output),
 		handler: async (input, ctx) => {
 			const result = await buildHandler(input, ctx);
 			if (!isReadyBuild(result)) return result;
-			const verification = await verifyHandler(
-				{ workItemId: result.workItemId, workflowId: result.workflowId },
-				ctx,
+			const ids = { workItemId: result.workItemId, workflowId: result.workflowId };
+			const runs = await triggerRunsOf(result, sources);
+			if (runs.length <= 1) {
+				const [only] = runs;
+				const verification = only?.needsInput
+					? needsInputResult(only.triggerNodeName)
+					: await verifyHandler(ids, ctx);
+				return { ...result, verification, verificationNote: VERIFIED_NOTE };
+			}
+			// One run at a time: each run records its trigger in the same build outcome.
+			const verificationByTrigger = await runs.reduce<Promise<Record<string, unknown>>>(
+				async (previous, { triggerNodeName, needsInput }) => ({
+					...(await previous),
+					[triggerNodeName]: needsInput
+						? needsInputResult(triggerNodeName)
+						: await verifyHandler({ ...ids, triggerNodeName }, ctx),
+				}),
+				Promise.resolve({}),
 			);
-			return { ...result, verification, verificationNote: VERIFIED_NOTE };
+			return { ...result, verificationByTrigger, verificationNote: VERIFIED_BY_TRIGGER_NOTE };
 		},
 	};
 }

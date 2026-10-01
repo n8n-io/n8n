@@ -469,6 +469,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();
 
+		if (this.globalConfig.instanceAi.nodeContractsEnabled) {
+			const { NodeContractsSync } = await import('@/node-contracts-sync.js');
+			Container.get(NodeContractsSync).start();
+		}
+
 		const editorUrl = this.getEditorUrl();
 
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);

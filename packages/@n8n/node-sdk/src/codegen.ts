@@ -1,5 +1,5 @@
-import type { ContractDocument } from './define';
-import type { JsonSchema } from './schema';
+import { usesBinary, type ActionOutputs, type ContractDocument } from './define';
+import { hasBinary, type JsonSchema } from './schema';
 
 const pascal = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const typeName = (id: string) => id.split('.').map(pascal).join('');
@@ -17,6 +17,8 @@ interface Alias {
 interface Mode {
 	/** Wrap leaves in `Value<I, C, T>` so they accept a lambda. */
 	input: boolean;
+	/** Input leaves take plain values: a trigger has no item to read. */
+	plain?: boolean;
 	indent: string;
 	/** Print short objects without docs on one line. The agent reads every byte of a module. */
 	compact?: boolean;
@@ -49,8 +51,11 @@ function valueTypesDoc(schema: JsonSchema, mode: Mode, indent: string): string {
 	return `${indent}/**\n${indent} * Value by property type:\n${lines.join('\n')}\n${indent} */\n`;
 }
 
+/** A value in an open input object. Unlike `unknown`, it keeps a lambda typed. */
+const OPEN_VALUE = 'OpenValue';
+
 function leaf(text: string, schema: JsonSchema, mode: Mode): string {
-	return mode.input && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
+	return mode.input && !mode.plain && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
 }
 
 interface Tag {
@@ -178,6 +183,8 @@ function variantTs(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mo
 }
 
 function renderTs(schema: JsonSchema, mode: Mode): string {
+	// The host takes a binary of the item, never a value that the workflow writes.
+	if (schema['x-n8n-binary']) return mode.input ? '((item: I, $: Dollar<C>) => Binary)' : 'Binary';
 	if (schema.const !== undefined) return JSON.stringify(schema.const);
 	if (schema.enum) return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
 	if (schema.discriminator && schema.oneOf) return variantTs(schema, schema.oneOf, mode);
@@ -197,7 +204,10 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 			return `Array<${schema.items ? toTs(schema.items, mode) : 'any'}>`;
 		case 'object':
 			if (schema.additionalProperties === true && !schema.properties) {
-				return leaf('Record<string, unknown>', schema, mode);
+				// Each key takes a lambda too. `Record<string, unknown>` gives it no parameter types.
+				return mode.input && !mode.plain && !schema['x-n8n-literal']
+					? `Value<I, C, { [key: string]: Value<I, C, ${OPEN_VALUE}> }>`
+					: 'Record<string, unknown>';
 			}
 			return objectTs(schema, mode);
 		default:
@@ -234,6 +244,35 @@ export function toTs(schema: JsonSchema, mode: Mode): string {
 	return alias ? aliasRef(alias) : renderTs(schema, mode);
 }
 
+/** `true | false`, or `one per cases entry, then fallback`. */
+const outputsText = (outputs: ActionOutputs) =>
+	'each' in outputs
+		? `one per ${outputs.each} entry, named by its output${outputs.then?.length ? `, then ${outputs.then.join(' | ')}` : ''}`
+		: outputs.join(' | ');
+
+/** The output as a workflow item: a binary field moves from the JSON to `binary.<field>`. */
+function itemSchema(output: JsonSchema): JsonSchema {
+	const fields = Object.entries(output.properties ?? {});
+	const binaries = new Set(
+		fields.filter(([, field]) => field['x-n8n-binary']).map(([name]) => name),
+	);
+	if (binaries.size === 0) return output;
+	const required = output.required ?? [];
+	return {
+		...output,
+		properties: {
+			...Object.fromEntries(fields.filter(([name]) => !binaries.has(name))),
+			binary: {
+				type: 'object',
+				properties: Object.fromEntries(fields.filter(([name]) => binaries.has(name))),
+				required: required.filter((name) => binaries.has(name)),
+				additionalProperties: false,
+			},
+		},
+		required: [...required.filter((name) => !binaries.has(name)), 'binary'],
+	};
+}
+
 export interface GeneratedAction {
 	readonly contract: ContractDocument;
 	/** The factory path in the module: `notion.databasePage.getAll(...)`. */
@@ -247,6 +286,23 @@ export interface GeneratedAction {
 		readonly resource: string;
 		readonly operation: string;
 	};
+}
+
+const scopesNote = ({ scopes }: ContractDocument) =>
+	scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
+
+/** What the flow build reads to compute the scopes of a workflow, e.g. `{ credential: "notion", scopes: [...] }`. */
+const requiresOf = ({ node, scopes }: ContractDocument) =>
+	scopes?.length ? JSON.stringify({ credential: node, scopes }) : undefined;
+
+/** The credential of the node, as the agent reads it: its types and the scopes in use. */
+function credentialLines(nodeId: string, contracts: readonly GeneratedAction[]): string[] {
+	const types = [...new Set(contracts.flatMap(({ contract }) => contract.credentials))];
+	if (types.length === 0) return [];
+	const scopes = [...new Set(contracts.flatMap(({ contract }) => contract.scopes ?? []))];
+	return [
+		`// Credential "${nodeId}": one of ${types.join(', ')}.${scopes.length ? ` A workflow needs the scopes its nodes list: ${scopes.join(', ')}.` : ''}`,
+	];
 }
 
 interface Factory {
@@ -345,10 +401,16 @@ const freeName = (base: string, taken: ReadonlySet<string>) =>
  * The TypeScript module for one node's actions. The agent reads this text, and `tsc` checks
  * the workflow against it, so what the agent sees is exactly what is enforced.
  */
-export function generateNodeModule(nodeId: string, actions: readonly GeneratedAction[]): string {
+export function generateNodeModule(nodeId: string, contracts: readonly GeneratedAction[]): string {
 	const input: Mode = { input: true, indent: '', compact: true };
 	const output: Mode = { input: false, indent: '', compact: true };
-	const named = actions.map((action) => ({ ...action, name: typeName(action.contract.id) }));
+	const actions = contracts.filter(({ contract }) => !contract.trigger);
+	const triggers = contracts.filter(({ contract }) => contract.trigger);
+	const named = actions.map((action) => ({
+		...action,
+		contract: { ...action.contract, output: itemSchema(action.contract.output) },
+		name: typeName(action.contract.id),
+	}));
 	const roots = named.flatMap(({ name }) => [`${name}Input`, `${name}Output`]);
 
 	const shapes = new Map<string, Shape>();
@@ -405,30 +467,98 @@ export function generateNodeModule(nodeId: string, actions: readonly GeneratedAc
 	const factories = named.map(
 		({ contract, name, nodeType, slot, resource, operation }): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
-			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}`;
+			const { outputs } = contract;
+			const shown = outputs ? `; outputs: ${outputsText(outputs)}` : '';
+			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}`;
+			const requires = requiresOf(contract);
 			// Version 1 is the default, so most modules stay as short as before.
 			const version = slot
 				? `, ${slot.typeVersion}, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`
-				: contract.version === 1
+				: contract.version === 1 && !requires
 					? ''
 					: `, ${contract.version}`;
-			const text = [
-				'<In, Ctx, const N extends string>(',
-				`\tconfig: { name: N; sample?: ${name}Output[] } & ${name}Input<In, Ctx>,`,
-				`): Step<In, Ctx, OutputOf<N, ${name}Output>, N> =>`,
-				`\tcontractStep(${JSON.stringify(nodeType)}, config${version})`,
-			].join('\n');
-			return { path, summary: `${contract.action}. ${contract.summary} (${flow})`, text };
+			const tail = requires ? `${slot ? '' : ', undefined'}, ${requires}` : '';
+			const input = `${name}Input<In, Ctx>`;
+			// A passed item keeps the type of the item before.
+			const item = contract.output['x-n8n-passed'] ? 'In' : `OutputOf<N, ${name}Output>`;
+			const config = `{ name: N; sample?: ${contract.output['x-n8n-passed'] ? 'In' : `${name}Output`}[] }`;
+			const text = !outputs
+				? [
+						'<In, Ctx, const N extends string>(',
+						`\tconfig: ${config} & ${input},`,
+						`): Step<In, Ctx, ${item}, N> =>`,
+						`\tcontractStep(${JSON.stringify(nodeType)}, config${version}${tail})`,
+					]
+				: 'each' in outputs
+					? [
+							'<In, Ctx, const N extends string, const E extends string>(',
+							`\tconfig: ${config} & Omit<${input}, ${JSON.stringify(outputs.each)}> & {`,
+							`\t\t${key(outputs.each)}: ReadonlyArray<${input}[${JSON.stringify(outputs.each)}][number] & { output: E }>;`,
+							'\t},',
+							`): RoutedStep<In, Ctx, ${item}, N, ${['E', ...(outputs.then ?? []).map((then) => JSON.stringify(then))].join(' | ')}> =>`,
+							`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+						]
+					: [
+							'<In, Ctx, const N extends string>(',
+							`\tconfig: ${config} & ${input},`,
+							`): RoutedStep<In, Ctx, ${item}, N, ${outputs.map((output) => JSON.stringify(output)).join(' | ')}> =>`,
+							`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+						];
+			return {
+				path,
+				summary: `${contract.action}. ${contract.summary} (${flow})`,
+				text: text.join('\n'),
+			};
 		},
 	);
+	// A trigger starts a flow. Its input takes plain values: there is no item to read yet.
+	const plain: Mode = { ...input, plain: true };
+	const triggerTypes = triggers.map(({ contract }) => {
+		const name = typeName(contract.id);
+		return [
+			`export type ${name}Input = ${renderTs(contract.input, plain)};`,
+			`export type ${name}Output = ${renderTs(contract.output, output)};`,
+		].join('\n');
+	});
+	const triggerFactories = triggers.map(({ contract, nodeType, resource, operation }): Factory => {
+		const path = resource === undefined ? [operation] : [resource, operation];
+		const name = typeName(contract.id);
+		const out = `OutputOf<N, ${name}Output>`;
+		const requires = requiresOf(contract);
+		const tail = `${contract.version === 1 && !requires ? '' : `, ${contract.version}`}${requires ? `, ${requires}` : ''}`;
+		const text = [
+			'<const N extends string>(',
+			`\tconfig: { name: N; sample?: ${name}Output[] } & ${name}Input,`,
+			`): Flow<${out}, Record<N, ${out}>> =>`,
+			`\tcontractTrigger(${JSON.stringify(nodeType)}, config${tail})`,
+		].join('\n');
+		const source = `trigger, ${contract.trigger ?? ''}${scopesNote(contract)}`;
+		return { path, summary: `${contract.action}. ${contract.summary} (${source})`, text };
+	});
+	const body = [...types, ...triggerTypes].join('\n\n');
+	const routed = named.some(({ contract }) => contract.outputs !== undefined);
+	const derived = named.some(({ contract }) => !contract.output['x-n8n-passed']);
+	const imports = [
+		...(named.length > 0 ? ['contractStep'] : []),
+		...(triggers.length > 0 ? ['contractTrigger'] : []),
+		...(routed ? ['routedStep'] : []),
+		...(named.some(({ contract }) => usesBinary(contract)) ? ['type Binary'] : []),
+		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
+		...(triggers.length > 0 ? ['type Flow'] : []),
+		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
+		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
+		...(routed ? ['type RoutedStep'] : []),
+		...(named.length > 0 ? ['type Step', 'type Value'] : []),
+	];
 	return (
 		[
 			`// Generated from the ${nodeId} action contracts. Do not edit.`,
-			"import { contractStep, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			...credentialLines(nodeId, contracts),
+			`import { ${imports.join(', ')} } from '@n8n/workflow-sdk/next';`,
 			'',
-			types.join('\n\n'),
+			body,
 			'',
-			`export const ${nodeId} = ${nest(factories, '')};`,
+			`export const ${nodeId} = ${nest([...factories, ...triggerFactories], '')};`,
 			'',
 		]
 			.join('\n')

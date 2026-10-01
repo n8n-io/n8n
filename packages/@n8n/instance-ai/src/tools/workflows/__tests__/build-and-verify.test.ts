@@ -1,7 +1,13 @@
 import type { BuiltTool } from '@n8n/agents';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import { asReverifyTool, withBuildVerification } from '../build-and-verify';
+import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import {
+	asReverifyTool,
+	withBuildVerification,
+	type BuildVerificationSources,
+} from '../build-and-verify';
 
 const tool = (name: string, handler: BuiltTool['handler']): BuiltTool => ({
 	name,
@@ -61,6 +67,110 @@ describe('withBuildVerification', () => {
 		);
 		expect(await composite.handler?.({}, {} as never)).toEqual(result);
 		expect(verify).not.toHaveBeenCalled();
+	});
+});
+
+describe('withBuildVerification trigger input', () => {
+	const node = (name: string, type: string, parameters: Record<string, string> = {}) => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters,
+	});
+	const workflow = (
+		nodes: WorkflowJSON['nodes'],
+		connections: WorkflowJSON['connections'],
+	): WorkflowJSON => ({ name: 'W', nodes, connections });
+	const sources = (
+		json: WorkflowJSON,
+		fixtures: Record<string, Array<Record<string, unknown>>> = {},
+	): BuildVerificationSources => ({
+		getWorkflow: async () => await Promise.resolve(json),
+		getBuildOutcome: async () =>
+			await Promise.resolve({ simulationFixtures: fixtures } as unknown as WorkflowBuildOutcome),
+	});
+	const build = (triggerNodes: Array<{ nodeName: string; nodeType: string }>) =>
+		tool('build-workflow', async () => await Promise.resolve({ ...ready, triggerNodes }));
+	const verified = { success: true, claim: { level: 'verified' } };
+
+	const manualReadsInput = workflow(
+		[
+			node('Start', 'n8n-nodes-base.manualTrigger'),
+			node('Get Rows', 'n8n-nodes-base.dataTable', { tableName: '={{ $json.tableName }}' }),
+		],
+		{ Start: { main: [[{ node: 'Get Rows', type: 'main', index: 0 }]] } },
+	);
+	const start = [{ nodeName: 'Start', nodeType: 'n8n-nodes-base.manualTrigger' }];
+
+	it('does not run a trigger whose output the nodes read and that has no sample', async () => {
+		const verify = vi.fn(async () => await Promise.resolve(verified));
+		const composite = withBuildVerification(
+			build(start),
+			tool('verify-built-workflow', verify),
+			sources(manualReadsInput),
+		);
+		const result = await composite.handler?.({}, {} as never);
+		expect(verify).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			verification: {
+				skipped: 'needs_input',
+				guidance: expect.stringContaining('inputData'),
+			},
+		});
+		expect(result).not.toHaveProperty('verification.success');
+	});
+
+	it('runs a trigger whose sample the build declared', async () => {
+		const verify = vi.fn(async () => await Promise.resolve(verified));
+		const composite = withBuildVerification(
+			build(start),
+			tool('verify-built-workflow', verify),
+			sources(manualReadsInput, { Start: [{ tableName: 'orders' }] }),
+		);
+		const result = await composite.handler?.({}, {} as never);
+		expect(verify).toHaveBeenCalledWith({ workItemId: 'wi_1', workflowId: 'wf_1' }, {});
+		expect(result).toMatchObject({ verification: verified });
+	});
+
+	it('runs each trigger of a multi-trigger build and names the one it skipped', async () => {
+		const json = workflow(
+			[
+				node('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				node('Hook', 'n8n-nodes-base.webhook'),
+				node('Post', 'n8n-nodes-base.httpRequest', { body: "={{ $('Hook').item.json.body }}" }),
+			],
+			{
+				Schedule: { main: [[{ node: 'Post', type: 'main', index: 0 }]] },
+				Hook: { main: [[{ node: 'Post', type: 'main', index: 0 }]] },
+			},
+		);
+		const verify = vi.fn(async () => await Promise.resolve(verified));
+		const composite = withBuildVerification(
+			build([
+				{ nodeName: 'Schedule', nodeType: 'n8n-nodes-base.scheduleTrigger' },
+				{ nodeName: 'Hook', nodeType: 'n8n-nodes-base.webhook' },
+			]),
+			tool('verify-built-workflow', verify),
+			sources(json),
+		);
+		const result = await composite.handler?.({}, {} as never);
+		expect(verify).toHaveBeenCalledTimes(1);
+		expect(verify).toHaveBeenCalledWith(
+			{ workItemId: 'wi_1', workflowId: 'wf_1', triggerNodeName: 'Schedule' },
+			{},
+		);
+		expect(result).toMatchObject({
+			verificationByTrigger: {
+				Schedule: verified,
+				Hook: { skipped: 'needs_input' },
+			},
+		});
+		expect(composite.toModelOutput?.(result)).toMatchObject({
+			verificationByTrigger: { Schedule: verified, Hook: { skipped: 'needs_input' } },
+			verificationNote: expect.stringContaining('union of those runs'),
+		});
 	});
 });
 

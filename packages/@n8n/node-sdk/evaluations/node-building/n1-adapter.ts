@@ -44,14 +44,25 @@ export interface NewProject {
 
 const records = (value: unknown) => (Array.isArray(value) ? value.filter(isRecord) : []);
 
-/** Imports `src/index.ts` of the project. Run the eval with tsx so the import compiles. */
+const isProjection = (value: unknown): value is (type: unknown) => unknown =>
+	typeof value === 'function';
+
+/**
+ * Imports `src/index.ts` of the project. Run the eval with tsx so the import compiles. The
+ * credential types come from `node.credential`, projected by the project's own SDK.
+ */
 export async function loadNewProject(dir: string): Promise<NewProject> {
 	const loaded: unknown = await import(pathToFileURL(path.join(dir, 'src/index.ts')).href);
 	const exports = isRecord(loaded) ? loaded : {};
+	const node = isRecord(exports.node) ? exports.node : {};
+	const resolved = createRequire(path.join(dir, 'package.json')).resolve('@n8n/node-sdk');
+	const sdk: unknown = await import(pathToFileURL(resolved).href);
+	const project = isRecord(sdk) ? sdk.toCredentialType : undefined;
+	const types = isRecord(node.credential) ? records(node.credential.types) : [];
 	return {
-		node: isRecord(exports.node) ? exports.node : {},
+		node,
 		actions: records(exports.actions),
-		credentials: records(exports.credentials),
+		credentials: isProjection(project) ? records(types.map(project)) : [],
 	};
 }
 

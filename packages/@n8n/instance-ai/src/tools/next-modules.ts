@@ -2,8 +2,20 @@
  * Discovery over the typed node modules of `@n8n/nodes-base-next`. The agent imports a
  * module as `@n8n/nodes/<nodeId>`, and `tsc` checks the workflow against the same text.
  */
-import { generateNodeModule, toContract, type Action, type GeneratedAction } from '@n8n/node-sdk';
-import { actions, composedTargetOf, NODE_PACKAGE, nodeTypeOf } from '@n8n/nodes-base-next';
+import {
+	generateNodeModule,
+	toContract,
+	type Action,
+	type GeneratedAction,
+	type Trigger,
+} from '@n8n/node-sdk';
+import {
+	actions,
+	composedTargetOf,
+	NODE_PACKAGE,
+	nodeTypeOf,
+	triggers,
+} from '@n8n/nodes-base-next';
 
 export const nextActions: readonly Action[] = actions;
 
@@ -13,7 +25,12 @@ export interface NextNodeModule {
 	readonly module: string;
 }
 
+/** The ids of the typed node modules, as the agent imports them: `@n8n/nodes/<id>`. */
+export const nextNodeIds: readonly string[] = [...new Set(nextActions.map(({ node }) => node.id))];
+
 const actionsOfNode = (nodeId: string) => nextActions.filter((action) => action.node.id === nodeId);
+
+const triggersOfNode = (nodeId: string) => triggers.filter((trigger) => trigger.node.id === nodeId);
 
 /** An action that owns a slot of a composed node emits that node, e.g. Notion v4. */
 function generatedActionOf(action: Action): GeneratedAction {
@@ -25,19 +42,30 @@ function generatedActionOf(action: Action): GeneratedAction {
 	return { contract, nodeType, resource, operation, slot };
 }
 
-const moduleOf = (nodeId: string, own: readonly Action[]) =>
-	generateNodeModule(nodeId, own.map(generatedActionOf));
+const generatedTriggerOf = (trigger: Trigger): GeneratedAction => ({
+	contract: toContract(trigger),
+	nodeType: nodeTypeOf(trigger),
+	resource: trigger.resource,
+	operation: trigger.operation,
+});
 
-/** The generated TypeScript module for every action of one node. */
+/** A module has the given actions and every trigger of the node: a workflow starts at one. */
+const moduleOf = (nodeId: string, own: readonly Action[]) =>
+	generateNodeModule(nodeId, [
+		...own.map(generatedActionOf),
+		...triggersOfNode(nodeId).map(generatedTriggerOf),
+	]);
+
+/** The generated TypeScript module for every action and trigger of one node. */
 export function nodeModuleText(nodeId: string): string | undefined {
 	const own = actionsOfNode(nodeId);
-	return own.length ? moduleOf(nodeId, own) : undefined;
+	return own.length || triggersOfNode(nodeId).length ? moduleOf(nodeId, own) : undefined;
 }
 
 /** The node id for a node id, an action id, or an executable node type of this package. */
 function nextNodeIdOf(ref: string): string | undefined {
-	return nextActions.find(
-		(action) => action.node.id === ref || action.id === ref || nodeTypeOf(action) === ref,
+	return [...nextActions, ...triggers].find(
+		(contract) => contract.node.id === ref || contract.id === ref || nodeTypeOf(contract) === ref,
 	)?.node.id;
 }
 

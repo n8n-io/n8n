@@ -27,7 +27,16 @@ describe('next-modules', () => {
 
 	it('builds the composed Notion v4 node for an action that owns its slot', () => {
 		expect(nodeModuleText('notion')).toContain(
-			'contractStep("n8n-nodes-base.notion", config, 4, {"resource":"databasePage","operation":"getAll"})',
+			'contractStep("n8n-nodes-base.notion", config, 4, {"resource":"databasePage","operation":"getAll"}, {"credential":"notion","scopes":["content:read"]})',
+		);
+	});
+
+	it('adds the triggers of a node, so a workflow can start at one', () => {
+		expect(nodeModuleText('notion')).toContain(
+			'contractTrigger("@n8n/nodes-base-next.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]})',
+		);
+		expect(nextNodeModule('github.repository.event')?.module).toContain(
+			'): Flow<OutputOf<N, GithubRepositoryEventOutput>, Record<N, OutputOf<N, GithubRepositoryEventOutput>>> =>',
 		);
 	});
 
@@ -66,7 +75,7 @@ describe('next-modules', () => {
 	it('inlines only nodes the query names and keeps other matches to one line', () => {
 		expect(searchNextActions('http request')).toEqual({
 			nodes: ['httpRequest'],
-			actions: ['httpRequest.get', 'httpRequest.send'],
+			actions: ['httpRequest.get', 'httpRequest.send', 'httpRequest.download'],
 			otherActions: [],
 			coversQuery: true,
 		});
@@ -119,11 +128,12 @@ describe('next-modules', () => {
 			'// gmail.message.getAll(config: GmailMessageGetAllInput) — Get many messages (read, 1:N)\n',
 		);
 		expect(view?.module).toContain('type-definition "gmail"');
-		expect(view!.module.length).toBeLessThan(nodeModuleText('gmail')!.length / 2);
+		// Send is the largest Gmail action, so its view is about half of the module.
+		expect(view!.module.length).toBeLessThan(nodeModuleText('gmail')!.length * 0.6);
 	});
 
 	it('shows the whole module when all or none of its actions are shown', () => {
-		const all = new Set(['httpRequest.get', 'httpRequest.send']);
+		const all = new Set(['httpRequest.get', 'httpRequest.send', 'httpRequest.download']);
 		expect(nextNodeView('httpRequest', all)).toEqual(nextNodeModule('httpRequest'));
 		expect(nextNodeView('httpRequest', new Set())).toEqual(nextNodeModule('httpRequest'));
 		expect(nextNodeView('slack', all)).toBeUndefined();
@@ -132,6 +142,7 @@ describe('next-modules', () => {
 	it('lists the actions of module nodes that the catalog search found', () => {
 		expect(searchNextActions('tasks', ['notion']).otherActions).toEqual([
 			'notion.databasePage.getAll: List pages of a Notion database, optionally filtered and sorted.',
+			'notion.user.get: Get one Notion user (a person or a bot) by ID.',
 		]);
 	});
 

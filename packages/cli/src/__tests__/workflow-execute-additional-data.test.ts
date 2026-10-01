@@ -43,6 +43,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -105,6 +106,8 @@ const getCancelablePromise = async (run: IRun) =>
 	});
 
 const processRunExecutionData = vi.fn();
+
+vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
 
 vi.mock('n8n-core', async () => ({
 	__esModule: true,
@@ -313,6 +316,31 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executionId: EXECUTION_ID,
 				waitTill,
 			});
+		});
+
+		it('prepares the node contracts of the sub-workflow before it builds the workflow', async () => {
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>({ id: EXECUTION_ID }),
+				mock<IWorkflowExecuteAdditionalData>(),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			expect(prepareNodeContractsRun).toHaveBeenCalledWith(
+				expect.objectContaining({ id: EXECUTION_ID }),
+			);
+		});
+
+		it('does not start the sub-workflow when its node contracts cannot be prepared', async () => {
+			vi.mocked(prepareNodeContractsRun).mockRejectedValueOnce(new Error('Cannot get send@1.0.2'));
+
+			await expect(
+				executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: EXECUTION_ID }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				),
+			).rejects.toThrow('Cannot get send@1.0.2');
+			expect(executionRepository.setRunning).not.toHaveBeenCalled();
 		});
 
 		it('should pass workflowId to getBase when executing subworkflow', async () => {

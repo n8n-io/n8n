@@ -504,3 +504,30 @@ describe('analyzeVerificationResult — uncalled tools', () => {
 		expect(analysis.coverageNote).toContain('inspect its fixture');
 	});
 });
+
+describe('analyzeVerificationResult — contract node setup placeholders', () => {
+	it('routes the contract node "Needs setup" error to setup, not to a code edit', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-2',
+				status: 'error',
+				error:
+					'Needs setup: fill input.database (<__PLACEHOLDER_VALUE__Notion tasks database__>) before the run',
+				executedNodeNames: ['Start', 'Get Tasks'],
+				lastNodeExecuted: 'Get Tasks',
+				data: { Start: [{}] },
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.success).toBe(false);
+		expect(analysis.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+	});
+});

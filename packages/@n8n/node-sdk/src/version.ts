@@ -1,8 +1,13 @@
 import { createHash, verify } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
-import { UnexpectedError, UserError, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	UserError,
+	type IDataObject,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
-import type { ContractDocument } from './define';
+import { usesBinary, type ContractDocument } from './define';
 import type { JsonSchema } from './schema';
 
 /**
@@ -11,11 +16,22 @@ import type { JsonSchema } from './schema';
  * and the host modules a bundle may import. `spec/n8n-action@<major>.wit` defines it. Its
  * semver does not follow the n8n version: a minor adds an optional host import or field, a
  * major breaks.
+ * 2.1.0 adds the current input item, the batch cardinality, and named outputs.
+ * 2.2.0 adds binary data.
  */
 export type ActionApiVersion = `n8n:action@${number}.${number}.${number}`;
 
-/** The version `freezeAction` writes and the newest one this host runs. */
-export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.0.0';
+/** The newest version this host runs. */
+export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.2.0';
+
+/**
+ * The version `freezeAction` writes: 2.2.0 for an action with a binary field, else 2.1.0, so
+ * a host that implements 2.1.0 still runs every bundle without binary data. The 2.1.0
+ * features (the current item) are used in code, so the contract cannot show a lower minimum.
+ */
+export const actionApiVersionOf = (
+	contract: Pick<ContractDocument, 'input' | 'output'>,
+): ActionApiVersion => (usesBinary(contract) ? ACTION_API_VERSION : 'n8n:action@2.1.0');
 
 /** The versions a host accepts when its config sets no range. */
 export const DEFAULT_ACTION_API_RANGE = '>=1.0.0 <3.0.0';
@@ -68,7 +84,7 @@ export const canonicalJson = (value: unknown) => JSON.stringify(sortKeys(value))
 
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
-const PROSE_KEYWORDS = new Set(['description', 'x-n8n-hint', 'examples']);
+const PROSE_KEYWORDS = new Set(['title', 'description', 'x-n8n-hint', 'examples']);
 const SCHEMA_MAPS = new Set(['properties', 'patternProperties', 'x-n8n-value-types']);
 
 /** A schema without its prose keywords. Property names stay, also `description`. */
@@ -104,8 +120,13 @@ export const contractHash = (contract: ContractDocument) =>
 			node: contract.node,
 			flow: contract.flow,
 			credentials: contract.credentials,
+			// Optional keys keep the hash of each contract that has neither. Scopes are a set.
+			...(contract.scopes?.length ? { scopes: [...contract.scopes].sort() } : {}),
+			...(contract.trigger ? { trigger: contract.trigger } : {}),
 			input: normativeSchema(contract.input),
 			output: normativeSchema(contract.output),
+			// Only when set, so the hash of an action with one output stays the same.
+			...(contract.outputs ? { outputs: contract.outputs } : {}),
 		}),
 	);
 
@@ -210,7 +231,14 @@ const narrowed = (side: Side, narrower: boolean, text: string): ContractChange =
 const major = (text: string): ContractChange => ({ kind: 'major', text });
 
 const LOWER_BOUNDS = ['minLength', 'minimum', 'minItems'] as const;
-const EXACT_KEYWORDS = ['const', 'format', 'pattern', 'x-n8n-ref', 'x-n8n-literal'] as const;
+const EXACT_KEYWORDS = [
+	'const',
+	'format',
+	'pattern',
+	'x-n8n-ref',
+	'x-n8n-literal',
+	'x-n8n-passed',
+] as const;
 
 function boundChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
 	const lower = LOWER_BOUNDS.flatMap((keyword) => {
@@ -327,16 +355,49 @@ function schemaChanges(
 	];
 }
 
+const outputText = (outputs: ContractDocument['outputs']) =>
+	outputs === undefined
+		? 'one output'
+		: 'each' in outputs
+			? `one output per ${outputs.each} entry${outputs.then?.length ? `, then ${outputs.then.join(', ')}` : ''}`
+			: outputs.join(', ');
+
+/**
+ * n8n saves a connection by output index. A removed, renamed, or moved output breaks a saved
+ * connection. An added output also is major: a saved workflow leaves it unconnected, so the
+ * items the new version routes there stop without an error.
+ */
+function outputChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
+	if (canonicalJson(prev.outputs) === canonicalJson(next.outputs)) return [];
+	return [major(`outputs ${outputText(prev.outputs)} → ${outputText(next.outputs)}`)];
+}
+
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
- * new required input with a default) is minor; a new required input, a removed or narrowed
- * output, or a changed flow is major; no normative change is a patch.
+ * new required input with a default) or a removed scope is minor; a new required input, a
+ * removed or narrowed output, a changed output list, a changed flow, or a new scope is major;
+ * no normative change is a patch.
  */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
 	const input = schemaChanges('input', 'input', prev.input, next.input);
 	const changes = [
 		...(prev.id !== next.id || prev.node !== next.node ? [major('id or node changed')] : []),
 		...(canonicalJson(prev.flow) !== canonicalJson(next.flow) ? [major('flow changed')] : []),
+		...(prev.trigger !== next.trigger ? [major('trigger kind changed')] : []),
+		// A saved credential may lack a new scope, so the workflow can fail: a major. A first
+		// declaration only names what the action already needed: a minor.
+		...(next.scopes ?? [])
+			.filter((scope) => !(prev.scopes ?? []).includes(scope))
+			.map(
+				(scope): ContractChange =>
+					prev.scopes
+						? major(`scope ${scope} added`)
+						: { kind: 'minor', text: `scope ${scope} declared` },
+			),
+		...(prev.scopes ?? [])
+			.filter((scope) => !(next.scopes ?? []).includes(scope))
+			.map((scope): ContractChange => ({ kind: 'minor', text: `scope ${scope} removed` })),
+		...outputChanges(prev, next),
 		...prev.credentials
 			.filter((type) => !next.credentials.includes(type))
 			.map((type) => major(`credential ${type} removed`)),
@@ -357,16 +418,39 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 	};
 }
 
-/** One recorded run of a single input item. */
-export interface ExecutionFixture {
+/** A file as n8n keeps it in memory: the bytes in base64 `data`. */
+export interface FixtureBinary {
+	readonly data: string;
+	readonly mimeType: string;
+	readonly fileName?: string;
+}
+
+/** One recorded run. */
+export type ExecutionFixture = {
 	readonly name: string;
 	/** Parameters as n8n stores them; the replay fills the description defaults. */
 	readonly params: Readonly<Record<string, unknown>>;
-	/** HTTP response bodies, in request order. */
+	/** The input items (`json`). One empty item when omitted. */
+	readonly items?: readonly IDataObject[];
+	/** The binaries of the first input item, by field name. */
+	readonly binary?: Readonly<Record<string, FixtureBinary>>;
+	/** HTTP response bodies, in request order. A `response: 'binary'` request gets a `FixtureBinary`. */
 	readonly responses: readonly unknown[];
-	/** The expected output items (`json`) for the input item. */
-	readonly output: readonly unknown[];
-}
+} & (
+	| {
+			/** The expected output items (`json`) of an action with one output. */
+			readonly output: readonly unknown[];
+			/** The expected binaries of each output item, by field name. */
+			readonly outputBinary?: ReadonlyArray<Readonly<Record<string, FixtureBinary>>>;
+			readonly outputs?: never;
+	  }
+	| {
+			/** The expected output items (`json`) of each output, for an action with named outputs. */
+			readonly outputs: ReadonlyArray<readonly unknown[]>;
+			readonly output?: never;
+			readonly outputBinary?: never;
+	  }
+);
 
 /** One `migrate` pair: parameters of `fromMajor` in, parameters of this major out. */
 export interface MigrationFixture {
@@ -380,12 +464,30 @@ export interface ContractFixtures {
 	readonly migrations?: readonly MigrationFixture[];
 }
 
+export const isFixtureBinary = (value: unknown): value is FixtureBinary =>
+	isRecord(value) &&
+	typeof value.data === 'string' &&
+	typeof value.mimeType === 'string' &&
+	(value.fileName === undefined || typeof value.fileName === 'string');
+
+const isBinaryMap = (value: unknown) =>
+	isRecord(value) && Object.values(value).every(isFixtureBinary);
+
 const isExecutionFixture = (value: unknown): value is ExecutionFixture =>
 	isRecord(value) &&
 	typeof value.name === 'string' &&
 	isRecord(value.params) &&
+	(value.items === undefined || (Array.isArray(value.items) && value.items.every(isRecord))) &&
 	Array.isArray(value.responses) &&
-	Array.isArray(value.output);
+	(value.binary === undefined || isBinaryMap(value.binary)) &&
+	(value.outputs === undefined
+		? Array.isArray(value.output) &&
+			(value.outputBinary === undefined ||
+				(Array.isArray(value.outputBinary) && value.outputBinary.every(isBinaryMap)))
+		: value.output === undefined &&
+			value.outputBinary === undefined &&
+			Array.isArray(value.outputs) &&
+			value.outputs.every(Array.isArray));
 
 const isMigrationFixture = (value: unknown): value is MigrationFixture =>
 	isRecord(value) &&

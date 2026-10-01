@@ -6,8 +6,8 @@ This file is the complete API reference. You do not have to read the SDK source.
 
 ## Layout
 
-- `src/index.ts` exports `node`, `actions` (array) and `credentials` (array). Keep these names.
-- `src/__slug__.node.ts`: `defineNode` and its resources. `src/credentials.ts`: `defineCredential`.
+- `src/index.ts` exports `node` and `actions` (array). Keep these names.
+- `src/__slug__.node.ts`: `defineNode` and its resources. `src/credentials.ts`: the credential types.
 - `src/actions/<resource>.<operation>.ts`: one action for each file, in kebab case, e.g. the action
   `__service__.item.getAll` is in `src/actions/item.get-all.ts`. `check` fails for another file name.
   Add each action to `actions`.
@@ -31,18 +31,15 @@ Run `check` and `test` after each change. Both must pass.
 ## Node and credential
 
 ```ts
-// src/__slug__.node.ts
-export const node = defineNode({ id: '__service__', displayName: '__Service__', credentials: [__service__Api.name],
-	baseUrl: 'https://api.example.com/v1' }); // add `authOptional: true` if the API also works without a key
+// src/__slug__.node.ts. The one credential: the types a user may pick, and the scopes actions may need.
+export const node = defineNode({ id: '__service__', displayName: '__Service__', baseUrl: 'https://api.example.com/v1',
+	credential: credential({ types: [__service__Api], scopes: { 'items:write': 'Create items' } }) }); // add `optional: true` if the API also works without a key
 // A resource groups actions. Its `input` (optional) goes into the input of each of its actions.
 export const item = node.resource('item', { input: { workspace: str() } });
-defineCredential({
-	name: '__service__Api', displayName: '__Service__ API',
-	properties: [{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true }, required: true }],
-	// A template is '={{$credentials.<field>}}'. Send it in a header, or in the query: { qs: { api_key: '=...' } }.
-	authenticate: { headers: { 'X-Api-Key': '={{$credentials.apiKey}}' } },
-	test: { request: { baseURL: 'https://api.example.com/v1', url: '/me' } },
-});
+// src/credentials.ts. Also bearer, oauth2({ authorizationUrl, tokenUrl, scopes }), custom({ authenticate }), compat('n8nType').
+export const __service__Api = apiKey({ name: '__service__Api', displayName: '__Service__ API',
+	key: 'X-Api-Key', // `in: 'query'` sends a query parameter; `prefix: 'Bearer '` goes before the key
+	test: { request: { baseURL: 'https://api.example.com/v1', url: '/me' } } });
 ```
 
 ## Action
@@ -53,6 +50,7 @@ export const createItem = item.action('create', {
 	action: 'Create an item',               // the label users pick
 	summary: 'Create one item.',            // at most 120 characters
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
+	scopes: ['items:write'],                // scopes of the node's credential; tsc rejects others
 	input: { name: str(), ownerId: str().optional() },  // run() also gets `workspace` from the resource
 	output: itemOutput,
 	async run({ input, http }) {
@@ -74,7 +72,8 @@ export const createItem = item.action('create', {
   An `.optional()` field can be `undefined`.
 - To fail an item, throw. Do not catch errors to return `{ error }`: with "Continue on fail", n8n turns
   the thrown error into an `{ error: message }` item (or sends it to the error output) and runs the next item.
-- `credentials?: string[]` on an action overrides the node's credential types.
+- No code for a simple action: replace `run` with `request: { method: 'GET', path: '/items/{id}' }` (`{id}` is
+  the input field; `query`/`body` values are literals or `{ input: 'field' }`; `items: 'results'` for `1:N`).
 - When the output shape depends on an input, declare all shapes and pick one in `deriveOutput`:
   `output: union(invoice, line)`, `deriveOutput: (input) => (input.split ? line.json : invoice.json)`.
 - Never read credentials in `run()`. The credential applies to each request.
@@ -128,12 +127,12 @@ export const createItem = item.action('create', {
 const fetch = mockHttp([
 	{ method: 'POST', path: '/items', reply: { status: 201, json: { id: 'itm_1', name: 'A', ownerId: null } } },
 ]);
-const result = await runAction(createItem, { input: { name: 'A' }, credential, credentials, fetch });
+const result = await runAction(createItem, { input: { name: 'A' }, credential, fetch });
 assert.deepEqual(result, { ok: true, items: [{ id: 'itm_1', name: 'A', ownerId: null }] });
 assert.deepEqual(fetch.calls[0]?.body, { name: 'A' });
 ```
 
-- `runAction(action, { input, credential, credentials, fetch })` runs the action through the executor
+- `runAction(action, { input, credential, fetch })` runs the action through the executor
   n8n uses: it fills in defaults, validates the input, retries, and validates each item. An input value
   `''` counts as unset, as in n8n. It returns `{ ok: true, items }` or
   `{ ok: false, error: { message, path?, httpStatus? } }`. It does not throw.

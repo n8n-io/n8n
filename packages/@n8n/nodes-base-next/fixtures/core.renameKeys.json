@@ -1,0 +1,32 @@
+{
+	"executions": [
+		{
+			"name": "renames a nested field",
+			"params": {
+				"keys": [
+					{
+						"from": "user.name",
+						"to": "author"
+					}
+				]
+			},
+			"items": [
+				{
+					"user": {
+						"name": "Ada",
+						"id": 1
+					}
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"user": {
+						"id": 1
+					},
+					"author": "Ada"
+				}
+			]
+		}
+	]
+}

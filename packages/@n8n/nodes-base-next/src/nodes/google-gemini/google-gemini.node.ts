@@ -1,9 +1,9 @@
-import { defineNode } from '@n8n/node-sdk';
+import { compat, credential, defineNode } from '@n8n/node-sdk';
 
 export const googleGemini = defineNode({
 	id: 'googleGemini',
 	displayName: 'Google Gemini',
-	credentials: ['googlePalmApi'],
+	credential: credential({ types: [compat('googlePalmApi')] }),
 	baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
 });
 

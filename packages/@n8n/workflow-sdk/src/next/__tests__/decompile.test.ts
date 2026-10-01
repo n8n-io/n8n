@@ -8,7 +8,16 @@ import {
 	type ContractFactory,
 } from '../decompile';
 import * as next from '../index';
-import { contractStep, manual, node, set, workflow, type Dollar, type Step } from '../index';
+import {
+	contractStep,
+	manual,
+	node,
+	set,
+	subnode,
+	workflow,
+	type Dollar,
+	type Step,
+} from '../index';
 
 interface Page {
 	id: string;
@@ -247,6 +256,32 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('"={{ $json.id }}",');
 	});
 
+	it('round-trips a binary of the item and of an earlier node', () => {
+		const json = workflow(
+			'Files',
+			manual().andThen(
+				node({
+					name: 'Upload',
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					parameters: {
+						file: '={{ $binary.data }}',
+						first: '={{ $("Start").item.binary.data.fileName }}',
+						field: '={{ $json.binary }}',
+					},
+				}),
+			),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('file: (item) => item.binary.data,');
+		expect(source).toContain('first: (_item, $) => $("Start").binary.data.fileName,');
+		// `item.binary` compiles to `$binary`, so the JSON field stays an expression.
+		expect(source).toContain('field: "={{ $json.binary }}",');
+	});
+
 	it('drops host-set parameters of a contract node', () => {
 		const json = notionWorkflow().toJSON();
 		const withAuth = {
@@ -318,6 +353,92 @@ describe('decompileWorkflow', () => {
 				expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
 			}
 		});
+	});
+
+	it('round-trips an AI agent with its sub-nodes', () => {
+		const json = workflow(
+			'Answer',
+			manual().andThen(
+				node({
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					parameters: { promptType: 'define', text: (item) => item.question },
+					subnodes: {
+						model: subnode({
+							name: 'Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: 1.2,
+							parameters: { model: 'gpt-4o-mini' },
+						}),
+						tools: [
+							subnode({
+								name: 'Calculator',
+								type: '@n8n/n8n-nodes-langchain.toolCalculator',
+								version: 1,
+							}),
+							subnode({
+								name: 'Store',
+								type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+								version: 1,
+								subnodes: {
+									vectorStore: subnode({
+										name: 'Vectors',
+										type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+										version: 1,
+									}),
+								},
+							}),
+						],
+					},
+				}),
+			),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain(
+			"import { workflow, manual, node, subnode } from '@n8n/workflow-sdk/next';",
+		);
+		expect(source).toContain('model: subnode({');
+		expect(source).toContain('tools: [');
+		expect(source).toContain('vectorStore: subnode({');
+		expect(source).toContain('text: (item) => item.question,');
+	});
+
+	it('gives undefined for sub-node wiring the typed format cannot express', () => {
+		const model = (name: string) =>
+			subnode({ name, type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 });
+		const json = workflow(
+			'Answer',
+			manual().andThen(
+				node({
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					subnodes: { model: model('Model') },
+				}),
+			),
+		).toJSON();
+		const fallback = {
+			...json,
+			nodes: [...json.nodes, { ...json.nodes[2], id: 'f', name: 'Fallback' }],
+			connections: {
+				...json.connections,
+				Fallback: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]] },
+			},
+		};
+		const twoModels = {
+			...fallback,
+			connections: {
+				...json.connections,
+				Fallback: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			},
+		};
+		expect(decompileWorkflow(json, factories)).toContain('model: subnode({');
+		expect(decompileWorkflow(fallback, factories)).toBeUndefined();
+		expect(decompileWorkflow(twoModels, factories)).toBeUndefined();
 	});
 
 	it('gives undefined for what the typed format cannot express', () => {

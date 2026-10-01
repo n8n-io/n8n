@@ -3,10 +3,13 @@ import { NodeApiError, type IExecuteFunctions, type INode, type JsonObject } fro
 import {
 	actionFileOf,
 	arr,
+	compat,
+	credential,
 	defineNode,
 	exampleOf,
 	generateNodeModule,
 	isHttpError,
+	json,
 	lintContract,
 	nullable,
 	num,
@@ -26,7 +29,7 @@ import {
 const todo = defineNode({
 	id: 'todo',
 	displayName: 'Todo',
-	credentials: ['todoApi'],
+	credential: credential({ types: [compat('todoApi')] }),
 	baseUrl: 'https://todo.test',
 });
 
@@ -261,8 +264,7 @@ describe('toNodeType', () => {
 		const open = defineNode({
 			id: 'web',
 			displayName: 'Web',
-			credentials: ['a', 'b'],
-			authOptional: true,
+			credential: credential({ types: [compat('a'), compat('b')], optional: true }),
 		});
 		const { description } = new (toNodeType({
 			...listTasks,
@@ -407,6 +409,63 @@ describe('generateNodeModule', () => {
 		// The types the agent reads stay the same; only the call differs.
 		const call = /contractStep\(.*\)/;
 		expect(text.replace(call, '')).toBe(moduleOf(listTasks).replace(call, ''));
+	});
+
+	it('types the outputs of a routed action, also outputs named by input entries', () => {
+		const route = todo.resource('task').action('route', {
+			action: 'Route tasks',
+			summary: 'Route each task.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			input: { cases: arr(obj({ output: str(), status: str() })) },
+			output: listTasks.output,
+			outputs: { each: 'cases', then: ['fallback'] },
+			run: async ({ item }) => await Promise.resolve({ to: 'fallback', item }),
+		});
+		const check = todo.resource('task').action('check', {
+			action: 'Check tasks',
+			summary: 'Check each task.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			input: {},
+			output: listTasks.output,
+			outputs: ['open', 'done'],
+			run: ({ items }) => items.map((item) => ({ to: 'open' as const, item })),
+		});
+		const text = moduleOf(route, check);
+		expect(text).toContain(
+			"import { contractStep, routedStep, type OutputOf, type RoutedStep, type Step, type Value } from '@n8n/workflow-sdk/next';",
+		);
+		expect(text).toContain(
+			'(transform, per-item; outputs: one per cases entry, named by its output, then fallback)',
+		);
+		expect(text).toContain(
+			' cases: ReadonlyArray<TodoTaskRouteInput<In, Ctx>["cases"][number] & { output: E }>;',
+		);
+		expect(text).toContain(
+			'RoutedStep<In, Ctx, OutputOf<N, TodoTaskRouteOutput>, N, E | "fallback">',
+		);
+		expect(text).toContain(
+			'routedStep("@n8n/nodes-base-next.todo.task.route", config, {"each":"cases","then":["fallback"]})',
+		);
+		expect(text).toContain(
+			'RoutedStep<In, Ctx, OutputOf<N, TodoTaskCheckOutput>, N, "open" | "done">',
+		);
+		expect(text).toContain('(transform, batch; outputs: open | done)');
+	});
+
+	it('gives each key of an open input object a lambda type', () => {
+		const append = todo.resource('row').action('append', {
+			action: 'Append row',
+			summary: 'Append a row.',
+			flow: { effect: 'write', cardinality: 'per-item' },
+			input: { values: json() },
+			output: json(),
+			run: async () => await Promise.resolve({}),
+		});
+		const text = moduleOf(append);
+		expect(text).toContain('{ values: Value<I, C, { [key: string]: Value<I, C, OpenValue> }> }');
+		expect(text).toContain('export type TodoRowAppendOutput = Record<string, unknown>;');
+		expect(text).toContain('import { contractStep, type OpenValue, type OutputOf,');
+		expect(moduleOf(listTasks)).not.toContain('OpenValue');
 	});
 
 	it('prints short objects without docs on one line', () => {

@@ -1,34 +1,78 @@
 export * from './schema';
 export {
 	actionFileOf,
-	defineCredential,
 	defineNode,
+	fixedOutputNames,
 	isHttpError,
 	lintContract,
 	paginate,
 	toContract,
 	type Action,
 	type ActionFlow,
+	type ActionBinding,
+	type ActionOutputs,
+	type ActionPath,
+	type Binaries,
 	type ActionSpec,
+	type BatchContext,
+	type ContextOf,
 	type ContractDocument,
-	type CredentialDefinition,
-	type CredentialField,
-	type CredentialSpec,
+	type CredentialTypeOf,
+	type Emit,
 	type Http,
 	type HttpError,
 	type HttpMethod,
 	type HttpRequest,
+	type InputItem,
+	type Lineage,
 	type LogLevel,
 	type NodeBuilder,
 	type NodeDefinition,
 	type NodeResource,
+	type OutputName,
+	type OutputsPerEntry,
 	type PaginateOptions,
+	type RequestBinding,
+	type RequestPath,
+	type RequestValue,
 	type ResourceField,
+	type ResourcePath,
 	type RunContext,
+	type RunHost,
 	type RunInput,
 	type RunLimits,
 	type RunResult,
+	type ScopeOf,
+	type Trigger,
+	type TriggerSpec,
 } from './define';
+export {
+	apiKey,
+	bearer,
+	compat,
+	credential,
+	credentialDataOf,
+	custom,
+	oauth2,
+	toCredentialType,
+	type AnyCredentialType,
+	type Credential,
+	type CredentialData,
+	type CredentialKey,
+	type CredentialScheme,
+	type CredentialType,
+} from './credentials';
+export {
+	toTriggerNodeType,
+	toVersionedTriggerType,
+	type PollConfig,
+	type PollCursor,
+	type Registration,
+	type Signature,
+	type TriggerKind,
+	type WebhookConfig,
+	type WebhookRequest,
+} from './triggers';
 export { exampleOf, list, matches, parse, validate } from './validate';
 export { isRecord } from '@n8n/utils/is-record';
 export {
@@ -43,6 +87,7 @@ export {
 } from './runtime';
 export {
 	ACTION_API_VERSION,
+	actionApiVersionOf,
 	apiVersionOf,
 	canonicalJson,
 	compareSemver,
@@ -71,3 +116,10 @@ export {
 } from './version';
 export { generateNodeModule, toTs, type GeneratedAction } from './codegen';
 export { composeVersion, type ComposedSlot, type ComposeVersionOptions } from './compose';
+export {
+	liftMcpTool,
+	type LiftedMcpTool,
+	type McpCallResult,
+	type McpClient,
+	type McpTool,
+} from './lift/mcp';

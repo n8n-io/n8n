@@ -1,20 +1,20 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { Action, Http } from './define';
+import type { Action, HttpRequest } from './define';
 
 /** The context `run()` gets in `n8n:action@1`, see `spec/n8n-action@1.wit`. */
 export interface RunContextV1 {
 	readonly input: unknown;
-	readonly http: Http;
+	readonly http: { request(request: HttpRequest): Promise<unknown> };
 	/** Gives one output item for the current input item. */
 	emit(item: unknown): void;
 }
 
-/** An `n8n:action@1` action: `run()` emits its items and gives back nothing. */
-export interface ActionV1 extends Omit<Action, 'run'> {
+/** An `n8n:action@1` action: `run()` emits its items and gives back nothing. @1 has no `request`. */
+export type ActionV1 = Omit<Action, 'run' | 'request'> & {
 	run(context: RunContextV1): Promise<void>;
-}
+};
 
 // `evaluateBundle` checks the other action fields on the adapted action.
 const isActionV1 = (value: unknown): value is ActionV1 =>
@@ -77,7 +77,7 @@ export function fromActionApiV1(exported: unknown): Action | undefined {
 		flow: { ...exported.flow, cardinality: '1:N' },
 		run: ({ input, http }) =>
 			emitted(async (emit, idle) => {
-				const request: Http['request'] = async (options) => {
+				const request = async (options: HttpRequest) => {
 					await idle();
 					return await http.request(options);
 				};

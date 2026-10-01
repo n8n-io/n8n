@@ -2,19 +2,23 @@ import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialType,
 	IDataObject,
 	IHttpRequestOptions,
 	INode,
 } from 'n8n-workflow';
 
-import { isHttpError, type Action, type CredentialDefinition, type HttpError } from './define';
+import { toCredentialType } from './credentials';
+import { isHttpError, type Action, type HttpError } from './define';
 import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
 
 export interface RunActionOptions {
 	readonly input: unknown;
+	/** The input items. One empty item when omitted. */
+	readonly items?: readonly IDataObject[];
 	readonly credential?: { readonly type: string; readonly data: Record<string, unknown> };
-	/** The credential types to look up `credential.type` in. */
-	readonly credentials?: readonly CredentialDefinition[];
+	/** Legacy credential types, for a `compat` type. Other types project their own. */
+	readonly credentials?: readonly ICredentialType[];
 	/** Defaults to the global `fetch`. Pass `mockHttp(...)` in unit tests. */
 	readonly fetch?: typeof fetch;
 }
@@ -27,7 +31,13 @@ export interface RunActionError {
 }
 
 export type RunActionResult =
-	| { readonly ok: true; readonly items: unknown[] }
+	| {
+			readonly ok: true;
+			/** The items of every output, in output order. */
+			readonly items: unknown[];
+			/** The items of each output, for an action with named outputs. */
+			readonly outputs?: unknown[][];
+	  }
 	| { readonly ok: false; readonly error: RunActionError };
 
 class ResponseError extends Error implements HttpError {
@@ -53,7 +63,7 @@ const isCredentialData = (
 /** The n8n expression `={{$credentials.x}}`, for the one form credential templates use. */
 function resolveTemplate<V>(
 	template: V,
-	credential: CredentialDefinition,
+	credential: ICredentialType,
 	data: IDataObject,
 ): V | string {
 	if (typeof template !== 'string' || !template.startsWith('=')) return template;
@@ -70,9 +80,9 @@ function resolveTemplate<V>(
 	return resolved;
 }
 
-/** Does what n8n's `httpRequestWithAuthentication` does for the credential forms `defineCredential` makes. */
+/** Does what n8n's `httpRequestWithAuthentication` does for the types `toCredentialType` makes. */
 async function authenticate(
-	credential: CredentialDefinition,
+	credential: ICredentialType,
 	data: ICredentialDataDecryptedObject,
 	options: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
@@ -139,17 +149,19 @@ const pathOf = (message: string) => /\b((?:input|output)[\w.[\]]*): /.exec(messa
 function credentialFor(
 	action: Action,
 	options: RunActionOptions,
-): CredentialDefinition | string | undefined {
+): ICredentialType | string | undefined {
 	const { credential } = options;
 	if (!credential) {
-		return action.credentialTypes.length > 0 && !action.node.authOptional
+		return action.credentialTypes.length > 0 && !action.node.credential?.optional
 			? `${action.id} needs a credential of type ${action.credentialTypes.join(' or ')}`
 			: undefined;
 	}
 	if (!action.credentialTypes.includes(credential.type)) {
 		return `${action.id} does not accept credential ${credential.type}. Accepts: ${action.credentialTypes.join(', ')}`;
 	}
+	const value = action.node.credential?.types.find(({ name }) => name === credential.type);
 	return (
+		(value ? toCredentialType(value) : undefined) ??
 		options.credentials?.find(({ name }) => name === credential.type) ??
 		`No credential definition for ${credential.type}. Pass it in "credentials".`
 	);
@@ -183,8 +195,9 @@ export async function runAction(
 				? { [credential.name]: { id: null, name: credential.name } }
 				: {},
 	};
+	const items = (options.items ?? [{}]).map((json) => ({ json: { ...json } }));
 	const host: ExecutorHost = {
-		itemCount: 1,
+		items,
 		node,
 		parameter: (name) =>
 			name === AUTHENTICATION
@@ -200,11 +213,14 @@ export async function runAction(
 				credential ? await authenticate(credential, data, request) : request,
 			);
 		},
+		credentialData: async () => await Promise.resolve(data),
 		continueOnFail: () => false,
 	};
 	try {
-		const items = await executorOf(action)(host);
-		return { ok: true, items: items.map((item) => item.json) };
+		const outputs = (await executorOf(action)(host)).map((output) =>
+			output.map((item) => item.json),
+		);
+		return { ok: true, items: outputs.flat(), ...(action.outputs ? { outputs } : {}) };
 	} catch (error) {
 		// fetch reports network failures as "fetch failed" and puts the reason in `cause`.
 		const cause =

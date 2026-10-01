@@ -1,5 +1,6 @@
 import {
 	apiVersionOf,
+	compareSemver,
 	integrityOf,
 	openContractPackage,
 	packageNameOf,
@@ -15,25 +16,56 @@ import {
 	type FrozenVersion,
 	type NodeContractLock,
 	type NodeContractsPolicy,
+	type VersionManifest,
 } from '@n8n/node-sdk';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { UserError, type IExecuteFunctions } from 'n8n-workflow';
+
+import { versionsOf } from './registry';
+
+export interface ContractStoreOptions {
+	/** Empty: only the bundled HEAD and stored versions run. */
+	readonly registryUrl: string;
+	/**
+	 * PEM of the trusted publisher key. With it, the store takes and serves only signed bundles.
+	 * Without it, no patch newer than the lock applies.
+	 */
+	readonly publicKey: string | undefined;
+	/** Verified tarballs, `<bundleHash>.tgz`. The store adds files and never removes one. */
+	readonly storeDir: string;
+	readonly fetch: (url: string, init: { signal: AbortSignal }) => Promise<Response>;
+	/** For each registry request. */
+	readonly fetchTimeoutMs?: number;
+}
 
 export interface ContractRegistryOptions {
 	/** The instance policy. `meta.nodeContractsPolicy` of a workflow overrides it. */
 	readonly policy: NodeContractsPolicy;
-	/** Empty: only the bundled HEAD and cached versions run. */
-	readonly registryUrl: string;
-	/** PEM of the trusted publisher key. Without it, no patch newer than the lock applies. */
-	readonly publicKey: string | undefined;
-	/** Verified tarballs, by bundle hash. */
-	readonly cacheDir: string;
-	readonly fetch: (url: string) => Promise<Response>;
+	readonly store: ContractStore;
 	/** The `meta` of the running workflow. */
 	readonly metaOf: (context: IExecuteFunctions) => Promise<unknown>;
 	/** The `n8n:action` versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
 	readonly apiRange: string;
+}
+
+/**
+ * The content-addressed store of action versions that n8n does not bundle. Each bundle is
+ * checked before the store takes it: the npm integrity, the bundle hash, the manifest, and the
+ * publisher signature when a key is set.
+ */
+export interface ContractStore {
+	readonly registryUrl: string;
+	/** The bundle hashes in the store. */
+	bundleHashes(): Promise<ReadonlySet<string>>;
+	/** The locked version, from the store or else from the registry into the store. */
+	locked(lock: NodeContractLock): Promise<FrozenVersion>;
+	/** Adds a tarball from another source, for example a directory of an air-gapped host. */
+	add(tarball: Buffer): Promise<VersionManifest>;
+	/** The newest stored version of each major, by action id. A bad file is skipped. */
+	versions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>>;
+	/** Signed patches of the locked major.minor with the locked contract hash. */
+	newerPatches(lock: NodeContractLock): Promise<FrozenVersion[]>;
 }
 
 interface PublishedVersion {
@@ -51,7 +83,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isPolicy = (value: unknown): value is NodeContractsPolicy =>
 	value === 'strict' || value === 'tolerant';
 
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 const HASH = /^[a-f0-9]{64}$/;
+const STORE_FILE = /^([a-f0-9]{64})\.tgz$/;
 
 const isLock = (value: unknown): value is NodeContractLock =>
 	isRecord(value) &&
@@ -61,6 +96,42 @@ const isLock = (value: unknown): value is NodeContractLock =>
 	typeof value.bundleHash === 'string' &&
 	HASH.test(value.bundleHash) &&
 	typeof value.contractHash === 'string';
+
+/** The valid locks of a workflow `meta`, by node name. */
+export const locksOf = (meta: unknown): ReadonlyArray<readonly [string, NodeContractLock]> =>
+	Object.entries(isRecord(meta) && isRecord(meta.nodeContracts) ? meta.nodeContracts : {}).flatMap(
+		([node, lock]) => (isLock(lock) ? [[node, lock] as const] : []),
+	);
+
+const lockOf = ({ id, semver, bundleHash, contractHash }: VersionManifest): NodeContractLock => ({
+	action: id,
+	version: semver,
+	bundleHash,
+	contractHash,
+});
+
+// The bundle hash covers only the code. Without a key, the lock is the anchor of the manifest.
+const mismatchOf = (manifest: VersionManifest, lock: NodeContractLock) => {
+	const found = lockOf(manifest);
+	return (['action', 'version', 'bundleHash', 'contractHash'] as const).find(
+		(key) => found[key] !== lock[key],
+	);
+};
+
+const assertLocked = (manifest: VersionManifest, lock: NodeContractLock) => {
+	const field = mismatchOf(manifest, lock);
+	if (field) {
+		throw new UserError(
+			`The bundle ${lock.bundleHash} has ${field} ${lockOf(manifest)[field]}, but the lock has ${lock[field]}`,
+		);
+	}
+};
+
+const isFsError = (error: unknown, codes: readonly string[]) =>
+	isRecord(error) && typeof error.code === 'string' && codes.includes(error.code);
+
+// Some network file systems have no hard links.
+const NO_LINK = ['EPERM', 'ENOTSUP', 'ENOSYS'];
 
 const publishedVersions = (packument: unknown): PublishedVersion[] =>
 	Object.entries(
@@ -76,35 +147,38 @@ const publishedVersions = (packument: unknown): PublishedVersion[] =>
 		return [{ version, apiVersion, contractHash, bundleHash, tarball, integrity }];
 	});
 
-const toVersion = ({ manifest, bundle }: ContractPackage): FrozenVersion => ({
-	manifest,
-	readBundle: async () => bundle,
-});
-
 // A registry lookup for each run is too slow, and a new patch may wait this long.
 const PACKUMENT_TTL_MS = 60_000;
 
-/**
- * Resolves the version a contract node runs from its lock in `meta.nodeContracts`. A locked
- * bundle hash is the trust anchor for the locked version. The publisher signature is the
- * trust anchor for a newer patch. A node without a lock runs the bundled HEAD.
- */
-export function contractVersionLoader(options: ContractRegistryOptions): ContractVersionLoader {
-	const { registryUrl, publicKey, cacheDir, fetch } = options;
+// An execution waits for a missing bundle, so a dead registry must fail it soon.
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
+
+/** Versions that came from the store and not from the n8n release. */
+const storedVersions = new WeakSet<FrozenVersion>();
+
+export function contractStore(options: ContractStoreOptions): ContractStore {
+	const { registryUrl, publicKey, storeDir } = options;
+	const timeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
 	const packuments = new Map<string, { at: number; versions: Promise<PublishedVersion[]> }>();
-	const packages = new Map<string, Promise<ContractPackage | undefined>>();
+	/** Loads in flight, so parallel executions download a bundle once. */
+	const loading = new Map<string, Promise<ContractPackage>>();
+	/** Verified manifests by bundle hash. A stored file never changes, so they stay valid. */
+	const manifests = new Map<string, VersionManifest>();
+	/** Bundle hashes whose manifest signature the trusted key verified. */
+	const signed = new Set<string>();
+
+	const fetch = async (url: string) =>
+		await options.fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
 
 	const fetchPackument = async (name: string) => {
 		// npm addresses a scoped package as `@scope%2fname`.
 		const response = await fetch(`${registryUrl.replace(/\/$/, '')}/${name.replace('/', '%2f')}`);
 		if (response.status === 404) return [];
-		if (!response.ok) {
-			throw new UserError(`The contract registry returned ${response.status} for ${name}`);
-		}
+		if (!response.ok) throw new UserError(`The registry returned ${response.status} for ${name}`);
 		return publishedVersions(await response.json());
 	};
 
-	const versionsOf = async (name: string) => {
+	const packumentOf = async (name: string) => {
 		const cached = packuments.get(name);
 		if (cached && Date.now() - cached.at < PACKUMENT_TTL_MS) return await cached.versions;
 		const versions = fetchPackument(name);
@@ -115,109 +189,248 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 		});
 	};
 
-	const cacheFile = (bundleHash: string) => path.join(cacheDir, `${bundleHash}.tgz`);
+	const storeFile = (bundleHash: string) => path.join(storeDir, `${bundleHash}.tgz`);
 
-	const readCached = async (bundleHash: string) => {
-		const data = await readFile(cacheFile(bundleHash)).catch(() => undefined);
+	const isSigned = (pkg: ContractPackage) => {
+		if (!publicKey || !verifyManifestSignature(pkg, publicKey)) return false;
+		signed.add(pkg.manifest.bundleHash);
+		return true;
+	};
+
+	const verified = (pkg: ContractPackage) => {
+		if (publicKey && !isSigned(pkg)) {
+			const { id, semver, bundleHash } = pkg.manifest;
+			throw new UserError(
+				`${id}@${semver} (bundle ${bundleHash}) is not signed by the trusted key`,
+			);
+		}
+		manifests.set(pkg.manifest.bundleHash, pkg.manifest);
+		return pkg;
+	};
+
+	/** The stored package without the signature check. */
+	const readFileOf = async (bundleHash: string) => {
+		const data = await readFile(storeFile(bundleHash)).catch(() => undefined);
 		if (!data) return undefined;
 		const pkg = openContractPackage(data, integrityOf(data));
-		return pkg.manifest.bundleHash === bundleHash ? pkg : undefined;
+		if (pkg.manifest.bundleHash !== bundleHash) {
+			throw new UserError(`The store file ${bundleHash}.tgz holds another bundle`);
+		}
+		return pkg;
 	};
 
-	const download = async (entry: PublishedVersion, bundleHash: string) => {
+	/** With a key, the store serves only signed files, also files stored before the key was set. */
+	const readStored = async (bundleHash: string) => {
+		const pkg = await readFileOf(bundleHash);
+		return pkg && verified(pkg);
+	};
+
+	const write = async (bundleHash: string, data: Buffer) => {
+		await mkdir(storeDir, { recursive: true });
+		const file = storeFile(bundleHash);
+		const part = `${file}.${process.pid}.${Date.now()}.tmp`;
+		await writeFile(part, data);
+		// A link never replaces a file, and a parallel reader never sees a part of one.
+		await link(part, file).catch(async (error: unknown) => {
+			if (isFsError(error, ['EEXIST'])) return;
+			if (!isFsError(error, NO_LINK)) throw error;
+			// The bundle is verified and its hash names the file, so a rename keeps the same code.
+			const present = await access(file).then(
+				() => true,
+				() => false,
+			);
+			if (!present) await rename(part, file);
+		});
+		await rm(part, { force: true });
+	};
+
+	/** Downloads the tarball of `entry` and stores it when its manifest matches `expected`. */
+	const download = async (entry: PublishedVersion, expected: NodeContractLock) => {
 		const response = await fetch(entry.tarball);
 		if (!response.ok) {
-			throw new UserError(`The contract registry returned ${response.status} for ${entry.tarball}`);
+			throw new UserError(`The registry returned ${response.status} for ${entry.tarball}`);
 		}
 		const data = Buffer.from(await response.arrayBuffer());
-		const pkg = openContractPackage(data, entry.integrity);
-		if (pkg.manifest.bundleHash !== bundleHash || pkg.manifest.semver !== entry.version) {
-			throw new UserError(`The tarball of ${entry.version} does not hold bundle ${bundleHash}`);
-		}
-		const file = cacheFile(bundleHash);
-		await mkdir(cacheDir, { recursive: true });
-		// Rename is atomic, so a parallel reader never sees a part of the file.
-		await writeFile(`${file}.${process.pid}.tmp`, data);
-		await rename(`${file}.${process.pid}.tmp`, file);
+		const pkg = verified(openContractPackage(data, entry.integrity));
+		assertLocked(pkg.manifest, expected);
+		await write(expected.bundleHash, data);
 		return pkg;
 	};
 
-	/** A verified package from the disk cache or the registry, by bundle hash. */
-	const packageOf = async (bundleHash: string, entry: PublishedVersion | undefined) => {
-		const known = packages.get(bundleHash);
-		if (known) return await known;
-		const opened = readCached(bundleHash).then(
-			async (cached) => cached ?? (entry ? await download(entry, bundleHash) : undefined),
-		);
-		packages.set(bundleHash, opened);
-		// Keep only hits, so a later call with a registry entry can still download.
-		const pkg = await opened.catch((error: unknown) => {
-			packages.delete(bundleHash);
-			throw error;
-		});
-		if (!pkg) packages.delete(bundleHash);
-		return pkg;
-	};
-
-	const lockedVersion = async (lock: NodeContractLock) => {
-		const cached = await packageOf(lock.bundleHash, undefined);
-		if (cached || !registryUrl) return cached && toVersion(cached);
-		const versions = await versionsOf(packageNameOf(lock.action));
+	const fromRegistry = async (lock: NodeContractLock) => {
+		if (!registryUrl) throw new UserError('No registry is set');
+		const versions = await packumentOf(packageNameOf(lock.action));
 		const entry = versions.find(({ bundleHash }) => bundleHash === lock.bundleHash);
-		const pkg = entry && (await packageOf(lock.bundleHash, entry));
-		return pkg && toVersion(pkg);
+		if (!entry) throw new UserError('The registry does not have this bundle');
+		return await download(entry, lock);
 	};
 
-	/** Signed patches of the locked major.minor with the locked contract hash. */
-	const newerPatches = async (lock: NodeContractLock): Promise<FrozenVersion[]> => {
-		if (!registryUrl || !publicKey) return [];
-		const locked = parseSemver(lock.version);
-		const versions = await versionsOf(packageNameOf(lock.action)).catch(() => []);
-		const candidates = versions.filter(({ version, apiVersion, contractHash }) => {
-			const { major, minor, patch } = parseSemver(version);
-			return (
-				major === locked.major &&
-				minor === locked.minor &&
-				patch > locked.patch &&
-				apiVersion !== undefined &&
-				runsActionApi(apiVersion) &&
-				contractHash === lock.contractHash
-			);
-		});
-		const verified = await Promise.all(
-			candidates.map(async (entry) => {
-				if (typeof entry.bundleHash !== 'string' || !HASH.test(entry.bundleHash)) return [];
-				// A tampered or unsigned patch never runs; the locked version runs instead.
-				const pkg = await packageOf(entry.bundleHash, entry).catch(() => undefined);
-				return pkg && verifyManifestSignature(pkg, publicKey) ? [toVersion(pkg)] : [];
-			}),
+	/** A verified package from the store, or else from the registry. */
+	const load = async (lock: NodeContractLock) => {
+		const known = loading.get(lock.bundleHash);
+		if (known) return await known;
+		const loaded = readStored(lock.bundleHash)
+			.then(async (stored) => stored ?? (await fromRegistry(lock)))
+			.then((pkg) => {
+				assertLocked(pkg.manifest, lock);
+				return pkg;
+			})
+			.catch((error: unknown) => {
+				const { action, version, bundleHash } = lock;
+				throw new UserError(
+					`Cannot get ${action}@${version} (bundle ${bundleHash}) from the registry ${registryUrl || '(none set)'}: ${errorMessage(error)}`,
+					{ cause: error },
+				);
+			})
+			.finally(() => loading.delete(lock.bundleHash));
+		loading.set(lock.bundleHash, loaded);
+		return await loaded;
+	};
+
+	/** The bundle loads on the first execution. When the file is gone, it loads from the registry again. */
+	const storedVersion = (manifest: VersionManifest): FrozenVersion => {
+		const version = {
+			manifest,
+			readBundle: async () => (await load(lockOf(manifest))).bundle,
+		};
+		storedVersions.add(version);
+		return version;
+	};
+
+	const bundleHashes = async () =>
+		new Set(
+			(await readdir(storeDir).catch(() => [])).flatMap((file) => STORE_FILE.exec(file)?.[1] ?? []),
 		);
-		return verified.flat();
-	};
 
+	return {
+		registryUrl,
+		bundleHashes,
+
+		async locked(lock) {
+			const known = manifests.get(lock.bundleHash);
+			const present = await access(storeFile(lock.bundleHash)).then(
+				() => true,
+				() => false,
+			);
+			if (known && present && !mismatchOf(known, lock)) return storedVersion(known);
+			return storedVersion((await load(lock)).manifest);
+		},
+
+		async add(tarball) {
+			const { manifest } = verified(openContractPackage(tarball, integrityOf(tarball)));
+			await write(manifest.bundleHash, tarball);
+			return manifest;
+		},
+
+		async versions() {
+			const stored = await Promise.all(
+				[...(await bundleHashes())].map(
+					async (bundleHash) =>
+						manifests.get(bundleHash) ??
+						(await readStored(bundleHash).catch(() => undefined))?.manifest,
+				),
+			);
+			const newest = stored.reduce((byMajor, manifest) => {
+				if (!manifest) return byMajor;
+				const key = `${manifest.id}@${manifest.contract.version}`;
+				const best = byMajor.get(key);
+				return best && compareSemver(best.semver, manifest.semver) >= 0
+					? byMajor
+					: new Map(byMajor).set(key, manifest);
+			}, new Map<string, VersionManifest>());
+			return [...newest.values()].reduce(
+				(byAction, manifest) =>
+					byAction.set(manifest.id, [
+						...(byAction.get(manifest.id) ?? []),
+						storedVersion(manifest),
+					]),
+				new Map<string, FrozenVersion[]>(),
+			);
+		},
+
+		async newerPatches(lock) {
+			if (!registryUrl || !publicKey) return [];
+			const locked = parseSemver(lock.version);
+			const versions = await packumentOf(packageNameOf(lock.action)).catch(() => []);
+			const candidates = versions.filter(({ version, apiVersion, contractHash }) => {
+				const { major, minor, patch } = parseSemver(version);
+				return (
+					major === locked.major &&
+					minor === locked.minor &&
+					patch > locked.patch &&
+					apiVersion !== undefined &&
+					runsActionApi(apiVersion) &&
+					contractHash === lock.contractHash
+				);
+			});
+			const patches = await Promise.all(
+				candidates.map(async (entry) => {
+					const { bundleHash } = entry;
+					if (typeof bundleHash !== 'string' || !HASH.test(bundleHash)) return [];
+					const expected = { ...lock, version: entry.version, bundleHash };
+					const known = manifests.get(bundleHash);
+					if (known && signed.has(bundleHash) && !mismatchOf(known, expected)) {
+						return [storedVersion(known)];
+					}
+					// A tampered or unsigned patch never runs; the locked version runs instead.
+					const pkg =
+						(await readFileOf(bundleHash).catch(() => undefined)) ??
+						(await download(entry, expected).catch(() => undefined));
+					return pkg && isSigned(pkg) && !mismatchOf(pkg.manifest, expected)
+						? [storedVersion(verified(pkg).manifest)]
+						: [];
+				}),
+			);
+			return patches.flat();
+		},
+	};
+}
+
+/**
+ * Resolves the version a contract node runs from its lock in `meta.nodeContracts`. A locked
+ * bundle hash is the trust anchor for the locked version. The publisher signature is the
+ * trust anchor for a newer patch. A node without a lock runs `head`: the bundled HEAD, or the
+ * newest stored version of an older major.
+ */
+export function contractVersionLoader(options: ContractRegistryOptions): ContractVersionLoader {
+	const { store } = options;
 	return async (context, head) => {
 		const meta = await options.metaOf(context);
-		const locks = isRecord(meta) && isRecord(meta.nodeContracts) ? meta.nodeContracts : {};
-		const lock = locks[context.getNode().name];
+		const lock = locksOf(meta).find(([node]) => node === context.getNode().name)?.[1];
 		// A lock of another action or major is stale: the node changed after the build.
 		if (
-			!isLock(lock) ||
-			lock.action !== head.manifest.id ||
+			lock?.action !== head.manifest.id ||
 			parseSemver(lock.version).major !== head.manifest.contract.version
 		) {
 			return head;
 		}
 		const override = isRecord(meta) ? meta.nodeContractsPolicy : undefined;
 		const policy = isPolicy(override) ? override : options.policy;
-		const newer = policy === 'tolerant' ? await newerPatches(lock) : [];
-		const locked = head.manifest.bundleHash === lock.bundleHash ? head : await lockedVersion(lock);
-		// The bundled HEAD is trusted: it may be a newer patch of the locked contract.
-		const trusted = [head, ...(locked ? [locked] : []), ...newer];
-		const manifest = resolveContractVersion(
-			lock,
-			policy,
-			trusted.map((version) => version.manifest),
-		);
+		const newer = policy === 'tolerant' ? await store.newerPatches(lock) : [];
+		const locked =
+			head.manifest.bundleHash === lock.bundleHash
+				? head
+				: await store
+						.locked(lock)
+						.catch((error: unknown) =>
+							error instanceof Error ? error : new UserError(String(error)),
+						);
+		// The bundled HEAD may be a newer patch of the locked contract. A stored version may
+		// not: without a signature check, only its lock makes it trusted.
+		const trusted = [
+			...(storedVersions.has(head) ? [] : [head]),
+			...(locked instanceof Error ? [] : [locked]),
+			...newer,
+		];
+		const manifests = trusted.map((version) => version.manifest);
+		const manifest = (() => {
+			try {
+				return resolveContractVersion(lock, policy, manifests);
+			} catch (error) {
+				// The fetch error names the registry, so it explains more than "no match".
+				throw locked instanceof Error ? locked : error;
+			}
+		})();
 		return trusted.find((version) => version.manifest === manifest) ?? head;
 	};
 }
@@ -227,3 +440,80 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setActionApiRange(options.apiRange);
 	setContractVersionLoader(contractVersionLoader(options));
 };
+
+/** A workflow node and its lock. */
+export interface LockedNode {
+	readonly workflowId: string;
+	readonly workflowName: string;
+	readonly node: string;
+	readonly lock: NodeContractLock;
+}
+
+export interface ContractSyncResult {
+	/** Versions the store did not have before. */
+	readonly added: readonly VersionManifest[];
+	readonly failed: ReadonlyArray<LockedNode & { readonly error: string }>;
+	/** Nodes whose locked bundle declares an `n8n:action` version that this host does not run. */
+	readonly unsupported: ReadonlyArray<LockedNode & { readonly apiVersion: ActionApiVersion }>;
+}
+
+const bundledHead = (actionId: string) => {
+	try {
+		return versionsOf(actionId)[0];
+	} catch {
+		// Not an action of this package, or a build without frozen versions.
+		return undefined;
+	}
+};
+
+/**
+ * Puts the locked bundle of each node into the store, one bundle at a time, and checks its
+ * `n8n:action` version. It never throws for one bundle: it reports the failure.
+ */
+export async function syncContractStore(
+	store: ContractStore,
+	nodes: readonly LockedNode[],
+): Promise<ContractSyncResult> {
+	const before = await store.bundleHashes();
+	const byBundle = nodes.reduce(
+		(groups, node) =>
+			groups.set(node.lock.bundleHash, [...(groups.get(node.lock.bundleHash) ?? []), node]),
+		new Map<string, readonly LockedNode[]>(),
+	);
+	const heads = new Map(
+		[...new Set(nodes.map(({ lock }) => lock.action))].map((id) => [id, bundledHead(id)] as const),
+	);
+	const syncBundle = async (lock: NodeContractLock, group: readonly LockedNode[]) => {
+		const head = heads.get(lock.action);
+		if (head?.manifest.bundleHash === lock.bundleHash) return { manifest: head.manifest, group };
+		const manifest = await store.locked(lock).then(
+			({ manifest: locked }) => locked,
+			(error: unknown) => errorMessage(error),
+		);
+		return { manifest, group };
+	};
+	const results = await [...byBundle.values()].reduce<
+		Promise<ReadonlyArray<Awaited<ReturnType<typeof syncBundle>>>>
+	>(async (previous, group) => {
+		const done = await previous;
+		const [first] = group;
+		return first ? [...done, await syncBundle(first.lock, group)] : done;
+	}, Promise.resolve([]));
+	return {
+		added: results.flatMap(({ manifest }) =>
+			typeof manifest === 'string' ||
+			before.has(manifest.bundleHash) ||
+			heads.get(manifest.id)?.manifest.bundleHash === manifest.bundleHash
+				? []
+				: [manifest],
+		),
+		failed: results.flatMap(({ manifest, group }) =>
+			typeof manifest === 'string' ? group.map((node) => ({ ...node, error: manifest })) : [],
+		),
+		unsupported: results.flatMap(({ manifest, group }) =>
+			typeof manifest === 'string' || runsActionApi(manifest.apiVersion)
+				? []
+				: group.map((node) => ({ ...node, apiVersion: manifest.apiVersion })),
+		),
+	};
+}

@@ -1,11 +1,13 @@
 import * as sdk from '@n8n/node-sdk';
 import {
 	ACTION_API_VERSION,
+	actionApiVersionOf,
 	actionFileOf,
 	nodeNameOf,
 	openContractPackage,
 	packageNameOf,
 	parseFixtures,
+	toContract,
 	verifyManifestSignature,
 	type VersionManifest,
 } from '@n8n/node-sdk';
@@ -18,15 +20,15 @@ import type { IExecuteFunctions, VersionedNodeType } from 'n8n-workflow';
 
 import { actionEntries, freezeAll, NODES_DIR, nodeClassFile } from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
-import { actions } from '../index';
+import { actions, triggers } from '../index';
 import { versionsOf, VERSIONS_DIR } from '../registry';
 
 /**
  * Runs a generated class file as the n8n loader does: `require` the file, then construct the
  * export that the file name names. `dir` holds the frozen versions that the file reads.
  */
-function loadNodeClass(actionId: string, dir: string) {
-	const { file, source } = nodeClassFile({ id: actionId });
+function loadNodeClass(contract: Parameters<typeof nodeClassFile>[0], dir: string) {
+	const { file, source } = nodeClassFile(contract);
 	const [className = ''] = path.parse(file).name.split('.');
 	const modules: Record<string, unknown> = {
 		'@n8n/node-sdk': sdk,
@@ -36,6 +38,8 @@ function loadNodeClass(actionId: string, dir: string) {
 	compileFunction(source, ['exports', 'require'])(module.exports, (id: string) => modules[id]);
 	return module.exports[className] as new () => VersionedNodeType;
 }
+
+const contracts = [...actions, ...triggers];
 
 const fixturesOf = (actionId: string) =>
 	parseFixtures(readFileSync(path.join(FIXTURES_DIR, `${actionId}.json`), 'utf8'));
@@ -48,7 +52,7 @@ describe('action files', () => {
 			path.relative(NODES_DIR, entryFile),
 		]);
 		expect(files.sort()).toEqual(
-			actions
+			contracts
 				.map(({ id, node, resource, operation }) => [
 					id,
 					path.join(kebab(node.id), actionFileOf({ resource, operation })),
@@ -70,7 +74,7 @@ describe('bundled versions', () => {
 
 	it('hold the HEAD of every action, as the source builds it', () => {
 		const { manifests } = frozen;
-		expect(manifests.map(({ id }) => id).sort()).toEqual(actions.map(({ id }) => id).sort());
+		expect(manifests.map(({ id }) => id).sort()).toEqual(contracts.map(({ id }) => id).sort());
 		expect(manifests.map(({ id }) => versionsOf(id)[0]?.manifest)).toEqual(manifests);
 	});
 
@@ -79,18 +83,29 @@ describe('bundled versions', () => {
 			readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
 		);
 		const listed = sdk.isRecord(manifest) && sdk.isRecord(manifest.n8n) ? manifest.n8n.nodes : [];
-		expect(listed).toEqual(actions.map((action) => `dist/${nodeClassFile(action).file}`));
+		expect(listed).toEqual(contracts.map((contract) => `dist/${nodeClassFile(contract).file}`));
 	});
 
 	it('load from the generated class files with the class name of each file', () => {
-		const loaded = actions.map(({ id }) => {
-			const { description } = new (loadNodeClass(id, copy))();
+		const loaded = contracts.map((contract) => {
+			const { description } = new (loadNodeClass(contract, copy))();
 			return [description.name, description.defaultVersion];
 		});
-		expect(loaded).toEqual(actions.map(({ id, version }) => [nodeNameOf(id), version]));
-		expect(frozen.manifests.map(({ apiVersion }) => apiVersion)).toEqual(
-			actions.map(() => ACTION_API_VERSION),
+		expect(loaded).toEqual(contracts.map(({ id, version }) => [nodeNameOf(id), version]));
+		const apiVersions = Object.fromEntries(
+			frozen.manifests.map(({ id, apiVersion }) => [id, apiVersion]),
 		);
+		expect(apiVersions).toEqual(
+			Object.fromEntries(
+				contracts.map((contract) => [contract.id, actionApiVersionOf(toContract(contract))]),
+			),
+		);
+		// Only the actions with binary data need the newest minor.
+		expect(
+			Object.keys(apiVersions)
+				.filter((id) => apiVersions[id] === ACTION_API_VERSION)
+				.sort(),
+		).toEqual(['gmail.message.send', 'httpRequest.download', 'httpRequest.send']);
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
@@ -120,7 +135,7 @@ describe('bundled versions', () => {
 			helpers: { httpRequest: async () => [{ id: 1 }, { id: 2 }] },
 		} as unknown as IExecuteFunctions;
 
-		const HttpRequestGet = loadNodeClass('httpRequest.get', VERSIONS_DIR);
+		const HttpRequestGet = loadNodeClass({ id: 'httpRequest.get' }, VERSIONS_DIR);
 		const result = await new HttpRequestGet().getNodeType(1).execute?.call(context);
 
 		expect(result).toEqual([
@@ -136,7 +151,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					apiVersion: ACTION_API_VERSION,
+					apiVersion: 'n8n:action@2.1.0',
 				},
 			},
 		]);

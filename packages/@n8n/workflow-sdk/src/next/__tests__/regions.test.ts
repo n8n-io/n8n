@@ -1,0 +1,700 @@
+import vm from 'node:vm';
+
+import type { WorkflowJSON } from '../../types/base';
+import { workflow as legacyWorkflow } from '../../workflow-builder';
+import { loopWiringIssues } from '../../workflow-builder/plugins/validators/loop-wiring-validator';
+import { decompileWorkflow } from '../decompile';
+import * as next from '../index';
+import {
+	contractStep,
+	manual,
+	node,
+	set,
+	splitOut,
+	validateLoopWiring,
+	workflow,
+	type Step,
+} from '../index';
+
+interface Order {
+	id: string;
+	total: number;
+}
+
+interface Customer {
+	id: string;
+	name: string;
+	orders: Order[];
+	tags: string[];
+}
+
+type Ticket =
+	| { kind: 'bug'; id: string; severity: number }
+	| { kind: 'feature'; id: string; votes: number }
+	| { kind: 'chore'; id: string };
+
+/** A typed source of items. The tests feed its items as the trigger input. */
+const source =
+	<T>() =>
+	<In, Ctx, const N extends string>(name: N): Step<In, Ctx, T, N> =>
+		contractStep('n8n-nodes-base.noOp', { name });
+
+const customers = source<Customer>();
+const tickets = source<Ticket>();
+
+const forEachWorkflow = () =>
+	workflow(
+		'Orders per customer',
+		manual()
+			.andThen(customers('Customers'))
+			.forEach({
+				name: 'Each customer',
+				batchSize: 1,
+				body: (customer) =>
+					customer.andThen(splitOut({ name: 'Orders', field: 'orders' })).forEach({
+						name: 'Each order',
+						batchSize: 2,
+						body: (order) =>
+							order.andThen(
+								set({
+									name: 'Line',
+									fields: { order: (o) => o.id, total: (o) => o.total * 2 },
+								}),
+							),
+					}),
+			})
+			.andThen(set({ name: 'Report', fields: { order: (line) => line.order } })),
+	);
+
+const loopWorkflow = (maxIterations: number) =>
+	workflow(
+		'Count',
+		manual()
+			.andThen(set({ name: 'Init', fields: { n: 0, sum: 0 } }))
+			.loop({
+				name: 'Count',
+				maxIterations,
+				body: (pass) =>
+					pass.andThen(
+						set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
+					),
+				until: (out) => out.n >= 3,
+				next: (out) => ({ n: out.n, sum: out.sum }),
+			})
+			.andThen(set({ name: 'Result', fields: { sum: (out) => out.sum } })),
+	);
+
+const paginateWorkflow = () =>
+	workflow(
+		'Pages',
+		manual()
+			.andThen(set({ name: 'Start page', fields: { cursor: 0 } }))
+			.paginate({
+				name: 'Pages',
+				maxPages: 10,
+				request: (page) =>
+					page.andThen(
+						set({
+							name: 'Fetch',
+							fields: {
+								rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
+								next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
+							},
+						}),
+					),
+				next: (response) => (response.next === null ? null : { cursor: response.next }),
+			})
+			.andThen(splitOut({ name: 'Rows', field: 'rows' })),
+	);
+
+const pollWorkflow = () =>
+	workflow(
+		'Poll',
+		manual()
+			.andThen(set({ name: 'Job', fields: { job: 'j1' } }))
+			.pollUntil({
+				name: 'Poll',
+				maxAttempts: 5,
+				every: { amount: 0, unit: 'seconds' },
+				attempt: (attempt) =>
+					attempt.andThen(
+						// Stands in for a status request: the job is done on the third attempt.
+						node({
+							name: 'Status',
+							type: 'n8n-nodes-base.set',
+							version: 3.4,
+							parameters: {
+								mode: 'raw',
+								jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
+							},
+						}),
+					),
+				until: (status) => status.done === true,
+			}),
+	);
+
+const switchWorkflow = () =>
+	workflow(
+		'Triage',
+		manual()
+			.andThen(tickets('Tickets'))
+			.switch({
+				name: 'By kind',
+				on: 'kind',
+				cases: {
+					bug: (bug) =>
+						bug.andThen(set({ name: 'Bug', fields: { score: (t) => t.severity * 10 } })),
+					feature: (feature) =>
+						feature.andThen(set({ name: 'Feature', fields: { score: (t) => t.votes } })),
+					chore: (chore) => chore.andThen(set({ name: 'Chore', fields: { score: 0 } })),
+				},
+			})
+			.andThen(set({ name: 'Scored', fields: { score: (s) => s.score } })),
+	);
+
+const filterWorkflow = () =>
+	workflow(
+		'Bugs',
+		manual()
+			.andThen(tickets('Tickets'))
+			.filter({
+				name: 'Bugs only',
+				if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug',
+			})
+			.andThen(set({ name: 'Severity', fields: { severity: (bug) => bug.severity } })),
+	);
+
+const mergeWorkflow = () =>
+	workflow(
+		'Join',
+		manual()
+			.andThen(customers('Customers'))
+			.merge({
+				name: 'Join',
+				join: { left: 'id', right: 'id' },
+				branches: [
+					(flow) =>
+						flow.andThen(set({ name: 'Names', fields: { id: (c) => c.id, name: (c) => c.name } })),
+					(flow) =>
+						flow.andThen(
+							set({ name: 'Counts', fields: { id: (c) => c.id, count: (c) => c.orders.length } }),
+						),
+				],
+			})
+			.andThen(set({ name: 'Summary', fields: { text: (row) => `${row.name}: ${row.count}` } })),
+	);
+
+const switchDefaultWorkflow = () =>
+	workflow(
+		'By name',
+		manual()
+			.andThen(customers('Customers'))
+			.switch({
+				name: 'By name',
+				on: 'name',
+				cases: { Ada: (ada) => ada.andThen(set({ name: 'Ada', fields: { vip: true } })) },
+				default: (rest) => rest.andThen(set({ name: 'Rest', fields: { vip: false } })),
+			}),
+	);
+
+const mergeJoinWorkflow = (join: 'append' | 'position') => {
+	const start = manual().andThen(customers('Customers'));
+	const names = (flow: typeof start) =>
+		flow.andThen(set({ name: 'Names', fields: { name: (c) => c.name } }));
+	const counts = (flow: typeof start) =>
+		flow.andThen(set({ name: 'Counts', fields: { count: (c) => c.orders.length } }));
+	const branches = [names, counts] as const;
+	return workflow(
+		'Both',
+		join === 'append'
+			? start.merge({ name: 'Both', join, branches })
+			: start.merge({ name: 'Both', join, branches }),
+	);
+};
+
+const connections = (json: WorkflowJSON, name: string) =>
+	json.connections[name]?.main.map((targets) =>
+		(targets ?? []).map((target) => `${target.node}#${target.index}`),
+	);
+
+describe('regions compile to legacy nodes', () => {
+	it('wires forEach to Loop Over Items with a reset for the inner loop', () => {
+		const json = forEachWorkflow().toJSON();
+		expect(connections(json, 'Each customer')).toEqual([['Report#0'], ['Orders#0']]);
+		expect(connections(json, 'Each order')).toEqual([['Each customer#0'], ['Line#0']]);
+		expect(connections(json, 'Line')).toEqual([['Each order#0']]);
+		expect(json.nodes.find((n) => n.name === 'Each order')?.parameters).toEqual({
+			batchSize: 2,
+			options: { reset: '={{ !["Line"].includes($prevNode.name) }}' },
+		});
+		expect(validateLoopWiring(json)).toEqual([]);
+	});
+
+	it('wires loop with a typed exit, a next state, and a pass limit', () => {
+		const json = loopWorkflow(10).toJSON();
+		expect(connections(json, 'Count')).toEqual([['Add#0']]);
+		expect(connections(json, 'Add')).toEqual([['Count until#0']]);
+		expect(connections(json, 'Count until')).toEqual([
+			['Result#0'],
+			['Count limit#0'],
+			['Count next#0'],
+		]);
+		expect(connections(json, 'Count next')).toEqual([['Count#0']]);
+		expect(json.nodes.find((n) => n.name === 'Count until')?.parameters).toEqual({
+			mode: 'expression',
+			numberOutputs: 3,
+			output: '={{ ($json.n >= 3) ? 0 : $("Count").item.json["Count pass"] + 1 >= 10 ? 1 : 2 }}',
+		});
+	});
+
+	it('emits every page of paginate and waits between pollUntil attempts', () => {
+		const pages = paginateWorkflow().toJSON();
+		expect(connections(pages, 'Fetch')).toEqual([['Pages until#0', 'Rows#0']]);
+		expect(connections(pages, 'Pages until')?.[0]).toEqual([]);
+		const poll = pollWorkflow().toJSON();
+		expect(connections(poll, 'Poll next')).toEqual([['Poll wait#0']]);
+		expect(connections(poll, 'Poll wait')).toEqual([['Poll#0']]);
+		expect(poll.nodes.find((n) => n.name === 'Poll wait')?.parameters).toEqual({
+			resume: 'timeInterval',
+			amount: 0,
+			unit: 'seconds',
+		});
+	});
+
+	it('routes switch cases by output, and merges branches by input', () => {
+		const triage = switchWorkflow().toJSON();
+		expect(connections(triage, 'By kind')).toEqual([['Bug#0'], ['Feature#0'], ['Chore#0']]);
+		const joined = mergeWorkflow().toJSON();
+		expect(connections(joined, 'Customers')).toEqual([['Names#0', 'Counts#0']]);
+		expect(connections(joined, 'Names')).toEqual([['Join#0']]);
+		expect(connections(joined, 'Counts')).toEqual([['Join#1']]);
+		const byName = switchDefaultWorkflow().toJSON();
+		expect(connections(byName, 'By name')).toEqual([['Ada#0'], ['Rest#0']]);
+	});
+
+	it.each([
+		['forEach', forEachWorkflow],
+		['loop', () => loopWorkflow(10)],
+		['paginate', paginateWorkflow],
+		['pollUntil', pollWorkflow],
+		['switch', switchWorkflow],
+		['switch with default', switchDefaultWorkflow],
+		['filter', filterWorkflow],
+		['merge by fields', mergeWorkflow],
+		['merge append', () => mergeJoinWorkflow('append')],
+		['merge position', () => mergeJoinWorkflow('position')],
+	])('%s: workflow validation finds no issues', (_kind, make) => {
+		const { errors, warnings } = make().validate();
+		expect([...errors, ...warnings]).toEqual([]);
+	});
+
+	it('accepts a loop region inside forEach', () => {
+		const json = workflow(
+			'Retry each',
+			manual()
+				.andThen(customers('Customers'))
+				.forEach({
+					name: 'Each',
+					batchSize: 1,
+					body: (each) =>
+						each.loop({
+							name: 'Count',
+							maxIterations: 3,
+							body: (pass) => pass.andThen(set({ name: 'Add', fields: { id: (c) => c.id } })),
+							until: () => true,
+							next: (out, $) => ({ ...$('Count'), id: out.id }),
+						}),
+				}),
+		).toJSON();
+		expect(connections(json, 'Count until')).toEqual([
+			['Each#0'],
+			['Count limit#0'],
+			['Count next#0'],
+		]);
+		expect(validateLoopWiring(json)).toEqual([]);
+	});
+
+	it('reports forEach bodies that do not return each batch once as build problems', () => {
+		const paged = workflow(
+			'Pages per customer',
+			manual()
+				.andThen(set({ name: 'Start', fields: { cursor: 0 } }))
+				.forEach({
+					name: 'Each',
+					batchSize: 1,
+					body: (each) =>
+						each.paginate({
+							name: 'Pages',
+							maxPages: 3,
+							request: (page) => page.andThen(set({ name: 'Fetch', fields: { next: null } })),
+							next: () => null,
+						}),
+				}),
+		);
+		expect(() => paged.toJSON()).toThrow(/Fetch returns to Each on every pass of an inner loop/);
+		const filtered = workflow(
+			'Filtered',
+			manual()
+				.andThen(customers('Customers'))
+				.forEach({
+					name: 'Each',
+					batchSize: 1,
+					body: (each) => each.filter({ name: 'Has orders', if: (c) => c.orders.length > 0 }),
+				}),
+		);
+		expect(() => filtered.toJSON()).toThrow(/Has orders can drop a whole batch/);
+		const branched = workflow(
+			'Branched',
+			manual()
+				.andThen(customers('Customers'))
+				.forEach({
+					name: 'Each',
+					batchSize: 1,
+					body: (each) =>
+						each.branch({
+							name: 'Has orders?',
+							if: (c) => c.orders.length > 0,
+							then: (flow) => flow.andThen(set({ name: 'Keep', fields: { id: (c) => c.id } })),
+						}),
+				}),
+		);
+		expect(() => branched.toJSON()).toThrow(/output 1 of Has orders\? never return to Each/);
+	});
+
+	it('reports a bad batch size and an empty body as build problems', () => {
+		const empty = workflow(
+			'Empty',
+			manual().forEach({ name: 'Loop', batchSize: 0, body: (each) => each }),
+		);
+		expect(() => empty.toJSON()).toThrow(/batchSize must be a whole number[\s\S]*needs a body/);
+	});
+
+	it('types items through regions', () => {
+		const start = manual().andThen(customers('Customers'));
+		start.forEach({
+			name: 'Each',
+			batchSize: 1,
+			body: (each) =>
+				each.andThen(
+					set({
+						name: 'Read',
+						fields: {
+							name: (c) => c.name,
+							// @ts-expect-error unknown field
+							typo: (c) => c.nme,
+						},
+					}),
+				),
+		});
+		start.andThen(splitOut({ name: 'Orders', field: 'orders' })).andThen(
+			set({
+				name: 'Order',
+				fields: {
+					total: (o) => o.total,
+					// @ts-expect-error an order has no name
+					name: (o) => o.name,
+				},
+			}),
+		);
+		start
+			.andThen(splitOut({ name: 'Tags', field: 'tags' }))
+			.andThen(set({ name: 'Tag', fields: { tag: (t) => t.tags.toUpperCase() } }));
+		// @ts-expect-error name is not a list
+		start.andThen(splitOut({ name: 'Bad', field: 'name' }));
+
+		const triage = manual().andThen(tickets('Tickets'));
+		triage.switch({
+			name: 'Kind',
+			on: 'kind',
+			cases: {
+				bug: (bug) => bug.andThen(set({ name: 'B', fields: { s: (t) => t.severity } })),
+				// @ts-expect-error a feature has no severity
+				feature: (f) => f.andThen(set({ name: 'F', fields: { s: (t) => t.severity } })),
+				chore: (c) => c,
+			},
+		});
+		triage.switch({
+			name: 'Kind',
+			on: 'kind',
+			// @ts-expect-error the chore case is missing
+			cases: {
+				bug: (bug) => bug,
+				feature: (f) => f,
+			},
+		});
+		manual()
+			.andThen(customers('Customers'))
+			// @ts-expect-error a plain string field needs a default
+			.switch({ name: 'By name', on: 'name', cases: { a: (f) => f } });
+		manual()
+			.andThen(customers('Customers'))
+			.switch({ name: 'By name', on: 'name', cases: { a: (f) => f }, default: (f) => f });
+
+		triage
+			.filter({ name: 'Bugs', if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug' })
+			.andThen(set({ name: 'Sev', fields: { s: (t) => t.severity } }));
+
+		manual()
+			.andThen(set({ name: 'Init', fields: { n: 0 } }))
+			.loop({
+				name: 'L',
+				maxIterations: 3,
+				body: (pass) => pass.andThen(set({ name: 'Inc', fields: { m: (s) => s.n + 1 } })),
+				until: (out) => out.m > 2,
+				// @ts-expect-error the next state needs n
+				next: (out) => ({ m: out.m }),
+			});
+
+		const joined = manual()
+			.andThen(customers('Customers'))
+			.merge({
+				name: 'J',
+				join: 'position',
+				branches: [
+					(f) => f.andThen(set({ name: 'A', fields: { a: 1 } })),
+					(f) => f.andThen(set({ name: 'B', fields: { b: 'x' } })),
+				],
+			});
+		joined.andThen(set({ name: 'AB', fields: { ab: (row) => `${row.a}${row.b}` } }));
+		manual()
+			.andThen(customers('Customers'))
+			.merge({
+				name: 'J',
+				// @ts-expect-error B has no field id
+				join: { left: 'id', right: 'id' },
+				branches: [(f) => f, (f) => f.andThen(set({ name: 'B', fields: { b: 1 } }))],
+			});
+	});
+});
+
+const modules: Record<string, unknown> = { '@n8n/workflow-sdk/next': next };
+
+function build(source: string): WorkflowJSON {
+	const code = source
+		.replace(/^import \{ ([^}]+) \} from '([^']+)';$/gm, "const { $1 } = require('$2');")
+		.replace('export default ', 'module.exports.default = ');
+	const module = { exports: { default: undefined as unknown } };
+	vm.runInNewContext(code, { require: (id: string) => modules[id], module });
+	return (module.exports.default as next.Workflow).toJSON();
+}
+
+const withoutIds = (json: WorkflowJSON) => ({
+	...json,
+	nodes: json.nodes.map(({ id: _id, ...rest }) => rest),
+});
+
+describe('regions round-trip through decompile', () => {
+	it.each([
+		['forEach', forEachWorkflow, '.forEach({'],
+		['loop', () => loopWorkflow(10), '.loop({'],
+		['paginate', paginateWorkflow, '.paginate({'],
+		['pollUntil', pollWorkflow, '.pollUntil({'],
+		['switch', switchWorkflow, '.switch({'],
+		['switch with default', switchDefaultWorkflow, 'default: (flow) =>'],
+		['filter', filterWorkflow, '.filter({'],
+		['merge', mergeWorkflow, '.merge({'],
+		['merge append', () => mergeJoinWorkflow('append'), 'join: "append"'],
+		['merge position', () => mergeJoinWorkflow('position'), 'join: "position"'],
+	])('%s: compile, decompile, compile is stable', (_kind, make, call) => {
+		const json = make().toJSON();
+		const source = decompileWorkflow(json, new Map());
+		if (source === undefined) throw new Error('workflow did not decompile');
+		expect(source).toContain(call);
+		const rebuilt = build(source);
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(decompileWorkflow(rebuilt, new Map())).toBe(source);
+	});
+
+	it('reads a nested forEach back as nested regions', () => {
+		const source = decompileWorkflow(forEachWorkflow().toJSON(), new Map()) ?? '';
+		expect(source).toMatch(/\.forEach\(\{\s+name: "Each customer",\s+batchSize: 1,/);
+		expect(source).toContain('body: (each) => each');
+		expect(source.match(/\.forEach\(/g)).toHaveLength(2);
+	});
+
+	it('keeps a hand-wired loop that is not a region out of the typed format', () => {
+		const json = forEachWorkflow().toJSON();
+		const unwired = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2, options: {} } } : n,
+			),
+		};
+		expect(decompileWorkflow(unwired, new Map())).toBeUndefined();
+	});
+});
+
+describe('loopWiringIssues', () => {
+	const sib = (name: string, version = 3, parameters: Record<string, unknown> = {}) => ({
+		name,
+		type: 'n8n-nodes-base.splitInBatches',
+		version,
+		parameters,
+	});
+	const plain = (name: string, type = 'n8n-nodes-base.set') => ({ name, type, version: 1 });
+	const edge = (from: string, output: number, to: string) => ({ from, output, to });
+	const codes = (nodes: Parameters<typeof loopWiringIssues>[0], edges: typeof all) =>
+		loopWiringIssues(nodes, edges).map(({ code, nodeName }) => `${code}@${nodeName}`);
+	const all = [edge('Start', 0, 'Loop')];
+
+	it('accepts a well-wired loop of version 3 and of version 2', () => {
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), plain('Work'), plain('After')],
+				[
+					edge('Start', 0, 'Loop'),
+					edge('Loop', 1, 'Work'),
+					edge('Work', 0, 'Loop'),
+					edge('Loop', 0, 'After'),
+				],
+			),
+		).toEqual([]);
+		expect(
+			codes(
+				[plain('Start'), sib('Loop', 2), plain('Work')],
+				[edge('Start', 0, 'Loop'), edge('Loop', 0, 'Work'), edge('Work', 0, 'Loop')],
+			),
+		).toEqual([]);
+	});
+
+	it('catches a loop output that feeds nothing', () => {
+		expect(
+			codes([plain('Start'), sib('Loop'), plain('After')], [...all, edge('Loop', 0, 'After')]),
+		).toEqual(['LOOP_BODY_MISSING@Loop']);
+	});
+
+	it('catches a body that never returns', () => {
+		expect(
+			codes([plain('Start'), sib('Loop'), plain('Work')], [...all, edge('Loop', 1, 'Work')]),
+		).toEqual(['LOOP_NO_RETURN@Loop']);
+	});
+
+	it('catches done and loop swapped', () => {
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), plain('Work'), plain('After')],
+				[...all, edge('Loop', 0, 'Work'), edge('Work', 0, 'Loop'), edge('Loop', 1, 'After')],
+			),
+		).toEqual(['LOOP_OUTPUTS_SWAPPED@Loop']);
+	});
+
+	it('catches a branch in the body whose output does not return', () => {
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), plain('Check', 'n8n-nodes-base.if'), plain('Work')],
+				[...all, edge('Loop', 1, 'Check'), edge('Check', 0, 'Work'), edge('Work', 0, 'Loop')],
+			),
+		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Check']);
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), plain('Keep', 'n8n-nodes-base.filter')],
+				[...all, edge('Loop', 1, 'Keep'), edge('Keep', 0, 'Loop')],
+			),
+		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Keep']);
+	});
+
+	it('accepts a branch output that fails the run with Stop and Error', () => {
+		expect(
+			codes(
+				[
+					plain('Start'),
+					sib('Loop'),
+					plain('Check', 'n8n-nodes-base.if'),
+					plain('Work'),
+					plain('Fail', 'n8n-nodes-base.stopAndError'),
+				],
+				[
+					...all,
+					edge('Loop', 1, 'Check'),
+					edge('Check', 0, 'Work'),
+					edge('Check', 1, 'Fail'),
+					edge('Work', 0, 'Loop'),
+				],
+			),
+		).toEqual([]);
+	});
+
+	it('checks the outer body before an inner loop', () => {
+		const reset = { options: { reset: '={{ $prevNode.name === "Check" }}' } };
+		expect(
+			codes(
+				[
+					plain('Start'),
+					sib('Outer'),
+					plain('Check', 'n8n-nodes-base.if'),
+					sib('Inner', 3, reset),
+					plain('Work'),
+					plain('After'),
+				],
+				[
+					edge('Start', 0, 'Outer'),
+					edge('Outer', 1, 'Check'),
+					edge('Check', 0, 'Inner'),
+					edge('Inner', 1, 'Work'),
+					edge('Work', 0, 'Inner'),
+					edge('Inner', 0, 'After'),
+					edge('After', 0, 'Outer'),
+				],
+			),
+		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Check']);
+	});
+
+	it('catches a nested loop without reset, and a Merge in a body', () => {
+		const nodes = [
+			plain('Start'),
+			sib('Outer'),
+			sib('Inner'),
+			plain('Work'),
+			plain('Join', 'n8n-nodes-base.merge'),
+		];
+		const edges = [
+			edge('Start', 0, 'Outer'),
+			edge('Outer', 1, 'Inner'),
+			edge('Inner', 1, 'Work'),
+			edge('Work', 0, 'Inner'),
+			edge('Inner', 0, 'Join'),
+			edge('Join', 0, 'Outer'),
+		];
+		expect(codes(nodes, edges)).toEqual(['LOOP_NESTED_NO_RESET@Inner', 'LOOP_MERGE_IN_BODY@Join']);
+		const withReset = (reset: string) =>
+			nodes.map((n) => (n.name === 'Inner' ? sib('Inner', 3, { options: { reset } }) : n));
+		expect(codes(withReset('={{ $prevNode.name === "Outer" }}'), edges)).toEqual([
+			'LOOP_MERGE_IN_BODY@Join',
+		]);
+		expect(codes(withReset('={{ true }}'), edges)).toEqual([
+			'LOOP_NESTED_NO_RESET@Inner',
+			'LOOP_MERGE_IN_BODY@Join',
+		]);
+	});
+
+	it('catches a forEach reset that names a renamed return node', () => {
+		const nodes = [
+			plain('Start'),
+			sib('Loop', 3, { options: { reset: '={{ !["Old name"].includes($prevNode.name) }}' } }),
+			plain('Work'),
+		];
+		expect(codes(nodes, [...all, edge('Loop', 1, 'Work'), edge('Work', 0, 'Loop')])).toEqual([
+			'LOOP_RESET_STALE@Loop',
+		]);
+	});
+
+	it('reports loop wiring in next workflow validation only', () => {
+		const handWired = workflow(
+			'Hand-wired',
+			manual()
+				.andThen(
+					node({
+						name: 'Loop',
+						type: 'n8n-nodes-base.splitInBatches',
+						version: 3,
+						parameters: { batchSize: 1 },
+					}),
+				)
+				.andThen(set({ name: 'Work', fields: { done: true } })),
+		);
+		const codesOf = (issues: ReadonlyArray<{ code: string }>) => issues.map(({ code }) => code);
+		expect(codesOf(handWired.validate().errors)).toEqual(['LOOP_BODY_MISSING']);
+		const legacy = legacyWorkflow.fromJSON(handWired.toJSON()).validate();
+		expect(codesOf([...legacy.errors, ...legacy.warnings])).not.toContain('LOOP_BODY_MISSING');
+	});
+});

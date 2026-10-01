@@ -1,0 +1,59 @@
+{
+	"executions": [
+		{
+			"name": "sorts by age, then by name without case",
+			"params": {
+				"by": [
+					{
+						"field": "age",
+						"order": "descending"
+					},
+					{
+						"field": "name"
+					}
+				]
+			},
+			"items": [
+				{
+					"name": "Ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				},
+				{
+					"name": "Linus",
+					"age": 17,
+					"team": "kernel",
+					"tags": []
+				},
+				{
+					"name": "ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"name": "Ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				},
+				{
+					"name": "ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				},
+				{
+					"name": "Linus",
+					"age": 17,
+					"team": "kernel",
+					"tags": []
+				}
+			]
+		}
+	]
+}

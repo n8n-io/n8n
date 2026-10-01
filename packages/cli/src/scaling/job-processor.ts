@@ -46,6 +46,7 @@ import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/sh
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -189,6 +190,8 @@ export class JobProcessor {
 			workflowTimeout = Math.min(workflowTimeout, this.executionsConfig.maxTimeout);
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
+
+		await prepareNodeContractsRun(execution.workflowData);
 
 		const workflow = new Workflow({
 			id: workflowId,

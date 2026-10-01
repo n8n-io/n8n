@@ -1,0 +1,34 @@
+{
+	"executions": [
+		{
+			"name": "a person",
+			"params": {
+				"user": "6794760a-1f15-45cd-9c65-0dfe42f5135a"
+			},
+			"responses": [
+				{
+					"object": "user",
+					"id": "6794760a-1f15-45cd-9c65-0dfe42f5135a",
+					"type": "person",
+					"name": "Ada",
+					"avatar_url": null,
+					"person": {
+						"email": "ada@example.com"
+					}
+				}
+			],
+			"output": [
+				{
+					"object": "user",
+					"id": "6794760a-1f15-45cd-9c65-0dfe42f5135a",
+					"type": "person",
+					"name": "Ada",
+					"avatar_url": null,
+					"person": {
+						"email": "ada@example.com"
+					}
+				}
+			]
+		}
+	]
+}

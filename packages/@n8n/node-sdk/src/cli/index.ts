@@ -2,9 +2,10 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import type { ICredentialType } from 'n8n-workflow';
 
 import { generateNodeModule } from '../codegen';
-import { toContract, type Action, type CredentialDefinition } from '../define';
+import { toContract, type Action } from '../define';
 import { nodeNameOf } from '../runtime';
 import { runAction } from '../testing';
 import { checkContracts, loadProject, type Project } from './project';
@@ -169,7 +170,7 @@ async function describe(root: string, id: string | undefined) {
 
 const upperSnake = (name: string) => words(name).join('_').toUpperCase();
 
-function credentialFromEnv(definition: CredentialDefinition, prefix: string) {
+function credentialFromEnv(definition: ICredentialType, prefix: string) {
 	const variable = (field: string) => `${prefix.replace(/_$/, '')}_${upperSnake(field)}`;
 	const missing = definition.properties
 		.filter(({ name, required }) => required && process.env[variable(name)] === undefined)
@@ -224,7 +225,6 @@ async function run(
 	const credential = readCredential(project, action, options);
 	const result = await runAction(action, {
 		input: parseInput(options.input ?? '{}'),
-		credentials: project.credentials,
 		...(credential ? { credential } : {}),
 	});
 	if (!result.ok) {

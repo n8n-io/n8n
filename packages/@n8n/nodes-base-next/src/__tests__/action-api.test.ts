@@ -1,4 +1,6 @@
 import {
+	contractHash,
+	diffContracts,
 	parseFixtures,
 	parseManifest,
 	setActionApiRange,
@@ -83,8 +85,12 @@ describe('n8n:action@1 next to @2', () => {
 		expect(JSON.parse(v1Text)).toMatchObject({ abi: 1, semver: '1.1.0' });
 		expect(JSON.parse(v1Text)).not.toHaveProperty('apiVersion');
 		expect(v1.manifest.apiVersion).toBe('n8n:action@1.0.0');
-		expect(head?.manifest.apiVersion).toBe('n8n:action@2.0.0');
-		expect(v1.manifest.contractHash).toBe(head?.manifest.contractHash);
+		expect(head?.manifest.apiVersion).toBe('n8n:action@2.1.0');
+		if (!head) throw new Error(`${ID} has no bundled HEAD`);
+		// HEAD declares the scopes the @1 version did not have; the rest of the contract is equal.
+		expect(diffContracts(v1.manifest.contract, head.manifest.contract).kind).toBe('minor');
+		const { scopes: _, ...unscoped } = head.manifest.contract;
+		expect(contractHash(unscoped)).toBe(v1.manifest.contractHash);
 	});
 
 	it('replay the same fixtures with the same items', async () => {

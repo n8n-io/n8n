@@ -3,9 +3,9 @@
 /// gives the JSON form of each type for the process and container runtimes.
 ///
 /// The package version is the `apiVersion` of a bundle, independent of the n8n version. A
-/// minor adds an optional import or field. A major breaks. The host implements 2.0.0. The
-/// items with `@since(version = 2.1.0)` are a draft.
-package n8n:action@2.1.0;
+/// minor adds an optional import or field. A major breaks. The host implements 2.2.0. A
+/// bundle without binary data targets 2.1.0, so a 2.1.0 host still runs it.
+package n8n:action@2.2.0;
 
 @since(version = 2.0.0)
 interface types {
@@ -80,7 +80,8 @@ interface log {
 
 @since(version = 2.0.0)
 interface limits {
-    /// The limits for one input item. The host enforces them.
+    /// The limits for one run: one input item, or all input items of a `batch` run. The host
+    /// enforces them.
     record run-limits {
         /// A page is one request.
         max-requests: u32,
@@ -113,34 +114,74 @@ interface action {
         /// The host validates each item against the contract output.
         next: func() -> result<option<json>, run-error>;
     }
+
+    /// One output of an `item-run`.
+    @since(version = 2.1.0)
+    variant output {
+        /// A new item from the current input item of a `per-item` or `1:N` run.
+        item(json),
+        /// The input item at this index, passed on unchanged with its binary data.
+        passed(u32),
+        /// A new item of a `batch` run, made from the input items at these indexes.
+        made(tuple<json, list<u32>>),
+    }
+
+    @since(version = 2.1.0)
+    record routed-output {
+        /// One of the named outputs of the contract. None when the contract has none.
+        to: option<string>,
+        output: output,
+    }
+
+    /// The run that reads input items. A `per-item` or `1:N` action runs once per input item,
+    /// with that item as the only entry of `items`. A `batch` action runs once with all items
+    /// and the input of the first item. The host runs `item-run` for a bundle of 2.1.0 or newer.
+    @since(version = 2.1.0)
+    resource item-run {
+        constructor(input: json, items: list<json>);
+        /// The next output, or none at the end. The host validates each item against the
+        /// contract output, and checks each index and output name.
+        next: func() -> result<option<routed-output>, run-error>;
+    }
 }
 
-/// Binary data stays in the host. An action holds a handle and never gets all the bytes at once.
-@since(version = 2.1.0)
+/// Binary data stays in the host. An action holds a handle and never gets all the bytes at
+/// once. Only an action with a `binary()` field in its contract targets 2.2.0 and gets it.
+///
+/// At a `binary()` position of the contract schema, the JSON of the `run` or `item-run` input
+/// and of each output item holds `{ "$binary": <id> }`. `open` gives the handle of an input id, and
+/// `binary.id` gives the id to put into an output item. A binary output field must be a
+/// top-level field: the host moves it to the `binary` part of the n8n item.
+@since(version = 2.2.0)
 interface binary {
     use http.{http-method, http-target, http-request, http-response, http-failure};
 
     record binary-meta {
         mime-type: string,
         file-name: option<string>,
-        /// Unknown for a stream that is not complete.
-        size: option<u64>,
+        /// The size in bytes. None when the host does not know it.
+        bytes: option<u64>,
     }
 
     resource binary {
         meta: func() -> binary-meta;
         /// Opens a new reader at the first byte.
         reader: func() -> binary-reader;
+        /// The id of this binary in the JSON of an output item.
+        id: func() -> u64;
     }
+
+    /// The binary that the run input names with `{ "$binary": id }`.
+    open: func(id: u64) -> result<binary, string>;
 
     resource binary-reader {
         /// At most `max-bytes`. An empty list is the end.
         read: func(max-bytes: u32) -> result<list<u8>, string>;
     }
 
-    /// Creates a binary from chunks.
+    /// Creates a binary from chunks. The host stores each chunk when it arrives.
     resource binary-writer {
-        constructor(meta: binary-meta);
+        constructor(mime-type: string, file-name: option<string>);
         write: func(chunk: list<u8>) -> result<_, string>;
         /// The writer closes. The host keeps the binary for the execution.
         finish: static func(writer: binary-writer) -> result<binary, string>;
@@ -163,18 +204,20 @@ interface binary {
         retry: option<bool>,
     }
 
-    /// Sends `body` as the request body.
+    /// Sends `body` as the request body, with its MIME type as `content-type` unless
+    /// `headers` set one. The host opens the binary again for a retry.
     send: func(request: binary-request, body: borrow<binary>) -> result<http-response, http-failure>;
 
-    /// Keeps the response body in the host as a binary.
-    fetch: func(request: http-request) -> result<binary-response, http-failure>;
+    /// Keeps the response body in the host as a binary. With `body`, the binary is the
+    /// request body and `request.body` must be none.
+    fetch: func(request: http-request, body: option<borrow<binary>>) -> result<binary-response, http-failure>;
 }
 
 world bundle {
     import http;
     import log;
     import limits;
-    @since(version = 2.1.0)
+    @since(version = 2.2.0)
     import binary;
     export action;
 }

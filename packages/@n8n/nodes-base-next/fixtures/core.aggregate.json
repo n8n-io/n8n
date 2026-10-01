@@ -1,0 +1,49 @@
+{
+	"executions": [
+		{
+			"name": "lists field values",
+			"params": {
+				"aggregate": {
+					"mode": "fields",
+					"fields": [
+						{
+							"field": "name"
+						},
+						{
+							"field": "tags",
+							"as": "allTags"
+						}
+					],
+					"mergeLists": true
+				}
+			},
+			"items": [
+				{
+					"name": "Ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				},
+				{
+					"name": "Linus",
+					"age": 17,
+					"team": "kernel",
+					"tags": []
+				},
+				{
+					"name": "ada",
+					"age": 36,
+					"team": "core",
+					"tags": ["math"]
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"name": ["Ada", "Linus", "ada"],
+					"allTags": ["math", "math"]
+				}
+			]
+		}
+	]
+}

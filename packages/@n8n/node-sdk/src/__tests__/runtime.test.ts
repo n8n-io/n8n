@@ -2,29 +2,37 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import {
 	arr,
+	bool,
+	compat,
+	credential,
 	defineNode,
 	int,
 	isRecord,
 	json,
 	list,
 	obj,
+	oneOf,
 	paginate,
 	parse,
+	passedItem,
 	str,
 	validate,
 	type Action,
 	type ActionFlow,
 	type HttpRequest,
 } from '../index';
-import { executorOf, type ExecutorHost } from '../runtime';
+import { executorOf, outputsPerEntryOf, toNodeType, type ExecutorHost } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
 const echo = defineNode({
 	id: 'echo',
 	displayName: 'Echo',
-	credentials: ['echoApi'],
+	credential: credential({
+		types: [compat('echoApi')],
+		scopes: { 'items:read': 'Read items' },
+		optional: true,
+	}),
 	baseUrl: 'https://echo.test',
-	authOptional: true,
 });
 
 const node: INode = {
@@ -58,7 +66,7 @@ function hostOf(replies: unknown[], overrides: Partial<ExecutorHost> = {}) {
 	const requests: IHttpRequestOptions[] = [];
 	const waits: number[] = [];
 	const host: ExecutorHost = {
-		itemCount: 1,
+		items: [{ json: {} }],
 		node,
 		parameter: () => undefined,
 		request: async (options) => {
@@ -96,7 +104,7 @@ describe('executorOf', () => {
 			});
 			const parameters: Record<string, unknown> = { text: '{"a":1}', data: '{"b":2}' };
 			const { host } = hostOf([], { parameter: (name) => parameters[name] });
-			const items = await executorOf(send)(host);
+			const items = (await executorOf(send)(host))[0] ?? [];
 			expect(items.map(({ json: value }) => value)).toEqual([{ text: '{"a":1}', data: { b: 2 } }]);
 		});
 
@@ -112,9 +120,33 @@ describe('executorOf', () => {
 				},
 			});
 			const { host } = hostOf([], { parameter: (name) => (name === 'paging' ? '{}' : undefined) });
-			const [executed] = await executorOf(paged)(host);
+			const [executed] = (await executorOf(paged)(host))[0] ?? [];
 			const tested = await runAction(paged, { input: { paging: {} } });
 			expect([executed?.json, tested]).toEqual([{ size: 25 }, { ok: true, items: [{ size: 25 }] }]);
+		});
+	});
+
+	describe('setup placeholders', () => {
+		it('asks for setup before the input check and before any request', async () => {
+			const pattern = obj({ id: str().with({ pattern: '^[0-9a-f]{32}$' }) });
+			const fetch = echoItem.action('get', {
+				action: 'Get item',
+				summary: 'Get an item.',
+				flow: { effect: 'read', cardinality: 'per-item' },
+				input: { target: pattern },
+				output: item,
+				async run({ http }) {
+					return parse(item, await http.request({ url: '/item' }));
+				},
+			});
+			const parameters: Record<string, unknown> = {
+				target: { id: '<__PLACEHOLDER_VALUE__Item ID__>' },
+			};
+			const { host, requests } = hostOf([], { parameter: (name) => parameters[name] });
+			await expect(executorOf(fetch)(host)).rejects.toThrow(
+				'Needs setup: fill input.target.id (<__PLACEHOLDER_VALUE__Item ID__>) before the run',
+			);
+			expect(requests).toHaveLength(0);
 		});
 	});
 
@@ -126,7 +158,7 @@ describe('executorOf', () => {
 				reset,
 				[{ id: 'a' }],
 			]);
-			const items = await executorOf(fetchAction({ path: '/items' }))(host);
+			const items = (await executorOf(fetchAction({ path: '/items' }))(host))[0] ?? [];
 			expect(items.map(({ json: value }) => value)).toEqual([{ id: 'a' }]);
 			expect(requests).toHaveLength(3);
 			expect(waits[0]).toBe(2000);
@@ -255,7 +287,7 @@ describe('executorOf', () => {
 				run: async () => await Promise.resolve({ id: 'a' }),
 			} as unknown as Action;
 			await expect(executorOf(returning)(hostOf([]).host)).rejects.toThrow(
-				'echo.item.fetch is 1:N, so run() must yield',
+				'echo.item.fetch is 1:N, so run() must give its outputs as a list or yield them',
 			);
 		});
 	});
@@ -263,8 +295,11 @@ describe('executorOf', () => {
 	describe('lineage', () => {
 		it('pairs each output with its input item, also for an error item', async () => {
 			const replies = [[{ id: 'a' }, { id: 'b' }], httpError(404)];
-			const { host } = hostOf(replies, { itemCount: 2, continueOnFail: () => true });
-			const items = await executorOf(fetchAction({ path: '/items' }))(host);
+			const { host } = hostOf(replies, {
+				items: [{ json: {} }, { json: {} }],
+				continueOnFail: () => true,
+			});
+			const items = (await executorOf(fetchAction({ path: '/items' }))(host))[0] ?? [];
 			expect(items).toEqual([
 				{ json: { id: 'a' }, pairedItem: { item: 0 } },
 				{ json: { id: 'b' }, pairedItem: { item: 0 } },
@@ -288,9 +323,9 @@ describe('types', () => {
 			{ url: 'https://echo.test', path: '/items' },
 		];
 		const definition = { ...fetchSpec, flow: read, async *run() {} };
-		echoItem.action('fetch', { ...definition, credentials: ['echoApi'] });
-		// @ts-expect-error the credential is not one of the node's
-		echoItem.action('fetch', { ...definition, credentials: ['typoApi'] });
+		echoItem.action('fetch', { ...definition, scopes: ['items:read'] });
+		// @ts-expect-error the scope is not one of the node's credential
+		echoItem.action('fetch', { ...definition, scopes: ['items:write'] });
 		expect(requests).toHaveLength(5);
 	});
 });
@@ -369,14 +404,14 @@ describe('paginate', () => {
 
 	it('follows the cursor to the last page', async () => {
 		const { host, requests } = hostOf([page(['a', 'b'], 'c2'), page(['c'])]);
-		const items = await executorOf(pagedAction())(host);
+		const items = (await executorOf(pagedAction())(host))[0] ?? [];
 		expect(items.map(({ json: value }) => value.id)).toEqual(['a', 'b', 'c']);
 		expect(requests.map(({ qs }) => qs)).toEqual([{}, { cursor: 'c2' }]);
 	});
 
 	it('asks each page for the room the limit leaves and stops at the limit', async () => {
 		const { host, requests } = hostOf([page(['a', 'b'], 'c2'), page(['c', 'd'], 'c3')]);
-		const items = await executorOf(pagedAction(3))(host);
+		const items = (await executorOf(pagedAction(3))(host))[0] ?? [];
 		expect(items.map(({ json: value }) => value.id)).toEqual(['a', 'b', 'c']);
 		expect(requests.map(({ qs }) => qs)).toEqual([{ size: 3 }, { cursor: 'c2', size: 1 }]);
 	});
@@ -418,5 +453,249 @@ describe('query', () => {
 		expect(result).toEqual({ ok: true, items: [{ id: 'a' }] });
 		expect(fetch.calls[0]?.url).toBe('https://echo.test/items?id=a&id=b&q=x');
 		expect(fetch.calls[0]?.query).toEqual({ id: ['a', 'b'], q: 'x' });
+	});
+});
+
+describe('batch and named outputs', () => {
+	const core = defineNode({ id: 'core', displayName: 'Core' });
+	const row = (id: string) => ({
+		json: { id },
+		binary: { file: { data: id, mimeType: 'text/plain' } },
+	});
+	const batchHost = (items: ExecutorHost['items'], parameters: Record<string, unknown> = {}) =>
+		hostOf([], { items, parameter: (name) => parameters[name] }).host;
+
+	const reverse = core.action('reverse', {
+		action: 'Reverse items',
+		summary: 'Reverse the items.',
+		flow: { effect: 'transform', cardinality: 'batch' },
+		input: {},
+		output: json(),
+		run: ({ items }) => [...items].reverse().map((item) => ({ item })),
+	});
+
+	const count = core.action('count', {
+		action: 'Count items',
+		summary: 'Count the items.',
+		flow: { effect: 'transform', cardinality: 'batch' },
+		input: {},
+		output: obj({ count: int() }),
+		run: ({ items }) => [{ json: { count: items.length }, from: items }],
+	});
+
+	const check = core.action('check', {
+		action: 'Check items',
+		summary: 'Route each item by a flag.',
+		flow: { effect: 'transform', cardinality: 'per-item' },
+		input: { pass: bool() },
+		output: json(),
+		outputs: ['true', 'false'],
+		run: async ({ input, item }) =>
+			await Promise.resolve({ to: input.pass ? 'true' : 'false', item }),
+	});
+
+	const route = core.action('route', {
+		action: 'Route items',
+		summary: 'Route each item to the case it names.',
+		flow: { effect: 'transform', cardinality: '1:N' },
+		input: { cases: arr(obj({ output: str() })), pick: str() },
+		output: json(),
+		outputs: { each: 'cases', then: ['fallback'] },
+		async *run({ input, item }) {
+			yield {
+				to: input.cases.some(({ output }) => output === input.pick) ? input.pick : 'fallback',
+				item,
+			};
+		},
+	});
+
+	it('passes batch items on unchanged, binary data too, paired with their input item', async () => {
+		const items = [row('a'), row('b')];
+		expect(await executorOf(reverse)(batchHost(items))).toEqual([
+			[
+				{ ...items[1], pairedItem: { item: 1 } },
+				{ ...items[0], pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
+	it('pairs a new batch item with every input item it names, and runs no batch without items', async () => {
+		expect(await executorOf(count)(batchHost([row('a'), row('b')]))).toEqual([
+			[{ json: { count: 2 }, pairedItem: [{ item: 0 }, { item: 1 }] }],
+		]);
+		expect(await executorOf(count)(batchHost([]))).toEqual([[]]);
+	});
+
+	it('refuses a batch output from an item that is not an input item, or from no item', async () => {
+		const forged = core.action('forge', {
+			action: 'Forge',
+			summary: 'Forge lineage.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			input: { none: bool().default(false) },
+			output: json(),
+			run: ({ input, items }) => [
+				{ json: {}, from: input.none ? [] : { json: { ...items[0]?.json } } },
+			],
+		});
+		await expect(executorOf(forged)(batchHost([row('a')]))).rejects.toThrow(
+			'names an item that is not an input item',
+		);
+		await expect(executorOf(forged)(batchHost([row('a')], { none: true }))).rejects.toThrow(
+			'comes from no input item',
+		);
+	});
+
+	it('routes per-item outputs to their named output', async () => {
+		const items = [row('a'), row('b')];
+		const host = hostOf([], {
+			items,
+			parameter: (name, index) => (name === 'pass' ? index === 0 : undefined),
+		}).host;
+		expect(await executorOf(check)(host)).toEqual([
+			[{ ...items[0], pairedItem: { item: 0 } }],
+			[{ ...items[1], pairedItem: { item: 1 } }],
+		]);
+	});
+
+	it('runs a routed action outside n8n and gives the items of each output', async () => {
+		expect(await runAction(check, { input: { pass: false }, items: [{ id: 'a' }] })).toEqual({
+			ok: true,
+			items: [{ id: 'a' }],
+			outputs: [[], [{ id: 'a' }]],
+		});
+	});
+
+	it('sends an error item to the last output on continue-on-fail', async () => {
+		const items = [row('a'), row('b')];
+		const host = hostOf([], {
+			items,
+			continueOnFail: () => true,
+			parameter: (name, index) => (name === 'pass' && index === 0 ? true : undefined),
+		}).host;
+		expect(await executorOf(check)(host)).toEqual([
+			[{ ...items[0], pairedItem: { item: 0 } }],
+			[{ json: { error: 'input.pass: is required' }, pairedItem: { item: 1 } }],
+		]);
+	});
+
+	it('names outputs after input entries, then the fixed ones, and refuses two outputs of one name', async () => {
+		const items = [row('a')];
+		const host = (cases: unknown[], pick: string) =>
+			hostOf([], { items, parameter: (name) => ({ cases, pick })[name] }).host;
+		expect(await executorOf(route)(host([{ output: 'x' }, { output: 'y' }], 'y'))).toEqual([
+			[],
+			[{ ...items[0], pairedItem: { item: 0 } }],
+			[],
+		]);
+		expect((await executorOf(route)(host([{ output: 'x' }], 'z')))[1]).toHaveLength(1);
+		await expect(executorOf(route)(host([{ output: 'x' }, { output: 'x' }], 'x'))).rejects.toThrow(
+			'two outputs named "x"',
+		);
+	});
+
+	it('passes the current item on from a per-item action without named outputs', async () => {
+		const keep = core.action('keep', {
+			action: 'Keep',
+			summary: 'Pass items on.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			input: { mode: oneOf('same', 'other', 'made') },
+			output: passedItem(),
+			run: async ({ input, item }) =>
+				await Promise.resolve(
+					input.mode === 'same' ? { item } : input.mode === 'other' ? { item: { json: {} } } : {},
+				),
+		});
+		const items = [row('a')];
+		const host = (mode: string) => batchHost(items, { mode });
+		expect(await executorOf(keep)(host('same'))).toEqual([
+			[{ ...items[0], pairedItem: { item: 0 } }],
+		]);
+		await expect(executorOf(keep)(host('made'))).rejects.toThrow('output 0 must be { item }');
+		await expect(executorOf(keep)(host('other'))).rejects.toThrow(
+			'passes on an item other than the current item',
+		);
+	});
+
+	it('names outputs per entry from the raw list, so a bad first item or no item keeps them', async () => {
+		const items = [row('a'), row('b')];
+		const cases = [{ output: 'x' }];
+		const host = hostOf([], {
+			items,
+			continueOnFail: () => true,
+			parameter: (name, index) => ({ cases, pick: index === 0 ? undefined : 'x' })[name],
+		}).host;
+		expect(await executorOf(route)(host)).toEqual([
+			[{ ...items[1], pairedItem: { item: 1 } }],
+			[{ json: { error: 'input.pick: is required' }, pairedItem: { item: 0 } }],
+		]);
+		const empty = hostOf([], { items: [], parameter: (name) => ({ cases })[name] }).host;
+		expect(await executorOf(route)(empty)).toEqual([[], []]);
+	});
+
+	it('refuses an output name that is not an output, at compile time and at run time', async () => {
+		core.action('typo', {
+			action: 'Typo',
+			summary: 'Route to a typo.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			input: {},
+			output: json(),
+			outputs: ['kept', 'discarded'],
+			// @ts-expect-error -- "kep" is not an output name
+			run: async ({ item }) => await Promise.resolve({ to: 'kep', item }),
+		});
+		const loose = core.action('loose', {
+			action: 'Loose',
+			summary: 'Route to a name from the input.',
+			flow: { effect: 'transform', cardinality: '1:N' },
+			input: { cases: arr(obj({ output: str() })) },
+			output: json(),
+			outputs: { each: 'cases' },
+			async *run({ item }) {
+				yield { to: 'missing', item };
+			},
+		});
+		const host = hostOf([], {
+			items: [row('a')],
+			parameter: (name) => (name === 'cases' ? [{ output: 'x' }] : undefined),
+		}).host;
+		await expect(executorOf(loose)(host)).rejects.toThrow('"missing", which is not one of x');
+	});
+
+	it('requires lineage on a new batch item and an entry list for outputs per entry', () => {
+		core.action('noLineage', {
+			action: 'No lineage',
+			summary: 'Forget lineage.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			input: {},
+			output: obj({ count: int() }),
+			// @ts-expect-error -- a new batch item must name its input items in `from`
+			run: ({ items }) => [{ json: { count: items.length } }],
+		});
+		core.action('noList', {
+			action: 'No list',
+			summary: 'Name outputs after a field that is not a list.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			input: { pick: str() },
+			output: json(),
+			// @ts-expect-error -- `pick` is not a list of entries with an `output` name
+			outputs: { each: 'pick' },
+			run: async ({ item }) => await Promise.resolve({ to: 'x', item }),
+		});
+	});
+
+	it('projects named outputs onto the n8n node type', () => {
+		const { description } = new (toNodeType(check))();
+		expect([description.outputs, description.outputNames, description.group]).toEqual([
+			['main', 'main'],
+			['true', 'false'],
+			['transform'],
+		]);
+		const dynamic = new (toNodeType(route))().description.outputs;
+		expect(dynamic).toMatch(/^=\{\{\(.*\)\(\$parameter, "cases", \["fallback"\]\)\}\}$/s);
+		expect(outputsPerEntryOf({ cases: '[{"output":"high"},{}]' }, 'cases', ['fallback'])).toEqual([
+			{ type: 'main', displayName: 'high' },
+			{ type: 'main', displayName: '1' },
+			{ type: 'main', displayName: 'fallback' },
+		]);
 	});
 });

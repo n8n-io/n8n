@@ -1398,6 +1398,32 @@ describe('nodes tool', () => {
 			},
 		);
 
+		it('starts the definition of a node without a module with how to use node()', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{ definitions: Array<{ content: string }> }>(
+				createNodesTool(context, 'full'),
+				{
+					action: 'type-definition',
+					nodeTypes: ['n8n-nodes-base.slack', 'n8n-nodes-base.notion', 'n8n-nodes-base.webhook'],
+				},
+			);
+
+			expect(result.definitions[0].content).toBe(
+				"// No typed module. Use node({ name, type: 'n8n-nodes-base.slack', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\nexport type SlackV23Params = {}",
+			);
+			expect(result.definitions[1].content).toBe('export type SlackV23Params = {}');
+			expect(result.definitions[2].content).toBe(
+				"// No typed module. Start the flow with trigger({ name, type: 'n8n-nodes-base.webhook', version: 2.3, parameters, sample }) from '@n8n/workflow-sdk/next'.\nexport type SlackV23Params = {}",
+			);
+
+			context.nodeContractsEnabled = false;
+			const off = await executeTool<{ definitions: Array<{ content: string }> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.slack'] },
+			);
+			expect(off.definitions[0].content).toBe('export type SlackV23Params = {}');
+		});
+
 		it('lists the module actions next to the legacy definition of the same service', async () => {
 			const context = createContractContext();
 			const result = await executeTool<{ definitions: Array<{ actions?: string[] }> }>(
@@ -1407,6 +1433,7 @@ describe('nodes tool', () => {
 
 			expect(result.definitions[0].actions).toEqual([
 				'notion.databasePage.getAll: List pages of a Notion database, optionally filtered and sorted.',
+				'notion.user.get: Get one Notion user (a person or a bot) by ID.',
 			]);
 		});
 

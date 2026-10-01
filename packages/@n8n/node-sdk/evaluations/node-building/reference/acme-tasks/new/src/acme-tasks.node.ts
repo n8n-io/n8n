@@ -1,9 +1,11 @@
-import { defineNode } from '@n8n/node-sdk';
+import { apiKey, credential, defineNode } from '@n8n/node-sdk';
 
 export const node = defineNode({
 	id: 'acmeTasks',
 	displayName: 'Acme Tasks',
-	credentials: ['acmeTasksApi'],
+	credential: credential({
+		types: [apiKey({ name: 'acmeTasksApi', displayName: 'Acme Tasks API', key: 'X-Acme-Key' })],
+	}),
 	baseUrl: 'http://127.0.0.1:18090/acme-tasks/v1',
 });
 

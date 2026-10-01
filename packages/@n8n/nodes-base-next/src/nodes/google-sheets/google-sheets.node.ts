@@ -1,9 +1,9 @@
-import { defineNode, defineResource, ref, str, variant } from '@n8n/node-sdk';
+import { compat, credential, defineNode, defineResource, ref, str, variant } from '@n8n/node-sdk';
 
 export const googleSheets = defineNode({
 	id: 'googleSheets',
 	displayName: 'Google Sheets',
-	credentials: ['googleSheetsOAuth2Api'],
+	credential: credential({ types: [compat('googleSheetsOAuth2Api')] }),
 	baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
 });
 

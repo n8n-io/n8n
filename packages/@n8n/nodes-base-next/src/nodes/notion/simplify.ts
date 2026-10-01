@@ -28,7 +28,7 @@ function simplifyRollup(rollup: unknown): unknown {
 }
 
 /** Mirrors `simplifyProperty` in nodes-base Notion/shared/GenericFunctions.ts. */
-function simplifyProperty(property: unknown): unknown {
+export function simplifyProperty(property: unknown): unknown {
 	if (!isRecord(property) || typeof property.type !== 'string') return undefined;
 	const { type } = property;
 	const value = property[type];

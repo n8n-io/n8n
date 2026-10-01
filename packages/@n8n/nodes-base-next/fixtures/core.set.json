@@ -1,0 +1,31 @@
+{
+	"executions": [
+		{
+			"name": "sets a nested field and keeps all fields",
+			"params": {
+				"fields": {
+					"user.name": "Ada",
+					"count": 2
+				},
+				"include": {
+					"mode": "all"
+				}
+			},
+			"items": [
+				{
+					"id": 1
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"id": 1,
+					"user": {
+						"name": "Ada"
+					},
+					"count": 2
+				}
+			]
+		}
+	]
+}

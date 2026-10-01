@@ -1,12 +1,25 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { readFile } from 'fs/promises';
-import { COMPOSED_NODES, NODE_PACKAGE, withComposedVersions } from '@n8n/nodes-base-next';
+import {
+	actions,
+	COMPOSED_NODES,
+	NODE_PACKAGE,
+	nodeTypeOf,
+	runsActionApi,
+	toVersionedNodeType,
+	toVersionedTriggerType,
+	triggers,
+	withComposedVersions,
+	type ContractStore,
+	type FrozenVersion,
+} from '@n8n/nodes-base-next';
 import { InstanceSettings } from 'n8n-core';
 import {
 	deepCopy,
+	VersionedNodeType,
 	type INodeTypeDescription,
 	type IVersionedNodeType,
 	type LoadedClass,
@@ -17,6 +30,53 @@ import path from 'path';
 // Recent executions only; a contract node reads the meta of its own execution.
 const MAX_CACHED_EXECUTIONS = 100;
 
+/** The action versions that n8n does not bundle, in `<n8nFolder>/node-contracts/`. */
+@Service()
+export class NodeContractsStore {
+	private readonly stores = new Map<string, Promise<ContractStore>>();
+
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
+	) {}
+
+	get dir() {
+		return path.join(this.instanceSettings.n8nFolder, 'node-contracts');
+	}
+
+	/** The store with the configured registry, or with `registryUrl`. */
+	async open(registryUrl = this.globalConfig.instanceAi.nodeContractsRegistryUrl) {
+		const known = this.stores.get(registryUrl);
+		if (known) return await known;
+		const opened = this.create(registryUrl);
+		this.stores.set(registryUrl, opened);
+		return await opened;
+	}
+
+	private async create(registryUrl: string) {
+		const { contractStore } = await import('@n8n/nodes-base-next');
+		const publicKeyFile = this.globalConfig.instanceAi.nodeContractsPublicKeyFile;
+		return contractStore({
+			registryUrl,
+			publicKey: publicKeyFile ? await readFile(publicKeyFile, 'utf8') : undefined,
+			storeDir: this.dir,
+			// The registry URL is operator config, not user input, so the SSRF policy does not apply.
+			fetch: async (url, init) =>
+				await Container.get(OutboundHttp)
+					.transport({ useDefaultSsrfPolicy: 'unsafe' })
+					.asCustomFetch()(url, init),
+		});
+	}
+}
+
+/** The newest stored version of each major, by action id. */
+export async function storedContractVersions(): Promise<
+	ReadonlyMap<string, readonly FrozenVersion[]>
+> {
+	const store = await Container.get(NodeContractsStore).open();
+	return await store.versions();
+}
+
 /**
  * Lets each contract node run the version that the lock in `meta.nodeContracts` resolves to.
  * Known limit: the lock comes from the saved workflow. An execution of an unsaved change or
@@ -25,7 +85,6 @@ const MAX_CACHED_EXECUTIONS = 100;
 export async function useNodeContractsRegistry() {
 	const { instanceAi } = Container.get(GlobalConfig);
 	const { useContractRegistry } = await import('@n8n/nodes-base-next');
-	const publicKeyFile = instanceAi.nodeContractsPublicKeyFile;
 	const metaByExecution = new Map<string, Promise<unknown>>();
 
 	const metaOf = async (workflowId: string | undefined) => {
@@ -38,14 +97,8 @@ export async function useNodeContractsRegistry() {
 
 	useContractRegistry({
 		policy: instanceAi.nodeContractsUpdatePolicy,
-		registryUrl: instanceAi.nodeContractsRegistryUrl,
 		apiRange: instanceAi.nodeContractsApiRange,
-		publicKey: publicKeyFile ? await readFile(publicKeyFile, 'utf8') : undefined,
-		cacheDir: path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts'),
-		// The registry URL is operator config, not user input, so the SSRF policy does not apply.
-		fetch: Container.get(OutboundHttp)
-			.transport({ useDefaultSsrfPolicy: 'unsafe' })
-			.asCustomFetch(),
+		store: await Container.get(NodeContractsStore).open(),
 		metaOf: async (context) => {
 			const { id } = context.getWorkflow();
 			const key = `${context.getExecutionId()}/${id ?? ''}`;
@@ -76,16 +129,57 @@ function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType
 }
 
 /**
- * Adds the composed versions of legacy nodes, for example Notion v4, to the node classes and
- * to the types that the editor reads. The node type of each single action stays for the AI
- * builder and saved workflows, but the nodes panel no longer lists it.
+ * Adds the stored majors of each action and trigger node. n8n bundles only the HEAD, so a
+ * workflow on an older major needs the stored version to render and to run.
+ */
+function withStoredMajors(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	stored: ReadonlyMap<string, readonly FrozenVersion[]>,
+) {
+	const contracts = [
+		...actions.map((contract) => ({ contract, typeOf: toVersionedNodeType })),
+		...triggers.map((contract) => ({ contract, typeOf: toVersionedTriggerType })),
+	];
+	return contracts.flatMap(({ contract, typeOf }) => {
+		const others = (stored.get(contract.id) ?? []).filter(
+			({ manifest }) =>
+				manifest.contract.version !== contract.version && runsActionApi(manifest.apiVersion),
+		);
+		const nodeType = nodeTypeOf(contract);
+		const head = others.length > 0 ? versionedNodeOf(loaders, nodeType) : undefined;
+		if (!head) return [];
+		const { nodeVersions } = new (typeOf(others))();
+		// The loaded HEAD keeps its description and default version.
+		const type = new VersionedNodeType(
+			{ ...nodeVersions, ...head.type.nodeVersions },
+			head.type.description,
+		);
+		const descriptions = others.map(
+			({ manifest }): INodeTypeDescription => ({
+				...manifest.description,
+				name: nodeType,
+				codex: head.type.description.codex,
+			}),
+		);
+		return [{ nodeType, loaded: { ...head, type }, descriptions }];
+	});
+}
+
+/**
+ * Adds the composed versions of legacy nodes, for example Notion v4, and the stored majors of
+ * action nodes to the node classes and to the types that the editor reads. The node type of
+ * each single action stays for the AI builder and saved workflows, but the nodes panel no
+ * longer lists it.
  */
 export function composeContractNodes(
 	loaders: Readonly<Record<string, NodeLoader>>,
 	types: readonly INodeTypeDescription[],
+	stored: ReadonlyMap<string, readonly FrozenVersion[]> = new Map(),
 ) {
-	const nodes = new Map(
-		Object.keys(COMPOSED_NODES).flatMap((nodeType) => {
+	const majors = withStoredMajors(loaders, stored);
+	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>([
+		...majors.map(({ nodeType, loaded }) => [nodeType, loaded] as const),
+		...Object.keys(COMPOSED_NODES).flatMap((nodeType) => {
 			const legacy = versionedNodeOf(loaders, nodeType);
 			if (!legacy) return [];
 			const composed: LoadedClass<IVersionedNodeType> = {
@@ -94,7 +188,7 @@ export function composeContractNodes(
 			};
 			return [[nodeType, composed] as const];
 		}),
-	);
+	]);
 	// A copy, because later steps add options to the properties of the newest version.
 	const added = [...nodes].flatMap(([name, { type }]) =>
 		Object.keys(COMPOSED_NODES[name] ?? {}).map(
@@ -104,12 +198,17 @@ export function composeContractNodes(
 			}),
 		),
 	);
-	const patched = types.map((description): INodeTypeDescription => {
-		const defaultVersion = nodes.get(description.name)?.type.description.defaultVersion;
-		if (defaultVersion !== undefined) return { ...description, defaultVersion };
-		return description.name.startsWith(`${NODE_PACKAGE}.`)
-			? { ...description, hidden: true }
-			: description;
-	});
+	const patched = [...types, ...majors.flatMap(({ descriptions }) => descriptions)].map(
+		(description): INodeTypeDescription => {
+			const defaultVersion =
+				description.name in COMPOSED_NODES
+					? nodes.get(description.name)?.type.description.defaultVersion
+					: undefined;
+			if (defaultVersion !== undefined) return { ...description, defaultVersion };
+			return description.name.startsWith(`${NODE_PACKAGE}.`)
+				? { ...description, hidden: true }
+				: description;
+		},
+	);
 	return { nodes, types: [...patched, ...added] };
 }

@@ -38,6 +38,7 @@ import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
+import { isTriggerNodeType } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -556,10 +557,19 @@ async function resolveNodeTypeDefinitions(
 				};
 			}
 
+			// The agent maps a classic definition to a guessed module unless told how to use it.
+			// A flow starts only from a trigger, so a trigger gets trigger(), not node().
+			const version = result.version ?? '<version>';
+			const noModuleHint =
+				!context.nodeContractsEnabled || moduleNode
+					? ''
+					: isTriggerNodeType(nodeType)
+						? `// No typed module. Start the flow with trigger({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'.\n`
+						: `// No typed module. Use node({ name, type: '${nodeType}', version: ${version}, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\n`;
 			return {
 				nodeType,
 				version: result.version,
-				content: result.content,
+				content: `${noModuleHint}${result.content}`,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
 				...(actions.length ? { actions } : {}),

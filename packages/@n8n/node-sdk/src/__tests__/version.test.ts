@@ -16,6 +16,7 @@ import {
 	obj,
 	openContractPackage,
 	packageNameOf,
+	parseFixtures,
 	parseManifest,
 	resolveContractVersion,
 	setActionApiRange,
@@ -27,6 +28,7 @@ import {
 	ACTION_API_VERSION,
 	type ActionApiVersion,
 	type ActionFlow,
+	type ContractDocument,
 	type ContractFixtures,
 	type FrozenVersion,
 	type Shape,
@@ -43,7 +45,7 @@ import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import { DEFAULT_ACTION_API_RANGE, semverRange, sha256 } from '../version';
 
-const demo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] });
+const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
 
 const contractOf = ({
@@ -85,6 +87,49 @@ describe('contractHash', () => {
 		expect(contractHash(contractOf({ input: { text: str().optional() } }))).not.toBe(
 			contractHash(base),
 		);
+	});
+});
+
+describe('named outputs', () => {
+	const base = contractOf();
+	const routed = (outputs: ContractDocument['outputs']) => ({ ...base, outputs });
+
+	it('leave the hash of an action with one output as it was, and hash the output list', () => {
+		expect(contractHash({ ...base, outputs: undefined })).toBe(contractHash(base));
+		expect(contractHash(routed(['true', 'false']))).not.toBe(contractHash(base));
+		expect(contractHash(routed(['true', 'false']))).not.toBe(
+			contractHash(routed(['false', 'true'])),
+		);
+	});
+
+	it('classify an added, removed, renamed, or moved output as a major', () => {
+		const two = routed(['kept', 'discarded']);
+		const changed = [
+			routed(['kept']),
+			routed(['kept', 'discarded', 'error']),
+			routed(['kept', 'dropped']),
+			routed(['discarded', 'kept']),
+			routed({ each: 'cases', then: ['fallback'] }),
+			base,
+		];
+		expect(changed.map((next) => diffContracts(two, next).kind)).toEqual(
+			changed.map(() => 'major'),
+		);
+		expect(diffContracts(two, routed(['kept', 'discarded'])).kind).toBe('patch');
+		expect(diffContracts(two, routed(['kept'])).changes).toEqual([
+			{ kind: 'major', text: 'outputs kept, discarded → kept' },
+		]);
+	});
+});
+
+describe('parseFixtures', () => {
+	it('needs exactly one of output and outputs in a recorded run', () => {
+		const fixture = (expected: object) =>
+			JSON.stringify({ executions: [{ name: 'a', params: {}, responses: [], ...expected }] });
+		expect(parseFixtures(fixture({ output: [] })).executions).toHaveLength(1);
+		expect(parseFixtures(fixture({ outputs: [[], []] })).executions).toHaveLength(1);
+		expect(() => parseFixtures(fixture({}))).toThrow('not valid');
+		expect(() => parseFixtures(fixture({ output: [], outputs: [[]] }))).toThrow('not valid');
 	});
 });
 
@@ -173,7 +218,7 @@ const echoSource = ({
 import { defineNode, obj, str } from '@n8n/node-sdk';
 import { shout } from './shout';
 
-const demo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [], baseUrl: 'https://demo.test' });
+const demo = defineNode({ id: 'demo', displayName: 'Demo', baseUrl: 'https://demo.test' });
 
 export const echo = demo.action('echo', {
 	version: ${version},
@@ -330,6 +375,46 @@ describe('checkPublish', () => {
 		]);
 	});
 
+	it('needs migrate and a fixture pair for a trigger major that breaks old input', async () => {
+		const entry = path.join(dirs.root, 'ping.ts');
+		const freezePing = async (version: number, input: string, migrate = '') => {
+			await writeFile(
+				entry,
+				`import { defineNode, obj, str } from '@n8n/node-sdk';
+const demo = defineNode({ id: 'demo', displayName: 'Demo' });
+export const ping = demo.trigger('ping', {
+	version: ${version},
+	trigger: 'On ping',
+	summary: 'Starts on each ping.',
+	input: ${input},
+	output: obj({ text: str() }),
+	webhook: {},
+	${migrate}
+});
+`,
+			);
+			return await freezeAction(entry, 'ping');
+		};
+		const prev = (await freezePing(1, '{ text: str() }')).manifest;
+		const v2 = '{ message: str() }';
+		const migrate = 'migrate: (fromMajor, params) => ({ message: params.text }),';
+		const pair = (expected: Record<string, unknown>) => ({
+			executions: [],
+			migrations: [{ fromMajor: 1, params: { text: 'hi' }, expected }],
+		});
+
+		await expect(checkPublish(prev, await freezePing(2, v2), { executions: [] })).rejects.toThrow(
+			'demo.ping@2.0.0 breaks old input, so it needs migrate',
+		);
+		const migrating = await freezePing(2, v2, migrate);
+		await expect(checkPublish(prev, migrating, pair({ message: 'hi' }))).resolves.toMatchObject({
+			kind: 'major',
+		});
+		await expect(replayFixtures(migrating, pair({ message: 'ho' }))).resolves.toEqual([
+			'demo.ping@2.0.0 migration from 1: got {"message":"hi"}',
+		]);
+	});
+
 	it('takes a major without migrate when the old input still fits', async () => {
 		const prev = await v1();
 		const next = await freeze({ version: 2, input: '{ text: str(), prefix: str().optional() }' });
@@ -462,7 +547,7 @@ describe('published versions', () => {
 					action: 'demo.echo',
 					version: '1.0.0',
 					bundleHash: v100.bundleHash,
-					apiVersion: 'n8n:action@2.0.0',
+					apiVersion: v100.apiVersion,
 				},
 			},
 		]);
@@ -478,13 +563,31 @@ describe('published versions', () => {
 		await expect(run(frozenOf(tampered, bundle))).rejects.toThrow('does not match');
 	});
 
+	it('read the bundle again after a failed read', async () => {
+		await writeShout('text');
+		const { manifest, bundle } = await freeze({ patch: 8 });
+		const reads = { count: 0 };
+		const flaky: FrozenVersion = {
+			manifest,
+			readBundle: async () => {
+				reads.count += 1;
+				if (reads.count === 1) throw new Error('offline');
+				return bundle;
+			},
+		};
+
+		await expect(run(flaky)).rejects.toThrow('offline');
+		expect(await run(flaky)).toEqual(['hello!']);
+		expect(reads.count).toBe(2);
+	});
+
 	describe('apiVersion', () => {
 		afterEach(() => setActionApiRange(DEFAULT_ACTION_API_RANGE));
 
-		it('is the version freezeAction writes', async () => {
+		it('is the version freezeAction writes: 2.1.0 without binary data', async () => {
 			await writeShout('text');
 			const { manifest } = await freeze({ patch: 8 });
-			expect(manifest.apiVersion).toBe(ACTION_API_VERSION);
+			expect(manifest.apiVersion).toBe('n8n:action@2.1.0');
 			expect(manifest).not.toHaveProperty('abi');
 		});
 
@@ -495,9 +598,11 @@ describe('published versions', () => {
 				toVersionedNodeType([frozenOf({ ...manifest, apiVersion }, bundle)]);
 
 			expect(() => typeOf('n8n:action@3.0.0')).toThrow(
-				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.0.0.',
+				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.2.0.',
 			);
-			expect(() => typeOf('n8n:action@2.1.0')).toThrow('needs n8n:action@2.1.0');
+			expect(() => typeOf('n8n:action@2.3.0')).toThrow('needs n8n:action@2.3.0');
+			expect(() => typeOf('n8n:action@2.2.0')).not.toThrow();
+			expect(() => typeOf('n8n:action@2.1.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.0.3')).not.toThrow();
 
 			setActionApiRange('>=2.0.0 <3.0.0');
@@ -520,7 +625,7 @@ describe('published versions', () => {
 			const legacy = (abi: number) => JSON.stringify({ ...fields, abi });
 
 			expect(parseManifest(legacy(1))).toEqual({ ...fields, apiVersion: 'n8n:action@1.0.0' });
-			expect(parseManifest(legacy(2))).toEqual(manifest);
+			expect(parseManifest(legacy(2))).toEqual({ ...fields, apiVersion: 'n8n:action@2.0.0' });
 			expect(() => parseManifest(legacy(3))).toThrow('not valid');
 			expect(() => parseManifest(JSON.stringify(fields))).toThrow('not valid');
 		});
@@ -531,7 +636,9 @@ describe('published versions', () => {
 			expect(() => evaluateBundle(bundle, 'n8n:action@3.0.0')).toThrow(
 				'This host cannot run n8n:action@3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, 'n8n:action@2.1.0')).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, 'n8n:action@2.3.0')).toThrow('cannot run');
+			expect(evaluateBundle(bundle, 'n8n:action@2.0.0').id).toBe('demo.echo');
+			expect(evaluateBundle(bundle, 'n8n:action@2.1.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, ACTION_API_VERSION).id).toBe('demo.echo');
 		});
 	});

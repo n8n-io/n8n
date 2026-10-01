@@ -1,9 +1,18 @@
-import { defineNode } from '@n8n/node-sdk';
+import { apiKey, credential, defineNode } from '@n8n/node-sdk';
 
 export const node = defineNode({
 	id: 'inventory',
 	displayName: 'Inventory',
-	credentials: ['inventoryApi'],
+	credential: credential({
+		types: [
+			apiKey({
+				name: 'inventoryApi',
+				displayName: 'Inventory API',
+				key: 'Authorization',
+				prefix: 'ApiKey ',
+			}),
+		],
+	}),
 	baseUrl: 'http://127.0.0.1:18090/inventory/v1',
 });
 

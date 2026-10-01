@@ -2,7 +2,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
-import type { ContractRegistryOptions } from '@n8n/nodes-base-next';
+import type { ContractRegistryOptions, ContractStoreOptions } from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -12,6 +12,7 @@ import { useNodeContractsRegistry } from '../node-contracts-registry';
 const registered: ContractRegistryOptions[] = [];
 vi.mock('@n8n/nodes-base-next', () => ({
 	useContractRegistry: (options: ContractRegistryOptions) => registered.push(options),
+	contractStore: (options: ContractStoreOptions) => options,
 }));
 
 describe('useNodeContractsRegistry', () => {
@@ -43,10 +44,12 @@ describe('useNodeContractsRegistry', () => {
 
 		expect(options).toMatchObject({
 			policy: 'strict',
-			registryUrl: 'http://registry.test',
 			apiRange: '>=2.0.0 <3.0.0',
-			publicKey: undefined,
-			cacheDir: '/n8n/node-contracts',
+			store: {
+				registryUrl: 'http://registry.test',
+				publicKey: undefined,
+				storeDir: '/n8n/node-contracts',
+			},
 		});
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);

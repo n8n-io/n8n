@@ -1,9 +1,6 @@
 import { getManyItems } from './actions/item.get-all';
-import { __service__Api } from './credentials';
 
 export { node } from './__slug__.node';
 
-/** Every action of this node. `n8n-node-next` reads these three exports. */
+/** Every action of this node. `n8n-node-next` reads `node` and `actions`. */
 export const actions = [getManyItems];
-
-export const credentials = [__service__Api];

@@ -10,7 +10,10 @@
  *   request with a body). Requests are keyed by
  *   method and URL plus their order among requests to that key, so one extra request is one
  *   difference.
- * - Items: `json` and `pairedItem`; a numeric `pairedItem` becomes `{ item }`.
+ * - Items: `json`, `binary` without the `id` of each file, and `pairedItem`; a numeric
+ *   `pairedItem` becomes `{ item }`. In the default storage mode, `data` holds the bytes.
+ *   The items of the first output are `items`; the items of each other output are in
+ *   `otherOutputs`.
  * - Everywhere, a key with an undefined value equals a missing key.
  * - The run error message, when a run fails.
  */
@@ -25,6 +28,8 @@ import type Nock from '../../../../../core/node_modules/nock';
 import { toNodeType, type Action } from '@n8n/node-sdk';
 import type * as N8nWorkflow from 'n8n-workflow';
 import type {
+	IBinaryData,
+	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IDataObject,
@@ -76,7 +81,9 @@ export interface Route {
 	/** The route answers this many calls, then the next matching route answers. Default: any. */
 	readonly times?: number;
 	readonly status?: number;
-	readonly json: unknown;
+	readonly json?: unknown;
+	/** A non-JSON reply, e.g. a file. */
+	readonly raw?: { readonly body: Buffer; readonly headers: Readonly<Record<string, string>> };
 }
 
 export interface SentRequest {
@@ -89,6 +96,7 @@ export interface SentRequest {
 
 export interface NormalItem {
 	readonly json: unknown;
+	readonly binary?: Record<string, Omit<IBinaryData, 'id'>>;
 	readonly pairedItem: unknown;
 }
 
@@ -97,6 +105,10 @@ export interface ParityRun {
 	/** Requests no route answered, as `METHOD url`. */
 	readonly unmatched: string[];
 	readonly items: NormalItem[];
+	/** The items of the second and later outputs, for a node with more than one output. */
+	readonly otherOutputs: NormalItem[][];
+	/** The items of the first output as the node gave them. */
+	readonly output: INodeExecutionData[];
 	readonly error?: string;
 }
 
@@ -143,9 +155,13 @@ export interface ParityCase {
 	};
 	/** The input items of the node. */
 	readonly input: readonly IDataObject[];
+	/** The binaries of every input item. */
+	readonly binary?: IBinaryKeyData;
 	readonly routes: readonly Route[];
 	/** Lower-case request header names to compare. */
 	readonly headers?: readonly string[];
+	/** The workflow time zone. The n8n default when omitted. */
+	readonly timezone?: string;
 }
 
 /** Resolves `={{$credentials.x}}` in generic credentials, as the CLI credentials helper does. */
@@ -332,11 +348,9 @@ function mockRoutes(routes: readonly Route[], headerNames: readonly string[]) {
 						}),
 				),
 			});
-			return [
-				route.status ?? 200,
-				JSON.stringify(route.json),
-				{ 'content-type': 'application/json' },
-			];
+			return route.raw
+				? [route.status ?? 200, route.raw.body, route.raw.headers]
+				: [route.status ?? 200, JSON.stringify(route.json), { 'content-type': 'application/json' }];
 		});
 		if (route.times === undefined) scope.persist();
 	});
@@ -351,8 +365,30 @@ const keyed = (requests: readonly SentRequest[]): Record<string, SentRequest> =>
 		return { ...all, [`${base} #${index}`]: request };
 	}, {});
 
-const normalItem = ({ json, pairedItem }: INodeExecutionData): NormalItem => ({
+/**
+ * Turns the HTTP mock off until the returned function turns it on again, for a test with real
+ * local servers. The mock socket of nock resets a large streamed response.
+ */
+export function useRealHttp() {
+	nock.restore();
+	return () => nock.activate();
+}
+
+/** The binary data store of core. It runs in the default mode until a test calls `init()`. */
+export const binaryDataService = () =>
+	requireFromCore('@n8n/di').Container.get(core.BinaryDataService) as Core.BinaryDataService;
+
+const withoutId = ({ id: _id, ...entry }: IBinaryData) => entry;
+
+const normalItem = ({ json, binary, pairedItem }: INodeExecutionData): NormalItem => ({
 	json,
+	...(binary
+		? {
+				binary: Object.fromEntries(
+					Object.entries(binary).map(([key, entry]) => [key, withoutId(entry)]),
+				),
+			}
+		: {}),
 	pairedItem: typeof pairedItem === 'number' ? { item: pairedItem } : pairedItem,
 });
 
@@ -386,6 +422,7 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 		connections: {},
 		active: false,
 		nodeTypes,
+		...(parityCase.timezone ? { settings: { timezone: parityCase.timezone } } : {}),
 	});
 	const startNode = workflow.getNode(workflowNode.name);
 	if (!startNode) throw new Error('The parity workflow has no node');
@@ -401,7 +438,14 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 				nodeExecutionStack: [
 					{
 						node: startNode,
-						data: { main: [parityCase.input.map((json) => ({ json }))] },
+						data: {
+							main: [
+								parityCase.input.map((json) => ({
+									json,
+									...(parityCase.binary ? { binary: parityCase.binary } : {}),
+								})),
+							],
+						},
 						source: null,
 					},
 				],
@@ -412,10 +456,13 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 	nock.cleanAll();
 	const task = run.data.resultData.runData[workflowNode.name]?.[0];
 	const failure: unknown = run.data.resultData.error ?? task?.error;
+	const [first, ...others] = task?.data?.main ?? [];
 	return {
 		requests: keyed(sent),
 		unmatched,
-		items: (task?.data?.main[0] ?? []).map(normalItem),
+		items: (first ?? []).map(normalItem),
+		otherOutputs: others.map((output) => (output ?? []).map(normalItem)),
+		output: first ?? [],
 		...(failure ? { error: messageOf(failure) } : {}),
 	};
 }
@@ -468,9 +515,16 @@ export function compareRuns(
 			requests: legacy.requests,
 			unmatched: legacy.unmatched,
 			items: legacy.items,
+			otherOutputs: legacy.otherOutputs,
 			error: legacy.error,
 		},
-		{ requests: next.requests, unmatched: next.unmatched, items: next.items, error: next.error },
+		{
+			requests: next.requests,
+			unmatched: next.unmatched,
+			items: next.items,
+			otherOutputs: next.otherOutputs,
+			error: next.error,
+		},
 	);
 	return {
 		unexplained: found.filter(

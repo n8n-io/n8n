@@ -50,15 +50,31 @@
     "credentials": [],
     "nodes": [
       "dist/nodes/NotionDatabasePageGetAll.node.js",
+      "dist/nodes/NotionUserGet.node.js",
       "dist/nodes/HttpRequestGet.node.js",
       "dist/nodes/HttpRequestSend.node.js",
+      "dist/nodes/HttpRequestDownload.node.js",
       "dist/nodes/GoogleSheetsSheetRead.node.js",
       "dist/nodes/GoogleSheetsSheetAppend.node.js",
       "dist/nodes/GoogleSheetsSheetAppendOrUpdate.node.js",
       "dist/nodes/GmailMessageSend.node.js",
       "dist/nodes/GmailMessageGetAll.node.js",
       "dist/nodes/GmailMessageGet.node.js",
-      "dist/nodes/GoogleGeminiTextMessage.node.js"
+      "dist/nodes/GoogleGeminiTextMessage.node.js",
+      "dist/nodes/CoreSet.node.js",
+      "dist/nodes/CoreRenameKeys.node.js",
+      "dist/nodes/CoreDateTime.node.js",
+      "dist/nodes/CoreSort.node.js",
+      "dist/nodes/CoreLimit.node.js",
+      "dist/nodes/CoreRemoveDuplicates.node.js",
+      "dist/nodes/CoreAggregate.node.js",
+      "dist/nodes/CoreSplitOut.node.js",
+      "dist/nodes/CoreSummarize.node.js",
+      "dist/nodes/CoreIf.node.js",
+      "dist/nodes/CoreSwitch.node.js",
+      "dist/nodes/CoreFilter.node.js",
+      "dist/nodes/NotionDataSourcePageAdded.node.js",
+      "dist/nodes/GithubRepositoryEvent.node.js"
     ]
   }
 }

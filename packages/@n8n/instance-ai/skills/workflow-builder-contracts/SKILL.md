@@ -19,14 +19,15 @@ recommended_tools:
 # Workflow Builder
 
 You write one typed TypeScript file. `tsc --strict` checks it. Do not produce
-visible output until the final step, unless blocked.
+visible output until the final step, unless blocked. This skill and
+`nodes(action="type-definition")` are the full API: do not read SDK files.
 
 ## Process
 
 1. Call `nodes(action="search")` ONCE with `queries`: one short query per
    service, e.g. `["notion get many pages", "http request", "slack"]`. Use the
    returned `nodeModules`. Use nodes from `results` with `node()`.
-2. Get missing definitions in ONE `nodes(action="type-definition")` call.
+2. Get other definitions in ONE `nodes(action="type-definition")` call.
 3. Call `build-workflow` with a stable `filePath`
    (e.g. `src/workflows/main.workflow.ts`) and the complete source as
    `sourceCode`.
@@ -36,78 +37,85 @@ visible output until the final step, unless blocked.
    `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
-make the smallest change, and build with the returned `filePath`. The file uses
-this typed format. Keep its `node()` calls and its `'={{ … }}'` strings
-(n8n expressions) unless the change needs them.
+make the smallest change, and build with the returned `filePath`. Keep its
+`node()` calls and `'={{ … }}'` strings.
 
 ## Imports
 
-Import the flow API from `@n8n/workflow-sdk/next` and each module from
-`@n8n/nodes/<id>` with the `import` line that search returns.
+Import the flow API from `@n8n/workflow-sdk/next`. The only typed modules are
+{{NODE_CONTRACT_MODULES_PLACEHOLDER}}: import them from `@n8n/nodes/<id>`.
+Every other node uses `node()`.
 
 ```ts
-import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { workflow, manual, set } from '@n8n/workflow-sdk/next';
 import { httpRequest } from '@n8n/nodes/httpRequest';
 import { notion } from '@n8n/nodes/notion';
 
 export default workflow(
-  'Overdue tasks report',
+  'Overdue report',
   manual()
     .andThen(
       notion.databasePage.getAll({
-        name: 'Overdue Tasks',
+        name: 'Overdue',
         database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e',
         where: {
           match: 'all',
-          conditions: [
-            { property: 'Status', type: 'status', condition: { op: 'does_not_equal', value: 'Done' } },
-            { property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } },
-          ],
+          conditions: [{ property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } }],
         },
       }),
     )
     .andThen(
       httpRequest.send({
-        name: 'Post Report',
+        name: 'Post',
         method: 'POST',
-        url: 'https://reports.acme.dev/overdue',
-        body: { kind: 'json', json: (page) => ({ title: page.name, url: page.url }) },
+        url: 'https://acme.dev/report',
+        body: { kind: 'json', json: (page) => ({ name: page.name }) },
       }),
-    ),
+    )
+    .orElse((failed) => failed.andThen(set({ name: 'Log', fields: { reason: (e) => e.error.message } }))),
 );
 ```
 
+- `.orElse` goes after the `.andThen` of the node that can fail.
 - `.branch({ name, if: (item) => …, then: (f) => f.andThen(…), else: (f) => … })`
   adds an IF node. Without `else`, false items stop.
-- `.orElse((failed) => failed.andThen(…))` handles the items that the last
-  node fails on. `failed` items carry `error.message`.
 - `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
-  makes new fields. `keep: 'all'` also keeps the input fields.
-- `node({ name, type, version, parameters })` adds a node without a module,
-  with parameters from its type definition. Pass `sample` items to type its
-  output. Use `trigger({ name, type, version, parameters })` for triggers
-  other than `manual()`.
+  makes fields. `keep: 'all'` keeps input fields.
+- `node({ name, type, version, parameters, sample })` adds any other node;
+  `trigger({ … })` any other trigger. `sample` items type the output.
+- `manual({ sample: [{ id: 1 }] })` types the trigger output. Verification
+  uses it.
+
+## AI nodes
+
+An AI node is a `node()` with `subnodes` made with `subnode()`:
+
+```ts
+node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', version: 2.2,
+  parameters: { promptType: 'define', text: (item) => item.question },
+  subnodes: { model: subnode({ name: 'Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 }) } })
+```
+
+Slots: `model`, `memory`, `tools` (a list), `outputParser`, `embedding`,
+`vectorStore`, `retriever`, `documentLoader`, `textSplitter`, `reranker`.
+For a Switch, Text Classifier, Merge, or loop, build WorkflowJSON
+(`src/workflows/<name>.workflow.json`).
 
 ## Lambdas
 
-A lambda becomes an n8n expression that runs for each item.
-
 - Write `(item, $) => <one expression>`. A template literal becomes text.
-- Read only `item`, `$`, and JavaScript globals (`Math`, `JSON`, `String`).
-  Do not read local variables or constants from the file.
-- `item` is the output item of the node before. Use `$('Node Name')` to read
-  the paired item of an earlier node.
+- Read only `item`, `$`, and JavaScript globals, never file constants.
+- `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
 - `$.now` and `$.today` are Luxon dates. Use `$.date(iso)` to parse a string.
 - Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
 
 ## Values and credentials
 
-- Keep real values that the user gave or that you discovered. Never invent
-  IDs, emails, or URLs. When a resource is unknown, write one clear
-  placeholder string, e.g. `'<Notion tasks database ID>'`, and tell the user.
-- Do not write credentials in the source. The build binds the one stored
-  credential that fits a node. Other credentials stay open for setup.
-- Never ask for secrets.
+- Keep real values that the user gave or you found. Never invent IDs,
+  emails, or URLs. For an unknown value, write `placeholder('Database')` and
+  tell the user. Setup asks for it.
+- Do not write credentials. The build binds the one stored credential that
+  fits; setup asks for others. Never ask for secrets.
 
 ## Workflow rules
 

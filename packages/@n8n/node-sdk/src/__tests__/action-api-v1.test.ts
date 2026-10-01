@@ -13,7 +13,7 @@ const node: INode = {
 	parameters: {},
 };
 
-const pages = defineNode({ id: 'pages', displayName: 'Pages', credentials: [] });
+const pages = defineNode({ id: 'pages', displayName: 'Pages' });
 const head = pages.action('list', {
 	action: 'List pages',
 	summary: 'List pages.',
@@ -38,7 +38,7 @@ const v1Of = (bodies: unknown[][]) => {
 		},
 	});
 	const host: ExecutorHost = {
-		itemCount: 1,
+		items: [{ json: {} }],
 		node,
 		parameter: () => undefined,
 		request: async () => {
@@ -56,7 +56,7 @@ describe('fromActionApiV1', () => {
 		const { run, action } = v1Of([[{ id: 'a' }, { id: 'b' }], [], [{ id: 'c' }]]);
 
 		expect(action.flow.cardinality).toBe('1:N');
-		expect((await run()).map(({ json }) => json.id)).toEqual(['a', 'b', 'c']);
+		expect((await run())[0]?.map(({ json }) => json.id)).toEqual(['a', 'b', 'c']);
 	});
 
 	it('stops the run at the first invalid item', async () => {
@@ -76,7 +76,7 @@ describe('fromActionApiV1', () => {
 		});
 		if (!action) throw new Error('not an @1 action');
 		const host: ExecutorHost = {
-			itemCount: 1,
+			items: [{ json: {} }],
 			node,
 			parameter: () => undefined,
 			request: async () => undefined,
@@ -84,7 +84,7 @@ describe('fromActionApiV1', () => {
 		};
 
 		expect(await executorOf(action)(host)).toEqual([
-			{ json: { error: 'page 2 failed' }, pairedItem: { item: 0 } },
+			[{ json: { error: 'page 2 failed' }, pairedItem: { item: 0 } }],
 		]);
 	});
 

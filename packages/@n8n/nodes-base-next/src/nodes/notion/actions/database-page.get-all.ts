@@ -10,6 +10,7 @@ import {
 	oneOf,
 	paginate,
 	str,
+	validate,
 	variant,
 	type Infer,
 	type JsonSchema,
@@ -198,11 +199,11 @@ function outputFromProperties(
 }
 
 export const getManyDatabasePages = databasePage.action('getAll', {
-	minor: 1,
-	patch: 1,
+	minor: 2,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
+	scopes: ['content:read'],
 	input,
 	output: page,
 	deriveOutput,
@@ -246,7 +247,10 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 		});
 		for await (const result of results) {
 			const simplified = simplifyPage(result);
-			if (!matches(page, simplified)) throw new Error('Notion returned a page without id or url');
+			if (!matches(page, simplified)) {
+				const issues = validate(simplified, page.json, { path: 'page' });
+				throw new Error(`Notion returned a page in another shape: ${issues.join('; ')}`);
+			}
 			yield simplified;
 		}
 	},

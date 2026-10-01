@@ -28,6 +28,39 @@
 					"labelIds": ["SENT"]
 				}
 			]
+		},
+		{
+			"name": "attachment",
+			"params": {
+				"to": "ada@example.com",
+				"subject": "Report",
+				"body": {
+					"format": "text",
+					"text": "Attached"
+				},
+				"attachments": ["data"]
+			},
+			"binary": {
+				"data": {
+					"data": "aWQsdG90YWwKMSw0Mgo=",
+					"mimeType": "text/csv",
+					"fileName": "q3.csv"
+				}
+			},
+			"responses": [
+				{
+					"id": "m10",
+					"threadId": "t10",
+					"labelIds": ["SENT"]
+				}
+			],
+			"output": [
+				{
+					"id": "m10",
+					"threadId": "t10",
+					"labelIds": ["SENT"]
+				}
+			]
 		}
 	]
 }

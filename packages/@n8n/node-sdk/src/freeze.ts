@@ -1,21 +1,28 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { toContract, type Action } from './define';
+import { toContract, type Action, type Trigger } from './define';
 import { evaluateBundle, toNodeType } from './runtime';
-import { ACTION_API_VERSION, contractHash, sha256, type VersionManifest } from './version';
+import { triggerDescriptionOf } from './triggers';
+import {
+	ACTION_API_VERSION,
+	actionApiVersionOf,
+	contractHash,
+	sha256,
+	type VersionManifest,
+} from './version';
 
 /** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was frozen with. */
 const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
 
-/** A frozen action in memory: its manifest, its bundle, and the action the bundle exports. */
+/** A frozen action or trigger in memory: its manifest, its bundle, and what the bundle exports. */
 export interface FrozenAction {
 	readonly manifest: VersionManifest;
 	readonly bundle: string;
-	readonly action: Action;
+	readonly action: Action | Trigger;
 }
 
 /**
- * Bundles one exported action with its helpers and dependencies. The same source gives the
+ * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
  * same bytes, so a release build reproduces the HEAD bundle the registry holds.
  */
 export async function freezeAction(entryFile: string, exportName: string): Promise<FrozenAction> {
@@ -59,11 +66,12 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 	const manifest: VersionManifest = {
 		id: action.id,
 		semver: action.semver,
-		apiVersion: ACTION_API_VERSION,
+		apiVersion: actionApiVersionOf(contract),
 		contractHash: contractHash(contract),
 		bundleHash: sha256(bundle),
 		contract,
-		description: new (toNodeType(action))().description,
+		description:
+			'kind' in action ? triggerDescriptionOf(action) : new (toNodeType(action))().description,
 	};
 	return { manifest, bundle, action };
 }

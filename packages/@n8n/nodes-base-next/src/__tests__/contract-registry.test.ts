@@ -1,6 +1,7 @@
 import {
 	integrityOf,
 	packageNameOf,
+	setActionApiRange,
 	setContractVersionLoader,
 	toVersionedNodeType,
 	type FrozenVersion,
@@ -9,14 +10,25 @@ import {
 import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
 import { packContractPackage } from '@n8n/node-sdk/publish';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { link, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
-import { contractVersionLoader, type ContractRegistryOptions } from '../contract-registry';
+import {
+	contractStore,
+	contractVersionLoader,
+	syncContractStore,
+	type ContractRegistryOptions,
+	type ContractStoreOptions,
+} from '../contract-registry';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const fs = await importOriginal<typeof import('node:fs/promises')>();
+	return { ...fs, link: vi.fn(fs.link) };
+});
 
 const echoSource = (minor: number, patch: number, text: string) => `
 import { defineNode, obj, str } from '@n8n/node-sdk';
@@ -57,7 +69,7 @@ interface Published {
 
 /** Tarballs the fake registry serves, by version. A test may replace one. */
 const tarballs = new Map<string, Published>();
-const dirs = { root: '', cache: '' };
+const dirs = { root: '', store: '' };
 const registry = { url: '', server: createServer() };
 const versions = new Map<string, FrozenAction>();
 
@@ -113,7 +125,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	dirs.cache = await mkdtemp(path.join(dirs.root, 'cache-'));
+	dirs.store = await mkdtemp(path.join(dirs.root, 'store-'));
 	tarballs.clear();
 	['1.0.0', '1.0.1', '1.1.0'].forEach((version) => publish(frozenOf(version)));
 });
@@ -150,24 +162,31 @@ const contextOf = (metadata: ITaskMetadata[] = []) =>
 	}) as unknown as IExecuteFunctions;
 
 /** Runs the node with HEAD 1.1.0 bundled, as a release ships it. */
+const storeOf = (options: Partial<ContractStoreOptions> = {}) =>
+	contractStore({
+		registryUrl: registry.url,
+		publicKey,
+		storeDir: dirs.store,
+		fetch: async (url, init) => await fetch(url, init),
+		...options,
+	});
+
 const run = async (
 	meta: unknown,
-	options: Partial<ContractRegistryOptions> = {},
+	options: Partial<Omit<ContractRegistryOptions, 'store'> & ContractStoreOptions> = {},
 	metadata: ITaskMetadata[] = [],
+	head = bundled('1.1.0'),
 ) => {
 	setContractVersionLoader(
 		contractVersionLoader({
 			policy: 'tolerant',
-			registryUrl: registry.url,
-			publicKey,
-			cacheDir: dirs.cache,
-			fetch: async (url) => await fetch(url),
+			store: storeOf(options),
 			metaOf: async () => meta,
 			apiRange: '>=1.0.0 <3.0.0',
 			...options,
 		}),
 	);
-	const NodeType = toVersionedNodeType([bundled('1.1.0')]);
+	const NodeType = toVersionedNodeType([head]);
 	const result = await new NodeType().getNodeType(1).execute?.call(contextOf(metadata));
 	const [items = []]: INodeExecutionData[][] = Array.isArray(result) ? result : [];
 	return items.map((item) => item.json.text);
@@ -236,7 +255,11 @@ describe('contractVersionLoader', () => {
 	it('names the action, version and bundle hash when no version matches', async () => {
 		const { bundleHash } = lockOf('1.0.0');
 		await expect(run(locked('1.0.0'), { registryUrl: '' })).rejects.toThrow(
-			`No trusted version of demo.echo matches 1.0.0 (bundle ${bundleHash})`,
+			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry (none set)`,
+		);
+		tarballs.delete('1.0.0');
+		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry ${registry.url}: The registry does not have this bundle`,
 		);
 	});
 
@@ -250,9 +273,132 @@ describe('contractVersionLoader', () => {
 					action: 'demo.echo',
 					version: '1.0.1',
 					bundleHash,
-					apiVersion: 'n8n:action@2.0.0',
+					apiVersion: 'n8n:action@2.1.0',
 				},
 			},
 		]);
+	});
+});
+
+describe('contractStore', () => {
+	it('takes only bundles with the trusted signature when a key is set', async () => {
+		publish(frozenOf('1.0.0'), strangerKey);
+		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+			'demo.echo@1.0.0 (bundle',
+		);
+		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+			'is not signed by the trusted key',
+		);
+		expect(await run(locked('1.0.0'), { policy: 'strict', publicKey: undefined })).toEqual([
+			'HELLO',
+		]);
+	});
+
+	it('adds a file once and never replaces it', async () => {
+		const store = storeOf();
+		const { data } = tarballs.get('1.0.0') ?? { data: Buffer.alloc(0) };
+		const manifest = await store.add(data);
+		await store.add(data);
+		expect(manifest.semver).toBe('1.0.0');
+		expect([...(await store.bundleHashes())]).toEqual([manifest.bundleHash]);
+	});
+
+	it('lists the newest stored version of each major', async () => {
+		const store = storeOf();
+		await Promise.all(
+			['1.0.0', '1.0.1'].map(async (version) => await store.locked(lockOf(version))),
+		);
+		const versions = await storeOf().versions();
+		expect(versions.get('demo.echo')?.map(({ manifest }) => manifest.semver)).toEqual(['1.0.1']);
+	});
+
+	it('loads a bundle from the registry again when its file is gone', async () => {
+		const store = storeOf();
+		const version = await store.locked(lockOf('1.0.0'));
+		await rm(path.join(dirs.store, `${lockOf('1.0.0').bundleHash}.tgz`));
+		expect(await version.readBundle()).toBe(frozenOf('1.0.0').bundle);
+		expect(await store.bundleHashes()).toContain(lockOf('1.0.0').bundleHash);
+	});
+
+	it('fails a request after the timeout', async () => {
+		const store = storeOf({
+			fetchTimeoutMs: 20,
+			fetch: async (_url, { signal }) =>
+				await new Promise((_resolve, reject) =>
+					signal.addEventListener('abort', () => reject(new Error(String(signal.reason)))),
+				),
+		});
+		await expect(store.locked(lockOf('1.0.0'))).rejects.toThrow(
+			`Cannot get demo.echo@1.0.0 (bundle ${lockOf('1.0.0').bundleHash}) from the registry ${registry.url}`,
+		);
+	});
+
+	it('stores a file by rename when the file system has no hard links', async () => {
+		vi.mocked(link).mockRejectedValueOnce(Object.assign(new Error('no links'), { code: 'EPERM' }));
+		const { data } = tarballs.get('1.0.0') ?? { data: Buffer.alloc(0) };
+		const manifest = await storeOf().add(data);
+		expect([...(await storeOf().bundleHashes())]).toEqual([manifest.bundleHash]);
+	});
+
+	it('refuses a bundle whose manifest does not match the lock', async () => {
+		const store = storeOf();
+		const lock = { ...lockOf('1.0.0'), contractHash: 'a'.repeat(64) };
+		await expect(store.locked(lock)).rejects.toThrow('has contractHash');
+		expect(await store.bundleHashes()).toEqual(new Set());
+		await store.locked(lockOf('1.0.0'));
+		await expect(store.locked(lock)).rejects.toThrow('but the lock has');
+	});
+
+	it('serves only signed files when a key is set', async () => {
+		publish(frozenOf('1.0.0'), strangerKey);
+		const { data } = tarballs.get('1.0.0') ?? { data: Buffer.alloc(0) };
+		await storeOf({ publicKey: undefined }).add(data);
+		expect((await storeOf({ publicKey: undefined }).versions()).has('demo.echo')).toBe(true);
+		expect((await storeOf().versions()).has('demo.echo')).toBe(false);
+		await expect(storeOf().locked(lockOf('1.0.0'))).rejects.toThrow(
+			'is not signed by the trusted key',
+		);
+	});
+
+	it('runs a stored version as a newer patch only when its lock or signature allows it', async () => {
+		const store = storeOf();
+		const stored = await store.locked(lockOf('1.0.1'));
+		expect(await run(locked('1.0.0'), { publicKey: undefined }, [], stored)).toEqual(['HELLO']);
+	});
+});
+
+describe('syncContractStore', () => {
+	const nodeOf = (version: string, workflowId = 'wf') => ({
+		workflowId,
+		workflowName: workflowId,
+		node: 'Echo',
+		lock: lockOf(version),
+	});
+
+	it('adds each missing locked bundle once and reports what it cannot get', async () => {
+		const store = storeOf();
+		await store.locked(lockOf('1.0.0'));
+		tarballs.delete('1.1.0');
+		const result = await syncContractStore(store, [
+			nodeOf('1.0.0'),
+			nodeOf('1.0.1', 'a'),
+			nodeOf('1.0.1', 'b'),
+			nodeOf('1.1.0'),
+		]);
+		expect(result.added.map(({ semver }) => semver)).toEqual(['1.0.1']);
+		expect(result.failed.map(({ workflowId, error }) => [workflowId, error])).toEqual([
+			['wf', expect.stringContaining('Cannot get demo.echo@1.1.0 (bundle')],
+		]);
+		expect(result.unsupported).toEqual([]);
+	});
+
+	it('reports nodes whose locked bundle needs an n8n:action version the host does not run', async () => {
+		setActionApiRange('>=3.0.0 <4.0.0');
+		try {
+			const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
+			expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), apiVersion: 'n8n:action@2.1.0' }]);
+		} finally {
+			setActionApiRange('>=1.0.0 <3.0.0');
+		}
 	});
 });

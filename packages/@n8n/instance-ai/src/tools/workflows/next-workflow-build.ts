@@ -11,7 +11,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
-import { nodeModuleText } from '../next-modules';
+import { nextNodeIds, nodeModuleText } from '../next-modules';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { WORKFLOW_DIAGNOSTICS_FILENAME } from '../../workspace/sandbox-typescript';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -44,8 +44,6 @@ export const usedNodeIds = (source: string) => [
 	...new Set([...source.matchAll(NODE_IMPORT)].flatMap(([, id]) => (id ? [id] : []))),
 ];
 
-const nodeIds = () => [...new Set(actions.map((action) => action.node.id))];
-
 function nodeModule(nodeId: string): string | undefined {
 	const text = nodeModuleText(nodeId);
 	// tsc reads the per-node output types through this reference; tsx ignores it.
@@ -65,7 +63,7 @@ export function nextWorkspaceFiles(
 			ok: false,
 			errors: unknown.map(
 				(id) =>
-					`No typed node module "@n8n/nodes/${id}". Typed modules: ${nodeIds().join(', ')}. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
+					`No typed node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds.join(', ')}. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
 			),
 		};
 	}

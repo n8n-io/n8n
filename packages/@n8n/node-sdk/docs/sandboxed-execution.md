@@ -15,7 +15,7 @@ bundles run in-process. Community and AI-generated bundles run in a sandbox.
 - Secrets never enter `run()`. The guest sees credential settings only.
 - The executor owns parameters, defaults, validation, retries, limits, pairing and continue on fail.
 - Bundles are self-contained (esbuild inlines dependencies), hashed, signed (ed25519 manifest) and
-  declare the interface version they need (`apiVersion`, for example `n8n:action@2.0.0`). The
+  declare the interface version they need (`apiVersion`, for example `n8n:action@2.1.0`). The
   interface is defined in WIT (`spec/n8n-action@2.wit`). `spec/json-rpc.md` gives its JSON-RPC
   form for process and container runtimes. The host runs the versions in
   `N8N_NODE_CONTRACTS_API_RANGE` and runs @1 bundles through an adapter (`src/action-api-v1.ts`).
@@ -90,3 +90,27 @@ for the AI builder does not change. The same fixtures prove parity across langua
 - ComponentizeJS builds are not reproducible. Trust rests on the signed component digest.
 - An allowed API can still reflect a secret back. Binding each secret to its hosts limits this.
 - Native npm addons never run as WASM. They need the heavy tier.
+
+## Binary data
+
+A file is an opaque host handle (`binary` in `spec/n8n-action@2.wit`, `n8n:action@2.2.0`). The
+bytes stay in the n8n binary data store (filesystem, S3, or database mode). Only an action with
+a `binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
+
+- Contract: `binary()` in `input` names a binary of the input item. In `output`, a top-level
+  `binary()` field becomes `item.binary.<field>`. The flow SDK types it as `Binary`, and a
+  lambda `(item) => item.binary.data` compiles to `{{ $binary.data }}`.
+- Inline JS (now): the executor keeps a handle table for each execution. `run()` gets frozen
+  `{ meta, read() }` objects, never the n8n entry. A handle as `http.request` body streams from
+  the store. `response: 'binary'` streams the response into the store. `binary.create` stores
+  chunks as the action yields them. A request with a streamed body does not follow redirects,
+  because the HTTP client then keeps the whole body in memory.
+- WASM: `binary`, `binary-reader` and `binary-writer` are component resources. A read or a
+  write moves one chunk (`list<u8>`) across the boundary. `send` and `fetch` take a borrowed
+  handle, so the host streams the bytes and the guest never sees them. In the JSON of the run
+  input and of each item, a binary is `{ "$binary": <id> }`; `open` and `binary.id` map ids to
+  handles.
+- Process or container: the same calls over JSON-RPC, with integer handle ids. Chunks as base64
+  fit small files only. For large files the host gives a short-lived presigned URL of the store
+  (S3), or a side channel (a second socket or a mounted file), and keeps the JSON-RPC message
+  small. `send` and `fetch` need no bytes in the guest at all.

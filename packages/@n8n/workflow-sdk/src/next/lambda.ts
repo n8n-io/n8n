@@ -42,6 +42,12 @@ export const BUILTINS: Record<string, string> = {
 	date: 'DateTime.fromISO',
 };
 
+const ITEM_JSON_ERROR =
+	'The item is already the JSON of the node before: write item.field, not item.json.field. For a field named "json", write item["json"]';
+
+/** Reads that the n8n item wrapper has but `$("Node")` already skips. */
+const WRAPPER_READS = new Set(['json', 'item']);
+
 interface Replacement {
 	start: number;
 	end: number;
@@ -113,6 +119,7 @@ function readParams(params: acorn.Pattern[]): Params | string {
 			: [],
 	);
 	if (fields.length !== item.properties.length) return 'Destructure item fields by plain name only';
+	if (fields.some(([, field]) => field === 'json')) return ITEM_JSON_ERROR;
 	return { ...base, fields: new Map(fields) };
 }
 
@@ -130,26 +137,99 @@ class LambdaCompiler {
 	private referenceText(name: string): string | undefined {
 		if (name === this.params.item) return this.root;
 		const field = this.params.fields.get(name);
+		if (field === 'binary' && this.root === '$json') return '$binary';
 		return field === undefined ? undefined : `${this.root}.${field}`;
 	}
 
-	private dollarCall(node: acorn.CallExpression): boolean {
-		if (node.callee.type !== 'Identifier' || node.callee.name !== this.params.dollar) return false;
+	/** The node name of `$("Node")`, or `undefined` after an error. */
+	private dollarName(node: acorn.CallExpression): string | undefined {
 		const [arg] = node.arguments;
 		if (node.arguments.length !== 1 || arg?.type !== 'Literal' || typeof arg.value !== 'string') {
 			this.errors.push('$() takes one node name as a string literal, e.g. $("Get tasks")');
-			return true;
+			return undefined;
 		}
 		if (!this.nodeNames.has(arg.value)) {
 			this.errors.push(`$("${arg.value}") names no node in this workflow`);
+			return undefined;
+		}
+		return arg.value;
+	}
+
+	private isDollarCall(node: acorn.AnyNode): node is acorn.CallExpression {
+		return (
+			node.type === 'CallExpression' &&
+			node.callee.type === 'Identifier' &&
+			node.callee.name === this.params.dollar
+		);
+	}
+
+	private dollarCall(node: acorn.CallExpression): boolean {
+		if (!this.isDollarCall(node)) return false;
+		const name = this.dollarName(node);
+		if (name !== undefined) {
+			this.replacements.push({
+				start: node.start,
+				end: node.end,
+				text: `$(${JSON.stringify(name)}).item.json`,
+			});
+		}
+		return true;
+	}
+
+	/**
+	 * `item.binary` and `$("Node").binary` read the files of an item, which n8n keeps beside
+	 * its JSON. A JSON field named `binary` stays readable as `item["binary"]`.
+	 */
+	private binaryMember(node: acorn.MemberExpression, scope: ReadonlySet<string>): boolean {
+		if (node.computed || node.property.type !== 'Identifier' || node.property.name !== 'binary') {
+			return false;
+		}
+		const { object } = node;
+		const isItem =
+			object.type === 'Identifier' && object.name === this.params.item && !scope.has(object.name);
+		if (isItem && this.root === '$json') {
+			this.replacements.push({ start: node.start, end: node.end, text: '$binary' });
 			return true;
 		}
-		this.replacements.push({
-			start: node.start,
-			end: node.end,
-			text: `$(${JSON.stringify(arg.value)}).item.json`,
-		});
+		if (!this.isDollarCall(object)) return false;
+		const name = this.dollarName(object);
+		if (name !== undefined) {
+			this.replacements.push({
+				start: node.start,
+				end: node.end,
+				text: `$(${JSON.stringify(name)}).item.binary`,
+			});
+		}
 		return true;
+	}
+
+	/** `item.json` and `$("Node").item`: the lambda reads the n8n item wrapper, not the JSON. */
+	private wrapperRead(node: acorn.MemberExpression, scope: ReadonlySet<string>): boolean {
+		const key = !node.computed && node.property.type === 'Identifier' ? node.property.name : '';
+		const { object } = node;
+		if (
+			key === 'json' &&
+			object.type === 'Identifier' &&
+			object.name === this.params.item &&
+			!scope.has(object.name)
+		) {
+			this.errors.push(ITEM_JSON_ERROR);
+			return true;
+		}
+		const isDollarCall =
+			object.type === 'CallExpression' &&
+			object.callee.type === 'Identifier' &&
+			object.callee.name === this.params.dollar &&
+			!scope.has(object.callee.name);
+		if (isDollarCall && WRAPPER_READS.has(key)) {
+			const [arg] = object.arguments;
+			const call = `$(${JSON.stringify(arg?.type === 'Literal' ? arg.value : 'Node')})`;
+			this.errors.push(
+				`${call} is already the JSON of that node's item: write ${call}.field, not ${call}.${key}.field. For a field named "${key}", write ${call}["${key}"]`,
+			);
+			return true;
+		}
+		return false;
 	}
 
 	private dollarMember(node: acorn.MemberExpression): boolean {
@@ -186,7 +266,12 @@ class LambdaCompiler {
 				if (this.dollarCall(node)) return;
 				break;
 			case 'MemberExpression':
-				if (this.dollarMember(node)) return;
+				if (
+					this.binaryMember(node, scope) ||
+					this.wrapperRead(node, scope) ||
+					this.dollarMember(node)
+				)
+					return;
 				this.visit(node.object, scope);
 				if (node.computed) this.visit(node.property, scope);
 				return;

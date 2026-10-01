@@ -641,10 +641,14 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
-		const composeContractNodes =
+		const contracts =
 			this.globalConfig.instanceAi.nodeContractsEnabled && '@n8n/nodes-base-next' in this.loaders
-				? (await import('@/node-contracts-registry.js')).composeContractNodes
+				? await import('@/node-contracts-registry.js')
 				: undefined;
+		const storedContractVersions = await contracts?.storedContractVersions().catch((error) => {
+			this.logger.error('Cannot read the node contracts store', { error: ensureError(error) });
+			return undefined;
+		});
 
 		// Publish the rebuilt registry. Everything below runs synchronously until the
 		// post-processor loop, so no reader can observe a half-built registry.
@@ -656,8 +660,12 @@ export class LoadNodesAndCredentials {
 		createHitlTools(this.types, this.known);
 
 		// After the AI tools, so the tool variants keep their legacy versions.
-		if (composeContractNodes) {
-			const composed = composeContractNodes(this.loaders, this.types.nodes);
+		if (contracts) {
+			const composed = contracts.composeContractNodes(
+				this.loaders,
+				this.types.nodes,
+				storedContractVersions,
+			);
 			this.composedNodes = composed.nodes;
 			this.types = { ...this.types, nodes: composed.types };
 		}
@@ -767,6 +775,25 @@ export class LoadNodesAndCredentials {
 				});
 				throw new UserError(`Hot reload failed for ${loader.packageName}`, { cause: error });
 			}
+		});
+		this.reloadQueue = run.catch(() => {});
+		await run;
+	}
+
+	/**
+	 * Rebuilds the node types from the loaded packages, for example after the node contracts
+	 * store got a new major, and pushes them to open editors. `isNeeded` runs in the queue, so
+	 * parallel callers that need the same change rebuild once.
+	 */
+	async refreshNodeTypes(isNeeded: () => boolean = () => true) {
+		const run = this.reloadQueue.then(async () => {
+			if (!isNeeded()) return;
+			const released = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+			await this.postProcessLoaders();
+			if (released) this.releaseTypes();
+			if (this.instanceSettings.instanceType !== 'main') return;
+			const { Push } = await import('@/push/index.js');
+			Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
 		});
 		this.reloadQueue = run.catch(() => {});
 		await run;

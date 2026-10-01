@@ -1,0 +1,57 @@
+{
+	"executions": [
+		{
+			"name": "routes to the first matching case",
+			"params": {
+				"cases": [
+					{
+						"output": "young",
+						"where": {
+							"conditions": [
+								{
+									"type": "number",
+									"left": 30,
+									"test": {
+										"op": "lt",
+										"right": 18
+									}
+								}
+							]
+						}
+					},
+					{
+						"output": "adult",
+						"where": {
+							"match": "all",
+							"conditions": [
+								{
+									"type": "number",
+									"left": 30,
+									"test": {
+										"op": "gte",
+										"right": 18
+									}
+								}
+							]
+						}
+					}
+				]
+			},
+			"items": [
+				{
+					"id": 1
+				}
+			],
+			"responses": [],
+			"outputs": [
+				[],
+				[
+					{
+						"id": 1
+					}
+				],
+				[]
+			]
+		}
+	]
+}

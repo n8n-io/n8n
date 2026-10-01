@@ -7,6 +7,7 @@ import { prepareSheetData } from 'n8n-nodes-base/dist/nodes/Google/Sheet/v2/help
 import { getGmailMessage } from '../nodes/gmail/actions/message.get';
 import { getManyGmailMessages } from '../nodes/gmail/actions/message.get-all';
 import { sendGmailMessage } from '../nodes/gmail/actions/message.send';
+import { mixedMessage } from '../nodes/gmail/mime';
 import { messageGemini } from '../nodes/google-gemini/actions/text.message';
 import { appendSheetRow } from '../nodes/google-sheets/actions/sheet.append';
 import { appendOrUpdateSheetRow } from '../nodes/google-sheets/actions/sheet.append-or-update';
@@ -412,6 +413,16 @@ describe('gmail.message.get', () => {
 		const { items } = run(getGmailMessage, { messageId: 'm9' }, gmailApi);
 		expect(await items).toEqual(await legacySimplified(['m9']));
 	});
+
+	it('names the fields a message in another shape misses', async () => {
+		const { historyId: _historyId, sizeEstimate: _size, ...partial } = metadata('m9');
+		const { items } = run(getGmailMessage, { messageId: 'm9' }, (options) =>
+			options.url === `${GMAIL}/labels` ? LABELS : partial,
+		);
+		await expect(items).rejects.toThrow(
+			'Gmail returned message m9 in another shape: message.historyId: is required; message.sizeEstimate: is required',
+		);
+	});
 });
 
 describe('gmail.message.send', () => {
@@ -478,6 +489,39 @@ describe('gmail.message.send', () => {
 			.map((word) => Buffer.from(word.slice(10, -2), 'base64').toString())
 			.join('');
 		expect(decoded).toBe(subject);
+	});
+
+	it('streams an attachment as base64 lines across any chunk boundary', async () => {
+		const bytes = Buffer.from(Array.from({ length: 300 }, (_, index) => (index * 13) % 256));
+		const sizes = [1, 56, 58, 2, 114, 69];
+		const file = {
+			meta: { mimeType: 'image/png\r\nX-Extra: 1', fileName: 'Grüße "1".png' },
+			async *read() {
+				yield* sizes.map((size, index) => {
+					const start = sizes.slice(0, index).reduce((sum, value) => sum + value, 0);
+					return bytes.subarray(start, start + size);
+				});
+			},
+		};
+		const parts: string[] = [];
+		for await (const part of mixedMessage(
+			[['To', 'ada@x.io']],
+			{ type: 'text/plain', content: 'Hi' },
+			[file],
+		)) {
+			parts.push(part);
+		}
+		const [head = '', text = '', attachment = '', end] = parts.join('').split('\r\n--=_n8n_mixed');
+		expect(head).toBe('To: ada@x.io\r\nContent-Type: multipart/mixed; boundary="=_n8n_mixed"\r\n');
+		expect(text).toContain('Content-Type: text/plain');
+		expect(end).toBe('--\r\n');
+		const [fileHead = '', lines = ''] = attachment.split('\r\n\r\n');
+		expect(fileHead).toContain("filename*=UTF-8''Gr%C3%BC%C3%9Fe%20%221%22.png");
+		expect(fileHead).toContain('Content-Type: image/png X-Extra: 1;');
+		expect(fileHead).not.toMatch(/^X-Extra:/m);
+		const encoded = lines.split('\r\n').filter(Boolean);
+		expect(encoded.every((line) => line.length <= 76)).toBe(true);
+		expect(Buffer.from(encoded.join(''), 'base64')).toEqual(bytes);
 	});
 
 	it('rejects an address without @', async () => {

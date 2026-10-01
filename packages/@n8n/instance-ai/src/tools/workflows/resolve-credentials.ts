@@ -574,6 +574,31 @@ export async function resolveCredentials(
 		}
 	}
 
+	// Node contracts: the source never writes credentials, so an open required slot is the
+	// `newCredential()` slot of a classic build. Report it the same way, so setup and the
+	// verification plan see it.
+	const holdForSetup = (nodeName: string, credentialType: string) => {
+		if (!ctx.nodeContractsEnabled) return;
+		mockedCredentialTypesSet.add(credentialType);
+		const held = mockedCredentialsByNode[nodeName] ?? [];
+		if (!held.includes(credentialType))
+			mockedCredentialsByNode[nodeName] = [...held, credentialType];
+		if (!mockedNodeNames.includes(nodeName)) mockedNodeNames.push(nodeName);
+	};
+	// Node contracts: an edit rebuilds the node from source, so keep its saved credential.
+	const restoreSavedCredential = (node: NodeJSON, nodeName: string, credentialType: string) => {
+		const saved = existingCredsByNode.get(nodeName)?.[credentialType];
+		const id = getCredentialId(saved);
+		if (!ctx.nodeContractsEnabled || !id) return false;
+		const name = getCredentialName(saved) ?? id;
+		node.credentials = { ...node.credentials, [credentialType]: { id, name } };
+		resolvedCredentialsByNode[nodeName] = [
+			...(resolvedCredentialsByNode[nodeName] ?? []),
+			{ type: credentialType, id, name },
+		];
+		return true;
+	};
+
 	// Second pass — required-but-omitted credentials. The first pass only visits
 	// slots the LLM wrote; a node missing a slot for a type it requires reaches
 	// post-build setup credential-less and surfaces a setup card. Required types
@@ -582,6 +607,7 @@ export async function resolveCredentials(
 	// auth is switched to — is gateway-supported. Otherwise leave it for setup.
 	for (const node of json.nodes ?? []) {
 		if (!node.name) continue;
+		const nodeName = node.name;
 		const requiredTypes = await getValidCredentialTypes(ctx, node);
 		const omitsCredentials =
 			requiredTypes.size > 0 &&
@@ -601,9 +627,14 @@ export async function resolveCredentials(
 			// result would otherwise carry no trace of the request for the setup call.
 			if (preferNewTypes.has(credType)) {
 				heldForNewCredentialTypes.add(credType);
+				holdForSetup(nodeName, credType);
 				continue;
 			}
-			if (hasStoredCredential(credType)) continue;
+			if (restoreSavedCredential(node, nodeName, credType)) continue;
+			if (hasStoredCredential(credType)) {
+				holdForSetup(nodeName, credType);
+				continue;
+			}
 
 			let managedType = credType;
 			if (!(await isGatewayCredentialType(credType))) {
@@ -614,6 +645,7 @@ export async function resolveCredentials(
 					// is attached; the slot stays open for setup like today.
 					const managedOAuthSibling = await resolveManagedOAuthSiblingType(node, credType);
 					if (managedOAuthSibling) await applyManagedAuth(node, managedOAuthSibling);
+					holdForSetup(nodeName, managedOAuthSibling ?? credType);
 					continue;
 				}
 				managedType = siblingType;
