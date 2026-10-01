@@ -98,7 +98,11 @@ export function sessionCapSave(
 	);
 }
 
-/** Writes one cap and keeps the other saved amounts. Rejects an empty or negative amount. */
+/**
+ * Writes one raised cap and keeps the other saved amounts. Increase-only:
+ * rejects an empty or negative amount, and one at or below the current cap —
+ * saving it would lift the stop only for the next run to stop again.
+ */
 export function increasedBudgetConfig(
 	config: AgentJsonConfig | null,
 	field: BudgetAmountField,
@@ -107,6 +111,8 @@ export function increasedBudgetConfig(
 	const next = parseBudgetAmount(amount);
 	if (next === undefined) return undefined;
 	const current = config?.config?.guardrails?.budget;
+	const currentValue = current?.[field];
+	if (currentValue !== undefined && next <= currentValue) return undefined;
 	const monthly = field === 'monthlyBudgetUsd' ? next : current?.monthlyBudgetUsd;
 	const session = field === 'sessionCostCapUsd' ? next : current?.sessionCostCapUsd;
 	return withBudget(
@@ -118,6 +124,30 @@ export function increasedBudgetConfig(
 	);
 }
 
+/**
+ * Caps whose raise or removal lifts a budget stop. A lowered or unchanged cap
+ * keeps the stop: the next run would stop against it again.
+ */
+export function raisedBudgetCaps(
+	before: BudgetGuardrailConfig | undefined,
+	after: BudgetGuardrailConfig | undefined,
+): BudgetAmountField[] {
+	const raised: BudgetAmountField[] = [];
+	for (const field of ['monthlyBudgetUsd', 'sessionCostCapUsd'] as const) {
+		const prev = before?.[field];
+		const next = after?.[field];
+		if (next === undefined ? prev !== undefined : prev !== undefined && next > prev) {
+			raised.push(field);
+		}
+	}
+	return raised;
+}
+
 export function isBudgetStopCode(code: string): code is 'budget.monthly' | 'budget.session' {
 	return code === 'budget.monthly' || code === 'budget.session';
+}
+
+/** Notice codes a persisted change to one cap resolves. The alert rides with the monthly cap. */
+export function budgetNoticeCodesForField(field: BudgetAmountField): BudgetNoticeCode[] {
+	return field === 'sessionCostCapUsd' ? ['budget.session'] : ['budget.monthly', 'budget.alert'];
 }

@@ -140,6 +140,10 @@ function getConversationMarkdown() {
 	return previewChatPage.value?.getConversationMarkdown() ?? '';
 }
 
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
+}
+
 function toggleFullWidth() {
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
@@ -183,6 +187,8 @@ function handleEscapeKey(event: KeyboardEvent) {
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 });
+
+defineExpose({ clearBudgetStops });
 </script>
 
 <template>

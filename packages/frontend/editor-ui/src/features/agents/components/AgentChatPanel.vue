@@ -50,7 +50,11 @@ import type {
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
-import { isBudgetStopCode, type BudgetAmountField } from '../utils/budget-config';
+import {
+	isBudgetStopCode,
+	budgetNoticeCodesForField,
+	type BudgetAmountField,
+} from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 import ApprovalCard from './interactive/ApprovalCard.vue';
@@ -134,6 +138,7 @@ const {
 	cancelAndSteer,
 	dismissFatalError,
 	dismissWarning,
+	clearBudgetNotices,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
@@ -692,27 +697,21 @@ async function onSubmit(): Promise<SubmitResult> {
 }
 
 /**
- * Clears the matching notices only after the new cap is persisted — a failed
- * or skipped save must keep the stop card up and Send blocked, because the
- * next run would stop against the old cap again.
+ * Drops the stop notices a persisted cap change resolves. Call only after the
+ * new cap is saved: a failed or skipped save must keep the stop card up and
+ * Send blocked, because the next run would stop against the old cap again.
  */
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	clearBudgetNotices(new Set(fields.flatMap(budgetNoticeCodesForField)));
+}
+
 async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
 	if (!props.increaseBudget || budgetIncreasePending.value) return;
 	budgetIncreasePending.value = true;
 	try {
 		const saved = await props.increaseBudget(payload);
 		if (!saved) return;
-		const cleared =
-			payload.field === 'sessionCostCapUsd'
-				? new Set(['budget.session'])
-				: new Set(['budget.monthly', 'budget.alert']);
-		messages.value = messages.value.map((message) => {
-			if (!message.budgetNotices?.some((notice) => cleared.has(notice.code))) return message;
-			return {
-				...message,
-				budgetNotices: message.budgetNotices.filter((notice) => !cleared.has(notice.code)),
-			};
-		});
+		clearBudgetStops([payload.field]);
 	} finally {
 		budgetIncreasePending.value = false;
 	}
@@ -756,7 +755,7 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
-defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside });
+defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside, clearBudgetStops });
 
 onMounted(() => {
 	void loadHistory();

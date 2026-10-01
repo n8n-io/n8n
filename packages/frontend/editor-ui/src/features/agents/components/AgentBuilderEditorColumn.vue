@@ -71,6 +71,8 @@ const isMcpAvailable = computed(
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	/** A budget settings modal saved — the view clears matching budget stops once the save persists. */
+	'update:budget-config': [updates: Partial<AgentJsonConfig>];
 	'draft:config': [];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
@@ -299,7 +301,7 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:disabled="childrenDisabled"
-							@update:config="emit('update:config', $event)"
+							@update:config="emit('update:budget-config', $event)"
 						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"

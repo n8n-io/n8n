@@ -60,6 +60,10 @@ function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
 }
 
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	chatPanel.value?.clearBudgetStops(fields);
+}
+
 watch(
 	[() => props.initialPrompt, chatPanel],
 	([prompt, panel]) => {
@@ -69,7 +73,7 @@ watch(
 	{ immediate: true, flush: 'post' },
 );
 
-defineExpose({ focusInput, getConversationMarkdown });
+defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 </script>
 
 <template>

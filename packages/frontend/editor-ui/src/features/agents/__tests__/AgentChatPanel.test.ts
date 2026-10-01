@@ -24,6 +24,17 @@ const resumeMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
+// Mirrors the real composable: clearing drops the codes from the live
+// messages (and, untestable here, the pending-restore bucket).
+const clearBudgetNoticesMock = vi.fn((codes: ReadonlySet<string>) => {
+	messagesMock.value = messagesMock.value.map((message) => {
+		if (!message.budgetNotices?.some((notice) => codes.has(notice.code))) return message;
+		return {
+			...message,
+			budgetNotices: message.budgetNotices.filter((notice) => !codes.has(notice.code)),
+		};
+	});
+});
 const isStreamingMock = ref(false);
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
@@ -228,6 +239,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			resume: resumeMock,
 			cancelAndSteer: cancelAndSteerMock,
 			dismissFatalError: vi.fn(),
+			clearBudgetNotices: clearBudgetNoticesMock,
 		};
 	},
 }));
@@ -1510,6 +1522,72 @@ describe('AgentChatPanel', () => {
 			{ id: 'notice-1', code: 'budget.monthly' },
 		]);
 		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('clears only the matching stop via the exposed clearBudgetStops', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [
+					{ id: 'notice-1', code: 'budget.session' },
+					{ id: 'notice-2', code: 'budget.monthly' },
+				],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['sessionCostCapUsd']);
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(new Set(['budget.session']));
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-2', code: 'budget.monthly' },
+		]);
+		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('clears the monthly stop and its alert via the exposed clearBudgetStops', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [
+					{ id: 'notice-1', code: 'budget.monthly' },
+					{ id: 'notice-2', code: 'budget.alert' },
+				],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['monthlyBudgetUsd']);
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(
+			new Set(['budget.monthly', 'budget.alert']),
+		);
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		expect(chatInput.props('canSubmit')).toBe(true);
 	});
 
 	it('offers the increase action only when an increaseBudget handler is provided', async () => {

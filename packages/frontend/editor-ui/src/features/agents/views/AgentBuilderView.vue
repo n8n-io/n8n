@@ -79,7 +79,11 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
-import { useAgentConfigAutosave, type AutosaveResult } from '../composables/useAgentConfigAutosave';
+import {
+	useAgentConfigAutosave,
+	isPersistedSave,
+	type AutosaveResult,
+} from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import {
@@ -138,7 +142,11 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { useFixWithAssistantCalloutDismissal } from '../composables/useFixWithAssistantCalloutDismissal';
-import { increasedBudgetConfig, type BudgetAmountField } from '../utils/budget-config';
+import {
+	increasedBudgetConfig,
+	raisedBudgetCaps,
+	type BudgetAmountField,
+} from '../utils/budget-config';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
 const props = withDefaults(
@@ -712,6 +720,9 @@ const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
+const previewChatPage =
+	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const previewDock = useTemplateRef<InstanceType<typeof AgentPreviewDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -1516,21 +1527,56 @@ async function beforeRevertToPublished() {
 	await settleAutosave();
 }
 
-async function flushAutosave() {
+function cancelQueuedAutosaves() {
+	configAutosave.cancelPendingAutosave();
+	skillAutosave.cancelPendingAutosave();
+	mcpAutosave.cancelPendingAutosave();
+}
+
+/**
+ * Flushes every autosave loop. The result is the config save.
+ * Set `isolateSideSaveErrors` so a skill or MCP failure does not change it.
+ * Leave it unset when a failure must reject, so a route change can retry the edit.
+ */
+async function flushAutosaveLoops(isolateSideSaveErrors = false): Promise<AutosaveResult> {
 	// Locked means the AI or another client is mutating this agent right now —
 	// flushing a pending edit here would persist a stale full config over
 	// their writes.
 	if (isEditingLocked.value) {
-		configAutosave.cancelPendingAutosave();
-		skillAutosave.cancelPendingAutosave();
-		mcpAutosave.cancelPendingAutosave();
-		return;
+		cancelQueuedAutosaves();
+		return 'skipped';
 	}
-	await Promise.all([
+	const sideFlush = (flush: Promise<AutosaveResult>) =>
+		isolateSideSaveErrors
+			? flush.then(
+					() => undefined,
+					() => undefined,
+				)
+			: flush;
+	const [configResult] = await Promise.all([
 		configAutosave.flushAutosave(),
-		skillAutosave.flushAutosave(),
-		mcpAutosave.flushAutosave(),
+		sideFlush(skillAutosave.flushAutosave()),
+		sideFlush(mcpAutosave.flushAutosave()),
 	]);
+	return configResult;
+}
+
+async function flushAutosave(): Promise<AutosaveResult> {
+	return await flushAutosaveLoops();
+}
+
+/**
+ * Config outcome only. Skill and MCP saves still run. Their failures do not
+ * change the result: a persisted cap must clear its budget stop. A later save
+ * of that same cap would not try again.
+ */
+async function flushConfigAutosave(): Promise<AutosaveResult> {
+	return await flushAutosaveLoops(true);
+}
+
+/** Flush variant for callers that await completion but not the save outcome. */
+async function flushAutosaveIgnoringResult(): Promise<void> {
+	await flushAutosave();
 }
 
 useEventListener(document, 'keydown', (event) => {
@@ -1586,20 +1632,44 @@ async function onPreviewIncreaseBudget(payload: {
 	if (!update) return false;
 	onConfigFieldUpdate(update);
 	try {
-		await flushAutosave();
+		// Only a persisted cap lifts the stop: a stale, skipped, or outdated
+		// save means the next run would still stop against the old cap.
+		return isPersistedSave(await flushConfigAutosave());
 	} catch {
 		return false;
 	}
-	return true;
+}
+
+/**
+ * Budget settings modal save. When the save persists a raised or removed cap,
+ * clear the matching stop cards in the preview chat so Send unblocks — the
+ * card's own increase flow is not the only way out of a stop.
+ */
+async function onBudgetSettingsSave(updates: Partial<AgentJsonConfig>) {
+	const before = localConfig.value?.config?.guardrails?.budget;
+	onConfigFieldUpdate(updates);
+	const after = localConfig.value?.config?.guardrails?.budget;
+	const clearedFields = raisedBudgetCaps(before, after);
+	if (clearedFields.length === 0) return;
+	try {
+		if (!isPersistedSave(await flushConfigAutosave())) return;
+	} catch {
+		// The autosave onError toast already surfaced the failure.
+		return;
+	}
+	clearPreviewBudgetStops(clearedFields);
+}
+
+function clearPreviewBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
+	previewDock.value?.clearBudgetStops(fields);
 }
 
 // Makes the lock a write boundary rather than only a disabled UI state: drop
 // any autosave queued before the AI or another client took over this agent.
 watch(isEditingLocked, (locked) => {
 	if (!locked) return;
-	configAutosave.cancelPendingAutosave();
-	skillAutosave.cancelPendingAutosave();
-	mcpAutosave.cancelPendingAutosave();
+	cancelQueuedAutosaves();
 	mcpAvailabilityOverride.value = null;
 });
 
@@ -1680,7 +1750,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
-	beforeAgentMutation: flushAutosave,
+	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
@@ -2861,8 +2931,8 @@ useKeybindings({
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
-						:before-new-thread="flushAutosave"
-						:before-send="flushAutosave"
+						:before-new-thread="flushAutosaveIgnoringResult"
+						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
@@ -2891,6 +2961,7 @@ useKeybindings({
 			<template v-else>
 				<AgentPreviewChatPage
 					v-if="isStandalonePreview"
+					ref="previewChatPage"
 					layout="page"
 					:initialized="initialized && previewSessionReady"
 					:project-id="projectId"
@@ -2939,6 +3010,7 @@ useKeybindings({
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
+					@update:budget-config="onBudgetSettingsSave"
 					@draft:config="markConfigDraftEdited"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"
@@ -2990,6 +3062,7 @@ useKeybindings({
 					@resizeend="isPreviewDockResizing = false"
 				>
 					<AgentPreviewDock
+						ref="previewDock"
 						:is-open="isPreviewDockOpen"
 						:session-title="currentSessionTitle"
 						:session-options="sessionMenu"

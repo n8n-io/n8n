@@ -5,6 +5,11 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 export type SaveStatus = 'idle' | 'saving' | 'saved';
 export type AutosaveResult = 'skipped' | 'stale' | 'outdated' | undefined;
 
+/** True only when the save persisted. A skipped, stale, or outdated result means the server still holds the prior state. */
+export function isPersistedSave(result: AutosaveResult): boolean {
+	return result === undefined;
+}
+
 export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	/**
 	 * Persist the snapshot captured at schedule-time. The caller is responsible
@@ -62,6 +67,9 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 	const latestRevisionByGeneration = new Map<number, number>();
 	const staleThroughRevisionByGeneration = new Map<number, number>();
 	let lastSaveError: Error | null = null;
+	/** Outcome of the most recent settled save — lets a flush with no queued
+	 * snapshot of its own report whether the in-flight tail actually persisted. */
+	let lastSettledResult: AutosaveResult;
 	/**
 	 * Bumped by `reset()`. A save captures the generation at the start of `runSave`
 	 * and re-checks it after each `await` before touching `saveStatus`, so a save
@@ -84,9 +92,9 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		snapshotRevision: number,
 		snapshotGeneration: number,
 		rethrow: boolean,
-	): Promise<void> {
+	): Promise<AutosaveResult> {
 		if (snapshotRevision <= (staleThroughRevisionByGeneration.get(snapshotGeneration) ?? 0)) {
-			return;
+			return 'stale';
 		}
 		const gen = snapshotGeneration;
 		// A save chained behind an in-flight one can start after `reset()` moved
@@ -106,6 +114,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		}
 		try {
 			const result = await params.save(snapshot);
+			lastSettledResult = result;
 			// A `reset()` between schedule and resolution (e.g. an A→B target
 			// switch) detaches this save from `saveStatus`: the snapshot still
 			// persists for A and its `onSaved`/`onError` side-effects still fire
@@ -123,14 +132,14 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 					cancelPendingAutosave();
 				}
 				if (!detached) saveStatus.value = 'idle';
-				return;
+				return result;
 			}
 			if (result === 'skipped' || result === 'outdated') {
 				if (!detached) saveStatus.value = 'idle';
-				return;
+				return result;
 			}
 			params.onSaved?.(snapshot);
-			if (detached) return;
+			if (detached) return result;
 			saveStatus.value = 'saved';
 			saveStatusResetTimer = setTimeout(() => {
 				if (gen !== generation) {
@@ -140,6 +149,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				saveStatus.value = 'idle';
 				saveStatusResetTimer = null;
 			}, savedHoldMs);
+			return result;
 		} catch (error) {
 			const detached = gen !== generation;
 			params.onError?.(error);
@@ -148,6 +158,9 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				saveStatus.value = 'idle';
 			}
 			if (rethrow) throw toError(error);
+			// A handled error surfaces through `lastSaveError` on the next flush,
+			// not through this return value.
+			return undefined;
 		}
 	}
 
@@ -156,7 +169,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		snapshotRevision: number,
 		snapshotGeneration: number,
 		rethrow: boolean,
-	): Promise<void> {
+	): Promise<AutosaveResult> {
 		// Chain onto any in-flight save so two scheduled saves can't run
 		// concurrently — overlapping POSTs would otherwise race the version-id
 		// update and the second `autosaveInFlight` write would hide the first
@@ -165,7 +178,10 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		const slot = previous.then(
 			async () => await runSave(snapshot, snapshotRevision, snapshotGeneration, rethrow),
 		);
-		const trackedSlot = slot.catch(() => undefined);
+		const trackedSlot: Promise<void> = slot.then(
+			() => undefined,
+			() => undefined,
+		);
 		autosaveInFlight = trackedSlot;
 		syncPendingState();
 		void trackedSlot.finally(() => {
@@ -177,7 +193,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				syncPendingState();
 			}
 		});
-		await slot;
+		return await slot;
 	}
 
 	function scheduleAutosave(snapshot: TSnapshot) {
@@ -208,7 +224,12 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		if (autosaveInFlight) await autosaveInFlight;
 	}
 
-	async function flushAutosave() {
+	/**
+	 * Drains the queued snapshot now and resolves with its save outcome —
+	 * `undefined` when it persisted, otherwise why the server state was kept.
+	 * Rejects when the save itself failed.
+	 */
+	async function flushAutosave(): Promise<AutosaveResult> {
 		if (autosaveTimer !== null) {
 			clearTimeout(autosaveTimer);
 			autosaveTimer = null;
@@ -224,7 +245,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 
 		if (target !== null) {
 			try {
-				await chainSave(target, targetRevision, targetGeneration, true);
+				return await chainSave(target, targetRevision, targetGeneration, true);
 			} catch (error) {
 				// Restore the failed snapshot for a retry — unless a `reset()`
 				// happened while the save was in flight: the loop now serves a
@@ -242,11 +263,11 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				}
 				throw error;
 			}
-			return;
 		}
 
 		if (autosaveInFlight) await autosaveInFlight;
 		if (lastSaveError) throw lastSaveError;
+		return lastSettledResult;
 	}
 
 	function cancelPendingAutosave() {

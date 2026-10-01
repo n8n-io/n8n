@@ -44,7 +44,7 @@ import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thin
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
-import { isBudgetStopCode } from '../utils/budget-config';
+import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
@@ -637,6 +637,35 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 		}
 		return restored;
+	}
+
+	/**
+	 * Drops the given notice codes from the live messages AND from the current
+	 * target's pending bucket. Both copies must go: the bucket is consumed by
+	 * the next history refresh and would otherwise re-attach a notice already
+	 * cleared from the messages. Other codes stay buffered so that refresh
+	 * still restores them; buckets of other targets are untouched.
+	 */
+	function clearBudgetNotices(codes: ReadonlySet<BudgetNoticeCode>): void {
+		messages.value = messages.value.map((message) => {
+			if (!message.budgetNotices?.some((notice) => codes.has(notice.code))) return message;
+			return {
+				...message,
+				budgetNotices: message.budgetNotices.filter((notice) => !codes.has(notice.code)),
+			};
+		});
+		const forTarget = pendingBudgetNotices.get(targetKey());
+		if (!forTarget) return;
+		for (const [key, entry] of forTarget) {
+			const kept = entry.notices.filter((notice) => !codes.has(notice.code));
+			if (kept.length === entry.notices.length) continue;
+			if (kept.length === 0) {
+				forTarget.delete(key);
+			} else {
+				forTarget.set(key, { ...entry, notices: kept });
+			}
+		}
+		if (forTarget.size === 0) pendingBudgetNotices.delete(targetKey());
 	}
 
 	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
@@ -1690,6 +1719,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		loadHistory,
 		refresh,
 		clearHistory,
+		clearBudgetNotices,
 		sendMessage,
 		stopGenerating,
 		detachStream,

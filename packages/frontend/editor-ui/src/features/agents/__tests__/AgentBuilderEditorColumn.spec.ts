@@ -460,14 +460,15 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
-	it('forwards a budget panel config update to the host', async () => {
+	it('forwards a budget panel config update to the host as a budget save', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
 		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
 		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
 
-		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
+		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

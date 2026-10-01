@@ -52,7 +52,8 @@ function onUpdate(value: number | number[]) {
 	min-width: 0;
 	max-width: 100%;
 	flex-wrap: nowrap;
-	padding-inline: calc(var(--el-slider-button-size) / 2);
+	/* The thumb's hit area (wrapper, not button) is centred on the value, so reserve half of it. */
+	padding-inline: calc(var(--el-slider-button-wrapper-size) / 2);
 
 	:global(.el-slider__runway) {
 		flex: 1 1 0%;
