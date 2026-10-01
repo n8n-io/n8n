@@ -16,7 +16,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineDidNotAdmitError,
+	type EngineDataPlaneProxyService,
+} from '@/services/engine-data-plane-proxy.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import type { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
@@ -760,12 +763,23 @@ describe('EngineV2Dispatcher', () => {
 				expect(payloadFiles.discard).not.toHaveBeenCalled();
 			});
 
-			it('deletes them when the data plane refused the run', async () => {
-				proxy.startExecution.mockRejectedValueOnce(new Error('down'));
+			it('deletes them when the data plane refused the run before saving it', async () => {
+				const refusal = new EngineDidNotAdmitError('Engine did not admit the execution');
+				proxy.startExecution.mockRejectedValueOnce(refusal);
 
-				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toThrow('down');
+				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toBe(refusal);
 
 				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
+			});
+
+			it('keeps them when the start fails in a way that can come after the save', async () => {
+				// A server error or a lost response: the data plane can hold a run that
+				// reads these files, and deleting that execution deletes them.
+				proxy.startExecution.mockRejectedValueOnce(new Error('socket hang up'));
+
+				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toThrow('socket hang up');
+
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
 			});
 
 			it('deletes them when the run is refused before it is dispatched', async () => {

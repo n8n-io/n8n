@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
 	INode,
 	INodeExecutionData,
@@ -11,10 +11,17 @@ import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workf
 import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
-import { createExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	type ExecutionIdV2,
+	isExecutionIdV2,
+} from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineDataPlaneProxyService,
+	isStartRefusedBeforeSave,
+} from '@/services/engine-data-plane-proxy.service';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
@@ -27,6 +34,9 @@ type FiredTrigger = {
 	name?: string;
 	outputs: INodeExecutionData[][];
 };
+
+/** A run that is ready to send to the data plane. */
+type PreparedStart = { executionId: ExecutionIdV2; request: StartExecutionRequest };
 
 /** Execution modes the v2 path serves today. */
 const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook', 'trigger']);
@@ -94,23 +104,38 @@ export class EngineV2Dispatcher {
 	 *
 	 * The files the trigger stored belong to the control plane until the data
 	 * plane accepts the run. A run that does not start leaves them to no one, so
-	 * every failure below deletes them.
+	 * a failure deletes them, but only when no run can exist: a run that uses
+	 * deleted files fails, while a kept file is deleted with its execution.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		const trigger = this.resolveFiredTrigger(data);
 
+		let prepared: PreparedStart;
 		try {
-			return await this.dispatch(data, trigger);
+			prepared = await this.prepare(data, trigger);
 		} catch (error) {
 			await this.payloadFiles.discard(trigger.outputs);
 			throw error;
 		}
+
+		const { executionId, request } = prepared;
+		try {
+			await this.proxy.startExecution(request);
+		} catch (error) {
+			// Assumes rejection: a dropped success response also releases a still-live session.
+			this.pushRegistry.release(executionId);
+			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(trigger.outputs);
+			throw error;
+		}
+
+		return executionId;
 	}
 
-	private async dispatch(
+	/** Everything before the data plane is called, so no run exists if this fails. */
+	private async prepare(
 		data: IWorkflowExecutionDataProcess,
 		trigger: FiredTrigger,
-	): Promise<string> {
+	): Promise<PreparedStart> {
 		this.assertSupported(data, trigger);
 
 		const { workflowData } = data;
@@ -132,8 +157,9 @@ export class EngineV2Dispatcher {
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, trigger);
 
-		try {
-			await this.proxy.startExecution({
+		return {
+			executionId,
+			request: {
 				executionId,
 				workflowId: workflowData.id,
 				graph,
@@ -151,14 +177,8 @@ export class EngineV2Dispatcher {
 					projectId: data.projectId,
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
-			});
-		} catch (error) {
-			// Assumes rejection: a dropped success response also releases a still-live session.
-			this.pushRegistry.release(executionId);
-			throw error;
-		}
-
-		return executionId;
+			},
+		};
 	}
 
 	/**
