@@ -13,6 +13,7 @@ import {
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
@@ -249,7 +250,7 @@ export class License implements LicenseProvider {
 			await this.manager.reloadStoredCert();
 		} catch (error: unknown) {
 			this.logger.warn('Failed to reload the stored license cert', {
-				error: error instanceof Error ? error.message : error,
+				error: ensureError(error).message,
 			});
 			return;
 		}
