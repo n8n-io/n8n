@@ -365,7 +365,6 @@ export default defineConfig({
 			// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 			files: [
 				'./src/services/pruning/executions-pruning.service.ts',
-				'./src/services/workflow-statistics-rollup.service.ts',
 			],
 			rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 		},
