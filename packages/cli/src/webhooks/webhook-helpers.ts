@@ -1038,7 +1038,7 @@ export async function executeWebhook(
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
 	/** The id of the v2 run, created before the webhook node runs. */
-	let engineExecutionId: ExecutionIdV2 | undefined;
+	let engineV2ExecutionId: ExecutionIdV2 | undefined;
 	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
 	let engineV2Payload: INodeExecutionData[][] | undefined;
 	let pendingEngineV2Response: WebhookResponseWait | undefined;
@@ -1055,8 +1055,8 @@ export async function executeWebhook(
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
 			// Created before the node runs, so a file the node stores is written under
 			// the path of its run from the start, and no rename is needed later.
-			engineExecutionId = createExecutionIdV2();
-			additionalData.executionId = engineExecutionId;
+			engineV2ExecutionId = createExecutionIdV2();
+			additionalData.executionId = engineV2ExecutionId;
 		}
 
 		if (
@@ -1243,7 +1243,7 @@ export async function executeWebhook(
 			responder.markResponded();
 		}
 
-		if (engineExecutionId !== undefined) {
+		if (engineV2ExecutionId !== undefined) {
 			// Before the run, because a short workflow answers before `startExecution`
 			// returns and nothing replays a missed response.
 			if (responseMode === 'lastNode' || responseMode === 'responseNode') {
@@ -1253,11 +1253,11 @@ export async function executeWebhook(
 				);
 				pendingEngineV2Response = await Container.get(
 					EngineV2WebhookResponseRegistry,
-				).waitForResponse(engineExecutionId, toResponseExpectation(responseMode));
+				).waitForResponse(engineV2ExecutionId, toResponseExpectation(responseMode));
 				runData.engineV2Response = { responseMode };
 			}
 			// The files the node stored are under this id, so the run must use it.
-			runData.engineExecutionId = engineExecutionId;
+			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.

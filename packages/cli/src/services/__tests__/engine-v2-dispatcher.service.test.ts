@@ -226,7 +226,7 @@ describe('EngineV2Dispatcher', () => {
 
 				const started = await dispatcher.start(
 					webhookRunData(undefined, {
-						engineExecutionId: executionId,
+						engineV2ExecutionId: executionId,
 						engineV2Response: { responseMode },
 					}),
 				);
@@ -756,6 +756,8 @@ describe('EngineV2Dispatcher', () => {
 				expect(payloadFiles.claimForExecution.mock.invocationCallOrder[0]).toBeLessThan(
 					proxy.startExecution.mock.invocationCallOrder[0],
 				);
+				// The execution owns the files now.
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
 			});
 
 			it('deletes them when the data plane refused the run', async () => {

@@ -3,9 +3,10 @@ import type { BinaryDataService } from 'n8n-core';
 import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 
-const EXECUTION_ID = '019606a1-0000-7000-8000-000000000001';
+const EXECUTION_ID = '019606a1-0000-7000-8000-000000000001' as ExecutionIdV2;
 const TEMP_FILE = 'workflows/wf-1/executions/temp/binary_data/abc';
 const MOVED_FILE = `workflows/wf-1/executions/${EXECUTION_ID}/binary_data/abc`;
 
@@ -72,11 +73,14 @@ describe('EngineV2PayloadFiles', () => {
 			expect(binaryDataService.rename).not.toHaveBeenCalled();
 		});
 
-		it('rejects on a failed move, with every reference naming the path where its file is', async () => {
+		it('rejects on a failed move only after every move ends, with each reference naming where its file is', async () => {
 			const otherTempFile = 'workflows/wf-1/executions/temp/binary_data/def';
 			const [moved, stuck] = [temporary(), temporary(otherTempFile)];
+			// The move that succeeds ends after the one that fails, so a claim that
+			// rejected at the first failure would leave `moved` naming the old path.
 			binaryDataService.rename.mockImplementation(async (oldFileId) => {
 				if (oldFileId === otherTempFile) throw new Error('disk gone');
+				await new Promise((resolve) => setTimeout(resolve, 1));
 			});
 
 			await expect(

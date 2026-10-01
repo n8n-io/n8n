@@ -3,11 +3,18 @@ import { Service } from '@n8n/di';
 import { BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
 import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
+
 /** Output slots as a trigger produces them; v1 uses `null` for a slot it has no data for. */
 type PayloadSlots = Array<INodeExecutionData[] | null | undefined>;
 
-/** A reference to a file in the store, split into the mode and the path the store knows. */
-type StoredFile = { ref: IBinaryData; mode: string; fileId: string };
+/** A reference to a file in the store, so its id is set: `<mode>:<fileId>`. */
+type StoredRef = IBinaryData & { id: string };
+
+/** A stored reference, with `fileId` set to its id without the `<mode>:` prefix. */
+type StoredFile = { ref: StoredRef; fileId: string };
+
+const isStored = (ref: IBinaryData): ref is StoredRef => ref.id !== undefined;
 
 /**
  * The files a trigger payload refers to, on the engine v2 path.
@@ -29,9 +36,10 @@ export class EngineV2PayloadFiles {
 	 * the execution, and updates the references in place. A file written with
 	 * the execution id already known is left alone. Throws when a move fails, so
 	 * the caller refuses the run instead of starting it with a reference that
-	 * points nowhere.
+	 * points nowhere. Waits for every move first, so the caller deletes the files
+	 * only after no move is still running.
 	 */
-	async claimForExecution(slots: PayloadSlots, executionId: string): Promise<void> {
+	async claimForExecution(slots: PayloadSlots, executionId: ExecutionIdV2): Promise<void> {
 		const temporarySegment = `/${TEMP_EXECUTION_ID}/`;
 		const refsByFileId = new Map<string, StoredFile[]>();
 		for (const file of this.storedFilesIn(slots)) {
@@ -39,15 +47,21 @@ export class EngineV2PayloadFiles {
 			refsByFileId.set(file.fileId, [...(refsByFileId.get(file.fileId) ?? []), file]);
 		}
 
-		await Promise.all(
+		const executionSegment = `/${executionId}/`;
+		const moves = await Promise.allSettled(
 			[...refsByFileId].map(async ([fileId, refs]) => {
-				const executionFileId = fileId.replace(temporarySegment, `/${executionId}/`);
-				await this.binaryDataService.rename(fileId, executionFileId);
-				// Updated per file as soon as it is moved, so a later failure leaves every
+				await this.binaryDataService.rename(
+					fileId,
+					fileId.replace(temporarySegment, executionSegment),
+				);
+				// Updated per file as soon as it is moved, so a failed move leaves every
 				// reference pointing at where its file is.
-				for (const { ref, mode } of refs) ref.id = `${mode}:${executionFileId}`;
+				for (const { ref } of refs) ref.id = ref.id.replace(temporarySegment, executionSegment);
 			}),
 		);
+
+		const failed = moves.find((move) => move.status === 'rejected');
+		if (failed) throw failed.reason;
 	}
 
 	/**
@@ -56,7 +70,7 @@ export class EngineV2PayloadFiles {
 	 * run was refused.
 	 */
 	async discard(slots: PayloadSlots): Promise<void> {
-		const ids = this.storedFilesIn(slots).map(({ mode, fileId }) => `${mode}:${fileId}`);
+		const ids = this.storedFilesIn(slots).map(({ ref }) => ref.id);
 		if (ids.length === 0) return;
 
 		try {
@@ -73,9 +87,10 @@ export class EngineV2PayloadFiles {
 		return slots
 			.flatMap((slot) => slot ?? [])
 			.flatMap((item) => Object.values(item.binary ?? {}))
+			.filter(isStored)
 			.flatMap((ref) => {
-				const [mode, fileId] = ref.id?.split(':') ?? [];
-				return fileId ? [{ ref, mode, fileId }] : [];
+				const [, fileId] = ref.id.split(':');
+				return fileId ? [{ ref, fileId }] : [];
 			});
 	}
 }

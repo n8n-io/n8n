@@ -123,7 +123,7 @@ export class EngineV2Dispatcher {
 
 		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
 
-		const executionId = data.engineExecutionId ?? createExecutionIdV2();
+		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
 		assert(isExecutionIdV2(executionId), 'Engine v2 was given an id it cannot run');
 		// A trigger node stored its files before the id existed. They move under the

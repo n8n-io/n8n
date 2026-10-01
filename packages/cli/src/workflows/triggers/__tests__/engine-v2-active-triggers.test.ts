@@ -57,6 +57,8 @@ describe('EngineV2ActiveTriggers', () => {
 			expect(() => engineV2ActiveTriggers.assertSupported(emit, slots)).toThrow(
 				'Engine v2 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
 			);
+			// The run does not start, so nothing else deletes the stored files.
+			expect(payloadFiles.discard).toHaveBeenCalledWith(slots);
 		});
 	});
 });

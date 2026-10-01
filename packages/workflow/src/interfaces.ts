@@ -3795,10 +3795,10 @@ export interface IWorkflowExecutionDataProcess {
 	 * the trigger node already stored files under it. Without it, the dispatcher
 	 * mints one.
 	 */
-	engineExecutionId?: string;
+	engineV2ExecutionId?: string;
 	/**
 	 * Only engine v2 reads this. A caller that waits for the run's answer sets
-	 * it, together with `engineExecutionId`. `responseMode` tells the engine
+	 * it, together with `engineV2ExecutionId`. `responseMode` tells the engine
 	 * which answer the caller waits for. Without this field, nobody waits.
 	 */
 	engineV2Response?: {
