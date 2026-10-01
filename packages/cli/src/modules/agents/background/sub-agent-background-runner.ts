@@ -223,13 +223,12 @@ export class SubAgentBackgroundRunner {
 							}
 						},
 						onResumeClaimed: async () => {
-							claimed = true;
 							this.jobService.registerAbortController(job.id, controller);
 							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 							if (!(await this.jobService.resume(job.id, timeoutAt))) {
-								controller.abort();
 								throw new UserError('This background task has already ended');
 							}
+							claimed = true;
 							expected.status = 'running';
 							expected.timeoutAt = timeoutAt;
 							admitted = true;
@@ -326,6 +325,7 @@ export class SubAgentBackgroundRunner {
 							}
 						},
 						onResumeClaimed: async () => {
+							this.jobService.registerAbortController(job.id, controller);
 							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 							if (
 								!(await this.jobRepository.resumeIfPaused(
@@ -339,7 +339,6 @@ export class SubAgentBackgroundRunner {
 							}
 							claimed = true;
 							expected.timeoutAt = timeoutAt;
-							this.jobService.registerAbortController(job.id, controller);
 							await this.jobService.notifyResumed(job.id);
 							admitted = true;
 							started.resolve();

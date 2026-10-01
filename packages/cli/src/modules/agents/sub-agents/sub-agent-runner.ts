@@ -393,8 +393,8 @@ export class SubAgentRunner {
 					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
 					runId: operation.request.childRunId,
 					onResumeClaimed: async () => {
-						executionStarted = true;
 						await context.onResumeClaimed?.();
+						executionStarted = true;
 					},
 				});
 			} else {
@@ -404,12 +404,12 @@ export class SubAgentRunner {
 					runId: operation.request.childRunId,
 					toolCallId: operation.request.childToolCallId,
 					onResumeClaimed: async () => {
+						await context.onResumeClaimed?.();
 						executionStarted = true;
 						recorder.recordHitlResponse(
 							operation.request.childToolCallId,
 							operation.request.resumeData,
 						);
-						await context.onResumeClaimed?.();
 					},
 				});
 			}

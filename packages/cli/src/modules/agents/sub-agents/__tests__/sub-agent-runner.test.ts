@@ -804,7 +804,7 @@ describe('SubAgentRunner', () => {
 		});
 	});
 
-	it('resumes a draft child in the same thread', async () => {
+	it('records a draft child resume in the same thread only after host admission', async () => {
 		const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
 		toolApprovalService.createContext.mockResolvedValueOnce(approvalContext);
 		const toolRegistry = new Map([
@@ -815,23 +815,22 @@ describe('SubAgentRunner', () => {
 			toolRegistry,
 			mcpServerAttributions: new Map(),
 		});
-		const result = await runner.resumeForeground(
-			{
-				...delegatedRequest,
-				childRunId: 'child-run-1',
-				childToolCallId: 'tool-call-1',
-				childThreadId: 'child-thread-1',
-				resumeData: { approved: true, scope: 'session' },
-				resumeContext: { agentId: 'agent-1' },
-				parentThreadId,
-			},
-			{
-				projectId,
-				parentAgentId,
-				credentialProvider,
-				runType: 'production',
-			},
-		);
+		const resumeRequest = {
+			...delegatedRequest,
+			childRunId: 'child-run-1',
+			childToolCallId: 'tool-call-1',
+			childThreadId: 'child-thread-1',
+			resumeData: { approved: true, scope: 'session' },
+			resumeContext: { agentId: 'agent-1' },
+			parentThreadId,
+		};
+		const runContext = {
+			projectId,
+			parentAgentId,
+			credentialProvider,
+			runType: 'production' as const,
+		};
+		const result = await runner.resumeForeground(resumeRequest, runContext);
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
 			{ agentId: 'agent-1' },
@@ -874,6 +873,27 @@ describe('SubAgentRunner', () => {
 			}),
 		);
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
+
+		const admissionError = new Error('Resume admission rejected');
+		await expect(
+			runner.resumeForeground(resumeRequest, {
+				...runContext,
+				onResumeClaimed: async () => {
+					throw admissionError;
+				},
+			}),
+		).rejects.toBe(admissionError);
+		expect(agentExecutionService.finalizeExecution).toHaveBeenLastCalledWith(
+			'agent-execution-1',
+			expect.objectContaining({
+				hitlStatus: undefined,
+				record: expect.objectContaining({
+					timeline: expect.not.arrayContaining([
+						expect.objectContaining({ type: 'hitl-response' }),
+					]),
+				}),
+			}),
+		);
 	});
 
 	it('resumes and cancels self-delegation from the parent-owned checkpoint', async () => {

@@ -806,35 +806,44 @@ describe('AgentWakeService', () => {
 
 describe('formatPauseHandoff', () => {
 	it('selects the task, approvals, and four latest responses with clipped content', () => {
-		const checkpoint = {
+		const checkpoint: SerializableAgentState = {
+			status: 'suspended',
 			pendingToolCalls: {
-				first: { toolName: 'send_email' },
-				second: { toolName: 'write_record' },
+				first: { toolCallId: 'first', toolName: 'send_email', input: {}, suspended: false },
+				second: { toolCallId: 'second', toolName: 'write_record', input: {}, suspended: false },
 			},
 			messageList: {
 				historyIds: ['old-task', 'old-progress'],
 				inputIds: ['task'],
 				responseIds: ['progress-1', 'progress-2', 'progress-3', 'progress-4', 'progress-5'],
 				messages: [
-					{ id: 'old-task', role: 'user', content: [{ type: 'text', text: 'Unrelated task' }] },
+					{
+						id: 'old-task',
+						createdAt: new Date(0),
+						role: 'user',
+						content: [{ type: 'text', text: 'Unrelated task' }],
+					},
 					{
 						id: 'task',
+						createdAt: new Date(0),
 						role: 'user',
 						content: [{ type: 'text', text: `Current task: ${'t'.repeat(2_000)}` }],
 					},
 					...[1, 2, 3, 4, 5].map((step) => ({
 						id: `progress-${step}`,
+						createdAt: new Date(0),
 						role: 'assistant' as const,
 						content: [{ type: 'text' as const, text: `Progress ${step}: ${'p'.repeat(2_000)}` }],
 					})),
 					{
 						id: 'old-progress',
+						createdAt: new Date(0),
 						role: 'assistant',
 						content: [{ type: 'text', text: 'Unrelated progress' }],
 					},
 				],
 			},
-		} as SerializableAgentState;
+		};
 
 		const handoff = JSON.parse(formatPauseHandoff(checkpoint)) as {
 			pendingApprovals: string[];

@@ -95,6 +95,7 @@ describe('resumePaused', () => {
 		notifiedAt: new Date(),
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
+		subAgentId: 'sub-1',
 		childThreadId: 'child-thread-1',
 	});
 	function prepare(approval = false) {
@@ -132,11 +133,12 @@ describe('resumePaused', () => {
 		return { ...setupResult, suspension };
 	}
 
-	it('restores the same run and configuration with a new running deadline', async () => {
+	it('restores the same run and observes cancellation during resume admission', async () => {
 		const { backgroundRunner, runner, jobService, jobRepository, context } = prepare();
 		runner.resumePaused.mockImplementation(async (_request, runContext) => {
 			await runContext.beforeResume?.();
 			await runContext.onResumeClaimed?.();
+			runContext.abortSignal?.throwIfAborted();
 			return completedRunResult();
 		});
 		await backgroundRunner.resumePaused(job, context);
@@ -159,12 +161,26 @@ describe('resumePaused', () => {
 			{ status: 'completed', result: 'the answer' },
 			{ status: 'running', timeoutAt: expect.any(Date) },
 		);
+
+		jobService.registerAbortController.mockClear();
+		jobRepository.resumeIfPaused.mockImplementationOnce(async () => {
+			jobService.registerAbortController.mock.lastCall?.[1].abort();
+			return true;
+		});
+		await backgroundRunner.resumePaused(job, context);
+		await flushDetachedRun();
+		expect(runner.resumePaused.mock.lastCall?.[1].abortSignal?.aborted).toBe(true);
 	});
 
-	it('restores a pending approval without running or approving the child', async () => {
-		const { backgroundRunner, runner, jobService, jobRepository, context } = prepare(true);
+	it('preserves a pending approval when a later stop rejects its resume', async () => {
+		const { backgroundRunner, runner, jobService, jobRepository, context, suspension } =
+			prepare(true);
 		jobService.getApproval.mockResolvedValue(
-			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>({
+				...suspension,
+				token: 'approval-1',
+				pending: { toolCallId: 'gate', suspended: true },
+			}),
 		);
 		await backgroundRunner.resumePaused(job, context);
 		expect(jobRepository.resumeIfPaused).toHaveBeenCalledWith(
@@ -178,6 +194,46 @@ describe('resumePaused', () => {
 		expect(runner.resumePaused).not.toHaveBeenCalled();
 		jobRepository.resumeIfPaused.mockResolvedValue(false);
 		await expect(backgroundRunner.resumePaused(job, context)).rejects.toThrow('already resumed');
+
+		const resumedJob: AgentBackgroundJob = { ...job, status: 'suspended', pauseRequestId: null };
+		jobRepository.findById.mockResolvedValue(resumedJob);
+		jobService.resume.mockImplementationOnce(async () => {
+			resumedJob.pauseRequestId = 'stop-2';
+			return false;
+		});
+		runner.resumeForeground.mockImplementation(async (_request, runContext) => {
+			await runContext.beforeResume?.();
+			await runContext.onResumeClaimed?.();
+			runContext.abortSignal?.throwIfAborted();
+			return completedRunResult();
+		});
+		await expect(
+			backgroundRunner.resume(
+				resumedJob,
+				{ token: 'approval-1', resumeData: { approved: true } },
+				context,
+			),
+		).rejects.toThrow('already ended');
+		await flushDetachedRun();
+		expect(jobService.resume).toHaveBeenCalledWith(job.id, expect.any(Date));
+		const controller = jobService.registerAbortController.mock.calls[0][1];
+		expect(jobService.unregisterAbortController).toHaveBeenCalledWith(job.id, controller);
+		expect(jobService.settle).not.toHaveBeenCalled();
+		expect(controller.signal.aborted).toBe(false);
+
+		resumedJob.pauseRequestId = null;
+		jobService.registerAbortController.mockClear();
+		jobService.resume.mockImplementationOnce(async () => {
+			jobService.registerAbortController.mock.lastCall?.[1].abort();
+			return true;
+		});
+		await backgroundRunner.resume(
+			resumedJob,
+			{ token: 'approval-1', resumeData: { approved: true } },
+			context,
+		);
+		await flushDetachedRun();
+		expect(runner.resumeForeground.mock.lastCall?.[1].abortSignal?.aborted).toBe(true);
 	});
 
 	it('rejects an expired checkpoint without starting replacement work', async () => {
