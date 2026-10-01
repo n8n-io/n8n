@@ -4,6 +4,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { getWorkflow } from '@/app/api/workflows';
@@ -324,6 +327,23 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		filterAndSearchNodesMock.mockReset().mockReturnValue([]);
 	});
 
+	/** The previews catalog lists the community tool; `installed` says whether its package is on the instance. */
+	function mockCommunityPreviewCatalog({ installed = true } = {}) {
+		nodeTypesStore.getNodeType = vi
+			.fn()
+			.mockImplementation((name: string) =>
+				installed && name === COMMUNITY_INSTALLED.name ? COMMUNITY_INSTALLED : null,
+			);
+		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
+			nodeDescription: COMMUNITY_PREVIEW,
+			packageName: 'n8n-nodes-firecrawl',
+			isOfficialNode: true,
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
+		};
+	}
+
 	function toolRef(nodeType: string): Extract<AgentJsonToolRef, { type: 'node' }> {
 		return {
 			type: 'node',
@@ -478,18 +498,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
-		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
-			if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
-			return null;
-		});
-		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
-			nodeDescription: COMMUNITY_PREVIEW,
-			packageName: 'n8n-nodes-firecrawl',
-			isOfficialNode: true,
-		});
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
-		};
+		mockCommunityPreviewCatalog();
 
 		const onConfirm = vi.fn();
 		render([], onConfirm);
@@ -968,18 +977,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('does not add a community tool when the install fails', async () => {
-		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
-			if (name === COMMUNITY_INSTALLED.name) return COMMUNITY_INSTALLED;
-			return null;
-		});
-		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
-			nodeDescription: COMMUNITY_PREVIEW,
-			packageName: 'n8n-nodes-firecrawl',
-			isOfficialNode: true,
-		});
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
-		};
+		mockCommunityPreviewCatalog();
 		installNodeMock.mockResolvedValue({ success: false });
 
 		const onConfirm = vi.fn();
@@ -995,15 +993,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	});
 
 	it('does not add a community tool when the installed node type cannot be resolved', async () => {
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
-		nodeTypesStore.communityNodeType = vi.fn().mockReturnValue({
-			nodeDescription: COMMUNITY_PREVIEW,
-			packageName: 'n8n-nodes-firecrawl',
-			isOfficialNode: true,
-		});
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
-			[NodeConnectionTypes.AiTool]: [COMMUNITY_PREVIEW.name],
-		};
+		mockCommunityPreviewCatalog({ installed: false });
 
 		const onConfirm = vi.fn();
 		render([], onConfirm);
@@ -1189,6 +1179,119 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
 			expect(data.existingToolNames).toContain(existing.name);
+		});
+	});
+
+	describe('restricted node types', () => {
+		function restrictedSlackItem() {
+			const item = getItems().find((candidate) => candidate.id === `nodeType:${SLACK.name}`);
+			if (!item) throw new Error('Missing Slack item');
+			return item;
+		}
+
+		it('loads the policy for the agent project on mount', async () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			render([], vi.fn(), [], PROJECT_ID);
+			await flushPromises();
+
+			expect(fetchForProject).toHaveBeenCalledWith(PROJECT_ID);
+		});
+
+		it('flags a restricted tool so the modal can lock it and list it last', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+
+			render();
+			await flushPromises();
+
+			expect(restrictedSlackItem()).toMatchObject({
+				restriction: { available: false, scope: 'instance' },
+			});
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			expect(wikipedia).toBeDefined();
+			expect('restriction' in wikipedia! && wikipedia.restriction).toBeFalsy();
+		});
+
+		it('adds nothing when a restricted tool is activated', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const onConfirm = vi.fn();
+
+			render([], onConfirm);
+			await flushPromises();
+
+			emitConnect(restrictedSlackItem());
+			emitOpenDetail(restrictedSlackItem());
+			await flushPromises();
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(onConfirm).not.toHaveBeenCalled();
+		});
+
+		it('warns and adds nothing when the tool becomes restricted while its configure step is open', async () => {
+			mockRestrictedNodeTypes();
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const slack = getItems().find((item) => item.id === `nodeType:${SLACK.name}`);
+			emitConnect(slack!);
+			await flushPromises();
+
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			await saveConfiguration(toolRef(SLACK.name));
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning', message: expect.stringContaining('Slack') }),
+			);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('flags a connected tool that a policy now restricts', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			expect(connected).toMatchObject({
+				restriction: { available: false, scope: 'instance' },
+			});
+		});
+
+		it('adds nothing when the installed community tool turns out to be restricted', async () => {
+			mockCommunityPreviewCatalog();
+			mockRestrictedNodeTypes();
+			// The install reloads the policy, which now covers the new node type.
+			installNodeMock.mockImplementation(async () => {
+				mockRestrictedNodeTypes({ [COMMUNITY_INSTALLED.name]: 'instance' });
+				return { success: true };
+			});
+			render();
+			await flushPromises();
+
+			const preview = getItems().find((item) => item.id === `nodeType:${COMMUNITY_PREVIEW.name}`);
+			emitConnect(preview!);
+			await flushPromises();
+
+			expect(configFormData).toBeNull();
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('leaves the list untouched when nothing is restricted', async () => {
+			mockRestrictedNodeTypes();
+
+			render();
+			await flushPromises();
+
+			const nodeItems = getItems().filter((item) => item.id.startsWith('nodeType:'));
+			expect(nodeItems.map((item) => item.id)).toEqual([
+				`nodeType:${SLACK.name}`,
+				`nodeType:${WIKIPEDIA.name}`,
+			]);
+			expect(nodeItems.every((item) => !('restriction' in item && item.restriction))).toBe(true);
 		});
 	});
 });

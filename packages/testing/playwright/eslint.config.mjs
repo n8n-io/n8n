@@ -1,6 +1,8 @@
 import { backendConfig } from '@n8n/eslint-config/backend';
 import playwrightPlugin from 'eslint-plugin-playwright';
 
+import { legacyFilenameCaseFiles } from './lint-filename-debt.mjs';
+
 export default [
 	...backendConfig,
 	playwrightPlugin.configs['flat/recommended'],
@@ -18,50 +20,11 @@ export default [
 	},
 	{
 		rules: {
-			'@typescript-eslint/no-unused-expressions': 'off',
-			'@typescript-eslint/no-use-before-define': 'off',
-			'@typescript-eslint/promise-function-async': 'off',
+			'no-empty-pattern': 'error',
 			'playwright/expect-expect': 'warn',
 			'playwright/max-nested-describe': 'warn',
 			'playwright/no-conditional-in-test': 'error',
 			'playwright/no-skipped-test': 'warn',
-			// Allow any naming convention for TestRequirements object properties
-			// This is specifically for workflow filenames and intercept keys that may not follow camelCase
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'default',
-					format: ['camelCase'],
-					leadingUnderscore: 'allow',
-					trailingUnderscore: 'allow',
-				},
-				{
-					selector: 'variable',
-					format: ['camelCase', 'UPPER_CASE'],
-				},
-				{
-					selector: 'typeLike',
-					format: ['PascalCase'],
-				},
-				{
-					selector: 'property',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE'],
-					filter: {
-						// Allow any format for properties in TestRequirements objects (workflow files, intercept keys, etc.)
-						regex: '^(workflow|intercepts|storage|config)$',
-						match: false,
-					},
-				},
-				{
-					selector: 'objectLiteralProperty',
-					format: null, // Allow any format for object literal properties in TestRequirements
-					filter: {
-						// This allows workflow filenames and intercept keys to use any naming convention
-						regex: '\\.(json|spec\\.ts)$|[a-zA-Z0-9_-]+',
-						match: true,
-					},
-				},
-			],
 			'import-x/no-extraneous-dependencies': [
 				'error',
 				{
@@ -72,10 +35,42 @@ export default [
 		},
 	},
 	{
-		// Debt: the base layer enforces kebab-case filenames and this package has
-		// 124 files that predate it. Rename them, then delete this block.
-		rules: {
-			'unicorn/filename-case': 'off',
-		},
+		files: legacyFilenameCaseFiles,
+		rules: { 'unicorn/filename-case': 'off' },
+	},
+	{
+		files: [
+			'fixtures/langsmith.ts',
+			'fixtures/quarantine.ts',
+			'tests/cli-workflows/workflow-tests.spec.ts',
+			'tests/e2e/chat-hub/fixtures.ts',
+			'tests/e2e/instance-ai/fixtures.ts',
+			'tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts',
+			'tests/e2e/workflows/editor/execution/fixtures.ts',
+			'tests/framework/consumers.ts',
+		],
+		rules: { 'no-empty-pattern': 'off' },
+	},
+	{
+		files: [
+			'composables/BuilderWizardComposer.ts',
+			'helpers/ClipboardHelper.ts',
+			'pages/PublicFormPage.ts',
+			'pages/SettingsUsersPage.ts',
+			'pages/SourceControlPushModal.ts',
+			'reporters/ci-metrics.test.ts',
+			'services/tag-api-helper.ts',
+			'services/variables-api-helper.ts',
+			'tests/cli-workflows/setup-workflow-tests.ts',
+			'tests/e2e/projects/projects.spec.ts',
+			'tests/e2e/workflows/editor/expressions/quickjs-engine.spec.ts',
+			'tests/e2e/workflows/executions/list.spec.ts',
+			'tests/e2e/workflows/templates/templates.spec.ts',
+			'tests/evals/_smoke/langsmith-fixture.spec.ts',
+			'tests/evals/instance-ai/weather-alert.spec.ts',
+			'tests/infrastructure/benchmarks/ui/executions-list-customer-scale.spec.ts',
+			'utils/benchmark/kafka-driver.ts',
+		],
+		rules: { '@typescript-eslint/promise-function-async': 'off' },
 	},
 ];

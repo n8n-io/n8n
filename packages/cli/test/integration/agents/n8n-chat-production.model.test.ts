@@ -4,7 +4,7 @@ import path from 'node:path';
 import { brotliDecompressSync, gunzipSync } from 'node:zlib';
 
 import type { ToolDescriptor } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentChatMessagesResponse, AgentJsonConfig } from '@n8n/api-types';
 import { linkUserToProject, testModules } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -132,6 +132,7 @@ function formatCassette(definitions: nock.Definition[]): string {
 ${definitions
 	.map((definition) => {
 		const fields = Object.entries(definition)
+			.filter(([, value]) => value !== undefined)
 			.map(([key, value]) => `\t\t${JSON.stringify(key)}: ${JSON.stringify(value)}`)
 			.join(',\n');
 		return `\t{\n${fields}\n\t}`;
@@ -395,9 +396,10 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 			.authAgentFor(owner)
 			.get(`${base}/${threadId}/messages`)
 			.expect(200);
-		expect(history.body.data.messages).toEqual(expect.any(Array));
-		const attachment = await Container.get(AgentExecutionRepository).findLatestByThreadId(threadId);
-		const attachmentId = attachment?.attachments?.[0]?.id;
+		const { messages }: AgentChatMessagesResponse = history.body.data;
+		const attachmentId = messages
+			.find((message) => message.role === 'user')
+			?.content.find((part) => part.type === 'file')?.fileId;
 		expect(attachmentId).toBeDefined();
 		const downloaded = await server
 			.authAgentFor(owner)

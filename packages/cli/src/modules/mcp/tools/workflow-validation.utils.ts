@@ -1,4 +1,6 @@
+import { UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -43,6 +45,12 @@ export type GetMcpWorkflowOptions = {
 	includeParentFolder?: boolean;
 };
 
+/** The editor opens the workflow settings modal when the `settings` query parameter is set. */
+function getWorkflowSettingsUrl(workflowId: string): string {
+	const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
+	return `${baseUrl}/workflow/${encodeURIComponent(workflowId)}?settings=true`;
+}
+
 /**
  * Validates an already-fetched workflow for MCP operations: permission
  * (present at all), archive, and MCP availability checks.
@@ -68,7 +76,7 @@ export function validateMcpWorkflow<
 
 	if (!workflow.settings?.availableInMCP) {
 		throw new WorkflowAccessError(
-			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
+			`Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings: ${getWorkflowSettingsUrl(workflow.id)}`,
 			'not_available_in_mcp',
 		);
 	}

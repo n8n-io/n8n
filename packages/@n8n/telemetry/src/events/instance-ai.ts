@@ -250,6 +250,33 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user clicked the plus button in the n8n Assistant input.',
 		properties: z.object({}),
 	},
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE: {
+		name: 'User viewed fix with Assistant nudge',
+		description:
+			'The Fix with Assistant button was shown inside a workflow error toast. Fires once for each toast that receives the button.',
+		properties: z.object({
+			variant: z.enum(['control', 'variant']),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+		}),
+	},
+	USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT: {
+		name: 'User clicked fix with Assistant CTA on error toast',
+		description:
+			'The user clicked the Fix with Assistant button on a workflow error toast. assistant_enabled records whether n8n Assistant was enabled at click time. Enabled opens the Assistant. Disabled opens Assistant settings.',
+		properties: z.object({
+			assistant_enabled: z
+				.boolean()
+				.describe(
+					'Whether n8n Assistant was enabled. True opens the Assistant. False opens Assistant settings.',
+				),
+			variant: z.enum(['control', 'variant']),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+		}),
+	},
+	// EOF Experiment cleanup
 	TOOLS_LIST_OPENED: {
 		name: 'Instance AI tools list opened',
 		description: 'The user opened the n8n Assistant tools connection modal.',
@@ -285,12 +312,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user started connecting a new credential for an MCP server.',
 		properties: z.object({ server_slug: z.string() }),
 	},
-	MCP_TOOL_FILTER_SETTINGS_UPDATED: {
-		name: 'Instance AI mcp tool filter settings updated',
-		description: 'The user updated which tools are enabled for an MCP server.',
+	MCP_TOOL_PERMISSIONS_UPDATED: {
+		name: 'User updated Instance AI MCP tool permissions',
+		description:
+			'The user saved changed read, write, or tool-specific permissions for an MCP server.',
 		properties: z.object({
 			server_slug: z.string(),
-			inclusion_mode: z.enum(['all', 'selected', 'except']),
+			read_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			write_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			tool_override_count: z.number().int().nonnegative(),
 		}),
 	},
 	BROWSER_USE_MODAL_OPENED: {

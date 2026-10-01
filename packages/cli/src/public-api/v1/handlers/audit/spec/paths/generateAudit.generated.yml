@@ -131,8 +131,7 @@ responses:
                                     - filePath
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -247,8 +246,7 @@ responses:
                                     - filePath
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -366,8 +364,7 @@ responses:
                                     - filePath
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -485,8 +482,7 @@ responses:
                                     - filePath
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -601,8 +597,7 @@ responses:
                                     - filePath
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -628,8 +623,7 @@ responses:
                             nodeName: Webhook
                             nodeType: n8n-nodes-base.webhook
             - type: array
-              items:
-                nullable: true
+              items: {}
               maxItems: 0
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

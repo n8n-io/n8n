@@ -63,6 +63,11 @@ test.describe(
 
 			// Navigate to home to load sidebar with new projects
 			await n8n.goHome();
+			// The Overview lists the three workflows created above. Waiting for them
+			// lets the view finish its first initialization, which ends with a
+			// `router.replace` of the query string. A sidebar click that lands during
+			// that replace is cancelled and the page stays on the Overview.
+			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(3);
 		});
 
 		test('should move the workflow to expected projects @auth:owner', async ({ n8n }) => {

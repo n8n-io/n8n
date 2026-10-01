@@ -159,7 +159,7 @@ export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
 	type?: string;
-	currentUserHasAccess: boolean;
+	currentUserCanUse: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 }
