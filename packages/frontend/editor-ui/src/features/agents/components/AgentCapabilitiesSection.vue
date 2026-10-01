@@ -5,10 +5,10 @@ import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
-import { N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nDropdownMenuItem, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill, CustomToolEntry } from '../types';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -24,11 +24,13 @@ import type {
 	ToolOpenTarget,
 	ToolPickerMode,
 	ToolRow,
+	GroupedToolRow,
 	SingleToolRow,
 } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 import AgentWebSearchSection from './AgentWebSearchSection.vue';
 
@@ -88,6 +90,7 @@ const toast = useToast();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const { createAgent } = useCreateAgent();
+const openToolGroup = ref<number | null>(null);
 
 const projectIdRef = computed(() => props.projectId);
 const { canCreate: canCreateAgent } = useAgentPermissions(projectIdRef);
@@ -357,6 +360,7 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 		id: toTargetKey(item.openTarget),
 		label: item.label,
 		data: {
+			index: item.index,
 			nodeType: item.nodeType,
 			openTarget: item.openTarget,
 			invalid: item.invalid,
@@ -366,9 +370,29 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 }
 
 function onToolMenuSelect(key: string) {
+	openToolGroup.value = null;
+	if (props.disabled) return;
 	const target = fromTargetKey(key);
 	if (!target) return;
 	emit('open-tool', target);
+}
+
+function removeTool(index: number) {
+	if (props.disabled) return;
+	openToolGroup.value = null;
+	emit('remove-tool', index);
+}
+
+function removeToolGroup(group: GroupedToolRow) {
+	if (props.disabled) return;
+	openToolGroup.value = null;
+	const indices = new Set(group.tools.map(({ index }) => index));
+	emit('update:config', { tools: props.tools.filter((_, index) => !indices.has(index)) });
+}
+
+function removeSubAgent(agentId: string) {
+	if (props.disabled) return;
+	emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
 }
 
 function emitSubAgentRefs(agents: typeof selectedSubAgentRefs.value) {
@@ -423,9 +447,7 @@ async function openSubAgentsModal() {
 
 				emitSubAgentRefs([...selectedSubAgentRefs.value, nextRef]);
 			},
-			onRemove: (agentId: string) => {
-				emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
-			},
+			onRemove: removeSubAgent,
 		},
 	});
 }
@@ -453,9 +475,7 @@ function openExistingSubAgentModal(subAgent: {
 					),
 				);
 			},
-			onRemove: (agentId: string) => {
-				emitSubAgentRefs(selectedSubAgentRefs.value.filter((ref) => ref.agentId !== agentId));
-			},
+			onRemove: removeSubAgent,
 		},
 	});
 }
@@ -477,88 +497,109 @@ function openExistingSubAgentModal(subAgent: {
 					<div v-for="tool in toolRows" :key="`tool-${tool.index}`" :class="$style.chipGroup">
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
+							:model-value="openToolGroup === tool.index"
 							:items="toolMenuItems(tool)"
 							:disabled="props.disabled"
 							placement="bottom-start"
 							data-testid="agent-capabilities-tool-group"
-							@select="onToolMenuSelect"
+							@update:model-value="openToolGroup = $event ? tool.index : null"
 						>
 							<template #trigger>
-								<AgentChipButton
-									:invalid="tool.invalid"
-									:invalid-reasons="tool.invalidReasons"
-									:warning="tool.warning"
-									:warning-reasons="tool.warningReasons"
+								<AgentItemContextMenu :disabled="props.disabled" @remove="removeToolGroup(tool)">
+									<AgentChipButton
+										:invalid="tool.invalid"
+										:invalid-reasons="tool.invalidReasons"
+										:warning="tool.warning"
+										:warning-reasons="tool.warningReasons"
+										:disabled="props.disabled"
+										:class="$style.capabilityChip"
+										data-testid="agent-capabilities-tool-row"
+									>
+										<template #icon>
+											<NodeIcon :node-type="tool.nodeType" :size="16" />
+										</template>
+										<span :class="$style.groupChipLabel">
+											{{ tool.label }}
+											<N8nIcon icon="chevron-down" :size="12" color="text-light" />
+										</span>
+									</AgentChipButton>
+								</AgentItemContextMenu>
+							</template>
+							<template #item="{ item }">
+								<AgentItemContextMenu
+									v-if="item.data"
 									:disabled="props.disabled"
-									:class="$style.capabilityChip"
-									data-testid="agent-capabilities-tool-row"
+									@remove="removeTool(item.data.index)"
 								>
-									<template #icon>
-										<NodeIcon :node-type="tool.nodeType" :size="16" />
-									</template>
-									<span :class="$style.groupChipLabel">
-										{{ tool.label }}
-										<N8nIcon icon="chevron-down" :size="12" color="text-light" />
-									</span>
-								</AgentChipButton>
-							</template>
-							<template #item-leading="{ item, ui }">
-								<NodeIcon
-									v-if="item.data?.nodeType"
-									:node-type="item.data.nodeType"
-									:size="16"
-									:class="ui.class"
-								/>
-							</template>
-							<template #item-trailing="{ item }">
-								<N8nTooltip
-									v-if="item.data?.invalid"
-									:disabled="(item.data.invalidReasons ?? []).length === 0"
-									placement="top"
-								>
-									<N8nIcon
-										icon="triangle-alert"
-										:size="14"
-										data-testid="agent-capabilities-tool-menu-invalid-icon"
-									/>
-									<template #content>
-										<div v-for="reason in item.data.invalidReasons" :key="reason">
-											{{ reason }}
-										</div>
-									</template>
-								</N8nTooltip>
+									<div>
+										<N8nDropdownMenuItem v-bind="item" @select="onToolMenuSelect">
+											<template #item-leading="{ ui }">
+												<NodeIcon
+													v-if="item.data?.nodeType"
+													:node-type="item.data.nodeType"
+													:size="16"
+													:class="ui.class"
+												/>
+											</template>
+											<template #item-trailing>
+												<N8nTooltip
+													v-if="item.data?.invalid"
+													:disabled="(item.data.invalidReasons ?? []).length === 0"
+													placement="top"
+												>
+													<N8nIcon
+														icon="triangle-alert"
+														:size="14"
+														data-testid="agent-capabilities-tool-menu-invalid-icon"
+													/>
+													<template #content>
+														<div v-for="reason in item.data.invalidReasons" :key="reason">
+															{{ reason }}
+														</div>
+													</template>
+												</N8nTooltip>
+											</template>
+										</N8nDropdownMenuItem>
+									</div>
+								</AgentItemContextMenu>
 							</template>
 						</N8nDropdownMenu>
-						<AgentChipButton
-							v-else-if="tool.nodeType"
-							:invalid="tool.invalid"
-							:invalid-reasons="tool.invalidReasons"
-							:warning="tool.warning"
-							:warning-reasons="tool.warningReasons"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-tool-row"
-							@click="emit('open-tool', tool.tool.openTarget)"
-						>
-							<template #icon>
-								<NodeIcon :node-type="tool.nodeType" :size="16" />
-							</template>
-							{{ tool.label }}
-						</AgentChipButton>
-						<AgentChipButton
+						<AgentItemContextMenu
 							v-else
-							:icon="tool.fallbackIcon"
-							:invalid="tool.invalid"
-							:invalid-reasons="tool.invalidReasons"
-							:warning="tool.warning"
-							:warning-reasons="tool.warningReasons"
 							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-tool-row"
-							@click="emit('open-tool', tool.tool.openTarget)"
+							@remove="removeTool(tool.index)"
 						>
-							{{ tool.label }}
-						</AgentChipButton>
+							<AgentChipButton
+								v-if="tool.nodeType"
+								:invalid="tool.invalid"
+								:invalid-reasons="tool.invalidReasons"
+								:warning="tool.warning"
+								:warning-reasons="tool.warningReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-tool-row"
+								@click="emit('open-tool', tool.tool.openTarget)"
+							>
+								<template #icon>
+									<NodeIcon :node-type="tool.nodeType" :size="16" />
+								</template>
+								{{ tool.label }}
+							</AgentChipButton>
+							<AgentChipButton
+								v-else
+								:icon="tool.fallbackIcon"
+								:invalid="tool.invalid"
+								:invalid-reasons="tool.invalidReasons"
+								:warning="tool.warning"
+								:warning-reasons="tool.warningReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-tool-row"
+								@click="emit('open-tool', tool.tool.openTarget)"
+							>
+								{{ tool.label }}
+							</AgentChipButton>
+						</AgentItemContextMenu>
 					</div>
 				</AgentChipRow>
 
@@ -576,19 +617,21 @@ function openExistingSubAgentModal(subAgent: {
 						:key="`workflow-${workflow.index}`"
 						:class="$style.chipGroup"
 					>
-						<AgentChipButton
-							:icon="workflow.fallbackIcon"
-							:invalid="workflow.invalid"
-							:invalid-reasons="workflow.invalidReasons"
-							:warning="workflow.warning"
-							:warning-reasons="workflow.warningReasons"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-workflow-row"
-							@click="emit('open-tool', workflow.tool.openTarget)"
-						>
-							{{ workflow.label }}
-						</AgentChipButton>
+						<AgentItemContextMenu :disabled="props.disabled" @remove="removeTool(workflow.index)">
+							<AgentChipButton
+								:icon="workflow.fallbackIcon"
+								:invalid="workflow.invalid"
+								:invalid-reasons="workflow.invalidReasons"
+								:warning="workflow.warning"
+								:warning-reasons="workflow.warningReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-workflow-row"
+								@click="emit('open-tool', workflow.tool.openTarget)"
+							>
+								{{ workflow.label }}
+							</AgentChipButton>
+						</AgentItemContextMenu>
 					</div>
 				</AgentChipRow>
 
@@ -599,6 +642,7 @@ function openExistingSubAgentModal(subAgent: {
 					:validation-issues="props.validationIssues"
 					@open-skill="emit('open-skill', $event)"
 					@add-skill="emit('add-skill')"
+					@remove-skill="emit('remove-skill', $event)"
 				/>
 
 				<AgentChipRow
@@ -611,17 +655,19 @@ function openExistingSubAgentModal(subAgent: {
 					@add="openSubAgentsModal"
 				>
 					<div v-for="subAgent in selectedSubAgents" :key="subAgent.id" :class="$style.chipGroup">
-						<AgentChipButton
-							icon="bot"
-							:invalid="subAgent.invalid"
-							:invalid-reasons="subAgent.invalidReasons"
-							:disabled="props.disabled"
-							:class="$style.capabilityChip"
-							data-testid="agent-capabilities-sub-agent-row"
-							@click="openExistingSubAgentModal(subAgent)"
-						>
-							{{ subAgent.name }}
-						</AgentChipButton>
+						<AgentItemContextMenu :disabled="props.disabled" @remove="removeSubAgent(subAgent.id)">
+							<AgentChipButton
+								icon="bot"
+								:invalid="subAgent.invalid"
+								:invalid-reasons="subAgent.invalidReasons"
+								:disabled="props.disabled"
+								:class="$style.capabilityChip"
+								data-testid="agent-capabilities-sub-agent-row"
+								@click="openExistingSubAgentModal(subAgent)"
+							>
+								{{ subAgent.name }}
+							</AgentChipButton>
+						</AgentItemContextMenu>
 					</div>
 				</AgentChipRow>
 			</template>

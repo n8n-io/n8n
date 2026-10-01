@@ -1,6 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -472,7 +472,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -566,7 +566,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -636,7 +636,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 
@@ -723,7 +723,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users
 			const userA = await createMember();
@@ -810,6 +810,42 @@ describe('CredentialsRepository', () => {
 				userAResultIds.includes(id),
 			);
 			expect(reverseContamination).toHaveLength(0);
+		});
+	});
+
+	describe('transaction context', () => {
+		it('uses the active transaction for credential access reads', async () => {
+			const { createMember } = await import('../../shared/db/users.js');
+			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import(
+				'@/credentials/credentials-finder.service.js'
+			);
+			const { RoleCacheService } = await import('@n8n/backend-services');
+
+			const member = await createMember();
+			const project = await createTeamProject('transaction-project');
+			await linkUserToProject(member, project, 'project:editor');
+			const credential = await createCredentials({
+				name: 'Credential',
+				type: 'httpBasicAuth',
+				data: '',
+			});
+			await shareCredentialsToProject([credential], project.id, 'credential:user');
+
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const finder = Container.get(CredentialsFinderService);
+			await Container.get(RoleCacheService).invalidateCache();
+			await credentialsRepository.runInTransaction({}, async (manager, ctx) => {
+				await manager.delete(SharedCredentials, {
+					credentialsId: credential.id,
+					projectId: project.id,
+				});
+
+				await expect(
+					finder.getCredentialIdsByUserAndRole([member.id], { scopes: ['credential:read'] }, ctx),
+				).resolves.toEqual([]);
+			});
 		});
 	});
 

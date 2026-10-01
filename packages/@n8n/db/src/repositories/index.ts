@@ -21,6 +21,10 @@ export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export {
+	CredentialAccessRepository,
+	type CredentialAccessRoles,
+} from './credential-access.repository';
+export {
 	CredentialsRepository,
 	CredentialIdConflictError,
 	type CredentialSharingRelation,
@@ -48,6 +52,7 @@ export {
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
+export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
