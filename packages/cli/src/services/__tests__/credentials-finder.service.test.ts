@@ -539,6 +539,20 @@ describe('CredentialsFinderService', () => {
 	});
 
 	describe('getCredentialIdsByUserAndRole', () => {
+		it('loads roles through the repository callback', async () => {
+			accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
+			roleService.rolesWithScope.mockImplementation(async (namespace, _scopes, loadRoles) => {
+				await loadRoles?.();
+				return namespace === 'project' ? ['project:admin'] : ['credential:user'];
+			});
+
+			await service.getCredentialIdsByUserAndRole(['user-1'], {
+				scopes: ['credential:read'],
+			});
+
+			expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledTimes(2);
+		});
+
 		it('resolves roles when scopes are provided', async () => {
 			await service.getCredentialIdsByUserAndRole(['user-1'], {
 				scopes: ['credential:read'],
@@ -574,6 +588,18 @@ describe('CredentialsFinderService', () => {
 				}),
 			).rejects.toThrow('role lookup failed');
 		});
+	});
+
+	it('loads access roles through the repository callback', async () => {
+		accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
+		roleService.rolesWithScope.mockImplementation(async (namespace, _scopes, loadRoles) => {
+			await loadRoles?.();
+			return namespace === 'project' ? ['project:admin'] : ['credential:user'];
+		});
+
+		await service.findCredentialsForUser(member, ['credential:read']);
+
+		expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledTimes(2);
 	});
 
 	describe('findGlobalCredentialById', () => {

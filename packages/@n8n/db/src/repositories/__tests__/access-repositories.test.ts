@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 
-import { CredentialsEntity, Folder, SharedCredentials } from '../../entities';
+import { CredentialsEntity, Folder, Role, SharedCredentials } from '../../entities';
 import type { TransactionRunner } from '../../services/transaction';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -16,6 +16,14 @@ describe('access repositories', () => {
 		const repository = new CredentialAccessRepository(manager.connection, transactionRunner);
 
 		beforeEach(() => vi.resetAllMocks());
+
+		it('loads roles for access checks', async () => {
+			const role = Object.assign(new Role(), { slug: 'project:custom', scopes: [] });
+			manager.find.mockResolvedValue([role]);
+
+			await expect(repository.findRolesForAccessCheck()).resolves.toEqual([role]);
+			expect(manager.find).toHaveBeenCalledWith(Role, { relations: ['scopes'] });
+		});
 
 		it('uses the operation context transaction for reads', async () => {
 			const transactionManager = mockEntityManager(SharedCredentials);
@@ -170,6 +178,46 @@ describe('access repositories', () => {
 			);
 		});
 
+		it('applies access roles to a single project credential lookup', async () => {
+			manager.findOne.mockResolvedValue(null);
+
+			await repository.findProjectCredentialForUser('credential-1', {
+				userId: 'user-1',
+				projectRoles: ['project:editor'],
+				credentialRoles: ['credential:user'],
+			});
+
+			const options = manager.findOne.mock.calls[0]?.[1];
+			expect(options?.where).toEqual(
+				expect.objectContaining({
+					role: expect.any(Object),
+					project: expect.objectContaining({
+						projectRelations: expect.objectContaining({ userId: 'user-1' }),
+					}),
+				}),
+			);
+		});
+
+		it('applies access roles when listing all project credentials', async () => {
+			manager.find.mockResolvedValue([]);
+
+			await repository.findAllProjectCredentialsForUser({
+				userId: 'user-1',
+				projectRoles: ['project:editor'],
+				credentialRoles: ['credential:user'],
+			});
+
+			const options = manager.find.mock.calls[0]?.[1];
+			expect(options?.where).toEqual(
+				expect.objectContaining({
+					role: expect.any(Object),
+					project: expect.objectContaining({
+						projectRelations: expect.objectContaining({ userId: 'user-1' }),
+					}),
+				}),
+			);
+		});
+
 		it('chunks credential id access queries', async () => {
 			const credentialIds = Array.from({ length: 10_001 }, (_, index) => `credential-${index}`);
 			manager.find.mockResolvedValue([]);
@@ -177,6 +225,20 @@ describe('access repositories', () => {
 			await repository.findProjectCredentialIdsForUser(credentialIds, null);
 
 			expect(manager.find).toHaveBeenCalledTimes(2);
+		});
+
+		it('returns accessible credential ids from sharing rows', async () => {
+			manager.find.mockResolvedValue([
+				Object.assign(new SharedCredentials(), { credentialsId: 'credential-1' }),
+			]);
+
+			await expect(
+				repository.findProjectCredentialIdsForUser(['credential-1'], {
+					userId: 'user-1',
+					projectRoles: ['project:editor'],
+					credentialRoles: ['credential:user'],
+				}),
+			).resolves.toEqual(new Set(['credential-1']));
 		});
 
 		it('filters global ids to resolvable credentials when requested', async () => {
@@ -197,9 +259,11 @@ describe('access repositories', () => {
 		});
 
 		it('does not add a resolvable filter for global read access', async () => {
-			manager.find.mockResolvedValue([]);
+			manager.find.mockResolvedValue([{ id: 'credential-1' }]);
 
-			await repository.findGlobalProjectCredentialIds(['credential-1'], false);
+			await expect(
+				repository.findGlobalProjectCredentialIds(['credential-1'], false),
+			).resolves.toEqual(['credential-1']);
 
 			const options = manager.find.mock.calls[0]?.[1];
 			expect(options?.where).not.toEqual(expect.objectContaining({ isResolvable: true }));
@@ -213,6 +277,25 @@ describe('access repositories', () => {
 			]);
 			expect(manager.find).toHaveBeenCalledWith(CredentialsEntity, {
 				select: { id: true, name: true },
+				where: { id: expect.any(Object) },
+			});
+		});
+
+		it('short-circuits empty credential name and existence reads', async () => {
+			await expect(repository.findCredentialNames([])).resolves.toEqual([]);
+			await expect(repository.findExistingCredentialIds([])).resolves.toEqual([]);
+
+			expect(manager.find).not.toHaveBeenCalled();
+		});
+
+		it('returns existing credential ids', async () => {
+			manager.find.mockResolvedValue([{ id: 'credential-1' }]);
+
+			await expect(repository.findExistingCredentialIds(['credential-1'])).resolves.toEqual([
+				'credential-1',
+			]);
+			expect(manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				select: { id: true },
 				where: { id: expect.any(Object) },
 			});
 		});
@@ -270,6 +353,14 @@ describe('access repositories', () => {
 
 		beforeEach(() => vi.resetAllMocks());
 
+		it('loads roles for folder access checks', async () => {
+			const role = Object.assign(new Role(), { slug: 'project:custom', scopes: [] });
+			manager.find.mockResolvedValue([role]);
+
+			await expect(repository.findRolesForAccessCheck()).resolves.toEqual([role]);
+			expect(manager.find).toHaveBeenCalledWith(Role, { relations: ['scopes'] });
+		});
+
 		it('uses the operation context transaction for folder reads', async () => {
 			const transactionManager = mockEntityManager(Folder);
 			transactionManager.find.mockResolvedValue([]);
@@ -286,12 +377,15 @@ describe('access repositories', () => {
 		});
 
 		it('applies project access to folder reads', async () => {
-			manager.find.mockResolvedValue([]);
+			const folder = Object.assign(new Folder(), { id: 'folder-1' });
+			manager.find.mockResolvedValue([folder]);
 
-			await repository.findFoldersByIdsForUser(['folder-1'], {
-				userId: 'user-1',
-				projectRoles: ['project:editor'],
-			});
+			await expect(
+				repository.findFoldersByIdsForUser(['folder-1'], {
+					userId: 'user-1',
+					projectRoles: ['project:editor'],
+				}),
+			).resolves.toEqual([folder]);
 
 			expect(manager.find).toHaveBeenCalledWith(
 				Folder,
@@ -312,6 +406,14 @@ describe('access repositories', () => {
 			await repository.findExistingFolderIds(folderIds);
 
 			expect(manager.find).toHaveBeenCalledTimes(2);
+		});
+
+		it('returns existing folder ids', async () => {
+			manager.find.mockResolvedValue([{ id: 'folder-1' }]);
+
+			await expect(repository.findExistingFolderIds(['folder-1'])).resolves.toEqual(
+				new Set(['folder-1']),
+			);
 		});
 
 		it('lists folder ids in a project', async () => {
@@ -354,6 +456,11 @@ describe('access repositories', () => {
 				'folder_tree',
 				{ recursive: true },
 			);
+		});
+
+		it('short-circuits an empty descendant query', async () => {
+			await expect(repository.findDescendantIds([])).resolves.toEqual([]);
+			expect(manager.createQueryBuilder).not.toHaveBeenCalled();
 		});
 	});
 });
