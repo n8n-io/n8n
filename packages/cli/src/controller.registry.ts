@@ -80,6 +80,17 @@ export class ControllerRegistry {
 
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
+			// A non-JSON @Body media type (e.g. multipart/form-data) is parsed by the public API
+			// registry only - an internal route declaring one would have its body left unparsed here.
+			for (const arg of route.args) {
+				if (arg?.type === 'body' && arg.media && arg.media.mediaType !== 'application/json') {
+					throw new UnexpectedError(
+						`${controllerClass.name}.${handlerName} declares @Body({ mediaType: ` +
+							`'${arg.media.mediaType}' }), which only @PublicApiController routes support.`,
+					);
+				}
+			}
+
 			// Original handler logic for non-router routes
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',

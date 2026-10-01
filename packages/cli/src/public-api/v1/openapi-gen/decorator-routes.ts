@@ -12,6 +12,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	JSON_REQUEST_BODY_MEDIA,
+	requestBodyHandlerFor,
+} from '@/public-api/media-types/request-body';
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
 	isRequestBodyRequired,
@@ -39,6 +43,7 @@ export const ERROR_RESPONSE_REFS = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
 	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
@@ -62,6 +67,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	403: 'Forbidden',
 	404: 'The specified resource was not found.',
 	409: 'Conflict',
+	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
 	500: 'Internal server error.',
@@ -156,18 +162,23 @@ function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefi
 	return Object.keys(shape).length ? z.object(shape) : undefined;
 }
 
-/** A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has. */
+/**
+ * A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has.
+ * The content key comes from the route's request-body media type (JSON unless `@Body` declares
+ * another one), so a new media type documents itself here without this function knowing about it.
+ */
 function buildRequestBody(
 	route: ResolvedPublicApiRoute,
 ): NonNullable<RouteConfig['request']>['body'] {
 	if (!route.requestBodyDto) return undefined;
 
 	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
+	const handler = requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA);
 
 	return {
 		...(required ? { required: true } : {}),
 		content: {
-			'application/json': {
+			[handler.mediaType]: {
 				schema: route.requestBodyDto.schema,
 			},
 		},
@@ -230,7 +241,18 @@ function buildResponses(
 		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
 	if (route.requestBodyDto) {
-		responses[415] = ERROR_RESPONSE_REFS[415];
+		// Each media type documents its own error statuses (JSON: 415; multipart: 413 and 415, ...),
+		// so adding a media type never means touching this function.
+		const handler = requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA);
+		for (const status of handler.errorStatuses) {
+			if (!isDocumentedErrorStatus(status)) {
+				throw new UnexpectedError(
+					`Request-body media type ${handler.mediaType} declares undocumented error status ` +
+						`${status} - add a shared response file and register it in ERROR_RESPONSE_REFS.`,
+				);
+			}
+			responses[status] = ERROR_RESPONSE_REFS[status];
+		}
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {

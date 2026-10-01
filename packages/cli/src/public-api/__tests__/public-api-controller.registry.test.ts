@@ -1,4 +1,4 @@
-import { Z } from '@n8n/api-types';
+import { publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -10,12 +10,13 @@ import {
 	ControllerRegistryMetadata,
 	Deprecated,
 	Get,
+	Middleware,
 	Param,
 	Post,
 	ProjectScope,
 	RequiresUserQuota,
 } from '@n8n/decorators';
-import type { Controller } from '@n8n/decorators';
+import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
 import request from 'supertest';
@@ -461,6 +462,170 @@ describe('PublicApiControllerRegistry', () => {
 				.set('Content-Type', 'application/json; Foo=BAR')
 				.send({ name: 'a' })
 				.expect(200);
+		});
+	});
+
+	describe('multipart request bodies', () => {
+		class PackageBodyDto extends Z.class(
+			{ package: publicApiUploadedFileSchema, workflowConflictPolicy: z.string() },
+			{ strict: true },
+		) {}
+
+		function registerUploadRoute(uploadLimits: () => MultipartUploadLimits = () => ({})) {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: PackageBodyDto,
+				) {
+					return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		it('parses a multipart body, merging the uploaded file with text fields', async () => {
+			registerUploadRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.attach('package', Buffer.from('hello'), 'export.n8np')
+				.expect(200);
+
+			expect(response.body).toEqual({ workflowConflictPolicy: 'new-version', size: 5 });
+		});
+
+		it('rejects a JSON body with 415 for a multipart-only route', async () => {
+			registerUploadRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Content-Type', 'application/json')
+				.send({ workflowConflictPolicy: 'new-version' })
+				.expect(415);
+
+			expect(response.body.message).toBe('unsupported media type application/json');
+		});
+
+		it('rejects a request missing the required file with 400', async () => {
+			registerUploadRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.expect(400);
+
+			expect(response.body.message).toBe("request/body must have required property 'package'");
+		});
+
+		it('rejects an unknown form field with 400', async () => {
+			registerUploadRoute();
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.field('evil', 'x')
+				.attach('package', Buffer.from('hello'), 'export.n8np')
+				.expect(400);
+
+			expect(response.body.message).toBe('Unexpected form field "evil"');
+		});
+
+		it('rejects an oversized file with 413', async () => {
+			registerUploadRoute(() => ({ fileSize: 2 }));
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.attach('package', Buffer.from('hello'), 'export.n8np')
+				.expect(413);
+
+			expect(response.body.message).toBe('File too large');
+		});
+
+		it('keeps 401 ahead of multipart parsing for an unauthenticated caller', async () => {
+			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			registerUploadRoute(() => ({ fileSize: 2 }));
+
+			// The file is bigger than the configured limit; a 413 here would mean the body was parsed
+			// before authentication ran.
+			await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.attach('package', Buffer.from('hello'), 'export.n8np')
+				.expect(401);
+		});
+
+		it('keeps the scope check ahead of multipart parsing', async () => {
+			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+				req.user = authenticatedUser;
+				req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
+				return true;
+			});
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				@ApiKeyScope('workflow:import')
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({ fileSize: 2 }) })
+					body: PackageBodyDto,
+				) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			// Same oversized file as above: a 413 here would mean the body was parsed before the scope
+			// check ran.
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.attach('package', Buffer.from('hello'), 'export.n8np')
+				.expect(403);
+
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('hands the parsed body to a controller middleware, not only to the handler', async () => {
+			const middlewareSaw: unknown[] = [];
+
+			@Service()
+			class WidgetsPublicController {
+				@Middleware()
+				capture(req: express.Request, _res: express.Response, next: express.NextFunction) {
+					middlewareSaw.push(req.body);
+					next();
+				}
+
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
+					body: PackageBodyDto,
+				) {
+					return { ok: true, size: body.package.size };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.field('workflowConflictPolicy', 'new-version')
+				.attach('package', Buffer.from('hello'), 'export.n8np')
+				.expect(200);
+
+			expect(middlewareSaw).toHaveLength(1);
+			expect(middlewareSaw[0]).toMatchObject({ workflowConflictPolicy: 'new-version' });
 		});
 	});
 

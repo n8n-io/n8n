@@ -4,6 +4,7 @@ import type { ApiKeyScopeRequirement } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
+import { JSON_REQUEST_BODY_MEDIA, requestBodyHandlerFor } from '../../../media-types/request-body';
 import {
 	apiKeyScopesSatisfy,
 	HTTP_METHODS,
@@ -133,14 +134,22 @@ async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 }
 
 function buildDecoratorEndpoints(): EndpointInfo[] {
-	return resolvePublicApiRoutes().map((route) => ({
-		method: route.method.toUpperCase(),
-		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
-		operationId: route.handlerName,
-		tag: route.tags?.[0] ?? 'Other',
-		scope: route.apiKeyScope ?? null,
-		requestSchema: buildRequestBodyJsonSchema(route),
-	}));
+	return resolvePublicApiRoutes().map((route) => {
+		// Matches the legacy behaviour `extractRequestSchema` gives eov routes: a non-JSON body shows
+		// no request schema (`discoverable: false` on its handler), so a client doesn't assume one.
+		const handler = route.requestBodyDto
+			? requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA)
+			: undefined;
+
+		return {
+			method: route.method.toUpperCase(),
+			path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
+			operationId: route.handlerName,
+			tag: route.tags?.[0] ?? 'Other',
+			scope: route.apiKeyScope ?? null,
+			requestSchema: handler?.discoverable ? buildRequestBodyJsonSchema(route) : undefined,
+		};
+	});
 }
 
 export async function buildDiscoverResponse(

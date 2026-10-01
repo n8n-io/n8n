@@ -260,6 +260,33 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 	});
 
+	it('documents a multipart body under its own content key, with 413 and 415 responses', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(
+				_req: unknown,
+				_res: unknown,
+				@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) }) body: WidgetBodyDto,
+			) {
+				return body;
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.content).toEqual({
+			'multipart/form-data': { schema: WidgetBodyDto.schema },
+		});
+		expect(operation.config.responses[413]).toEqual({
+			$ref: '../../../../shared/spec/responses/contentTooLarge.yml',
+		});
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+	});
+
 	it('refs the shared response file for an error status declared without a body DTO', () => {
 		class WidgetsPublicController {
 			@Get('/')

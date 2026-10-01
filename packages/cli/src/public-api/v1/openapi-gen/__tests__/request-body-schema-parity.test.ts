@@ -2,13 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 
+import {
+	JSON_REQUEST_BODY_MEDIA,
+	requestBodyHandlerFor,
+} from '@/public-api/media-types/request-body';
 import { resolvePublicApiRoutes } from '@/public-api/public-api-route-resolver';
 
 import { buildRequestBodyJsonSchema, getDecoratorGeneratedOperations } from '../decorator-routes';
 
 /**
  * The build writes a request body schema into the spec. `/discover` builds the same schema at
- * runtime, through `buildRequestBodyJsonSchema`. Nothing else checks that the two agree.
+ * runtime, through `buildRequestBodyJsonSchema`, for a route whose media type is `discoverable`
+ * (JSON; not multipart). Nothing else checks that the two agree.
  */
 const V1_DIR = path.resolve(__dirname, '../..');
 
@@ -21,7 +26,7 @@ const SPEC_FILE_BY_HANDLER = new Map(
 	]),
 );
 
-function schemaInSpecFile(handlerName: string): unknown {
+function schemaInSpecFile(handlerName: string, mediaType: string): unknown {
 	const specFile = SPEC_FILE_BY_HANDLER.get(handlerName);
 	if (!specFile) throw new Error(`The build generated no spec file for ${handlerName}`);
 
@@ -29,13 +34,20 @@ function schemaInSpecFile(handlerName: string): unknown {
 		requestBody?: { content?: Record<string, { schema?: unknown }> };
 	};
 
-	return spec.requestBody?.content?.['application/json']?.schema;
+	return spec.requestBody?.content?.[mediaType]?.schema;
 }
 
 describe('buildRequestBodyJsonSchema', () => {
-	const routesWithBody = resolvePublicApiRoutes().filter((route) => route.requestBodyDto);
+	const discoverableRoutesWithBody = resolvePublicApiRoutes().filter(
+		(route) =>
+			route.requestBodyDto &&
+			requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA).discoverable,
+	);
 
-	it.each(routesWithBody)('$handlerName matches its committed spec file', (route) => {
-		expect(buildRequestBodyJsonSchema(route)).toEqual(schemaInSpecFile(route.handlerName));
+	it.each(discoverableRoutesWithBody)('$handlerName matches its committed spec file', (route) => {
+		const mediaType = (route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA).mediaType;
+		expect(buildRequestBodyJsonSchema(route)).toEqual(
+			schemaInSpecFile(route.handlerName, mediaType),
+		);
 	});
 });

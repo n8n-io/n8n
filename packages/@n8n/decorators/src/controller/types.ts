@@ -24,8 +24,37 @@ export interface ErrorResponse {
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
+/** Multer limits for a `multipart/form-data` `@Body`. Every key matches multer's own `limits` option. */
+export interface MultipartUploadLimits {
+	fieldNameSize?: number;
+	fieldSize?: number;
+	fields?: number;
+	fileSize?: number;
+	files?: number;
+	parts?: number;
+	headerPairs?: number;
+}
+
+/**
+ * Options `@Body` accepts for each request-body media type it supports. Adding a media type here is
+ * the first step to supporting it - `RequestBodyMediaType` and `RequestBodyMedia` are both derived
+ * from this map, and `packages/cli/src/public-api/media-types/request-body/index.ts`'s
+ * `REQUEST_BODY_HANDLERS` won't compile until a handler is registered for the new key.
+ */
+export interface RequestBodyMediaOptions {
+	'application/json': object;
+	'multipart/form-data': { uploadLimits: () => MultipartUploadLimits };
+}
+
+export type RequestBodyMediaType = keyof RequestBodyMediaOptions;
+
+/** One request-body media type, tagged with `mediaType` and carrying that type's own options. */
+export type RequestBodyMedia = {
+	[K in RequestBodyMediaType]: { mediaType: K } & RequestBodyMediaOptions[K];
+}[RequestBodyMediaType];
+
 export type Arg =
-	| { type: 'body'; required?: boolean }
+	| { type: 'body'; required?: boolean; media?: RequestBodyMedia }
 	| { type: 'query' }
 	| { type: 'param'; key: string; schema?: ZodTypeAny };
 

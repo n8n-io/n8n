@@ -7,6 +7,7 @@ import type {
 	ErrorResponse,
 	HandlerName,
 	Method,
+	RequestBodyMedia,
 	ResponseDtoClass,
 	SuccessStatus,
 } from '@n8n/decorators';
@@ -15,6 +16,8 @@ import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 import type { ZodTypeAny } from 'zod';
+
+import { JSON_REQUEST_BODY_MEDIA } from '@/public-api/media-types/request-body';
 
 export const HTTP_METHODS = [
 	'get',
@@ -29,7 +32,7 @@ export const HTTP_METHODS = [
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export type ParamArg = { type: 'param'; key: string; schema?: ZodTypeAny };
-type BodyArg = { type: 'body'; dto: ZodClass; required?: boolean };
+export type BodyArg = { type: 'body'; dto: ZodClass; required?: boolean; media?: RequestBodyMedia };
 type QueryArg = { type: 'query'; dto: ZodClass };
 
 /** A `ParamArg` whose `@Param` declared a schema, so its value is validated before the handler. */
@@ -62,6 +65,8 @@ export interface ResolvedPublicApiRoute {
 	requestBodyDto?: ZodClass;
 	/** Explicit `@Body({ required })` override; falls back to `isRequestBodyRequired` when unset. */
 	requestBodyRequired?: boolean;
+	/** The request body's media type; defaults to JSON when `@Body` declares none. Set only when `requestBodyDto` is. */
+	requestBodyMedia?: RequestBodyMedia;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
 	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
@@ -130,6 +135,7 @@ export function resolveRouteArgs(
 				type: 'body',
 				dto: paramType,
 				...(arg.required !== undefined && { required: arg.required }),
+				...(arg.media !== undefined && { media: arg.media }),
 			});
 			continue;
 		}
@@ -254,6 +260,9 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 			const requestBodyArg = findBodyArg(args);
 			const requestBodyDto = requestBodyArg?.dto;
 			const requestBodyRequired = requestBodyArg?.required;
+			const requestBodyMedia = requestBodyDto
+				? (requestBodyArg?.media ?? JSON_REQUEST_BODY_MEDIA)
+				: undefined;
 			const requestQueryDto = findQueryArg(args)?.dto;
 
 			const joined = `${prefix}${route.path}`.replace(/\/+/g, '/');
@@ -268,6 +277,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				args,
 				requestBodyDto,
 				requestBodyRequired,
+				requestBodyMedia,
 				requestQueryDto,
 				responseDto: route.responseDto,
 				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),

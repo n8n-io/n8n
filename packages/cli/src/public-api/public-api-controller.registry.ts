@@ -14,9 +14,12 @@ import type { ZodTypeAny } from 'zod';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
+import {
+	JSON_REQUEST_BODY_MEDIA,
+	requestBodyHandlerFor,
+} from '@/public-api/media-types/request-body';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
-import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
@@ -88,23 +91,30 @@ export class PublicApiControllerRegistry {
 			const bodyArg = findBodyArg(resolvedArgs);
 			const bodyDto = bodyArg?.dto;
 			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
+			const bodyMedia = bodyArg?.media ?? JSON_REQUEST_BODY_MEDIA;
+			const bodyHandler = bodyDto ? requestBodyHandlerFor(bodyMedia) : undefined;
 
 			const handler = async (req: Request, res: Response) => {
-				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
-
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
 						args.push(
 							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
 						);
+						continue;
+					}
+
+					const input =
+						arg.type === 'body' && bodyHandler ? bodyHandler.readInput(req) : req[arg.type];
+					const output = arg.dto.safeParse(input);
+					if (output.success) {
+						args.push(output.data);
 					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
-						if (output.success) {
-							args.push(output.data);
-						} else {
-							throw new BadRequestError(formatValidationError(arg.type, output.error));
-						}
+						const message =
+							arg.type === 'body' && bodyHandler
+								? bodyHandler.formatValidationError(output.error)
+								: formatValidationError(arg.type, output.error);
+						throw new BadRequestError(message);
 					}
 				}
 
@@ -152,6 +162,12 @@ export class PublicApiControllerRegistry {
 
 			if (route.requiresUserQuota) {
 				middlewares.push(this.createUserQuotaMiddleware());
+			}
+
+			// Runs after every access gate, so a caller the gates would reject never has their body
+			// parsed - and before controller/route middlewares, so one reading the body sees it parsed.
+			if (bodyHandler) {
+				middlewares.push(bodyHandler.createMiddleware(bodyMedia, bodyRequired));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
