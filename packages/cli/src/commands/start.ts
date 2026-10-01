@@ -291,8 +291,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		this.initWorkflowHistory();
-		this.logger.debug('Workflow history init complete');
 
 		if (!isMultiMainEnabled) {
 			await this.cleanupTestRunner();

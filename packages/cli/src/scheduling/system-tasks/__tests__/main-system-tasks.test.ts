@@ -7,6 +7,7 @@ import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { ExecutionPruningSoftDeleteTask } from '@/services/pruning/execution-pruning-soft-delete.task';
 import { WorkflowHistoryCompactionOptimizeTask } from '@/services/pruning/workflow-history-compaction-optimize.task';
 import { WorkflowHistoryCompactionTrimTask } from '@/services/pruning/workflow-history-compaction-trim.task';
+import { WorkflowHistoryPruningTask } from '@/services/pruning/workflow-history-pruning.task';
 import { TelemetryPulseTask } from '@/telemetry/telemetry-pulse.task';
 import { WorkflowPublicationOutboxCleanupTask } from '@/workflows/publication/workflow-publication-outbox-cleanup.task';
 
@@ -31,6 +32,7 @@ it('should return every main task when all features are on', async () => {
 		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryCompactionTrimTask,
+		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
 		ExecutionPruningSoftDeleteTask,
 		TelemetryPulseTask,
