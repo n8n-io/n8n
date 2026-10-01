@@ -76,6 +76,7 @@ function trackInputCompleted(
 		thread_id: thread.id,
 		input_thread_id: conf.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
+		action_source: thread.resolveActionSource(),
 		type: getConfirmationType(conf),
 		provided_inputs: providedInputs,
 		skipped_inputs: skippedInputs,

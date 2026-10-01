@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { AgentBuilderPage } from './AgentBuilderPage';
 import { AgentSessionsPage } from './AgentSessionsPage';
 import { AIAssistantPage } from './AIAssistantPage';
 import { CanvasPage } from './CanvasPage';
@@ -38,6 +39,7 @@ import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
+import { SettingsMcpPage } from './SettingsMcpPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsSsoPage } from './SettingsSsoPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
@@ -81,6 +83,7 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly agentBuilder: AgentBuilderPage;
 	readonly agentSessions: AgentSessionsPage;
 	readonly canvas: CanvasPage;
 	readonly chatHubChat: ChatHubChatPage;
@@ -98,6 +101,7 @@ export class n8nPage {
 	readonly oauthConsent: OAuthConsentPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
+	readonly settingsMcp: SettingsMcpPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
 	readonly templateCredentialSetup: TemplateCredentialSetupPage;
 	readonly templates: TemplatesPage;
@@ -164,13 +168,14 @@ export class n8nPage {
 	constructor(page: Page, api?: ApiHelpers) {
 		this.page = page;
 		// The fallback helper carries no options, so it applies no stack workflow
-		// settings and its engine 2.0 routing check stays quiet. Pass a helper, or
+		// settings and its engine v2 routing check stays quiet. Pass a helper, or
 		// use `start.newTab()`, for a page that creates or runs workflows.
 		this.api = api ?? new ApiHelpers(page.context().request);
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.agentBuilder = new AgentBuilderPage(page);
 		this.agentSessions = new AgentSessionsPage(page);
 		this.canvas = new CanvasPage(page);
 		this.chatHubChat = new ChatHubChatPage(page);
@@ -188,6 +193,7 @@ export class n8nPage {
 		this.oauthConsent = new OAuthConsentPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
+		this.settingsMcp = new SettingsMcpPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
 		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);
 		this.templates = new TemplatesPage(page);

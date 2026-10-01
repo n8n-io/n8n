@@ -172,6 +172,42 @@ describe('collapsed node group layout after tidyUp', () => {
 		expect(chip.x).toBeGreaterThan(right(visible.get('Every Hour')!));
 		expect(right(chip)).toBeLessThan(visible.get('Post Digest')!.x);
 	});
+
+	it('keeps a group that bridges disconnected components on one layout row', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		const left = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Left' },
+		});
+		const rightNode = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Right' },
+		});
+		const finish = node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: 'Finish' },
+		});
+
+		const json = workflow('wf', 'Bridged group')
+			.add(start.to(left))
+			.add(rightNode.to(finish))
+			.group('Bridge', [left, rightNode])
+			.toJSON({ tidyUp: true });
+
+		const visible = visibleBoxes(json);
+		const row = centerY(visible.get('Nightly')!);
+		expect(centerY(visible.get('Bridge')!)).toBe(row);
+		expect(centerY(visible.get('Finish')!)).toBe(row);
+		expect(visible.get('Bridge')!.x).toBeGreaterThan(right(visible.get('Nightly')!));
+		expect(visible.get('Finish')!.x).toBeGreaterThan(right(visible.get('Bridge')!));
+	});
 	it('leaves a group holding an AI sub-node alone, so its own sub-layout still runs', () => {
 		const model = languageModel({
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -287,5 +323,57 @@ describe('collapsed node group layout after tidyUp', () => {
 		expect(decoyX).toBeGreaterThan(triggerX);
 		expect(decoyX).toBeLessThan(positionOf(json, 'First')[0]);
 		expect(json.nodes).toHaveLength(4);
+	});
+
+	it('does not serialize the synthetic group node', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		const first = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'First' },
+		});
+		const second = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Second' },
+		});
+
+		const json = workflow('wf', 'Synthetic group node')
+			.add(start.to(first).to(second))
+			.group('Steps', [first, second])
+			.toJSON({ tidyUp: true });
+
+		expect(json.nodes.every((node) => !node.name?.startsWith('__nodeGroup__:'))).toBe(true);
+	});
+
+	it('keeps tidy-up positions stable across repeated serialization', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		const first = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'First' },
+		});
+		const second = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Second' },
+		});
+		const builder = workflow('wf', 'Stable tidy-up')
+			.add(start.to(first).to(second))
+			.group('Steps', [first, second]);
+
+		const firstSerialization = builder.toJSON({ tidyUp: true });
+		const secondSerialization = builder.toJSON({ tidyUp: true });
+		for (const name of ['Nightly', 'First', 'Second']) {
+			expect(positionOf(secondSerialization, name)).toEqual(positionOf(firstSerialization, name));
+		}
 	});
 });

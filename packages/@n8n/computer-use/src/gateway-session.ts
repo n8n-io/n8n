@@ -21,6 +21,8 @@ export class GatewaySession {
 	constructor(
 		defaults: { permissions: Record<ToolGroup, PermissionMode>; dir: string },
 		private readonly settingsStore: SettingsStore,
+		/** Instance origin that persistent resource rules are scoped to. */
+		private readonly origin: string,
 	) {
 		this._permissions = { ...defaults.permissions };
 		this._dir = defaults.dir;
@@ -87,7 +89,7 @@ export class GatewaySession {
 			return 'deny';
 		}
 
-		const rp = this.settingsStore.getResourcePermissions(toolGroup);
+		const rp = this.settingsStore.getResourcePermissions(this.origin, toolGroup);
 		if (rp.deny.includes(resource)) return 'deny';
 		if (rp.allow.includes(resource)) return 'allow';
 		if (this.hasSessionAllow(toolGroup, resource)) return 'allow';
@@ -141,11 +143,15 @@ export class GatewaySession {
 	// ---------------------------------------------------------------------------
 
 	alwaysAllow(toolGroup: ToolGroup, resource: string): void {
-		this.settingsStore.alwaysAllow(toolGroup, resource);
+		this.settingsStore.alwaysAllow(this.origin, toolGroup, resource);
 	}
 
 	alwaysDeny(toolGroup: ToolGroup, resource: string): void {
-		this.settingsStore.alwaysDeny(toolGroup, resource);
+		this.settingsStore.alwaysDeny(this.origin, toolGroup, resource);
+	}
+
+	claimUnscopedRules(): void {
+		this.settingsStore.claimUnscopedRules(this.origin);
 	}
 
 	// ---------------------------------------------------------------------------

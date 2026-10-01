@@ -10,7 +10,7 @@ describe('getMcpClientCatalog', () => {
 		expect(catalog.map((group) => group.id)).toEqual(['cli', 'web', 'ide']);
 		expect(catalog.map((group) => group.clients.map((client) => client.id))).toEqual([
 			['claude-code', 'codex', 'gemini-cli'],
-			['claude-ai', 'chatgpt'],
+			['claude-ai', 'chatgpt', 'mistral-vibe'],
 			['cursor', 'vscode', 'windsurf'],
 		]);
 	});
@@ -38,6 +38,13 @@ describe('getMcpClientCatalog', () => {
 			type: 'http',
 			url: SERVER_URL,
 		});
+	});
+
+	it('should prefill the server URL in the Mistral Vibe connector template link', () => {
+		const vibe = clients.find((client) => client.id === 'mistral-vibe');
+		const params = new URL(vibe!.addUrl!).searchParams;
+		expect(params.get('template')).toBe('n8n');
+		expect(params.get('server_url')).toBe(SERVER_URL);
 	});
 
 	it('should give every web client a connector URL and every CLI an install command', () => {

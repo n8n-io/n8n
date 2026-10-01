@@ -451,7 +451,7 @@ removeMarkdown.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-removeMarkdown',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringremovemarkdown',
 	examples: [{ example: '"*bold*, [link]()".removeMarkdown()', evaluated: '"bold, link"' }],
 };
 
@@ -461,7 +461,7 @@ removeTags.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-removeTags',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringremovetags',
 	examples: [{ example: '"<b>bold</b>, <a>link</a>".removeTags()', evaluated: '"bold, link"' }],
 };
 
@@ -471,7 +471,8 @@ toDate.doc = {
 	section: 'cast',
 	returnType: 'Date',
 	hidden: true,
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDate',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtodatetime',
 };
 
 toDateTime.doc = {
@@ -481,7 +482,7 @@ toDateTime.doc = {
 	section: 'cast',
 	returnType: 'DateTime',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDateTime',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtodatetime',
 	examples: [
 		{ example: '"2024-03-29T18:06:31.798+01:00".toDateTime()' },
 		{ example: '"Fri, 29 Mar 2024 18:08:01 +0100".toDateTime()' },
@@ -507,7 +508,7 @@ toBoolean.doc = {
 	section: 'cast',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toBoolean',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtoboolean',
 	examples: [
 		{ example: '"true".toBoolean()', evaluated: 'true' },
 		{ example: '"false".toBoolean()', evaluated: 'false' },
@@ -524,7 +525,7 @@ toFloat.doc = {
 	aliases: ['toDecimalNumber'],
 	hidden: true,
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDecimalNumber',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtonumber',
 };
 
 toInt.doc = {
@@ -535,7 +536,8 @@ toInt.doc = {
 	args: [{ name: 'radix?', type: 'number' }],
 	aliases: ['toWholeNumber'],
 	hidden: true,
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toInt',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtonumber',
 };
 
 toSentenceCase.doc = {
@@ -546,7 +548,7 @@ toSentenceCase.doc = {
 	section: 'case',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toSentenceCase',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtosentencecase',
 };
 
 toSnakeCase.doc = {
@@ -557,7 +559,7 @@ toSnakeCase.doc = {
 	section: 'case',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toSnakeCase',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtosnakecase',
 };
 
 toTitleCase.doc = {
@@ -568,7 +570,7 @@ toTitleCase.doc = {
 	section: 'case',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toTitleCase',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtotitlecase',
 };
 
 urlEncode.doc = {
@@ -588,7 +590,7 @@ urlEncode.doc = {
 	],
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-urlEncode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringurlencode',
 	examples: [
 		{ example: '"name=Nathan Automat".urlEncode()', evaluated: '"name%3DNathan%20Automat"' },
 		{ example: '"name=Nathan Automat".urlEncode(true)', evaluated: '"name=Nathan%20Automat"' },
@@ -612,7 +614,7 @@ urlDecode.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-urlDecode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringurldecode',
 	examples: [
 		{ example: '"name%3DNathan%20Automat".urlDecode()', evaluated: '"name=Nathan Automat"' },
 		{ example: '"name%3DNathan%20Automat".urlDecode(true)', evaluated: '"name%3DNathan Automat"' },
@@ -625,7 +627,7 @@ replaceSpecialChars.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-replaceSpecialChars',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringreplacespecialchars',
 	examples: [{ example: '"déjà".replaceSpecialChars()', evaluated: '"deja"' }],
 };
 
@@ -635,7 +637,8 @@ length.doc = {
 	hidden: true,
 	description: 'Returns the character count of a string.',
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringlength',
 };
 
 isDomain.doc = {
@@ -643,7 +646,8 @@ isDomain.doc = {
 	description: 'Returns <code>true</code> if a string is a domain.',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isDomain',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisdomain',
 	examples: [
 		{ example: '"n8n.io".isDomain()', evaluated: 'true' },
 		{ example: '"http://n8n.io".isDomain()', evaluated: 'false' },
@@ -656,7 +660,8 @@ isEmail.doc = {
 	description: 'Returns <code>true</code> if the string is an email.',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmail',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisemail',
 	examples: [
 		{ example: '"me@example.com".isEmail()', evaluated: 'true' },
 		{ example: '"It\'s me@example.com".isEmail()', evaluated: 'false' },
@@ -670,7 +675,7 @@ isNumeric.doc = {
 	section: 'validation',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isNumeric',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisnumeric',
 	examples: [
 		{ example: '"1.2234".isNumeric()', evaluated: 'true' },
 		{ example: '"hello".isNumeric()', evaluated: 'false' },
@@ -683,7 +688,8 @@ isUrl.doc = {
 	description: 'Returns <code>true</code> if a string is a valid URL',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isUrl',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisurl',
 	examples: [
 		{ example: '"https://n8n.io".isUrl()', evaluated: 'true' },
 		{ example: '"n8n.io".isUrl()', evaluated: 'false' },
@@ -696,7 +702,8 @@ isEmpty.doc = {
 	description: 'Returns <code>true</code> if the string has no characters or is <code>null</code>',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisempty',
 	examples: [
 		{ example: '"".isEmpty()', evaluated: 'true' },
 		{ example: '"hello".isEmpty()', evaluated: 'false' },
@@ -709,7 +716,7 @@ isNotEmpty.doc = {
 	section: 'validation',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isNotEmpty',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisnotempty',
 	examples: [
 		{ example: '"hello".isNotEmpty()', evaluated: 'true' },
 		{ example: '"".isNotEmpty()', evaluated: 'false' },
@@ -723,7 +730,7 @@ toJsonString.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toJsonString',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtojsonstring',
 	examples: [
 		{
 			example: 'The "best" colours: red\nbrown.toJsonString()',
@@ -740,7 +747,7 @@ extractEmail.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractEmail',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextractemail',
 	examples: [
 		{ example: '"My email is me@example.com".extractEmail()', evaluated: "'me@example.com'" },
 	],
@@ -753,7 +760,7 @@ extractDomain.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractDomain',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextractdomain',
 	examples: [
 		{ example: '"me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{ example: '"http://n8n.io/workflows".extractDomain()', evaluated: "'n8n.io'" },
@@ -771,7 +778,7 @@ extractUrl.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractUrl',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextracturl',
 	examples: [{ example: '"Check out http://n8n.io".extractUrl()', evaluated: "'http://n8n.io'" }],
 };
 
@@ -782,7 +789,7 @@ extractUrlPath.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractUrlPath',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextracturlpath',
 	examples: [
 		{ example: '"http://n8n.io/workflows".extractUrlPath()', evaluated: "'/workflows'" },
 		{
@@ -808,7 +815,8 @@ hash.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-hash',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringhash',
 	examples: [{ example: '"hello".hash()', evaluated: "'5d41402abc4b2a76b9719d911017c592'" }],
 };
 
@@ -827,7 +835,8 @@ quote.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-quote',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringquote',
 	examples: [{ example: '\'Nathan says "hi"\'.quote()', evaluated: '\'"Nathan says \\"hi\\""\'' }],
 };
 
@@ -839,7 +848,7 @@ parseJson.doc = {
 	section: 'cast',
 	returnType: 'any',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-parseJson',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringparsejson',
 	examples: [
 		{ example: '\'{"name":"Nathan"}\'.parseJson()', evaluated: '\'{"name":"Nathan"}\'' },
 		{ example: "\"{'name':'Nathan'}\".parseJson()", evaluated: 'undefined' },
@@ -855,7 +864,7 @@ base64Encode.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Encode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringbase64encode',
 };
 
 base64Decode.doc = {
@@ -866,7 +875,7 @@ base64Decode.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Decode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringbase64decode',
 };
 
 toNumber.doc = {
@@ -875,7 +884,8 @@ toNumber.doc = {
 		"Converts a string representing a number to a number. Errors if the string doesn't start with a valid number.",
 	section: 'cast',
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toNumber',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtonumber',
 	examples: [
 		{ example: '"123".toNumber()', evaluated: '123' },
 		{ example: '"1.23E10".toNumber()', evaluated: '12300000000' },

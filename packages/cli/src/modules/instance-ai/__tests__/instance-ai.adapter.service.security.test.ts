@@ -1,8 +1,6 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
+	const { WorkflowNotFoundError } = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowNotFoundError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
@@ -29,6 +27,7 @@ vi.mock('@n8n/instance-ai', async () => {
 });
 
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -59,7 +58,6 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -572,7 +570,7 @@ describe('credentialService.list — eval allowlist', () => {
 			{ id: 'c3', name: 'Slack #2', type: 'slackApi', description: null },
 		] as never);
 
-		const ctx = service.createContext(user, { credentialIdAllowlist: ['c1', 'c3'] });
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => ['c1', 'c3'] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([
@@ -581,8 +579,23 @@ describe('credentialService.list — eval allowlist', () => {
 		]);
 	});
 
+	it('reads the allowlist on every call, so a credential allowlisted mid-run is listed', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi', description: null },
+			{ id: 'c2', name: 'OpenAI', type: 'openAiApi', description: null },
+		] as never);
+		const allowlist = ['c1'];
+
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => allowlist });
+		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1']);
+
+		// The harness creates a credential on a setup card and re-sends the whole list.
+		allowlist.push('c2');
+		expect((await ctx.credentialService.list()).map((c) => c.id)).toEqual(['c1', 'c2']);
+	});
+
 	it('returns an empty list without querying the credentials service when the allowlist is empty', async () => {
-		const ctx = service.createContext(user, { credentialIdAllowlist: [] });
+		const ctx = service.createContext(user, { getCredentialIdAllowlist: () => [] });
 		const result = await ctx.credentialService.list();
 
 		expect(result).toEqual([]);

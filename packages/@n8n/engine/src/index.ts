@@ -35,16 +35,23 @@ export type {
 } from './lifecycle-events';
 
 export {
-	ExecutionResponseChannel,
+	createResponseEmitter,
 	executionResponseSchema,
-	InMemoryResponseTransport,
-	noopResponseTransport,
+	noopExecutionResponseSender,
+	noopResponseEmitter,
+	RESPONSE_EXPECTATION_KINDS,
+	responseExpectationSchema,
 } from './response-channel';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
-	ResponseTransport,
-	Unsubscribe,
+	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseExpectation,
+	ResponseExpectationKind,
+	ResponseMessage,
+	UndeliverableMessage,
 } from './response-channel';
 
 export { UnimplementedError } from './common';
@@ -92,6 +99,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
@@ -102,11 +110,13 @@ export type {
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 

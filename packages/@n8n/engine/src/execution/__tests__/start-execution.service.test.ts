@@ -28,7 +28,9 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		finishExecution: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(null),
+		cancelExecution: vi.fn().mockResolvedValue(null),
+		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
 }
@@ -48,7 +50,7 @@ describe('StartExecutionService', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: 'exec-id-1',
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
@@ -61,7 +63,8 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
@@ -88,7 +91,28 @@ describe('StartExecutionService', () => {
 		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ callerContext }));
 	});
 
-	it('defaults mode to production and triggerOutputs to null', async () => {
+	it('stores the response expectation as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeQueue());
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'webhook' },
+			responseExpectation: { kind: 'runEnd' },
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ responseExpectation: { kind: 'runEnd' } }),
+		);
+	});
+
+	it('defaults mode to production, triggerOutputs to null and the expectation to none', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
@@ -101,11 +125,15 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
+			expect.objectContaining({
+				mode: 'production',
+				triggerOutputs: null,
+				responseExpectation: { kind: 'none' },
+			}),
 		);
 	});
 
@@ -121,7 +149,7 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 
 		expect(validateGraph).toHaveBeenCalledExactlyOnceWith(sampleGraph);
@@ -145,7 +173,7 @@ describe('StartExecutionService', () => {
 				graph: sampleGraph,
 				workflow: sampleWorkflow,
 				executionId: 'exec-id-1',
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			}),
 		).rejects.toBe(rejection);
 
@@ -167,7 +195,7 @@ describe('StartExecutionService', () => {
 				graph: sampleGraph,
 				workflow: sampleWorkflow,
 				executionId: 'exec-id-1',
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			}),
 		).rejects.toBeInstanceOf(AdmittanceRejectedError);
 

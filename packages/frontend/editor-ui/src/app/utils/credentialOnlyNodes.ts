@@ -1,9 +1,14 @@
 import { deepCopy, type ICredentialType, type INodeTypeDescription } from 'n8n-workflow';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '../constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, HTTP_REQUEST_NODE_TYPE } from '../constants';
 import { i18n } from '@n8n/i18n';
 
 export function isCredentialOnlyNodeType(nodeTypeName: string): boolean {
 	return nodeTypeName?.startsWith(CREDENTIAL_ONLY_NODE_PREFIX) ?? false;
+}
+
+/** A credential-only node is HTTP Request in disguise, so policy applies to the node it wraps. */
+export function toPolicyNodeType(nodeTypeName: string): string {
+	return isCredentialOnlyNodeType(nodeTypeName) ? HTTP_REQUEST_NODE_TYPE : nodeTypeName;
 }
 
 export function getCredentialTypeName(nodeTypeName: string): string {

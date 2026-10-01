@@ -1,4 +1,5 @@
 import type { RedactionFloor } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	SettingsRepository,
 	SharedCredentialsRepository,
@@ -12,7 +13,6 @@ import {
 } from '@n8n/permissions';
 import type { DistributiveOmit } from '@n8n/utils/types';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { RoleService } from '@/services/role.service';

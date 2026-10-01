@@ -2,7 +2,7 @@ operationId: createProject
 tags:
   - Projects
 summary: Create a project
-description: Create a project on your instance.
+description: Create a team project on your instance.
 x-required-scope: project:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -21,7 +21,44 @@ requestBody:
             example: Marketing
           id:
             type: string
-            readOnly: true
+            minLength: 1
+            maxLength: 36
+            description: Project ID. The server generates an ID when omitted. An ID that is in use returns HTTP 409.
+            example: VmwOO9HeTEj20kxM
+          icon:
+            type: object
+            nullable: true
+            properties:
+              type:
+                type: string
+                enum:
+                  - emoji
+                  - icon
+              value:
+                type: string
+                minLength: 1
+              color:
+                type: string
+            required:
+              - type
+              - value
+          description:
+            type: string
+            nullable: true
+            maxLength: 512
+            example: Workflows the marketing team owns.
+          customTelemetryTags:
+            type: array
+            items:
+              type: object
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+              required:
+                - key
+                - value
           type:
             type: string
             readOnly: true
@@ -122,5 +159,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    description: A project with this ID exists already. The request does not change the existing project or its members.
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

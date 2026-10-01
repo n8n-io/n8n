@@ -78,7 +78,7 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
-			new ExecutionCrashService(executionRepository, mock()),
+			new ExecutionCrashService(executionRepository, mock(), mock(), instanceSettings),
 		);
 	});
 
@@ -129,7 +129,6 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				instanceSettings.markAsFollower();
-				// @ts-expect-error Private method
 				const amendSpy = vi.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');
 

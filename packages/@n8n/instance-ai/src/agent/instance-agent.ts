@@ -115,9 +115,8 @@ export async function createInstanceAgent(
 	// returns per-server connection failures alongside the tools so they travel
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
-	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
-		await mcpManager.getRegularTools(mcpServers, context.logger, requireMcpToolApproval);
+		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions);
 	// Map manager-reported connection failures to the generic SDK event type so
 	// the runtime can inject a model-facing note into the orchestrator's system
 	// message. The adapter owns the n8n-specific server config → plain SDK event
@@ -204,8 +203,6 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-			formBaseUrl: orchestrationContext?.formBaseUrl,
 			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
@@ -215,6 +212,7 @@ export async function createInstanceAgent(
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot

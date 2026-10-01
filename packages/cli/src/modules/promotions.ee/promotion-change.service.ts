@@ -3,16 +3,22 @@ import type {
 	PromotionChanges,
 	PromotionChangesQueryDto,
 	PromotionDirection,
+	PromotionVariableScope,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
+import {
+	VariablesRepository,
+	WorkflowRepository,
+	type User,
+	type VariableKeyScope,
+	type WorkflowEntity,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
@@ -33,7 +39,6 @@ import {
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
@@ -78,6 +83,7 @@ export class PromotionChangeService {
 		private readonly promotionsService: PromotionsService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly variablesRepository: VariablesRepository,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -95,17 +101,25 @@ export class PromotionChangeService {
 		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionChanges> {
-		await this.assertCanPreview(user, projectId, direction);
+		this.assertCanPreview(user, direction);
 		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
 		// Apply reads the branch manifest before the export, so an empty branch fails without one.
 		const branchDesired =
 			direction === 'apply' ? await this.readBranchDesired(branch, projectId) : null;
-		const instance = await this.exportInstancePackage(user, projectId);
+		const [instance, destinationVariables] = await Promise.all([
+			this.exportInstancePackage(user, projectId),
+			branchDesired === null
+				? null
+				: this.variablesRepository.findKeysInProjectsOrGlobal(
+						branchDesired.manifest.requirements?.variables?.map(({ name }) => name) ?? [],
+						[projectId],
+					),
+		]);
 		const { base, desired } =
 			branchDesired === null
 				? { base: branch.files, desired: instance }
 				: { base: instance.files, desired: branchDesired };
-		const diff = this.diffPackages({ projectId, direction, base, desired });
+		const diff = this.diffPackages({ projectId, direction, base, desired, destinationVariables });
 		// Archive state separates "archived" from "modified", so the branch is read only for those rows.
 		const archiveState =
 			direction === 'promote'
@@ -121,15 +135,12 @@ export class PromotionChangeService {
 		return { commitSha: branch.commitSha, changes: applyQuery(rows, query) };
 	}
 
-	/** The preview exports the project, so both directions need the export scope on it. */
-	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
-		if (
-			!hasGlobalScope(user, GIT_SCOPES[direction]) ||
-			!(await userHasScopes(user, ['project:export'], false, { projectId }))
-		) {
+	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
+	private assertCanPreview(user: User, direction: PromotionDirection) {
+		if (!hasGlobalScope(user, GIT_SCOPES[direction])) {
 			const operation = direction === 'promote' ? 'push' : 'pull';
 			throw new ForbiddenError(
-				`Change preview requires project export and promotion ${operation} permissions. Ask an administrator for access.`,
+				`Change preview requires the promotion ${operation} permission. Ask an administrator for access.`,
 			);
 		}
 	}
@@ -139,11 +150,13 @@ export class PromotionChangeService {
 		direction,
 		base,
 		desired,
+		destinationVariables,
 	}: {
 		projectId: string;
 		direction: PromotionDirection;
 		base: readonly PackageFile[];
 		desired: DesiredPackage;
+		destinationVariables: readonly VariableKeyScope[] | null;
 	}): PackageDiff {
 		const previewId = randomUUID();
 		const { manifest } = desired;
@@ -175,6 +188,7 @@ export class PromotionChangeService {
 			manifest,
 			changedPaths,
 			projectId,
+			destinationVariables,
 		});
 		for (const workflowId of affectedWorkflowIds) {
 			changedIds.add(workflowId);
@@ -350,12 +364,21 @@ function calculateDependencyImpact({
 	manifest,
 	changedPaths,
 	projectId,
+	destinationVariables,
 }: {
 	base: readonly PackageFile[];
 	manifest: PackageManifest;
 	changedPaths: ReadonlySet<string>;
 	projectId: string;
+	destinationVariables: readonly VariableKeyScope[] | null;
 }) {
+	const destinationVariableKeys =
+		destinationVariables &&
+		new Set(
+			destinationVariables.map(({ key, projectId: owner }) =>
+				variableKey(key, owner === null ? 'global' : 'project'),
+			),
+		);
 	const baseDependencies = new Map<string, PackageFile[]>();
 	for (const file of base) {
 		const key = JSON.stringify([
@@ -391,10 +414,20 @@ function calculateDependencyImpact({
 			const currentPath = entry
 				? `${PACKAGE_SUBFOLDER}/${entityFilePath(collection, entry.target)}`
 				: undefined;
-			const dependencyChanged =
-				collection !== 'workflows' &&
-				(previous.some(({ path }) => changedPaths.has(path)) ||
-					(currentPath !== undefined && changedPaths.has(currentPath)));
+			let dependencyChanged = false;
+			if (collection === 'variables') {
+				dependencyChanged = variableChanged({
+					name: key,
+					entry,
+					baseFiles: group,
+					projectId,
+					destinationVariableKeys,
+				});
+			} else if (collection !== 'workflows') {
+				dependencyChanged =
+					previous.some(({ path }) => changedPaths.has(path)) ||
+					(currentPath !== undefined && changedPaths.has(currentPath));
+			}
 			for (const workflowId of requirement.usedByWorkflows) {
 				dependencyCounts.set(workflowId, (dependencyCounts.get(workflowId) ?? 0) + 1);
 				if (dependencyChanged) affectedWorkflowIds.add(workflowId);
@@ -402,6 +435,47 @@ function calculateDependencyImpact({
 		}
 	}
 	return { affectedWorkflowIds, dependencyCounts };
+}
+
+function variableChanged({
+	name,
+	entry,
+	baseFiles,
+	projectId,
+	destinationVariableKeys,
+}: {
+	name: string;
+	entry: ManifestEntry | undefined;
+	baseFiles: readonly PackageFile[];
+	projectId: string;
+	destinationVariableKeys: ReadonlySet<string> | null;
+}): boolean {
+	const desiredScope = entryScope(entry);
+	if (destinationVariableKeys === null) return filesScope(baseFiles, projectId) !== desiredScope;
+	const exists = (scope: PromotionVariableScope['kind']) =>
+		destinationVariableKeys.has(variableKey(name, scope));
+	if (desiredScope === undefined) return exists('project') || exists('global');
+	return !exists(desiredScope);
+}
+
+function entryScope(entry: ManifestEntry | undefined): PromotionVariableScope['kind'] | undefined {
+	if (!entry) return undefined;
+	return entry.target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`)
+		? 'project'
+		: 'global';
+}
+
+function filesScope(
+	files: readonly PackageFile[],
+	projectId: string,
+): PromotionVariableScope['kind'] | undefined {
+	if (files.some((file) => file.projectId === projectId)) return 'project';
+	if (files.length > 0) return 'global';
+	return undefined;
+}
+
+function variableKey(name: string, scope: PromotionVariableScope['kind']): string {
+	return JSON.stringify([scope, name]);
 }
 
 function buildPromotableResources({

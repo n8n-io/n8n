@@ -1,5 +1,6 @@
 import {
 	createDelegateSubAgentTool,
+	type CreateDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
@@ -8,7 +9,7 @@ import {
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { ResponseError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
@@ -18,7 +19,7 @@ import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext {
 	runner: SubAgentRunner;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
+	availableSubAgents?: NonNullable<CreateDelegateSubAgentToolOptions['availableSubAgents']>;
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;

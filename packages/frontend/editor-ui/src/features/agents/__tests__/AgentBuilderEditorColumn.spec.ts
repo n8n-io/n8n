@@ -58,6 +58,13 @@ vi.mock('@n8n/design-system', () => ({
 			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value">{{ option.label }}</button></nav>',
 		props: ['modelValue', 'options'],
 	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
+	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
 
@@ -300,6 +307,14 @@ describe('AgentBuilderEditorColumn', () => {
 			.vm.$emit('update:config', { instructions: 'x' });
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
+	});
+
+	it('forwards draft input before the config update', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper.getComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
 	});
 
 	it('disables the evals CTA for a read-only agent', async () => {

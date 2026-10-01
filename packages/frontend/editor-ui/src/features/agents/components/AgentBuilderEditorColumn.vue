@@ -70,6 +70,7 @@ const isMcpAvailable = computed(
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
@@ -86,6 +87,7 @@ const emit = defineEmits<{
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
+	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
 	'open-preview': [];
@@ -127,6 +129,7 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						@update:config="(changes, meta) => emit('update:config', changes, meta)"
+						@draft:config="emit('draft:config')"
 					/>
 
 					<AgentPanel
@@ -151,6 +154,7 @@ const i18n = useI18n();
 					>
 						<template #header-actions>
 							<AgentPreviewButton
+								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
@@ -164,6 +168,7 @@ const i18n = useI18n();
 							:agent-id="agentId"
 							:project-id="projectId"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:is-runnable="props.agent?.isRunnable === true"
 							:validation-issues="configValidationIssues ?? []"
 							:simple-channel-setup="artifactMode"
 							:agent-unsaved="agentUnsaved"
@@ -175,6 +180,7 @@ const i18n = useI18n();
 							@agent-changed="emit('agent-changed')"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
+							@preview-task="emit('preview-task', $event)"
 						/>
 					</AgentPanel>
 
@@ -425,6 +431,7 @@ const i18n = useI18n();
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
+	align-items: center;
 	width: 100%;
 }
 
