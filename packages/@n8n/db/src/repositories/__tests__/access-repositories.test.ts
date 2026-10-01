@@ -400,10 +400,37 @@ describe('access repositories', () => {
 				Folder,
 				expect.objectContaining({
 					where: expect.objectContaining({
+						id: In(['folder-1']),
 						homeProject: expect.objectContaining({
-							projectRelations: expect.objectContaining({ userId: 'user-1' }),
+							projectRelations: expect.objectContaining({
+								role: In(['project:editor']),
+								userId: 'user-1',
+							}),
 						}),
 					}),
+				}),
+			);
+		});
+
+		it('chunks folder reads and merges distinct results', async () => {
+			const first = Object.assign(new Folder(), { id: 'first' });
+			const last = Object.assign(new Folder(), { id: 'last' });
+			const folderIds = [
+				...Array.from({ length: 10_000 }, (_, index) => `folder-${index}`),
+				last.id,
+			];
+			manager.find.mockResolvedValueOnce([first]).mockResolvedValueOnce([first, last]);
+
+			await expect(repository.findFoldersByIdsForUser(folderIds, null)).resolves.toEqual([
+				first,
+				last,
+			]);
+			expect(manager.find).toHaveBeenCalledTimes(2);
+			expect(manager.find).toHaveBeenNthCalledWith(
+				2,
+				Folder,
+				expect.objectContaining({
+					where: expect.objectContaining({ id: In([last.id]) }),
 				}),
 			);
 		});
