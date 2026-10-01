@@ -16,6 +16,9 @@ import {
 	createSuccessfulExecution,
 } from './shared/db/executions';
 
+const OVERLAPPING_RUNS = 4;
+const AGED_EXECUTIONS = 20;
+
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: ExecutionsPruningService;
 	const instanceSettings = Container.get(InstanceSettings);
@@ -271,6 +274,37 @@ describe('softDeleteOnPruningCycle()', () => {
 				expect.objectContaining({ id: executions[1].id, deletedAt: expect.any(Date) }),
 				expect.objectContaining({ id: executions[2].id, deletedAt: null }),
 			]);
+		});
+
+		test('keeps the first deletedAt stamp when overlapping runs repeat', async () => {
+			const aged: ExecutionEntity[] = [];
+			for (let i = 0; i < AGED_EXECUTIONS; i++) {
+				aged.push(
+					await createExecution(
+						{ finished: true, startedAt: yesterday, stoppedAt: yesterday, status: 'success' },
+						workflow,
+					),
+				);
+			}
+			const recent = await createExecution(
+				{ finished: true, startedAt: now, stoppedAt: now, status: 'success' },
+				workflow,
+			);
+
+			const runOverlapping = async () =>
+				await Promise.all(
+					Array.from({ length: OVERLAPPING_RUNS }, async () => await pruningService.softDelete()),
+				);
+
+			await runOverlapping();
+			const firstPass = await findAllExecutions();
+			await runOverlapping();
+
+			expect(firstPass).toEqual([
+				...aged.map(({ id }) => expect.objectContaining({ id, deletedAt: expect.any(Date) })),
+				expect.objectContaining({ id: recent.id, deletedAt: null }),
+			]);
+			expect(await findAllExecutions()).toEqual(firstPass);
 		});
 	});
 });
