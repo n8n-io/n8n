@@ -294,6 +294,8 @@ export function useInstanceAiHandoff() {
 		options?: {
 			context?: InstanceAiHandoffContext;
 			initialDraft?: string;
+			/** Sent as the first message instead of being drafted, with the agent attached. */
+			sendMessage?: string;
 		},
 	): Promise<boolean> {
 		if (handoffInFlight) return false;
@@ -327,9 +329,20 @@ export function useInstanceAiHandoff() {
 				showOpenFailed();
 				return false;
 			}
-			stashPendingAgentAttachment(threadId, attachment);
-			if (options?.context) stashPendingHandoffContext(threadId, options.context);
-			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			if (options?.sendMessage) {
+				// Same tab: a runtime seeded here survives the navigation, as in startThread.
+				const thread = instanceAiStore.getOrCreateRuntime(threadId, attachment.projectId);
+				void thread.sendMessage(
+					options.sendMessage,
+					[attachment],
+					rootStore.pushRef,
+					options.context,
+				);
+			} else {
+				stashPendingAgentAttachment(threadId, attachment);
+				if (options?.context) stashPendingHandoffContext(threadId, options.context);
+				if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			}
 			try {
 				const failure = await router.push({
 					name: INSTANCE_AI_THREAD_VIEW,

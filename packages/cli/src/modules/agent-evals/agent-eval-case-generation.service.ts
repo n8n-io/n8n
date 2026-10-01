@@ -1,22 +1,24 @@
 import type { Agent } from '@n8n/agents';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
-import {
-	MANAGED_CREDENTIAL_TOKEN,
-	type AgentEvalDraftCase,
-	type AgentJsonConfig,
-	type GenerateDraftCasesOptions,
-	type GenerateDraftCasesResult,
+import type {
+	AgentEvalColumnMapping,
+	AgentEvalDraftCase,
+	AgentJsonConfig,
+	GenerateDraftCasesOptions,
+	GenerateDraftCasesResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
+import { resolveAgentByokModel, type AgentByokModelConfig } from './agent-eval-model';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
 import {
@@ -25,11 +27,9 @@ import {
 	CASE_GENERATION_SYSTEM_PROMPT,
 	deriveCapabilities,
 	generatedCasesSchema,
+	parsedCasesSchema,
 } from './case-generation/case-generation-prompt';
-import { sampleDimensionTuples } from './case-generation/dimensions';
-import { isSupportedAgentProvider } from '../agents/json-config/credential-field-mapping';
-import { resolveCredentialAwareModelConfig } from '../agents/json-config/model-config';
-import { createAgentCredentialProvider } from '../agents/utils/agent-credential-provider';
+import { sampleDimensionTuples, type CaseInputFlavor } from './case-generation/dimensions';
 import { DataTableService } from '../data-table/data-table.service';
 import { DataTableNameConflictError } from '../data-table/errors/data-table-name-conflict.error';
 
@@ -39,6 +39,7 @@ const MAX_CASE_COUNT = 20;
 // Upper bound per generated field. The model output is untrusted (the prompt
 // embeds the agent's own instructions), so persisted text can't balloon.
 const MAX_CASE_TEXT_CHARS = 2_000;
+const MAX_CHECK_NAME_CHARS = 80;
 
 // Bound a single generation so a hung provider can't pin the request.
 const GENERATE_TIMEOUT_MS = 60_000;
@@ -48,6 +49,22 @@ const GENERATE_TIMEOUT_MS = 60_000;
 // drafts have no gold answer and are never auto-graded.
 const INPUT_COLUMN = 'input';
 const CRITERIA_COLUMN = 'criteria';
+// Short check name per row; rows sharing a name are examples of one check.
+const CHECK_COLUMN = 'check';
+// The kind of situation the row covers, from the sampled scenario.
+const KIND_COLUMN = 'kind';
+// True for prepared rows the user hasn't added as checks yet; runs skip them.
+const SUGGESTED_COLUMN = 'suggested';
+
+// How each sampled scenario flavor reads in the UI.
+const KIND_LABEL: Record<CaseInputFlavor, string> = {
+	happy_path: 'Typical request',
+	underspecified: 'Vague request',
+	out_of_scope: 'Off-topic',
+	adversarial: 'Pushes the rules',
+};
+
+type CaseRowExtras = { kind: string; suggested: boolean };
 
 // How many name variants ("… (2)", "… (3)") to try before giving up on a
 // per-project name clash.
@@ -123,13 +140,16 @@ export class AgentEvalCaseGenerationService {
 		const baseName =
 			trimmedName && trimmedName.length > 0 ? trimmedName : defaultDatasetName(config.name);
 
-		const { datasetId, dataTableId } = await this.persistDataset(
-			projectId,
-			agentId,
-			user.id,
-			baseName,
-			cases,
-		);
+		const extras: CaseRowExtras[] = tuples
+			.slice(0, cases.length)
+			.map((tuple) => ({
+				kind: KIND_LABEL[tuple.flavor],
+				suggested: options.asSuggestions === true,
+			}));
+
+		const { datasetId, dataTableId } = options.datasetId
+			? await this.appendToDataset(options.datasetId, agentId, cases, extras)
+			: await this.persistDataset(projectId, agentId, user.id, baseName, cases, extras);
 
 		this.logger.debug('Generated draft eval cases', {
 			agentId,
@@ -162,24 +182,12 @@ export class AgentEvalCaseGenerationService {
 	 * since generation calls the provider directly with that credential.
 	 */
 	private async resolveAgentModel(config: AgentJsonConfig, projectId: string, user: User) {
-		const { model, credential } = config;
-		if (!model || !credential || credential === MANAGED_CREDENTIAL_TOKEN) {
-			throw new UserError(
+		return await resolveAgentByokModel(config, projectId, user, this.credentialsService, {
+			missing:
 				'This agent needs a configured model and API-key credential before draft cases can be generated.',
-			);
-		}
-		if (!isSupportedAgentProvider(getProviderPrefix(model))) {
-			throw new UserError(
+			unsupported: (model) =>
 				`The agent's model provider is not supported for case generation ("${model}").`,
-			);
-		}
-
-		const credentialProvider = createAgentCredentialProvider(
-			this.credentialsService,
-			projectId,
-			user,
-		);
-		return await resolveCredentialAwareModelConfig(model, credential, credentialProvider);
+		});
 	}
 
 	/**
@@ -192,7 +200,7 @@ export class AgentEvalCaseGenerationService {
 	 * a tool.
 	 */
 	private async invokeModel(
-		modelConfig: Awaited<ReturnType<typeof resolveCredentialAwareModelConfig>>,
+		modelConfig: AgentByokModelConfig,
 		userPrompt: string,
 		expectedCount: number,
 	): Promise<AgentEvalDraftCase[]> {
@@ -208,12 +216,23 @@ export class AgentEvalCaseGenerationService {
 			const result = await agent.generate(prompt, {
 				abortSignal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
 			});
-			const parsed = generatedCasesSchema.safeParse(result.structuredOutput);
-			if (!parsed.success) return null;
+			const parsed = parsedCasesSchema.safeParse(result.structuredOutput);
+			if (!parsed.success) {
+				const issues = parsed.error.issues
+					.slice(0, 3)
+					.map((i) => `${i.path.join('.')}: ${i.message}`)
+					.join('; ');
+				this.logger.warn(`Case generation output did not match the schema (${issues})`);
+				return null;
+			}
 			// Trim and drop cases with a blank input or check — a whitespace-only
 			// field would persist an unusable draft row.
 			const cases = parsed.data.cases
-				.map((c) => ({ input: c.input.trim(), whatToCheck: c.whatToCheck.trim() }))
+				.map((c) => ({
+					input: c.input.trim(),
+					whatToCheck: c.whatToCheck.trim(),
+					...(c.checkName?.trim() ? { checkName: c.checkName.trim() } : {}),
+				}))
 				.filter((c) => c.input.length > 0 && c.whatToCheck.length > 0);
 			// Require the full requested count so a partial dataset is never persisted.
 			return cases.length >= expectedCount ? cases : null;
@@ -246,10 +265,14 @@ export class AgentEvalCaseGenerationService {
 		createdById: string,
 		baseName: string,
 		cases: AgentEvalDraftCase[],
+		extras: CaseRowExtras[],
 	): Promise<{ datasetId: string; dataTableId: string }> {
 		const columns = [
 			{ name: INPUT_COLUMN, type: 'string' as const },
 			{ name: CRITERIA_COLUMN, type: 'string' as const },
+			{ name: CHECK_COLUMN, type: 'string' as const },
+			{ name: KIND_COLUMN, type: 'string' as const },
+			{ name: SUGGESTED_COLUMN, type: 'boolean' as const },
 		];
 
 		let table: Awaited<ReturnType<DataTableService['createDataTable']>> | undefined;
@@ -267,10 +290,7 @@ export class AgentEvalCaseGenerationService {
 		}
 
 		try {
-			const rows = cases.map((c) => ({
-				[INPUT_COLUMN]: c.input,
-				[CRITERIA_COLUMN]: c.whatToCheck,
-			}));
+			const rows = toRows(cases, extras, DEFAULT_MAPPING);
 			await this.dataTableService.insertRows(table.id, projectId, rows);
 
 			const dataset = await this.datasetRepository.createDataset({
@@ -278,7 +298,7 @@ export class AgentEvalCaseGenerationService {
 				agentId,
 				datasetSource: 'data_table',
 				datasetRef: { dataTableId: table.id },
-				columnMapping: { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN },
+				columnMapping: DEFAULT_MAPPING,
 				createdById,
 			});
 			return { datasetId: dataset.id, dataTableId: table.id };
@@ -286,6 +306,58 @@ export class AgentEvalCaseGenerationService {
 			await this.rollBackDataTable(table.id, projectId);
 			throw error;
 		}
+	}
+
+	/**
+	 * Add the cases to an existing dataset's table (the Checks tab's "more
+	 * checks"). Columns the dataset doesn't map yet are created and mapped, so an
+	 * older dataset gains check names, kinds and the suggested flag.
+	 */
+	private async appendToDataset(
+		datasetId: string,
+		agentId: string,
+		cases: AgentEvalDraftCase[],
+		extras: CaseRowExtras[],
+	): Promise<{ datasetId: string; dataTableId: string }> {
+		const dataset = await this.datasetRepository.findByIdAndAgentId(datasetId, agentId);
+		if (!dataset) throw new NotFoundError(`Agent eval dataset ${datasetId} not found.`);
+		if (dataset.datasetSource !== 'data_table' || !dataset.columnMapping?.input) {
+			throw new BadRequestError(
+				'Cases can only be added to a Data Table dataset with an input column.',
+			);
+		}
+		const dataTableId = (dataset.datasetRef as { dataTableId: string }).dataTableId;
+		const tableProjectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+		const mapping: AgentEvalColumnMapping = { ...dataset.columnMapping };
+		const existing = new Set(
+			(await this.dataTableService.getColumns(dataTableId, tableProjectId)).map((c) => c.name),
+		);
+		const wanted = [
+			['criteria', CRITERIA_COLUMN, 'string'],
+			['check', CHECK_COLUMN, 'string'],
+			['kind', KIND_COLUMN, 'string'],
+			['suggested', SUGGESTED_COLUMN, 'boolean'],
+		] as const;
+		let mappingChanged = false;
+		for (const [role, name, type] of wanted) {
+			if (mapping[role]) continue;
+			if (!existing.has(name)) {
+				await this.dataTableService.addColumn(dataTableId, tableProjectId, { name, type });
+			}
+			mapping[role] = name;
+			mappingChanged = true;
+		}
+		if (mappingChanged) {
+			await this.datasetRepository.updateDataset(datasetId, agentId, { columnMapping: mapping });
+		}
+
+		await this.dataTableService.insertRows(
+			dataTableId,
+			tableProjectId,
+			toRows(cases, extras, mapping),
+		);
+		return { datasetId, dataTableId };
 	}
 
 	/** Delete a just-created table after a failed persist; never mask the cause. */
@@ -301,11 +373,36 @@ export class AgentEvalCaseGenerationService {
 	}
 }
 
+const DEFAULT_MAPPING: AgentEvalColumnMapping = {
+	input: INPUT_COLUMN,
+	criteria: CRITERIA_COLUMN,
+	check: CHECK_COLUMN,
+	kind: KIND_COLUMN,
+	suggested: SUGGESTED_COLUMN,
+};
+
+/** Cases to Data Table rows through a column mapping. */
+function toRows(
+	cases: AgentEvalDraftCase[],
+	extras: CaseRowExtras[],
+	mapping: AgentEvalColumnMapping,
+): Array<Record<string, string | boolean | null>> {
+	return cases.map((c, i) => {
+		const row: Record<string, string | boolean | null> = { [mapping.input]: c.input };
+		if (mapping.criteria) row[mapping.criteria] = c.whatToCheck;
+		if (mapping.check) row[mapping.check] = c.checkName ?? null;
+		if (mapping.kind) row[mapping.kind] = extras[i]?.kind ?? null;
+		if (mapping.suggested) row[mapping.suggested] = extras[i]?.suggested ?? false;
+		return row;
+	});
+}
+
 /** Cap the model output to the requested count and bound each field's length. */
 function boundCases(cases: AgentEvalDraftCase[], limit: number): AgentEvalDraftCase[] {
 	return cases.slice(0, limit).map((c) => ({
 		input: truncateText(c.input, MAX_CASE_TEXT_CHARS),
 		whatToCheck: truncateText(c.whatToCheck, MAX_CASE_TEXT_CHARS),
+		...(c.checkName ? { checkName: truncateText(c.checkName, MAX_CHECK_NAME_CHARS) } : {}),
 	}));
 }
 

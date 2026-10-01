@@ -22,6 +22,10 @@ import type {
 export type AgentEvalCaseColumns = {
 	input: string;
 	whatToCheck: string | null;
+	/** Grouping column; absent when the dataset maps none. */
+	check?: string | null;
+	kind?: string | null;
+	suggested?: string | null;
 };
 
 /**
@@ -44,7 +48,19 @@ export const resolveCaseColumns = (
 	// and the check renders read-only rather than corrupting the row.
 	const criteria = mapping.criteria === mapping.input ? undefined : mapping.criteria;
 
-	return { input: mapping.input, whatToCheck: criteria ?? null };
+	// Optional columns never alias the input, or a write would overwrite the request.
+	const optional = (name: string | undefined) => (name && name !== mapping.input ? name : null);
+	const check = optional(mapping.check);
+	const kind = optional(mapping.kind);
+	const suggested = optional(mapping.suggested);
+
+	return {
+		input: mapping.input,
+		whatToCheck: criteria ?? null,
+		...(check ? { check } : {}),
+		...(kind ? { kind } : {}),
+		...(suggested ? { suggested } : {}),
+	};
 };
 
 /** Narrows a dataset to its Data Table backing — the single place the ref union is split. */
@@ -100,6 +116,9 @@ export const toAgentEvalCase = (
 		rowId,
 		input: toDisplayText(row[columns.input]),
 		whatToCheck: columns.whatToCheck === null ? '' : toDisplayText(row[columns.whatToCheck]),
+		...(columns.check ? { check: toDisplayText(row[columns.check]) } : {}),
+		...(columns.kind ? { kind: toDisplayText(row[columns.kind]) } : {}),
+		...(columns.suggested ? { suggested: row[columns.suggested] === true } : {}),
 	};
 };
 
@@ -118,10 +137,14 @@ export const toAgentEvalCases = (
  * leaves any other column on the table — an expected output, a note — untouched.
  */
 export const toDataTableRow = (
-	value: Pick<AgentEvalCase, 'input' | 'whatToCheck'>,
+	value: Pick<AgentEvalCase, 'input' | 'whatToCheck'> &
+		Partial<Pick<AgentEvalCase, 'check' | 'kind' | 'suggested'>>,
 	columns: AgentEvalCaseColumns,
 ): DataTableRow => {
 	const row: DataTableRow = { [columns.input]: value.input };
 	if (columns.whatToCheck !== null) row[columns.whatToCheck] = value.whatToCheck;
+	if (columns.check && value.check !== undefined) row[columns.check] = value.check;
+	if (columns.kind && value.kind !== undefined) row[columns.kind] = value.kind;
+	if (columns.suggested && value.suggested !== undefined) row[columns.suggested] = value.suggested;
 	return row;
 };

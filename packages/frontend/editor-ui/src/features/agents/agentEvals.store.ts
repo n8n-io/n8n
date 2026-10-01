@@ -32,7 +32,8 @@ import {
 } from './utils/agentEvalCases.utils';
 
 /** The two fields a case is edited through; the row id identifies which row they land on. */
-type AgentEvalCaseValue = Pick<AgentEvalCase, 'input' | 'whatToCheck'>;
+type AgentEvalCaseValue = Pick<AgentEvalCase, 'input' | 'whatToCheck'> &
+	Partial<Pick<AgentEvalCase, 'check' | 'kind' | 'suggested'>>;
 
 /**
  * Per-run review state: the run, a page of its cases, the latest rating on each,
@@ -927,16 +928,25 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
-	/** Runs the dataset's cases again against the agent's current config. */
-	const startRun = async (projectId: string, agentId: string, datasetId: string) => {
+	/** Runs the dataset's cases (or only `rowIds`) again against the agent's current config. */
+	const startRun = async (
+		projectId: string,
+		agentId: string,
+		datasetId: string,
+		options: { rowIds?: string[] } = {},
+	) => {
 		startingRunByDatasetId.value = { ...startingRunByDatasetId.value, [datasetId]: true };
 		try {
-			const run = await agentEvalsApi.startRun(
-				rootStore.restApiContext,
-				projectId,
-				agentId,
-				datasetId,
-			);
+			// Only a subset run sends options, so a full run's request is unchanged.
+			const run = options.rowIds
+				? await agentEvalsApi.startRun(
+						rootStore.restApiContext,
+						projectId,
+						agentId,
+						datasetId,
+						options,
+					)
+				: await agentEvalsApi.startRun(rootStore.restApiContext, projectId, agentId, datasetId);
 			latestRunIdByDatasetId.value = { ...latestRunIdByDatasetId.value, [datasetId]: run.id };
 			return run;
 		} finally {

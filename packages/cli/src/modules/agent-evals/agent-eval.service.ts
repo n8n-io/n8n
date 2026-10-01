@@ -154,7 +154,9 @@ export class AgentEvalService {
 			throw new BadRequestError('Pinning an agent version for an eval run is not supported yet.');
 		}
 
-		const { runId } = await this.runner.startRun(datasetId, projectId, user);
+		const { runId } = await this.runner.startRun(datasetId, projectId, user, {
+			...(payload.rowIds ? { rowIds: payload.rowIds } : {}),
+		});
 
 		const run = await this.runRepository.findById(runId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);

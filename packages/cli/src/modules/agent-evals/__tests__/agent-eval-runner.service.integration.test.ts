@@ -21,6 +21,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { createUserShell } from '@test-integration/db/users';
 
+import type { AgentEvalJudgeService } from '../agent-eval-judge.service';
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
@@ -40,6 +41,7 @@ const evalAgentExecutionService = mock<EvalAgentExecutionService>();
 const instanceSettings = mock<InstanceSettings>({ hostId: 'main-test' });
 // No-op throttle: this test targets DB persistence, not concurrency policy.
 const concurrencyControl = mock<ConcurrencyControlService>();
+const judgeService = mock<AgentEvalJudgeService>({ resolveJudge: async () => undefined });
 
 let owner: User;
 
@@ -64,6 +66,8 @@ const buildRunner = () =>
 		// the env overrides — exercising the operator force-enable path the
 		// `agentEvalsEnabled` assignment in `beforeEach` relies on.
 		Container.get(AgentEvalsFlagGate),
+		// No judge: these tests cover persistence, so results stay unjudged.
+		judgeService,
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */

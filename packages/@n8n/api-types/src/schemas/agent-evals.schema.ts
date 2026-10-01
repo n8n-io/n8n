@@ -48,6 +48,12 @@ export const agentEvalColumnMappingSchema = z.object({
 	input: z.string().min(1),
 	expectedOutput: z.string().min(1).optional(),
 	criteria: z.string().min(1).optional(),
+	// Groups rows into checks: rows sharing a value are examples of one check.
+	check: z.string().min(1).optional(),
+	// The kind of situation a row covers ("Vague request", "Off-topic"), for grouping in the UI.
+	kind: z.string().min(1).optional(),
+	// Boolean column: true for prepared rows the user hasn't added yet. Runs skip them.
+	suggested: z.string().min(1).optional(),
 });
 export type AgentEvalColumnMapping = z.infer<typeof agentEvalColumnMappingSchema>;
 
@@ -71,6 +77,16 @@ export type AgentEvalResultStatus = z.infer<typeof agentEvalResultStatusSchema>;
 
 export const agentEvalVoteSchema = z.enum(['up', 'down']);
 export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
+
+// A judge's read of one result against its case's criteria. Stored under
+// `metrics[AGENT_EVAL_VERDICT_METRIC]` on the result, so it needs no column.
+export const AGENT_EVAL_VERDICT_METRIC = 'verdict';
+export const agentEvalVerdictSchema = z.object({
+	result: z.enum(['pass', 'needs_work']),
+	reason: z.string(),
+	judgedBy: z.enum(['agent_model', 'eval_model']),
+});
+export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
 
 // ---------------------------------------------------------------------------
 // Request DTOs. Parent resource ids (datasetId, resultId) are path params, so
@@ -105,8 +121,11 @@ export class UpdateAgentEvalDatasetDto extends Z.class(updateAgentEvalDatasetSha
 
 // Kicks off a run of the path dataset. `agentVersionId` would pin a published
 // version, but the API rejects it until the runner can execute a snapshot.
+// `rowIds` limits the run to those Data Table rows, so one check or one example
+// can be re-run without running the whole dataset.
 const createAgentEvalRunShape = {
 	agentVersionId: z.string().min(1).optional(),
+	rowIds: z.array(z.string().min(1)).min(1).max(500).optional(),
 };
 export const createAgentEvalRunSchema = z.object(createAgentEvalRunShape);
 export type CreateAgentEvalRunPayload = z.infer<typeof createAgentEvalRunSchema>;
@@ -253,14 +272,20 @@ export type AgentEvalRunSummary = {
 export const agentEvalDraftCaseSchema = z.object({
 	input: z.string().min(1),
 	whatToCheck: z.string().min(1),
+	// Short name of the check this case is an example of, e.g. "Asks which ticket".
+	checkName: z.string().min(1).optional(),
 });
 export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 
 // Request body for the generate-cases endpoint. `count` is a positive int; the
 // service clamps it to its supported maximum rather than rejecting.
+// `datasetId` appends the cases to that dataset's table instead of creating a new
+// dataset; `asSuggestions` saves them as prepared rows the user adds later.
 const generateDraftCasesOptionsShape = {
 	count: z.number().int().min(1).optional(),
 	datasetName: z.string().min(1).optional(),
+	datasetId: z.string().min(1).optional(),
+	asSuggestions: z.boolean().optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;

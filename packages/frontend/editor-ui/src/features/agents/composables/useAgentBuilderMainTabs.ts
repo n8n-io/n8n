@@ -5,6 +5,7 @@ import type { LocationQueryValue } from 'vue-router';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
+import { useAgentChecksFlag } from './useAgentChecksFlag';
 import { EXECUTIONS_SECTION_KEY } from '../constants';
 
 export type AgentBuilderMainTab = 'agent' | 'knowledge' | 'sessions' | 'settings' | 'evals';
@@ -51,6 +52,8 @@ export function useAgentBuilderMainTabs({
 	const router = useRouter();
 	const i18n = useI18n();
 	const isEvalsEnabled = useAgentEvalsFlag();
+	// The Checks prototype takes the Evals tab's slot (same route, same section).
+	const isChecksEnabled = useAgentChecksFlag();
 	const selectedSection = ref<AgentBuilderSection>(null);
 
 	async function setSelectedSection(section: AgentBuilderSection) {
@@ -74,28 +77,34 @@ export function useAgentBuilderMainTabs({
 		},
 	});
 
-	const mainTabOptions = computed<Array<{ label: string; value: AgentBuilderMainTab }>>(() => [
-		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' },
-		{
-			label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
-			value: 'knowledge',
-		},
-		{ label: i18n.baseText('agents.builder.header.tab.executions'), value: 'sessions' },
-		{
-			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
-			value: 'settings',
-		},
+	const mainTabOptions = computed<Array<{ label: string; value: AgentBuilderMainTab }>>(() => {
 		// Absent rather than disabled while the flag is off — a disabled tab
 		// advertises a surface the user has no way to reach.
-		...(isEvalsEnabled.value
+		const evalsTab = isEvalsEnabled.value
 			? [
 					{
-						label: i18n.baseText('agents.builder.header.tab.agentEvals'),
+						label: isChecksEnabled.value
+							? i18n.baseText('agents.builder.agentChecks.tab')
+							: i18n.baseText('agents.builder.header.tab.agentEvals'),
 						value: 'evals' as const,
 					},
 				]
-			: []),
-	]);
+			: [];
+		const settingsTab = {
+			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
+			value: 'settings' as const,
+		};
+		return [
+			{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' },
+			{
+				label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
+				value: 'knowledge',
+			},
+			{ label: i18n.baseText('agents.builder.header.tab.executions'), value: 'sessions' },
+			// Checks sits next to Sessions, before Settings; Evals keeps its place after Settings.
+			...(isChecksEnabled.value ? [...evalsTab, settingsTab] : [settingsTab, ...evalsTab]),
+		];
+	});
 
 	const executionsDescription = computed(() =>
 		i18n.baseText('agents.builder.executions.count', {

@@ -638,6 +638,8 @@ export {
 
 export {
 	AGENT_EVALS_FLAG,
+	AGENT_EVAL_VERDICT_METRIC,
+	agentEvalVerdictSchema,
 	agentEvalColumnMappingSchema,
 	agentEvalRunStatusSchema,
 	agentEvalResultStatusSchema,
@@ -663,6 +665,7 @@ export type {
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
 	AgentEvalVote,
+	AgentEvalVerdict,
 	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
 	UpdateAgentEvalDatasetPayload,

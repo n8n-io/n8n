@@ -46,6 +46,12 @@ export type AgentEvalCase = {
 	rowId: number;
 	input: string;
 	whatToCheck: string;
+	/** The check this case is an example of, when the dataset maps a check column. */
+	check?: string;
+	/** The kind of situation the case covers, e.g. "Vague request". */
+	kind?: string;
+	/** A prepared case the user hasn't added as a check yet. */
+	suggested?: boolean;
 };
 
 /**

@@ -64,6 +64,7 @@ function makeCases(n: number) {
 	return Array.from({ length: n }, (_, i) => ({
 		input: `input ${i + 1}`,
 		whatToCheck: `check ${i + 1}`,
+		checkName: `name ${i + 1}`,
 	}));
 }
 
@@ -164,19 +165,28 @@ describe('AgentEvalCaseGenerationService', () => {
 			expect.stringContaining('Write exactly 6'),
 			expect.anything(),
 		);
-		// Table has the input + criteria string columns.
+		// Table has the input, criteria and check string columns.
 		expect(dataTableService.createDataTable).toHaveBeenCalledWith('project-1', {
 			name: 'Draft cases for Support Bot',
 			columns: [
 				{ name: 'input', type: 'string' },
 				{ name: 'criteria', type: 'string' },
+				{ name: 'check', type: 'string' },
+				{ name: 'kind', type: 'string' },
+				{ name: 'suggested', type: 'boolean' },
 			],
 		});
-		// Rows map input → input, whatToCheck → criteria.
+		// Rows map input → input, whatToCheck → criteria, checkName → check.
 		expect(dataTableService.insertRows).toHaveBeenCalledWith(
 			'dt-1',
 			'project-1',
-			cases.map((c) => ({ input: c.input, criteria: c.whatToCheck })),
+			cases.map((c) => ({
+				input: c.input,
+				criteria: c.whatToCheck,
+				check: c.checkName,
+				kind: expect.any(String),
+				suggested: false,
+			})),
 		);
 		// Dataset points at the table and never carries an expectedOutput (no gold).
 		expect(datasetRepository.createDataset).toHaveBeenCalledWith({
@@ -184,10 +194,90 @@ describe('AgentEvalCaseGenerationService', () => {
 			agentId: 'agent-1',
 			datasetSource: 'data_table',
 			datasetRef: { dataTableId: 'dt-1' },
-			columnMapping: { input: 'input', criteria: 'criteria' },
+			columnMapping: {
+				input: 'input',
+				criteria: 'criteria',
+				check: 'check',
+				kind: 'kind',
+				suggested: 'suggested',
+			},
 			createdById: 'user-1',
 		});
 		expect(result).toEqual({ datasetId: 'ds-1', dataTableId: 'dt-1', cases });
+	});
+
+	it("saves each case's check name in the check column", async () => {
+		const cases = makeCases(6).map((c, i) => ({ ...c, checkName: `Check ${i}` }));
+		generateMock.mockResolvedValue({ structuredOutput: { cases } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1');
+
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-1',
+			'project-1',
+			cases.map((c) => ({
+				input: c.input,
+				criteria: c.whatToCheck,
+				check: c.checkName,
+				kind: expect.any(String),
+				suggested: false,
+			})),
+		);
+	});
+
+	it('saves prepared cases as suggested rows', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(6) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', { asSuggestions: true });
+
+		const rows = dataTableService.insertRows.mock.calls[0][2] as Array<Record<string, unknown>>;
+		expect(rows.every((row) => row.suggested === true)).toBe(true);
+	});
+
+	it('appends to an existing dataset and maps the columns it lacks', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(2) } });
+		datasetRepository.findByIdAndAgentId.mockResolvedValue({
+			id: 'ds-old',
+			agentId: 'agent-1',
+			datasetSource: 'data_table',
+			datasetRef: { dataTableId: 'dt-old' },
+			columnMapping: { input: 'input', criteria: 'criteria' },
+		} as AgentEvalDataset);
+		dataTableService.getProjectIdForDataTable.mockResolvedValue('project-1');
+		dataTableService.getColumns.mockResolvedValue([
+			{ name: 'input' },
+			{ name: 'criteria' },
+		] as never);
+
+		const result = await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 2,
+			datasetId: 'ds-old',
+		});
+
+		expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+		expect(dataTableService.addColumn).toHaveBeenCalledWith('dt-old', 'project-1', {
+			name: 'check',
+			type: 'string',
+		});
+		expect(dataTableService.addColumn).toHaveBeenCalledWith('dt-old', 'project-1', {
+			name: 'suggested',
+			type: 'boolean',
+		});
+		expect(datasetRepository.updateDataset).toHaveBeenCalledWith('ds-old', 'agent-1', {
+			columnMapping: {
+				input: 'input',
+				criteria: 'criteria',
+				check: 'check',
+				kind: 'kind',
+				suggested: 'suggested',
+			},
+		});
+		expect(dataTableService.insertRows).toHaveBeenCalledWith(
+			'dt-old',
+			'project-1',
+			expect.arrayContaining([expect.objectContaining({ input: 'input 1', check: 'name 1' })]),
+		);
+		expect(result).toMatchObject({ datasetId: 'ds-old', dataTableId: 'dt-old' });
 	});
 
 	it('honors a custom count in the prompt', async () => {
@@ -323,6 +413,9 @@ describe('AgentEvalCaseGenerationService', () => {
 			columns: [
 				{ name: 'input', type: 'string' },
 				{ name: 'criteria', type: 'string' },
+				{ name: 'check', type: 'string' },
+				{ name: 'kind', type: 'string' },
+				{ name: 'suggested', type: 'boolean' },
 			],
 		});
 		expect(datasetRepository.createDataset).toHaveBeenCalledWith(

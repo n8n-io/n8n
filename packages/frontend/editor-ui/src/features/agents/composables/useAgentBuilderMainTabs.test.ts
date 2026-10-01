@@ -27,6 +27,11 @@ vi.mock('@/features/ai/evaluation.ee/composables/useAgentEvalsFlag', () => ({
 	useAgentEvalsFlag: () => evalsFlag,
 }));
 
+// The Checks prototype only relabels the evals tab; these tests cover gating.
+vi.mock('./useAgentChecksFlag', () => ({
+	useAgentChecksFlag: () => ref(false),
+}));
+
 const setup = () => useAgentBuilderMainTabs({ executionsCount: computed(() => 0) });
 
 const tabValues = () => setup().mainTabOptions.value.map((tab) => tab.value);

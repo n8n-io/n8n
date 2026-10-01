@@ -1,4 +1,4 @@
-import type { AgentEvalRunSummary } from '@n8n/api-types';
+import { AGENT_EVAL_VERDICT_METRIC, type AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
@@ -30,6 +30,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentEvalJudgeService, type ResolvedJudge } from './agent-eval-judge.service';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
@@ -50,6 +51,8 @@ interface ResolvedCase {
 	sourceRowId: string | null;
 	/** The opening message the agent receives. */
 	input: string;
+	/** The case's rule, when the dataset maps a criteria column. The judge reads it. */
+	criteria: string;
 	/** The case snapshot persisted on the result row for later judging. */
 	snapshot: JsonObject;
 }
@@ -90,6 +93,7 @@ export class AgentEvalRunnerService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly flagGate: AgentEvalsFlagGate,
+		private readonly judgeService: AgentEvalJudgeService,
 	) {}
 
 	/**
@@ -101,7 +105,7 @@ export class AgentEvalRunnerService {
 		datasetId: string,
 		projectId: string,
 		user: User,
-		options: { timeoutMs?: number } = {},
+		options: { timeoutMs?: number; rowIds?: string[] } = {},
 	): Promise<{ runId: string; finished: Promise<void> }> {
 		// Per user, since PostHog owns cohort rollout. The REST layer gates too — this
 		// is the backstop for any other caller.
@@ -136,9 +140,18 @@ export class AgentEvalRunnerService {
 			throw new NotFoundError(`Agent ${dataset.agentId} not found or not accessible.`);
 		}
 
-		const cases = await this.resolveCases(dataset, user);
+		const allCases = await this.resolveCases(dataset, user);
+		// A subset run (one check, one example) keeps only the requested rows.
+		const wanted = options.rowIds ? new Set(options.rowIds) : undefined;
+		const cases = wanted
+			? allCases.filter((c) => c.sourceRowId !== null && wanted.has(c.sourceRowId))
+			: allCases;
 		if (cases.length === 0) {
-			throw new BadRequestError('The dataset has no rows to run.');
+			throw new BadRequestError(
+				wanted
+					? 'None of the requested rows are in the dataset.'
+					: 'The dataset has no rows to run.',
+			);
 		}
 
 		const run = await this.runRepository.createRun({
@@ -216,6 +229,18 @@ export class AgentEvalRunnerService {
 		timeoutMs?: number;
 	}): Promise<void> {
 		const { runId, cases, seeded } = ctx;
+		// Resolved once per run so every case is judged by the same model. Never
+		// fatal: without a judge, results are recorded unjudged.
+		let judge: ResolvedJudge | undefined;
+		if (cases.some((c) => c.criteria.trim().length > 0)) {
+			try {
+				judge = await this.judgeService.resolveJudge(ctx.agentId, ctx.projectId, ctx.user);
+			} catch (error) {
+				this.logger.warn(`[AgentEvalRunner] Could not set up a judge for run ${runId}`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 		// `seedResults` returns rows in input order, so seeded[index] pairs with
 		// cases[index]. Guard the invariant rather than silently mis-pairing.
 		if (seeded.length !== cases.length) {
@@ -315,7 +340,7 @@ export class AgentEvalRunnerService {
 									await stopCase(resultRow);
 									return;
 								}
-								const usage = await this.runCase(resultRow, resolvedCase, ctx);
+								const usage = await this.runCase(resultRow, resolvedCase, { ...ctx, judge });
 								if (usage) {
 									totalUsage.inputTokens += usage.inputTokens;
 									totalUsage.outputTokens += usage.outputTokens;
@@ -515,7 +540,13 @@ export class AgentEvalRunnerService {
 	private async runCase(
 		resultRow: AgentEvalResult,
 		resolvedCase: ResolvedCase,
-		ctx: { agentId: string; projectId: string; user: User; timeoutMs?: number },
+		ctx: {
+			agentId: string;
+			projectId: string;
+			user: User;
+			timeoutMs?: number;
+			judge?: ResolvedJudge;
+		},
 	): Promise<CaseUsage | undefined> {
 		try {
 			await this.resultRepository.markAsRunning(resultRow.id);
@@ -537,6 +568,23 @@ export class AgentEvalRunnerService {
 				return usage;
 			}
 
+			const metrics: IDataObject = usage ? { usage: { ...usage } } : {};
+			if (ctx.judge && resolvedCase.criteria.trim().length > 0) {
+				// A judge failure leaves this one result unjudged; the case itself ran.
+				try {
+					metrics[AGENT_EVAL_VERDICT_METRIC] = toJsonObject(
+						await ctx.judge.judge({
+							input: resolvedCase.input,
+							criteria: resolvedCase.criteria,
+							reply: execResult.finalText,
+							toolCalls: execResult.toolCalls,
+						}),
+					);
+				} catch (error) {
+					metrics.judgeError = error instanceof Error ? error.message : String(error);
+				}
+			}
+
 			await this.resultRepository.markAsCompleted(resultRow.id, {
 				output: toJsonObject({
 					finalText: execResult.finalText,
@@ -545,7 +593,7 @@ export class AgentEvalRunnerService {
 					skippedFeatures: execResult.skippedFeatures,
 				}),
 				toolCalls: toJsonObject({ calls: execResult.toolCalls }),
-				metrics: usage ? { usage: { ...usage } } : null,
+				metrics: Object.keys(metrics).length > 0 ? metrics : null,
 			});
 
 			return usage;
@@ -594,9 +642,12 @@ export class AgentEvalRunnerService {
 				['input', mapping.input],
 				['expectedOutput', mapping.expectedOutput],
 				['criteria', mapping.criteria],
+				['check', mapping.check],
+				['kind', mapping.kind],
+				['suggested', mapping.suggested],
 			] as const
 		)
-			.filter(([, name]) => name && !columnNames.has(name))
+			.filter(([, name]) => typeof name === 'string' && !columnNames.has(name))
 			.map(([role, name]) => `${role} → '${name}'`);
 		if (missing.length > 0) {
 			throw new BadRequestError(
@@ -624,16 +675,22 @@ export class AgentEvalRunnerService {
 			if (data.length === 0 || skip >= count) break;
 		}
 
-		return rows.map((row) => {
+		// Prepared rows the user hasn't added yet are not checks, so a run skips them.
+		const suggestedColumn = typeof mapping.suggested === 'string' ? mapping.suggested : null;
+		const runnable = suggestedColumn ? rows.filter((row) => row[suggestedColumn] !== true) : rows;
+
+		return runnable.map((row) => {
 			const snapshot: JsonObject = { input: cellToJson(row[mapping.input]) };
 			if (mapping.expectedOutput) {
 				snapshot.expectedOutput = cellToJson(row[mapping.expectedOutput]);
 			}
 			if (mapping.criteria) snapshot.criteria = cellToJson(row[mapping.criteria]);
+			if (typeof mapping.check === 'string') snapshot.check = cellToJson(row[mapping.check]);
 
 			return {
 				sourceRowId: row.id === undefined || row.id === null ? null : String(row.id),
 				input: cellToString(row[mapping.input]),
+				criteria: mapping.criteria ? cellToString(row[mapping.criteria]) : '',
 				snapshot,
 			};
 		});

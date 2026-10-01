@@ -14,7 +14,6 @@ const DIAGNOSTICS_TEMPLATE_SENTINEL = '__N8N_FIX_WITH_ASSISTANT_DIAGNOSTICS__';
 const UNTRUSTED_DATA_CLOSE_TAG_PATTERN = /<\/untrusted_data/gi;
 const CURRENT_DATE_TIME_TAG_PATTERN = /<(\/?current-date-time)/gi;
 const INVISIBLE_UNICODE_PATTERN =
-	// eslint-disable-next-line no-misleading-character-class
 	/[\u200B-\u200F\u2028-\u202F\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB\u00AD\u034F\u061C\u180E\u{E0001}\u{E0020}-\u{E007F}]/gu;
 
 type FixWithAssistantI18n = Pick<I18nClass, 'baseText'>;

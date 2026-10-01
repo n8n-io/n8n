@@ -138,12 +138,13 @@ export const startRun = async (
 	projectId: string,
 	agentId: string,
 	datasetId: string,
+	options: { rowIds?: string[] } = {},
 ) => {
 	return await makeRestApiRequest<AgentEvalRunRecord>(
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/datasets/${datasetId}/runs`,
-		{},
+		options.rowIds ? { rowIds: options.rowIds } : {},
 	);
 };
 

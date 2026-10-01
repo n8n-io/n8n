@@ -18,8 +18,16 @@ import {
  * bare array) is more reliable across providers' JSON modes; the per-case shape
  * is the shared `agentEvalDraftCaseSchema`.
  */
+// Sent to the model. Every field is required: OpenAI's strict structured output
+// rejects optional keys, and the call then returns no structured output at all.
 export const generatedCasesSchema = z.object({
-	cases: z.array(agentEvalDraftCaseSchema),
+	cases: z.array(agentEvalDraftCaseSchema.extend({ checkName: z.string() })),
+});
+
+// Parses the reply. Lenient on `checkName` so a model that leaves it out or
+// blank still yields the case; the service drops blank names.
+export const parsedCasesSchema = z.object({
+	cases: z.array(agentEvalDraftCaseSchema.extend({ checkName: z.string().nullish() })),
 });
 
 // Bound the prompt so token cost stays predictable regardless of how large the
@@ -112,6 +120,7 @@ export const CASE_GENERATION_SYSTEM_PROMPT = [
 	'Each test case has two fields:',
 	'- `input`: a realistic message an end user would actually send this agent.',
 	'- `whatToCheck`: a short, plain-language description of what a good response should do — NOT a score, NOT code, NOT a rubric.',
+	'- `checkName`: a name for that check of at most six words, written as what the agent does, e.g. "Asks which ticket" or "Keeps contact details private".',
 	'',
 	'Rules:',
 	'- Ground every case in the actual name, instructions, and tools of the agent below. Do not invent capabilities it does not have.',
@@ -137,6 +146,6 @@ export function buildCaseGenerationUserPrompt(
 		`Write exactly ${tuples.length} test cases — one for each numbered scenario below, in the same order:`,
 		scenarios,
 		'',
-		'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…" }, … ] }.',
+		'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "checkName": "…" }, … ] }.',
 	].join('\n');
 }

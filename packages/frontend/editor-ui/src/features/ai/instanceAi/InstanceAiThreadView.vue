@@ -9,6 +9,7 @@ import {
 	shallowReactive,
 	useTemplateRef,
 	watch,
+	type ComponentPublicInstance,
 } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
@@ -21,7 +22,13 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
+import {
+	onClickOutside,
+	useElementSize,
+	useIntersectionObserver,
+	useScroll,
+	useWindowSize,
+} from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -80,6 +87,11 @@ import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
+import AgentChecksOnboardingCard, {
+	type AgentChecksOnboardingProgress,
+} from '@/features/agents/components/checks/AgentChecksOnboardingCard.vue';
+import AgentReaction from '@/features/agents/components/checks/AgentReaction.vue';
+import { useAgentChecksFlag } from '@/features/agents/composables/useAgentChecksFlag';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
@@ -196,6 +208,7 @@ const activeFixWithAiOffer = computed(() => {
 
 // --- "Test your agent" offer (post-setup suggestion) ---
 const isAgentEvalsEnabled = useAgentEvalsFlag();
+const isAgentChecksEnabled = useAgentChecksFlag();
 const agentEvalsStore = useAgentEvalsStore();
 
 // Passed the local runtime because this component provides the thread rather
@@ -248,6 +261,88 @@ const activeTestAgentOffer = computed(() => {
 
 	return target;
 });
+
+// The Checks prototype's first-check card takes the slot of "Test your agent".
+// It stays once started (its stage is read back from the agent's checks), so
+// unlike the offer it isn't hidden when the agent already has datasets.
+// Waits for the run to settle the first time, then stays mounted while the
+// assistant works, so the card's in-flight checks aren't restarted.
+const checksOnboardingShownFor = ref<string | null>(null);
+const activeChecksOnboarding = computed(() => {
+	if (!isAgentChecksEnabled.value) return null;
+	const target = agentBuilderTarget.value;
+	if (!target) return null;
+	if (isAgentWorking.value && checksOnboardingShownFor.value !== target.agentId) return null;
+	return target;
+});
+watch(activeChecksOnboarding, (target) => {
+	if (target) checksOnboardingShownFor.value = target.agentId;
+});
+
+function openChecksTab() {
+	const target = activeChecksOnboarding.value;
+	if (!target) return;
+	agentEvalsStore.requestEvalsFocus(target.agentId, false);
+	preview.openAgentPreview(target.agentId, target.projectId);
+}
+
+function openOnboardingPreview() {
+	const target = activeChecksOnboarding.value;
+	if (target) preview.openAgentPreview(target.agentId, target.projectId);
+}
+
+/*
+ * A chip above the composer, only while the first-check card is out of view:
+ * while its checks run, and once they finish until the card is seen again.
+ * A click scrolls back to the card.
+ */
+const checksCardRef = ref<ComponentPublicInstance | null>(null);
+const checksCardInView = ref(true);
+const checksProgress = ref<AgentChecksOnboardingProgress | null>(null);
+const checksDoneSeen = ref(true);
+const checksCardEl = computed(() => {
+	const el: unknown = checksCardRef.value?.$el;
+	return el instanceof HTMLElement ? el : null;
+});
+
+function onChecksProgress(next: AgentChecksOnboardingProgress) {
+	const finishedNow = next.finished && checksProgress.value?.running === true;
+	checksProgress.value = next;
+	if (finishedNow) checksDoneSeen.value = checksCardInView.value;
+}
+
+const checksChip = computed(() => {
+	const progress = checksProgress.value;
+	if (!progress || checksCardInView.value) return null;
+	if (progress.running) {
+		return {
+			kind: 'waiting' as const,
+			label: i18n.baseText('agents.builder.agentChecks.chip.running', {
+				interpolate: { done: String(progress.done), total: String(progress.total) },
+			}),
+			review: false,
+		};
+	}
+	if (!progress.finished || checksDoneSeen.value) return null;
+	return progress.needLook > 0
+		? {
+				kind: 'needs_work' as const,
+				label: i18n.baseText('agents.builder.agentChecks.chip.doneLook', {
+					adjustToNumber: progress.needLook,
+					interpolate: { count: String(progress.needLook) },
+				}),
+				review: true,
+			}
+		: {
+				kind: 'pass' as const,
+				label: i18n.baseText('agents.builder.agentChecks.chip.doneGood'),
+				review: false,
+			};
+});
+
+function scrollToChecksCard() {
+	checksCardEl.value?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
 
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
@@ -590,6 +685,15 @@ const { arrivedState } = useScroll(scrollContainerRef, {
 	offset: { bottom: 100 },
 });
 const userScrolledUp = ref(false);
+
+useIntersectionObserver(
+	checksCardEl,
+	([entry]) => {
+		checksCardInView.value = entry?.isIntersecting ?? true;
+		if (checksCardInView.value && checksProgress.value?.finished) checksDoneSeen.value = true;
+	},
+	{ root: scrollContainerRef, threshold: 0.15 },
+);
 
 watch(
 	() => arrivedState.bottom,
@@ -1183,8 +1287,18 @@ async function dismissComposerContextChip() {
 								</Transition>
 
 								<Transition name="confirmation-slide">
+									<AgentChecksOnboardingCard
+										v-if="activeChecksOnboarding"
+										ref="checksCardRef"
+										:key="activeChecksOnboarding.agentId"
+										:project-id="activeChecksOnboarding.projectId"
+										:agent-id="activeChecksOnboarding.agentId"
+										@open-preview="openOnboardingPreview"
+										@open-checks="openChecksTab"
+										@progress="onChecksProgress"
+									/>
 									<InstanceAiTestAgentPanel
-										v-if="activeTestAgentOffer"
+										v-else-if="activeTestAgentOffer"
 										@generate="handleGenerateTestCasesFromOffer"
 										@dismiss="dismissTestAgentOffer"
 									/>
@@ -1204,6 +1318,22 @@ async function dismissComposerContextChip() {
 							<div :class="$style.inputDock">
 								<!-- Scroll to bottom button -->
 								<div :class="$style.scrollButtonContainer">
+									<Transition name="scroll-button-fade">
+										<button
+											v-if="checksChip"
+											type="button"
+											:class="$style.checksChip"
+											:aria-label="i18n.baseText('agents.builder.agentChecks.chip.label')"
+											data-testid="agent-checks-chip"
+											@click="scrollToChecksCard"
+										>
+											<AgentReaction :kind="checksChip.kind" size="xs" />
+											<span aria-live="polite">{{ checksChip.label }}</span>
+											<b v-if="checksChip.review">{{
+												i18n.baseText('agents.builder.agentChecks.chip.review')
+											}}</b>
+										</button>
+									</Transition>
 									<Transition name="scroll-button-fade">
 										<N8nIconButton
 											v-if="userScrolledUp && thread.hasMessages"
@@ -1598,6 +1728,34 @@ async function dismissComposerContextChip() {
 	pointer-events: none;
 	margin-bottom: var(--spacing--sm);
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+}
+
+.checksChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	height: var(--height--sm);
+	margin-right: var(--spacing--2xs);
+	padding: 0 var(--spacing--xs) 0 var(--spacing--4xs);
+	border: var(--border-width) var(--border-style) var(--border-color);
+	border-radius: var(--radius--full);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--xs);
+	font: inherit;
+	font-size: var(--font-size--xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-color--subtle);
+	cursor: pointer;
+	pointer-events: auto;
+
+	&:hover {
+		background: var(--background--hover);
+	}
+
+	b {
+		color: var(--color--primary);
+		font-weight: var(--font-weight--bold);
+	}
 }
 
 .scrollToBottomButton {

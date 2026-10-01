@@ -21,6 +21,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { AgentEvalJudgeService } from '../agent-eval-judge.service';
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
@@ -105,6 +106,7 @@ describe('AgentEvalRunnerService', () => {
 	let concurrencyControl: MockProxy<ConcurrencyControlService>;
 	let license: MockProxy<License>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
+	let judgeService: MockProxy<AgentEvalJudgeService>;
 	let service: AgentEvalRunnerService;
 
 	const dataset = mock<AgentEvalDataset>({
@@ -136,6 +138,8 @@ describe('AgentEvalRunnerService', () => {
 		concurrencyControl = mock<ConcurrencyControlService>();
 		license = mock<License>();
 		flagGate = mock<AgentEvalsFlagGate>();
+		judgeService = mock<AgentEvalJudgeService>();
+		judgeService.resolveJudge.mockResolvedValue(undefined);
 
 		datasetRepository.findById.mockResolvedValue(dataset);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -166,6 +170,7 @@ describe('AgentEvalRunnerService', () => {
 			concurrencyControl,
 			license,
 			flagGate,
+			judgeService,
 		);
 	});
 
@@ -846,6 +851,162 @@ describe('AgentEvalRunnerService', () => {
 			globalConfig.executions.mode = 'queue';
 			await service.cleanupInterruptedRuns();
 			expect(runRepository.markAllIncompleteAsError).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('judging and subset runs', () => {
+		const verdict = {
+			result: 'needs_work',
+			reason: 'It did not ask which ticket.',
+			judgedBy: 'agent_model',
+		};
+		const judgeWith = (judge: ReturnType<typeof vi.fn>) =>
+			judgeService.resolveJudge.mockResolvedValue({ judgedBy: 'agent_model', judge } as never);
+
+		it('stores the verdict on the result when the case has a rule', async () => {
+			const judge = vi.fn().mockResolvedValue(verdict);
+			judgeWith(judge);
+			seedFor([{ id: 'row-1', question: 'Q', check: 'Ask which ticket' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(judge).toHaveBeenCalledWith({
+				input: 'Q',
+				criteria: 'Ask which ticket',
+				reply: 'the answer',
+				toolCalls: successExec().toolCalls,
+			});
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({ metrics: expect.objectContaining({ verdict }) }),
+			);
+		});
+
+		it('does not set up a judge when no case has a rule', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', check: '' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(judgeService.resolveJudge).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({ metrics: { usage: { inputTokens: 3, outputTokens: 7 } } }),
+			);
+		});
+
+		it('records a judge failure and still completes the case and the run', async () => {
+			judgeWith(vi.fn().mockRejectedValue(new Error('judge exploded')));
+			seedFor([{ id: 'row-1', question: 'Q', check: 'Ask which ticket' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					metrics: expect.objectContaining({ judgeError: 'judge exploded' }),
+				}),
+			);
+			expect(runRepository.markAsCompleted).toHaveBeenCalled();
+		});
+
+		it('runs only the requested rows', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'First' },
+					{ id: 'row-2', question: 'Second' },
+				],
+				{ success: 1 },
+			);
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user, { rowIds: ['row-2'] });
+			await finished;
+
+			expect(resultRepository.seedResults).toHaveBeenCalledWith([
+				expect.objectContaining({ sourceRowId: 'row-2', runIndex: 0 }),
+			]);
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'proj-1' },
+				'Second',
+			);
+		});
+
+		it('rejects a subset run when none of the requested rows exist', async () => {
+			seedFor([{ id: 'row-1', question: 'First' }]);
+
+			await expect(service.startRun('ds-1', 'proj-1', user, { rowIds: ['row-9'] })).rejects.toThrow(
+				'None of the requested rows',
+			);
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('skips prepared rows the user has not added yet', async () => {
+			datasetRepository.findById.mockResolvedValue(
+				mock<AgentEvalDataset>({
+					...dataset,
+					columnMapping: { input: 'question', criteria: 'check', suggested: 'prepared' },
+				}),
+			);
+			dataTableService.getColumns.mockResolvedValue([
+				{ name: 'question' },
+				{ name: 'check' },
+				{ name: 'prepared' },
+			] as never);
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Added', check: 'C', prepared: false },
+					{ id: 'row-2', question: 'Prepared', check: 'C', prepared: true },
+				],
+				{ success: 1 },
+			);
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'proj-1' },
+				'Added',
+			);
+		});
+
+		it('snapshots the check column when the dataset maps one', async () => {
+			datasetRepository.findById.mockResolvedValue(
+				mock<AgentEvalDataset>({
+					...dataset,
+					columnMapping: { input: 'question', criteria: 'check', check: 'group' },
+				}),
+			);
+			dataTableService.getColumns.mockResolvedValue([
+				{ name: 'question' },
+				{ name: 'check' },
+				{ name: 'group' },
+			] as never);
+			seedFor([{ id: 'row-1', question: 'Q', check: 'C', group: 'Asks which ticket' }], {
+				success: 1,
+			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(resultRepository.seedResults).toHaveBeenCalledWith([
+				expect.objectContaining({
+					input: expect.objectContaining({ input: 'Q', criteria: 'C', check: 'Asks which ticket' }),
+				}),
+			]);
 		});
 	});
 });

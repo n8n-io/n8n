@@ -26,6 +26,8 @@ import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
+import AgentChecksSection from './checks/AgentChecksSection.vue';
+import { useAgentChecksFlag } from '../composables/useAgentChecksFlag';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -56,6 +58,7 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+const isChecksEnabled = useAgentChecksFlag();
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -266,7 +269,18 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'evals'"
 					data-testid="agent-evals-tab-content"
 				>
+					<AgentChecksSection
+						v-if="isChecksEnabled"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-name="localConfig?.name"
+						:agent-unsaved="agentUnsaved"
+						:agent-updated-at="agent?.updatedAt"
+						:disabled="childrenDisabled"
+						:can-run="canExecuteAgent"
+					/>
 					<AgentEvalsSection
+						v-else
 						:project-id="projectId"
 						:agent-id="agentId"
 						:agent-unsaved="agentUnsaved"
