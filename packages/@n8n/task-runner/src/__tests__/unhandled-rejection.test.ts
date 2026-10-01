@@ -26,6 +26,17 @@ describe('describeRejectionReason', () => {
 		expect(describeRejectionReason(error)).toContain('RangeError: boom');
 	});
 
+	it('should include the own properties and the cause of an error', () => {
+		const error = Object.assign(new Error('outer', { cause: new Error('inner') }), {
+			code: 'E_REQUEST',
+		});
+
+		const result = describeRejectionReason(error);
+
+		expect(result).toContain("code: 'E_REQUEST'");
+		expect(result).toContain('[cause]: Error: inner');
+	});
+
 	it('should cap the description at 1000 characters', () => {
 		const result = describeRejectionReason(new Error('m'.repeat(5000)));
 
