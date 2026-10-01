@@ -63,6 +63,8 @@ interface ConfigReplacement {
 	nextIntegrations: NonNullable<Agent['integrations']>;
 	previousSchema: AgentJsonConfig | null;
 	previousIntegrations: NonNullable<Agent['integrations']>;
+	/** Whether this write decides the integrations, so channels must be synced. */
+	integrationsReplaced: boolean;
 	changedParts: AgentConfigPart[];
 }
 
@@ -185,20 +187,28 @@ export class AgentConfigService {
 			);
 		}
 
+		const clearOmitted = options.clearOmittedOptionalFields === true;
 		const { validatedConfig, credentialProvider, existingTaskIds } = await this.prepareConfig(
 			entity,
 			config,
 			user,
+			clearOmitted,
 		);
 		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, options);
 		entity.schema = replacement.nextSchema;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
 		markAgentDraftDirty(entity);
-		this.removeUnreferencedResources(entity, validatedConfig);
+		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
 
 		const saved = await this.saveConfig(entity, credentialProvider, user, options, replacement);
-		return await this.finishConfigUpdate(saved, validatedConfig, existingTaskIds, replacement);
+		return await this.finishConfigUpdate(
+			saved,
+			validatedConfig,
+			existingTaskIds,
+			replacement,
+			clearOmitted,
+		);
 	}
 
 	private async finishConfigUpdate(
@@ -206,9 +216,10 @@ export class AgentConfigService {
 		validatedConfig: AgentJsonConfig,
 		existingTaskIds: string[],
 		replacement: ConfigReplacement,
+		clearOmitted: boolean,
 	): Promise<AgentConfigMutationResponse> {
-		await this.removeUnreferencedTasks(validatedConfig, existingTaskIds);
-		if (validatedConfig.integrations !== undefined) {
+		await this.removeUnreferencedTasks(validatedConfig, existingTaskIds, clearOmitted);
+		if (replacement.integrationsReplaced) {
 			await syncAgentIntegrations(
 				saved,
 				replacement.previousIntegrations,
@@ -228,9 +239,10 @@ export class AgentConfigService {
 	private async removeUnreferencedTasks(
 		config: AgentJsonConfig,
 		existingTaskIds: string[],
+		clearOmitted: boolean,
 	): Promise<void> {
-		if (config.tasks === undefined) return;
-		const referencedTaskIds = new Set(config.tasks.map((ref) => ref.id));
+		if (config.tasks === undefined && !clearOmitted) return;
+		const referencedTaskIds = new Set((config.tasks ?? []).map((ref) => ref.id));
 		const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 		if (orphanTaskIds.length > 0) await this.agentTaskRepository.delete(orphanTaskIds);
 	}
@@ -277,10 +289,18 @@ export class AgentConfigService {
 		return saved;
 	}
 
-	private removeUnreferencedResources(entity: Agent, config: AgentJsonConfig): void {
-		if (config.tools !== undefined) this.removeUnreferencedCustomTools(entity, config);
-		if (config.skills !== undefined)
+	/** An omitted list keeps its resources, unless the write clears omitted fields. */
+	private removeUnreferencedResources(
+		entity: Agent,
+		config: AgentJsonConfig,
+		clearOmitted: boolean,
+	): void {
+		if (config.tools !== undefined || clearOmitted) {
+			this.removeUnreferencedCustomTools(entity, config);
+		}
+		if (config.skills !== undefined || clearOmitted) {
 			this.agentSkillsService.removeUnreferencedSkills(entity, config);
+		}
 	}
 
 	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
@@ -308,8 +328,9 @@ export class AgentConfigService {
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
 		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
-		const nextIntegrations =
-			validatedConfig.integrations !== undefined ? integrations : previousIntegrations;
+		const integrationsReplaced =
+			validatedConfig.integrations !== undefined || options.clearOmittedOptionalFields === true;
+		const nextIntegrations = integrationsReplaced ? integrations : previousIntegrations;
 		const nextSchema = this.mergeConfigSchema(
 			schemaConfig,
 			previousSchema,
@@ -328,6 +349,7 @@ export class AgentConfigService {
 			nextIntegrations,
 			previousSchema,
 			previousIntegrations,
+			integrationsReplaced,
 			changedParts,
 		};
 	}
@@ -400,7 +422,7 @@ export class AgentConfigService {
 		}
 	}
 
-	private async prepareConfig(entity: Agent, config: unknown, user: User) {
+	private async prepareConfig(entity: Agent, config: unknown, user: User, clearOmitted: boolean) {
 		const { id: agentId, projectId } = entity;
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
@@ -435,8 +457,8 @@ export class AgentConfigService {
 		}
 		await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig, projectId);
 
-		const tasksProvided = validatedConfig.tasks !== undefined;
-		const existingTaskIds = tasksProvided
+		const tasksReplaced = validatedConfig.tasks !== undefined || clearOmitted;
+		const existingTaskIds = tasksReplaced
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
