@@ -6,8 +6,8 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
-import { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
@@ -128,6 +128,8 @@ export class EvalExecutionService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly ownershipService: OwnershipService,
 		private readonly dataTableService: DataTableService,
+		private readonly processedDataRepository: ProcessedDataRepository,
+		private readonly instanceAiConfig: InstanceAiConfig,
 	) {}
 
 	async executeWithLlmMock(
@@ -655,6 +657,8 @@ export class EvalExecutionService {
 				},
 			};
 
+			// Builder-verify runs and earlier scenarios can leave Remove Duplicates keys behind.
+			await this.clearDeduplicationState(workflowEntity.id);
 			dbExecutionId = await this.workflowRunner.run(runData);
 			const runResult = await this.awaitRunWithinBudget(dbExecutionId, budget);
 
@@ -695,6 +699,7 @@ export class EvalExecutionService {
 				}
 			}
 			await this.blankPersistedStaticData(workflowEntity.id);
+			await this.clearDeduplicationState(workflowEntity.id);
 			timings.summary(this.logger);
 		}
 	}
@@ -708,6 +713,22 @@ export class EvalExecutionService {
 			await this.workflowStaticDataService.saveStaticDataById(workflowId, {});
 		} catch (error) {
 			this.logger.warn('[EvalMock] Failed to blank workflow staticData after run', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/** Remove Duplicates keeps the keys it has seen in processed_data, per workflow,
+	 *  so they outlive the run; clear them so each scenario starts from its own state. */
+	private async clearDeduplicationState(workflowId: string): Promise<void> {
+		// Only an instance that declares itself an eval instance may erase a workflow's
+		// history: on a normal instance the workflow is real and its cursors stay.
+		if (!this.instanceAiConfig.evalInstance) return;
+		try {
+			await this.processedDataRepository.deleteForWorkflow(workflowId);
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to clear workflow deduplication state', {
 				workflowId,
 				error: error instanceof Error ? error.message : String(error),
 			});

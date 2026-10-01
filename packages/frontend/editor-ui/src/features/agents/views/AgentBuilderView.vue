@@ -136,6 +136,7 @@ import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
+import { useFixWithAssistantCalloutDismissal } from '../composables/useFixWithAssistantCalloutDismissal';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
 const props = withDefaults(
@@ -326,12 +327,14 @@ const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiP
 const queuedAiHandoff = ref<{
 	context: InstanceAiHandoffContext;
 	initialDraft?: PendingComposerDraft;
+	onAccepted?: () => void;
 } | null>(null);
 watch(aiPanelRef, (panel) => {
 	if (!panel || !queuedAiHandoff.value) return;
-	const { context, initialDraft } = queuedAiHandoff.value;
+	const { context, initialDraft, onAccepted } = queuedAiHandoff.value;
 	queuedAiHandoff.value = null;
-	panel.handoff(context, initialDraft);
+	const handed = panel.handoff(context, initialDraft);
+	if (handed) onAccepted?.();
 });
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 type SidePanel = 'assistant' | 'preview';
@@ -505,9 +508,25 @@ watch(
 	{ immediate: true },
 );
 
+// Assigned once `effectiveSessionId` exists. Clicks happen after setup.
+let trackAcceptedFixHandoff: (
+	sessionId: string,
+	agentId: string,
+	toolCallIds: string[],
+) => void = () => {};
+
 async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
+	const targetAgentId = agentId.value;
+	const acceptFixHandoff = () => {
+		if (!event || !('failures' in event) || event.failures.length === 0) return;
+		trackAcceptedFixHandoff(
+			threadId,
+			targetAgentId,
+			event.failures.map((failure) => failure.toolCallId),
+		);
+	};
 	const session = currentSession.value;
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
@@ -552,7 +571,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	if (isArtifactMode.value) {
 		// The host closes the dock — only it knows whether the hand-off went
 		// through (it refuses one while its composer holds a draft).
-		emit('assistant-handoff', params);
+		emit('assistant-handoff', { ...params, onAccepted: acceptFixHandoff });
 		return;
 	}
 
@@ -572,6 +591,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	if (aiPanelRef.value) {
 		const handed = aiPanelRef.value.handoff(context, params.initialDraft);
 		if (!handed) return;
+		acceptFixHandoff();
 		// Close the preview once the assistant has the request: coming back to an
 		// open preview chat beside the assistant reads as two places to ask.
 		closePreviewDock();
@@ -579,7 +599,11 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 		// Standalone preview route: the panel isn't mounted here. Queue the
 		// hand-off and close the dock — on this route that navigates back to
 		// the builder, which mounts the panel and applies the queue.
-		queuedAiHandoff.value = { context, initialDraft: params.initialDraft };
+		queuedAiHandoff.value = {
+			context,
+			initialDraft: params.initialDraft,
+			onAccepted: acceptFixHandoff,
+		};
 		closePreviewDock();
 	}
 
@@ -659,6 +683,9 @@ const {
 	projectId,
 	agentId,
 });
+const { dismissedToolCallIds: dismissedFixToolCallIds, trackAcceptedFixHandoff: trackFixHandoff } =
+	useFixWithAssistantCalloutDismissal(effectiveSessionId);
+trackAcceptedFixHandoff = trackFixHandoff;
 const previewSessionsLoading = computed(
 	() => sessionsStore.loading || sessionsStore.previewLoading,
 );
@@ -675,6 +702,10 @@ const {
 	refresh: refreshConfigValidation,
 } = useAgentConfigValidation();
 const localConfig = ref<AgentJsonConfig | null>(null);
+let configEditRevision = 0;
+function markConfigDraftEdited() {
+	configEditRevision += 1;
+}
 const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
@@ -1104,6 +1135,7 @@ interface ConfigAutosaveSnapshot {
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
+	revision: number;
 	/** `undefined` while the agent's config has not been fetched yet (e.g. before it is persisted). */
 	baseConfigHash: string | null | undefined;
 }
@@ -1312,14 +1344,26 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveRes
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
 	if (result.stale) return undefined;
-	emit('name-saved', snapshot.config.name);
+	// Apply the server's config only if this is still the latest local edit.
+	// The editor reports input before its debounced config update reaches this view.
+	if (snapshot.revision === configEditRevision) config.value = result.config;
+	if (localConfig.value?.name === snapshot.config.name) emit('name-saved', result.config.name);
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
-	await Promise.all([
-		fetchAgent(snapshot.projectId, snapshot.agentId),
-		refreshConfigValidation(snapshot.projectId, snapshot.agentId),
-	]);
+	try {
+		await Promise.all([
+			fetchAgent(snapshot.projectId, snapshot.agentId),
+			refreshConfigValidation(snapshot.projectId, snapshot.agentId),
+		]);
+	} catch (error) {
+		console.error(error);
+	}
+	if (isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) return 'outdated';
+	if (snapshot.revision !== configEditRevision) {
+		invalidateConfigValidation();
+		return 'outdated';
+	}
 	return undefined;
 }
 
@@ -1567,6 +1611,7 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
 	if (!localConfig.value) return;
+	markConfigDraftEdited();
 	// Acquire the write lock before persisting any change — the lock is
 	// lazy (acquired on first edit, released on inactivity), matching the
 	// workflow collaboration pattern.
@@ -1597,6 +1642,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
 }
@@ -1641,6 +1687,7 @@ const caps = useAgentCapabilitiesActions({
 const appliedSkills = caps.appliedSkills;
 
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
+	markConfigDraftEdited();
 	invalidateConfigValidation();
 	localConfig.value = deepCopy(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
@@ -1649,6 +1696,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		agentId: agentId.value,
 		type: 'config',
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
 }
@@ -2673,7 +2721,12 @@ useKeybindings({
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
-			v-if="!isArtifactMode && instanceAiAvailable && !isAiPanelOpen"
+			v-if="
+				!isArtifactMode &&
+				instanceAiAvailable &&
+				!isAiPanelOpen &&
+				!agentCollaborationStore.shouldBeReadOnly
+			"
 			:class="$style.aiToggleBar"
 		>
 			<KeyboardShortcutTooltip
@@ -2791,6 +2844,7 @@ useKeybindings({
 					:effective-session-id="effectiveSessionId"
 					:new-session="currentSessionIsEphemeral"
 					:can-send-to-assistant="instanceAiAvailable"
+					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
@@ -2826,6 +2880,7 @@ useKeybindings({
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
+					@draft:config="markConfigDraftEdited"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"
 					@add-tool="caps.onOpenAddToolModal"
@@ -2892,6 +2947,7 @@ useKeybindings({
 						:can-delete-session="canDeletePreviewSession"
 						:is-deleting-session="isDeletingSession"
 						:can-send-to-assistant="instanceAiAvailable"
+						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 						:before-send="beforePreviewSend"
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"

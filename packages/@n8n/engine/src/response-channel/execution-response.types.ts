@@ -38,6 +38,9 @@ export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;
 /** A message that a step produced a response */
 export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
 
+/** One piece of a streamed answer. */
+export type ChunkMessage = Extract<ExecutionResponse, { type: 'chunk' }>;
+
 /**
  * What kind of a response the caller expects:
  *
@@ -45,6 +48,8 @@ export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
  * - `runEnd`: the `ended` message, with the outputs of the last step.
  * - `stepResponse`: a response from a step. The `ended` message follows without
  *   outputs, so the caller can tell that no step responded.
+ * - `stream`: chunks from steps. The `ended` message follows without outputs,
+ *   so the caller knows when to close the stream.
  */
 export type ResponseExpectation = z.infer<typeof responseExpectationSchema>;
 
@@ -58,9 +63,15 @@ export interface ResponseEmitter {
 	 * serialization. An error that `build` throws is not caught.
 	 */
 	send(build: () => JsonValue): Result<void, Error>;
+	/**
+	 * Sends one piece of a streamed answer. The emitter calls `build` only when
+	 * the caller expects a stream. An error that `build` throws is not caught.
+	 */
+	chunk(build: () => JsonValue): Result<void, Error>;
 }
 
 /** For a step whose responses nobody wants. It never calls `build`. */
 export const noopResponseEmitter: ResponseEmitter = Object.freeze({
 	send: () => createResultOk(undefined),
+	chunk: () => createResultOk(undefined),
 });

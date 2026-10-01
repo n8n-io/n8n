@@ -62,6 +62,9 @@
 		"@n8n/ai-node-sdk#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/agents#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/ai-utilities#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -78,6 +81,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/cli#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/code-health#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/client-oauth2#lint": {
@@ -110,6 +116,9 @@
 		"@n8n/imap#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/instance-ai#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/local-gateway#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -117,6 +126,12 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/n8n-benchmark#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/playwright-janitor#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/rules-engine#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/scheduler#lint": {
@@ -129,6 +144,12 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n-core#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-containers#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-playwright#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n#lint": {

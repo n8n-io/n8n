@@ -2,13 +2,19 @@ import {
 	columnIdParamSchema,
 	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
+	CreateDataTableRowsPublicDto,
 	DataTableColumnListPublicDto,
 	DataTableColumnPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
+	DataTableRowListPublicDto,
+	InsertDataTableRowsResponsePublicDto,
 	PublicApiListDataTableQueryDto,
+	PublicApiListDataTableRowsQueryDto,
 	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpsertDataTableRowPublicDto,
+	UpsertDataTableRowResponsePublicDto,
 	dataTableIdParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -32,8 +38,11 @@ import {
 import type { Response } from 'express';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { DataTableRow, DataTableRowReturn, DataTableRowReturnWithState } from 'n8n-workflow';
+
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
@@ -101,6 +110,42 @@ const toDataTableColumnPublicDto = (column: DataTableColumn): DataTableColumnPub
 	createdAt: column.createdAt.toISOString(),
 	updatedAt: column.updatedAt.toISOString(),
 });
+
+/** User-defined columns can be dates too, so any remaining `Date` values must be ISO strings. */
+const normalizeRowDates = (row: DataTableRow) =>
+	Object.fromEntries(
+		Object.entries(row).map(([key, value]) => [
+			key,
+			value instanceof Date ? value.toISOString() : value,
+		]),
+	);
+
+const toDataTableRowPublic = (row: DataTableRowReturn) => {
+	const { id, createdAt, updatedAt, ...rest } = row;
+	return {
+		...normalizeRowDates(rest),
+		id,
+		createdAt: createdAt.toISOString(),
+		updatedAt: updatedAt.toISOString(),
+	};
+};
+
+const toDataTableRowWithStatePublic = (row: DataTableRowReturnWithState) => {
+	const { id, createdAt, updatedAt, dryRunState, ...rest } = row;
+	return {
+		...normalizeRowDates(rest),
+		id,
+		createdAt: createdAt?.toISOString() ?? null,
+		updatedAt: updatedAt?.toISOString() ?? null,
+		dryRunState,
+	};
+};
+
+const isRowWithId = (row: object): row is Pick<DataTableRowReturn, 'id'> => !('createdAt' in row);
+
+const isRowWithState = (
+	row: DataTableRowReturn | DataTableRowReturnWithState,
+): row is DataTableRowReturnWithState => Object.hasOwn(row, 'dryRunState');
 
 @PublicApiController('/data-tables')
 export class DataTablesPublicController {
@@ -356,6 +401,118 @@ export class DataTablesPublicController {
 		const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 
 		await this.dataTableService.deleteColumn(dataTableId, projectId, columnId);
+	}
+
+	@Get('/:dataTableId/rows')
+	@ApiKeyScope('dataTableRow:read')
+	@ProjectScope('dataTable:readRow')
+	@ApiSummary('List rows of a data table')
+	@ApiDescription(
+		'Retrieve rows from a data table with optional filtering, sorting, and pagination.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DataTableRowListPublicDto)
+	@ApiErrorResponse(404)
+	async listDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: PublicApiListDataTableRowsQueryDto,
+	): Promise<DataTableRowListPublicDto> {
+		const { offset, limit } = resolveOffsetPagination(query);
+
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const { data, count } = await this.dataTableService.getManyRowsAndCount(
+				dataTableId,
+				projectId,
+				{
+					skip: offset,
+					take: limit,
+					filter: query.filter,
+					sortBy: query.sortBy,
+					search: query.search,
+				},
+			);
+
+			return {
+				data: data.map(toDataTableRowPublic),
+				nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+			};
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Post('/:dataTableId/rows')
+	@ApiKeyScope('dataTableRow:create')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Insert rows into a data table')
+	@ApiDescription('Insert one or more rows into a data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, InsertDataTableRowsResponsePublicDto)
+	@ApiErrorResponse(404)
+	async createDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: CreateDataTableRowsPublicDto,
+	) {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const result = await this.dataTableService.insertRows(
+				dataTableId,
+				projectId,
+				body.data,
+				body.returnType,
+			);
+
+			return Array.isArray(result)
+				? result.map((row) => (isRowWithId(row) ? row : toDataTableRowPublic(row)))
+				: result;
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Post('/:dataTableId/rows/upsert')
+	@ApiKeyScope('dataTableRow:upsert')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Upsert a row in a data table')
+	@ApiDescription(
+		'Update an existing row, or insert a new one if no row matches the filter conditions.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, UpsertDataTableRowResponsePublicDto)
+	@ApiErrorResponse(404)
+	async upsertDataTableRow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: UpsertDataTableRowPublicDto,
+	) {
+		const { filter, data, returnData, dryRun } = body;
+
+		try {
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const result = await this.dataTableService.upsertRow(
+				dataTableId,
+				projectId,
+				{ filter, data },
+				returnData,
+				dryRun,
+			);
+
+			return typeof result === 'boolean'
+				? result
+				: result.map((row) =>
+						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
+					);
+		} catch (error) {
+			return handleError(error);
+		}
 	}
 
 	private async withSize(dataTable: DataTable): Promise<DataTablePublicDto> {

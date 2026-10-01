@@ -43,6 +43,7 @@ export {
 	responseExpectationSchema,
 } from './response-channel';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
 	ExecutionResponseSender,
