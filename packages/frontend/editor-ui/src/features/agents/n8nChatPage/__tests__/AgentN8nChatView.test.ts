@@ -275,7 +275,7 @@ describe('AgentN8nChatView', () => {
 		const wrapper = renderView();
 		await flushPromises();
 
-		await wrapper.get('[data-testid="agent-n8n-chat-back"]').trigger('click');
+		await wrapper.get('[data-testid="n8n-chat-back"]').trigger('click');
 		expect(backMock).toHaveBeenCalled();
 		expect(pushMock).not.toHaveBeenCalled();
 	});
@@ -285,7 +285,7 @@ describe('AgentN8nChatView', () => {
 		const wrapper = renderView();
 		await flushPromises();
 
-		await wrapper.get('[data-testid="agent-n8n-chat-back"]').trigger('click');
+		await wrapper.get('[data-testid="n8n-chat-back"]').trigger('click');
 		expect(pushMock).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 		expect(backMock).not.toHaveBeenCalled();
 	});

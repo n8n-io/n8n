@@ -42,6 +42,7 @@ const isStreamingMock = ref(false);
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
 const trackSubmittedMessageMock = vi.fn();
+const trackSentMessageToN8nChatAgentMock = vi.fn();
 const queuedMessagesMock = ref<AgentChatQueueItem[]>([]);
 const removeQueuedMessageMock = vi.fn();
 const updateQueuedMessageMock = vi.fn();
@@ -268,7 +269,10 @@ vi.mock('../composables/useAgentChatStream', () => ({
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackSubmittedMessage: trackSubmittedMessageMock }),
+	useAgentTelemetry: () => ({
+		trackSubmittedMessage: trackSubmittedMessageMock,
+		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+	}),
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
@@ -317,6 +321,7 @@ describe('AgentChatPanel', () => {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
 			}) => Promise<boolean>;
+			channel: 'chat' | 'n8n-chat';
 			centerEmptyState: boolean;
 			newSession: boolean;
 		}> = {},
@@ -1716,6 +1721,88 @@ describe('AgentChatPanel', () => {
 
 		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction', expect.any(Function));
 		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('tracks a sent message to the n8n Chat channel on the normal send path, as a new thread', async () => {
+		messagesMock.value = [];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-1' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi there');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-1',
+			isNewThread: true,
+		});
+		wrapper.unmount();
+	});
+
+	it('tracks a sent message to the n8n Chat channel as not-new when the thread already had messages', async () => {
+		messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi', status: 'success' }];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-2' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi again');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-2',
+			isNewThread: false,
+		});
+		wrapper.unmount();
+	});
+
+	it('tracks a sent message to the n8n Chat channel on the cancel-and-steer path', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-3' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('go another direction');
+		await flushPromises();
+		// Simulate `cancelAndSteer` accepting the message, same as `sendMessage`'s callback.
+		cancelAndSteerMock.mock.lastCall?.[1]?.();
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-3',
+			// An open interactive question means the thread already had messages.
+			isNewThread: false,
+		});
+	});
+
+	it('does not track a sent message when the channel is not n8n-chat', async () => {
+		messagesMock.value = [];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ continueSessionId: 'thread-4' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi there');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).not.toHaveBeenCalled();
+		wrapper.unmount();
 	});
 
 	it('keeps a steering draft after a busy rejection without retrying it', async () => {

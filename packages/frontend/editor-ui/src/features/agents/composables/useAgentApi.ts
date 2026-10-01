@@ -4,6 +4,7 @@ import type {
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatListItem,
+	AgentChatListResponse,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
@@ -127,6 +128,35 @@ export const getN8nChatAgent = async (
 		'GET',
 		`/agents/v2/n8n-chat/agents/${encodeURIComponent(agentId)}`,
 	);
+};
+
+/** Ranks by the requesting user's own n8n Chat usage, then newest created. */
+export type N8nChatAgentsSortBy = 'usage:desc';
+
+export type ListN8nChatAgentsOptions = {
+	query?: string;
+	skip?: number;
+	take?: number;
+	sortBy?: N8nChatAgentsSortBy;
+};
+
+/**
+ * Agents available to chat with over n8n Chat — the n8n Chat page's agent library.
+ * Trims `query` and omits it when blank — the only place that does, so callers
+ * can pass the raw search input straight through.
+ */
+export const listN8nChatAgents = async (
+	context: IRestApiContext,
+	options: ListN8nChatAgentsOptions,
+): Promise<AgentChatListResponse> => {
+	const { query, skip, take, sortBy } = options;
+	const trimmedQuery = query?.trim();
+	return await getFullApiResponse<AgentChatListItem[]>(context, 'GET', '/agents/v2', {
+		filter: { availableInChat: true, ...(trimmedQuery ? { query: trimmedQuery } : {}) },
+		skip,
+		take,
+		sortBy,
+	});
 };
 
 export const listAgents = async (

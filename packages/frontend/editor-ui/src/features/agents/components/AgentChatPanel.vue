@@ -811,11 +811,26 @@ function consumeQueuedExternalMessage(message: string) {
 	emit('initial-consumed');
 }
 
+/**
+ * Call this when a message is accepted, on both the normal send path and the
+ * cancel-and-steer path (answering an open question card). It is the single
+ * place that needs to track a send on the n8n Chat channel.
+ */
+function trackSentToN8nChat(hadNoMessagesBeforeSend: boolean) {
+	if (props.channel !== 'n8n-chat' || !props.continueSessionId) return;
+	agentTelemetry.trackSentMessageToN8nChatAgent({
+		agentId: props.agentId,
+		threadId: props.continueSessionId,
+		isNewThread: hadNoMessagesBeforeSend,
+	});
+}
+
 async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const target = {
 		projectId: props.projectId,
 		agentId: props.agentId,
@@ -833,6 +848,7 @@ async function onSubmit(): Promise<SubmitResult> {
 			if (!isCurrentTarget()) return;
 			if (inputText.value.trim() === text) inputText.value = '';
 			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		return result === 'busy' ? 'busy' : 'sent';
 	}
@@ -862,6 +878,7 @@ async function onSubmit(): Promise<SubmitResult> {
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		isPreparingToSend.value = false;
 		const result = await sending;

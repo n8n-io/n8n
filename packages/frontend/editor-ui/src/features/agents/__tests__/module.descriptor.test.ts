@@ -6,7 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { AgentsModule } from '../module.descriptor';
-import { AGENT_N8N_CHAT_VIEW } from '../constants';
+import { AGENT_N8N_CHAT_VIEW, AGENT_N8N_CHAT_LIBRARY_VIEW } from '../constants';
 
 let flagEnabled = true;
 let instanceAiAvailable = true;
@@ -35,8 +35,10 @@ function withStubbedComponents(route: RouteRecordRaw): RouteRecordRaw {
 // `/assistant`), registered alongside instanceAi's own `/assistant` tree —
 // both must coexist in the real router, so build one from both modules here.
 function createTestRouter() {
-	const agentChatRoute = AgentsModule.routes?.find((route) => route.name === AGENT_N8N_CHAT_VIEW);
-	if (!agentChatRoute) throw new Error('AGENT_N8N_CHAT_VIEW route not found');
+	const agentN8nChatRoutes = (AgentsModule.routes ?? []).filter(
+		(route) => route.name === AGENT_N8N_CHAT_VIEW || route.name === AGENT_N8N_CHAT_LIBRARY_VIEW,
+	);
+	if (agentN8nChatRoutes.length !== 2) throw new Error('n8n Chat routes not found');
 	const instanceAiRoutes = (InstanceAiModule.routes ?? []).filter((route) =>
 		route.path.startsWith('/'),
 	);
@@ -45,7 +47,7 @@ function createTestRouter() {
 		history: createMemoryHistory(),
 		routes: [
 			{ path: '/home', name: VIEWS.HOMEPAGE, component: stub },
-			withStubbedComponents(agentChatRoute),
+			...agentN8nChatRoutes.map(withStubbedComponents),
 			...instanceAiRoutes.map(withStubbedComponents),
 		],
 	});
@@ -64,6 +66,12 @@ describe('AgentsModule n8n Chat route', () => {
 		expect(router.resolve('/assistant/agents/agent-1').name).toBe(AGENT_N8N_CHAT_VIEW);
 		expect(router.resolve('/assistant/agents/agent-1/thread-1').name).toBe(AGENT_N8N_CHAT_VIEW);
 		expect(router.resolve('/assistant/some-thread').name).toBe(INSTANCE_AI_THREAD_VIEW);
+	});
+
+	it('resolves /assistant/agents to the library, not the instanceAi /assistant/:threadId child', () => {
+		const router = createTestRouter();
+
+		expect(router.resolve('/assistant/agents').name).toBe(AGENT_N8N_CHAT_LIBRARY_VIEW);
 	});
 
 	it('redirects home when n8n Assistant is unavailable', async () => {

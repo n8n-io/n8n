@@ -7,16 +7,15 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import type { AgentJsonConfig } from '../types';
 import { AGENT_BUILDER_VIEW, AGENT_N8N_CHAT_VIEW } from '../constants';
 import { getN8nChatAgent } from '../composables/useAgentApi';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
-import { useBackOrFallback } from '../composables/useBackOrFallback';
 import { isNotFoundError } from '../utils/errors';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue';
+import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 // `agentThreadId` (not `threadId`): this route's sibling `InstanceAiLayout` reads
@@ -136,22 +135,10 @@ const agentPageRoute = computed(() => {
 		params: { projectId: current.project.id, agentId: current.id },
 	};
 });
-
-const goBack = useBackOrFallback({ name: INSTANCE_AI_VIEW });
 </script>
 
 <template>
-	<div :class="$style.page">
-		<button
-			type="button"
-			:class="$style.backLink"
-			data-testid="agent-n8n-chat-back"
-			@click="goBack"
-		>
-			<N8nIcon icon="arrow-left" size="small" />
-			{{ i18n.baseText('generic.back') }}
-		</button>
-
+	<N8nChatPageLayout fill>
 		<div v-if="isLoading" :class="$style.centered" data-testid="agent-n8n-chat-loading">
 			<N8nSpinner size="xlarge" />
 		</div>
@@ -217,36 +204,10 @@ const goBack = useBackOrFallback({ name: INSTANCE_AI_VIEW });
 				</div>
 			</template>
 		</AgentChatPanel>
-	</div>
+	</N8nChatPageLayout>
 </template>
 
 <style lang="scss" module>
-.page {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-height: 0;
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
-}
-
-.backLink {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	align-self: flex-start;
-	margin-bottom: var(--spacing--sm);
-	padding: 0;
-	border: 0;
-	background: none;
-	cursor: pointer;
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--sm);
-
-	&:hover {
-		color: var(--color--primary);
-	}
-}
-
 .centered {
 	flex: 1;
 	display: flex;
