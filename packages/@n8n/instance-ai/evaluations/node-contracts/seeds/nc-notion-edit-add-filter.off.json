@@ -1,0 +1,142 @@
+{
+	"id": "wfNotionEditSeed01",
+	"name": "Notion done pages report",
+	"nodes": [
+		{
+			"id": "784b5ddd-812a-4216-a4fd-fc9df4ba3df7",
+			"name": "When clicking Execute",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "46339f26-7a77-4245-8097-496780c40993",
+			"name": "Get Done Pages",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [224, 0],
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "getAll",
+				"authentication": "apiKey",
+				"dataSourceId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e"
+				},
+				"returnAll": true,
+				"filterType": "manual",
+				"matchType": "allFilters",
+				"filters": {
+					"conditions": [
+						{
+							"key": "Status|status",
+							"type": "status",
+							"condition": "equals",
+							"optionValue": "Done"
+						},
+						{
+							"key": "Completed|date",
+							"type": "date",
+							"condition": "on_or_after",
+							"dateValue": "2026-09-01"
+						},
+						{
+							"key": "Owners|people",
+							"type": "people",
+							"condition": "contains",
+							"peopleValue": "7c3e1a2b-4d5f-4a6b-8c9d-0e1f2a3b4c5d"
+						}
+					]
+				},
+				"simple": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "e9804cf5-3bf4-436e-b3a7-11b31bbf9573",
+			"name": "Build Payload",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [448, 0],
+			"parameters": {
+				"mode": "manual",
+				"includeOtherFields": false,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "name",
+							"name": "name",
+							"type": "string",
+							"value": "={{ $json.name }}"
+						},
+						{
+							"id": "owners",
+							"name": "owners",
+							"type": "string",
+							"value": "={{ ($json.property_owners || []).filter(o => typeof o === 'string' && o.length > 0).join(',') }}"
+						},
+						{
+							"id": "completed",
+							"name": "completed",
+							"type": "string",
+							"value": "={{ (($json.property_completed && $json.property_completed.start) ? $json.property_completed.start : ($json.property_completed || '')).toString().slice(0, 10) }}"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "b46f9d1f-edf1-4889-9644-4c3bdf9f0d48",
+			"name": "POST Done Report",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [672, 0],
+			"parameters": {
+				"method": "POST",
+				"url": "https://reports.example.com/api/done",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ JSON.stringify($json) }}",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"When clicking Execute": {
+			"main": [
+				[
+					{
+						"node": "Get Done Pages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Done Pages": {
+			"main": [
+				[
+					{
+						"node": "Build Payload",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Build Payload": {
+			"main": [
+				[
+					{
+						"node": "POST Done Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

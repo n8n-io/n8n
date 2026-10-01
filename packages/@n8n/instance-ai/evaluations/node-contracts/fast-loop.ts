@@ -52,7 +52,7 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -68,6 +68,7 @@ import {
 import { N8nClient, type WorkflowNodeResponse, type WorkflowResponse } from '../clients/n8n-client';
 import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { buildWorkflow } from '../harness/build-workflow';
+import { ConversationSeedSchema } from '../harness/conversation-seed';
 import { createLogger } from '../harness/logger';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, CapturedToolCall } from '../types';
@@ -1729,6 +1730,24 @@ async function openArm(arm: Arm) {
 	};
 }
 
+/**
+ * The seeds of an edit case are workflows that one arm built. An arm without node contracts
+ * cannot load contract node types, so `seeds/<case>.<arm>.json` gives that arm the workflow
+ * it built for the same task.
+ */
+function armSeedWorkflows(caseSlug: string, armName: string) {
+	const file = path.join(__dirname, 'seeds', `${caseSlug}.${armName}.json`);
+	if (!existsSync(file)) return undefined;
+	const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+	return ConversationSeedSchema.shape.workflows.parse(Array.isArray(parsed) ? parsed : [parsed]);
+}
+
+function armSeed(testCase: WorkflowTestCaseWithFile, armName: string) {
+	const { seed } = testCase.testCase;
+	const workflows = armSeedWorkflows(testCase.fileSlug, armName);
+	return seed && workflows ? { ...seed, workflows } : seed;
+}
+
 type ArmSession = Awaited<ReturnType<typeof openArm>>;
 
 const logger = createLogger(false);
@@ -1746,7 +1765,7 @@ async function runBuild(
 		client: session.client,
 		conversation: testCase.testCase.conversation,
 		// An edit case starts from a seeded workflow.
-		seed: testCase.testCase.seed,
+		seed: armSeed(testCase, session.arm.name),
 		credentials: testCase.testCase.credentials,
 		createdCredentialIds: session.createdCredentialIds,
 		preRunWorkflowIds: session.preRunWorkflowIds,
@@ -1775,9 +1794,13 @@ async function runBuild(
 			)
 		: undefined;
 	const workflow = build.workflowJsons[0];
-	const checks = workflow
+	const graded = workflow
 		? await gradeSafely(testCase.fileSlug, workflow)
 		: [{ name: 'build', pass: false, detail: build.error ?? 'no workflow' }];
+	// An arm-specific seed has legacy nodes, so "keeps the typed nodes" does not apply.
+	const checks = armSeedWorkflows(testCase.fileSlug, session.arm.name)
+		? graded.filter(({ name }) => name !== 'typed')
+		: graded;
 	const result = {
 		case: testCase.fileSlug,
 		arm: session.arm.name,
