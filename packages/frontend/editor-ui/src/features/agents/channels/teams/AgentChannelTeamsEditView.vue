@@ -16,8 +16,9 @@ const currentSettings = computed(() => viewRef.value?.currentSettings);
 const validationError = computed(() => viewRef.value?.validationError ?? null);
 const saveLabel = computed(() => viewRef.value?.saveLabel);
 const beforeSave = async () => await viewRef.value?.beforeSave?.();
+const afterSave = async () => await viewRef.value?.afterSave?.();
 
-defineExpose({ currentSettings, validationError, saveLabel, beforeSave });
+defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSave });
 </script>
 
 <template>

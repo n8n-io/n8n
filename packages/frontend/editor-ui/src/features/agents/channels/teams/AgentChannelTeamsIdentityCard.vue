@@ -32,7 +32,12 @@ const i18n = useI18n();
 			<N8nText size="small" bold data-testid="teams-identity-name">
 				{{ name }}
 				<N8nTooltip v-if="tooltip" :content="tooltip">
-					<N8nIcon icon="info" size="xsmall" :class="$style.hint" />
+					<N8nIcon
+						icon="info"
+						size="xsmall"
+						:class="$style.hint"
+						data-testid="teams-identity-info"
+					/>
 				</N8nTooltip>
 			</N8nText>
 			<N8nText size="small" :class="$style.hint" data-testid="teams-identity-description">

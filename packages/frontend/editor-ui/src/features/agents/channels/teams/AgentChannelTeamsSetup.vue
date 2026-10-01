@@ -21,6 +21,7 @@ import AgentChannelTeamsAvailability, {
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { OFFER_READ_PERMISSIONS } from './constants';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -76,26 +77,35 @@ const setupState = ref<TeamsAgentSetupState | null>(null);
 const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
-const availability = ref<TeamsAvailability>({
-	teamChannels: props.savedSettings?.teamChannels ?? false,
-	groupChats: props.savedSettings?.groupChats ?? false,
-	readAllChannelMessages: props.savedSettings?.readAllChannelMessages ?? false,
-	readAllGroupMessages: props.savedSettings?.readAllGroupMessages ?? false,
-});
+// A hidden read permission is never kept on: nothing here could turn it off.
+function availabilityFrom(saved?: AgentTeamsIntegrationSettings): TeamsAvailability {
+	return {
+		teamChannels: saved?.teamChannels ?? false,
+		groupChats: saved?.groupChats ?? false,
+		readAllChannelMessages: OFFER_READ_PERMISSIONS && (saved?.readAllChannelMessages ?? false),
+		readAllGroupMessages: OFFER_READ_PERMISSIONS && (saved?.readAllGroupMessages ?? false),
+	};
+}
 
-const displayName = ref(props.savedSettings?.displayName ?? '');
-const description = ref(props.savedSettings?.description ?? '');
+const availability = ref<TeamsAvailability>(availabilityFrom(props.savedSettings));
 
-/**
- * Kept apart from the saved overrides rather than written into them. Saving
- * them as overrides would keep the agent's old name in Teams after a rename.
- */
+// The credential the saved channel runs on, so a swap counts as an app change.
+const savedCredentialId = credentialId.value;
+
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
 
-// What the manifest carries: a saved override, otherwise the agent's own.
-const effectiveDisplayName = computed(() => displayName.value.trim() || defaultDisplayName.value);
-const effectiveDescription = computed(() => description.value.trim() || defaultDescription.value);
+// The identity comes from the agent. An override saved by an earlier version
+// still shows here, because the installed app still carries it until the next save.
+const savedIdentityOverride = computed(() =>
+	Boolean(props.savedSettings?.displayName || props.savedSettings?.description),
+);
+const effectiveDisplayName = computed(
+	() => props.savedSettings?.displayName || defaultDisplayName.value,
+);
+const effectiveDescription = computed(
+	() => props.savedSettings?.description || defaultDescription.value,
+);
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -133,25 +143,29 @@ const checking = ref(false);
 let latestCheck = 0;
 let latestSetupState = 0;
 
-/**
- * Tracked per field, so an edit to one does not stop the others adopting
- * settings that arrive afterwards.
- */
-const touched = ref(new Set<'availability'>());
+// An edit made here wins over settings that arrive afterwards.
+const availabilityTouched = ref(false);
 
 function editAvailability(value: TeamsAvailability) {
 	availability.value = value;
-	touched.value.add('availability');
+	availabilityTouched.value = true;
 }
 
-// Availability is carried by the manifest, so a change needs a new package.
-const availabilityChanged = computed(() => {
+/**
+ * Whether saving changes what the installed app carries: its scopes, its bot,
+ * or an identity override this view no longer keeps. Teams only picks that up
+ * from a new package.
+ */
+const manifestChanged = computed(() => {
+	if (props.mode !== 'edit') return false;
 	const saved = props.savedSettings;
 	return (
 		availability.value.teamChannels !== (saved?.teamChannels ?? false) ||
 		availability.value.groupChats !== (saved?.groupChats ?? false) ||
 		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
-		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false)
+		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false) ||
+		credentialId.value !== savedCredentialId ||
+		savedIdentityOverride.value
 	);
 });
 
@@ -218,7 +232,10 @@ async function runCredentialCheck(trigger: 'auto' | 'recheck') {
 	});
 }
 
-async function downloadPackage(): Promise<boolean> {
+async function downloadPackage(
+	settings: AgentTeamsIntegrationSettings | undefined = currentSettings.value,
+	packageCredentialId: string = credentialId.value,
+): Promise<boolean> {
 	downloading.value = true;
 	downloadError.value = '';
 	try {
@@ -226,8 +243,8 @@ async function downloadPackage(): Promise<boolean> {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
-			credentialId.value || undefined,
-			currentSettings.value,
+			packageCredentialId || undefined,
+			settings,
 		);
 		saveAs(blob, 'n8n-agent-teams-app.zip');
 		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'success' });
@@ -317,25 +334,11 @@ watch(
 	{ immediate: true },
 );
 
-/**
- * Re-synced rather than read once, so settings that arrive after this mounts
- * are not overwritten by the empty defaults the refs started with. Edits
- * already made here win: only an untouched field follows the saved value.
- */
+// Settings can arrive after this mounts, so the empty defaults must not stick.
 watch(
 	() => props.savedSettings,
 	(saved) => {
-		if (!saved) return;
-		if (!touched.value.has('availability')) {
-			availability.value = {
-				teamChannels: saved.teamChannels ?? false,
-				groupChats: saved.groupChats ?? false,
-				readAllChannelMessages: saved.readAllChannelMessages ?? false,
-				readAllGroupMessages: saved.readAllGroupMessages ?? false,
-			};
-		}
-		displayName.value = saved.displayName ?? '';
-		description.value = saved.description ?? '';
+		if (saved && !availabilityTouched.value) availability.value = availabilityFrom(saved);
 	},
 );
 
@@ -370,52 +373,66 @@ const steps = computed(() => [
 /**
  * Built on the saved settings, because connecting replaces the settings object
  * wholesale: a field this form does not render would otherwise be dropped the
- * first time someone saves from here.
- *
- * Empty strings are absent rather than values: the schema requires a non-empty
- * string when the field is present, and both fall back server-side.
+ * first time someone saves from here. The identity keys are left out, so the
+ * app falls back to the agent's own name and description.
  */
-const currentSettings = computed(() => {
-	// The identity keys are dropped from the base: an empty field means "fall
-	// back to the agent", and the saved value would otherwise reinstate itself.
-	const {
-		displayName: _saved,
-		description: _savedDescription,
-		...rest
-	} = props.savedSettings ?? {};
-	return {
-		...rest,
-		...availability.value,
-		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
-		...(description.value.trim() ? { description: description.value.trim() } : {}),
-	};
+const currentSettings = computed<AgentTeamsIntegrationSettings>(() => {
+	const { displayName: _name, description: _description, ...rest } = props.savedSettings ?? {};
+	return { ...rest, ...availability.value };
 });
 
-async function downloadFromSettings(): Promise<boolean> {
-	const downloaded = await downloadPackage();
-	if (downloaded) {
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
-		});
-	}
-	return downloaded;
+function showDownloaded() {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
+	});
 }
 
-// Teams only picks up a manifest change from a new package, so saving one
-// without it would leave the app and n8n disagreeing.
+// The package matches what n8n has saved, not the unsaved form, so an
+// installed app never runs on settings that were never saved.
+async function downloadSaved() {
+	if (await downloadPackage(props.savedSettings, savedCredentialId)) showDownloaded();
+}
+
 const saveLabel = computed(() =>
-	props.mode === 'edit' && availabilityChanged.value
+	manifestChanged.value
 		? i18n.baseText('agents.channels.teams.settings.saveAndDownload')
 		: undefined,
 );
 
+// Captured before the save, because the saved settings then catch up with the form.
+let pendingPackage: { settings: AgentTeamsIntegrationSettings; credentialId: string } | null = null;
+
 async function beforeSave() {
-	if (props.mode !== 'edit' || !availabilityChanged.value) return;
-	if (!(await downloadFromSettings())) throw new Error(downloadError.value);
+	pendingPackage = manifestChanged.value
+		? { settings: currentSettings.value, credentialId: credentialId.value }
+		: null;
 }
 
-defineExpose({ credentialId, validationError: null, currentSettings, saveLabel, beforeSave });
+/**
+ * Runs only once the save succeeded, so the package never gets ahead of n8n.
+ * It never throws: the settings are saved, and a failed download is reported
+ * here and can be repeated from the card.
+ */
+async function afterSave() {
+	const pending = pendingPackage;
+	pendingPackage = null;
+	if (!pending || !canDownloadPackage.value) return;
+	if (await downloadPackage(pending.settings, pending.credentialId)) {
+		showDownloaded();
+		return;
+	}
+	toast.showMessage({ type: 'error', title: downloadError.value });
+}
+
+defineExpose({
+	credentialId,
+	validationError: null,
+	currentSettings,
+	saveLabel,
+	beforeSave,
+	afterSave,
+});
 </script>
 
 <template>
@@ -682,12 +699,12 @@ defineExpose({ credentialId, validationError: null, currentSettings, saveLabel, 
 				/>
 				<N8nText
 					size="small"
-					:class="availabilityChanged ? undefined : $style.hint"
+					:class="manifestChanged ? undefined : $style.hint"
 					data-testid="teams-update-notice"
 				>
 					{{
 						i18n.baseText(
-							availabilityChanged
+							manifestChanged
 								? 'agents.channels.teams.settings.updateNoticeChanged'
 								: 'agents.channels.teams.settings.updateNotice',
 						)
@@ -703,10 +720,14 @@ defineExpose({ credentialId, validationError: null, currentSettings, saveLabel, 
 					:name="effectiveDisplayName"
 					:description="effectiveDescription"
 					:personalisation="personalisation"
-					:tooltip="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
+					:tooltip="
+						savedIdentityOverride
+							? ''
+							: i18n.baseText('agents.channels.teams.setup.install.identityTooltip')
+					"
 					:ready="canDownloadPackage"
 					:loading="downloading"
-					@download="downloadFromSettings"
+					@download="downloadSaved"
 				/>
 				<N8nText
 					v-if="downloadError"

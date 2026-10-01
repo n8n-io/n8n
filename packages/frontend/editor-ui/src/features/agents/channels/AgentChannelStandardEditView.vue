@@ -17,8 +17,9 @@ const currentSettings = computed(() => detailsRef.value?.currentSettings);
 const validationError = computed(() => detailsRef.value?.validationError ?? null);
 const saveLabel = computed(() => detailsRef.value?.saveLabel);
 const beforeSave = async () => await detailsRef.value?.beforeSave?.();
+const afterSave = async () => await detailsRef.value?.afterSave?.();
 
-defineExpose({ currentSettings, validationError, saveLabel, beforeSave });
+defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSave });
 </script>
 
 <template>

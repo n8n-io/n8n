@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 	disconnect: vi.fn(),
 	fetchStatus: vi.fn(),
 	beforeSave: vi.fn(),
+	afterSave: vi.fn(),
 	ensureAgentPersisted: vi.fn(),
 	clearError: vi.fn(),
 	showMessage: vi.fn(),
@@ -77,6 +78,7 @@ vi.mock('../channels/registry', async () => {
 				currentSettings: { accessMode: 'all' },
 				validationError: null,
 				beforeSave: mocks.beforeSave,
+				afterSave: mocks.afterSave,
 				saveLabel: platformSaveLabel,
 				loading,
 				startOwnFlow: () => {
@@ -317,6 +319,7 @@ describe('AgentChannelModal', () => {
 		});
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.beforeSave.mockResolvedValue(undefined);
+		mocks.afterSave.mockResolvedValue(undefined);
 		mocks.ensureAgentPersisted.mockResolvedValue(undefined);
 	});
 
@@ -522,6 +525,35 @@ describe('AgentChannelModal', () => {
 			release();
 			await flushPromises();
 		});
+	});
+
+	it('runs the platform step after a successful save, before closing', async () => {
+		connectedCredentials.value.example = 'credential-old';
+		statuses.value.example = 'connected';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.afterSave).toHaveBeenCalledOnce();
+		expect(mocks.connect.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.afterSave.mock.invocationCallOrder[0],
+		);
+		expect(wrapper.emitted('update:open')).toBeTruthy();
+	});
+
+	it('skips the after-save step when the save fails', async () => {
+		mocks.connect.mockRejectedValue(new Error('boom'));
+		connectedCredentials.value.example = 'credential-old';
+		statuses.value.example = 'connected';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.afterSave).not.toHaveBeenCalled();
 	});
 
 	it('lets the platform say what saving does', async () => {

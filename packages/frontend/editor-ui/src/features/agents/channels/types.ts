@@ -26,6 +26,8 @@ export interface AgentChannelViewExpose {
 	beforeSave?: () => Promise<void>;
 	/** Replaces the modal's Save label when saving does more than save. */
 	saveLabel?: string;
+	/** Runs after a successful save, before the modal closes. Must not throw. */
+	afterSave?: () => Promise<void>;
 }
 
 export interface AgentChannelRuntimeContext {
