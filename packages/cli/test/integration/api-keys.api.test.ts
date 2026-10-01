@@ -525,6 +525,23 @@ describe('Member', () => {
 		expect(newApiKeyResponse.body.data.scopes).toEqual(folderScopes);
 	});
 
+	test('POST /api-keys should create an api key with variable scopes', async () => {
+		const variableScopes: ApiKeyScope[] = [
+			'variable:create',
+			'variable:update',
+			'variable:delete',
+			'variable:list',
+		];
+
+		const newApiKeyResponse = await testServer
+			.authAgentFor(member)
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: variableScopes })
+			.expect(200);
+
+		expect(newApiKeyResponse.body.data.scopes).toEqual(variableScopes);
+	});
+
 	test('GET /api-keys should fetch the api key redacted', async () => {
 		const expirationDateInTheFuture = Date.now() + 1000;
 

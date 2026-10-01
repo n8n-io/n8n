@@ -70,6 +70,27 @@ describe('PublicApiKeyService', () => {
 				false,
 			);
 		});
+
+		it('should keep the variable scopes a member may hold', async () => {
+			// Arrange
+			const variableScopes: ApiKeyScope[] = [
+				'variable:create',
+				'variable:update',
+				'variable:delete',
+				'variable:list',
+			];
+			const adminUser = await createAdminWithApiKey({
+				scopes: [...variableScopes, 'user:create'],
+			});
+			const apiKeyId = adminUser.apiKeys[0].id;
+
+			// Act
+			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
+
+			// Assert
+			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			expect(apiKeyOnDb.scopes).toEqual(variableScopes);
+		});
 	});
 
 	describe('apiKeyHasValidScopes', () => {
@@ -161,6 +182,27 @@ describe('PublicApiKeyService', () => {
 					role: GLOBAL_MEMBER_ROLE,
 				},
 				folderScopes,
+			);
+
+			// Assert
+			expect(result).toBe(true);
+		});
+
+		it('should let a member grant variable scopes, which apply to projects they can edit', async () => {
+			// Arrange
+			const variableScopes: ApiKeyScope[] = [
+				'variable:create',
+				'variable:update',
+				'variable:delete',
+				'variable:list',
+			];
+
+			// Act
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				{
+					role: GLOBAL_MEMBER_ROLE,
+				},
+				variableScopes,
 			);
 
 			// Assert
