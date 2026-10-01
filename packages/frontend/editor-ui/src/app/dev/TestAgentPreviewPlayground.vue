@@ -121,17 +121,26 @@ function stubStore() {
 		// visible without a real model call.
 		if (options?.suggestion) {
 			logLine(`generateDraftCases(revision) → 1 case`);
-			return {
-				datasetId: 'dev-dataset',
-				dataTableId: 'dev-table',
-				cases: [
-					{
-						input: `${options.previousInput} (revised: ${options.suggestion})`,
-						whatToCheck: 'mentions the key detail',
-						scenario: 'Revised',
-					},
-				],
+			const revised = {
+				input: `${options.previousInput} (revised: ${options.suggestion})`,
+				whatToCheck: 'mentions the key detail',
+				scenario: 'Revised',
 			};
+			// The single-preview "Needs work" flow runs this result directly
+			// (no `updateCase` follows, unlike the suite's per-row "Save check") —
+			// a single row IS that preview, so it's replaced in place here, already
+			// settled, or the panel would read the old pre-revision row instead.
+			if (rows.length === 1) {
+				rows = [
+					{
+						rowId: rows[0].rowId,
+						...revised,
+						output: 'Looks better now — thanks for the correction.',
+						status: 'success',
+					},
+				];
+			}
+			return { datasetId: 'dev-dataset', dataTableId: 'dev-table', cases: [revised] };
 		}
 		seedRows(count);
 		logLine(`generateDraftCases(count=${count}) → ${rows.length} case(s)`);
@@ -148,6 +157,12 @@ function stubStore() {
 
 	store.startRun = async () => {
 		await wait(delayMs.value);
+		// A user-added example has no result yet (`status: 'new'`) — settle it
+		// here, same as every other row, or it would sit "waiting" forever since
+		// nothing else in this stub ever moves a row off its initial status.
+		rows = rows.map((r) =>
+			r.status === 'new' ? { ...r, status: 'success', output: 'Looks good to me.' } : r,
+		);
 		logLine('startRun → dev-run');
 		return { id: 'dev-run' } as never;
 	};

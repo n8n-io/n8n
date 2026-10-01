@@ -164,11 +164,16 @@ export function buildCaseGenerationUserPrompt(
 	const intro = ['Here is the agent to write test cases for:', JSON.stringify(summary), ''];
 
 	if (revision) {
+		// A case that errored or never finished has nothing here — say so rather
+		// than leaving the line blank, which would read as a truncation bug.
+		const previousOutput = revision.previousOutput
+			? truncate(revision.previousOutput, MAX_CONTEXT_FIELD_CHARS)
+			: '(the agent did not produce an output)';
 		return [
 			...intro,
 			'A case that already ran did not go well and needs to be replaced:',
 			`Original input: ${truncate(revision.previousInput, MAX_CONTEXT_FIELD_CHARS)}`,
-			`Original output: ${truncate(revision.previousOutput, MAX_CONTEXT_FIELD_CHARS)}`,
+			`Original output: ${previousOutput}`,
 			`What should have happened instead: ${truncate(revision.suggestion, MAX_CONTEXT_FIELD_CHARS)}`,
 			'',
 			'Write exactly 1 replacement test case that addresses this feedback.',

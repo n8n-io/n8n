@@ -213,10 +213,26 @@ describe('AgentEvalCaseGenerationService', () => {
 			previousOutput: 'SSO is down for some users.',
 		});
 
-		expect(generateMock).toHaveBeenCalledWith(
-			expect.stringContaining('Write exactly 1 replacement test case'),
-			expect.anything(),
-		);
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('Write exactly 1 replacement test case');
+		expect(prompt).toContain('Summarize the Acme outage thread');
+		expect(prompt).toContain('SSO is down for some users.');
+		expect(prompt).toContain('It should have included the ticket number.');
+	});
+
+	it('revises with an empty previous output and still requests exactly one case', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 1,
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+			previousOutput: '',
+		});
+
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('Write exactly 1 replacement test case');
+		expect(prompt).toContain('(the agent did not produce an output)');
 	});
 
 	it('ignores a partial revision (suggestion with no prior input/output) and generates fresh cases', async () => {
@@ -241,10 +257,10 @@ describe('AgentEvalCaseGenerationService', () => {
 			exampleOutput: 'Ticket #48219 · SSO failing for 340 users.',
 		});
 
-		expect(generateMock).toHaveBeenCalledWith(
-			expect.stringContaining('Summarize the Acme outage thread'),
-			expect.anything(),
-		);
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('already approved');
+		expect(prompt).toContain('Summarize the Acme outage thread');
+		expect(prompt).toContain('Ticket #48219 · SSO failing for 340 users.');
 	});
 
 	it('ignores a partial example (only one of input/output given)', async () => {

@@ -118,6 +118,18 @@ describe('buildCaseGenerationUserPrompt', () => {
 		expect(prompt).not.toMatch(/^1\. /m);
 	});
 
+	it('says so when a revised case had no output, instead of leaving the line blank', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(buildAgentSummary(config()), tuples, {
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+			previousOutput: '',
+		});
+		expect(prompt).toContain('(the agent did not produce an output)');
+	});
+
 	it('truncates overly long revision fields', () => {
 		const tuples: DimensionTuple[] = [
 			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },

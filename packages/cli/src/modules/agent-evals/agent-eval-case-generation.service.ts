@@ -109,10 +109,13 @@ export class AgentEvalCaseGenerationService {
 		const config = await this.agentConfigService.getConfig(agentId, projectId);
 		const modelConfig = await this.resolveAgentModel(config, projectId, user);
 
-		const count = clampCount(options.count);
+		const revision = toRevisionContext(options);
+		// A revision always asks for exactly one replacement case — ignore any
+		// requested count so the prompt (one case) and the validation/persistence
+		// limit it's checked against never disagree.
+		const count = revision ? 1 : clampCount(options.count);
 		const capabilities = deriveCapabilities(config);
 		const tuples = sampleDimensionTuples(capabilities, count);
-		const revision = toRevisionContext(options);
 		const example = toExampleContext(options);
 
 		const summary = buildAgentSummary(config);
@@ -333,8 +336,11 @@ function truncateText(text: string, max: number): string {
 function toRevisionContext(options: GenerateDraftCasesOptions): CaseRevisionContext | undefined {
 	const suggestion = options.suggestion?.trim();
 	const previousInput = options.previousInput?.trim();
-	const previousOutput = options.previousOutput?.trim();
-	if (!suggestion || !previousInput || !previousOutput) return undefined;
+	if (!suggestion || !previousInput) return undefined;
+	// A case that errored or never finished has no output to show — that's
+	// exactly the case this feature exists to fix, so an empty one still counts
+	// as a revision rather than falling back to an unrelated fresh batch.
+	const previousOutput = options.previousOutput?.trim() ?? '';
 	return { suggestion, previousInput, previousOutput };
 }
 

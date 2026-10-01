@@ -34,12 +34,14 @@ const i18n = useI18n();
 const expanded = ref(false);
 const suggestion = ref('');
 
-const canExpand = computed(() => props.output !== null);
-const showNotRun = computed(() => props.status === 'idle' && props.output === null);
 // A case the judge marked as needing work or unable to finish gets a chance to
 // say what should have happened instead — a passed or not-yet-run case has
 // nothing to correct.
 const needsCorrection = computed(() => props.status === 'work' || props.status === 'fail');
+// A "couldn't finish" case often has no output at all — it must still expand
+// to reach the correction form, so this isn't gated on output alone.
+const canExpand = computed(() => props.output !== null || needsCorrection.value);
+const showNotRun = computed(() => props.status === 'idle' && props.output === null);
 
 function toggleExpanded() {
 	if (!canExpand.value) return;

@@ -331,6 +331,10 @@ async function onStopSuiteRun() {
 const revisingRowId = ref<number | null>(null);
 
 async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: string }) {
+	// One rerun covers every row, so a second revision while the first is still
+	// in flight would race it for the same dataset and run — the singleton
+	// poller would then settle on whichever one started last.
+	if (revisingRowId.value !== null) return;
 	const source = resolveSuiteSource();
 	const row = suiteCaseRows.value?.find((c) => c.rowId === rowId);
 	if (!source || !suiteDatasetId.value || !row) return;
@@ -349,11 +353,20 @@ async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: 
 		const revised = result.cases[0];
 		if (!revised) return;
 
-		await store.updateCase(projectId, source, rowId, {
+		const updated = await store.updateCase(projectId, source, rowId, {
 			input: revised.input,
 			whatToCheck: revised.whatToCheck,
 		});
 		if (!isMounted) return;
+		// The dataset still has the old content — showing the replacement or
+		// rerunning on top of it would be a lie about what was actually saved.
+		if (!updated) {
+			toast.showError(
+				new Error('Failed to save the revised case'),
+				i18n.baseText('agents.builder.agentEvals.generateError'),
+			);
+			return;
+		}
 		suiteCaseRows.value =
 			suiteCaseRows.value?.map((c) =>
 				c.rowId === rowId ? { ...c, input: revised.input, whatToCheck: revised.whatToCheck } : c,

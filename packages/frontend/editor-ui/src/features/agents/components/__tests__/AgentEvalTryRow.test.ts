@@ -44,14 +44,28 @@ describe('AgentEvalTryRow', () => {
 		expect(await findByText('It is a P1.')).toBeInTheDocument();
 	});
 
-	it('hides the toggle and never renders a sample when output is null', () => {
+	it('hides the toggle and never renders a sample when output is null and nothing needs correcting', () => {
 		const { queryByTestId } = renderComponent({
-			props: { status: 'work', input: 'x', output: null, testId: 'row-1' },
+			props: { status: 'waiting', input: 'x', output: null, testId: 'row-1' },
 		});
 
 		expect(queryByTestId('row-1-toggle')).not.toBeInTheDocument();
 		expect(queryByTestId('row-1-placeholder')).not.toBeInTheDocument();
 	});
+
+	it.each(['work', 'fail'] as const)(
+		'still expands to the correction form for a %s case with no output at all',
+		async (status) => {
+			const user = userEvent.setup();
+			const { getByTestId, findByText } = renderComponent({
+				props: { status, input: 'x', output: null, testId: 'row-1' },
+			});
+
+			await user.click(getByTestId('row-1-toggle'));
+
+			expect(await findByText('What should have happened?')).toBeInTheDocument();
+		},
+	);
 
 	it('shows "Not run" in place of the toggle for an idle case with no output', () => {
 		const { getByText, queryByTestId } = renderComponent({
