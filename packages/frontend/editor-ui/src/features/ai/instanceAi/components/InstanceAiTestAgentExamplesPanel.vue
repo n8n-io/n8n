@@ -43,7 +43,6 @@ const emit = defineEmits<{
 	'add-example': [input: string];
 	'check-agent': [count: number];
 	'stop-run': [];
-	'view-evals': [];
 }>();
 
 const i18n = useI18n();
@@ -110,10 +109,6 @@ function cancelAddOwn() {
 
 function onCheckYourAgent() {
 	emit('check-agent', sliderValue.value);
-}
-
-function onViewEvals() {
-	emit('view-evals');
 }
 </script>
 

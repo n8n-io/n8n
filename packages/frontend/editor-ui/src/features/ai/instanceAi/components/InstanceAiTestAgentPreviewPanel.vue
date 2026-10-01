@@ -316,10 +316,6 @@ async function onCheckAgent(count: number) {
 	}
 }
 
-function onViewEvals() {
-	emit('open-evals');
-}
-
 // Cases already in flight settle on their own — only the ones not yet started
 // stop. Polling keeps running until every case's status reflects that.
 async function onStopSuiteRun() {
@@ -469,7 +465,6 @@ function onDontCreateEvals() {
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
-				@view-evals="onViewEvals"
 			/>
 		</template>
 	</div>
