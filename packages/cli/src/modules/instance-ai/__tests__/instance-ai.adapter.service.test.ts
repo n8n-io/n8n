@@ -159,6 +159,7 @@ type WorkflowNode = { name: string; type: string; onError?: string };
 function makeExecution(
 	overrides: {
 		status?: string;
+		createdAt?: Date;
 		startedAt?: Date | null;
 		stoppedAt?: Date;
 		runData?: Record<string, ITaskData[]>;
@@ -173,6 +174,7 @@ function makeExecution(
 		id: 'exec-1',
 		workflowId: 'wf-1',
 		status: overrides.status ?? 'success',
+		createdAt: overrides.createdAt ?? new Date('2026-01-01T00:00:00Z'),
 		// A queued execution has no startedAt yet, so null must pass through.
 		startedAt:
 			overrides.startedAt === undefined ? new Date('2026-01-01T00:00:00Z') : overrides.startedAt,
@@ -5230,24 +5232,87 @@ describe('createExecutionAdapter test listeners', () => {
 
 	it('skips an older running execution and accepts a queued one', async () => {
 		const olderRunning = {
-			...makeExecution({ status: 'running', startedAt: new Date('2025-12-31T00:00:00Z') }),
+			...makeExecution({
+				status: 'running',
+				createdAt: new Date('2025-12-31T00:00:00Z'),
+				startedAt: new Date('2025-12-31T00:00:00Z'),
+			}),
 			workflowId: 'wf-1',
 		};
 		const queued = {
-			...makeExecution({ status: 'new', startedAt: null }),
+			...makeExecution({
+				status: 'new',
+				createdAt: new Date('2026-01-01T00:00:01Z'),
+				startedAt: null,
+			}),
 			id: 'exec-2',
 			workflowId: 'wf-1',
 		};
 		const { adapter } = createListenerAdapter(undefined, {
-			execution: queued,
+			// Finished by the time the read-back loads it.
+			execution: { ...queued, status: 'success' },
 			listedExecutions: [olderRunning, queued],
 		});
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+		});
+
+		expect(outcome).toMatchObject({ state: 'received', executionId: 'exec-2' });
+	});
+
+	it('ignores a queued execution created before arming', async () => {
+		const staleQueued = {
+			...makeExecution({
+				status: 'new',
+				createdAt: new Date('2025-12-31T00:00:00Z'),
+				startedAt: null,
+			}),
+			workflowId: 'wf-1',
+		};
+		const { adapter, testWebhookRegistrations } = createListenerAdapter(undefined, {
+			listedExecutions: [staleQueued],
+		});
+		testWebhookRegistrations.getAllRegistrations
+			.mockReset()
+			.mockResolvedValue([makeRegistration({})]);
 
 		const outcome = await adapter.resolveTestListener!('wf-1', {
 			armedAt: new Date().toISOString(),
 		});
 
-		expect(outcome).toMatchObject({ state: 'received', executionId: 'exec-2' });
+		expect(outcome).toEqual({ state: 'armed' });
+	});
+
+	it('waits for an execution that runs on another main to finish', async () => {
+		const running = {
+			...makeExecution({ status: 'running', createdAt: new Date('2026-01-01T00:00:01Z') }),
+			workflowId: 'wf-1',
+		};
+		const { adapter, mockExecutionPersistence } = createListenerAdapter(undefined, {
+			execution: running,
+		});
+		mockExecutionPersistence.findSingleExecution
+			.mockReset()
+			.mockResolvedValueOnce(running as never)
+			.mockResolvedValue({ ...running, status: 'success' } as never);
+		vi.useFakeTimers();
+		try {
+			const pending = adapter.resolveTestListener!('wf-1', {
+				armedAt: '2026-01-01T00:00:00.000Z',
+				executionId: 'exec-1',
+			});
+			await vi.advanceTimersByTimeAsync(1_000);
+
+			await expect(pending).resolves.toMatchObject({
+				state: 'received',
+				executionId: 'exec-1',
+				result: { executionId: 'exec-1', status: 'success' },
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+		expect(mockExecutionPersistence.findSingleExecution).toHaveBeenCalledTimes(2);
 	});
 
 	it('falls back to the first execution started after arming', async () => {

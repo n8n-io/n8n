@@ -51,7 +51,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `workflows` | 12 |
 | `data-tables` | 11 |
 | `workspace` | 8 |
-| `executions` | 8 |
+| `executions` | 9 |
 | `credentials` | 6 |
 | `nodes` | 7 |
 | `mcp-servers` | 4 |
@@ -583,7 +583,7 @@ Update a version's name or description.
 
 ---
 
-## `executions` (8 actions)
+## `executions` (9 actions)
 
 ### `executions(action="list")`
 

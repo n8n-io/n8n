@@ -91,6 +91,7 @@ describe('cleanStoredUserMessage', () => {
 	it('hides the Execute block while preserving the user message', () => {
 		const block = buildWorkflowTestRequestBlock('wf-1');
 		expect(block).toContain(JSON.stringify({ workflowId: 'wf-1' }));
+		expect(block).toContain('executions(action="listen") for a Webhook or Form Trigger');
 		expect(cleanStoredUserMessage(`${block}\n\nRun a test.`)).toBe('Run a test.');
 	});
 

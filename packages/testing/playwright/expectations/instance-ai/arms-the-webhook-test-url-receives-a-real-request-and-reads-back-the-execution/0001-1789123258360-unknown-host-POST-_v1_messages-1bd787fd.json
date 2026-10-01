@@ -4,7 +4,7 @@
     "path": "/v1/messages",
     "body": {
       "type": "REGEX",
-      "regex": "[\\s\\S]*You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n insta[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\\\\"status\\\\\"\\s*:\\s*\\\\\"success\\\\\"[\\s\\S]*"
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n insta[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\\\\"status\\\\\"\\s*:\\s*\\\\\"success\\\\\"[\\s\\S]*hello Ada[\\s\\S]*"
     }
   },
   "httpResponse": {

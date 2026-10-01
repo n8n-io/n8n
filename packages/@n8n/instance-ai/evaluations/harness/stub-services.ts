@@ -273,9 +273,11 @@ export async function createStubServices(
 						typeof customPath === 'string' ? customPath : (node.webhookId ?? workflowId);
 					const url = `http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}/${pathSegment}`;
 					// A Form Trigger registers GET (renders the form) and POST (receives the submission).
+					// A Webhook that allows several methods keeps them as an array in `httpMethod`.
 					const methods = isForm
 						? ['GET', 'POST']
-						: [typeof httpMethod === 'string' ? httpMethod : 'GET'];
+						: [httpMethod].flat().filter((method): method is string => typeof method === 'string');
+					if (methods.length === 0) methods.push('GET');
 					return methods.map((method) => ({ nodeName, method, url }));
 				});
 			if (triggers.length === 0) {

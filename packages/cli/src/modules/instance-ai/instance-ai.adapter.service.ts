@@ -2026,6 +2026,24 @@ export class InstanceAiAdapterService {
 			}
 		};
 
+		// A test request can run on another main, whose execution is not in this process:
+		// poll the stored state until it settles or the default run timeout passes.
+		const awaitExecutionResult = async (executionId: string) => {
+			if (activeExecutions.has(executionId)) {
+				await activeExecutions.getPostExecutePromise(executionId);
+			}
+			const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
+			for (;;) {
+				const result = await extractExecutionResult(
+					executionId,
+					allowSendingParameterValues,
+					nodeTypes,
+				);
+				if (result.status !== 'running' || Date.now() >= deadline) return result;
+				await sleep(1000);
+			}
+		};
+
 		const adapter: InstanceAiExecutionService = {
 			async list(options) {
 				const scope: Scope = 'workflow:read';
@@ -2787,14 +2805,11 @@ export class InstanceAiAdapterService {
 					await clearTestListener(workflowId);
 					return { state: 'cancelled' };
 				}
-				// Only an execution of this arm counts: one started after arming, or one still
-				// queued (a queued execution has no start time yet).
+				// Only an execution created after arming counts. A queued one has no start time
+				// yet, and an older queued run must not pass as this request.
 				const armedAtMs = new Date(armedAt).getTime();
-				const belongsToThisArm = (execution: {
-					status: string;
-					startedAt?: Date | string | null;
-				}) =>
-					execution.status === 'new' || new Date(execution.startedAt ?? NaN).getTime() >= armedAtMs;
+				const belongsToThisArm = (execution: { createdAt?: Date | string }) =>
+					new Date(execution.createdAt ?? NaN).getTime() >= armedAtMs;
 				if (executionId) {
 					const execution = await assertExecutionAccess(executionId);
 					if (execution.workflowId !== workflowId) {
@@ -2804,16 +2819,28 @@ export class InstanceAiAdapterService {
 					}
 					// A push from an earlier listener on this workflow can arrive late.
 					if (belongsToThisArm(execution)) {
-						return { state: 'received', executionId, result: await adapter.getResult(executionId) };
+						return {
+							state: 'received',
+							executionId,
+							result: await awaitExecutionResult(executionId),
+						};
 					}
 				}
-				// No push event named the execution: take the newest one of this arm.
-				const received = (await adapter.list({ workflowId, limit: 5 })).find(belongsToThisArm);
+				// No push event named the execution: take the newest one of this arm. The workflow
+				// access check above covers these rows, so the query needs no sharing scope.
+				const received = (
+					await executionRepository.findManyByRangeQuery({
+						kind: 'range',
+						workflowId,
+						range: { limit: 5 },
+						order: { startedAt: 'DESC' },
+					})
+				).find(belongsToThisArm);
 				if (received) {
 					return {
 						state: 'received',
 						executionId: received.id,
-						result: await adapter.getResult(received.id),
+						result: await awaitExecutionResult(received.id),
 					};
 				}
 				// Past the deadline the registration is gone or about to go: the timeout push can
