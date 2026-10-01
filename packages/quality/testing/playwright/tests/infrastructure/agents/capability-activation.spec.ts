@@ -1,4 +1,3 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
 import type { N8NStack } from 'n8n-containers/stack';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -145,7 +144,6 @@ test.describe(
 					],
 				});
 				try {
-					const endpoint = `/rest/projects/${project.id}/agents/v2/${agent.id}`;
 					await mockModel(n8nContainer);
 					const preview = async (main: number, marker: string) => {
 						const stream = await clients[main].agents.openChat(
@@ -162,10 +160,6 @@ test.describe(
 						streams.push(stream);
 						return stream;
 					};
-					const publish = async () => {
-						const response = await ingress.request.post(`${endpoint}/publish`, { data: {} });
-						expect(response.ok(), await response.text()).toBe(true);
-					};
 					const runPreview = async (main: number, marker: string, enabled: boolean) => {
 						const stream = await preview(main, marker);
 						expect(await stream.done).toBeUndefined();
@@ -174,17 +168,13 @@ test.describe(
 						await expectToolAvailability(n8nContainer, marker, enabled);
 					};
 					const runProduction = async (main: number, marker: string, enabled: boolean) => {
-						const response = await clients[main].request.post(`${endpoint}/n8n-chat`, {
-							data: { message: marker },
-						});
-						const body = await response.text();
-						expect(response.ok(), body).toBe(true);
+						const body = await clients[main].agents.n8nChat(project.id, agent.id, marker);
 						expect(body).not.toContain('"type":"error"');
 						expect(body).toContain('"type":"done"');
 						await expectToolAvailability(n8nContainer, marker, enabled);
 					};
 
-					await publish();
+					await ingress.agents.publish(project.id, agent.id);
 					for (const main of [0, 1]) {
 						await runPreview(main, `warm-preview-${main}`, true);
 						await runProduction(main, `warm-production-${main}`, true);
@@ -201,18 +191,13 @@ test.describe(
 						)
 						.toBe(true);
 
-					const current: { data: { config: AgentJsonConfig; configHash: string } } = await (
-						await ingress.request.get(`${endpoint}/config`)
-					).json();
+					const current = await ingress.agents.getConfig(project.id, agent.id);
 					const config = {
-						...current.data.config,
-						tools: current.data.config.tools?.map((tool) => ({ ...tool, enabled: false })),
+						...current.config,
+						tools: current.config.tools?.map((tool) => ({ ...tool, enabled: false })),
 					};
 					expect(running.events).not.toContainEqual(expect.objectContaining({ type: 'done' }));
-					const saved = await ingress.request.put(`${endpoint}/config`, {
-						data: { config, baseConfigHash: current.data.configHash },
-					});
-					expect(saved.ok(), await saved.text()).toBe(true);
+					await ingress.agents.updateConfig(project.id, agent.id, config, current.configHash);
 					for (const main of [0, 1]) {
 						await runPreview(main, `disabled-preview-${main}`, false);
 						await runProduction(main, `draft-production-${main}`, true);
@@ -227,7 +212,7 @@ test.describe(
 						}),
 					).toBe(true);
 
-					await publish();
+					await ingress.agents.publish(project.id, agent.id);
 					for (const main of [0, 1]) await runProduction(main, `published-disabled-${main}`, false);
 				} finally {
 					for (const stream of streams) stream.disconnect();
