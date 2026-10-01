@@ -667,7 +667,7 @@ function onOptionMouseEnter(idx: number) {
 	justify-content: center;
 	border-radius: var(--radius--full);
 	background-color: var(--color--primary);
-	color: var(--color--neutral-white);
+	color: var(--text-color--inverse);
 	flex-shrink: 0;
 }
 

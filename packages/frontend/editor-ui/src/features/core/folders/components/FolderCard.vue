@@ -221,10 +221,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 				<template #prepend>
 					<N8nIcon
 						data-test-id="folder-card-icon"
+						size="xlarge"
 						:class="$style['folder-icon']"
 						icon="folder"
-						size="xlarge"
-						:stroke-width="1"
 					/>
 				</template>
 				<template #header>
@@ -383,8 +382,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 }
 
 .folder-icon {
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
 	flex-shrink: 0;
 	color: var(--color--text);
 	align-content: center;
