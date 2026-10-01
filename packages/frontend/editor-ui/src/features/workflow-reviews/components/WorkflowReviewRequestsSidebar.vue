@@ -188,7 +188,7 @@ function onListBackgroundClick() {
 					{{ i18n.baseText('workflowReviews.sidebar.error') }}
 				</N8nText>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="mini"
 					:label="i18n.baseText('generic.retry')"
 					data-test-id="workflow-review-list-retry"
@@ -287,7 +287,7 @@ function onListBackgroundClick() {
 							{{ i18n.baseText('workflowReviews.sidebar.error') }}
 						</N8nText>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="mini"
 							:label="i18n.baseText('generic.retry')"
 							:data-section="group.key"
@@ -297,7 +297,7 @@ function onListBackgroundClick() {
 					</div>
 					<N8nButton
 						v-if="group.collapsible && group.section.hasMore"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:class="$style.loadMoreButton"
 						:label="i18n.baseText('workflowReviews.sidebar.loadMore')"

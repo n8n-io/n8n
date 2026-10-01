@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed, useAttrs, useCssModule } from 'vue';
 
 interface CardProps {
 	hoverable?: boolean;
@@ -10,12 +10,20 @@ const props = withDefaults(defineProps<CardProps>(), {
 	hoverable: false,
 });
 
+const attrs = useAttrs();
+
+function hasClickHandler(): boolean {
+	return Boolean(attrs.onClick);
+}
+
 const $style = useCssModule();
-const classes = computed(() => ({
-	card: true,
-	[$style.card]: true,
-	[$style.hoverable]: props.hoverable,
-}));
+const classes = computed(function getClasses() {
+	return {
+		card: true,
+		[$style.card]: true,
+		[$style.hoverable]: props.hoverable || hasClickHandler(),
+	};
+});
 </script>
 
 <template>
@@ -46,9 +54,10 @@ const classes = computed(() => ({
 
 <style lang="scss" module>
 .card {
-	border-radius: var(--radius--lg);
-	border: 1px solid var(--border-color);
-	background-color: var(--color--background--light-3);
+	border-radius: var(--radius);
+	border: var(--border);
+	box-shadow: var(--shadow--xs);
+	background-color: var(--background--surface);
 	padding: var(--card--padding, var(--spacing--sm));
 	display: flex;
 	flex-direction: row;
@@ -91,14 +100,11 @@ const classes = computed(() => ({
 
 .hoverable {
 	cursor: pointer;
-	transition-property: border, color;
-	transition-duration: 0.3s;
-	transition-timing-function: ease;
+	transition: none;
 
 	&:hover,
 	&:focus {
-		color: var(--color--primary);
-		border-color: var(--color--primary);
+		border-color: var(--border-color--strong);
 	}
 }
 

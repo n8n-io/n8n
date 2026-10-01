@@ -104,7 +104,7 @@ defineExpose({
 		</div>
 		<div :class="$style.buttons">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				v-if="selectedModel?.model.provider === 'custom-agent'"
 				size="small"
 				icon="settings"
@@ -113,14 +113,14 @@ defineExpose({
 			/>
 			<N8nIconButton
 				v-if="showArtifactIcon"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="panel-right"
 				@click="emit('reopenArtifact')"
 			/>
 			<N8nIconButton
 				v-if="hasDynamicCredentials"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="key-round"
 				:title="i18n.baseText('chatHub.chat.header.button.manageConnections')"
@@ -130,7 +130,7 @@ defineExpose({
 			/>
 			<N8nButton
 				v-if="showOpenWorkflow"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="settings"
 				:label="i18n.baseText('chatHub.chat.header.button.openWorkflow')"

@@ -368,7 +368,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							v-if="setupState?.deployToAzureUrl"
 							:href="setupState.deployToAzureUrl"
 							target="_blank"
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							data-testid="teams-deploy-to-azure"
 							@click="agentTelemetry.trackClickedDeployToAzure({ agentId })"
@@ -428,7 +428,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
 						<N8nButton
 							v-if="canDownloadPackage"
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							icon="download"
 							:loading="downloading"
@@ -561,7 +561,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 
 			<N8nButton
 				v-if="canDownloadPackage"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="download"
 				:loading="downloading"

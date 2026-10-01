@@ -394,7 +394,7 @@ watch(
 		<template #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerRight">
-					<N8nButton variant="subtle" @click="onCancel">
+					<N8nButton variant="outline" @click="onCancel">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.cancel') }}
 					</N8nButton>
 					<N8nButton variant="solid" @click="onConfirm" :disabled="isConfirmDisabled">

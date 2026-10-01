@@ -349,7 +349,7 @@ watch(
 						</N8nText>
 						<N8nButton
 							v-if="canRemoveProject(project)"
-							variant="subtle"
+							variant="outline"
 							icon-only
 							native-type="button"
 							icon="trash-2"
@@ -380,7 +380,7 @@ watch(
 				</N8nSelect>
 				<N8nButton
 					v-if="!props.static && !showStaticRole && canRemoveProject(project)"
-					variant="subtle"
+					variant="outline"
 					icon-only
 					native-type="button"
 					icon="trash-2"
