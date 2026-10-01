@@ -166,6 +166,18 @@ describe('googleSheets.sheet.read', () => {
 		expect(output?.required).toEqual(['row_number', 'Status']);
 	});
 
+	it('reads a user column named row_number as row_number_1', async () => {
+		const { items } = run(
+			readSheetRows,
+			location,
+			sheetsApi([
+				['row_number', 'Name'],
+				['x-1', 'Ada'],
+			]),
+		);
+		expect(await items).toEqual([{ row_number: 2, row_number_1: 'x-1', Name: 'Ada' }]);
+	});
+
 	it('rejects a sheet without a mode', () => {
 		expect(validate({ ...location, sheet: 'Sheet1' }, readSheetRows.inputSchema).join()).toContain(
 			'input.sheet: needs "mode"',
@@ -174,7 +186,7 @@ describe('googleSheets.sheet.read', () => {
 });
 
 describe('googleSheets.sheet.append', () => {
-	it('grows the grid and writes the mapped values after the last row', async () => {
+	it('adds a column for a new key and appends the values after the last row', async () => {
 		const values = { Email: 'b@x.io', Plan: { tier: 'free' }, Extra: 1 };
 		const { items, calls } = run(
 			appendSheetRow,
@@ -190,18 +202,28 @@ describe('googleSheets.sheet.append', () => {
 			calls.slice(2).map(({ options }) => [options.method, options.url, options.qs, options.body]),
 		).toEqual([
 			[
-				'POST',
-				`${BASE}:batchUpdate`,
-				{},
-				{ requests: [{ appendDimension: { sheetId: 7, dimension: 'ROWS', length: 1 } }] },
+				'PUT',
+				`${BASE}/values/'Leads'!1%3A1`,
+				{ valueInputOption: 'RAW' },
+				{ range: "'Leads'!1:1", values: [['Email', 'Plan', 'Extra']] },
 			],
 			[
-				'PUT',
-				`${BASE}/values/'Leads'!3%3A3`,
-				{ valueInputOption: 'USER_ENTERED' },
-				{ range: "'Leads'!3:3", values: [['b@x.io', '{"tier":"free"}']] },
+				'POST',
+				`${BASE}/values/'Leads'!3%3A3:append`,
+				{ valueInputOption: 'USER_ENTERED', insertDataOption: 'INSERT_ROWS' },
+				{ range: "'Leads'!3:3", values: [['b@x.io', '{"tier":"free"}', 1]] },
 			],
 		]);
+	});
+
+	it('rejects an empty header row above data', async () => {
+		const { items, calls } = run(
+			appendSheetRow,
+			{ ...location, values: { Email: 'b@x.io' } },
+			sheetsApi([[], ['a@x.io']]),
+		);
+		await expect(items).rejects.toThrow('Header row 1 is empty');
+		expect(calls).toHaveLength(2);
 	});
 
 	it('writes a header from the value keys on an empty sheet', async () => {
@@ -212,11 +234,9 @@ describe('googleSheets.sheet.append', () => {
 		);
 		await items;
 
-		expect(
-			calls.filter(({ options }) => options.method === 'PUT').map(({ options }) => options.body),
-		).toEqual([
-			{ range: "'Leads'!1:1", values: [['Email']] },
-			{ range: "'Leads'!2:2", values: [['b@x.io']] },
+		expect(calls.slice(2).map(({ options }) => [options.method, options.body])).toEqual([
+			['PUT', { range: "'Leads'!1:1", values: [['Email']] }],
+			['POST', { range: "'Leads'!2:2", values: [['b@x.io']] }],
 		]);
 	});
 
@@ -262,9 +282,27 @@ describe('googleSheets.sheet.appendOrUpdate', () => {
 		);
 
 		await items;
+		expect(calls[1]?.options.qs?.valueRenderOption).toBe('UNFORMATTED_VALUE');
+		expect(calls.slice(2).map(({ options }) => [options.url, options.body])).toEqual([
+			[
+				`${BASE}/values/'Leads'!3%3A3:append`,
+				{ range: "'Leads'!3:3", values: [['c@x.io', 'team']] },
+			],
+		]);
+	});
+
+	it('updates only the first column of a repeated header name', async () => {
+		const { items, calls } = run(
+			appendOrUpdateSheetRow,
+			{ ...location, values: { id: 1, a: 'n' }, matchOn: 'id' },
+			sheetsApi([
+				['id', 'a', 'a'],
+				[1, 'o', 'o2'],
+			]),
+		);
+		await items;
 		expect(calls.slice(2).map(({ options }) => options.body)).toEqual([
-			{ requests: [{ appendDimension: { sheetId: 7, dimension: 'ROWS', length: 1 } }] },
-			{ range: "'Leads'!3:3", values: [['c@x.io', 'team']] },
+			{ data: [{ range: "'Leads'!B2", values: [['n']] }], valueInputOption: 'USER_ENTERED' },
 		]);
 	});
 
@@ -308,13 +346,12 @@ const metadata = (id: string) => ({
 
 function gmailApi(options: Options) {
 	if (options.url === `${GMAIL}/labels`) return LABELS;
-	if (options.url.startsWith(`${GMAIL}/messages?`)) {
-		return options.url.includes('pageToken=')
+	if (options.url === `${GMAIL}/messages`) {
+		return options.qs?.pageToken
 			? { messages: [{ id: 'm3' }] }
 			: { messages: [{ id: 'm1' }, { id: 'm2' }], nextPageToken: 'p2' };
 	}
-	const id = /messages\/([^?]+)\?/.exec(options.url)?.[1] ?? '';
-	return metadata(id);
+	return metadata(options.url.split('/').pop() ?? '');
 }
 
 async function legacySimplified(ids: string[]) {
@@ -346,21 +383,16 @@ describe('gmail.message.getAll', () => {
 		);
 
 		expect(await items).toEqual(await legacySimplified(['m1', 'm2', 'm3']));
-		const list = new URL(calls[0]?.options.url ?? '');
-		expect(list.searchParams.get('q')).toBe('from:ada@x.io is:unread after:1767225600');
-		expect(list.searchParams.getAll('labelIds')).toEqual(['INBOX', 'L1']);
-		expect(list.searchParams.get('maxResults')).toBe('100');
-		expect(new URL(calls[1]?.options.url ?? '').searchParams.get('pageToken')).toBe('p2');
-		const message = new URL(calls[3]?.options.url ?? '');
-		expect(message.pathname).toBe('/gmail/v1/users/me/messages/m1');
-		expect(message.searchParams.get('format')).toBe('metadata');
-		expect(message.searchParams.getAll('metadataHeaders')).toEqual([
-			'From',
-			'To',
-			'Cc',
-			'Bcc',
-			'Subject',
-		]);
+		expect(calls[0]?.options.qs).toEqual({
+			q: 'from:ada@x.io is:unread after:1767225600',
+			labelIds: ['INBOX', 'L1'],
+			maxResults: 100,
+		});
+		expect(calls[1]?.options.qs).toMatchObject({ pageToken: 'p2' });
+		expect(calls[3]?.options).toMatchObject({
+			url: `${GMAIL}/messages/m1`,
+			qs: { format: 'metadata', metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'] },
+		});
 		expect(calls.every((call) => call.credentialType === 'gmailOAuth2')).toBe(true);
 	});
 
@@ -371,7 +403,7 @@ describe('gmail.message.getAll', () => {
 			gmailApi,
 		);
 		expect(await items).toHaveLength(2);
-		expect(new URL(calls[0]?.options.url ?? '').searchParams.get('maxResults')).toBe('2');
+		expect(calls[0]?.options.qs?.maxResults).toBe(2);
 	});
 });
 
@@ -418,6 +450,36 @@ describe('gmail.message.send', () => {
 		);
 	});
 
+	it('keeps a comma inside a quoted name, quotes a sender name, and folds a long subject', async () => {
+		const subject = `Grüße ${'ü'.repeat(60)} 😀`;
+		const { items, calls } = run(
+			sendGmailMessage,
+			{
+				to: '"Doe, John" <j@x.io>, ada@x.io',
+				subject,
+				body: { format: 'text', text: 'x' },
+				senderName: 'Ops, "Night" Team',
+				appendAttribution: false,
+			},
+			(options) =>
+				options.url.endsWith('/profile')
+					? { emailAddress: 'ops@x.io' }
+					: { id: 's1', threadId: 't1' },
+		);
+		await items;
+		const body = calls[1]?.options.body as { raw: string };
+		const head = Buffer.from(body.raw, 'base64url').toString().split('\r\n\r\n')[0] ?? '';
+		expect(head).toContain('From: "Ops, \\"Night\\" Team" <ops@x.io>');
+		expect(head).toContain('To: "Doe, John" <j@x.io>, ada@x.io');
+		const subjectLines = /Subject: ([^]*?)\r\nMIME/.exec(head)?.[1]?.split('\r\n ') ?? [];
+		expect(subjectLines.length).toBeGreaterThan(1);
+		expect(subjectLines.every((word) => word.length <= 75)).toBe(true);
+		const decoded = subjectLines
+			.map((word) => Buffer.from(word.slice(10, -2), 'base64').toString())
+			.join('');
+		expect(decoded).toBe(subject);
+	});
+
 	it('rejects an address without @', async () => {
 		const { items } = run(
 			sendGmailMessage,
@@ -460,6 +522,31 @@ describe('googleGemini.text.message', () => {
 			generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
 			systemInstruction: { parts: [{ text: 'Be brief' }] },
 		});
+	});
+
+	it.each(['SAFETY', 'MAX_TOKENS'])(
+		'fails when no candidate has text and the finish reason is %s',
+		async (finishReason) => {
+			const { items } = run(
+				messageGemini,
+				{ model: 'gemini-2.5-flash', messages: [{ content: 'x' }] },
+				() => ({ candidates: [{ content: { role: 'model' }, finishReason, index: 0 }] }),
+			);
+			await expect(items).rejects.toThrow(`Gemini returned no text: ${finishReason}`);
+		},
+	);
+
+	it('leaves thought summaries out of the merged text', async () => {
+		const candidate = {
+			content: { parts: [{ text: 'think', thought: true }, { text: 'answer' }], role: 'model' },
+			finishReason: 'STOP',
+		};
+		const { items } = run(
+			messageGemini,
+			{ model: 'gemini-2.5-flash', messages: [{ content: 'x' }] },
+			() => ({ candidates: [candidate] }),
+		);
+		expect(await items).toEqual([{ ...candidate, mergedResponse: 'answer' }]);
 	});
 
 	it('reports a blocked prompt', async () => {

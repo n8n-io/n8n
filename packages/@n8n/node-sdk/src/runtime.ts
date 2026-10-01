@@ -88,14 +88,20 @@ function toProperty(name: string, schema: AnySchema): INodeProperties {
 /** The default of the legacy HTTP Request node. */
 const DEFAULT_TIMEOUT_MS = 300_000;
 
+// n8n sends `id[0]=a` for an array by default. Only a request with an array sets this.
+const REPEAT_KEYS: Pick<IHttpRequestOptions, 'arrayFormat'> = { arrayFormat: 'repeat' };
+
 function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IHttpRequestOptions {
 	const query = Object.fromEntries(
-		Object.entries(request.query ?? {}).filter(([, value]) => value !== undefined),
+		Object.entries(request.query ?? {}).flatMap(([key, value]) =>
+			value === undefined ? [] : [[key, Array.isArray(value) ? [...value] : value]],
+		),
 	);
 	return {
 		method: request.method ?? 'GET',
 		url: request.url ?? `${baseUrl ?? ''}${request.path ?? ''}`,
 		qs: query,
+		...(Object.values(query).some(Array.isArray) ? REPEAT_KEYS : {}),
 		headers: { ...request.headers },
 		json: true,
 		...(request.body !== undefined ? { body: request.body } : {}),

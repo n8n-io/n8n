@@ -49,8 +49,8 @@ const values = (rows: unknown[][], times?: number): Route => ({
 const writes: Route[] = [
 	{ method: 'POST', url: `${BASE}:batchUpdate`, json: { replies: [{}] } },
 	{ method: 'POST', url: `${BASE}/values:batchUpdate`, json: { responses: [] } },
-	{ method: 'PUT', url: `${BASE}/values/'Leads'!4:4`, json: {} },
-	{ method: 'PUT', url: `${BASE}/values/'Leads'!5:5`, json: {} },
+	{ method: 'POST', url: `${BASE}/values/'Leads'!4:4:append`, json: {} },
+	{ method: 'POST', url: `${BASE}/values/'Leads'!5:5:append`, json: {} },
 	{ method: 'PUT', url: `${BASE}/values/Leads!4:5`, json: {} },
 ];
 
@@ -149,21 +149,18 @@ describe('googleSheets.sheet.append parity with Google Sheets v4.7 append', () =
 	};
 
 	const PER_ITEM =
-		'The action writes one row per item, so it reads and grows the sheet per item; the legacy node writes all rows at once.';
+		'The action writes one row per item, so it reads the sheet per item; the legacy node writes all rows at once.';
+	const APPEND =
+		'The action appends with values:append, like the legacy useAppend option, so parallel runs never write the same row; the legacy default grows the grid and writes the rows.';
 	const ALLOWED: readonly AllowedDifference[] = [
-		{
-			path: `requests.POST ${BASE}:batchUpdate #0.body.requests[0].appendDimension.sheetId`,
-			kind: 'intended',
-			reason: 'The action sends the sheet ID as a number; the legacy node sends it as text.',
-		},
 		...[
-			`GET ${BASE} #1`,
-			`GET ${BASE}/values/'Leads' #1`,
-			`POST ${BASE}:batchUpdate #1`,
-			`PUT ${BASE}/values/Leads!4:5 #0`,
-			`PUT ${BASE}/values/'Leads'!4:4 #0`,
-			`PUT ${BASE}/values/'Leads'!5:5 #0`,
+			`POST ${BASE}:batchUpdate #0`,
+			`POST ${BASE}/values/'Leads'!4:4:append #0`,
+			`POST ${BASE}/values/'Leads'!5:5:append #0`,
 		].map(
+			(key): AllowedDifference => ({ path: `requests.${key}`, kind: 'intended', reason: APPEND }),
+		),
+		...[`GET ${BASE} #1`, `GET ${BASE}/values/'Leads' #1`, `PUT ${BASE}/values/Leads!4:5 #0`].map(
 			(key): AllowedDifference => ({
 				path: `requests.${key}`,
 				kind: 'intended',
@@ -211,6 +208,12 @@ describe('googleSheets.sheet.appendOrUpdate parity with Google Sheets v4.7 appen
 	};
 
 	const ALLOWED: readonly AllowedDifference[] = [
+		{
+			path: `requests.GET ${BASE}/values/'Leads' #0.query.valueRenderOption`,
+			kind: 'intended',
+			reason:
+				'The action reads unformatted values, so a number key also matches a cell that shows "1,000"; the legacy node compares formatted text.',
+		},
 		{
 			path: `requests.POST ${BASE}/values:batchUpdate #0.body.data[0].range`,
 			kind: 'intended',

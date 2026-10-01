@@ -8,18 +8,18 @@ import {
 	googleSpreadsheet,
 	headerOf,
 	readValues,
+	rowCells,
 	rowValues,
 	sheetInput,
 	sheetOf,
 	spreadsheetIdOf,
-	toCell,
 	writtenRow,
 } from './node';
 
 export const appendSheetRow = defineAction({
 	node: googleSheets,
 	id: 'googleSheets.sheet.append',
-	patch: 1,
+	patch: 2,
 	action: 'Append row',
 	summary: 'Append one row per item. Never updates existing rows; use appendOrUpdate to upsert.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },
@@ -39,7 +39,7 @@ export const appendSheetRow = defineAction({
 		const headerRow = input.headerRow ?? 1;
 		const header = await headerOf(http, spreadsheetId, sheet, rows, headerRow, input.values);
 		const lastRow = Math.max(rows.length, headerRow) + 1;
-		const cells = header.map((name) => toCell(input.values[name]));
+		const cells = rowCells(header, input.values);
 		await appendRow(http, spreadsheetId, sheet, lastRow, cells, input.cellFormat ?? 'USER_ENTERED');
 		emit(input.values);
 	},

@@ -162,6 +162,40 @@ describe('gmail.message.send parity with Gmail v2.2 message send', () => {
 		});
 	});
 
+	it('sends the same From and Subject for a sender name with a comma and a long subject', async () => {
+		const subject = `Grüße zum Quartalsbericht ${'ü'.repeat(40)} 😀 Ende`;
+		const legacy = await runNode(
+			legacyNode({
+				operation: 'send',
+				sendTo: '={{ $json.to }}',
+				subject,
+				emailType: 'text',
+				message: 'x',
+				options: { senderName: 'Doe, John', appendAttribution: false },
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				sendGmailMessage,
+				{
+					to: '={{ $json.to }}',
+					subject,
+					body: { format: 'text', text: 'x' },
+					senderName: 'Doe, John',
+					appendAttribution: false,
+				},
+				'gmailOAuth2',
+			),
+			parityCase,
+		);
+		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+		expect(compareRuns(await parseMail(legacy), await parseMail(next), ALLOWED)).toEqual({
+			unexplained: [],
+			stale: [],
+		});
+	});
+
 	// The parser derives `text` from the HTML part, so one HTML difference shows in both fields.
 	const HTML_ALLOWED: readonly AllowedDifference[] = [0, 1].flatMap((index) =>
 		['text', 'html'].map(

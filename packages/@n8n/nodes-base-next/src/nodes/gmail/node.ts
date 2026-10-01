@@ -39,10 +39,7 @@ export const simplifiedMessage = obj({
 
 type Label = Infer<typeof label>;
 
-const METADATA = new URLSearchParams([
-	['format', 'metadata'],
-	...['From', 'To', 'Cc', 'Bcc', 'Subject'].map((header) => ['metadataHeaders', header]),
-]).toString();
+const METADATA = { format: 'metadata', metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'] };
 
 export async function labelsOf(http: Http): Promise<Label[]> {
 	const response = await http.request({ path: '/labels' });
@@ -77,7 +74,10 @@ export async function getMessage(
 	id: string,
 	labels: readonly Label[],
 ): Promise<Infer<typeof simplifiedMessage>> {
-	const message = await http.request({ path: `/messages/${encodeURIComponent(id)}?${METADATA}` });
+	const message = await http.request({
+		path: `/messages/${encodeURIComponent(id)}`,
+		query: METADATA,
+	});
 	const simplified = simplifyMessage(message, labels);
 	if (!matches(simplifiedMessage, simplified)) throw new Error(`Gmail returned no message ${id}`);
 	return simplified;

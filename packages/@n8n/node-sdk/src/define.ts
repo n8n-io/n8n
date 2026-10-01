@@ -96,9 +96,12 @@ export interface ActionFlow {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
+type QueryValue = string | number | boolean;
+
 interface HttpRequestOptions {
 	readonly method?: HttpMethod;
-	readonly query?: Readonly<Record<string, string | number | boolean | undefined>>;
+	/** An array value repeats its key: `{ id: ['a', 'b'] }` sends `id=a&id=b`. */
+	readonly query?: Readonly<Record<string, QueryValue | readonly QueryValue[] | undefined>>;
 	readonly headers?: Readonly<Record<string, string>>;
 	readonly body?: unknown;
 	/** Return `{ body, headers, statusCode }` instead of the body. */
@@ -142,6 +145,46 @@ export const isHttpError = (error: unknown): error is HttpError =>
 	typeof error.headers === 'object' &&
 	error.headers !== null &&
 	'body' in error;
+
+export interface PaginateOptions<T> {
+	/**
+	 * The request for one page. `cursor` is undefined for the first page. `room` is the limit
+	 * minus the items so far, e.g. for a page size parameter.
+	 */
+	request(cursor: string | undefined, room: number | undefined): HttpRequest;
+	/** The items in one page body. */
+	items(body: unknown): readonly T[];
+	/** The cursor of the next page, or undefined on the last page. */
+	next(body: unknown): string | undefined;
+	readonly limit?: number;
+	readonly maxPages?: number;
+}
+
+/**
+ * Yields the items of each page in order. It stops at `limit` items, after `maxPages` pages,
+ * at a page without a next cursor, and at a cursor it already sent, so an API that repeats a
+ * cursor cannot loop. The host request limit also applies. It is a helper, not a host method:
+ * it inlines into each bundle, so an older host runs it too.
+ */
+export async function* paginate<T>(
+	http: Http,
+	{ request, items, next, limit, maxPages = Infinity }: PaginateOptions<T>,
+): AsyncGenerator<T, void, undefined> {
+	// `for...of` also visits the pages the loop appends: one request per page.
+	const pages: Array<{ readonly cursor?: string; readonly emitted: number }> = [{ emitted: 0 }];
+	for (const { cursor, emitted } of pages) {
+		const room = limit === undefined ? undefined : limit - emitted;
+		const body = await http.request(request(cursor, room));
+		const page = items(body).slice(0, room);
+		yield* page;
+		const nextCursor = next(body);
+		const count = emitted + page.length;
+		const sent = pages.some((entry) => entry.cursor === nextCursor);
+		if (nextCursor && !sent && pages.length < maxPages && (limit === undefined || count < limit)) {
+			pages.push({ cursor: nextCursor, emitted: count });
+		}
+	}
+}
 
 type DefaultedKeys<S extends Shape> = {
 	[K in keyof S]: S[K] extends Schema<unknown, true, true> ? K : never;

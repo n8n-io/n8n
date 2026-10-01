@@ -6,10 +6,10 @@ import {
 	json,
 	obj,
 	oneOf,
+	paginate,
 	record,
 	str,
 	variant,
-	type HttpRequest,
 } from '@n8n/node-sdk';
 
 export const httpRequest = defineNode({
@@ -47,7 +47,7 @@ const common = {
 export const getRequest = defineAction({
 	node: httpRequest,
 	id: 'httpRequest.get',
-	patch: 1,
+	patch: 2,
 	action: 'GET a URL',
 	summary: 'Read from any HTTP API. Use a dedicated action when one exists for the service.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
@@ -64,28 +64,28 @@ export const getRequest = defineAction({
 	output: json().hint('The parsed response body; an array body emits one item per element'),
 	async run({ input, http, emit }) {
 		const { pagination } = input;
-		// `for...of` also visits the queries the loop appends: one page per query.
-		const queries: Array<HttpRequest['query']> = [input.query];
-		for (const query of queries) {
-			const body = await http.request({
+		const items = paginate(http, {
+			request: (cursor) => ({
 				method: 'GET',
 				url: input.url,
-				query,
+				query:
+					pagination && cursor !== undefined
+						? { ...input.query, [pagination.queryParameter]: cursor }
+						: input.query,
 				headers: input.headers,
-			});
-			toItems(body).forEach(emit);
-			const next = pagination && cursorAt(body, pagination.cursorPath);
-			if (pagination && next !== undefined && queries.length < (pagination.maxPages ?? MAX_PAGES)) {
-				queries.push({ ...input.query, [pagination.queryParameter]: next });
-			}
-		}
+			}),
+			items: toItems,
+			next: (body) => (pagination ? cursorAt(body, pagination.cursorPath) : undefined),
+			maxPages: pagination?.maxPages ?? MAX_PAGES,
+		});
+		for await (const item of items) emit(item);
 	},
 });
 
 export const sendRequest = defineAction({
 	node: httpRequest,
 	id: 'httpRequest.send',
-	patch: 1,
+	patch: 2,
 	action: 'Send a request',
 	summary: 'POST, PUT, PATCH, or DELETE to any HTTP API.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },

@@ -5,8 +5,11 @@ import {
 	defineAction,
 	defineNode,
 	int,
+	isRecord,
 	json,
+	list,
 	obj,
+	paginate,
 	parse,
 	str,
 	validate,
@@ -304,5 +307,83 @@ describe('runAction', () => {
 		const result = await runAction(fetchAction({ path: '/items' }), { input: {}, fetch });
 		expect(result).toEqual({ ok: true, items: [{ id: 'a' }] });
 		expect(fetch.calls).toHaveLength(2);
+	});
+});
+
+describe('paginate', () => {
+	/** An action that lists `/items` pages by cursor and emits each item. */
+	const pagedAction = (limit?: number, maxPages?: number) =>
+		defineAction({
+			node: echo,
+			id: 'echo.item.list',
+			action: 'List items',
+			summary: 'List items.',
+			flow: read,
+			input: {},
+			output: item,
+			async run({ http, emit }) {
+				const items = paginate(http, {
+					request: (cursor, room) => ({ path: '/items', query: { cursor, size: room } }),
+					items: (body) => (isRecord(body) ? list(body.items) : []),
+					next: (body) => (isRecord(body) && typeof body.next === 'string' ? body.next : undefined),
+					limit,
+					maxPages,
+				});
+				for await (const entry of items) emit(parse(item, entry));
+			},
+		});
+	const page = (ids: string[], next?: string) => ({ items: ids.map((id) => ({ id })), next });
+
+	it('follows the cursor to the last page', async () => {
+		const { host, requests } = hostOf([page(['a', 'b'], 'c2'), page(['c'])]);
+		const items = await executorOf(pagedAction())(host);
+		expect(items.map(({ json: value }) => value.id)).toEqual(['a', 'b', 'c']);
+		expect(requests.map(({ qs }) => qs)).toEqual([{}, { cursor: 'c2' }]);
+	});
+
+	it('asks each page for the room the limit leaves and stops at the limit', async () => {
+		const { host, requests } = hostOf([page(['a', 'b'], 'c2'), page(['c', 'd'], 'c3')]);
+		const items = await executorOf(pagedAction(3))(host);
+		expect(items.map(({ json: value }) => value.id)).toEqual(['a', 'b', 'c']);
+		expect(requests.map(({ qs }) => qs)).toEqual([{ size: 3 }, { cursor: 'c2', size: 1 }]);
+	});
+
+	it('stops when the API repeats a cursor', async () => {
+		const { host, requests } = hostOf([page(['a'], 'same'), page(['b'], 'same'), page(['c'])]);
+		await executorOf(pagedAction())(host);
+		expect(requests).toHaveLength(2);
+	});
+
+	it('stops after maxPages pages', async () => {
+		const { host, requests } = hostOf([page(['a'], 'c2'), page(['b'], 'c3'), page(['c'])]);
+		await executorOf(pagedAction(undefined, 2))(host);
+		expect(requests).toHaveLength(2);
+	});
+});
+
+describe('query', () => {
+	it('repeats the key of an array value', async () => {
+		const { host, requests } = hostOf([[]]);
+		await executorOf(fetchAction({ path: '/items', query: { id: ['a', 'b'], q: 'x' } }))(host);
+		expect(requests[0]).toMatchObject({ qs: { id: ['a', 'b'], q: 'x' }, arrayFormat: 'repeat' });
+	});
+
+	it('keeps the default array format when no value is an array', async () => {
+		const { host, requests } = hostOf([[]]);
+		await executorOf(fetchAction({ path: '/items', query: { q: 'x' } }))(host);
+		expect(requests[0]).not.toHaveProperty('arrayFormat');
+	});
+
+	it('sends and records a repeated key in runAction', async () => {
+		const fetch = mockHttp([
+			{ path: '/items', query: { id: ['a', 'b'] }, reply: { json: [{ id: 'a' }] } },
+		]);
+		const result = await runAction(
+			fetchAction({ path: '/items', query: { id: ['a', 'b'], q: 'x' } }),
+			{ input: {}, fetch },
+		);
+		expect(result).toEqual({ ok: true, items: [{ id: 'a' }] });
+		expect(fetch.calls[0]?.url).toBe('https://echo.test/items?id=a&id=b&q=x');
+		expect(fetch.calls[0]?.query).toEqual({ id: ['a', 'b'], q: 'x' });
 	});
 });

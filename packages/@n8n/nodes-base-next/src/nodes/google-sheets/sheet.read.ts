@@ -10,6 +10,7 @@ import {
 	sheetOf,
 	sheetRow,
 	spreadsheetIdOf,
+	USER_ROW_NUMBER,
 } from './node';
 
 type Row = readonly unknown[];
@@ -22,8 +23,13 @@ interface Filter {
 const range = (length: number) => Array.from({ length }, (_, index) => index);
 const longest = (rows: readonly Row[]) => rows.reduce((max, row) => Math.max(max, row.length), 0);
 const filled = (cell: unknown) => Boolean(cell) || typeof cell === 'number';
+/** The first cell of the key row is the `row_number` key, so a header cell must not repeat it. */
+const keyCells = (row: Row) => [
+	ROW_NUMBER,
+	...row.slice(1).map((cell) => (cell === ROW_NUMBER ? USER_ROW_NUMBER : cell)),
+];
 const labelled = (rows: unknown[][]) =>
-	rows.map((row, index) => (index === 0 ? [ROW_NUMBER, ...row.slice(1)] : row));
+	rows.map((row, index) => (index === 0 ? keyCells(row) : row));
 
 /** Mirrors `removeEmptyColumns` in nodes-base GoogleSheets.utils.ts. */
 function removeEmptyColumns(rows: readonly Row[]): unknown[][] {
@@ -113,7 +119,7 @@ const input = {
 export const readSheetRows = defineAction({
 	node: googleSheets,
 	id: 'googleSheets.sheet.read',
-	patch: 1,
+	patch: 2,
 	action: 'Get rows',
 	summary: 'Read rows, optionally only those matching column filters.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
@@ -144,10 +150,9 @@ export const readSheetRows = defineAction({
 		const { header } = parameters;
 		const keyRow = header ? (header.headerRow ?? 1) - 1 : 0;
 		const dataStart = header ? (header.firstDataRow ?? 2) - 1 : 1;
-		const numbered = values.map((row, index) => [
-			index === keyRow ? ROW_NUMBER : index + 1,
-			...row,
-		]);
+		const numbered = values.map((row, index) =>
+			index === keyRow ? keyCells([undefined, ...row]) : [index + 1, ...row],
+		);
 		const rows = header ? numbered : detectRange(numbered);
 		const filters = parameters.filters ?? [];
 		const found = filters.length

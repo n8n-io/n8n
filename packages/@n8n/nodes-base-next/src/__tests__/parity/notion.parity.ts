@@ -98,19 +98,20 @@ const ALLOWED: readonly AllowedDifference[] = [
 				'The action sends the ISO date as given; the legacy node converts it to a UTC time in the workflow timezone.',
 		}),
 	),
-	...[0, 1, 2].flatMap((index): AllowedDifference[] => [
-		{
+	{
+		path: `requests.POST ${QUERY} #1.body.page_size`,
+		kind: 'intended',
+		reason:
+			'The action asks the next page only for the pages the limit still needs; the legacy node repeats the first page size.',
+	},
+	...[0, 1, 2].map(
+		(index): AllowedDifference => ({
 			path: `items[${index}].json.property_notes`,
 			kind: 'intended',
 			reason:
 				'The action keeps plain_text of mention and equation rich text; the legacy node drops it.',
-		},
-		{
-			path: `items[${index}].json.property_total`,
-			kind: 'bug',
-			reason: 'The action does not simplify rollup properties; the legacy node emits the value.',
-		},
-	]),
+		}),
+	),
 ];
 
 describe('notion.databasePage.getAll parity with Notion v3 databasePage getAll', () => {

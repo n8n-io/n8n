@@ -10,6 +10,7 @@ import {
 	type Http,
 } from '@n8n/node-sdk';
 
+import { addressList, displayName, encodeWords, oneLine } from './mime';
 import { gmail } from './node';
 
 const ATTRIBUTION = 'This email was sent automatically with ';
@@ -22,23 +23,6 @@ const sent = obj({ id: str(), threadId: str(), labelIds: arr(str()).optional() }
 	additionalProperties: true,
 });
 
-/** Header values stay on one line. */
-const oneLine = (value: string) => value.replace(/[\r\n]+/g, ' ');
-
-/** RFC 2047 encoded word for text outside printable ASCII. */
-const encodeWord = (value: string) =>
-	/^[\x20-\x7e]*$/.test(value) ? value : `=?UTF-8?B?${Buffer.from(value).toString('base64')}?=`;
-
-/** Mirrors `prepareEmailsInput` in nodes-base Gmail/GenericFunctions.ts. */
-function addressList(value: string, field: string) {
-	const entries = value.split(',').map((entry) => oneLine(entry.trim()));
-	const invalid = entries.find((entry) => !entry.includes('@'));
-	if (invalid !== undefined) {
-		throw new Error(`Invalid email address: '${invalid}' in the '${field}' field isn't valid`);
-	}
-	return entries.join(', ');
-}
-
 async function senderAddress(http: Http) {
 	const profile = await http.request({ path: '/profile' });
 	if (!isRecord(profile) || typeof profile.emailAddress !== 'string') {
@@ -50,7 +34,7 @@ async function senderAddress(http: Http) {
 export const sendGmailMessage = defineAction({
 	node: gmail,
 	id: 'gmail.message.send',
-	patch: 1,
+	patch: 2,
 	action: 'Send a message',
 	summary: 'Send an email.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },
@@ -77,7 +61,7 @@ export const sendGmailMessage = defineAction({
 					? `${message}<br><br>---<br><em>${ATTRIBUTION}<a href="${LINK}" target="_blank">n8n</a></em>`
 					: `${message}\n\n---\n${ATTRIBUTION}n8n\nhttps://n8n.io`;
 		const from = input.senderName
-			? `${encodeWord(oneLine(input.senderName))} <${await senderAddress(http)}>`
+			? `${displayName(input.senderName)} <${await senderAddress(http)}>`
 			: undefined;
 		const headers: Array<[string, string | undefined]> = [
 			['From', from],
@@ -85,7 +69,7 @@ export const sendGmailMessage = defineAction({
 			['Cc', input.cc && addressList(input.cc, 'CC')],
 			['Bcc', input.bcc && addressList(input.bcc, 'BCC')],
 			['Reply-To', input.replyTo && addressList(input.replyTo, 'ReplyTo')],
-			['Subject', encodeWord(oneLine(input.subject))],
+			['Subject', encodeWords(oneLine(input.subject))],
 			['MIME-Version', '1.0'],
 			['Content-Type', `text/${html ? 'html' : 'plain'}; charset=utf-8`],
 			['Content-Transfer-Encoding', 'base64'],

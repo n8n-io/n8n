@@ -102,7 +102,7 @@ defineAction({
 
 - `http.request({ method, path, url, query, headers, body, fullResponse, timeoutMs, retry })`. Give `path`
   (starts with `/`, goes after `baseUrl`) or `url` (absolute, e.g. a `next` link), not both.
-  A `query` value that is `undefined` is not sent. `body` is sent as JSON. It returns the parsed JSON body
+  A `query` value that is `undefined` is not sent; an array repeats the key (`id=a&id=b`). `body` is sent as JSON. It returns the parsed JSON body
   as `unknown`: narrow it with `parse`. `timeoutMs` is 300000 when omitted.
 - `fullResponse: true` returns `{ body, headers, statusCode }` as `unknown`. Header names are lower case:
   `const full = obj({ body: arr(item), headers: json() }).with({ additionalProperties: true });`
@@ -112,8 +112,8 @@ defineAction({
 - Do not write retries. n8n retries a 429, 502, 503, 504 or a dropped connection up to 3 times, with
   backoff and `Retry-After`, for GET, HEAD, PUT, and every request of an action with `flow.idempotent: true`.
   `retry: true` also retries another method; `retry: false` never retries.
-- Paging: see `src/actions/item.get-all.ts`. With `returnAll`, read to the last page. Else stop at `limit`
-  and do not fetch a page that you do not need. One run may send 10000 requests and emit 1000000 items.
+- Paging: `paginate(http, { request(cursor, room), items(body), next(body), limit?, maxPages? })` yields
+  the items; see `src/actions/item.get-all.ts`. Do not write a page loop. One run may send 10000 requests.
 
 ## Tests
 
@@ -134,7 +134,7 @@ assert.deepEqual(fetch.calls[0]?.body, { name: 'A' });
   (other parameters may also be present). When more routes match, the route with the most listed query
   parameters answers. `times: n` answers at most n calls, then the next matching route answers.
 - `reply`: `{ status?, json?, headers? }`. A call that no route matches fails with the list of routes.
-- `fetch.calls[i]`: `{ method, url, path, query, headers, body }`. Query values are strings,
-  header names are lower case, a JSON body is already parsed.
+- `fetch.calls[i]`: `{ method, url, path, query, headers, body }`. Query values are strings (a repeated
+  key is an array), header names are lower case, a JSON body is already parsed.
 - Compare the whole result with `assert.deepEqual(result, ...)`: a failure then shows `result.error`.
 - A run with more than 1000 mock calls fails: the code loops over the same page.

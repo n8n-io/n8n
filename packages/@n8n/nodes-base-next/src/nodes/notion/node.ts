@@ -1,6 +1,7 @@
 import {
 	defineNode,
 	defineResource,
+	isHttpError,
 	isRecord,
 	list,
 	type Http,
@@ -38,6 +39,21 @@ export const snakeCase = (name: string) =>
 
 const nameOf = (value: unknown) => (isRecord(value) ? (value.name ?? null) : null);
 
+/**
+ * Like v3, a count or percent rollup is a number (a percent times 100) and a show rollup is the
+ * simplified elements. Other rollups give their value, where v3 gives nothing.
+ */
+function simplifyRollup(rollup: unknown): unknown {
+	if (!isRecord(rollup) || typeof rollup.type !== 'string') return undefined;
+	const name = typeof rollup.function === 'string' ? rollup.function : '';
+	if (rollup.type === 'array') {
+		const elements = list(rollup.array).flatMap((element) => [simplifyProperty(element)].flat());
+		return name === 'show_unique' ? [...new Set(elements)] : elements;
+	}
+	const value = rollup[rollup.type];
+	return typeof value === 'number' && name.includes('percent') ? value * 100 : value;
+}
+
 /** Mirrors `simplifyProperty` in nodes-base Notion/shared/GenericFunctions.ts. */
 function simplifyProperty(property: unknown): unknown {
 	if (!isRecord(property) || typeof property.type !== 'string') return undefined;
@@ -67,8 +83,11 @@ function simplifyProperty(property: unknown): unknown {
 		case 'status':
 			return isRecord(value) ? value.name : undefined;
 		case 'people':
-			return list(value).map((person) =>
-				isRecord(person) && isRecord(person.person) ? (person.person.email ?? {}) : {},
+			// v3 gives `{}` for a bot or a user without an email; the output promises emails.
+			return list(value).flatMap((person) =>
+				isRecord(person) && isRecord(person.person) && typeof person.person.email === 'string'
+					? [person.person.email]
+					: [],
 			);
 		case 'multi_select':
 			return list(value).map((option) => (isRecord(option) ? (option.name ?? {}) : {}));
@@ -76,6 +95,14 @@ function simplifyProperty(property: unknown): unknown {
 			return list(value).map((relation) => (isRecord(relation) ? (relation.id ?? {}) : {}));
 		case 'formula':
 			return isRecord(value) && typeof value.type === 'string' ? value[value.type] : undefined;
+		case 'rollup':
+			return simplifyRollup(value);
+		case 'unique_id':
+			// v3 drops unique IDs. Notion shows them as prefix-number, e.g. TASK-42.
+			if (!isRecord(value) || typeof value.number !== 'number') return undefined;
+			return typeof value.prefix === 'string'
+				? `${value.prefix}-${value.number}`
+				: String(value.number);
 		case 'files':
 			return list(value).map((file) => {
 				const hosted =
@@ -136,7 +163,11 @@ export const SIMPLIFIED: Record<string, JsonSchema> = {
 	people: {
 		type: 'array',
 		items: { type: 'string', format: 'email' },
-		'x-n8n-hint': 'one email per person, never a name',
+		'x-n8n-hint': 'emails; a person without an email is left out',
+	},
+	unique_id: {
+		...str,
+		'x-n8n-hint': 'prefix-number, e.g. TASK-42; the number alone without a prefix',
 	},
 	multi_select: { ...strings, 'x-n8n-hint': 'option names' },
 	relation: { ...strings, 'x-n8n-hint': 'page IDs' },
@@ -149,7 +180,9 @@ export async function dataSourceOf(http: Http, id: string): Promise<string> {
 		const database = await http.request({ path: `/databases/${id}`, headers: NOTION_VERSION });
 		const [first] = isRecord(database) ? list(database.data_sources) : [];
 		return isRecord(first) && typeof first.id === 'string' ? first.id : id;
-	} catch {
-		return id;
+	} catch (error) {
+		// Notion answers 400 or 404 for a data source ID. Other errors are real failures.
+		if (isHttpError(error) && (error.status === 400 || error.status === 404)) return id;
+		throw error;
 	}
 }

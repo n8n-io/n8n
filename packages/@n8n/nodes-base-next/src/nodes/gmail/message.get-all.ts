@@ -4,11 +4,12 @@ import {
 	defineAction,
 	int,
 	isRecord,
+	list,
 	obj,
 	oneOf,
+	paginate,
 	str,
 	variant,
-	type Http,
 	type Infer,
 } from '@n8n/node-sdk';
 
@@ -31,7 +32,7 @@ function seconds(value: string, label: 'After' | 'Before') {
 }
 
 /** Mirrors `prepareQuery` in nodes-base Gmail/GenericFunctions.ts. */
-function queryOf(filter: Infer<typeof filters> | undefined, maxResults: number) {
+function queryOf(filter: Infer<typeof filters> | undefined) {
 	const q = [
 		filter?.q,
 		filter?.sender ? `from:${filter.sender}` : undefined,
@@ -41,35 +42,17 @@ function queryOf(filter: Infer<typeof filters> | undefined, maxResults: number) 
 	]
 		.filter((term): term is string => typeof term === 'string' && term !== '')
 		.join(' ');
-	return [
-		...(q ? [['q', q]] : []),
-		...(filter?.labelIds ?? []).map((id) => ['labelIds', id]),
-		...(filter?.includeSpamTrash ? [['includeSpamTrash', 'true']] : []),
-		['maxResults', String(maxResults)],
-	];
-}
-
-/** Message IDs, one page per request; `limit` stops after the first page like the v2 node. */
-async function listIds(
-	http: Http,
-	query: string[][],
-	pageToken: string | undefined,
-	all: boolean,
-): Promise<string[]> {
-	const params = new URLSearchParams([...query, ...(pageToken ? [['pageToken', pageToken]] : [])]);
-	const response = await http.request({ path: `/messages?${params.toString()}` });
-	const page = isRecord(response) ? response : {};
-	const ids = (Array.isArray(page.messages) ? page.messages : []).flatMap((entry: unknown) =>
-		isRecord(entry) && typeof entry.id === 'string' ? [entry.id] : [],
-	);
-	const next = typeof page.nextPageToken === 'string' ? page.nextPageToken : '';
-	return all && next ? [...ids, ...(await listIds(http, query, next, all))] : ids;
+	return {
+		q: q || undefined,
+		labelIds: filter?.labelIds,
+		includeSpamTrash: filter?.includeSpamTrash ? true : undefined,
+	};
 }
 
 export const getManyGmailMessages = defineAction({
 	node: gmail,
 	id: 'gmail.message.getAll',
-	patch: 1,
+	patch: 2,
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
@@ -83,8 +66,22 @@ export const getManyGmailMessages = defineAction({
 	output: simplifiedMessage,
 	async run({ input, http, emit }) {
 		const paging = input.paging ?? { mode: 'limit', max: 50 };
-		const all = paging.mode === 'all';
-		const ids = await listIds(http, queryOf(input.filters, all ? 100 : paging.max), undefined, all);
+		const query = queryOf(input.filters);
+		const pages = paginate(http, {
+			request: (pageToken, room) => ({
+				path: '/messages',
+				query: { ...query, maxResults: room ?? 100, pageToken },
+			}),
+			items: (body) =>
+				list(isRecord(body) ? body.messages : undefined).flatMap((entry) =>
+					isRecord(entry) && typeof entry.id === 'string' ? [entry.id] : [],
+				),
+			next: (body) =>
+				isRecord(body) && typeof body.nextPageToken === 'string' ? body.nextPageToken : undefined,
+			limit: paging.mode === 'limit' ? paging.max : undefined,
+		});
+		const ids: string[] = [];
+		for await (const id of pages) ids.push(id);
 		if (ids.length === 0) return;
 		const labels = await labelsOf(http);
 		for (const id of ids) emit(await getMessage(http, id, labels));

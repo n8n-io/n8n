@@ -31,16 +31,21 @@ const candidate = obj({
 	index: int().optional(),
 }).with({ additionalProperties: true, 'x-n8n-hint': 'One item per candidate' });
 
-/** Mirrors `includeMergedResponse` in the langchain GoogleGemini text message operation. */
+/**
+ * Mirrors `includeMergedResponse` in the langchain GoogleGemini text message operation, but
+ * leaves out thought summaries: they are not part of the reply.
+ */
 const mergedText = (entry: unknown) =>
 	list(isRecord(entry) && isRecord(entry.content) ? entry.content.parts : undefined)
-		.flatMap((part) => (isRecord(part) && 'text' in part ? [part.text] : []))
+		.flatMap((part) =>
+			isRecord(part) && 'text' in part && part.thought !== true ? [part.text] : [],
+		)
 		.join('');
 
 export const messageGemini = defineAction({
 	node: googleGemini,
 	id: 'googleGemini.text.message',
-	patch: 1,
+	patch: 2,
 	action: 'Message a model',
 	summary: 'Send messages to a Gemini model and get its reply as text.',
 	flow: { effect: 'read', cardinality: 'per-item', passthrough: 'replace', idempotent: false },
@@ -81,6 +86,18 @@ export const messageGemini = defineAction({
 			const feedback = isRecord(response) ? response.promptFeedback : undefined;
 			const reason = isRecord(feedback) ? feedback.blockReason : undefined;
 			throw new Error(`Gemini returned no reply${typeof reason === 'string' ? `: ${reason}` : ''}`);
+		}
+		// A blocked or cut-off reply has no text. An empty item would look like a success.
+		const stopped = candidates.flatMap((entry) =>
+			isRecord(entry) &&
+			typeof entry.finishReason === 'string' &&
+			entry.finishReason !== 'STOP' &&
+			mergedText(entry) === ''
+				? [entry.finishReason]
+				: [],
+		);
+		if (stopped.length === candidates.length) {
+			throw new Error(`Gemini returned no text: ${[...new Set(stopped)].join(', ')}`);
 		}
 		for (const entry of candidates) {
 			const reply = { ...(isRecord(entry) ? entry : {}), mergedResponse: mergedText(entry) };

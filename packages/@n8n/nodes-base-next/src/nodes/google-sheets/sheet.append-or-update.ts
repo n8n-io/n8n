@@ -4,11 +4,13 @@ import {
 	appendRow,
 	cellFormat,
 	cellText,
+	columnKey,
 	deriveWritten,
 	googleSheets,
 	googleSpreadsheet,
 	headerOf,
 	readValues,
+	rowCells,
 	rowValues,
 	sheetInput,
 	sheetOf,
@@ -21,7 +23,7 @@ import {
 export const appendOrUpdateSheetRow = defineAction({
 	node: googleSheets,
 	id: 'googleSheets.sheet.appendOrUpdate',
-	patch: 1,
+	patch: 2,
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: true },
@@ -46,12 +48,17 @@ export const appendOrUpdateSheetRow = defineAction({
 		}
 		const spreadsheetId = spreadsheetIdOf(input.spreadsheet);
 		const sheet = await sheetOf(http, spreadsheetId, input.sheet);
-		const rows = await readValues(http, spreadsheetId, sheet, 'FORMATTED_VALUE');
+		// Unformatted, so a number key matches a cell that shows "1,000".
+		const rows = await readValues(http, spreadsheetId, sheet, 'UNFORMATTED_VALUE');
 		const headerRow = input.header?.headerRow ?? 1;
 		const firstDataRow = input.header?.firstDataRow ?? 2;
+		// Check before `headerOf` adds columns: a new key column matches no row.
+		const known = (rows[headerRow - 1] ?? []).map(columnKey);
+		if (known.some(Boolean) && !known.includes(matchOn)) {
+			throw new Error(`Column "${matchOn}" is not in header row ${headerRow}`);
+		}
 		const header = await headerOf(http, spreadsheetId, sheet, rows, headerRow, input.values);
 		const keyColumn = header.indexOf(matchOn);
-		if (keyColumn === -1) throw new Error(`Column "${matchOn}" is not in header row ${headerRow}`);
 		// Legacy mapping mode writes empty cells for null values instead of skipping them.
 		const values = Object.fromEntries(
 			Object.entries(input.values).map(([name, value]) => [name, value ?? '']),
@@ -64,11 +71,11 @@ export const appendOrUpdateSheetRow = defineAction({
 			);
 		if (index === -1) {
 			const lastRow = Math.max(rows.length, headerRow) + 1;
-			const cells = header.map((name) => toCell(values[name]));
+			const cells = rowCells(header, values);
 			await appendRow(http, spreadsheetId, sheet, lastRow, cells, format);
 		} else {
 			const cells = header.flatMap((name, column) =>
-				name === matchOn || values[name] === undefined
+				name === matchOn || values[name] === undefined || header.indexOf(name) !== column
 					? []
 					: [{ column, row: index + firstDataRow, value: toCell(values[name]) }],
 			);

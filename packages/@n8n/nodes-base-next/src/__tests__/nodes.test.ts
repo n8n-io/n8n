@@ -157,6 +157,111 @@ describe('notion.databasePage.getAll', () => {
 			'input.where.conditions[0].condition: needs "op" set to one of',
 		);
 	});
+
+	const DATA_SOURCE = '2a3b4c5d6e7f40818293a4b5c6d7e8f9';
+	const httpError = (status: number) =>
+		Object.assign(new Error(`Request failed with status code ${status}`), {
+			response: { status, headers: {}, data: {} },
+		});
+
+	it('fails on a database lookup error other than 400 or 404', async () => {
+		const { execute, calls } = run(getManyDatabasePages, { database: DATA_SOURCE }, () => {
+			throw httpError(401);
+		});
+		await expect(execute).rejects.toThrow('401');
+		expect(calls.map((call) => call.options.url)).toEqual([
+			`https://api.notion.com/v1/databases/${DATA_SOURCE}`,
+		]);
+	});
+
+	it('uses the ID as a data source ID when the database lookup answers 404', async () => {
+		const { execute, calls } = run(
+			getManyDatabasePages,
+			{ database: DATA_SOURCE },
+			({ options }) => {
+				if (options.url.includes('/databases/')) throw httpError(404);
+				return { results: [], has_more: false, next_cursor: null };
+			},
+		);
+		await execute;
+		expect(calls[1]?.options.url).toBe(
+			`https://api.notion.com/v1/data_sources/${DATA_SOURCE}/query`,
+		);
+	});
+
+	it('asks for the remaining room on each page and stops when has_more is false', async () => {
+		const { execute, calls } = run(
+			getManyDatabasePages,
+			{ database: DATA_SOURCE, limit: 3 },
+			({ options }) => {
+				if (options.url.includes('/databases/')) return { data_sources: [{ id: 'ds-1' }] };
+				return options.body?.start_cursor
+					? { results: [page('p3')], next_cursor: 'c3', has_more: false }
+					: { results: [page('p1'), page('p2')], next_cursor: 'c2', has_more: true };
+			},
+		);
+		const [items = []] = (await execute) ?? [];
+		expect(calls.map((call) => call.options.body?.page_size)).toEqual([undefined, 3, 1]);
+		expect(items).toHaveLength(3);
+	});
+
+	it('simplifies rollups like v3, unique IDs as prefix-number, and skips people without an email', async () => {
+		const properties = {
+			Count: {
+				id: 'a',
+				type: 'rollup',
+				rollup: { type: 'number', ['number']: 2, function: 'count' },
+			},
+			Share: {
+				id: 'b',
+				type: 'rollup',
+				rollup: { type: 'number', ['number']: 0.25, function: 'percent_empty' },
+			},
+			Names: {
+				id: 'c',
+				type: 'rollup',
+				rollup: {
+					type: 'array',
+					function: 'show_unique',
+					array: [
+						{ type: 'title', title: [{ type: 'text', plain_text: 'A' }] },
+						{ type: 'title', title: [{ type: 'text', plain_text: 'A' }] },
+						{ type: 'title', title: [{ type: 'text', plain_text: 'B' }] },
+					],
+				},
+			},
+			Ticket: { id: 'd', type: 'unique_id', unique_id: { prefix: 'TASK', ['number']: 42 } },
+			Plain: { id: 'e', type: 'unique_id', unique_id: { prefix: null, ['number']: 7 } },
+			Owners: {
+				id: 'o',
+				type: 'people',
+				people: [
+					{ object: 'user', person: { email: 'a@x.io' } },
+					{ object: 'user', type: 'bot', bot: {} },
+				],
+			},
+		};
+		const result = { ...page('p1'), properties: { ...page('p1').properties, ...properties } };
+		const { execute } = run(getManyDatabasePages, { database: DATA_SOURCE }, ({ options }) =>
+			options.url.includes('/databases/')
+				? { data_sources: [{ id: 'ds-1' }] }
+				: { results: [result], has_more: false, next_cursor: null },
+		);
+		const [items = []] = (await execute) ?? [];
+		const legacy = simplifyObjects([result], false, 3)[0];
+		expect(items[0]?.json).toEqual({
+			...legacy,
+			property_ticket: 'TASK-42',
+			property_plain: '7',
+			property_owners: ['a@x.io'],
+		});
+		expect(legacy).toMatchObject({
+			property_count: 2,
+			property_share: 25,
+			property_names: ['A', 'B'],
+			property_owners: ['a@x.io', {}],
+		});
+	});
 });
 
 describe('httpRequest.get', () => {
@@ -192,10 +297,21 @@ describe('httpRequest.get', () => {
 		const { execute, calls } = run(
 			getRequest,
 			{ url, pagination: { cursorPath: 'meta.next', queryParameter: 'page', maxPages: 2 } },
-			() => ({ meta: { next: 7 } }),
+			({ options }) => ({ meta: { next: Number(options.qs?.page ?? 6) + 1 } }),
 		);
 		const [items = []] = (await execute) ?? [];
 		expect(calls.map((call) => call.options.qs)).toEqual([{}, { page: '7' }]);
+		expect(items).toHaveLength(2);
+	});
+
+	it('stops when the response repeats a cursor', async () => {
+		const { execute, calls } = run(
+			getRequest,
+			{ url, pagination: { cursorPath: 'next', queryParameter: 'c' } },
+			() => ({ next: 'same' }),
+		);
+		const [items = []] = (await execute) ?? [];
+		expect(calls.map((call) => call.options.qs)).toEqual([{}, { c: 'same' }]);
 		expect(items).toHaveLength(2);
 	});
 

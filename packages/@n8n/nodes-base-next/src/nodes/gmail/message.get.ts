@@ -5,7 +5,7 @@ import { getMessage, gmail, labelsOf, simplifiedMessage } from './node';
 export const getGmailMessage = defineAction({
 	node: gmail,
 	id: 'gmail.message.get',
-	patch: 1,
+	patch: 2,
 	action: 'Get a message',
 	summary: 'Get one message by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', passthrough: 'replace', idempotent: true },

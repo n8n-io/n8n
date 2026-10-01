@@ -3,10 +3,13 @@ import {
 	bool,
 	defineAction,
 	int,
+	isRecord,
+	list,
 	matches,
 	num,
 	obj,
 	oneOf,
+	paginate,
 	ref,
 	str,
 	variant,
@@ -207,7 +210,7 @@ function outputFromProperties(
 export const getManyDatabasePages = defineAction({
 	node: notion,
 	id: 'notion.databasePage.getAll',
-	patch: 1,
+	minor: 1,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
@@ -230,32 +233,32 @@ export const getManyDatabasePages = defineAction({
 						),
 					}
 				: {}),
-			page_size: Math.min(limit ?? 100, 100),
 		};
-		// `for...of` also visits the pages the loop appends: one request per page.
-		const pages: Array<{ cursor?: string; emitted: number }> = [{ emitted: 0 }];
-		for (const { cursor, emitted } of pages) {
-			const response = await http.request({
+		const results = paginate(http, {
+			request: (cursor, room) => ({
 				method: 'POST',
 				path: `/data_sources/${dataSourceId}/query`,
 				headers: NOTION_VERSION,
-				body: cursor ? { ...body, start_cursor: cursor } : body,
-			});
-			const record = typeof response === 'object' && response !== null ? response : {};
-			const results = 'results' in record && Array.isArray(record.results) ? record.results : [];
-			const room = limit === undefined ? results.length : Math.max(limit - emitted, 0);
-			for (const result of results.slice(0, room)) {
-				const simplified = simplifyPage(result);
-				if (!matches(page, simplified)) throw new Error('Notion returned a page without id or url');
-				emit(simplified);
-			}
-			const next =
-				'next_cursor' in record && typeof record.next_cursor === 'string'
-					? record.next_cursor
-					: undefined;
-			const count = emitted + Math.min(room, results.length);
-			if (next && (limit === undefined || count < limit))
-				pages.push({ cursor: next, emitted: count });
+				body: {
+					...body,
+					page_size: Math.min(room ?? 100, 100),
+					...(cursor ? { start_cursor: cursor } : {}),
+				},
+			}),
+			items: (response) => list(isRecord(response) ? response.results : undefined),
+			// Like v3, a missing `has_more` does not end the list.
+			next: (response) =>
+				isRecord(response) &&
+				response.has_more !== false &&
+				typeof response.next_cursor === 'string'
+					? response.next_cursor
+					: undefined,
+			limit,
+		});
+		for await (const result of results) {
+			const simplified = simplifyPage(result);
+			if (!matches(page, simplified)) throw new Error('Notion returned a page without id or url');
+			emit(simplified);
 		}
 	},
 });

@@ -97,6 +97,9 @@ async function authenticate(
 async function send(fetchFn: typeof fetch, options: IHttpRequestOptions) {
 	const url = new URL(options.url);
 	Object.entries(options.qs ?? {})
+		.flatMap(([key, value]) =>
+			(Array.isArray(value) ? value : [value]).map((one): [string, unknown] => [key, one]),
+		)
 		.filter(([, value]) => value !== undefined && value !== null)
 		.forEach(([key, value]) => url.searchParams.append(key, asText(value)));
 	const isJsonBody = options.body !== undefined && typeof options.body !== 'string';
@@ -225,15 +228,18 @@ export async function runAction(
 	}
 }
 
+type MockQueryValue = string | number | boolean;
+
 export interface MockRoute {
 	readonly method?: string;
 	/** The URL path, or its end after the node's base path: `/tasks`. */
 	readonly path: string;
 	/**
 	 * Every listed parameter must match; other parameters may also be present. When more
-	 * routes match, the route with the most listed parameters answers.
+	 * routes match, the route with the most listed parameters answers. An array matches a
+	 * repeated parameter.
 	 */
-	readonly query?: Readonly<Record<string, string | number | boolean>>;
+	readonly query?: Readonly<Record<string, MockQueryValue | readonly MockQueryValue[]>>;
 	/** The route answers at most this many calls, then the next matching route answers. */
 	readonly times?: number;
 	readonly reply: {
@@ -247,7 +253,8 @@ export interface MockCall {
 	readonly method: string;
 	readonly url: string;
 	readonly path: string;
-	readonly query: Record<string, string>;
+	/** A repeated parameter is an array, in order. */
+	readonly query: Record<string, string | string[]>;
 	/** Lower-case names, e.g. `authorization`. */
 	readonly headers: Record<string, string>;
 	/** A JSON body is already parsed. */
@@ -258,6 +265,14 @@ export type MockFetch = typeof fetch & { readonly calls: MockCall[] };
 
 /** More calls than any test needs: the code under test loops. */
 const MAX_MOCK_CALLS = 1000;
+
+const queryOf = (params: URLSearchParams): Record<string, string | string[]> =>
+	Object.fromEntries(
+		[...new Set(params.keys())].map((key) => {
+			const values = params.getAll(key);
+			return [key, values.length === 1 ? (values[0] ?? '') : values];
+		}),
+	);
 
 const routeName = (route: MockRoute) =>
 	`${route.method ?? 'GET'} ${route.path}${route.query ? ` ${JSON.stringify(route.query)}` : ''}`;
@@ -274,7 +289,7 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 			method,
 			url: url.href,
 			path: url.pathname,
-			query: Object.fromEntries(url.searchParams),
+			query: queryOf(url.searchParams),
 			headers: Object.fromEntries(new Headers(init.headers)),
 			body: text && /^\s*[[{]/.test(text) ? JSON.parse(text) : text,
 		};
@@ -292,7 +307,9 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 					url.pathname.endsWith(candidate.path) &&
 					(candidate.times === undefined || (answered.get(candidate) ?? 0) < candidate.times) &&
 					Object.entries(candidate.query ?? {}).every(
-						([key, value]) => call.query[key] === String(value),
+						([key, value]) =>
+							JSON.stringify([call.query[key] ?? []].flat()) ===
+							JSON.stringify([value].flat().map(String)),
 					),
 			)
 			.reduce<MockRoute | undefined>(

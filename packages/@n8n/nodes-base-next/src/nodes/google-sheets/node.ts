@@ -22,6 +22,15 @@ export const googleSheets = defineNode({
 
 export const ROW_NUMBER = 'row_number';
 
+/** `row_number` is the sheet row of an item, so a user column with that name takes this key. */
+export const USER_ROW_NUMBER = 'row_number_1';
+
+/** The key of a header cell. */
+export const columnKey = (cell: unknown) => {
+	const text = cellText(cell);
+	return text === ROW_NUMBER ? USER_ROW_NUMBER : text;
+};
+
 const SPREADSHEET_ID = '[-_a-zA-Z0-9]{25,}';
 
 export const googleSpreadsheet = defineResource({
@@ -41,7 +50,7 @@ export const sheetInput = variant('mode', {
 
 export const cellFormat = oneOf('USER_ENTERED', 'RAW').default('USER_ENTERED');
 
-export const rowValues = json().hint('Header text -> value; keys must equal header cells');
+export const rowValues = json().hint('Header text -> value; a key not in the header adds a column');
 
 /** A row as the read operation emits it. */
 export const sheetRow = obj({ [ROW_NUMBER]: int().hint('Sheet row of this item') }).with({
@@ -168,7 +177,10 @@ export async function updateCells(
 	});
 }
 
-/** Mirrors the legacy default: grow the grid by one row, then write after the last row. */
+/**
+ * Like the legacy `useAppend` option. Google appends after the table it finds from `lastRow`, so
+ * two runs that start together do not write the same row.
+ */
 export async function appendRow(
 	http: Http,
 	spreadsheetId: string,
@@ -177,15 +189,22 @@ export async function appendRow(
 	cells: ReadonlyArray<string | number | boolean>,
 	valueInputOption: Infer<typeof cellFormat>,
 ) {
+	const range = a1(sheet.title, `${lastRow}:${lastRow}`);
 	await http.request({
 		method: 'POST',
-		path: `/${spreadsheetId}:batchUpdate`,
-		body: { requests: [{ appendDimension: { sheetId: sheet.id, dimension: 'ROWS', length: 1 } }] },
+		path: `${valuesPath(spreadsheetId, range)}:append`,
+		query: { valueInputOption, insertDataOption: 'INSERT_ROWS' },
+		body: { range, values: [cells] },
 	});
-	await writeRow(http, spreadsheetId, sheet, lastRow, cells, valueInputOption);
 }
 
-/** The header cells. An empty sheet gets the keys of `values` as its header, like auto-map. */
+const filled = (cell: unknown) => cell !== null && cellText(cell).trim() !== '';
+
+/**
+ * The column keys of the header row. Each key of `values` that the header lacks becomes a new
+ * column, like the legacy auto-map default; an empty sheet gets all keys. An empty header row
+ * above data fails: the keys would label data they do not describe.
+ */
 export async function headerOf(
 	http: Http,
 	spreadsheetId: string,
@@ -194,10 +213,19 @@ export async function headerOf(
 	headerRow: number,
 	values: Record<string, unknown>,
 ): Promise<string[]> {
-	const existing = rows[headerRow - 1];
-	if (existing) return existing.map(String);
-	if (rows.length > 0) throw new Error(`Could not retrieve the column names from row ${headerRow}`);
-	const names = Object.keys(values).filter((key) => key !== ROW_NUMBER);
-	await writeRow(http, spreadsheetId, sheet, headerRow, names, 'RAW');
-	return names;
+	const existing = rows[headerRow - 1] ?? [];
+	if (rows.length > 0 && !existing.some(filled)) {
+		throw new Error(
+			`Header row ${headerRow} is empty. Write the column names in it, or set headerRow`,
+		);
+	}
+	const header = existing.map(columnKey);
+	const added = Object.keys(values).filter((key) => key !== ROW_NUMBER && !header.includes(key));
+	if (added.length === 0) return header;
+	await writeRow(http, spreadsheetId, sheet, headerRow, [...existing.map(toCell), ...added], 'RAW');
+	return [...header, ...added];
 }
+
+/** One cell per column. A repeated header name gets the value in its first column only. */
+export const rowCells = (header: readonly string[], values: Record<string, unknown>) =>
+	header.map((name, column) => (header.indexOf(name) === column ? toCell(values[name]) : ''));
