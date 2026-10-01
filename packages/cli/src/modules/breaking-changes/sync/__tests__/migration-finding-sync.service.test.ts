@@ -534,6 +534,46 @@ describe('MigrationFindingSyncService', () => {
 			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
 		});
 
+		it('leaves the finding of a batch rule as it is, since only a full sync decides it', async () => {
+			ruleRegistry.getRules.mockReturnValue([
+				...rules('rule-a'),
+				{ id: 'rule-batch', collectWorkflowData: vi.fn() } as unknown as IBreakingChangeRule,
+			]);
+			findingRepository.listForWorkflows.mockResolvedValue([
+				row(1, 'rule-batch', 'open'),
+				row(2, 'rule-a', 'open'),
+			]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
+			expect(findingRepository.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('runs overlapping re-checks of one workflow one after the other', async () => {
+			let releaseFirst!: () => void;
+			breakingChangeService.detectWorkflowHits.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						releaseFirst = () => resolve({ hits: [], failedChecks: [] });
+					}),
+			);
+
+			const first = service.syncWorkflow(WORKFLOW_ID);
+			const second = service.syncWorkflow(WORKFLOW_ID);
+			await new Promise(setImmediate);
+
+			// The second re-check has not started while the first one is still detecting.
+			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledTimes(1);
+			expect(txRunner.run).not.toHaveBeenCalled();
+
+			releaseFirst();
+			await Promise.all([first, second]);
+
+			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledTimes(2);
+			expect(txRunner.run).toHaveBeenCalledTimes(2);
+		});
+
 		it('does nothing when there is no report target version', async () => {
 			reportTarget.version = null;
 

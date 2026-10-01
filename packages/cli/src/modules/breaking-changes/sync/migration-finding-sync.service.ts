@@ -33,6 +33,9 @@ export class MigrationFindingSyncService {
 	/** In-flight runs per target version, so concurrent callers share one scan. */
 	private readonly ongoingSyncs = new Map<BreakingChangeVersion, Promise<void>>();
 
+	/** The latest re-check per workflow, so re-checks of one workflow run in save order. */
+	private readonly ongoingWorkflowSyncs = new Map<string, Promise<void>>();
+
 	constructor(
 		private readonly breakingChangeService: BreakingChangeService,
 		private readonly ruleRegistry: RuleRegistry,
@@ -154,6 +157,21 @@ export class MigrationFindingSyncService {
 	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
 	 */
 	async syncWorkflow(workflowId: string): Promise<void> {
+		// Saves of one workflow can overlap. Running their re-checks one after the
+		// other keeps the table on the result of the latest save.
+		const previous = this.ongoingWorkflowSyncs.get(workflowId) ?? Promise.resolve();
+		const run = previous.then(async () => await this.runWorkflowSync(workflowId));
+		this.ongoingWorkflowSyncs.set(workflowId, run);
+		try {
+			await run;
+		} finally {
+			if (this.ongoingWorkflowSyncs.get(workflowId) === run) {
+				this.ongoingWorkflowSyncs.delete(workflowId);
+			}
+		}
+	}
+
+	private async runWorkflowSync(workflowId: string): Promise<void> {
 		const targetVersion = MIGRATION_REPORT_TARGET_VERSION;
 		if (!targetVersion) return;
 
@@ -162,11 +180,17 @@ export class MigrationFindingSyncService {
 				targetVersion,
 				workflowId,
 			);
+			// A batch rule decides from all workflows at once, so only a full sync
+			// may change its rows. Here they are out of scope and stay as they are.
+			const batchRulePairs = this.ruleRegistry
+				.getRules(targetVersion)
+				.filter((rule) => 'collectWorkflowData' in rule)
+				.map((rule) => ({ ruleId: rule.id, workflowId }));
 			await this.syncBatch(
 				targetVersion,
 				[workflowId],
 				groupByWorkflow(hits),
-				groupByWorkflow(failedChecks),
+				groupByWorkflow([...failedChecks, ...batchRulePairs]),
 			);
 		} catch (error) {
 			this.logger.warn('Migration finding sync for one workflow failed', {
