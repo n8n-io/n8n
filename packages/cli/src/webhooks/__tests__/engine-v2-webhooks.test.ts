@@ -73,6 +73,25 @@ describe('EngineV2Webhooks.toRun', () => {
 		expect(run.data.resultData.runData['Last node'][0].startTime).toEqual(expect.any(Number));
 	});
 
+	it('keeps the file reference of an item, so the lastNode answer can send the file', async () => {
+		const binary = {
+			data: {
+				id: 'filesystem-v2:workflows/wf-1/executions/exec-1/binary_data/abc',
+				data: 'filesystem-v2',
+				mimeType: 'image/png',
+				fileName: 'pixel.png',
+			},
+		};
+		const outputs: StepSlots = [[{ json: {}, binary }]];
+
+		const run = await engineV2Webhooks.toRun(
+			{ status: 'completed', lastNode: { nodeName: 'Last node', outputs } },
+			'webhook',
+		);
+
+		expect(run.data.resultData.runData['Last node'][0].data?.main[0]?.[0].binary).toEqual(binary);
+	});
+
 	it('converts a failed outcome', async () => {
 		const run = await engineV2Webhooks.toRun(
 			{

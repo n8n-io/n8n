@@ -13,8 +13,10 @@ import { UUID_V7_PATTERN } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
+import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@n8n/backend-services';
@@ -42,6 +44,7 @@ const getExecution = vi.fn();
 let builder: User;
 let webhookAgent: SuperAgentTest;
 let webhookTestEndpoint: string;
+let responseChannel: InMemoryExecutionResponseChannel;
 
 const webhookNode = (webhookId: string): INode => ({
 	id: randomUUID(),
@@ -72,6 +75,16 @@ beforeAll(async () => {
 	webhookTestEndpoint = Container.get(GlobalConfig).endpoints.webhookTest;
 
 	await Container.get(CacheService).init();
+
+	// A file the run stores must be readable by the control plane, as with a
+	// shared volume, so the test uses a real store in a folder it owns.
+	const testFolder = process.env.N8N_USER_FOLDER;
+	if (!testFolder) throw new Error('N8N_USER_FOLDER is required');
+	const binaryDataConfig = Container.get(BinaryDataConfig);
+	binaryDataConfig.mode = 'filesystem';
+	binaryDataConfig.localStoragePath = path.join(testFolder, '.n8n', 'storage');
+	await Container.get(BinaryDataService).init();
+
 	Container.get(EngineDataPlaneProxyService).registerProvider({
 		startExecution,
 		getExecution,
@@ -80,7 +93,7 @@ beforeAll(async () => {
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
 	// wires the same receiver by hand.
-	const responseChannel = new InMemoryExecutionResponseChannel();
+	responseChannel = new InMemoryExecutionResponseChannel();
 	Container.get(EngineV2WebhookResponseRegistry).useReceiver(
 		new InMemoryExecutionResponseReceiver(responseChannel, Container.get(Logger)),
 	);
@@ -140,6 +153,57 @@ describe('webhook runs on engine v2', () => {
 		// The data plane is the only store for a v2 run.
 		const executions = await getAllExecutions();
 		expect(executions.filter((e) => e.workflowId === workflow.id)).toHaveLength(0);
+	});
+
+	test('answers a lastNode webhook with the file that the run stored', async () => {
+		const webhookId = randomUUID();
+		const trigger = webhookNode(webhookId);
+		trigger.parameters.responseMode = 'lastNode';
+		trigger.parameters.responseData = 'firstEntryBinary';
+		const workflow = await createV2Workflow(trigger);
+		const fileBytes = Buffer.from('the file the run stored');
+
+		// Plays the data plane: the run stores a file under its execution, then
+		// ends with an item that refers to it.
+		startExecution.mockImplementationOnce(async ({ executionId }: { executionId: string }) => {
+			const file = await Container.get(BinaryDataService).store(
+				{ type: 'execution', workflowId: workflow.id, executionId },
+				fileBytes,
+				{ data: '', mimeType: 'text/plain', fileName: 'answer.txt' },
+			);
+			responseChannel.publish(
+				executionId,
+				JSON.stringify({
+					type: 'ended',
+					executionId,
+					workflowId: workflow.id,
+					status: 'completed',
+					lastStep: {
+						nodeId: trigger.id,
+						nodeName: TRIGGER_NAME,
+						status: 'completed',
+						outputs: [[{ json: {}, binary: { data: file } }]],
+					},
+				}),
+			);
+			return { executionId };
+		});
+
+		await startListening(workflow.id);
+
+		const response = await webhookAgent
+			.post(`/${webhookTestEndpoint}/${webhookId}`)
+			.buffer(true)
+			.parse((res, done) => {
+				const chunks: Buffer[] = [];
+				res.on('data', (chunk: Buffer) => chunks.push(chunk));
+				res.on('end', () => done(null, Buffer.concat(chunks)));
+			})
+			.send({ order: 42 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers['content-type']).toContain('text/plain');
+		expect(response.body).toEqual(fileBytes);
 	});
 
 	test('answers 400 with the reason when the response mode is unsupported', async () => {
