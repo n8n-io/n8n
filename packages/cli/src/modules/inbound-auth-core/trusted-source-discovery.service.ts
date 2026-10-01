@@ -99,10 +99,17 @@ export class TrustedSourceDiscoveryService {
 
 		if (authentication.keys.kind === 'local-keystore') {
 			const document = await this.localServer.getMetadata();
+			// The same checks as the remote path: the document must name this issuer and a JWKS.
+			if (document.issuer !== issuer) {
+				throw new OperationalError(
+					`Local server metadata names issuer "${document.issuer}", expected "${issuer}"`,
+				);
+			}
+			if (!document.jwks_uri) throw new OperationalError(`Issuer "${issuer}" has no jwks_uri`);
 			const { keys } = await this.localServer.getJwks();
 			return [
 				{ kind: 'oauth2-authorization-server', fetchedAt, document },
-				{ kind: 'jwks', fetchedAt, url: document.jwks_uri ?? issuer, keys },
+				{ kind: 'jwks', fetchedAt, url: document.jwks_uri, keys },
 			];
 		}
 
