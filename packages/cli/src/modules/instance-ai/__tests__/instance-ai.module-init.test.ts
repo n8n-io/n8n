@@ -12,12 +12,10 @@ import { InstanceAiSetupTelemetryService } from '../instance-ai-setup-telemetry.
 import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
 
-const { loadSuggestionsController, loadSuggestionEventRelay, createSuggestionEventRelay } =
-	vi.hoisted(() => ({
-		loadSuggestionsController: vi.fn(),
-		loadSuggestionEventRelay: vi.fn(),
-		createSuggestionEventRelay: vi.fn(),
-	}));
+const { loadSuggestionEventRelay, createSuggestionEventRelay } = vi.hoisted(() => ({
+	loadSuggestionEventRelay: vi.fn(),
+	createSuggestionEventRelay: vi.fn(),
+}));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
 	InstanceCredentialBroker: vi.fn(),
@@ -42,10 +40,6 @@ vi.mock('../event-bus/interrupted-run-sweeper', () => ({
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
-vi.mock('../workflow-suggestions/workflow-suggestions.controller', () => {
-	loadSuggestionsController();
-	return {};
-});
 vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () => {
 	loadSuggestionEventRelay();
 	@Service()
@@ -58,7 +52,7 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 });
 
 describe('InstanceAiModule.init', () => {
-	it('loads suggestion endpoints and listeners only when workflow suggestions are enabled', async () => {
+	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
 		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
@@ -71,14 +65,12 @@ describe('InstanceAiModule.init', () => {
 
 		await new InstanceAiModule().init();
 
-		expect(loadSuggestionsController).not.toHaveBeenCalled();
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
 
 		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
 
-		expect(loadSuggestionsController).toHaveBeenCalledOnce();
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
 	});

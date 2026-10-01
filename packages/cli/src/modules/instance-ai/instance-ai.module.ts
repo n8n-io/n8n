@@ -32,7 +32,6 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
-			await import('./workflow-suggestions/workflow-suggestions.controller.js');
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);

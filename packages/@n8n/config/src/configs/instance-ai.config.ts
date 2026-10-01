@@ -5,7 +5,7 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
-	/** Load workflow suggestion services and endpoints at startup. */
+	/** Enable workflow suggestion runtime integrations at startup. */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;
 
