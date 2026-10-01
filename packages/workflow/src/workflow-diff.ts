@@ -1,6 +1,7 @@
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 
+import { UnexpectedError } from './errors';
 import type {
 	IConnections,
 	INode,
@@ -27,7 +28,26 @@ export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 
 export const enum NodeDiffStatus {
 	Eq = 'equal',
-	Modified =
+	Modified = 'modified',
+	Added = 'added',
+	Deleted = 'deleted',
+}
+
+export type NodeDiff<T> = {
+	status: NodeDiffStatus;
+	node: T;
+};
+
+export type WorkflowDiff<T> = Map<INode['id'], NodeDiff<T>>;
+
+export function compareNodes<T extends DiffableNode>(
+	base: T | undefined,
+	target: T | undefined,
+): boolean {
+	// All persisted node fields except `position` — moving a node on the canvas
+	// is not a content change. Kept as an allowlist because callers pass UI node
+	// objects that carry ephemeral fields (e.g. `issues`).
+	const propsToCompare = [
 		'name',
 		'type',
 		'typeVersion',
@@ -205,7 +225,7 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 		if (d.status === NodeDiffStatus.Deleted) return false;
 		if (d.status === NodeDiffStatus.Added) continue;
 		const nextNode = next.nodes.find((x) => x.id === d.node.id);
-		if (!nextNode) throw new Error('invariant broken - no next node');
+		if (!nextNode) throw new UnexpectedError('invariant broken - no next node');
 		if (d.status === NodeDiffStatus.Modified && !nodeIsSuperset(d.node, nextNode)) return false;
 	}
 
