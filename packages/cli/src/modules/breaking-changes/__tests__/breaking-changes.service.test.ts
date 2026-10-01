@@ -10,6 +10,7 @@ import type { CacheService } from '@n8n/backend-services';
 import { N8N_VERSION } from '../../../constants';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
+import type { IBreakingChangeRule } from '../types';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
@@ -292,6 +293,70 @@ describe('BreakingChangeService', () => {
 			expect(result).toBeDefined();
 			expect(result?.ruleId).toBe('removed-nodes-v2');
 			expect(result?.affectedWorkflows).toHaveLength(1);
+		});
+	});
+
+	describe('detectWorkflowHits()', () => {
+		const v2Metadata = () => ({ version: 'v2' }) as ReturnType<IBreakingChangeRule['getMetadata']>;
+
+		it('runs only the workflow-level rules and returns the hits of the rules that fire', async () => {
+			const batchRule = {
+				id: 'batch-v2',
+				getMetadata: v2Metadata,
+				collectWorkflowData: vi.fn(),
+				produceReport: vi.fn(),
+				reset: vi.fn(),
+				getRecommendations: vi.fn(),
+			};
+			const instanceRule = { id: 'instance-v2', getMetadata: v2Metadata, detect: vi.fn() };
+			ruleRegistry.registerAll([
+				batchRule as unknown as IBreakingChangeRule,
+				instanceRule as unknown as IBreakingChangeRule,
+			]);
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+			workflowRepository.findOne.mockResolvedValue(workflow as never);
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(workflowRepository.findOne).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: 'wf-1' } }),
+			);
+			expect(result).toEqual({
+				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				failedChecks: [],
+			});
+			expect(batchRule.collectWorkflowData).not.toHaveBeenCalled();
+			expect(instanceRule.detect).not.toHaveBeenCalled();
+		});
+
+		it('reports a throwing rule as a failed check and keeps the hits of the other rules', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(result).toEqual({
+				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				failedChecks: [{ ruleId: throwingRule.id, workflowId: 'wf-1' }],
+			});
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.objectContaining({ extra: { ruleId: throwingRule.id, workflowId: 'wf-1' } }),
+			);
+		});
+
+		it('returns no hits when the workflow no longer exists', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+
+			const result = await service.detectWorkflowHits('v2', 'wf-gone');
+
+			expect(result).toEqual({ hits: [], failedChecks: [] });
 		});
 	});
 });
