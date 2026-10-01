@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
+import type { NodeFilterType } from '@/Interface';
 import {
-	AI_EVALUATION,
-	AI_NODE_CREATOR_VIEW,
-	AI_OTHERS_NODE_CREATOR_VIEW,
-	AI_UNCATEGORIZED_CATEGORY,
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
-	REGULAR_NODE_CREATOR_VIEW,
-	TRIGGER_NODE_CREATOR_VIEW,
+	isNodeCreatorOpenFromConnection,
 } from '@/app/constants';
 import { computed, onMounted, onUnmounted, watch } from 'vue';
 
@@ -20,14 +16,7 @@ import { useDebounce } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';
-import {
-	AINodesView,
-	AIView,
-	HitlToolView,
-	RegularView,
-	TriggerView,
-	type NodeView,
-} from '../../views/viewsData';
+import { NODE_CREATOR_VIEWS } from '../../views/viewsData';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
@@ -38,17 +27,32 @@ import CommunityNodeDocsLink from '@/features/settings/communityNodes/components
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
 const { callDebounced, debounce } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, updateCurrentViewStack, viewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
+const uiStore = useUIStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const { isAdminOrOwner } = useUsersStore();
+
+const isAddingInsideGroup = computed(() => {
+	// Currently the only way to add an item inside group is from connection inside group
+	if (!isNodeCreatorOpenFromConnection(nodeCreatorStore.openSource)) return false;
+
+	const sourceNodeId = uiStore.lastInteractedWithNodeId;
+	return (
+		sourceNodeId !== undefined &&
+		workflowDocumentStore.value.getGroupForNode(sourceNodeId) !== undefined
+	);
+});
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
@@ -166,7 +170,9 @@ function flushPendingSearchOnNavigation(event: KeyboardEvent) {
 }
 
 function onTransitionEnd() {
-	cleanupopeningContext();
+	if (viewStacks.value.length === 0) {
+		cleanupopeningContext();
+	}
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
@@ -191,16 +197,6 @@ onUnmounted(() => {
 watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
-		const views: Record<NodeFilterType, (nodes: SimplifiedNodeType[]) => NodeView> = {
-			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
-			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
-			[AI_NODE_CREATOR_VIEW]: AIView,
-			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
-			[AI_UNCATEGORIZED_CATEGORY]: AINodesView,
-			[AI_EVALUATION]: AINodesView,
-			[HUMAN_IN_THE_LOOP_CATEGORY]: HitlToolView,
-		};
-
 		const additionalOptions: Partial<Record<NodeFilterType, Partial<ViewStack>>> = {
 			// is a root view, but it should behave like a subcategory view
 			[HUMAN_IN_THE_LOOP_CATEGORY]: {
@@ -208,27 +204,15 @@ watch(
 			},
 		};
 
-		const matchedView = views[selectedView];
-
-		if (!matchedView) {
-			console.warn(`No view found for ${selectedView}`);
-			return;
-		}
-		const view = matchedView(mergedNodes);
-		const viewStack: ViewStack = {
-			title: view.title,
-			subtitle: view?.subtitle ?? '',
-			items: view.items as INodeCreateElement[],
-			nodeIcon: view.nodeIcon,
-			info: view.info,
-			hasSearch: true,
-			mode: 'nodes',
-			rootView: selectedView,
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+		const view = NODE_CREATOR_VIEWS[selectedView](mergedNodes);
+		const items = isAddingInsideGroup.value
+			? // Forbid adding groups inside groups (nesting not supported)
+				view.items.filter((item) => item.key !== ADD_EMPTY_GROUP_NODE_CREATOR_ITEM)
+			: view.items;
+		pushViewStack({
+			...viewStack({ ...view, items }, selectedView),
 			...additionalOptions[selectedView],
-		};
-		pushViewStack(viewStack);
+		});
 
 		const pending = nodeCreatorStore.consumePendingInitialViewStack();
 		if (pending) {

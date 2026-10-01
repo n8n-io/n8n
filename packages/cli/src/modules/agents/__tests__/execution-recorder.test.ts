@@ -1,6 +1,6 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { buildToolCallDetails, ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
+import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -50,44 +50,6 @@ describe('ExecutionRecorder', () => {
 			...initial,
 			expect.objectContaining({ type: 'text', content: 'Done' }),
 		]);
-	});
-
-	it('builds full node tool details when the model input is empty', () => {
-		const registry = buildToolRegistry([
-			{
-				name: 'check_ledger',
-				description: 'Read rows from the configured ledger table',
-				metadata: {
-					kind: 'node',
-					nodeType: 'n8n-nodes-base.dataTableTool',
-					nodeTypeVersion: 1.1,
-					displayName: 'Check ledger',
-					nodeParameters: {
-						resource: 'row',
-						operation: 'get',
-						dataTableId: { mode: 'id', value: 'table-1' },
-						returnAll: true,
-					},
-				},
-			} satisfies BuiltTool,
-		]);
-
-		expect(buildToolCallDetails(registry, 'check_ledger', {})).toEqual({
-			toolName: 'check_ledger',
-			displayName: 'Check ledger',
-			kind: 'node',
-			input: {},
-			node: {
-				type: 'n8n-nodes-base.dataTableTool',
-				typeVersion: 1.1,
-				parameters: {
-					resource: 'row',
-					operation: 'get',
-					dataTableId: { mode: 'id', value: 'table-1' },
-					returnAll: true,
-				},
-			},
-		});
 	});
 
 	describe('per-tool execution timing', () => {
@@ -288,6 +250,39 @@ describe('ExecutionRecorder', () => {
 				'tool-call',
 				'tool-call',
 				'text',
+			]);
+		});
+
+		it('keeps committed inputs in order when restored markers repeat', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+			const inputC = {
+				type: 'input',
+				messageId: 'c',
+				timestamp: 2_000,
+			} satisfies TimelineEvent;
+			const inputD = {
+				type: 'input',
+				messageId: 'd',
+				timestamp: 3_000,
+			} satisfies TimelineEvent;
+
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Before C' });
+			vi.setSystemTime(2_000);
+			recorder.recordInputs([inputC]);
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'After C' });
+			vi.setSystemTime(3_000);
+			recorder.recordInputs([structuredClone(inputC), inputD]);
+			recorder.record({ type: 'text-delta', id: 't3', delta: 'After D' });
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+
+			expect(recorder.getMessageRecord().timeline).toEqual([
+				{ type: 'text', content: 'Before C', timestamp: 1_000, endTime: 2_000 },
+				inputC,
+				{ type: 'text', content: 'After C', timestamp: 2_000, endTime: 3_000 },
+				inputD,
+				{ type: 'text', content: 'After D', timestamp: 3_000, endTime: 3_000 },
 			]);
 		});
 

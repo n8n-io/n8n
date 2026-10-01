@@ -14,7 +14,12 @@ import type { ClientOptions } from 'openai';
 import { mergeCustomHeaders } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -250,6 +255,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 		if (options.baseURL) {

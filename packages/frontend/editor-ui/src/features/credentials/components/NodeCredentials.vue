@@ -45,6 +45,7 @@ import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
@@ -55,6 +56,7 @@ import {
 } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import { useCredentialSharing } from '../composables/useCredentialSharing';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SYSTEM_RESOLVER_ID,
@@ -90,9 +92,10 @@ type Props = {
 	 *  instead of reading as a list to choose from. Existing credentials stay
 	 *  selectable — the user may change their mind once they see them. */
 	preferNewCredential?: boolean;
-	/** Workflow this credential slot belongs to, for telemetry attribution. Standalone
-	 *  hosts (Instance AI setup card) must pass it — they render without a provided
-	 *  workflow document; other hosts fall back to the injected document. */
+	/** Workflow this credential slot belongs to. Scopes the usable-credentials fetch
+	 *  and telemetry attribution. Standalone hosts (Instance AI setup card) must pass
+	 *  it — they render without a provided workflow document; other hosts fall back
+	 *  to the injected document. */
 	workflowId?: string;
 	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
 	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
@@ -155,7 +158,7 @@ const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 const N8N_CREDITS_LABEL = i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
 
 const instanceAiCapability = useInstanceAiEditorCapability();
-const { instanceAi } = useEditorContext();
+const { instanceAi, readOnly } = useEditorContext();
 const isToolContext = inject(ChatHubToolContextKey, false);
 
 // The host's credential-help behavior, handed to the (teleported) credential
@@ -255,6 +258,8 @@ const {
 	() => props.showAll,
 	() => props.credentials,
 );
+
+const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
 
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
@@ -419,7 +424,7 @@ let hasEvaluatedCredentials = false;
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
-		if (props.skipAutoSelect) return;
+		if (props.skipAutoSelect || props.readonly || readOnly.value) return;
 		if (types.length === 0) return;
 		// Before the scoped fetch lands there are no options to pick from, which would
 		// read as "no credentials exist" and auto-enable the AI Gateway below. The
@@ -1055,6 +1060,90 @@ function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
+/**
+ * One rendered line of the credential dropdown: a group heading or a
+ * credential. Headings are rows rather than `ElOptionGroup`, which collects
+ * its children once on mount and so renders nothing for a list that arrives
+ * from a fetch.
+ */
+type CredentialRow =
+	| { kind: 'header'; key: string; label: string }
+	| { kind: 'option'; key: string; option: CredentialDropdownOption };
+
+const YOURS_GROUP_KEY = '__credential-group-yours';
+const SHARED_GROUP_KEY = '__credential-group-shared';
+
+/** The project the workflow being edited lives in, for the group heading. */
+const pickerHomeProject = computed(
+	() =>
+		workflowDocumentStore?.value.homeProject ??
+		projectsStore.currentProject ??
+		projectsStore.personalProject,
+);
+
+/** Only when we positively know it, so an unresolved project never claims "everyone". */
+const isPersonalSpace = computed(() => pickerHomeProject.value?.type === ProjectTypes.Personal);
+
+/**
+ * Heading for the credentials the workflow reaches through its project. In a
+ * team project it names the project, because that is what "shared here" means
+ * to the reader. In a personal space only global credentials land here, so it
+ * says who else has them.
+ */
+const sharedGroupLabel = computed(() => {
+	if (isPersonalSpace.value) return i18n.baseText('nodeCredentials.group.availableToEveryone');
+
+	const projectName = pickerHomeProject.value?.name;
+	return projectName
+		? i18n.baseText('nodeCredentials.group.availableInProject', {
+				interpolate: { project: projectName },
+			})
+		: i18n.baseText('nodeCredentials.group.availableInThisProject');
+});
+
+/**
+ * The dropdown lines for one credential type, type-ahead filter already
+ * applied. Two groups, yours first because that is the one people reach for:
+ * what only you can use here, then what the project carries for everyone in
+ * it. Filtering before grouping is what keeps a heading from surviving its
+ * last option.
+ */
+function buildCredentialRows(options: CredentialDropdownOption[]): CredentialRow[] {
+	const visible = options.filter((option) => matches(filter.value, option.name));
+	const toRow = (option: CredentialDropdownOption): CredentialRow => ({
+		kind: 'option',
+		key: option.id,
+		option,
+	});
+
+	if (!isCredentialSharingEnabled.value) return visible.map(toRow);
+
+	// Yours either because it travels with you into this project, or because
+	// this is your own space and the credential is not published instance-wide.
+	const isYours = (option: CredentialDropdownOption) =>
+		option.sharedRoute === 'personal' || (isPersonalSpace.value && !option.isGlobal);
+
+	const yours = visible.filter(isYours);
+	const shared = visible.filter((option) => !isYours(option));
+	const rows: CredentialRow[] = [];
+
+	if (yours.length > 0) {
+		rows.push({
+			kind: 'header',
+			key: YOURS_GROUP_KEY,
+			label: i18n.baseText('nodeCredentials.group.availableToYou'),
+		});
+		rows.push(...yours.map(toRow));
+	}
+
+	if (shared.length > 0) {
+		rows.push({ kind: 'header', key: SHARED_GROUP_KEY, label: sharedGroupLabel.value });
+		rows.push(...shared.map(toRow));
+	}
+
+	return rows;
+}
+
 // The n8n credits option's value is UI-only select state: selecting it routes
 // to the managed-slot path, which owns the persisted
 // `{ id: null, name: '', __aiGatewayManaged: true }` shape.
@@ -1380,6 +1469,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:filter-method="setFilter"
 							:popper-class="$style.selectPopper"
 							:class="{
+								[$style.selectWithIcon]: !!selectedCredentialIcon(type.name),
 								[$style.selectWithDynamic]: isCredentialResolvable(type.name),
 								[$style.selectWithBalance]: showBalanceIndicator(type.name),
 							}"
@@ -1421,52 +1511,63 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									/>
 								</div>
 							</N8nOption>
-							<N8nOption
-								v-for="item in options.filter((o) => matches(filter, o.name))"
-								:key="item.id"
-								:data-test-id="`node-credentials-select-item-${item.id}`"
-								:label="item.name"
-								:value="item.id"
-							>
-								<div :class="$style.credentialOption">
-									<N8nIcon
-										:icon="item.isResolvable ? 'user-round' : 'key-round'"
-										size="large"
-										:class="$style.optionIcon"
-									/>
-									<div :class="$style.credentialOptionName">
-										<N8nText :class="$style.optionName">{{ item.name }}</N8nText>
-										<N8nTooltip
-											v-if="isPrivateCredentialsEnabled && item.isResolvable"
-											placement="top"
-										>
-											<template #content>{{
-												i18n.baseText('credentials.private.tooltip')
-											}}</template>
-											<N8nIcon
-												icon="user-round-key"
-												size="small"
-												data-test-id="credential-option-private-badge"
-											/>
-										</N8nTooltip>
+							<template v-for="row in buildCredentialRows(options)" :key="row.key">
+								<N8nOption
+									v-if="row.kind === 'header'"
+									:data-test-id="`node-credentials-select-group-${row.key}`"
+									:class="$style.credentialGroupHeader"
+									:label="row.label"
+									:value="row.key"
+									disabled
+								>
+									<N8nText size="small" color="text-light" bold>{{ row.label }}</N8nText>
+								</N8nOption>
+								<N8nOption
+									v-else
+									:data-test-id="`node-credentials-select-item-${row.option.id}`"
+									:label="row.option.name"
+									:value="row.option.id"
+								>
+									<div :class="$style.credentialOption">
+										<N8nIcon
+											:icon="row.option.isResolvable ? 'user-round' : 'key-round'"
+											size="large"
+											:class="$style.optionIcon"
+										/>
+										<div :class="$style.credentialOptionName">
+											<N8nText :class="$style.optionName">{{ row.option.name }}</N8nText>
+											<N8nTooltip
+												v-if="isPrivateCredentialsEnabled && row.option.isResolvable"
+												placement="top"
+											>
+												<template #content>{{
+													i18n.baseText('credentials.private.tooltip')
+												}}</template>
+												<N8nIcon
+													icon="user-round-key"
+													size="small"
+													data-test-id="credential-option-private-badge"
+												/>
+											</N8nTooltip>
+										</div>
+										<N8nText size="small" color="text-light" :class="$style.optionMeta">
+											{{
+												row.option.isResolvable
+													? i18n.baseText(
+															'credentialEdit.credentialConfig.credentialType.endUser.title',
+														)
+													: row.option.typeDisplayName
+											}}
+										</N8nText>
+										<N8nIcon
+											v-if="getSelectedId(type) === row.option.id"
+											icon="check"
+											size="large"
+											:class="$style.checkIcon"
+										/>
 									</div>
-									<N8nText size="small" color="text-light" :class="$style.optionMeta">
-										{{
-											item.isResolvable
-												? i18n.baseText(
-														'credentialEdit.credentialConfig.credentialType.endUser.title',
-													)
-												: item.typeDisplayName
-										}}
-									</N8nText>
-									<N8nIcon
-										v-if="getSelectedId(type) === item.id"
-										icon="check"
-										size="large"
-										:class="$style.checkIcon"
-									/>
-								</div>
-							</N8nOption>
+								</N8nOption>
+							</template>
 							<template #empty> </template>
 							<template #footer>
 								<button
@@ -1676,7 +1777,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		left: var(--credential-select-side-padding);
 	}
 
-	:global(.el-select .el-input.el-input--prefix .el-input__inner) {
+	// Element Plus does not update `el-input--prefix` when the prefix slot
+	// appears or disappears after mount, so key the padding on our own class.
+	:global(.el-select .el-input .el-input__inner) {
+		padding-left: var(--credential-select-side-padding);
+	}
+
+	.selectWithIcon :global(.el-select .el-input .el-input__inner) {
 		padding-left: var(--credential-select-label-padding);
 	}
 }
@@ -1731,6 +1838,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	width: 100%;
+}
+
+/* A heading, not a choice. Disabled so it cannot be picked or arrowed onto,
+   which otherwise reads as "not allowed" rather than "not a choice". */
+.credentialGroupHeader {
+	cursor: default;
+	padding-top: var(--spacing--2xs);
 }
 
 .checkIcon {

@@ -11,7 +11,7 @@ import {
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 export type ShareWorkflowOptions =
 	| { scopes: Scope[]; projectId?: string }

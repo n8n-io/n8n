@@ -1,31 +1,22 @@
 import type { StepSlots } from '@n8n/engine';
-import type { EngineConfig } from '@n8n/config';
 import type { INode, WebhookResponseMode } from 'n8n-workflow';
-import { UserError, WorkflowOperationError } from 'n8n-workflow';
+import { WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import type { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2Webhooks } from '@/webhooks/engine-v2-webhooks';
 
 const engineV2Webhooks = new EngineV2Webhooks(
 	mock<EngineV2Dispatcher>(),
-	mock<EngineV2PayloadGuard>(),
 	mock<EngineDataPlaneProxyService>(),
-	mock<EngineConfig>(),
 );
 
 describe('EngineV2Webhooks.assertSupported', () => {
-	const assertSupported = (mode: EngineConfig['mode'], responseMode: WebhookResponseMode) => {
+	const assertSupported = (responseMode: WebhookResponseMode) => {
 		const proxy = mock<EngineDataPlaneProxyService>();
 		proxy.isAvailable.mockReturnValue(true);
-		const webhooks = new EngineV2Webhooks(
-			mock<EngineV2Dispatcher>(),
-			mock<EngineV2PayloadGuard>(),
-			proxy,
-			mock<EngineConfig>({ mode }),
-		);
+		const webhooks = new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy);
 
 		webhooks.assertSupported({
 			workflowStartNode: mock<INode>({
@@ -38,21 +29,14 @@ describe('EngineV2Webhooks.assertSupported', () => {
 		});
 	};
 
-	it.each(['lastNode', 'responseNode'] as const)(
-		'rejects %s responses with a remote data plane',
+	// The engine mode no longer reaches this check, so these modes pass with a
+	// remote data plane and in-process alike.
+	it.each(['onReceived', 'lastNode', 'responseNode'] as const)(
+		'allows %s responses in every engine mode',
 		(responseMode) => {
-			expect(() => assertSupported('remote', responseMode)).toThrow(UserError);
-			expect(() => assertSupported('remote', responseMode)).toThrow('remote data plane');
+			expect(() => assertSupported(responseMode)).not.toThrow();
 		},
 	);
-
-	it('allows onReceived with a remote data plane', () => {
-		expect(() => assertSupported('remote', 'onReceived')).not.toThrow();
-	});
-
-	it.each(['lastNode', 'responseNode'] as const)('allows %s in-process', (responseMode) => {
-		expect(() => assertSupported('in-process', responseMode)).not.toThrow();
-	});
 });
 
 describe('EngineV2Webhooks.toRun', () => {

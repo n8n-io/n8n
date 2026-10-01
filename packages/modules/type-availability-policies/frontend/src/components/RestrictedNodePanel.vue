@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import { describeNodeTypeRestriction } from '../composables/useNodeTypeRestriction';
 
 const {
 	nodeTypeName,
@@ -18,27 +19,13 @@ const {
 
 const emit = defineEmits<{ replaceNode: [] }>();
 
-const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.description.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.description.project',
-};
-
 const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
 
-// The next step is interpolated into the description, so each locale controls the sentence order.
-const description = computed(() => {
-	const nextStep = i18n.baseText(
-		showReplace
-			? 'typeAvailabilityPolicies.restrictedNode.nextStep.replace'
-			: 'typeAvailabilityPolicies.restrictedNode.nextStep.contact',
-	);
-	return i18n.baseText(
-		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
-		{ interpolate: { nodeType: nodeTypeName, nextStep } },
-	);
-});
+const description = computed(() =>
+	describeNodeTypeRestriction(nodeTypeName, scope, showReplace ? 'replace' : 'contact'),
+);
 </script>
 
 <template>

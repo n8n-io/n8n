@@ -2,7 +2,7 @@ import type { PolicedWorkflow, PolicyDecision, PolicyViolation } from '@n8n/deco
 import { UnexpectedError } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { PolicyEnforcementBackend } from '../policy-enforcement-backend';
+import type { PolicyActor, PolicyEnforcementBackend } from '../policy-enforcement-backend';
 import { PolicyEnforcementService } from '../policy-enforcement.service';
 import { PolicyViolationError } from '../policy-violation.error';
 
@@ -19,39 +19,60 @@ const cleared: PolicyDecision = { violations: [] };
 /** One call per point, so a new point can't be left out of the no-op guarantee. */
 const enforceCalls = (service: PolicyEnforcementService) => ({
 	workflowSave: async () =>
-		await service.enforceWorkflowSave({
-			workflow: savedWorkflow,
-			storedWorkflow: null,
-			projectId: 'proj-1',
-		}),
+		await service.enforceWorkflowSave(
+			{
+				workflow: savedWorkflow,
+				storedWorkflow: null,
+				projectId: 'proj-1',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 	workflowPublish: async () =>
-		await service.enforceWorkflowPublish({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.enforceWorkflowPublish(
+			{ workflow: savedWorkflow, projectId: 'proj-1' },
+			{ kind: 'system', reason: 'execution' },
+		),
 	workflowStart: async () =>
-		await service.enforceWorkflowStart({ workflow: savedWorkflow, projectId: 'proj-1' }),
+		await service.enforceWorkflowStart(
+			{ workflow: savedWorkflow, projectId: 'proj-1' },
+			{ kind: 'system', reason: 'execution' },
+		),
 	workflowTransfer: async () =>
-		await service.enforceWorkflowTransfer({
-			workflow: savedWorkflow,
-			targetProjectId: 'proj-2',
-		}),
+		await service.enforceWorkflowTransfer(
+			{
+				workflow: savedWorkflow,
+				targetProjectId: 'proj-2',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 	credentialSave: async () =>
-		await service.enforceCredentialSave({
-			credential: { id: null, type: 'slackApi' },
-			storedCredential: null,
-			projectId: 'proj-1',
-		}),
+		await service.enforceCredentialSave(
+			{
+				credential: { id: null, type: 'slackApi' },
+				storedCredential: null,
+				projectId: 'proj-1',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 	credentialDecrypt: async () =>
-		await service.enforceCredentialDecrypt({
-			credentialType: 'slackApi',
-			credentialId: 'cred-1',
-			consumer: null,
-			projectId: 'proj-1',
-		}),
+		await service.enforceCredentialDecrypt(
+			{
+				credentialType: 'slackApi',
+				credentialId: 'cred-1',
+				consumer: null,
+				projectId: 'proj-1',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 	contentImport: async () =>
-		await service.enforceContentImport({
-			workflow: savedWorkflow,
-			projectId: 'proj-1',
-			transport: 'cli',
-		}),
+		await service.enforceContentImport(
+			{
+				workflow: savedWorkflow,
+				projectId: 'proj-1',
+				transport: 'cli',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 });
 
 const evaluateCalls = (service: PolicyEnforcementService) => ({
@@ -166,14 +187,17 @@ describe('PolicyEnforcementService', () => {
 			backend.enforce.mockResolvedValue({ violations: [violation, second] });
 
 			const error = await service
-				.enforceWorkflowSave({ workflow: savedWorkflow, storedWorkflow: null, projectId: null })
+				.enforceWorkflowSave(
+					{ workflow: savedWorkflow, storedWorkflow: null, projectId: null },
+					{ kind: 'system', reason: 'execution' },
+				)
 				.catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(PolicyViolationError);
 			expect((error as PolicyViolationError).violations).toEqual([violation, second]);
 		});
 
-		it('passes the point and context through and mints the decision it got back', async () => {
+		it('passes the point, context and actor through and mints the decision it got back', async () => {
 			const decision: PolicyDecision = {
 				violations: [],
 				policyVersions: [{ scope: 'instance', version: 7 }],
@@ -181,9 +205,11 @@ describe('PolicyEnforcementService', () => {
 			backend.enforce.mockResolvedValue(decision);
 			const context = { workflow: savedWorkflow, storedWorkflow: null, projectId: 'proj-1' };
 
-			const token = await service.enforceWorkflowSave(context);
+			const actor: PolicyActor = { kind: 'user', user: { id: 'user-1' } };
 
-			expect(backend.enforce).toHaveBeenCalledWith('workflowSave', context);
+			const token = await service.enforceWorkflowSave(context, actor);
+
+			expect(backend.enforce).toHaveBeenCalledWith('workflowSave', context, actor);
 			expect(token.decision).toBe(decision);
 			expect(token.policyVersions).toEqual([{ scope: 'instance', version: 7 }]);
 		});
@@ -205,10 +231,13 @@ describe('PolicyEnforcementService', () => {
 		const service = new PolicyEnforcementService();
 
 		it('binds a saved workflow to its id', async () => {
-			const token = await service.enforceWorkflowStart({
-				workflow: savedWorkflow,
-				projectId: null,
-			});
+			const token = await service.enforceWorkflowStart(
+				{
+					workflow: savedWorkflow,
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
 
 			expect(token.subject).toEqual({ type: 'workflow', id: 'wf-1' });
 		});
@@ -216,11 +245,14 @@ describe('PolicyEnforcementService', () => {
 		it('binds an unsaved workflow to a hash of its nodes', async () => {
 			const unsaved: PolicedWorkflow = { id: null, name: 'New', nodes: [] };
 
-			const token = await service.enforceWorkflowSave({
-				workflow: unsaved,
-				storedWorkflow: null,
-				projectId: null,
-			});
+			const token = await service.enforceWorkflowSave(
+				{
+					workflow: unsaved,
+					storedWorkflow: null,
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
 
 			expect(token.subject.type).toBe('workflow');
 			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
@@ -231,11 +263,14 @@ describe('PolicyEnforcementService', () => {
 		it('binds a create with a supplied id to a hash of its nodes', async () => {
 			const withClientId: PolicedWorkflow = { id: 'wf-client', name: 'New', nodes: [] };
 
-			const token = await service.enforceWorkflowSave({
-				workflow: withClientId,
-				storedWorkflow: null,
-				projectId: null,
-			});
+			const token = await service.enforceWorkflowSave(
+				{
+					workflow: withClientId,
+					storedWorkflow: null,
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
 
 			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
 			expect(token.subject.id).not.toBe('wf-client');
@@ -243,11 +278,14 @@ describe('PolicyEnforcementService', () => {
 
 		it('gives two unsaved workflows with different nodes different subjects', async () => {
 			const enforce = async (nodes: PolicedWorkflow['nodes']) =>
-				await service.enforceWorkflowSave({
-					workflow: { id: null, name: 'New', nodes },
-					storedWorkflow: null,
-					projectId: null,
-				});
+				await service.enforceWorkflowSave(
+					{
+						workflow: { id: null, name: 'New', nodes },
+						storedWorkflow: null,
+						projectId: null,
+					},
+					{ kind: 'system', reason: 'execution' },
+				);
 
 			const empty = await enforce([]);
 			const withNode = await enforce([mock<PolicedWorkflow['nodes'][number]>({ type: 'slack' })]);
@@ -256,33 +294,42 @@ describe('PolicyEnforcementService', () => {
 		});
 
 		it('binds a credential create to a hash of its type', async () => {
-			const token = await service.enforceCredentialSave({
-				credential: { id: null, type: 'slackApi' },
-				storedCredential: null,
-				projectId: null,
-			});
+			const token = await service.enforceCredentialSave(
+				{
+					credential: { id: null, type: 'slackApi' },
+					storedCredential: null,
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
 
 			expect(token.subject.type).toBe('credential');
 			expect(token.subject.id).toMatch(/^[0-9a-f]{64}$/);
 		});
 
 		it('binds a credential update to the row id', async () => {
-			const token = await service.enforceCredentialSave({
-				credential: { id: 'cred-1', type: 'slackApi' },
-				storedCredential: { id: 'cred-1', type: 'slackApi' },
-				projectId: null,
-			});
+			const token = await service.enforceCredentialSave(
+				{
+					credential: { id: 'cred-1', type: 'slackApi' },
+					storedCredential: { id: 'cred-1', type: 'slackApi' },
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
 
 			expect(token.subject).toEqual({ type: 'credential', id: 'cred-1' });
 		});
 
 		it('binds a credential decrypt to the credential', async () => {
-			const token = await service.enforceCredentialDecrypt({
-				credentialType: 'slackApi',
-				credentialId: 'cred-1',
-				consumer: { nodeType: 'n8n-nodes-base.slack' },
-				projectId: null,
-			});
+			const token = await service.enforceCredentialDecrypt(
+				{
+					credentialType: 'slackApi',
+					credentialId: 'cred-1',
+					consumer: { nodeType: 'n8n-nodes-base.slack' },
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'execution' },
+			);
 
 			expect(token.subject).toEqual({ type: 'credential', id: 'cred-1' });
 		});

@@ -434,11 +434,11 @@ onUnmounted(() => {
 <style lang="scss" module>
 .content {
 	--review-tab-bar--height: var(--height--sm);
-	--review-tab-bar--indicator-overhang: 11px;
+	--review-tab-bar--indicator-overhang: 15px;
 	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 
 	--review-callout--max-width: 34rem;
-	--review-activity--max-width: 48rem;
+	--review-activity--max-width: 45rem;
 
 	display: flex;
 	width: 100%;

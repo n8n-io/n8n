@@ -67,7 +67,7 @@ describe('Instance AI prompt version requests', () => {
 		}
 	});
 
-	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+	it('accepts a thread artifact index, including an empty one, and rejects an oversized list', () => {
 		const base = { message: 'Change this', timeZone: 'UTC' };
 		expect(
 			InstanceAiSendMessageRequest.safeParse({
@@ -83,7 +83,7 @@ describe('Instance AI prompt version requests', () => {
 				...base,
 				threadArtifacts: { artifacts: [] },
 			}).success,
-		).toBe(false);
+		).toBe(true);
 		expect(
 			InstanceAiSendMessageRequest.safeParse({
 				...base,
@@ -391,6 +391,8 @@ describe('applyBranchReadOnlyOverrides', () => {
 		// These should remain unchanged (safe for read-only instances)
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
+		expect(result.mcpRead).toBe('always_allow');
+		expect(result.mcpWrite).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
 		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
@@ -450,6 +452,8 @@ describe('resolveInstanceAiPermissions', () => {
 		expect(result.createWorkflow).toBe('always_allow');
 		expect(result.deleteWorkflow).toBe('require_approval');
 		expect(result.executeNode).toBe('require_approval');
+		expect(result.mcpRead).toBe('always_allow');
+		expect(result.mcpWrite).toBe('require_approval');
 	});
 
 	it('should carry a blocked runWorkflow over to executeNode', () => {
@@ -649,6 +653,24 @@ describe('isDisplayableConfirmationRequest', () => {
 				makeConfirmation({
 					message: '',
 					channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+				}),
+			),
+		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					testListener: {
+						workflowId: 'wf-1',
+						triggers: [
+							{
+								nodeName: 'Webhook',
+								url: 'http://localhost:5678/webhook-test/abc',
+								method: 'POST',
+							},
+						],
+						deadlineAt: '2026-01-01T00:10:00.000Z',
+					},
 				}),
 			),
 		).toBe(true);

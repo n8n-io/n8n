@@ -1,7 +1,7 @@
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 @Service()
 export class AgentPushRecipientsService {

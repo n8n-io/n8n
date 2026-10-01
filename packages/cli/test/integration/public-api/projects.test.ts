@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getProjectByNameOrFail,
@@ -18,7 +19,6 @@ import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Telemetry } from '@/telemetry';
 import {

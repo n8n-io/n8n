@@ -339,7 +339,11 @@ describe('ThinkingBlock', () => {
 		const { getByTestId, getAllByText, getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
-				entries: [reasoning('deep thoughts'), text('Checking credentials now.'), toolEntry('tc-1')],
+				entries: [
+					reasoning('Deep thoughts. More detail.'),
+					text('Checking credentials now.'),
+					toolEntry('tc-1'),
+				],
 				active: true,
 			},
 		});
@@ -348,8 +352,23 @@ describe('ThinkingBlock', () => {
 
 		// Appears twice: as the header status line and as the narration paragraph
 		expect(getAllByText('Checking credentials now.')).toHaveLength(2);
-		// Reasoning rows are labeled with their own first sentence
-		expect(getByText('deep thoughts')).toBeInTheDocument();
+		// Reasoning shows in full, not behind a second toggle
+		expect(getByText('Deep thoughts. More detail.')).toBeVisible();
+	});
+
+	it('should show the full reasoning on the first expand when it is the header line', async () => {
+		const { getByTestId, getByText, queryByRole } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('\n\nThis sounds like a mapping request. So I look it up.')],
+				active: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('thinking-block-header'));
+
+		expect(getByText('This sounds like a mapping request. So I look it up.')).toBeVisible();
+		expect(queryByRole('button', { name: /This sounds like/, expanded: false })).toBeNull();
 	});
 });
 

@@ -76,6 +76,7 @@ import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
+import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
@@ -561,6 +562,7 @@ async function handleSubmit(
 	responseStartedAtEpochMs?: number,
 	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -601,7 +603,8 @@ async function handleSubmit(
 		attachments,
 		pushRef: rootStore.pushRef,
 		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-		...(mentionCounts.mentionCount > 0 ? { mentionCounts } : {}),
+		...(mentionCounts.total > 0 ? { mentionCounts } : {}),
+		...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
 	});
 	if (!sent) {
 		isStartingThread.value = false;
@@ -676,6 +679,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
@@ -716,6 +720,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							@dismiss="creditBanner.dismiss()"
 						/>
 						<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+						<LimitedModeNotice />
 						<InstanceAiInput
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
@@ -759,6 +764,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+					<LimitedModeNotice />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"

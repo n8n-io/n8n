@@ -28,6 +28,7 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
+	isCredentialAgentIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -43,8 +44,7 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { ConflictError, LockedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -456,7 +456,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			listChatIntegrationTypes: () =>
@@ -513,7 +516,10 @@ export class AgentsBuilderToolsService {
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
 				return (agent?.integrations ?? [])
-					.filter((integration) => !isDraftIntegration(integration))
+					.filter(
+						(integration) =>
+							isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					)
 					.map((integration) => integration.credentialId);
 			},
 			track,
@@ -1348,6 +1354,22 @@ export class AgentsBuilderToolsService {
 				code: 'agent_misconfigured',
 				message: "This agent isn't ready to run yet. Finish configuring it and try again.",
 				missing: result.missing,
+			};
+		}
+		// A run that stopped on the iteration cap did not finish its work. Without
+		// this the builder reads `completed` plus apologetic prose and retries.
+		if (result.status === 'completed' && result.maxIterations) {
+			return {
+				status: 'error',
+				code: 'max_iterations',
+				message:
+					'The agent stopped on its iteration cap before it answered. It did not complete the task. ' +
+					'A repeat of the same test gives the same result. Common causes: a tool that returns too much data, ' +
+					'so the agent re-queries it; instructions that loop; or a task that needs more steps than the cap allows. ' +
+					'Report this to the user and ask before you change the agent.',
+				sessionId: result.sessionId,
+				response: result.response,
+				...(result.executionId ? { executionId: result.executionId } : {}),
 			};
 		}
 		if (result.status === 'completed') return result;

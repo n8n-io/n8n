@@ -1,4 +1,9 @@
-import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	isAttachmentValidationError,
+	type AgentMessage,
+	type StreamChunk,
+} from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -14,7 +19,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -23,6 +28,7 @@ import type {
 	QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
@@ -139,7 +145,7 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
 			memory: { threadId: InternalThread; resourceId: string };
 		},
-	): AsyncGenerator<StreamChunk>;
+	): AsyncGenerator<AgentExecutionStreamChunk>;
 
 	/** An open approval prevents automatic session rotation. */
 	findOpenSuspension?(config: {
@@ -246,6 +252,7 @@ export class AgentChatBridge {
 		const actionToolNamePattern = new RegExp(`^${integration.type}(_\\d+)?_action$`);
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
+			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
@@ -504,7 +511,7 @@ export class AgentChatBridge {
 
 	async deliverWakeResponse(
 		threadId: string,
-		chunks: StreamChunk[],
+		chunks: AgentExecutionStreamChunk[],
 		cardRecipientId?: string,
 	): Promise<void> {
 		await this.streamConsumer.consume(
@@ -517,6 +524,42 @@ export class AgentChatBridge {
 				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
 			},
 		);
+	}
+
+	async deliverBackgroundApproval(
+		threadId: string,
+		{
+			jobId,
+			title,
+			token,
+			toolCall,
+		}: {
+			jobId: string;
+			title: string;
+			token: string;
+			toolCall: Extract<StreamChunk, { type: 'tool-call-suspended' }>;
+		},
+	): Promise<void> {
+		const payload = buildSuspendCardPayload(toolCall.suspendPayload);
+		if (!payload) throw new UserError('This background approval cannot be displayed');
+		const card = await this.componentMapper.toCard(
+			{ ...payload, title: `${title}: Approval required` },
+			toolCall.runId,
+			toolCall.toolCallId,
+			toolCall.resumeSchema,
+			async (_actionId, value) => {
+				const response = APPROVAL_RESUME_SCHEMA.safeParse(JSON.parse(value));
+				if (!response.success) {
+					throw new UserError('Invalid background approval response');
+				}
+				let decision = response.data.approved ? '1' : '0';
+				if (response.data.approved && response.data.scope === 'session') decision = 's';
+				// The durable checkpoint resolves this 64-byte callback after a restart.
+				return { id: `bg:${jobId}:${token}:${decision}`, value: '' };
+			},
+			this.integration.type,
+		);
+		await this.chat.thread(threadId).post({ card });
 	}
 
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
@@ -539,7 +582,10 @@ export class AgentChatBridge {
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
 		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
+		const idleTimeoutMinutes =
+			'settings' in this.integration
+				? (this.integration.settings?.sessionIdleTimeoutMinutes ?? null)
+				: null;
 		const id = await this.withSessionLock(
 			baseId,
 			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
@@ -771,6 +817,7 @@ export class AgentChatBridge {
 				isNewMention,
 				platformAgentContext,
 			}) ?? 'required';
+		let accepted = false;
 		try {
 			const [context, subject] = await Promise.all([
 				this.resolveBridgeExecutionContext(
@@ -793,7 +840,7 @@ export class AgentChatBridge {
 			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
-			await this.messageQueue.enqueue({
+			const result = await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				threadId: session.memory.threadId.id,
@@ -818,9 +865,11 @@ export class AgentChatBridge {
 					slackThreadContext: context.slackThreadContext,
 				},
 			});
-		} catch (error) {
-			await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			throw error;
+			accepted = result.status === 'accepted';
+		} finally {
+			if (!accepted) {
+				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			}
 		}
 	}
 

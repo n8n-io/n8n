@@ -183,13 +183,13 @@ describe('ProjectMoveResourceModal', () => {
 					id: '1',
 					name: 'PG Credential',
 					credentialType: 'postgres',
-					currentUserHasAccess: true,
+					currentUserCanUse: true,
 				},
 				{
 					id: '2',
 					name: 'Notion Credential',
 					credentialType: 'notion',
-					currentUserHasAccess: true,
+					currentUserCanUse: true,
 				},
 			],
 		};

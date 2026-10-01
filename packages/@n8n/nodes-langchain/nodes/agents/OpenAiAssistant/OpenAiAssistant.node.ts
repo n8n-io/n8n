@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { aiClientFetch } from '@n8n/ai-utilities';
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
@@ -41,7 +42,7 @@ export class OpenAiAssistant implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.openaiassistant/',
+						url: 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/assistant-operations',
 					},
 				],
 			},
@@ -355,6 +356,7 @@ export class OpenAiAssistant implements INodeType {
 				}
 
 				const client = new OpenAIClient({
+					fetch: aiClientFetch,
 					apiKey: credentials.apiKey as string,
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,

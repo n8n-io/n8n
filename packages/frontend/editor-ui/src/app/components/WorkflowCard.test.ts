@@ -972,7 +972,7 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp')).not.toBeVisible();
 	});
 
-	it('should show Remove MCP access in the menu when the experiment is off and workflow is available', async () => {
+	it('should show Disable MCP access in the menu when the experiment is off and workflow is available', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {

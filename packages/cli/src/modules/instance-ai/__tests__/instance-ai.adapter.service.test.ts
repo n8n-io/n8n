@@ -1,17 +1,11 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
-	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
-	);
-	const { WorkflowNotFoundError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
-	);
-	const { WorkflowEditorLockedError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
-	);
-	const { FolderResolutionError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/folder-resolution.error.js'
-	);
+	const {
+		WorkflowSaveConflictError,
+		WorkflowNotFoundError,
+		WorkflowEditorLockedError,
+		FolderResolutionError,
+	} = await import('@n8n/instance-ai/errors');
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
@@ -78,6 +72,8 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_CONCISE_STYLE_FLAG,
+	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
@@ -1814,20 +1810,24 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error';
-import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
-import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
+import {
+	WorkflowEditorLockedError,
+	WorkflowNotFoundError,
+	WorkflowSaveConflictError,
+} from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	LockedError,
+	NotFoundError,
+} from '@n8n/errors';
 import type { License } from '@/license';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -2541,8 +2541,10 @@ function createWorkflowAdapterForTests(overrides?: {
 	// simulate a run with no bound project.
 	projectId?: string | null;
 	// Mirrors `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES`, which defaults to true in
-	// production. This harness leaves it off, so opt in to read real parameters.
+	// production. Writes are blocked while it is off, so this harness defaults to on.
 	allowSendingParameterValues?: boolean;
+	// The effective value for the run, passed to `createContext`. Overrides the env value.
+	runAllowSendingParameterValues?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2631,7 +2633,9 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		globalConfigStub({ allowSendingParameterValues: overrides?.allowSendingParameterValues }),
+		globalConfigStub({
+			allowSendingParameterValues: overrides?.allowSendingParameterValues ?? true,
+		}),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2714,6 +2718,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
+		allowSendingParameterValues: overrides?.runAllowSendingParameterValues,
 	});
 	const adapter = context.workflowService;
 
@@ -3778,11 +3783,14 @@ describe('createWorkflowAdapter', () => {
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith({
-			workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
-			storedWorkflow: null,
-			projectId: 'team-project-id',
-		});
+		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+			{
+				workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
+				storedWorkflow: null,
+				projectId: 'team-project-id',
+			},
+			{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+		);
 		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalledWith(
 			{ policyCleared: cleared },
 			expect.any(Function),
@@ -4368,6 +4376,65 @@ describe('createWorkflowAdapter', () => {
 			await expect(adapter.unarchive('wf-1')).rejects.toThrow(
 				'Cannot modify workflows on a protected instance',
 			);
+		});
+	});
+
+	describe('parameter values hidden for the run', () => {
+		const workflowWithParameters = {
+			id: 'wf-1',
+			name: 'Workflow',
+			nodes: [
+				{
+					id: 'http-id',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {},
+			settings: {},
+		};
+
+		it('redacts parameters on reads when the run hides them', async () => {
+			const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
+				runAllowSendingParameterValues: false,
+			});
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWithParameters);
+
+			const result = await adapter.getAsWorkflowJSON('wf-1');
+
+			expect(result.nodes[0].parameters).toEqual({});
+		});
+
+		it('includes parameters on reads when the run allows them, even if the env value is off', async () => {
+			const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
+				allowSendingParameterValues: false,
+				runAllowSendingParameterValues: true,
+			});
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWithParameters);
+
+			const result = await adapter.getAsWorkflowJSON('wf-1');
+
+			expect(result.nodes[0].parameters).toEqual({ url: 'https://example.com' });
+		});
+
+		it('blocks workflow writes without writing when the run hides parameters', async () => {
+			const { adapter, mockWorkflowRepository, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests({ runAllowSendingParameterValues: false });
+
+			await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(UserError);
+			await expect(adapter.updateFromWorkflowJSON('wf-1', minimalWorkflowJSON)).rejects.toThrow(
+				UserError,
+			);
+			await expect(adapter.restoreVersion?.('wf-1', 'v-1')).rejects.toThrow(UserError);
+
+			expect(mockWorkflowRepository.save).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
+			expect(mockWorkflowRepository.runInTransaction).not.toHaveBeenCalled();
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+			expect(mockWorkflowHistoryService.getVersion).not.toHaveBeenCalled();
 		});
 	});
 
@@ -6987,6 +7054,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
@@ -7002,6 +7070,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
+			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
@@ -7082,6 +7151,7 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
+			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[CANVAS_NODE_CONTEXT_FLAG]: false,
@@ -7095,6 +7165,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
@@ -7128,6 +7199,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('does not open the concise style gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_CONCISE_STYLE_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			conciseStyleEnabled: false,
+		});
+	});
+
 	// The preferences flag is multivariate too, so a boolean `true` must not
 	// open the gate.
 	it('does not open the AI preferences gate on a boolean true', async () => {
@@ -7146,6 +7225,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
@@ -7164,6 +7244,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
+			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
@@ -7518,6 +7599,23 @@ describe('createContext — builder delegate wiring', () => {
 		// The third argument is a provider factory, not a pre-built provider: it
 		// is called per turn with the concrete target agent id so Gateway spend
 		// carries the right id even when the agent is created mid-build.
+		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
+		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
+			agentId: string,
+		) => AgentsCredentialProvider;
+		const provider = providerFor('agent-42');
+		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
+		expect(provider).toEqual(
+			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		);
+	});
+
+	it('hands production threads the raw provider, built per target agent id', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
+
+		service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
 		) => AgentsCredentialProvider;
@@ -7731,15 +7829,22 @@ describe('createContext: aiPreferenceService', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
-			{ surface: 'aia', scope_type: 'user', text_length: 19 },
+			{ user_id: 'user-1', surface: 'aia', scope_type: 'user', text_length: 19 },
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-			{ surface: 'aia', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+			{
+				user_id: 'user-1',
+				surface: 'aia',
+				outcome: 'accepted',
+				scope_type: 'user',
+				text_length: 19,
+			},
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				offered_scope: 'user',
 				accepted_scope: 'user',
@@ -7749,6 +7854,7 @@ describe('createContext: aiPreferenceService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				scope_type: 'user',
 				text_length: 19,
@@ -7768,6 +7874,7 @@ describe('createContext: aiPreferenceService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				reason: 'duplicate',
 				scope_type: 'user',
@@ -7788,6 +7895,7 @@ describe('createContext: aiPreferenceService', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 				{
+					user_id: 'user-1',
 					surface: 'aia',
 					reason,
 					scope_type: 'user',
