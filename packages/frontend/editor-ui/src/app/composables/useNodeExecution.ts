@@ -199,11 +199,7 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.generatingCode');
 		}
 
-		// A run is checked against the person it acts as, so a credential this user
-		// cannot use stops the whole workflow, not just the node that holds it.
-		// It outranks every per-node reason below, because no per-node fix makes
-		// the run possible. Only an action already in flight on this node ranks
-		// higher. Refused by the backend either way; said here before the click.
+		// An unusable credential blocks the whole run, so it outranks per-node reasons.
 		if (unusableCredentialReason.value) {
 			return unusableCredentialReason.value;
 		}

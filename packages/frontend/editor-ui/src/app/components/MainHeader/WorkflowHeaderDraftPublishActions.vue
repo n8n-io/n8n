@@ -375,9 +375,7 @@ const onOpenReviewFromBanner = async () => {
 };
 
 const onPublishButtonClick = async () => {
-	// The NDV and the command bar reach this handler through the event bus, past
-	// the button's disabled state. There is nothing to hover on those paths, so
-	// the reason is shown as a toast instead of a tooltip.
+	// Event-bus callers skip the disabled button, so show the reason as a toast.
 	if (unusableCredentialReason.value) {
 		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
 		return;
@@ -412,9 +410,7 @@ const onPublishButtonClick = async () => {
 };
 
 const publishButtonConfig = computed(() => {
-	// A published workflow runs as its publisher, so publishing is refused for a
-	// credential this user cannot use — before permissions, because no permission
-	// makes it publishable.
+	// Published workflows run as the publisher, so check credentials before permissions.
 	if (unusableCredentialReason.value) {
 		return {
 			text: i18n.baseText('workflows.publish'),
