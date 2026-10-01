@@ -62,29 +62,41 @@ const isRunAction = (value: unknown): value is RunAction => typeof value === 'fu
 const errorText = (value: unknown) =>
 	value instanceof Error ? value.message : isRecord(value) ? JSON.stringify(value) : String(value);
 
-/** Runs one action through `runAction` from the project's own `@n8n/node-sdk/testing`. */
+const messageOf = (value: unknown) =>
+	isRecord(value) && typeof value.message === 'string' ? value.message : undefined;
+
+/**
+ * Runs one action through `runAction` from the project's own `@n8n/node-sdk/testing`.
+ * With `continueOnFail`, a failure becomes one `{ error }` item, as the SDK executor does in n8n.
+ */
 export async function runNewAction(
 	dir: string,
 	project: NewProject,
 	action: Record<string, unknown>,
 	input: Record<string, unknown>,
 	credential?: { readonly type: string; readonly data: Record<string, unknown> },
+	continueOnFail = false,
 ): Promise<Outcome> {
 	const resolved = createRequire(path.join(dir, 'package.json')).resolve('@n8n/node-sdk/testing');
 	const testing: unknown = await import(pathToFileURL(resolved).href);
 	const runAction = isRecord(testing) ? testing.runAction : undefined;
 	if (!isRunAction(runAction))
 		return { ok: false, error: '@n8n/node-sdk/testing has no runAction' };
-	try {
-		const result = await runAction(action, {
-			input,
-			...(credential ? { credential, credentials: project.credentials } : {}),
-		});
-		if (isRecord(result) && result.ok === true && Array.isArray(result.items)) {
-			return { ok: true, items: result.items };
-		}
-		return { ok: false, error: errorText(isRecord(result) ? result.error : result) };
-	} catch (error) {
-		return { ok: false, error: errorText(error) };
-	}
+	const outcome = await runAction(action, {
+		input,
+		...(credential ? { credential, credentials: project.credentials } : {}),
+	}).then(
+		(result): Outcome => {
+			if (isRecord(result) && result.ok === true && Array.isArray(result.items)) {
+				return { ok: true, items: result.items };
+			}
+			const error = isRecord(result) ? result.error : result;
+			const message = messageOf(error);
+			return { ok: false, error: errorText(error), ...(message ? { message } : {}) };
+		},
+		(error: unknown): Outcome => ({ ok: false, error: errorText(error) }),
+	);
+	return continueOnFail && !outcome.ok
+		? { ok: true, items: [{ error: outcome.message ?? outcome.error }] }
+		: outcome;
 }

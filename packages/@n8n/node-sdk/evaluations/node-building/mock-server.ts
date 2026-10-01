@@ -229,21 +229,193 @@ function searchly(request: Incoming, key: string, limited: Set<string>): Reply {
 	};
 }
 
+export const INVENTORY_CREATED_AT = '2026-04-01T12:00:00.000Z';
+
+interface FieldError {
+	readonly field: string;
+	readonly message: string;
+}
+
+const positive = (field: string, value: unknown): FieldError[] =>
+	typeof value !== 'number'
+		? [{ field, message: 'must be a number' }]
+		: value > 0
+			? []
+			: [{ field, message: 'must be greater than 0' }];
+
+const hasOnly = (value: Record<string, unknown>, fields: readonly string[]) =>
+	Object.keys(value).find((field) => !fields.includes(field));
+
+/** Shape problems get 400; value problems get 422 with one entry per field, in a fixed order. */
+function inventory(request: Incoming, key: string, counters: Map<string, number>): Reply {
+	if (request.method === 'GET' && request.path === '/inventory/v1/me') {
+		return { status: 200, body: { account: key.endsWith('sandbox') ? 'sandbox' : 'live' } };
+	}
+	if (request.path !== '/inventory/v1/items') return error(404, 'not found');
+	if (request.method !== 'POST') return error(405, 'method not allowed');
+	const { body } = request;
+	if (!isRecord(body)) return error(400, 'body must be a JSON object');
+	const { kind } = body;
+	if (kind !== 'physical' && kind !== 'digital') {
+		return error(400, 'kind must be physical or digital');
+	}
+	const unknown = hasOnly(
+		body,
+		kind === 'physical'
+			? ['kind', 'sku', 'name', 'weight', 'dimensions']
+			: ['kind', 'sku', 'name', 'downloadUrl'],
+	);
+	if (unknown) return error(400, `unknown field ${unknown} for kind ${kind}`);
+	const { weight, dimensions } = body;
+	if (kind === 'physical') {
+		if (!isRecord(weight) || weight.unit !== 'g' || hasOnly(weight, ['value', 'unit'])) {
+			return error(400, 'weight must be { value, unit: "g" }');
+		}
+		const fields = ['length', 'width', 'height', 'unit'];
+		if (!isRecord(dimensions) || dimensions.unit !== 'cm' || hasOnly(dimensions, fields)) {
+			return error(400, 'dimensions must be { length, width, height, unit: "cm" }');
+		}
+	}
+	const problems: FieldError[] = [
+		...(typeof body.sku === 'string' && /^[A-Z0-9-]{3,32}$/.test(body.sku)
+			? []
+			: [{ field: 'sku', message: 'must be 3 to 32 characters from A-Z, 0-9 and -' }]),
+		...(typeof body.name === 'string' && body.name.trim() !== ''
+			? []
+			: [{ field: 'name', message: 'is required' }]),
+		...(isRecord(weight) ? positive('weight.value', weight.value) : []),
+		...(isRecord(dimensions)
+			? ['length', 'width', 'height'].flatMap((side) =>
+					positive(`dimensions.${side}`, dimensions[side]),
+				)
+			: []),
+		...(kind === 'digital' &&
+		!(typeof body.downloadUrl === 'string' && body.downloadUrl.startsWith('https://'))
+			? [{ field: 'downloadUrl', message: 'must be an https URL' }]
+			: []),
+	];
+	if (problems.length > 0) {
+		return {
+			status: 422,
+			body: { error: 'validation_failed', message: 'The item is invalid', errors: problems },
+		};
+	}
+	const count = (counters.get(key) ?? 0) + 1;
+	counters.set(key, count);
+	return {
+		status: 201,
+		body: {
+			id: `itm_${String(count).padStart(3, '0')}`,
+			...body,
+			status: 'active',
+			createdAt: INVENTORY_CREATED_AT,
+		},
+	};
+}
+
+export type EventEntry =
+	| {
+			readonly id: string;
+			readonly type: string;
+			readonly actor: string;
+			readonly occurredAt: string;
+			readonly deleted: false;
+	  }
+	| { readonly id: string; readonly occurredAt: string; readonly deleted: true };
+
+const EVENT_TYPES = ['user.login', 'file.upload', 'file.share', 'user.logout'];
+
+/** 80 events, one each 75 minutes from 2026-03-27T00:00:00Z. Each 6th one is a tombstone. */
+export const EVENTS: readonly EventEntry[] = Array.from({ length: 80 }, (_, index) => {
+	const id = `evt_${String(index + 1).padStart(3, '0')}`;
+	const occurredAt = new Date(Date.UTC(2026, 2, 27) + index * 75 * 60_000)
+		.toISOString()
+		.replace('.000Z', 'Z');
+	return (index + 1) % 6 === 0
+		? { id, occurredAt, deleted: true }
+		: {
+				id,
+				type: EVENT_TYPES[index % 4],
+				actor: ASSIGNEES[index % 3],
+				occurredAt,
+				deleted: false,
+			};
+});
+
+const UTC_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
+function events(request: Incoming): Reply {
+	if (request.method !== 'GET' || request.path !== '/events/v1/events') {
+		return error(404, 'not found');
+	}
+	const { occurred_after: after, occurred_before: before, cursor } = request.query;
+	if (after === undefined) return error(400, 'occurred_after is required');
+	const badTime = [
+		['occurred_after', after],
+		['occurred_before', before],
+	].find(([, value]) => value !== undefined && !UTC_TIME.test(value));
+	if (badTime) {
+		return error(400, `${badTime[0]} must be a UTC time like 2026-03-01T00:00:00Z`);
+	}
+	const limit = intParam(request.query.limit, 20);
+	if (!(limit >= 1 && limit <= 50)) return error(400, 'limit must be 1 to 50');
+	const offset = cursor === undefined ? 0 : fromCursor(cursor);
+	if (offset === undefined) return error(400, 'invalid cursor');
+	const matching = EVENTS.filter(
+		({ occurredAt }) =>
+			Date.parse(occurredAt) >= Date.parse(after) &&
+			(before === undefined || Date.parse(occurredAt) < Date.parse(before)),
+	);
+	const data = matching.slice(offset, offset + limit);
+	const nextCursor = offset + limit < matching.length ? toCursor(offset + limit) : null;
+	const link = (page: string | null) => {
+		const query = new URLSearchParams(
+			Object.entries(request.query).filter(([name]) => name !== 'cursor'),
+		);
+		if (page) query.set('cursor', page);
+		return `<http://${request.headers.host}${request.path}?${query.toString()}>`;
+	};
+	return {
+		status: 200,
+		body: { data },
+		headers: {
+			link: [
+				`${link(null)}; rel="first"`,
+				...(nextCursor ? [`${link(nextCursor)}; rel="next"`] : []),
+			].join(', '),
+		},
+		// The limit check counts what the node can emit by default: tombstones do not count.
+		returned: data.filter(({ deleted }) => !deleted).length,
+		nextCursor,
+	};
+}
+
 const DOCS: Record<string, { file: string; type: string }> = {
 	'acme-tasks': { file: 'acme-tasks.md', type: 'text/markdown' },
 	ledger: { file: 'ledger.md', type: 'text/markdown' },
 	searchly: { file: 'searchly.openapi.json', type: 'application/json' },
+	inventory: { file: 'inventory.md', type: 'text/markdown' },
+	events: { file: 'events.md', type: 'text/markdown' },
 };
 
 /** The credential secret of the request, by service. */
 function keyOf(service: string, request: Incoming): string | undefined {
-	const secret =
-		service === 'acme-tasks'
-			? request.headers['x-acme-key']
-			: service === 'ledger'
-				? /^Bearer (\S+)$/.exec(request.headers.authorization ?? '')?.[1]
-				: request.query.api_key;
-	const prefix = { 'acme-tasks': 'acme_', ledger: 'ldg_', searchly: 'sly_' }[service];
+	const secrets: Record<string, string | undefined> = {
+		'acme-tasks': request.headers['x-acme-key'],
+		ledger: /^Bearer (\S+)$/.exec(request.headers.authorization ?? '')?.[1],
+		searchly: request.query.api_key,
+		inventory: /^ApiKey (\S+)$/.exec(request.headers.authorization ?? '')?.[1],
+		events: request.headers['x-events-key'],
+	};
+	const secret = secrets[service];
+	const prefixes: Record<string, string> = {
+		'acme-tasks': 'acme_',
+		ledger: 'ldg_',
+		searchly: 'sly_',
+		inventory: 'stk_',
+		events: 'evt_',
+	};
+	const prefix = prefixes[service];
 	return prefix && secret?.startsWith(prefix) ? secret : undefined;
 }
 
@@ -280,11 +452,12 @@ export interface MockServer {
 	close(): Promise<void>;
 }
 
-/** The three mock services, their docs, and a request log per credential secret at `/__log`. */
+/** The mock services, their docs, and a request log per credential secret at `/__log`. */
 export async function startMockServer(port = MOCK_PORT): Promise<MockServer> {
 	const log = new Map<string, LoggedRequest[]>();
 	const acmeStores = new Map<string, AcmeTask[]>();
 	const limited = new Set<string>();
+	const inventoryCounters = new Map<string, number>();
 
 	const route = (request: Incoming): { key: string; reply: Reply } => {
 		const service = request.path.split('/')[1] ?? '';
@@ -302,15 +475,17 @@ export async function startMockServer(port = MOCK_PORT): Promise<MockServer> {
 		if (!docs) return { key: 'unknown', reply: error(404, 'not found') };
 		const key = keyOf(service, request);
 		if (key === undefined) return { key: 'unauthenticated', reply: UNAUTHORIZED };
-		const reply =
-			service === 'acme-tasks'
-				? request.path === '/acme-tasks/v1/tasks'
+		const services: Record<string, () => Reply> = {
+			'acme-tasks': () =>
+				request.path === '/acme-tasks/v1/tasks'
 					? acmeTasks(request, key, acmeStores)
-					: error(404, 'not found')
-				: service === 'ledger'
-					? ledger(request)
-					: searchly(request, key, limited);
-		return { key, reply };
+					: error(404, 'not found'),
+			ledger: () => ledger(request),
+			searchly: () => searchly(request, key, limited),
+			inventory: () => inventory(request, key, inventoryCounters),
+			events: () => events(request),
+		};
+		return { key, reply: services[service]?.() ?? error(404, 'not found') };
 	};
 
 	const server = createServer((raw, response) => {

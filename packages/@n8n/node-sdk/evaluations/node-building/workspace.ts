@@ -87,7 +87,7 @@ export function workspaceEnv(dir: string): NodeJS.ProcessEnv {
 	};
 }
 
-/** Scaffolds a project once per format and task, the way each format's CLI does. */
+/** Scaffolds a project once per format and task, the way each format's CLI does, then adds the overlay. */
 export async function prepareTemplate(
 	root: string,
 	task: TaskSpec,
@@ -118,6 +118,9 @@ export async function prepareTemplate(
 		const result = await scaffoldNewProject(dir, task.node);
 		if (result.code !== 0) throw new Error(`n8n-node-next new failed:\n${result.output}`);
 	}
+	// Eval docs for the format, tuned like the new-format scaffold docs; they replace the scaffold files.
+	const overlay = path.join(__dirname, 'overlays', format);
+	if (existsSync(overlay)) await cp(overlay, dir, { recursive: true });
 	await linkNodeModules(dir, format);
 	return dir;
 }

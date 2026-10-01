@@ -1,5 +1,7 @@
 import acmeTasks from './tasks/acme-tasks.json';
+import events from './tasks/events.json';
 import githubIssues from './tasks/github-issues.json';
+import inventory from './tasks/inventory.json';
 import ledger from './tasks/ledger.json';
 import searchly from './tasks/searchly.json';
 
@@ -11,8 +13,8 @@ export const FORMATS: readonly Format[] = ['old', 'new'];
 export interface RequestExpectation {
 	readonly method: string;
 	readonly path: string;
-	/** Query parameters every served request has. */
-	readonly query?: Readonly<Record<string, string>>;
+	/** Query parameters every served request has. JSON imports type keys of other cases as `undefined`. */
+	readonly query?: Readonly<Record<string, string | undefined>>;
 	readonly absentQuery?: readonly string[];
 	/** The JSON body every served request has. */
 	readonly body?: unknown;
@@ -29,9 +31,13 @@ export interface CaseSpec {
 	/** `<resource>.<operation>`. */
 	readonly operation: string;
 	readonly input: Readonly<Record<string, unknown>>;
+	/** Run with the node setting "continue on fail" on. */
+	readonly continueOnFail?: boolean;
 	readonly expect: {
 		readonly items?: readonly unknown[];
 		readonly error?: boolean;
+		/** Text that the error message (not its description) must contain. */
+		readonly errorMessage?: string;
 		/** Expected items from `gh api --paginate <path>`, compared on `fields`. */
 		readonly github?: {
 			readonly path: string;
@@ -56,7 +62,14 @@ export interface TaskSpec {
 	readonly cases: readonly CaseSpec[];
 }
 
-export const TASKS: readonly TaskSpec[] = [acmeTasks, ledger, searchly, githubIssues];
+export const TASKS: readonly TaskSpec[] = [
+	acmeTasks,
+	ledger,
+	searchly,
+	githubIssues,
+	inventory,
+	events,
+];
 
 const FORMAT_PARAGRAPH: Record<Format, readonly string[]> = {
 	old: [

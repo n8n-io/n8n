@@ -31,7 +31,8 @@ const workflowLib: typeof N8nWorkflow = requireFromCore('n8n-workflow');
 
 export type Outcome =
 	| { readonly ok: true; readonly items: readonly unknown[] }
-	| { readonly ok: false; readonly error: string };
+	/** `error` is the text for the report; `message` is the error message alone. */
+	| { readonly ok: false; readonly error: string; readonly message?: string };
 
 export interface OldPackage {
 	readonly nodeTypes: Record<string, INodeType | IVersionedNodeType>;
@@ -199,6 +200,7 @@ export async function runOldNode(
 	nodeName: string,
 	parameters: INodeParameters,
 	credential?: { readonly type: string; readonly data: ICredentialDataDecryptedObject },
+	continueOnFail = false,
 ): Promise<Outcome> {
 	const nodeType = loaded.nodeTypes[nodeName];
 	if (!nodeType) return { ok: false, error: `The package has no node named ${nodeName}` };
@@ -216,6 +218,7 @@ export async function runOldNode(
 		typeVersion: Array.isArray(latest) ? Math.max(...latest) : latest,
 		position: [0, 0],
 		parameters,
+		onError: continueOnFail ? 'continueRegularOutput' : 'stopWorkflow',
 		...(credential ? { credentials: { [credential.type]: { id: '1', name: 'eval' } } } : {}),
 	};
 	const workflow = new workflowLib.Workflow({
@@ -233,6 +236,14 @@ export async function runOldNode(
 	const run = await execution.run({ workflow, startNode: node });
 	const { error, runData } = run.data.resultData;
 	const task = runData[node.name]?.[0];
-	if (error ?? task?.error) return { ok: false, error: errorText(error ?? task?.error) };
+	const failure: unknown = error ?? task?.error;
+	if (failure) {
+		const message = isRecord(failure) ? failure.message : undefined;
+		return {
+			ok: false,
+			error: errorText(failure),
+			...(typeof message === 'string' ? { message } : {}),
+		};
+	}
 	return { ok: true, items: (task?.data?.main[0] ?? []).map((item) => item.json) };
 }

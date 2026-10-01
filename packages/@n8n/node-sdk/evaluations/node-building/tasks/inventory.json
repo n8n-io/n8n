@@ -1,0 +1,188 @@
+{
+	"id": "inventory",
+	"node": "inventory",
+	"credential": {
+		"name": "inventoryApi",
+		"properties": ["apiKey"],
+		"data": {
+			"apiKey": "{{secret}}"
+		},
+		"secretPrefix": "stk_"
+	},
+	"prompt": [
+		"Build an n8n node for the Inventory API. Read its docs first: `curl -s http://127.0.0.1:18090/inventory/docs`.",
+		"The API runs locally. Use the sandbox key from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `inventory`, display name \"Inventory\".",
+		"- Credential name `inventoryApi` with one field `apiKey` (a password field). The credential sends the key the way the docs say.",
+		"- Operation `item.create` (\"Create an item\"). Fields: `kind` (one of `physical`, `digital`; default `physical`), `sku` (string, required), `name` (string, required).",
+		"  For `physical` also: `weightGrams`, `lengthCm`, `widthCm`, `heightCm` (numbers). For `digital` also: `downloadUrl` (string).",
+		"  Send the body that the docs give for the kind, with no field of the other kind. Emit the created item exactly as the API returns it.",
+		"  Do not validate field values in the node: the API validates them.",
+		"  When the API answers 422, fail with the message `Invalid item: ` and then each entry of `errors` as `<field>: <message>`, joined with `; ` (for example `Invalid item: sku: must be ...; name: is required`).",
+		"  When the node is set to continue on fail, emit one item `{ \"error\": \"<that message>\" }` for an input item that fails, and go on with the next input item.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "create-physical",
+			"operation": "item.create",
+			"input": {
+				"kind": "physical",
+				"sku": "MUG-001",
+				"name": "Coffee mug",
+				"weightGrams": 350,
+				"lengthCm": 12,
+				"widthCm": 9,
+				"heightCm": 10.5
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "itm_001",
+						"kind": "physical",
+						"sku": "MUG-001",
+						"name": "Coffee mug",
+						"weight": {
+							"value": 350,
+							"unit": "g"
+						},
+						"dimensions": {
+							"length": 12,
+							"width": 9,
+							"height": 10.5,
+							"unit": "cm"
+						},
+						"status": "active",
+						"createdAt": "2026-04-01T12:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/inventory/v1/items",
+					"body": {
+						"kind": "physical",
+						"sku": "MUG-001",
+						"name": "Coffee mug",
+						"weight": {
+							"value": 350,
+							"unit": "g"
+						},
+						"dimensions": {
+							"length": 12,
+							"width": 9,
+							"height": 10.5,
+							"unit": "cm"
+						}
+					},
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "create-digital",
+			"operation": "item.create",
+			"input": {
+				"kind": "digital",
+				"sku": "EBOOK-7",
+				"name": "Field guide",
+				"downloadUrl": "https://files.example.com/guide.pdf"
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "itm_001",
+						"kind": "digital",
+						"sku": "EBOOK-7",
+						"name": "Field guide",
+						"downloadUrl": "https://files.example.com/guide.pdf",
+						"status": "active",
+						"createdAt": "2026-04-01T12:00:00.000Z"
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/inventory/v1/items",
+					"body": {
+						"kind": "digital",
+						"sku": "EBOOK-7",
+						"name": "Field guide",
+						"downloadUrl": "https://files.example.com/guide.pdf"
+					},
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "invalid-422",
+			"operation": "item.create",
+			"input": {
+				"kind": "physical",
+				"sku": "mug 1",
+				"name": "Mug",
+				"weightGrams": 0,
+				"lengthCm": 12,
+				"widthCm": 9,
+				"heightCm": 10
+			},
+			"expect": {
+				"error": true,
+				"errorMessage": "Invalid item: sku: must be 3 to 32 characters from A-Z, 0-9 and -; weight.value: must be greater than 0",
+				"requests": {
+					"method": "POST",
+					"path": "/inventory/v1/items",
+					"body": {
+						"kind": "physical",
+						"sku": "mug 1",
+						"name": "Mug",
+						"weight": {
+							"value": 0,
+							"unit": "g"
+						},
+						"dimensions": {
+							"length": 12,
+							"width": 9,
+							"height": 10,
+							"unit": "cm"
+						}
+					},
+					"count": 1
+				}
+			}
+		},
+		{
+			"id": "continue-on-fail",
+			"operation": "item.create",
+			"continueOnFail": true,
+			"input": {
+				"kind": "digital",
+				"sku": "EBOOK-9",
+				"name": "Guide",
+				"downloadUrl": "http://files.example.com/guide.pdf"
+			},
+			"expect": {
+				"items": [
+					{
+						"error": "Invalid item: downloadUrl: must be an https URL"
+					}
+				],
+				"requests": {
+					"method": "POST",
+					"path": "/inventory/v1/items",
+					"body": {
+						"kind": "digital",
+						"sku": "EBOOK-9",
+						"name": "Guide",
+						"downloadUrl": "http://files.example.com/guide.pdf"
+					},
+					"count": 1
+				}
+			}
+		}
+	]
+}

@@ -30,9 +30,15 @@ the mock server on port 18090, or uses the one another run already started.
 | `ledger`        | mock, docs in markdown     | Bearer token, nested items, cents, `null` due date, 404   |
 | `searchly`      | mock, OpenAPI description  | Key in the query, JSON body, offset pages, 429 and retry  |
 | `github-issues` | GitHub REST, read-only     | Docs the agent finds, `Link` pages, labels, no token      |
+| `inventory`     | mock, docs in markdown     | Body by `kind`, 422 field errors to one message, continue on fail |
+| `events`        | mock, docs in markdown     | UTC range from local times (DST), `Link` pages, tombstones |
 
 Each task file fixes the names that the grader needs. The prompt is the same for
 both formats, except one format paragraph (`tasks.ts`).
+
+`overlays/<format>/` is copied onto the scaffold. `overlays/old/AGENTS.md` replaces
+the `n8n-node new` AGENTS.md with a compact reference, tuned once against the
+old-format transcripts, as the new-format `AGENTS.md.tmpl` was.
 
 The mock logs each request under the credential secret. The grader uses a new
 secret for each case, so the log of a case holds only its own requests. The
@@ -64,5 +70,12 @@ cost), `turnTokens`, `commands` (build, check, test, run, and curl counts),
 - New format: `tsc --noEmit`, `n8n-node-next check`, then `runAction` from the
   project's `@n8n/node-sdk/testing` runs each case (`n1-adapter.ts`).
 
-`reference/acme-tasks/` holds a hand-written solution for each format. The
-grader tests prove that each one passes and that a broken copy fails.
+Both formats run the cases only when the compile step (`build` or `typecheck`)
+passes, and report the same checks. A case with `continueOnFail` sets the node
+setting in the old format. In the new format the SDK executor makes a failed
+item `{ error: message }`, and the grader does the same with the `runAction`
+result. `errorMessage` compares the error message only, not its description.
+
+`reference/<task>/` holds a hand-written solution for each format of
+`acme-tasks`, `inventory`, and `events`. The grader tests prove that each one
+passes and that a broken copy fails.

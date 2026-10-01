@@ -1,0 +1,695 @@
+{
+	"id": "events",
+	"node": "eventLog",
+	"credential": {
+		"name": "eventLogApi",
+		"properties": ["apiKey"],
+		"data": {
+			"apiKey": "{{secret}}"
+		},
+		"secretPrefix": "evt_"
+	},
+	"prompt": [
+		"Build an n8n node for the Events API. Read its docs first: `curl -s http://127.0.0.1:18090/events/docs`.",
+		"The API runs locally. Use the sandbox key from the docs for your tests.",
+		"",
+		"A grader checks these names exactly:",
+		"- Node name `eventLog`, display name \"Event Log\".",
+		"- Credential name `eventLogApi` with one field `apiKey` (a password field). The credential sends the key the way the docs say.",
+		"- Operation `event.getAll` (\"Get many events\"). Fields: `since` (string, required), `until` (string, optional), `timeZone` (string, default `UTC`; an IANA time zone name such as `Europe/Berlin`), `includeDeleted` (boolean, default false), `returnAll` (boolean, default false), `limit` (number, default 50; used when `returnAll` is false).",
+		"  `since` and `until` are ISO 8601 date-times. A value with an offset or `Z` is used as it is. A value without an offset is a local time in `timeZone`.",
+		"  `since` is inclusive and `until` is exclusive. When `until` is empty, send no upper bound.",
+		"  Follow the `Link` response header for pagination. Do not fetch pages that you do not need.",
+		"  The API also returns deleted events (tombstones). Remove them unless `includeDeleted` is true. `limit` counts the items that the node emits.",
+		"  Emit one item per event exactly as the API returns it.",
+		"",
+		"{{format}}",
+		"",
+		"Work in the current directory. Dependencies are installed: do not install packages. Do not ask questions.",
+		"Stop when the node builds, passes the format checks, and works against the API."
+	],
+	"cases": [
+		{
+			"id": "berlin-dst-all",
+			"operation": "event.getAll",
+			"input": {
+				"since": "2026-03-28T23:30:00",
+				"until": "2026-03-29T13:00:00",
+				"timeZone": "Europe/Berlin",
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "evt_039",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-28T23:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_040",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T00:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_041",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T02:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_043",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T04:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_044",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T05:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_045",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-29T07:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_046",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T08:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_047",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T09:30:00Z",
+						"deleted": false
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/events/v1/events",
+					"query": {
+						"occurred_after": "2026-03-28T22:30:00Z",
+						"occurred_before": "2026-03-29T11:00:00Z"
+					},
+					"pagination": "cursor"
+				}
+			}
+		},
+		{
+			"id": "offset-limit-30",
+			"operation": "event.getAll",
+			"input": {
+				"since": "2026-03-27T09:00:00+05:30",
+				"returnAll": false,
+				"limit": 30
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "evt_004",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T03:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_005",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T05:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_007",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T07:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_008",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T08:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_009",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-27T10:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_010",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T11:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_011",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T12:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_013",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T15:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_014",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T16:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_015",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-27T17:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_016",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T18:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_017",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T20:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_019",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T22:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_020",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T23:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_021",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-28T01:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_022",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-28T02:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_023",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-28T03:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_025",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-28T06:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_026",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-28T07:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_027",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-28T08:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_028",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-28T09:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_029",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-28T11:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_031",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-28T13:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_032",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-28T14:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_033",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-28T16:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_034",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-28T17:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_035",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-28T18:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_037",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-28T21:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_038",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-28T22:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_039",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-28T23:30:00Z",
+						"deleted": false
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/events/v1/events",
+					"query": {
+						"occurred_after": "2026-03-27T03:30:00Z"
+					},
+					"absentQuery": ["occurred_before"],
+					"pagination": "cursor",
+					"limit": 30
+				}
+			}
+		},
+		{
+			"id": "include-deleted",
+			"operation": "event.getAll",
+			"input": {
+				"since": "2026-03-27T00:00:00Z",
+				"until": "2026-03-27T12:00:00Z",
+				"includeDeleted": true,
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "evt_001",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T00:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_002",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T01:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_003",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-27T02:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_004",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T03:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_005",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T05:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_006",
+						"occurredAt": "2026-03-27T06:15:00Z",
+						"deleted": true
+					},
+					{
+						"id": "evt_007",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T07:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_008",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-27T08:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_009",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-27T10:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_010",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-27T11:15:00Z",
+						"deleted": false
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/events/v1/events",
+					"query": {
+						"occurred_after": "2026-03-27T00:00:00Z",
+						"occurred_before": "2026-03-27T12:00:00Z"
+					},
+					"pagination": "cursor"
+				}
+			}
+		},
+		{
+			"id": "utc-default-all",
+			"operation": "event.getAll",
+			"input": {
+				"since": "2026-03-29T00:00:00",
+				"returnAll": true
+			},
+			"expect": {
+				"items": [
+					{
+						"id": "evt_040",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T00:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_041",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T02:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_043",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T04:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_044",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T05:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_045",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-29T07:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_046",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T08:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_047",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T09:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_049",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T12:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_050",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T13:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_051",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-29T14:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_052",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T15:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_053",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T17:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_055",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T19:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_056",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-29T20:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_057",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-29T22:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_058",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-29T23:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_059",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T00:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_061",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-30T03:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_062",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T04:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_063",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-30T05:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_064",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-30T06:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_065",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T08:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_067",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-30T10:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_068",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T11:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_069",
+						"type": "user.login",
+						"actor": "linus",
+						"occurredAt": "2026-03-30T13:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_070",
+						"type": "file.upload",
+						"actor": "ada",
+						"occurredAt": "2026-03-30T14:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_071",
+						"type": "file.share",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T15:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_073",
+						"type": "user.login",
+						"actor": "ada",
+						"occurredAt": "2026-03-30T18:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_074",
+						"type": "file.upload",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T19:15:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_075",
+						"type": "file.share",
+						"actor": "linus",
+						"occurredAt": "2026-03-30T20:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_076",
+						"type": "user.logout",
+						"actor": "ada",
+						"occurredAt": "2026-03-30T21:45:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_077",
+						"type": "user.login",
+						"actor": "grace",
+						"occurredAt": "2026-03-30T23:00:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_079",
+						"type": "file.share",
+						"actor": "ada",
+						"occurredAt": "2026-03-31T01:30:00Z",
+						"deleted": false
+					},
+					{
+						"id": "evt_080",
+						"type": "user.logout",
+						"actor": "grace",
+						"occurredAt": "2026-03-31T02:45:00Z",
+						"deleted": false
+					}
+				],
+				"requests": {
+					"method": "GET",
+					"path": "/events/v1/events",
+					"query": {
+						"occurred_after": "2026-03-29T00:00:00Z"
+					},
+					"absentQuery": ["occurred_before"],
+					"pagination": "cursor"
+				}
+			}
+		}
+	]
+}

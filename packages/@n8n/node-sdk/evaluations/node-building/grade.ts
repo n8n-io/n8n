@@ -28,6 +28,11 @@ interface Project {
 	readonly run?: (caseSpec: CaseSpec, credential?: Credential) => Promise<Outcome>;
 }
 
+/** Both formats run the cases only after the compile step passes, so failures count the same. */
+const notCompiled = (compile: Check, contract: Check): Project => ({
+	checks: [compile, contract, check('load', false, `not loaded: ${compile.name} failed`)],
+});
+
 const check = (name: string, pass: boolean, reason = ''): Check => ({
 	name,
 	pass,
@@ -67,7 +72,7 @@ async function prepareOld(dir: string, task: TaskSpec): Promise<Project> {
 	const env = workspaceEnv(dir);
 	const build = commandCheck('build', await exec('n8n-node', ['build'], { cwd: dir, env }));
 	const lint = commandCheck('lint', await exec('n8n-node', ['lint'], { cwd: dir, env }));
-	if (!build.pass) return { checks: [build, lint] };
+	if (!build.pass) return notCompiled(build, lint);
 	try {
 		const loaded = await loadOldPackage(dir);
 		return {
@@ -81,13 +86,14 @@ async function prepareOld(dir: string, task: TaskSpec): Promise<Project> {
 				),
 				credentialCheck(task, Object.values(loaded.credentialTypes)),
 			],
-			run: async ({ operation, input }, credential) => {
+			run: async ({ operation, input, continueOnFail }, credential) => {
 				const [resource, operationName] = operation.split('.');
 				return await runOldNode(
 					loaded,
 					task.node,
 					{ resource, operation: operationName, ...input },
 					credential,
+					continueOnFail,
 				);
 			},
 		};
@@ -101,6 +107,7 @@ async function prepareNew(dir: string, task: TaskSpec): Promise<Project> {
 	const [command, ...args] = CHECK_COMMAND;
 	const typecheck = commandCheck('typecheck', await exec('tsc', ['--noEmit'], { cwd: dir, env }));
 	const sdkCheck = commandCheck('check', await exec(command, args, { cwd: dir, env }));
+	if (!typecheck.pass) return notCompiled(typecheck, sdkCheck);
 	try {
 		const project = await loadNewProject(dir);
 		return {
@@ -110,11 +117,11 @@ async function prepareNew(dir: string, task: TaskSpec): Promise<Project> {
 				check('node', project.node.id === task.node, `node id is not ${task.node}`),
 				credentialCheck(task, project.credentials),
 			],
-			run: async ({ operation, input }, credential) => {
+			run: async ({ operation, input, continueOnFail }, credential) => {
 				const id = `${task.node}.${operation}`;
 				const action = project.actions.find((candidate) => candidate.id === id);
 				return action
-					? await runNewAction(dir, project, action, input, credential)
+					? await runNewAction(dir, project, action, input, credential, continueOnFail)
 					: { ok: false, error: `no action ${id} in actions` };
 			},
 		};
@@ -155,7 +162,7 @@ const pick = (item: unknown, fields: readonly string[]) =>
 
 function requestMismatch(request: LoggedRequest, expected: RequestExpectation): string[] {
 	const wrongQuery = Object.entries(expected.query ?? {}).filter(
-		([name, value]) => request.query[name] !== value,
+		([name, value]) => value !== undefined && request.query[name] !== value,
 	);
 	const present = (expected.absentQuery ?? []).filter((name) => name in request.query);
 	return [
@@ -276,7 +283,12 @@ async function gradeCase(
 	const outcomeProblems = expect.error
 		? outcome.ok
 			? [`expected an error, got ${outcome.items.length} items`]
-			: []
+			: expect.errorMessage !== undefined &&
+					!(outcome.message ?? outcome.error).includes(expect.errorMessage)
+				? [
+						`error message ${short(outcome.message ?? outcome.error)}, expected it to contain ${short(expect.errorMessage)}`,
+					]
+				: []
 		: !outcome.ok
 			? [`failed: ${outcome.error}`]
 			: expect.github
