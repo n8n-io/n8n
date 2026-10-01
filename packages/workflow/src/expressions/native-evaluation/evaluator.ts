@@ -180,8 +180,10 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
 
 		// `$&`, `$\``, `$'` splice match context into every replacement, so
-		// the result is not bounded by the replacement's length.
-		if (replacement.includes('$')) throw new EngineFallbackError();
+		// the result is not bounded by the replacement's length. With a string
+		// pattern the other `$` forms (`$$`, `$1`, `$<name>`, a lone `$`) are
+		// literal, so a plain `$` in the replacement stays native.
+		if (/\$[&`']/.test(replacement)) throw new EngineFallbackError();
 
 		upperBound =
 			method === 'replace'

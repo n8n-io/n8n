@@ -59,7 +59,10 @@ export const HANDLED_CORPUS: string[] = [
 	'=plain text',
 	'=',
 	// Allowlisted String.prototype methods on a runtime-verified string
-	// receiver.
+	// receiver. A literal `$` in a replacement is not a context token.
+	"={{ $json.item.name.replace('o', '$') }}",
+	"={{ $json.item.name.replaceAll('o', '$$') }}",
+	"={{ $json.item.name.replace('o', '$1') }}",
 	"={{ $json.item.name.toUpperCase() === 'FOO' }}",
 	'={{ $json.item.name.toLowerCase() }}',
 	"={{ $json.item.name.includes('oo') }}",
