@@ -49,6 +49,18 @@ describe('FolderFinderService', () => {
 		);
 	});
 
+	it('loads project roles through the repository callback', async () => {
+		accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
+		roleService.rolesWithScope.mockImplementation(async (_namespace, _scopes, loadRoles) => {
+			await loadRoles?.();
+			return ['project:editor'];
+		});
+
+		await service.findFoldersByIdsForUser(['folder-1'], member, ['folder:read']);
+
+		expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledWith({});
+	});
+
 	it('uses the global access path without resolving roles', async () => {
 		const user = mock<User>({
 			role: mock<Role>({
