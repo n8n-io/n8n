@@ -217,20 +217,21 @@ export class WorkflowSuggestionActionsService {
 		suggestionId: string,
 		ctx: OperationContext = {},
 	) {
-		const found = await this.txRunner.run(ctx, async (ctx) => {
+		const closed = await this.txRunner.run(ctx, async (ctx) => {
 			await this.service.requireEditor(user.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,
 				{ workflowId, projectId },
 				ctx,
 			);
-			if (!target.workflow || target.projectId !== projectId) return false;
+			if (!target.workflow || target.projectId !== projectId) return undefined;
 			if (suggestion.state === 'pending') {
-				await this.suggestions.closePending(suggestion, 'discarded', user.id, ctx);
+				return await this.suggestions.closePending(suggestion, 'discarded', user.id, ctx);
 			}
-			return true;
+			return false;
 		});
 		// Keep the outdated closure when this call owns the transaction.
-		if (!found) throw new NotFoundError('Suggestion not found.');
+		if (closed === undefined) throw new NotFoundError('Suggestion not found.');
+		return closed;
 	}
 }
