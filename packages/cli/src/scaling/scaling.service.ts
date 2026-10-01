@@ -181,6 +181,7 @@ export class ScalingService {
 					`Worker received job ${jobId} for execution ${executionId} after it began to stop`,
 					{ executionId, jobId },
 				);
+				// A job started this late may not finish before the force exit, so another worker runs it.
 				handBackJob(job);
 			}
 
@@ -330,12 +331,14 @@ export class ScalingService {
 		}
 	}
 
+	// Waits for jobs Bull fetched before the pause, so their hand-back reaches Redis before exit.
 	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
 		let timeout: NodeJS.Timeout | undefined;
 
 		const timedOut = new Promise<void>((resolve) => {
 			timeout = setTimeout(
 				resolve,
+				// Leave the other half of what is left for the cancel step that follows.
 				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
 			);
 			timeout.unref();
@@ -344,6 +347,7 @@ export class ScalingService {
 		const settled = Promise.all(
 			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
 		).catch((error) => {
+			// Keep stopping; a dropped connection here must not block the cancel step.
 			this.logger.warn('Failed to wait for current queue jobs before stopping', { error });
 		});
 
