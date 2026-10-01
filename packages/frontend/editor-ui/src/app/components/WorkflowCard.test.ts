@@ -972,7 +972,7 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp')).not.toBeVisible();
 	});
 
-	it('should show Remove MCP access in the menu when the experiment is off and workflow is available', async () => {
+	it('should show Disable MCP access in the menu when the experiment is off and workflow is available', async () => {
 		const data = createWorkflow({
 			scopes: ['workflow:update'],
 			settings: {
@@ -1001,6 +1001,7 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(within(actions).getByTestId('action-removeMCPAccess')).toBeInTheDocument();
+		expect(within(actions).getByText('Disable MCP access')).toBeVisible();
 	});
 
 	it('should call toggleWorkflowMcpAccess from the dropdown menu item when the experiment is off', async () => {
