@@ -8106,6 +8106,7 @@
 	"agents.chat.plan.title": "Plan: {title}",
 	"agents.chat.plan.progress": "{done} of {total} task done | {done} of {total} tasks done",
 	"agents.chat.plan.viewTrace": "View trace",
+	"agents.chat.plan.error.rejected": "The plan change was rejected. Expand this step for details.",
 	"agents.chat.plan.status.pending": "Pending",
 	"agents.chat.plan.status.inProgress": "In progress",
 	"agents.chat.plan.status.done": "Done",

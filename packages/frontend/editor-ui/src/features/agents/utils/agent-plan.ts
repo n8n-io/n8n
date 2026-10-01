@@ -5,7 +5,7 @@ import {
 	buildDisplayGroups,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
 
 const itemFields = {
@@ -36,6 +36,28 @@ const planSchema = z.object({
 	}),
 });
 const planToolNames = new Set(['create_plan', 'read_plan', 'update_plan', 'close_plan']);
+const planErrorSchema = z.union([z.string(), z.object({ error: z.string() })]);
+
+export function isRecoverablePlanError(call: ToolCall): boolean {
+	if (
+		!planToolNames.has(call.tool) ||
+		call.tool === 'read_plan' ||
+		call.canceled ||
+		(call.state !== TOOL_CALL_STATE.ERROR && call.state !== TOOL_CALL_STATE.DONE)
+	) {
+		return false;
+	}
+	const result = planErrorSchema.safeParse(call.output);
+	if (!result.success) return false;
+	if (typeof result.data !== 'string' && ['invalid_plan', 'conflict'].includes(result.data.error)) {
+		return true;
+	}
+	if (call.state !== TOOL_CALL_STATE.ERROR) return false;
+	const message = typeof result.data === 'string' ? result.data : result.data.error;
+	return message
+		.replace(/^Error: /, '')
+		.startsWith(`AI_InvalidToolInputError: Invalid input for tool ${call.tool}:`);
+}
 
 export type AgentPlanView = z.infer<typeof planSchema>;
 export type AgentPlanItemStatus = AgentPlanView['document']['items'][number]['status'];
