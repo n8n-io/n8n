@@ -409,7 +409,7 @@ defineExpose({
 				>
 					<MarkdownEditorExpandedViewButton
 						:is-expanded-view="isExpandedViewOpen"
-						variant="subtle"
+						variant="outline"
 						icon-size="medium"
 						@toggle="isExpandedViewOpen = !isExpandedViewOpen"
 					/>
