@@ -64,6 +64,7 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
@@ -679,6 +680,11 @@ const refreshWorkflows = async () => {
 	]);
 };
 
+const onFolderCreated = async (payload: { projectId: string }) => {
+	if (currentBreadcrumbsProject.value?.id !== payload.projectId) return;
+	await refreshWorkflows();
+};
+
 const onFolderDeleted = async (payload: {
 	folderId: string;
 	workflowCount: number;
@@ -752,6 +758,7 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.on('folder-created', onFolderCreated);
 	promotionEventBus.on('applied', onPromotionApplied);
 });
 
@@ -764,6 +771,7 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.off('folder-created', onFolderCreated);
 });
 
 /**
