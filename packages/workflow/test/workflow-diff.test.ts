@@ -315,6 +315,28 @@ describe('compareWorkflowsNodes', () => {
 		expect(diff.get('3')?.status).toBe(NodeDiffStatus.Deleted);
 		expect(diff.get('4')?.status).toBe(NodeDiffStatus.Added);
 	});
+
+	it('should keep the last node for duplicate IDs and preserve first-seen diff order', () => {
+		const baseNodes = [
+			createTestNode('2', { name: 'Old' }),
+			createTestNode('1'),
+			createTestNode('2', { name: 'Latest' }),
+		];
+		const targetNodes = [
+			createTestNode('3', { name: 'Old' }),
+			createTestNode('2', { name: 'Latest' }),
+			createTestNode('3', { name: 'Latest' }),
+			createTestNode('4'),
+		];
+
+		const diff = compareWorkflowsNodes(baseNodes, targetNodes);
+
+		expect([...diff.keys()]).toEqual(['2', '1', '3', '4']);
+		expect(diff.get('2')).toEqual({ status: NodeDiffStatus.Eq, node: baseNodes[2] });
+		expect(diff.get('1')?.status).toBe(NodeDiffStatus.Deleted);
+		expect(diff.get('3')).toEqual({ status: NodeDiffStatus.Added, node: targetNodes[2] });
+		expect(diff.get('4')?.status).toBe(NodeDiffStatus.Added);
+	});
 });
 
 describe('determineNodeSize', () => {
