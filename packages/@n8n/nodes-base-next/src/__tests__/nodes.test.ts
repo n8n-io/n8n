@@ -4,8 +4,9 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
 import { actions, nodeTypeOf } from '../index';
-import { getRequest, sendRequest } from '../nodes/http/request';
-import { getManyDatabasePages } from '../nodes/notion/database-page.get-all';
+import { getRequest } from '../nodes/http-request/actions/get';
+import { sendRequest } from '../nodes/http-request/actions/send';
+import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 
 const page = (id: string) => ({
 	object: 'page',

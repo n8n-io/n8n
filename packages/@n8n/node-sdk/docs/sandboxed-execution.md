@@ -10,7 +10,7 @@ bundles run in-process. Community and AI-generated bundles run in a sandbox.
 
 ## What the contract already gives
 
-- `run()` gets only `input`, `http` and `emit` (`src/define.ts`, `RunContext`).
+- `run()` gets only `input` and `http` (`src/define.ts`, `RunContext`).
 - All network I/O goes through `http.request`. The host applies the credential.
 - Secrets never enter `run()`. The guest sees credential settings only.
 - The executor owns parameters, defaults, validation, retries, limits, pairing and continue on fail.
@@ -75,7 +75,7 @@ for the AI builder does not change. The same fixtures prove parity across langua
 
 1. Run one real frozen action (a paginated read) through the sidecar with its fixtures. Pass: less
    than 1 ms per item including one HTTP call, and the same output as in-process.
-2. An escape suite: global `fetch`, an echo of the auth header, `timeoutMs: 1e9`, a 100 MB emit, and
+2. An escape suite: global `fetch`, an echo of the auth header, `timeoutMs: 1e9`, a 100 MB output item, and
    the SSR malicious steps.
 3. Linux amd64 numbers in queue mode. SSR measured macOS arm64 only.
 4. A Python port of the same action that passes the same fixtures.

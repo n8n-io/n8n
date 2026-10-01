@@ -6,11 +6,11 @@ import type { ContractDocument } from './define';
 import type { JsonSchema } from './schema';
 
 /**
- * The executor contract of frozen actions: `RunContext` and `Http` semantics, parameter
- * reading and validation, output pairing, and the host modules a bundle may import. A change
- * to any of them needs a new ABI.
+ * The executor contract of frozen actions: `RunContext` and `Http` semantics, what `run()`
+ * returns or yields for each cardinality, parameter reading and validation, output pairing,
+ * and the host modules a bundle may import. A change to any of them needs a new ABI.
  */
-export const NODE_CONTRACT_ABI = 1;
+export const NODE_CONTRACT_ABI = 2;
 
 /** One frozen action version. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {

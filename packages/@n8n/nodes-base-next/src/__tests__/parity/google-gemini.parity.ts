@@ -1,6 +1,6 @@
 import type { ICredentialType, INodeType } from 'n8n-workflow';
 
-import { messageGemini } from '../../nodes/google-gemini/text.message';
+import { messageGemini } from '../../nodes/google-gemini/actions/text.message';
 import {
 	actionNode,
 	compareRuns,

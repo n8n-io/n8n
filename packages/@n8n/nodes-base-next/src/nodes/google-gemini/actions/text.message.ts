@@ -1,25 +1,6 @@
-import {
-	arr,
-	bool,
-	defineAction,
-	defineNode,
-	int,
-	isRecord,
-	json,
-	list,
-	matches,
-	num,
-	obj,
-	oneOf,
-	str,
-} from '@n8n/node-sdk';
+import { arr, bool, int, isRecord, json, list, matches, num, obj, oneOf, str } from '@n8n/node-sdk';
 
-export const googleGemini = defineNode({
-	id: 'googleGemini',
-	displayName: 'Google Gemini',
-	credentials: ['googlePalmApi'],
-	baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-});
+import { text } from '../google-gemini.node';
 
 /** A candidate as the node emits it with `simplify` and `includeMergedResponse`. */
 const candidate = obj({
@@ -42,13 +23,11 @@ const mergedText = (entry: unknown) =>
 		)
 		.join('');
 
-export const messageGemini = defineAction({
-	node: googleGemini,
-	id: 'googleGemini.text.message',
-	patch: 2,
+export const messageGemini = text.action('message', {
+	patch: 3,
 	action: 'Message a model',
 	summary: 'Send messages to a Gemini model and get its reply as text.',
-	flow: { effect: 'read', cardinality: 'per-item', passthrough: 'replace', idempotent: false },
+	flow: { effect: 'read', cardinality: 'per-item', idempotent: false },
 	input: {
 		model: str().hint('Model ID such as "models/gemini-2.5-flash"; never invent one'),
 		messages: arr(obj({ role: oneOf('user', 'model').default('user'), content: str() })).with({
@@ -60,7 +39,7 @@ export const messageGemini = defineAction({
 		maxOutputTokens: int().with({ minimum: 1 }).optional(),
 	},
 	output: candidate,
-	async run({ input, http, emit }) {
+	async run({ input, http }) {
 		const contents = input.messages
 			.filter((message) => message.content.trim() !== '')
 			.map((message) => ({ parts: [{ text: message.content }], role: message.role ?? 'user' }));
@@ -99,10 +78,10 @@ export const messageGemini = defineAction({
 		if (stopped.length === candidates.length) {
 			throw new Error(`Gemini returned no text: ${[...new Set(stopped)].join(', ')}`);
 		}
-		for (const entry of candidates) {
-			const reply = { ...(isRecord(entry) ? entry : {}), mergedResponse: mergedText(entry) };
-			if (!matches(candidate, reply)) throw new Error('Gemini returned an invalid candidate');
-			emit(reply);
-		}
+		// The input cannot ask for more than one candidate, so the first one is the reply.
+		const [first] = candidates;
+		const reply = { ...(isRecord(first) ? first : {}), mergedResponse: mergedText(first) };
+		if (!matches(candidate, reply)) throw new Error('Gemini returned an invalid candidate');
+		return reply;
 	},
 });

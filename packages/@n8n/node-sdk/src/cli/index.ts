@@ -55,7 +55,7 @@ function scaffold(service: string | undefined, dir: string | undefined) {
 			(content, [token, value]) => content.replaceAll(token, value),
 			readFileSync(join(templates, file), 'utf8'),
 		);
-		const path = join(target, file.replace(/\.tmpl$/, ''));
+		const path = join(target, file.replace('__slug__', slug).replace(/\.tmpl$/, ''));
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, text);
 	}
@@ -161,6 +161,8 @@ async function describe(root: string, id: string | undefined) {
 	const generated = actions.map((action) => ({
 		contract: toContract(action),
 		nodeType: `${packageName}.${nodeNameOf(action.id)}`,
+		resource: action.resource,
+		operation: action.operation,
 	}));
 	console.log(generateNodeModule(project.node.id, generated));
 }

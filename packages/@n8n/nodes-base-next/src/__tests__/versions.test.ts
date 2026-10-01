@@ -1,34 +1,94 @@
+import * as sdk from '@n8n/node-sdk';
 import {
+	actionFileOf,
+	NODE_CONTRACT_ABI,
+	nodeNameOf,
 	openContractPackage,
 	packageNameOf,
 	parseFixtures,
 	verifyManifestSignature,
+	type VersionManifest,
 } from '@n8n/node-sdk';
 import { npmRegistry, replayFixtures } from '@n8n/node-sdk/publish';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import { compileFunction } from 'node:vm';
+import type { IExecuteFunctions, VersionedNodeType } from 'n8n-workflow';
 
-import { freezeAll } from '../../scripts/freeze';
+import { actionEntries, freezeAll, NODES_DIR, nodeClassFile } from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
 import { actions } from '../index';
-import { HttpRequestGet } from '../nodes/HttpRequestGet.node';
-import { versionsOf } from '../registry';
+import { versionsOf, VERSIONS_DIR } from '../registry';
+
+/**
+ * Runs a generated class file as the n8n loader does: `require` the file, then construct the
+ * export that the file name names. `dir` holds the frozen versions that the file reads.
+ */
+function loadNodeClass(actionId: string, dir: string) {
+	const { file, source } = nodeClassFile({ id: actionId });
+	const [className = ''] = path.parse(file).name.split('.');
+	const modules: Record<string, unknown> = {
+		'@n8n/node-sdk': sdk,
+		'../registry': { versionsOf: (id: string) => versionsOf(id, dir) },
+	};
+	const module: { exports: Record<string, unknown> } = { exports: {} };
+	compileFunction(source, ['exports', 'require'])(module.exports, (id: string) => modules[id]);
+	return module.exports[className] as new () => VersionedNodeType;
+}
 
 const fixturesOf = (actionId: string) =>
 	parseFixtures(readFileSync(path.join(FIXTURES_DIR, `${actionId}.json`), 'utf8'));
 
+describe('action files', () => {
+	it('hold one action each, named after its id', async () => {
+		const kebab = (name: string) => name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
+		const files = (await actionEntries()).map(({ entryFile, action }) => [
+			action.id,
+			path.relative(NODES_DIR, entryFile),
+		]);
+		expect(files.sort()).toEqual(
+			actions
+				.map(({ id, node, resource, operation }) => [
+					id,
+					path.join(kebab(node.id), actionFileOf({ resource, operation })),
+				])
+				.sort(),
+		);
+	});
+});
+
 describe('bundled versions', () => {
 	const copy = mkdtempSync(path.join(tmpdir(), 'nodes-base-next-versions-'));
+	const frozen = { manifests: Array.of<VersionManifest>() };
+
+	beforeAll(async () => {
+		frozen.manifests = await freezeAll(copy);
+	});
 
 	afterAll(() => rmSync(copy, { recursive: true, force: true }));
 
-	it('hold the HEAD of every action, as the source builds it', async () => {
-		const manifests = await freezeAll(copy);
-
+	it('hold the HEAD of every action, as the source builds it', () => {
+		const { manifests } = frozen;
 		expect(manifests.map(({ id }) => id).sort()).toEqual(actions.map(({ id }) => id).sort());
 		expect(manifests.map(({ id }) => versionsOf(id)[0]?.manifest)).toEqual(manifests);
+	});
+
+	it('match the n8n.nodes list of package.json with one generated class file each', () => {
+		const manifest: unknown = JSON.parse(
+			readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
+		);
+		const listed = sdk.isRecord(manifest) && sdk.isRecord(manifest.n8n) ? manifest.n8n.nodes : [];
+		expect(listed).toEqual(actions.map((action) => `dist/${nodeClassFile(action).file}`));
+	});
+
+	it('load from the generated class files with the class name of each file', () => {
+		const loaded = actions.map(({ id }) => {
+			const { description } = new (loadNodeClass(id, copy))();
+			return [description.name, description.defaultVersion];
+		});
+		expect(loaded).toEqual(actions.map(({ id, version }) => [nodeNameOf(id), version]));
+		expect(frozen.manifests.map(({ abi }) => abi)).toEqual(actions.map(() => NODE_CONTRACT_ABI));
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
@@ -58,6 +118,7 @@ describe('bundled versions', () => {
 			helpers: { httpRequest: async () => [{ id: 1 }, { id: 2 }] },
 		} as unknown as IExecuteFunctions;
 
+		const HttpRequestGet = loadNodeClass('httpRequest.get', VERSIONS_DIR);
 		const result = await new HttpRequestGet().getNodeType(1).execute?.call(context);
 
 		expect(result).toEqual([
@@ -73,7 +134,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					abi: 1,
+					abi: NODE_CONTRACT_ABI,
 				},
 			},
 		]);

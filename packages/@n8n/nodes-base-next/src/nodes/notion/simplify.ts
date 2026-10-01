@@ -1,31 +1,4 @@
-import {
-	defineNode,
-	defineResource,
-	isHttpError,
-	isRecord,
-	list,
-	type Http,
-	type JsonSchema,
-} from '@n8n/node-sdk';
-
-export const notion = defineNode({
-	id: 'notion',
-	displayName: 'Notion',
-	credentials: ['notionApi', 'notionOAuth2Api'],
-	baseUrl: 'https://api.notion.com/v1',
-});
-
-export const NOTION_VERSION = { 'Notion-Version': '2026-03-11' };
-
-const ID = '[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}';
-
-export const notionDatabase = defineResource({
-	id: 'notion.database',
-	label: 'Database',
-	shape: { pattern: ID, 'x-n8n-hint': 'Notion database ID or URL; 32 hex digits' },
-});
-
-export const notionIdOf = (value: string) => new RegExp(ID).exec(value)?.[0] ?? value;
+import { isRecord, list, type JsonSchema } from '@n8n/node-sdk';
 
 /** change-case v5 `snakeCase`, which the v3 node uses for simplified keys. */
 export const snakeCase = (name: string) =>
@@ -173,16 +146,3 @@ export const SIMPLIFIED: Record<string, JsonSchema> = {
 	relation: { ...strings, 'x-n8n-hint': 'page IDs' },
 	files: { ...strings, 'x-n8n-hint': 'file URLs' },
 };
-
-/** A database ID resolves to its first data source; a data source ID is used as is. */
-export async function dataSourceOf(http: Http, id: string): Promise<string> {
-	try {
-		const database = await http.request({ path: `/databases/${id}`, headers: NOTION_VERSION });
-		const [first] = isRecord(database) ? list(database.data_sources) : [];
-		return isRecord(first) && typeof first.id === 'string' ? first.id : id;
-	} catch (error) {
-		// Notion answers 400 or 404 for a data source ID. Other errors are real failures.
-		if (isHttpError(error) && (error.status === 400 || error.status === 404)) return id;
-		throw error;
-	}
-}

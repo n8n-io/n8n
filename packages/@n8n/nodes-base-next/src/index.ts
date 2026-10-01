@@ -1,14 +1,15 @@
 import { nodeNameOf, type Action } from '@n8n/node-sdk';
 
-import { getGmailMessage } from './nodes/gmail/message.get';
-import { getManyGmailMessages } from './nodes/gmail/message.get-all';
-import { sendGmailMessage } from './nodes/gmail/message.send';
-import { messageGemini } from './nodes/google-gemini/text.message';
-import { appendSheetRow } from './nodes/google-sheets/sheet.append';
-import { appendOrUpdateSheetRow } from './nodes/google-sheets/sheet.append-or-update';
-import { readSheetRows } from './nodes/google-sheets/sheet.read';
-import { getRequest, sendRequest } from './nodes/http/request';
-import { getManyDatabasePages } from './nodes/notion/database-page.get-all';
+import { getGmailMessage } from './nodes/gmail/actions/message.get';
+import { getManyGmailMessages } from './nodes/gmail/actions/message.get-all';
+import { sendGmailMessage } from './nodes/gmail/actions/message.send';
+import { messageGemini } from './nodes/google-gemini/actions/text.message';
+import { appendSheetRow } from './nodes/google-sheets/actions/sheet.append';
+import { appendOrUpdateSheetRow } from './nodes/google-sheets/actions/sheet.append-or-update';
+import { readSheetRows } from './nodes/google-sheets/actions/sheet.read';
+import { getRequest } from './nodes/http-request/actions/get';
+import { sendRequest } from './nodes/http-request/actions/send';
+import { getManyDatabasePages } from './nodes/notion/actions/database-page.get-all';
 import { composedSlotOf, type WorkflowNodeRef } from './composed';
 
 export { versionsOf } from './registry';
@@ -52,6 +53,6 @@ export const nodeTypeOf = (action: Pick<Action, 'id'>) =>
 export function actionOfNode(node: WorkflowNodeRef): Action | undefined {
 	const slot = composedSlotOf(node);
 	return slot
-		? actions.find(({ id, version }) => id === slot.action && version === slot.major)
+		? actions.find(({ id, version }) => id === slot.action.id && version === slot.major)
 		: actions.find((action) => nodeTypeOf(action) === node.type);
 }

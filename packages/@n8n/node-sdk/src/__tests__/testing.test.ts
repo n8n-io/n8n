@@ -1,13 +1,4 @@
-import {
-	arr,
-	defineAction,
-	defineCredential,
-	defineNode,
-	int,
-	isHttpError,
-	obj,
-	str,
-} from '../index';
+import { arr, defineCredential, defineNode, int, isHttpError, obj, str } from '../index';
 import { mockHttp, runAction } from '../testing';
 
 const todoApi = defineCredential({
@@ -31,18 +22,21 @@ const todo = defineNode({
 	baseUrl: 'https://todo.test/v1',
 });
 
-const listTasks = defineAction({
-	node: todo,
-	id: 'todo.task.getAll',
+const task = todo.resource('task');
+
+const listSpec = {
 	action: 'Get many tasks',
 	summary: 'List tasks.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
 	input: { limit: int().with({ minimum: 1 }).default(10), project: str().optional() },
 	output: obj({ id: str(), tags: arr(str()) }),
-	async run({ input, http, emit }) {
+};
+
+const listTasks = task.action('getAll', {
+	...listSpec,
+	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
+	async *run({ input, http }) {
 		const response = await http.request({ path: '/tasks', query: { limit: input.limit } });
-		const tasks = Array.isArray(response) ? response : [];
-		tasks.forEach((task) => emit(task));
+		yield* Array.isArray(response) ? response : [];
 	},
 });
 
@@ -91,11 +85,11 @@ describe('defineCredential', () => {
 				headers: { ...request.headers, 'x-signature': `sig-${data.secret as string}` },
 			}),
 		});
-		const action = defineAction({
+		const action = {
 			...listTasks,
-			id: 'todo.task.getAll',
 			node: { ...todo, credentials: ['signedApi'] },
-		});
+			credentialTypes: ['signedApi'],
+		};
 		const fetch = mockHttp([{ path: '/tasks', reply: { json: [] } }]);
 		const result = await runAction(action, {
 			input: {},
@@ -159,17 +153,18 @@ describe('runAction', () => {
 	});
 
 	it('throws an HttpError with the status, headers and body of a failed request', async () => {
-		const retryAfter = defineAction({
-			...listTasks,
+		const retryAfter = task.action('getAll', {
+			...listSpec,
+			flow: { effect: 'read', cardinality: 'per-item' },
 			output: obj({ status: int(), retryAfter: str(), body: str() }),
-			async run({ http, emit }) {
-				try {
-					await http.request({ path: '/tasks', retry: false });
-				} catch (error) {
-					if (!isHttpError(error)) throw error;
-					const body = JSON.stringify(error.body);
-					emit({ status: error.status, retryAfter: error.headers['retry-after'] ?? '', body });
-				}
+			async run({ http }) {
+				const error = await http.request({ path: '/tasks', retry: false }).then(
+					() => undefined,
+					(caught: unknown) => caught,
+				);
+				if (!isHttpError(error)) throw new Error('The request did not fail');
+				const body = JSON.stringify(error.body);
+				return { status: error.status, retryAfter: error.headers['retry-after'] ?? '', body };
 			},
 		});
 		const fetch = mockHttp([
@@ -216,11 +211,14 @@ describe('runAction', () => {
 	});
 
 	it('fails a run that makes more calls than a test needs', async () => {
-		const pageLoop = defineAction({
-			...listTasks,
-			id: 'todo.task.loop',
-			async run({ http }) {
-				for (;;) await http.request({ path: '/tasks' });
+		const pageLoop = task.action('loop', {
+			...listSpec,
+			flow: listTasks.flow,
+			async *run({ http }) {
+				for (;;) {
+					const page = await http.request({ path: '/tasks' });
+					yield* Array.isArray(page) ? page : [];
+				}
 			},
 		});
 		const fetch = mockHttp([{ path: '/tasks', reply: { json: [] } }]);

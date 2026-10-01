@@ -262,7 +262,12 @@ describe('liftNodeType', () => {
 	it('renders the typed module without the legacy locator flag', () => {
 		const create = actionOf(todo, 2, 'todo.task.create');
 		const module = generateNodeModule('todo', [
-			{ contract: create.contract, nodeType: create.compile.target.type },
+			{
+				contract: create.contract,
+				nodeType: create.compile.target.type,
+				resource: 'task',
+				operation: 'create',
+			},
 		]);
 		expect(module).toContain('projectId?: { mode: "list" | "id"; value: Value<I, C, string> };');
 		expect(module).toContain('tag?: Value<I, C, string> | Value<I, C, number>;');

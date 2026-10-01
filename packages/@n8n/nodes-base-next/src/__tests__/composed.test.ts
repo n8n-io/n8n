@@ -8,7 +8,7 @@ import {
 	withComposedVersions,
 } from '../composed';
 import { actionOfNode, actions } from '../index';
-import { getManyDatabasePages } from '../nodes/notion/database-page.get-all';
+import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 import { versionsOf } from '../registry';
 
 const NOTION = 'n8n-nodes-base.notion';
@@ -146,8 +146,8 @@ describe('composed nodes', () => {
 		);
 		const missing = slots.filter(
 			({ action, major }) =>
-				!actions.some(({ id }) => id === action) ||
-				!versionsOf(action).some(({ manifest }) => manifest.contract.version === major),
+				!actions.includes(action) ||
+				!versionsOf(action.id).some(({ manifest }) => manifest.contract.version === major),
 		);
 		expect(missing).toEqual([]);
 	});

@@ -1,8 +1,9 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
+	actionFileOf,
 	lintContract,
 	toContract,
 	type Action,
@@ -47,7 +48,9 @@ export async function loadProject(root: string): Promise<Project> {
 	const { node, actions, credentials } = exports;
 	if (!isNode(node)) throw new Error('src/index.ts must export "node" (a defineNode result)');
 	if (!isArrayOf(actions, isAction)) {
-		throw new Error('src/index.ts must export "actions" (an array of defineAction results)');
+		throw new Error(
+			'src/index.ts must export "actions" (an array of node.action or resource.action results)',
+		);
 	}
 	if (!isArrayOf(credentials, isCredential)) {
 		throw new Error(
@@ -127,11 +130,14 @@ function credentialIssues(credential: CredentialDefinition): string[] {
 export function checkContracts({ root, node, actions, credentials }: Project): string[] {
 	const known = new Set(credentials.map(({ name }) => name));
 	const at = (id: string) => (issue: string) => `${fileOf(root, id)}: ${id}: ${issue}`;
-	const actionIssues = actions.flatMap((action, index) =>
-		[
+	const actionIssues = actions.flatMap((action, index) => {
+		// The file name repeats the resource and operation of the id, so a renamed action fails here.
+		const file = join('src', actionFileOf(action));
+		const hasFile = existsSync(join(root, file));
+		return [
+			...(hasFile ? [] : [`file: must be ${file}`]),
 			...(actions.findIndex(({ id }) => id === action.id) < index ? ['id: is not unique'] : []),
 			...(action.node.id !== node.id ? [`node: is "${action.node.id}", not "${node.id}"`] : []),
-			...(action.id.startsWith(`${node.id}.`) ? [] : [`id: must start with "${node.id}."`]),
 			...lintContract(toContract(action)).map((issue) => issue.replace(`${action.id}: `, '')),
 			...exampleIssues(action.inputSchema, 'input'),
 			...exampleIssues(action.output.json, 'output'),
@@ -139,8 +145,8 @@ export function checkContracts({ root, node, actions, credentials }: Project): s
 			...action.credentialTypes
 				.filter((type) => !known.has(type))
 				.map((type) => `credentials: "${type}" is not in the exported credentials`),
-		].map(at(action.id)),
-	);
+		].map((issue) => `${hasFile ? file : join('src', 'index.ts')}: ${action.id}: ${issue}`);
+	});
 	const nodeIssues = node.credentials
 		.filter((type) => !known.has(type))
 		.map((type) => `credentials: "${type}" is not in the exported credentials`)

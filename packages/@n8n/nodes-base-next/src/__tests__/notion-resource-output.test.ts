@@ -1,4 +1,4 @@
-import { getManyDatabasePages } from '../nodes/notion/database-page.get-all';
+import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 
 const fields = [
 	{ name: 'Name', value: 'Name|title' },

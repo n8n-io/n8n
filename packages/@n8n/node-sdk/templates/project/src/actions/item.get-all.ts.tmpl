@@ -1,31 +1,31 @@
-import { arr, bool, defineAction, int, nullable, obj, paginate, parse, str } from '@n8n/node-sdk';
+import { arr, bool, int, nullable, obj, paginate, parse, str } from '@n8n/node-sdk';
 
-import { node } from '../node';
+import { item } from '../__slug__.node';
 
 // `obj` rejects fields it does not list, so list every field the API returns.
-export const item = obj({
+export const itemOutput = obj({
 	id: str().with({ examples: ['itm_1'] }),
 	name: str(),
 	ownerId: nullable(str()).hint('null when nobody owns the item'),
 });
 
 // One page of the list response.
-const page = obj({ items: arr(item), nextCursor: nullable(str()).optional() });
+const page = obj({ items: arr(itemOutput), nextCursor: nullable(str()).optional() });
 
-export const getManyItems = defineAction({
-	node,
-	id: '__service__.item.getAll',
+// The id is `__service__.item.getAll`, so this file is `actions/item.get-all.ts`.
+export const getManyItems = item.action('getAll', {
 	action: 'Get many items',
 	summary: 'List items, newest first.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
+	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
 		returnAll: bool().default(false),
 		limit: int().with({ minimum: 1 }).default(50).hint('Used when returnAll is false'),
 	},
-	output: item,
-	async run({ input, http, emit }) {
-		// `paginate` owns the page loop: it stops at the limit, on the last page, and on a repeated cursor.
-		const items = paginate(http, {
+	output: itemOutput,
+	// A `1:N` action yields each output item. `paginate` owns the page loop: it stops at the
+	// limit, on the last page, and on a repeated cursor.
+	async *run({ input, http }) {
+		yield* paginate(http, {
 			// `room` is the limit minus the items so far. An undefined query value is not sent.
 			request: (cursor, room) => ({
 				path: '/items',
@@ -36,6 +36,5 @@ export const getManyItems = defineAction({
 			next: (response) => parse(page, response).nextCursor ?? undefined,
 			limit: input.returnAll ? undefined : input.limit,
 		});
-		for await (const entry of items) emit(entry);
 	},
 });

@@ -31,6 +31,9 @@ import { NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
 const isRecord = (value: unknown): value is IDataObject =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
+	typeof value === 'object' && value !== null && Symbol.asyncIterator in value;
+
 /** `notion.databasePage.getAll` → `notionDatabasePageGetAll`. */
 export const nodeNameOf = (actionId: string) =>
 	actionId
@@ -243,9 +246,9 @@ function readParameter(
 }
 
 /**
- * The ABI 1 executor. Parameters are resolved per item, defaults filled in, and validated
- * against `input`. Transient failures of idempotent requests retry. Each emitted item is
- * validated against `output` and paired with its input item. Continue-on-fail emits an error
+ * The ABI 2 executor. Parameters are resolved per item, defaults filled in, and validated
+ * against `input`. Transient failures of idempotent requests retry. Each output item is
+ * validated against `output` and paired with its input item. Continue-on-fail gives an error
  * item, which n8n routes to the error output when the node has one.
  */
 export function executorOf<S extends Shape, O extends AnySchema>(
@@ -319,17 +322,15 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				const issues = validate(input, action.inputSchema);
 				throw new NodeOperationError(host.node, issues.join('; '), { itemIndex });
 			}
-			const emitted: INodeExecutionData[] = [];
-			// Validate on emit, so a bad item fails before the next page downloads.
-			const emit = (item: unknown) => {
-				if (emitted.length >= limits.maxItems) {
+			const toItem = (item: unknown, index: number): INodeExecutionData => {
+				if (index >= limits.maxItems) {
 					throw new NodeOperationError(
 						host.node,
-						`${action.id} emitted ${limits.maxItems} items for one input item, the most one run may emit`,
+						`${action.id} yielded ${limits.maxItems} items for one input item, the most one run may yield`,
 						{ itemIndex },
 					);
 				}
-				const issues = validate(item, outputSchema, { path: `output[${emitted.length}]` });
+				const issues = validate(item, outputSchema, { path: `output[${index}]` });
 				if (issues.length > 0 || !isRecord(item)) {
 					throw new NodeOperationError(
 						host.node,
@@ -337,10 +338,19 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 						{ itemIndex },
 					);
 				}
-				emitted.push({ json: item, pairedItem: { item: itemIndex } });
+				return { json: item, pairedItem: { item: itemIndex } };
 			};
-			await action.run({ input, http: httpFor(itemIndex), emit });
-			return emitted;
+			const result = action.run({ input, http: httpFor(itemIndex) });
+			if (action.flow.cardinality === 'per-item') return [toItem(await result, 0)];
+			if (!isAsyncIterable(result)) {
+				throw new NodeOperationError(host.node, `${action.id} is 1:N, so run() must yield`, {
+					itemIndex,
+				});
+			}
+			const items: INodeExecutionData[] = [];
+			// Validate each item when it is yielded, so a bad item fails before the next page downloads.
+			for await (const item of result) items.push(toItem(item, items.length));
+			return items;
 		};
 
 		return await Array.from({ length: host.itemCount }).reduce<Promise<INodeExecutionData[]>>(

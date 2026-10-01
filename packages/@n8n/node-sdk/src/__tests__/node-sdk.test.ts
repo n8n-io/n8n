@@ -1,8 +1,8 @@
 import { NodeApiError, type IExecuteFunctions, type INode, type JsonObject } from 'n8n-workflow';
 
 import {
+	actionFileOf,
 	arr,
-	defineAction,
 	defineNode,
 	exampleOf,
 	generateNodeModule,
@@ -30,24 +30,101 @@ const todo = defineNode({
 	baseUrl: 'https://todo.test',
 });
 
-const listTasks = defineAction({
-	node: todo,
-	id: 'todo.task.getAll',
+const task = todo.resource('task', { input: { project: str().hint('Project ID') } });
+
+const listTasks = task.action('getAll', {
 	action: 'Get many tasks',
 	summary: 'List tasks in a project.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
+	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		project: str().hint('Project ID'),
 		paging: variant('mode', { all: {}, limit: { max: num().default(50) } }),
 		status: oneOf('open', 'done').optional(),
 	},
 	output: obj({ id: str(), title: str(), tags: arr(str()) }),
-	async run({ input, http, emit }) {
+	async *run({ input, http }) {
 		const max = input.paging.mode === 'limit' ? input.paging.max : undefined;
 		const body = await http.request({ path: `/projects/${input.project}/tasks`, query: { max } });
-		const tasks = Array.isArray(body) ? body : [];
-		for (const task of tasks) emit(task);
+		yield* Array.isArray(body) ? body : [];
 	},
+});
+
+describe('node builders', () => {
+	it('derive the action id and merge the resource input into the action input', () => {
+		const ping = todo.action('ping', {
+			action: 'Ping',
+			summary: 'Check the API.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output: obj({ ok: str() }),
+			async run() {
+				return { ok: 'yes' };
+			},
+		});
+		expect([listTasks.id, listTasks.resource, listTasks.operation]).toEqual([
+			'todo.task.getAll',
+			'task',
+			'getAll',
+		]);
+		expect([ping.id, ping.resource, ping.operation]).toEqual(['todo.ping', undefined, 'ping']);
+		expect(Object.keys(listTasks.input)).toEqual(['project', 'paging', 'status']);
+		expect(listTasks.credentialTypes).toEqual(['todoApi']);
+		expect(actionFileOf(listTasks)).toBe('actions/task.get-all.ts');
+		expect(actionFileOf(ping)).toBe('actions/ping.ts');
+	});
+
+	it('types the run() result from flow.cardinality', () => {
+		const output = obj({ id: str() });
+		const perItem = { action: 'A', summary: 'S.', input: {}, output } as const;
+		const probes = [
+			task.action('get', {
+				...perItem,
+				flow: { effect: 'read', cardinality: 'per-item' },
+				// @ts-expect-error a per-item action returns one item; it does not yield
+				async *run() {
+					yield { id: '1' };
+				},
+			}),
+			task.action('list', {
+				...perItem,
+				flow: { effect: 'read', cardinality: '1:N' },
+				// @ts-expect-error a 1:N action yields its items; it does not return one
+				async run() {
+					return await Promise.resolve({ id: '1' });
+				},
+			}),
+			task.action('wrong', {
+				...perItem,
+				flow: { effect: 'read', cardinality: 'per-item' },
+				// @ts-expect-error the item must match the output schema
+				async run() {
+					return await Promise.resolve({ name: 1 });
+				},
+			}),
+			task.action('wrongItem', {
+				...perItem,
+				flow: { effect: 'read', cardinality: '1:N' },
+				// @ts-expect-error each yielded item must match the output schema
+				async *run() {
+					yield { name: 1 };
+				},
+			}),
+			task.action('readsInput', {
+				...perItem,
+				flow: { effect: 'read', cardinality: 'per-item' },
+				async run({ input }) {
+					// @ts-expect-error run() sees only the declared input
+					return await Promise.resolve({ id: input.missing });
+				},
+			}),
+		];
+		expect(probes.map(({ id }) => id)).toEqual([
+			'todo.task.get',
+			'todo.task.list',
+			'todo.task.wrong',
+			'todo.task.wrongItem',
+			'todo.task.readsInput',
+		]);
+	});
 });
 
 describe('schema builders', () => {
@@ -279,6 +356,8 @@ describe('generateNodeModule', () => {
 			actions.map((action) => ({
 				contract: toContract(action),
 				nodeType: `@n8n/nodes-base-next.${action.id}`,
+				resource: action.resource,
+				operation: action.operation,
 			})),
 		);
 
@@ -286,15 +365,13 @@ describe('generateNodeModule', () => {
 		name: { name: str().hint('Exact list name') },
 		id: { id: str().hint('Numeric list ID') },
 	});
-	const listAction = (id: `todo.${string}`, extra = {}) =>
-		defineAction({
-			node: todo,
-			id,
+	const listAction = (operation: string, extra = {}) =>
+		todo.resource('task').action(operation, {
 			action: 'Find tasks',
 			summary: 'Find tasks in a list.',
 			flow: listTasks.flow,
 			output: listTasks.output,
-			async run() {},
+			async *run() {},
 			input: {
 				...extra,
 				list,
@@ -316,7 +393,13 @@ describe('generateNodeModule', () => {
 	it('emits the composed node version and its slot for an action that owns a slot', () => {
 		const slot = { typeVersion: 4, resource: 'task', operation: 'getAll' };
 		const text = generateNodeModule('todo', [
-			{ contract: toContract(listTasks), nodeType: 'n8n-nodes-base.todo', slot },
+			{
+				contract: toContract(listTasks),
+				nodeType: 'n8n-nodes-base.todo',
+				resource: 'task',
+				operation: 'getAll',
+				slot,
+			},
 		]);
 		expect(text).toContain(
 			'contractStep("n8n-nodes-base.todo", config, 4, {"resource":"task","operation":"getAll"})',
@@ -341,22 +424,19 @@ describe('generateNodeModule', () => {
 	});
 
 	it('shows a field doc that repeats across union branches on the first branch only', () => {
-		const text = moduleOf(listAction('todo.task.search'));
+		const text = moduleOf(listAction('search'));
 		expect(text.match(/\/\*\* Exact field name \*\//g)).toHaveLength(1);
 		expect(text).toContain('/** Numeric list ID */');
 	});
 
 	it('prints a field that every union branch shares once, beside the union', () => {
-		expect(moduleOf(listAction('todo.task.search'))).toContain(
+		expect(moduleOf(listAction('search'))).toContain(
 			' sort: {\n  /** Exact field name */\n  field: Value<I, C, string>;\n } & ({ by: "field"; direction: "asc" | "desc" } | { by: "rank"; weight: Value<I, C, number> });',
 		);
 	});
 
 	it('shows a field doc that an earlier action shows on the first action only', () => {
-		const text = moduleOf(
-			listTasks,
-			listAction('todo.task.search', { project: str().hint('Project ID') }),
-		);
+		const text = moduleOf(listTasks, listAction('search', { project: str().hint('Project ID') }));
 		expect(text.match(/Project ID/g)).toHaveLength(1);
 		expect(text).toContain(
 			'export type TodoTaskSearchInput<I, C> = {\n project: Value<I, C, string>;',
@@ -364,10 +444,7 @@ describe('generateNodeModule', () => {
 	});
 
 	it('names a repeated type once and references the name', () => {
-		const text = moduleOf(
-			listAction('todo.task.search'),
-			listAction('todo.task.find', { limit: num() }),
-		);
+		const text = moduleOf(listAction('search'), listAction('find', { limit: num() }));
 		expect(text).toContain('type TodoTaskSearchList<I, C> = {\n mode: "name";');
 		expect(text.match(/list: TodoTaskSearchList<I, C>;/g)).toHaveLength(2);
 		expect(text.match(/Exact list name/g)).toHaveLength(1);

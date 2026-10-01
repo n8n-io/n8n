@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 
 import { composeVersion } from '../compose';
-import { defineAction, defineNode, int, obj, str } from '../index';
+import { defineNode, int, obj, str } from '../index';
 import { toNodeType } from '../runtime';
 
 const tasks = defineNode({
@@ -17,17 +17,15 @@ const tasks = defineNode({
 	baseUrl: 'https://tasks.test',
 });
 
-const listTasks = defineAction({
-	node: tasks,
-	id: 'tasks.task.getAll',
+const listTasks = tasks.resource('task').action('getAll', {
 	action: 'Get many tasks',
 	summary: 'List the tasks of a project.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace' },
+	flow: { effect: 'read', cardinality: '1:N' },
 	input: { project: str(), limit: int().optional() },
 	output: obj({ id: str() }),
-	async run({ input, http, emit }) {
+	async *run({ input, http }) {
 		const body = await http.request({ path: `/projects/${input.project}/tasks` });
-		for (const task of Array.isArray(body) ? body : []) emit(task);
+		yield* Array.isArray(body) ? body : [];
 	},
 });
 

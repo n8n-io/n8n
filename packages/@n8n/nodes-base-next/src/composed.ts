@@ -1,13 +1,12 @@
 import { composeVersion, isRecord, toVersionedNodeType, type Action } from '@n8n/node-sdk';
 import { VersionedNodeType, type IVersionedNodeType } from 'n8n-workflow';
 
+import { getManyDatabasePages } from './nodes/notion/actions/database-page.get-all';
 import { versionsOf } from './registry';
 
-/** A resource and operation of a legacy node that a contract action runs. */
+/** A legacy node slot that a contract action runs: the resource and operation of the action. */
 export interface ComposedSlotSpec {
-	readonly resource: string;
-	readonly operation: string;
-	readonly action: Action['id'];
+	readonly action: Action & { readonly resource: string };
 	/** The action major that this node version runs. It never changes for a node version. */
 	readonly major: number;
 }
@@ -26,17 +25,7 @@ export const COMPOSED_NODES: Readonly<
 	Record<string, Readonly<Record<number, ComposedVersionSpec>>>
 > = {
 	'n8n-nodes-base.notion': {
-		4: {
-			legacy: 3,
-			slots: [
-				{
-					resource: 'databasePage',
-					operation: 'getAll',
-					action: 'notion.databasePage.getAll',
-					major: 1,
-				},
-			],
-		},
+		4: { legacy: 3, slots: [{ action: getManyDatabasePages, major: 1 }] },
 	},
 };
 
@@ -58,9 +47,9 @@ const composedSlots = () =>
 /** The newest composed node version that runs this action major. */
 export function composedTargetOf({ id, version }: Pick<Action, 'id' | 'version'>) {
 	const newest = composedSlots()
-		.filter(({ action, major }) => action === id && major === version)
+		.filter(({ action, major }) => action.id === id && major === version)
 		.reduce<ComposedTarget | undefined>(
-			(best, { nodeType, typeVersion, resource, operation }) =>
+			(best, { nodeType, typeVersion, action: { resource, operation } }) =>
 				best && best.typeVersion > typeVersion
 					? best
 					: { nodeType, typeVersion, resource, operation },
@@ -84,7 +73,9 @@ export function composedSlotOf({
 }: WorkflowNodeRef): ComposedSlotSpec | undefined {
 	const spec = typeVersion === undefined ? undefined : COMPOSED_NODES[type]?.[typeVersion];
 	const { resource, operation } = isRecord(parameters) ? parameters : {};
-	return spec?.slots.find((slot) => slot.resource === resource && slot.operation === operation);
+	return spec?.slots.find(
+		({ action }) => action.resource === resource && action.operation === operation,
+	);
 }
 
 /**
@@ -99,10 +90,10 @@ export function withComposedVersions(nodeType: string, legacy: IVersionedNodeTyp
 				composeVersion({
 					legacy: legacy.getNodeType(base),
 					version: Number(version),
-					slots: slots.map(({ resource, operation, action, major }) => ({
-						resource,
-						operation,
-						action: new (toVersionedNodeType(versionsOf(action)))().getNodeType(major),
+					slots: slots.map(({ action, major }) => ({
+						resource: action.resource,
+						operation: action.operation,
+						action: new (toVersionedNodeType(versionsOf(action.id)))().getNodeType(major),
 					})),
 				}),
 			] as const,

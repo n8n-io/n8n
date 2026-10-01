@@ -1,35 +1,28 @@
-import { defineAction, int, obj, ref, str } from '@n8n/node-sdk';
+import { int, obj, str } from '@n8n/node-sdk';
 
+import { sheet, spreadsheetIdOf } from '../google-sheets.node';
 import {
 	appendRow,
 	cellFormat,
 	cellText,
 	columnKey,
 	deriveWritten,
-	googleSheets,
-	googleSpreadsheet,
 	headerOf,
 	readValues,
 	rowCells,
 	rowValues,
-	sheetInput,
 	sheetOf,
-	spreadsheetIdOf,
 	toCell,
 	updateCells,
 	writtenRow,
-} from './node';
+} from '../table';
 
-export const appendOrUpdateSheetRow = defineAction({
-	node: googleSheets,
-	id: 'googleSheets.sheet.appendOrUpdate',
-	patch: 2,
+export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
+	patch: 3,
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
-	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: true },
+	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
 	input: {
-		spreadsheet: ref(googleSpreadsheet),
-		sheet: sheetInput,
 		values: rowValues,
 		matchOn: str().hint('Header text of the key column; values must set it'),
 		header: obj({
@@ -40,16 +33,16 @@ export const appendOrUpdateSheetRow = defineAction({
 	},
 	output: writtenRow,
 	deriveOutput: deriveWritten,
-	async run({ input, http, emit }) {
+	async run({ input, http }) {
 		const { matchOn } = input;
 		const key = input.values[matchOn];
 		if (key === undefined || key === null || key === '') {
 			throw new Error(`values needs a value for the matchOn column "${matchOn}"`);
 		}
 		const spreadsheetId = spreadsheetIdOf(input.spreadsheet);
-		const sheet = await sheetOf(http, spreadsheetId, input.sheet);
+		const tab = await sheetOf(http, spreadsheetId, input.sheet);
 		// Unformatted, so a number key matches a cell that shows "1,000".
-		const rows = await readValues(http, spreadsheetId, sheet, 'UNFORMATTED_VALUE');
+		const rows = await readValues(http, spreadsheetId, tab, 'UNFORMATTED_VALUE');
 		const headerRow = input.header?.headerRow ?? 1;
 		const firstDataRow = input.header?.firstDataRow ?? 2;
 		// Check before `headerOf` adds columns: a new key column matches no row.
@@ -57,7 +50,7 @@ export const appendOrUpdateSheetRow = defineAction({
 		if (known.some(Boolean) && !known.includes(matchOn)) {
 			throw new Error(`Column "${matchOn}" is not in header row ${headerRow}`);
 		}
-		const header = await headerOf(http, spreadsheetId, sheet, rows, headerRow, input.values);
+		const header = await headerOf(http, spreadsheetId, tab, rows, headerRow, input.values);
 		const keyColumn = header.indexOf(matchOn);
 		// Legacy mapping mode writes empty cells for null values instead of skipping them.
 		const values = Object.fromEntries(
@@ -72,15 +65,15 @@ export const appendOrUpdateSheetRow = defineAction({
 		if (index === -1) {
 			const lastRow = Math.max(rows.length, headerRow) + 1;
 			const cells = rowCells(header, values);
-			await appendRow(http, spreadsheetId, sheet, lastRow, cells, format);
+			await appendRow(http, spreadsheetId, tab, lastRow, cells, format);
 		} else {
 			const cells = header.flatMap((name, column) =>
 				name === matchOn || values[name] === undefined || header.indexOf(name) !== column
 					? []
 					: [{ column, row: index + firstDataRow, value: toCell(values[name]) }],
 			);
-			if (cells.length) await updateCells(http, spreadsheetId, sheet, cells, format);
+			if (cells.length) await updateCells(http, spreadsheetId, tab, cells, format);
 		}
-		emit(values);
+		return values;
 	},
 });

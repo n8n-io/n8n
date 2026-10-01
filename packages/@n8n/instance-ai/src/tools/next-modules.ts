@@ -17,10 +17,12 @@ const actionsOfNode = (nodeId: string) => nextActions.filter((action) => action.
 
 /** An action that owns a slot of a composed node emits that node, e.g. Notion v4. */
 function generatedActionOf(action: Action): GeneratedAction {
+	const { resource, operation } = action;
+	const contract = toContract(action);
 	const target = composedTargetOf(action);
-	if (!target) return { contract: toContract(action), nodeType: nodeTypeOf(action) };
+	if (!target) return { contract, nodeType: nodeTypeOf(action), resource, operation };
 	const { nodeType, ...slot } = target;
-	return { contract: toContract(action), nodeType, slot };
+	return { contract, nodeType, resource, operation, slot };
 }
 
 const moduleOf = (nodeId: string, own: readonly Action[]) =>

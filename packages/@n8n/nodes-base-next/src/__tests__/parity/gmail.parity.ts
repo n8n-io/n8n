@@ -3,9 +3,9 @@ import { GoogleOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleOAuth2Api
 import { OAuth2Api } from 'n8n-nodes-base/dist/credentials/OAuth2Api.credentials';
 import { Gmail } from 'n8n-nodes-base/dist/nodes/Google/Gmail/Gmail.node';
 
-import { getGmailMessage } from '../../nodes/gmail/message.get';
-import { getManyGmailMessages } from '../../nodes/gmail/message.get-all';
-import { sendGmailMessage } from '../../nodes/gmail/message.send';
+import { getGmailMessage } from '../../nodes/gmail/actions/message.get';
+import { getManyGmailMessages } from '../../nodes/gmail/actions/message.get-all';
+import { sendGmailMessage } from '../../nodes/gmail/actions/message.send';
 import {
 	actionNode,
 	compareRuns,

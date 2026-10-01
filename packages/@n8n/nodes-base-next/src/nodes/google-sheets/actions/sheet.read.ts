@@ -1,17 +1,7 @@
-import { arr, bool, defineAction, int, matches, obj, oneOf, ref, str } from '@n8n/node-sdk';
+import { arr, bool, int, matches, obj, oneOf, str } from '@n8n/node-sdk';
 
-import {
-	cellText,
-	googleSheets,
-	googleSpreadsheet,
-	readValues,
-	ROW_NUMBER,
-	sheetInput,
-	sheetOf,
-	sheetRow,
-	spreadsheetIdOf,
-	USER_ROW_NUMBER,
-} from './node';
+import { sheet, spreadsheetIdOf } from '../google-sheets.node';
+import { cellText, readValues, ROW_NUMBER, sheetOf, sheetRow, USER_ROW_NUMBER } from '../table';
 
 type Row = readonly unknown[];
 
@@ -108,21 +98,17 @@ const location = obj({
 });
 
 const input = {
-	spreadsheet: ref(googleSpreadsheet),
-	sheet: sheetInput,
 	filters: arr(obj({ column: str().hint('Exact header text'), value: str() })).optional(),
 	combine: oneOf('AND', 'OR').default('AND'),
 	allMatches: bool().default(true).hint('false returns only the first match'),
 	header: location.hint('Omit to detect the table; set to read fixed rows').optional(),
 };
 
-export const readSheetRows = defineAction({
-	node: googleSheets,
-	id: 'googleSheets.sheet.read',
-	patch: 2,
+export const readSheetRows = sheet.action('read', {
+	patch: 3,
 	action: 'Get rows',
 	summary: 'Read rows, optionally only those matching column filters.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
+	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input,
 	output: sheetRow,
 	deriveOutput({ filters }) {
@@ -142,10 +128,10 @@ export const readSheetRows = defineAction({
 			required: [...(sheetRow.json.required ?? []), ...columns],
 		};
 	},
-	async run({ input: parameters, http, emit }) {
+	async *run({ input: parameters, http }) {
 		const spreadsheetId = spreadsheetIdOf(parameters.spreadsheet);
-		const sheet = await sheetOf(http, spreadsheetId, parameters.sheet);
-		const values = await readValues(http, spreadsheetId, sheet, 'UNFORMATTED_VALUE');
+		const tab = await sheetOf(http, spreadsheetId, parameters.sheet);
+		const values = await readValues(http, spreadsheetId, tab, 'UNFORMATTED_VALUE');
 		if (values.length === 0) return;
 		const { header } = parameters;
 		const keyRow = header ? (header.headerRow ?? 1) - 1 : 0;
@@ -167,7 +153,7 @@ export const readSheetRows = defineAction({
 			: structure(rows, keyRow, dataStart);
 		for (const row of found) {
 			if (!matches(sheetRow, row)) throw new Error('Google Sheets returned a row without a number');
-			emit(row);
+			yield row;
 		}
 	},
 });

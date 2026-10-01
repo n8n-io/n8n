@@ -19,21 +19,19 @@ import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-w
 import { contractVersionLoader, type ContractRegistryOptions } from '../contract-registry';
 
 const echoSource = (minor: number, patch: number, text: string) => `
-import { defineAction, defineNode, obj, str } from '@n8n/node-sdk';
+import { defineNode, obj, str } from '@n8n/node-sdk';
 
-export const echo = defineAction({
-	node: defineNode({ id: 'demo', displayName: 'Demo', credentials: [] }),
-	id: 'demo.echo',
+export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] }).action('echo', {
 	version: 1,
 	minor: ${minor},
 	patch: ${patch},
 	action: 'Echo',
 	summary: 'Echo the text.',
-	flow: { effect: 'transform', cardinality: 'per-item', passthrough: 'replace' },
+	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: { text: str()${minor > 0 ? ', suffix: str().optional()' : ''} },
 	output: obj({ text: str() }),
-	async run({ input, emit }) {
-		emit({ text: ${text} });
+	async run({ input }) {
+		return { text: ${text} };
 	},
 });
 `;
@@ -230,7 +228,7 @@ describe('contractVersionLoader', () => {
 		await run(locked('1.0.0'), {}, metadata);
 		const { bundleHash } = frozenOf('1.0.1').manifest;
 		expect(metadata).toEqual([
-			{ nodeContract: { action: 'demo.echo', version: '1.0.1', bundleHash, abi: 1 } },
+			{ nodeContract: { action: 'demo.echo', version: '1.0.1', bundleHash, abi: 2 } },
 		]);
 	});
 });

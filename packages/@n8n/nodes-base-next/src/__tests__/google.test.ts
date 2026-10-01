@@ -4,13 +4,13 @@ import { simplifyOutput } from 'n8n-nodes-base/dist/nodes/Google/Gmail/GenericFu
 import { GoogleSheet } from 'n8n-nodes-base/dist/nodes/Google/Sheet/v2/helpers/GoogleSheet';
 import { prepareSheetData } from 'n8n-nodes-base/dist/nodes/Google/Sheet/v2/helpers/GoogleSheets.utils';
 
-import { getGmailMessage } from '../nodes/gmail/message.get';
-import { getManyGmailMessages } from '../nodes/gmail/message.get-all';
-import { sendGmailMessage } from '../nodes/gmail/message.send';
-import { messageGemini } from '../nodes/google-gemini/text.message';
-import { appendSheetRow } from '../nodes/google-sheets/sheet.append';
-import { appendOrUpdateSheetRow } from '../nodes/google-sheets/sheet.append-or-update';
-import { readSheetRows } from '../nodes/google-sheets/sheet.read';
+import { getGmailMessage } from '../nodes/gmail/actions/message.get';
+import { getManyGmailMessages } from '../nodes/gmail/actions/message.get-all';
+import { sendGmailMessage } from '../nodes/gmail/actions/message.send';
+import { messageGemini } from '../nodes/google-gemini/actions/text.message';
+import { appendSheetRow } from '../nodes/google-sheets/actions/sheet.append';
+import { appendOrUpdateSheetRow } from '../nodes/google-sheets/actions/sheet.append-or-update';
+import { readSheetRows } from '../nodes/google-sheets/actions/sheet.read';
 
 interface Options {
 	method: string;

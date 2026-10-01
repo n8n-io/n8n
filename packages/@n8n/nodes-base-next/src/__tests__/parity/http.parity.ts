@@ -1,7 +1,8 @@
 import { HttpHeaderAuth } from 'n8n-nodes-base/dist/credentials/HttpHeaderAuth.credentials';
 import { HttpRequest } from 'n8n-nodes-base/dist/nodes/HttpRequest/HttpRequest.node';
 
-import { getRequest, sendRequest } from '../../nodes/http/request';
+import { getRequest } from '../../nodes/http-request/actions/get';
+import { sendRequest } from '../../nodes/http-request/actions/send';
 import {
 	actionNode,
 	compareRuns,

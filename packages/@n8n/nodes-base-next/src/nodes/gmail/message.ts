@@ -1,22 +1,4 @@
-import {
-	arr,
-	defineNode,
-	int,
-	isRecord,
-	list,
-	matches,
-	obj,
-	str,
-	type Http,
-	type Infer,
-} from '@n8n/node-sdk';
-
-export const gmail = defineNode({
-	id: 'gmail',
-	displayName: 'Gmail',
-	credentials: ['gmailOAuth2'],
-	baseUrl: 'https://www.googleapis.com/gmail/v1/users/me',
-});
+import { arr, int, isRecord, list, matches, obj, str, type Http, type Infer } from '@n8n/node-sdk';
 
 const label = obj({ id: str(), name: str() });
 

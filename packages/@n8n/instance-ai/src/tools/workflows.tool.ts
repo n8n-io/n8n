@@ -819,7 +819,7 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 			const factory: ContractFactory = {
 				module: action.node.id,
 				from: `@n8n/nodes/${action.node.id}`,
-				path: action.id.split('.').slice(1).join('.'),
+				path: [action.resource, action.operation].filter(Boolean).join('.'),
 				version: action.version,
 				inputKeys: Object.keys(action.input),
 			};

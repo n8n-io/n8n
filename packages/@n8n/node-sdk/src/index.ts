@@ -1,6 +1,6 @@
 export * from './schema';
 export {
-	defineAction,
+	actionFileOf,
 	defineCredential,
 	defineNode,
 	isHttpError,
@@ -8,8 +8,8 @@ export {
 	paginate,
 	toContract,
 	type Action,
-	type ActionDefinition,
 	type ActionFlow,
+	type ActionSpec,
 	type ContractDocument,
 	type CredentialDefinition,
 	type CredentialField,
@@ -18,11 +18,14 @@ export {
 	type HttpError,
 	type HttpMethod,
 	type HttpRequest,
+	type NodeBuilder,
 	type NodeDefinition,
+	type NodeResource,
 	type PaginateOptions,
 	type ResourceField,
 	type RunContext,
 	type RunInput,
+	type RunResult,
 } from './define';
 export { exampleOf, list, matches, parse, validate } from './validate';
 export { isRecord } from '@n8n/utils/is-record';

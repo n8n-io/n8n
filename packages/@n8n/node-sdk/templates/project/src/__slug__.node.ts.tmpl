@@ -8,3 +8,6 @@ export const node = defineNode({
 	credentials: [__service__Api.name],
 	baseUrl: 'https://api.__slug__.example.com/v1',
 });
+
+// Each action of this resource comes from `item.action(...)`. Its id is `__service__.item.<operation>`.
+export const item = node.resource('item');

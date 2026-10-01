@@ -1,7 +1,6 @@
 import {
 	arr,
 	bool,
-	defineAction,
 	int,
 	isRecord,
 	list,
@@ -13,7 +12,8 @@ import {
 	type Infer,
 } from '@n8n/node-sdk';
 
-import { getMessage, gmail, labelsOf, simplifiedMessage } from './node';
+import { message } from '../gmail.node';
+import { getMessage, labelsOf, simplifiedMessage } from '../message';
 
 const filters = obj({
 	q: str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
@@ -49,13 +49,11 @@ function queryOf(filter: Infer<typeof filters> | undefined) {
 	};
 }
 
-export const getManyGmailMessages = defineAction({
-	node: gmail,
-	id: 'gmail.message.getAll',
-	patch: 2,
+export const getManyGmailMessages = message.action('getAll', {
+	patch: 3,
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
+	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
 		filters: filters.optional(),
 		paging: variant('mode', {
@@ -64,7 +62,7 @@ export const getManyGmailMessages = defineAction({
 		}).default({ mode: 'limit', max: 50 }),
 	},
 	output: simplifiedMessage,
-	async run({ input, http, emit }) {
+	async *run({ input, http }) {
 		const paging = input.paging ?? { mode: 'limit', max: 50 };
 		const query = queryOf(input.filters);
 		const pages = paginate(http, {
@@ -84,6 +82,6 @@ export const getManyGmailMessages = defineAction({
 		for await (const id of pages) ids.push(id);
 		if (ids.length === 0) return;
 		const labels = await labelsOf(http);
-		for (const id of ids) emit(await getMessage(http, id, labels));
+		for (const id of ids) yield await getMessage(http, id, labels);
 	},
 });

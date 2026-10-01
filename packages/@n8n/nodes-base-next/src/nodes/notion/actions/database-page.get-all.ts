@@ -1,7 +1,6 @@
 import {
 	arr,
 	bool,
-	defineAction,
 	int,
 	isRecord,
 	list,
@@ -10,7 +9,6 @@ import {
 	obj,
 	oneOf,
 	paginate,
-	ref,
 	str,
 	variant,
 	type Infer,
@@ -21,16 +19,9 @@ import {
 	type Shape,
 } from '@n8n/node-sdk';
 
-import {
-	dataSourceOf,
-	notion,
-	notionDatabase,
-	notionIdOf,
-	NOTION_VERSION,
-	SIMPLIFIED,
-	simplifyPage,
-	snakeCase,
-} from './node';
+import { dataSourceOf, NOTION_VERSION } from '../data-source';
+import { databasePage, notionIdOf } from '../notion.node';
+import { SIMPLIFIED, simplifyPage, snakeCase } from '../simplify';
 
 /** Conditions that test presence or a relative period take no value. */
 const VALUELESS = ['is_empty', 'is_not_empty'] as const;
@@ -109,7 +100,6 @@ type Condition = Infer<typeof condition>;
 const direction = oneOf('ascending', 'descending');
 
 const input = {
-	database: ref(notionDatabase),
 	where: variant('match', {
 		all: { conditions: arr(condition).with({ minItems: 1 }) },
 		['any']: { conditions: arr(condition).with({ minItems: 1 }) },
@@ -207,18 +197,17 @@ function outputFromProperties(
 	};
 }
 
-export const getManyDatabasePages = defineAction({
-	node: notion,
-	id: 'notion.databasePage.getAll',
+export const getManyDatabasePages = databasePage.action('getAll', {
 	minor: 1,
+	patch: 1,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
-	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
+	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input,
 	output: page,
 	deriveOutput,
 	resourceOutput: { method: 'notion.dataSourceProperties', toOutput: outputFromProperties },
-	async run({ input: parameters, http, emit }) {
+	async *run({ input: parameters, http }) {
 		const dataSourceId = await dataSourceOf(http, notionIdOf(parameters.database));
 		const { where, limit, sort } = parameters;
 		const filters = (where?.conditions ?? []).map(toNotionFilter);
@@ -258,7 +247,7 @@ export const getManyDatabasePages = defineAction({
 		for await (const result of results) {
 			const simplified = simplifyPage(result);
 			if (!matches(page, simplified)) throw new Error('Notion returned a page without id or url');
-			emit(simplified);
+			yield simplified;
 		}
 	},
 });

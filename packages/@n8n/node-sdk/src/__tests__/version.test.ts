@@ -9,7 +9,6 @@ import {
 	arr,
 	bool,
 	contractHash,
-	defineAction,
 	defineNode,
 	diffContracts,
 	generateNodeModule,
@@ -40,7 +39,7 @@ import type { AnySchema } from '../schema';
 import { sha256 } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] });
-const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item', passthrough: 'replace' };
+const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
 
 const contractOf = ({
 	input = { text: str() },
@@ -49,15 +48,13 @@ const contractOf = ({
 	summary = 'Echo the text.',
 }: { input?: Shape; output?: AnySchema; flow?: ActionFlow; summary?: string } = {}) =>
 	toContract(
-		defineAction({
-			node: demo,
-			id: 'demo.echo',
+		demo.action('echo', {
 			action: 'Echo',
 			summary,
 			flow,
 			input,
 			output,
-			async run() {},
+			async *run() {},
 		}),
 	);
 
@@ -131,7 +128,7 @@ describe('diffContracts', () => {
 	});
 
 	it('classifies a changed flow as a major', () => {
-		expect(kindOf({ input: baseInput, flow: { ...FLOW, passthrough: 'merge' } })).toBe('major');
+		expect(kindOf({ input: baseInput, flow: { ...FLOW, cardinality: '1:N' } })).toBe('major');
 	});
 
 	it('compares nested fields', () => {
@@ -146,9 +143,8 @@ describe('diffContracts', () => {
 describe('generateNodeModule', () => {
 	it('pins the action version when it is not 1', () => {
 		const contract = { ...contractOf(), version: 2 };
-		expect(generateNodeModule('demo', [{ contract, nodeType: 'demo.echo' }])).toContain(
-			'contractStep("demo.echo", config, 2)',
-		);
+		const action = { contract, nodeType: 'demo.echo', operation: 'echo' };
+		expect(generateNodeModule('demo', [action])).toContain('contractStep("demo.echo", config, 2)');
 	});
 });
 
@@ -169,23 +165,23 @@ const echoSource = ({
 	text = 'input.text',
 	migrate = '',
 }: EchoOptions = {}) => `
-import { defineAction, defineNode, obj, str } from '@n8n/node-sdk';
+import { defineNode, obj, str } from '@n8n/node-sdk';
 import { shout } from './shout';
 
-export const echo = defineAction({
-	node: defineNode({ id: 'demo', displayName: 'Demo', credentials: [], baseUrl: 'https://demo.test' }),
-	id: 'demo.echo',
+const demo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [], baseUrl: 'https://demo.test' });
+
+export const echo = demo.action('echo', {
 	version: ${version},
 	minor: ${minor},
 	patch: ${patch},
 	action: 'Echo',
 	summary: 'Echo the text.',
-	flow: { effect: 'transform', cardinality: 'per-item', passthrough: 'replace' },
+	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: ${input},
 	output: obj({ text: str() }),
-	async run({ input, http, emit }) {
+	async run({ input, http }) {
 		const suffix = await http.request({ path: '/suffix' });
-		emit({ text: shout(${text} + String(suffix)) });
+		return { text: shout(${text} + String(suffix)) };
 	},
 	${migrate}
 });
@@ -461,7 +457,7 @@ describe('published versions', () => {
 					action: 'demo.echo',
 					version: '1.0.0',
 					bundleHash: v100.bundleHash,
-					abi: 1,
+					abi: 2,
 				},
 			},
 		]);
@@ -475,8 +471,8 @@ describe('published versions', () => {
 		const tampered = { ...manifest, bundleHash: sha256('other bytes') };
 
 		await expect(run(frozenOf(tampered, bundle))).rejects.toThrow('does not match');
-		expect(() => toVersionedNodeType([frozenOf({ ...manifest, abi: 2 }, bundle)])).toThrow(
-			'needs ABI 2',
+		expect(() => toVersionedNodeType([frozenOf({ ...manifest, abi: 3 }, bundle)])).toThrow(
+			'needs ABI 3',
 		);
 	});
 });

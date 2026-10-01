@@ -63,6 +63,13 @@ describe('n8n-node-next', () => {
 		expect(manifest.dependencies['@n8n/node-sdk']).toBe(`link:${SDK_ROOT}`);
 		expect(readFileSync(join(project, 'AGENTS.md'), 'utf8').split('\n').length).toBeLessThan(150);
 		expect(readFileSync(join(project, 'src/index.ts'), 'utf8')).toContain('export const actions');
+		// The scaffold has the layout that check enforces.
+		expect(readFileSync(join(project, 'src/todo.node.ts'), 'utf8')).toContain(
+			"node.resource('item')",
+		);
+		expect(readFileSync(join(project, 'src/actions/item.get-all.ts'), 'utf8')).toContain(
+			"item.action('getAll'",
+		);
 		install(project);
 		expect((await cli(workspace, ['new', 'todo', '--dir', 'todo'])).stderr).toContain(
 			'is not empty',
@@ -85,6 +92,18 @@ describe('n8n-node-next', () => {
 		expect(result.code).toBe(1);
 		expect(result.stderr).toContain(
 			'src/actions/item.get-all.ts: todo.item.getAll: output.id.examples[0]: must be string, got 1',
+		);
+	});
+
+	it('check reports an action file whose name does not match the action id', async () => {
+		const file = join(project, 'src/actions/item.get-all.ts');
+		const source = readFileSync(file, 'utf8');
+		writeFileSync(file, source.replace("item.action('getAll'", "item.action('list'"));
+		const result = await cli(project, ['check']);
+		writeFileSync(file, source);
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain(
+			'src/index.ts: todo.item.list: file: must be src/actions/item.list.ts',
 		);
 	});
 
@@ -130,7 +149,7 @@ describe('n8n-node-next', () => {
 	});
 
 	it('run calls the API with the credential from the environment', async () => {
-		const node = join(project, 'src/node.ts');
+		const node = join(project, 'src/todo.node.ts');
 		writeFileSync(
 			node,
 			readFileSync(node, 'utf8').replace('https://api.todo.example.com/v1', baseUrl()),

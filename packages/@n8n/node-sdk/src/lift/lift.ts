@@ -15,7 +15,7 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
-import type { ActionFlow, ContractDocument } from '../define';
+import type { ContractDocument } from '../define';
 import type { JsonSchema } from '../schema';
 import { canonicalJson } from '../version';
 
@@ -89,7 +89,7 @@ export interface LiftOptions {
 }
 
 // A lifted action does not know its effect. `write` is the safe claim for safety-gated features.
-const UNKNOWN_FLOW: ActionFlow = {
+const UNKNOWN_FLOW: ContractDocument['flow'] = {
 	effect: 'write',
 	cardinality: 'per-item',
 	passthrough: 'replace',

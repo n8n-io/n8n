@@ -3,9 +3,9 @@ import { GoogleSheetsOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleShe
 import { OAuth2Api } from 'n8n-nodes-base/dist/credentials/OAuth2Api.credentials';
 import { GoogleSheets } from 'n8n-nodes-base/dist/nodes/Google/Sheet/GoogleSheets.node';
 
-import { appendSheetRow } from '../../nodes/google-sheets/sheet.append';
-import { appendOrUpdateSheetRow } from '../../nodes/google-sheets/sheet.append-or-update';
-import { readSheetRows } from '../../nodes/google-sheets/sheet.read';
+import { appendSheetRow } from '../../nodes/google-sheets/actions/sheet.append';
+import { appendOrUpdateSheetRow } from '../../nodes/google-sheets/actions/sheet.append-or-update';
+import { readSheetRows } from '../../nodes/google-sheets/actions/sheet.read';
 import {
 	actionNode,
 	compareRuns,

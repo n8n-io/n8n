@@ -1,17 +1,7 @@
-import {
-	arr,
-	bool,
-	defineAction,
-	isRecord,
-	matches,
-	obj,
-	str,
-	variant,
-	type Http,
-} from '@n8n/node-sdk';
+import { arr, bool, isRecord, matches, obj, str, variant, type Http } from '@n8n/node-sdk';
 
-import { addressList, displayName, encodeWords, oneLine } from './mime';
-import { gmail } from './node';
+import { message } from '../gmail.node';
+import { addressList, displayName, encodeWords, oneLine } from '../mime';
 
 const ATTRIBUTION = 'This email was sent automatically with ';
 const LINK =
@@ -31,13 +21,11 @@ async function senderAddress(http: Http) {
 	return profile.emailAddress;
 }
 
-export const sendGmailMessage = defineAction({
-	node: gmail,
-	id: 'gmail.message.send',
-	patch: 2,
+export const sendGmailMessage = message.action('send', {
+	patch: 3,
 	action: 'Send a message',
 	summary: 'Send an email.',
-	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },
+	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
 		to: addresses,
 		subject: str(),
@@ -49,17 +37,13 @@ export const sendGmailMessage = defineAction({
 		appendAttribution: bool().default(true).hint('Adds a "sent with n8n" footer'),
 	},
 	output: sent,
-	async run({ input, http, emit }) {
+	async run({ input, http }) {
 		const html = input.body.format === 'html';
-		const message = (input.body.format === 'html' ? input.body.html : input.body.text).trim();
-		// Version 1 is frozen: a rewrite of this check changes the bundle bytes.
-		const content =
-			// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
-			input.appendAttribution === false
-				? message
-				: html
-					? `${message}<br><br>---<br><em>${ATTRIBUTION}<a href="${LINK}" target="_blank">n8n</a></em>`
-					: `${message}\n\n---\n${ATTRIBUTION}n8n\nhttps://n8n.io`;
+		const text = (input.body.format === 'html' ? input.body.html : input.body.text).trim();
+		const footer = html
+			? `<br><br>---<br><em>${ATTRIBUTION}<a href="${LINK}" target="_blank">n8n</a></em>`
+			: `\n\n---\n${ATTRIBUTION}n8n\nhttps://n8n.io`;
+		const content = input.appendAttribution ? `${text}${footer}` : text;
 		const from = input.senderName
 			? `${displayName(input.senderName)} <${await senderAddress(http)}>`
 			: undefined;
@@ -85,6 +69,6 @@ export const sendGmailMessage = defineAction({
 			body: { raw: Buffer.from(mime).toString('base64url') },
 		});
 		if (!matches(sent, response)) throw new Error('Gmail returned no message ID');
-		emit(response);
+		return response;
 	},
 });

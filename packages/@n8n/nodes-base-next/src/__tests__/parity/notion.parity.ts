@@ -1,7 +1,7 @@
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
 import { Notion } from 'n8n-nodes-base/dist/nodes/Notion/Notion.node';
 
-import { getManyDatabasePages } from '../../nodes/notion/database-page.get-all';
+import { getManyDatabasePages } from '../../nodes/notion/actions/database-page.get-all';
 import {
 	actionNode,
 	compareRuns,

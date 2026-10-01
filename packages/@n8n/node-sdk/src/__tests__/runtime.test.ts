@@ -2,7 +2,6 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import {
 	arr,
-	defineAction,
 	defineNode,
 	int,
 	isRecord,
@@ -13,6 +12,7 @@ import {
 	parse,
 	str,
 	validate,
+	type Action,
 	type ActionFlow,
 	type HttpRequest,
 } from '../index';
@@ -37,21 +37,19 @@ const node: INode = {
 };
 
 const item = obj({ id: str() });
-const read: ActionFlow = { effect: 'read', cardinality: '1:N', passthrough: 'replace' };
+const echoItem = echo.resource('item');
+type ListFlow = ActionFlow & { readonly cardinality: '1:N' };
+const read: ListFlow = { effect: 'read', cardinality: '1:N' };
+const fetchSpec = { action: 'Fetch items', summary: 'Fetch items.', input: {}, output: item };
 
-/** An action that sends `request` once and emits the items of an array body. */
-const fetchAction = (request: HttpRequest, flow: ActionFlow = read) =>
-	defineAction({
-		node: echo,
-		id: 'echo.item.fetch',
-		action: 'Fetch items',
-		summary: 'Fetch items.',
+/** An action that sends `request` once and yields the items of an array body. */
+const fetchAction = (request: HttpRequest, flow: ListFlow = read) =>
+	echoItem.action('fetch', {
+		...fetchSpec,
 		flow,
-		input: {},
-		output: item,
-		async run({ http, emit }) {
+		async *run({ http }) {
 			const body = await http.request(request);
-			for (const entry of Array.isArray(body) ? body : []) emit(entry);
+			yield* Array.isArray(body) ? body : [];
 		},
 	});
 
@@ -86,16 +84,14 @@ const httpError = (status: number, headers: Record<string, string> = {}) =>
 describe('executorOf', () => {
 	describe('parameters', () => {
 		it('keeps a string field that holds JSON text as a string', async () => {
-			const send = defineAction({
-				node: echo,
-				id: 'echo.text.send',
+			const send = echo.resource('text').action('send', {
 				action: 'Send text',
 				summary: 'Echo the text.',
-				flow: { effect: 'transform', cardinality: 'per-item', passthrough: 'replace' },
+				flow: { effect: 'transform', cardinality: 'per-item' },
 				input: { text: str(), data: json().optional() },
 				output: obj({ text: str(), data: json().optional() }),
-				async run({ input, emit }) {
-					emit(input);
+				async run({ input }) {
+					return await Promise.resolve(input);
 				},
 			});
 			const parameters: Record<string, unknown> = { text: '{"a":1}', data: '{"b":2}' };
@@ -105,16 +101,14 @@ describe('executorOf', () => {
 		});
 
 		it('fills in nested defaults the same way in n8n and in runAction', async () => {
-			const paged = defineAction({
-				node: echo,
-				id: 'echo.page.read',
+			const paged = echo.resource('page').action('read', {
 				action: 'Read pages',
 				summary: 'Read pages.',
-				flow: read,
+				flow: { effect: 'read', cardinality: 'per-item' },
 				input: { paging: obj({ size: int().default(25) }).optional() },
 				output: obj({ size: int() }),
-				async run({ input, emit }) {
-					emit({ size: input.paging?.size ?? 0 });
+				async run({ input }) {
+					return await Promise.resolve({ size: input.paging?.size ?? 0 });
 				},
 			});
 			const { host } = hostOf([], { parameter: (name) => (name === 'paging' ? '{}' : undefined) });
@@ -146,7 +140,7 @@ describe('executorOf', () => {
 		});
 
 		it('does not retry a POST unless the action is idempotent or the request opts in', async () => {
-			const cases: Array<[HttpRequest, ActionFlow, number]> = [
+			const cases: Array<[HttpRequest, ListFlow, number]> = [
 				[{ method: 'POST', path: '/items' }, read, 1],
 				[{ method: 'POST', path: '/items' }, { ...read, idempotent: true }, 2],
 				[{ method: 'POST', path: '/items', retry: true }, read, 2],
@@ -175,14 +169,14 @@ describe('executorOf', () => {
 			expect([first.requests[0]?.timeout, second.requests[0]?.timeout]).toEqual([300_000, 5000]);
 		});
 
-		it('fails a run that sends more requests or emits more items than the host allows', async () => {
-			const pager = defineAction({
-				...fetchAction({ path: '/items' }),
-				id: 'echo.item.page',
-				async run({ http, emit }) {
+		it('fails a run that sends more requests or yields more items than the host allows', async () => {
+			const pager = echoItem.action('page', {
+				...fetchSpec,
+				flow: read,
+				async *run({ http }) {
 					for (const page of [1, 2, 3]) {
 						await http.request({ path: '/items', query: { page } });
-						emit({ id: String(page) });
+						yield { id: String(page) };
 					}
 				},
 			});
@@ -192,18 +186,19 @@ describe('executorOf', () => {
 			);
 			const items = hostOf([[], [], []], { limits: { maxItems: 2 } });
 			await expect(executorOf(pager)(items.host)).rejects.toThrow(
-				'echo.item.page emitted 2 items for one input item, the most one run may emit',
+				'echo.item.page yielded 2 items for one input item, the most one run may yield',
 			);
 		});
 
 		it('fails on the first bad item, before the next page downloads', async () => {
-			const pager = defineAction({
-				...fetchAction({ path: '/items' }),
-				async run({ http, emit }) {
+			const pager = echoItem.action('fetch', {
+				...fetchSpec,
+				flow: read,
+				// @ts-expect-error the output needs a string id
+				async *run({ http }) {
 					for (const page of [1, 2]) {
 						await http.request({ path: '/items', query: { page } });
-						// @ts-expect-error the output needs a string id
-						emit({ id: page });
+						yield { id: page };
 					}
 				},
 			});
@@ -212,6 +207,19 @@ describe('executorOf', () => {
 				'Output does not match the contract: output[0].id: must be string, got 1',
 			);
 			expect(requests).toHaveLength(1);
+		});
+	});
+
+	describe('cardinality', () => {
+		it('fails a 1:N run that returns instead of yielding', async () => {
+			// A bundle has no types, so the executor checks what run() gives back.
+			const returning = {
+				...fetchAction({ path: '/items' }),
+				run: async () => await Promise.resolve({ id: 'a' }),
+			} as unknown as Action;
+			await expect(executorOf(returning)(hostOf([]).host)).rejects.toThrow(
+				'echo.item.fetch is 1:N, so run() must yield',
+			);
 		});
 	});
 
@@ -231,7 +239,7 @@ describe('executorOf', () => {
 });
 
 describe('types', () => {
-	it('rejects a request without a URL, a relative path, an id of another node, a foreign credential', () => {
+	it('rejects a request without a URL, a relative path, a foreign credential', () => {
 		const requests: HttpRequest[] = [
 			{ url: 'https://echo.test/items' },
 			{ path: '/items' },
@@ -242,20 +250,10 @@ describe('types', () => {
 			// @ts-expect-error `url` and `path` exclude each other
 			{ url: 'https://echo.test', path: '/items' },
 		];
-		const definition = {
-			node: echo,
-			action: 'Fetch items',
-			summary: 'Fetch items.',
-			flow: read,
-			input: {},
-			output: item,
-			async run() {},
-		};
-		defineAction({ ...definition, id: 'echo.item.fetch', credentials: ['echoApi'] });
-		// @ts-expect-error the id starts with the node id
-		defineAction({ ...definition, id: 'other.item.fetch' });
+		const definition = { ...fetchSpec, flow: read, async *run() {} };
+		echoItem.action('fetch', { ...definition, credentials: ['echoApi'] });
 		// @ts-expect-error the credential is not one of the node's
-		defineAction({ ...definition, id: 'echo.item.fetch', credentials: ['typoApi'] });
+		echoItem.action('fetch', { ...definition, credentials: ['typoApi'] });
 		expect(requests).toHaveLength(5);
 	});
 });
@@ -311,25 +309,23 @@ describe('runAction', () => {
 });
 
 describe('paginate', () => {
-	/** An action that lists `/items` pages by cursor and emits each item. */
+	/** An action that lists `/items` pages by cursor and yields each item. */
 	const pagedAction = (limit?: number, maxPages?: number) =>
-		defineAction({
-			node: echo,
-			id: 'echo.item.list',
+		echoItem.action('list', {
 			action: 'List items',
 			summary: 'List items.',
 			flow: read,
 			input: {},
 			output: item,
-			async run({ http, emit }) {
-				const items = paginate(http, {
+			async *run({ http }) {
+				const pages = paginate(http, {
 					request: (cursor, room) => ({ path: '/items', query: { cursor, size: room } }),
 					items: (body) => (isRecord(body) ? list(body.items) : []),
 					next: (body) => (isRecord(body) && typeof body.next === 'string' ? body.next : undefined),
 					limit,
 					maxPages,
 				});
-				for await (const entry of items) emit(parse(item, entry));
+				for await (const entry of pages) yield parse(item, entry);
 			},
 		});
 	const page = (ids: string[], next?: string) => ({ items: ids.map((id) => ({ id })), next });

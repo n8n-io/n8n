@@ -54,10 +54,7 @@ const isTokenizerModule = (value: unknown): value is TokenizerModule =>
 	isRecord(value) && typeof value.getEncoding === 'function';
 
 async function loadCounter(): Promise<{ name: string; count: (text: string) => number }> {
-	const path = join(
-		REPO,
-		'packages/@n8n/ai-utilities/dist/cjs/utils/tokenizer/tiktoken.js',
-	);
+	const path = join(REPO, 'packages/@n8n/ai-utilities/dist/cjs/utils/tokenizer/tiktoken.js');
 	const fallback = { name: 'chars/4', count: (text: string) => Math.ceil(text.length / 4) };
 	if (!existsSync(path)) return fallback;
 	const module: unknown = await import(path);
@@ -117,7 +114,10 @@ const lifted = descriptions.map((description): LiftRecord[] | LiftFailure => {
 			(version) => ({ description, ...version }),
 		);
 	} catch (error) {
-		return { name: description.name, error: error instanceof Error ? error.message : String(error) };
+		return {
+			name: description.name,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
 });
 const records = lifted.flatMap((entry) => (Array.isArray(entry) ? entry : []));
@@ -243,7 +243,11 @@ const corpus = CORPUS_ROOTS.flatMap(jsonFiles).flatMap((file) =>
 const uniqueCorpus = [
 	...new Map(
 		corpus.map((node) => [
-			canonicalJson({ type: node.type, typeVersion: node.typeVersion, parameters: node.parameters }),
+			canonicalJson({
+				type: node.type,
+				typeVersion: node.typeVersion,
+				parameters: node.parameters,
+			}),
 			node,
 		]),
 	).values(),
@@ -254,7 +258,10 @@ const recordByKey = new Map(
 );
 
 type RoundTrip =
-	| { readonly status: 'otherPackage' | 'unknownVersion' | 'unknownAction'; readonly node: SavedNode }
+	| {
+			readonly status: 'otherPackage' | 'unknownVersion' | 'unknownAction';
+			readonly node: SavedNode;
+	  }
 	| {
 			readonly status: 'equal' | 'locatorFlag' | 'different';
 			readonly node: SavedNode;
@@ -371,9 +378,16 @@ interface SizeRow {
 async function main() {
 	const counter = await loadCounter();
 	const sizes = latestActions.map((action): SizeRow => {
+		// A lifted id is `<node>.<resource>.<operation>`, `<node>.<resource>` or `<node>.execute`.
+		const [, ...path] = action.contract.id.split('.');
 		const moduleOf = (output: LiftedAction['contract']['output']) =>
 			generateNodeModule(action.contract.node, [
-				{ contract: { ...action.contract, output }, nodeType: action.compile.target.type },
+				{
+					contract: { ...action.contract, output },
+					nodeType: action.compile.target.type,
+					resource: path.length > 1 ? path[0] : undefined,
+					operation: path[path.length - 1] ?? '',
+				},
 			]);
 		const builder = builderView(action.compile.target, action.contract.node);
 		return {
@@ -401,11 +415,14 @@ async function main() {
 			shape: action.shape,
 			issues: action.issues.length,
 			byKind: Object.fromEntries(
-				ISSUE_KINDS.map((kind) => [kind, action.issues.filter((i) => i.kind === kind).length]).filter(
-					([, count]) => count !== 0,
-				),
+				ISSUE_KINDS.map((kind) => [
+					kind,
+					action.issues.filter((i) => i.kind === kind).length,
+				]).filter(([, count]) => count !== 0),
 			),
-			sample: action.issues.slice(0, 4).map((issue) => `${issue.kind} ${issue.field}: ${issue.detail}`),
+			sample: action.issues
+				.slice(0, 4)
+				.map((issue) => `${issue.kind} ${issue.field}: ${issue.detail}`),
 		}));
 
 	const report = {
