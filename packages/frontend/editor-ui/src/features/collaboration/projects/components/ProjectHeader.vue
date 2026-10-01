@@ -511,6 +511,7 @@ const onSelect = (action: string, source: CreateSource) => {
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
+							variant="brand"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
 							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
@@ -518,6 +519,7 @@ const onSelect = (action: string, source: CreateSource) => {
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
 								size="medium"
+								variant="brand"
 								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>

@@ -55,6 +55,8 @@ defineExpose({
 		&:first-child {
 			border-top-right-radius: 0;
 			border-bottom-right-radius: 0;
+			/** Accounts for optical alignment as right side isn't roudned so looks bigger **/
+			padding-inline-start: var(--spacing--sm);
 		}
 	}
 }
