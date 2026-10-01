@@ -254,10 +254,10 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				return await super.postMessage(threadId, message);
 			}
 
-			override async graphApiRequest(path: string, body: unknown): Promise<unknown> {
+			override async graphApiRequest<T = unknown>(path: string, body: unknown): Promise<T> {
 				const recipient = isRecord(body) && typeof body.to === 'string' ? body.to : undefined;
 				return await withWhatsAppRateLimitBackoff(
-					async () => await super.graphApiRequest(path, body),
+					async () => await super.graphApiRequest<T>(path, body),
 					logger,
 					{ guard: channelRateLimitGuard, connectionId, recipient },
 				);
