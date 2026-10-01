@@ -250,5 +250,40 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 			expect(getByTestId('instance-ai-test-agent-examples-case-2-save-check')).toBeDisabled();
 		});
+
+		it('does not crash when a rerun clears `caseRuns` back to null', async () => {
+			const { getByTestId, queryByTestId, rerender } = renderComponent({ props: { caseRuns } });
+			expect(getByTestId('instance-ai-test-agent-examples-run-summary')).toBeInTheDocument();
+
+			// Not a real flow (the parent never actually does this), but the watcher
+			// guards against it rather than assuming `caseRuns` only ever grows.
+			await rerender({ caseRuns: null });
+
+			expect(queryByTestId('instance-ai-test-agent-examples-run-summary')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-try')).toBeInTheDocument();
+		});
+	});
+
+	it('refuses a whitespace-only "add your own example" submission', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent();
+
+		const input = getByTestId('instance-ai-test-agent-examples-add-own-input');
+		await user.type(input, '   {Enter}');
+
+		expect(emitted()['add-example']).toBeUndefined();
+		expect(input).toHaveValue('   ');
+	});
+
+	it('clears the "add your own example" input on Escape without emitting', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent();
+
+		const input = getByTestId('instance-ai-test-agent-examples-add-own-input');
+		await user.type(input, 'A draft I changed my mind about');
+		await user.keyboard('{Escape}');
+
+		expect(input).toHaveValue('');
+		expect(emitted()['add-example']).toBeUndefined();
 	});
 });

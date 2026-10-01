@@ -257,6 +257,20 @@ describe('AgentEvalCaseGenerationService', () => {
 		expect(prompt).toContain('(the agent did not produce an output)');
 	});
 
+	it('revises with no previous output field at all (not just empty), same as an explicit empty one', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 1,
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+		});
+
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('Write exactly 1 replacement test case');
+		expect(prompt).toContain('(the agent did not produce an output)');
+	});
+
 	it('ignores a partial revision (suggestion with no prior input/output) and generates fresh cases', async () => {
 		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
 
