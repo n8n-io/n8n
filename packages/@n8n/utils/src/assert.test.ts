@@ -14,4 +14,8 @@ describe('assert', () => {
 	it('throws the default message for a falsy condition without a message', () => {
 		expect(() => assert(false)).toThrow('Assertion failed');
 	});
+
+	it.each(['', '   ', '\t\n'])('throws the default message for a blank message %j', (message) => {
+		expect(() => assert(false, message)).toThrow('Assertion failed');
+	});
 });
