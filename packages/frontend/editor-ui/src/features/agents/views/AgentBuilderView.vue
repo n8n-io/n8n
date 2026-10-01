@@ -2714,6 +2714,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
+			:tasks="setupTasks"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
@@ -2722,6 +2723,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -2866,8 +2868,6 @@ function onSwitchAgent(nextAgentId: string) {
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:tasks="setupTasks"
-					:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 					:main-tab-options="visibleMainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -2892,7 +2892,6 @@ function onSwitchAgent(nextAgentId: string) {
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
-					@setup-task-action="onSetupTaskAction"
 					@tasks-changed="() => onConfigUpdated()"
 					@preview-task="onPreviewTask"
 					@agent-changed="refreshAgentAfterIntegrationChange"

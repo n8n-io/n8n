@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
-import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
+import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -30,7 +30,6 @@ import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
-import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -59,8 +58,6 @@ const props = defineProps<{
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
-	tasks?: Array<SetupTask<SetupTaskId>>;
-	personalisation?: AgentJsonConfig['personalisation'] | null;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -160,12 +157,6 @@ defineExpose({ onSetupTaskAction });
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentSetupTasks
-						v-if="tasks && tasks.length > 0"
-						:tasks="tasks ?? []"
-						:personalisation="personalisation"
-						@action="emit('setup-task-action', $event)"
-					/>
 					<AgentInfoPanel
 						ref="agentInfoPanel"
 						:config="localConfig"
