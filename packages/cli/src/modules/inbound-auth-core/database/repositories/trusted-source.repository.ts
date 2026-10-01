@@ -1,6 +1,13 @@
-import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
+import { DatabaseConfig } from '@n8n/config';
+import {
+	BaseRepository,
+	dbNowLiteral,
+	dbNowPlusMsLiteral,
+	OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThan, Or } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { TrustedSourceEntity } from '../entities/trusted-source.entity';
 
@@ -39,16 +46,37 @@ export type TrustedSourceRowChanges = Partial<
 		| 'status'
 		| 'lastError'
 		| 'lastCheckedAt'
+		| 'discoveryClaimToken'
 		| 'discoveryClaimedAt'
 	>
 >;
+
+/** What a discovery run writes; `lastCheckedAt` and the lease columns are set by the query. */
+export type DiscoveryRowChanges = Pick<
+	TrustedSourceRowChanges,
+	'metadata' | 'status' | 'lastError'
+>;
+
+export type DueQuery = {
+	errorRetrySeconds: number;
+	healthyRefreshSeconds: number;
+	limit: number;
+};
 
 @Service()
 export class TrustedSourceRepository {
 	private readonly table: TrustedSourceTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	// The lease and `lastCheckedAt` use the database clock, so instances with skewed clocks agree.
+	private readonly isPostgres: boolean;
+
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		config: DatabaseConfig,
+	) {
 		this.table = new TrustedSourceTable(dataSource, transactionRunner);
+		this.isPostgres = config.type === 'postgresdb';
 	}
 
 	async findById(id: string, ctx: OperationContext = {}) {
@@ -61,6 +89,33 @@ export class TrustedSourceRepository {
 
 	async findAll(ctx: OperationContext = {}) {
 		return await this.table.managerFor(ctx).find(TrustedSourceEntity, { order: { name: 'ASC' } });
+	}
+
+	/**
+	 * Sources whose last check is missing or older than the interval for their status. Unchecked
+	 * sources come first, then those never checked, then the oldest check. The lease is not
+	 * consulted here: the claim decides who refreshes a due source.
+	 */
+	async findDue(
+		{ errorRetrySeconds, healthyRefreshSeconds, limit }: DueQuery,
+		ctx: OperationContext = {},
+	): Promise<TrustedSourceEntity[]> {
+		const errorCutoff = dbNowPlusMsLiteral(this.isPostgres, -errorRetrySeconds * 1000);
+		const healthyCutoff = dbNowPlusMsLiteral(this.isPostgres, -healthyRefreshSeconds * 1000);
+		return await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(TrustedSourceEntity, 'source')
+			.where(
+				`source.status = :unchecked OR source.lastCheckedAt IS NULL
+					OR (source.status = :error AND source.lastCheckedAt < ${errorCutoff})
+					OR (source.status = :healthy AND source.lastCheckedAt < ${healthyCutoff})`,
+				{ unchecked: 'unchecked', error: 'error', healthy: 'healthy' },
+			)
+			.orderBy("CASE WHEN source.status = 'unchecked' THEN 0 ELSE 1 END", 'ASC')
+			.addOrderBy('CASE WHEN source.lastCheckedAt IS NULL THEN 0 ELSE 1 END', 'ASC')
+			.addOrderBy('source.lastCheckedAt', 'ASC')
+			.take(limit)
+			.getMany();
 	}
 
 	/** `save`, not `insert`: the `@BeforeInsert` id generator only runs on an entity instance. */
@@ -76,38 +131,49 @@ export class TrustedSourceRepository {
 		await this.table.managerFor(ctx).delete(TrustedSourceEntity, { id });
 	}
 
-	/** Takes the discovery lease when it is free or older than `staleBefore`. */
+	/** Takes the discovery lease for `token` when it is free or older than `leaseSeconds`. */
 	async claimForDiscovery(
 		id: string,
-		now: Date,
-		staleBefore: Date,
+		token: string,
+		leaseSeconds: number,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
-		// One where object: `update` reads an array criteria as a list of ids, not as OR branches.
+		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
 		const result = await this.table
 			.managerFor(ctx)
-			.update(
-				TrustedSourceEntity,
-				{ id, discoveryClaimedAt: Or(IsNull(), LessThan(staleBefore)) },
-				{ discoveryClaimedAt: now },
-			);
+			.createQueryBuilder()
+			.update(TrustedSourceEntity)
+			.set({
+				discoveryClaimToken: token,
+				discoveryClaimedAt: () => dbNowLiteral(this.isPostgres),
+			})
+			.where(
+				`id = :id AND ("discoveryClaimedAt" IS NULL OR "discoveryClaimedAt" < ${staleBefore})`,
+				{ id },
+			)
+			.execute();
 		return result.affected === 1;
 	}
 
-	/** Writes the result and releases the lease, only while the lease is still the caller's. */
+	/** Writes the result and releases the lease, only while `token` still holds it. */
 	async recordDiscovery(
 		id: string,
-		claimedAt: Date,
-		changes: TrustedSourceRowChanges,
+		token: string,
+		changes: DiscoveryRowChanges,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
 		const result = await this.table
 			.managerFor(ctx)
-			.update(
-				TrustedSourceEntity,
-				{ id, discoveryClaimedAt: claimedAt },
-				{ ...changes, discoveryClaimedAt: null },
-			);
+			.createQueryBuilder()
+			.update(TrustedSourceEntity)
+			.set({
+				...changes,
+				lastCheckedAt: () => dbNowLiteral(this.isPostgres),
+				discoveryClaimToken: null,
+				discoveryClaimedAt: null,
+			})
+			.where('id = :id AND "discoveryClaimToken" = :token', { id, token })
+			.execute();
 		return result.affected === 1;
 	}
 }

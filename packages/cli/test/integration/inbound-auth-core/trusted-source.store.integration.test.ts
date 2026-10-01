@@ -58,6 +58,7 @@ async function seedRow(overrides: Partial<TrustedSourceEntity> = {}) {
 			configVersion: 1,
 			config: await cipher.encryptV2(config),
 			metadata: null,
+			discoveryClaimToken: null,
 			discoveryClaimedAt: null,
 			...overrides,
 		}),
@@ -69,6 +70,14 @@ async function loadSource(id: string): Promise<TrustedSource> {
 	if (!source) throw new Error(`source ${id} did not load`);
 	return source;
 }
+
+async function claim(source: TrustedSource): Promise<string> {
+	const token = await store.claimDiscovery(source);
+	if (token === null) throw new Error(`lease on ${source.id} was not granted`);
+	return token;
+}
+
+const secondsAgo = (seconds: number) => new Date(Date.now() - seconds * 1000);
 
 async function encryptedAdminConfig(
 	surfaces: Partial<Record<SurfaceId, { audiences?: string[] }>>,
@@ -323,18 +332,18 @@ describe('TrustedSourceStore (integration)', () => {
 		it('drops the old metadata of a changed issuer or config and voids a running lease', async () => {
 			const row = await seedRow({ status: 'error', lastError: 'old', metadata: staleMetadata });
 			const source = await loadSource(row.id);
-			const claimedAt = new Date();
-			expect(await store.claimDiscovery(source, claimedAt)).toBe(true);
+			const token = await claim(source);
 
 			await store.update(row.id, { issuer: 'https://moved.example.com' });
 
 			expect(
-				await store.recordDiscovery(source, claimedAt, { status: 'healthy', lastError: null }),
+				await store.recordDiscovery(source, token, { status: 'healthy', lastError: null }),
 			).toBe(false);
 			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
 				metadata: null,
 				status: 'unchecked',
 				lastError: null,
+				discoveryClaimToken: null,
 				discoveryClaimedAt: null,
 			});
 			expect(await loadSource(row.id)).toMatchObject({ metadata: null, status: 'unchecked' });
@@ -343,8 +352,7 @@ describe('TrustedSourceStore (integration)', () => {
 		it('leaves the discovery state alone when only the name changes', async () => {
 			const row = await seedRow({ status: 'healthy', metadata: staleMetadata });
 			const source = await loadSource(row.id);
-			const claimedAt = new Date();
-			expect(await store.claimDiscovery(source, claimedAt)).toBe(true);
+			const token = await claim(source);
 
 			await store.update(row.id, { name: 'Renamed' });
 
@@ -353,7 +361,7 @@ describe('TrustedSourceStore (integration)', () => {
 				metadata: staleMetadata,
 			});
 			expect(
-				await store.recordDiscovery(source, claimedAt, { status: 'healthy', lastError: null }),
+				await store.recordDiscovery(source, token, { status: 'healthy', lastError: null }),
 			).toBe(true);
 		});
 
@@ -385,14 +393,12 @@ describe('TrustedSourceStore (integration)', () => {
 	});
 
 	describe('discovery lease', () => {
-		const now = new Date('2026-10-01T12:00:00.000Z');
-		const later = (ms: number) => new Date(now.getTime() + ms);
 		const metadata: TrustedSourceMetadata = {
 			version: 1,
 			documents: [
 				{
 					kind: 'jwks',
-					fetchedAt: now.toISOString(),
+					fetchedAt: '2026-10-01T12:00:00.000Z',
 					url: 'https://issuer.example.com/keys',
 					keys: [{ kid: 'k1', kty: 'RSA', n: 'AQAB', e: 'AQAB' }],
 				},
@@ -400,19 +406,28 @@ describe('TrustedSourceStore (integration)', () => {
 		};
 
 		it('grants the lease once and again after it expires', async () => {
-			const source = await loadSource((await seedRow()).id);
-
-			expect(await store.claimDiscovery(source, now)).toBe(true);
-			expect(await store.claimDiscovery(source, later(1000))).toBe(false);
-			expect(await store.claimDiscovery(source, later(61_000))).toBe(true);
-		});
-
-		it('rejects a record whose claim is not the current lease and leaves the row alone', async () => {
 			const row = await seedRow();
 			const source = await loadSource(row.id);
-			expect(await store.claimDiscovery(source, now)).toBe(true);
 
-			const recorded = await store.recordDiscovery(source, later(1), {
+			const first = await claim(source);
+			expect(await store.claimDiscovery(source)).toBeNull();
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
+				discoveryClaimToken: first,
+				discoveryClaimedAt: expect.any(Date),
+			});
+
+			await rows.update({ id: row.id }, { discoveryClaimedAt: secondsAgo(61) });
+			const second = await claim(source);
+			expect(second).not.toBe(first);
+			expect((await rows.findOneByOrFail({ id: row.id })).discoveryClaimToken).toBe(second);
+		});
+
+		it('rejects a record whose token does not hold the lease and leaves the row alone', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			const token = await claim(source);
+
+			const recorded = await store.recordDiscovery(source, `${token}-other`, {
 				metadata,
 				status: 'healthy',
 				lastError: null,
@@ -423,16 +438,17 @@ describe('TrustedSourceStore (integration)', () => {
 				metadata: null,
 				status: 'unchecked',
 				lastCheckedAt: null,
+				discoveryClaimToken: token,
 			});
 			expect(await loadSource(row.id)).toMatchObject({ metadata: null, status: 'unchecked' });
 		});
 
-		it('records a healthy result, releases the lease and invalidates the cached source', async () => {
+		it('records a healthy result, releases the lease and stamps lastCheckedAt from the database', async () => {
 			const row = await seedRow();
 			const source = await loadSource(row.id);
-			expect(await store.claimDiscovery(source, now)).toBe(true);
+			const token = await claim(source);
 
-			const recorded = await store.recordDiscovery(source, now, {
+			const recorded = await store.recordDiscovery(source, token, {
 				metadata,
 				status: 'healthy',
 				lastError: null,
@@ -445,21 +461,25 @@ describe('TrustedSourceStore (integration)', () => {
 				lastError: null,
 			});
 			const updated = await rows.findOneByOrFail({ id: row.id });
+			expect(updated.discoveryClaimToken).toBeNull();
 			expect(updated.discoveryClaimedAt).toBeNull();
 			expect(updated.lastCheckedAt).toBeInstanceOf(Date);
-			expect(Date.now() - (updated.lastCheckedAt?.getTime() ?? 0)).toBeLessThan(60_000);
+			expect(Math.abs(Date.now() - (updated.lastCheckedAt?.getTime() ?? 0))).toBeLessThan(5000);
 		});
 
 		it('keeps the previous metadata when a later run records an error', async () => {
 			const row = await seedRow();
 			const source = await loadSource(row.id);
-			expect(await store.claimDiscovery(source, now)).toBe(true);
+			const token = await claim(source);
 			expect(
-				await store.recordDiscovery(source, now, { metadata, status: 'healthy', lastError: null }),
+				await store.recordDiscovery(source, token, {
+					metadata,
+					status: 'healthy',
+					lastError: null,
+				}),
 			).toBe(true);
 			const healthy = await loadSource(row.id);
-			const retry = later(1000);
-			expect(await store.claimDiscovery(healthy, retry)).toBe(true);
+			const retry = await claim(healthy);
 
 			expect(await store.recordDiscovery(healthy, retry, { status: 'error', lastError: 'x' })).toBe(
 				true,
@@ -477,12 +497,40 @@ describe('TrustedSourceStore (integration)', () => {
 
 			expect(await store.getById(row.id)).toMatchObject({ id: row.id, metadata: null });
 		});
+	});
 
-		it('listAll returns every source regardless of its surfaces', async () => {
-			const publicApi = await seedRow({ config: await encryptedAdminConfig({ 'public-api': {} }) });
-			const mcp = await seedRow({ config: await encryptedAdminConfig({ 'instance-mcp': {} }) });
+	describe('listDue', () => {
+		it('returns only the due sources, unchecked first, then never checked, then oldest', async () => {
+			const healthyStale = await seedRow({
+				status: 'healthy',
+				lastCheckedAt: secondsAgo(2 * 3600),
+			});
+			await seedRow({ status: 'error', lastCheckedAt: secondsAgo(60) });
+			const errorStale = await seedRow({ status: 'error', lastCheckedAt: secondsAgo(6 * 60) });
+			await seedRow({ status: 'healthy', lastCheckedAt: secondsAgo(30 * 60) });
+			const neverChecked = await seedRow({ status: 'healthy', lastCheckedAt: null });
+			const unchecked = await seedRow({ status: 'unchecked', lastCheckedAt: secondsAgo(10) });
 
-			expect(ids(await store.listAll())).toEqual([publicApi.id, mcp.id].sort());
+			const due = await store.listDue(10);
+
+			expect(due.map((source) => source.id)).toEqual([
+				unchecked.id,
+				neverChecked.id,
+				healthyStale.id,
+				errorStale.id,
+			]);
+		});
+
+		it('stops at the limit and skips rows that do not load', async () => {
+			const unchecked = await seedRow();
+			const neverChecked = await seedRow({ status: 'healthy', lastCheckedAt: null });
+			await seedRow({ status: 'healthy', lastCheckedAt: secondsAgo(2 * 3600) });
+			await seedRow({ status: 'unchecked', config: 'garbage' });
+
+			expect((await store.listDue(3)).map((source) => source.id)).toEqual([
+				unchecked.id,
+				neverChecked.id,
+			]);
 		});
 	});
 

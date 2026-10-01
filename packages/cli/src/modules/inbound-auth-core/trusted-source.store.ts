@@ -16,6 +16,7 @@ import {
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import type { TrustedSourceEntity } from './database/entities/trusted-source.entity';
 import { TrustedSourceIdentityRepository } from './database/repositories/trusted-source-identity.repository';
@@ -48,7 +49,11 @@ const ALL_KEY = 'trusted-source:all';
 // row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
 const CACHE_TTL = 5 * Time.minutes.toMilliseconds;
 // A run that dies mid-discovery leaves its lease behind; the next run takes it over after this.
-const DISCOVERY_LEASE_MS = 1 * Time.minutes.toMilliseconds;
+const DISCOVERY_LEASE_SECONDS = 60;
+/** A failed source is retried soon; a healthy one is refreshed on a slow cadence. */
+export const ERROR_RETRY_SECONDS = 5 * Time.minutes.toSeconds;
+// ponytail: 1 h staleness ceiling after key rotation.
+export const HEALTHY_REFRESH_SECONDS = 1 * Time.hours.toSeconds;
 
 /** What one discovery run leaves behind. `metadata` omitted keeps the previous documents. */
 export type DiscoveryResult = {
@@ -85,41 +90,49 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		});
 	}
 
-	async listAll(): Promise<TrustedSource[]> {
-		return (
+	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
+		const all =
 			(await this.cacheService.get(ALL_KEY, {
 				ttl: CACHE_TTL,
 				refreshFn: async () => await this.loadAll(),
-			})) ?? []
-		);
+			})) ?? [];
+		return all.filter((source) => source.config.surfaces[surface] !== undefined);
 	}
 
-	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
-		return (await this.listAll()).filter((source) => source.config.surfaces[surface] !== undefined);
+	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
+	async listDue(limit: number): Promise<TrustedSource[]> {
+		const rows = await this.trustedSourceRepository.findDue({
+			errorRetrySeconds: ERROR_RETRY_SECONDS,
+			healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
+			limit,
+		});
+		const sources = await Promise.all(rows.map(async (row) => await this.load(row)));
+		return sources.filter((source): source is TrustedSource => source !== undefined);
 	}
 
-	/** Takes the discovery lease on `source`; `false` when another run holds it. */
-	async claimDiscovery(source: TrustedSource, now: Date): Promise<boolean> {
+	/** Takes the discovery lease on `source`; the run's token, or `null` when another run holds it. */
+	async claimDiscovery(source: TrustedSource): Promise<string | null> {
+		const token = randomUUID();
 		const claimed = await this.trustedSourceRepository.claimForDiscovery(
 			source.id,
-			now,
-			new Date(now.getTime() - DISCOVERY_LEASE_MS),
+			token,
+			DISCOVERY_LEASE_SECONDS,
 		);
-		if (claimed) await this.invalidateCache(source);
-		return claimed;
+		if (!claimed) return null;
+		await this.invalidateCache(source);
+		return token;
 	}
 
 	/** Writes the run's result and releases the lease; `false` when the lease was lost. */
 	async recordDiscovery(
 		source: TrustedSource,
-		claimedAt: Date,
+		token: string,
 		result: DiscoveryResult,
 	): Promise<boolean> {
 		// Metadata is never cleared: an error keeps the last good documents readable.
-		const recorded = await this.trustedSourceRepository.recordDiscovery(source.id, claimedAt, {
+		const recorded = await this.trustedSourceRepository.recordDiscovery(source.id, token, {
 			status: result.status,
 			lastError: result.lastError,
-			lastCheckedAt: new Date(),
 			...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
 		});
 		if (recorded) await this.invalidateCache(source);
@@ -169,6 +182,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			changes.metadata = null;
 			changes.status = 'unchecked';
 			changes.lastError = null;
+			changes.discoveryClaimToken = null;
 			changes.discoveryClaimedAt = null;
 		}
 		await this.transactionRunner.run({}, async (ctx) => {

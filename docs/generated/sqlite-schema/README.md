@@ -134,7 +134,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
 | [trusted_key_source](trusted_key_source.md) | 8 |  | table |
-| [trusted_source](trusted_source.md) | 14 |  | table |
+| [trusted_source](trusted_source.md) | 15 |  | table |
 | [trusted_source_identity](trusted_source_identity.md) | 8 |  | table |
 | [type_availability_policy](type_availability_policy.md) | 7 |  | table |
 | [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
@@ -1651,6 +1651,7 @@ erDiagram
   TEXT config
   INTEGER configVersion
   datetime_3_ createdAt
+  varchar_36_ discoveryClaimToken
   datetime_3_ discoveryClaimedAt
   varchar_36_ id PK
   varchar issuer

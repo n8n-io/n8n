@@ -42,7 +42,11 @@ export class TrustedSourceEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'text', nullable: true })
 	metadata: string | null;
 
-	/** Lease taken by a discovery run; null when free. */
+	/** Identity of the discovery run holding the lease; null when free. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	discoveryClaimToken: string | null;
+
+	/** When the lease was taken; only decides when a stale lease may be taken over. */
 	@DateTimeColumn({ nullable: true })
 	discoveryClaimedAt: Date | null;
 }
