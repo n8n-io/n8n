@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "threadId" varchar(128) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "messageId" varchar(36) NOT NULL, "steeringExecutionId" varchar(36), "steeringOrder" integer, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_a74f9154a59430986112d70cb16" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_message_queue_messageId" FOREIGN KEY ("messageId") REFERENCES "agents_messages" ("id") ON DELETE CASCADE, CONSTRAINT "FK_eff54787927c2968dc24495c911" FOREIGN KEY ("steeringExecutionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION)
+CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "threadId" varchar(128) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "messageId" varchar(36) NOT NULL, "steeringExecutionId" varchar(36), "steeringOrder" integer, "position" integer NOT NULL DEFAULT 0, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_a74f9154a59430986112d70cb16" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_message_queue_messageId" FOREIGN KEY ("messageId") REFERENCES "agents_messages" ("id") ON DELETE CASCADE, CONSTRAINT "FK_eff54787927c2968dc24495c911" FOREIGN KEY ("steeringExecutionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION)
 ```
 
 </details>
@@ -20,6 +20,7 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | id | INTEGER |  | false |  |  |  |
 | messageId | varchar(36) |  | false |  | [agents_messages](agents_messages.md) |  |
 | payload | TEXT |  | false |  |  |  |
+| position | INTEGER | 0 | false |  |  |  |
 | steeringExecutionId | varchar(36) |  | true |  | [agent_execution](agent_execution.md) |  |
 | steeringOrder | INTEGER |  | true |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
@@ -43,7 +44,7 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | IDX_agent_message_queue_messageId | CREATE UNIQUE INDEX "IDX_agent_message_queue_messageId" ON "agent_message_queue" ("messageId")  |
 | IDX_agent_message_queue_steeringExecutionId_steeringOrder | CREATE UNIQUE INDEX "IDX_agent_message_queue_steeringExecutionId_steeringOrder" ON "agent_message_queue" ("steeringExecutionId", "steeringOrder") WHERE "steeringExecutionId" IS NOT NULL |
 | IDX_agent_message_queue_threadId | CREATE UNIQUE INDEX "IDX_agent_message_queue_threadId" ON "agent_message_queue" ("threadId") WHERE "executionId" IS NOT NULL |
-| IDX_c1db6ea2d031cc49100535e6c6 | CREATE INDEX "IDX_c1db6ea2d031cc49100535e6c6" ON "agent_message_queue" ("threadId", "id")  |
+| IDX_agent_message_queue_threadId_position | CREATE INDEX "IDX_agent_message_queue_threadId_position" ON "agent_message_queue" ("threadId", "position")  |
 
 ## Relations
 
@@ -61,6 +62,7 @@ erDiagram
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload
+  INTEGER position
   varchar_36_ steeringExecutionId FK
   INTEGER steeringOrder
   varchar_128_ threadId FK

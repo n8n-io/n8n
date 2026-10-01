@@ -220,9 +220,10 @@ Use one action on the right. Show Stop when a turn can be stopped and the
 composer has no text or attachments. Otherwise, show Send. Keep file and voice
 input available during a turn.
 Stack the background task card above the composer. Attach pending messages to
-the top of the composer. Use a subtle background and dividers between messages.
-Use muted gray for queue text and icons. Use the same gray for all queue icons.
-Give text more contrast than icons. Keep text contrast at least 4.5:1.
+the top of the composer. Use `--background--subtle` for the queue background.
+Use `--color--neutral-600` for queue text and the Steer label in light mode.
+Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
+icons. Use `--border-color--subtle` for the dividers.
 Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
 Keep the first two messages visible.
 Put the third and later messages in a collapsed activity group. Show the number
@@ -234,4 +235,6 @@ message. It does not restore the composer draft.
 
 Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
 
-Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary FIFO processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
+Put a six-dot drag handle on the left of each pending message. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
+
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
