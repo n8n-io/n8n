@@ -150,5 +150,5 @@ ignore:
   - (?s:.*/migrations/(postgresdb|sqlite|mysqldb)/.*\.ts.*)\Z
   - (?s:.*/scripts/.*)\Z
   # Test/build infrastructure packages
-  - (?s:.*/packages/testing/.*)\Z
+  - (?s:.*/packages/quality/.*)\Z
   - (?s:.*/packages/@n8n/(benchmark|eslint-config|eslint-plugin-community-nodes|stylelint-config|typescript-config|vitest-config)/.*)\Z

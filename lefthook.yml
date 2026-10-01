@@ -87,7 +87,7 @@ pre-commit:
         - merge
         - rebase
     playwright_janitor:
-      glob: 'packages/testing/playwright/**/*.ts'
+      glob: 'packages/quality/testing/playwright/**/*.ts'
       run: |
         files=$(echo {staged_files} | tr ' ' ',')
         pnpm --filter=n8n-playwright janitor --files="$files"
