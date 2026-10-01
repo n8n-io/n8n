@@ -25,6 +25,38 @@ export class FolderRepository extends Repository<Folder> {
 		return ids;
 	}
 
+	/**
+	 * Folders by id, optionally scoped to a user's project roles.
+	 *
+	 * `access: null` means no restriction (caller already holds a global scope);
+	 * otherwise only folders whose home project grants the user one of
+	 * `roleSlugs` are returned.
+	 */
+	async findByIdsForProjectRoles(
+		folderIds: string[],
+		access: { userId: string; roleSlugs: string[] } | null,
+	): Promise<Folder[]> {
+		if (folderIds.length === 0) return [];
+
+		const folders = new Map<string, Folder>();
+		for (const chunk of chunkIds(folderIds)) {
+			const found = await this.find({
+				where: {
+					id: In(chunk),
+					...(access
+						? {
+								homeProject: {
+									projectRelations: { role: In(access.roleSlugs), userId: access.userId },
+								},
+							}
+						: {}),
+				},
+			});
+			for (const folder of found) folders.set(folder.id, folder);
+		}
+		return [...folders.values()];
+	}
+
 	async findManyByIds(folderIds: string[]): Promise<Folder[]> {
 		const folders = new Map<string, Folder>();
 

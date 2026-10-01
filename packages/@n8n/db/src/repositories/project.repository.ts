@@ -288,6 +288,12 @@ export class ProjectRepository extends BaseRepository<Project> {
 		}
 	}
 
+	async deleteByIds(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+
+		await this.delete({ id: In(ids) });
+	}
+
 	async getProjectCounts() {
 		return {
 			personal: await this.count({ where: { type: 'personal' } }),

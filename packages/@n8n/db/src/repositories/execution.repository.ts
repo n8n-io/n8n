@@ -1426,6 +1426,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return result.map((r) => r.workflowVersionId);
 	}
 
+	/** IDs of executions still in progress (`running` or `unknown` status). */
+	async findUnfinishedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: In(['running', 'unknown']) },
+		});
+		return rows.map(({ id }) => id);
+	}
+
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
 		const rows: Array<Pick<ExecutionEntity, 'id' | 'status'>> = [];
 		for (const chunk of chunkIds(ids)) {
