@@ -230,10 +230,12 @@ export class GoogleCalendarTrigger implements INodeType {
 			if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
 				const dateField = triggerOn === 'eventStarted' ? 'start' : 'end';
 				if (
-					events.some((event: { start?: GoogleCalendarEventDate; end?: GoogleCalendarEventDate }) => {
-						const eventDate = event[dateField];
-						return eventDate?.date && !eventDate.timeZone;
-					})
+					events.some(
+						(event: { start?: GoogleCalendarEventDate; end?: GoogleCalendarEventDate }) => {
+							const eventDate = event[dateField];
+							return eventDate?.date && !eventDate.timeZone;
+						},
+					)
 				) {
 					calendarTimeZone =
 						webhookData.calendarTimeZoneId === calendarId
