@@ -1,1832 +1,640 @@
-import { mockInstance } from '@n8n/backend-test-utils';
-import {
-	GLOBAL_MEMBER_ROLE,
-	GLOBAL_OWNER_ROLE,
-	type SharedCredentials,
-	CredentialsRepository,
-	SharedCredentialsRepository,
-	CredentialsEntity,
-	type Project,
-	type Role,
-	type User,
-} from '@n8n/db';
-import { Container } from '@n8n/di';
-import {
-	PROJECT_ADMIN_ROLE_SLUG,
-	PROJECT_EDITOR_ROLE_SLUG,
-	PROJECT_OWNER_ROLE_SLUG,
-	PROJECT_VIEWER_ROLE_SLUG,
-	type Scope,
-} from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
-import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import {
+	type CredentialAccessRepository,
+	type CredentialsEntity,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	type OperationContext,
+	type Project,
+	type Role,
+	type Scope as DbScope,
+	type User,
+} from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
+
+import type { RoleService } from '@n8n/backend-services';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
-import { RoleService } from '../role.service';
+const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+
+const makeCustomUser = (id: string, scopes: Scope[]) =>
+	mock<User>({
+		id,
+		role: mock<Role>({
+			slug: 'global:custom',
+			scopes: scopes.map((slug) => mock<DbScope>({ slug })),
+		}),
+	});
 
 describe('CredentialsFinderService', () => {
-	const roleService = mockInstance(RoleService);
-	const credentialsRepository = mockInstance(CredentialsRepository);
-	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
-	const credentialsFinderService = Container.get(CredentialsFinderService);
-
-	beforeAll(() => {
-		Container.set(RoleService, roleService);
-		Container.set(CredentialsRepository, credentialsRepository);
-		Container.set(SharedCredentialsRepository, sharedCredentialsRepository);
-	});
+	const accessRepository = mock<CredentialAccessRepository>();
+	const roleService = mock<RoleService>();
+	const service = new CredentialsFinderService(accessRepository, roleService);
+	const useRepositoryRoleLoader = () => {
+		accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
+		roleService.rolesWithScope.mockImplementation(async (namespace, _scopes, loadRoles) => {
+			await loadRoles?.();
+			return namespace === 'project' ? ['project:admin'] : ['credential:user'];
+		});
+	};
+	const expectRepositoryRoleLoader = () => {
+		expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledTimes(2);
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		credentialsRepository.excludePendingAuthorization.mockImplementation((where) => where);
+		roleService.rolesWithScope.mockImplementation(async (namespace) =>
+			namespace === 'project'
+				? ['project:owner', 'project:admin']
+				: ['credential:owner', 'credential:user'],
+		);
+		accessRepository.findProjectCredentialsForUser.mockResolvedValue([]);
+		accessRepository.findProjectCredentialForUser.mockResolvedValue(null);
+		accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set());
+		accessRepository.findGlobalProjectCredentials.mockResolvedValue([]);
+		accessRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
+		accessRepository.findAllProjectCredentialsForUser.mockResolvedValue([]);
+		accessRepository.findCredentialNames.mockResolvedValue([]);
+		accessRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(new Map());
+		accessRepository.findExistingCredentialIds.mockResolvedValue([]);
+		accessRepository.findCredentialIdsByUserAndRoles.mockResolvedValue([]);
+	});
 
-		// Setup manager mock for global credentials fetching
+	it('finds a credential by id with explicit options', async () => {
+		await service.findById('credential-1', {
+			includeInstanceCredentials: true,
+			includeSharedProject: true,
+		});
 
-		// @ts-expect-error override readonly manager for test
-		credentialsRepository.manager = {
-			find: vi.fn().mockResolvedValue([]),
-		} as any;
-
-		// Default mock implementation for all tests
-		roleService.rolesWithScope.mockImplementation(async (namespace) => {
-			if (namespace === 'project') {
-				return [
-					PROJECT_ADMIN_ROLE_SLUG,
-					PROJECT_OWNER_ROLE_SLUG,
-					PROJECT_EDITOR_ROLE_SLUG,
-					PROJECT_VIEWER_ROLE_SLUG,
-				];
-			} else if (namespace === 'credential') {
-				return ['credential:owner', 'credential:user'];
-			}
-			return [];
+		expect(accessRepository.findCredentialById).toHaveBeenCalledWith('credential-1', {
+			includeInstanceCredentials: true,
+			includeSharedProject: true,
 		});
 	});
 
-	describe('findById', () => {
-		it('queries project credentials by default', async () => {
-			credentialsRepository.findOne.mockResolvedValueOnce(null);
+	it('uses project and credential roles for a member', async () => {
+		await service.findCredentialsForUser(member, ['credential:read']);
 
-			await credentialsFinderService.findById('credential-id');
+		expect(accessRepository.findProjectCredentialsForUser).toHaveBeenCalledWith({
+			userId: member.id,
+			projectRoles: ['project:owner', 'project:admin'],
+			credentialRoles: ['credential:owner', 'credential:user'],
+		});
+	});
 
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: { id: 'credential-id', usageScope: 'project' },
-				relations: undefined,
-			});
+	it('uses the global override for an owner who can use credentials', async () => {
+		await service.findCredentialsForUser(owner, ['credential:read']);
+
+		expect(accessRepository.findProjectCredentialsForUser).toHaveBeenCalledWith(null);
+		expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+	});
+
+	it('does not use the global override for a visibility scope without credential use', async () => {
+		const visibilityUser = makeCustomUser('visibility-user', ['credential:read']);
+
+		await service.findCredentialsForUser(visibilityUser, ['credential:read']);
+
+		expect(accessRepository.findProjectCredentialsForUser).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: visibilityUser.id }),
+		);
+	});
+
+	it('allows a visibility-only metadata read to use the global override', async () => {
+		const visibilityUser = makeCustomUser('visibility-user', ['credential:read']);
+
+		await service.findCredentialsForUser(visibilityUser, ['credential:read'], {
+			visibilityOnly: true,
 		});
 
-		it('includes instance credentials and shared project when requested', async () => {
-			credentialsRepository.findOne.mockResolvedValueOnce(null);
+		expect(accessRepository.findProjectCredentialsForUser).toHaveBeenCalledWith(null);
+	});
 
-			await credentialsFinderService.findById('credential-id', {
+	it('adds global credentials for an exact read scope', async () => {
+		const shared = mock<CredentialsEntity>({ id: 'shared' });
+		const global = mock<CredentialsEntity>({ id: 'global' });
+		accessRepository.findProjectCredentialsForUser.mockResolvedValue([shared]);
+		accessRepository.findGlobalProjectCredentials.mockResolvedValue([global]);
+
+		await expect(service.findCredentialsForUser(member, ['credential:read'])).resolves.toEqual([
+			shared,
+			global,
+		]);
+	});
+
+	it('finds an instance credential only for a manager who requests it', async () => {
+		const credential = mock<CredentialsEntity>({ id: 'instance', usageScope: 'instance' });
+		accessRepository.findInstanceCredentialById.mockResolvedValue(credential);
+
+		await expect(
+			service.findCredentialForUser('instance', owner, ['credential:read'], {
 				includeInstanceCredentials: true,
-				includeSharedProject: true,
-			});
+			}),
+		).resolves.toBe(credential);
+	});
 
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: 'credential-id',
-					usageScope: In(['project', 'instance']),
+	it('allows connect access only to resolvable global credentials', async () => {
+		const staticCredential = mock<CredentialsEntity>({ isResolvable: false });
+		accessRepository.findGlobalProjectCredentialById.mockResolvedValue(staticCredential);
+
+		await expect(
+			service.findCredentialForUser('global', member, ['credential:connect']),
+		).resolves.toBeNull();
+
+		const resolvableCredential = mock<CredentialsEntity>({ isResolvable: true });
+		accessRepository.findGlobalProjectCredentialById.mockResolvedValue(resolvableCredential);
+		await expect(
+			service.findCredentialForUser('global', member, ['credential:connect']),
+		).resolves.toBe(resolvableCredential);
+	});
+
+	it('keeps all credential reads in the supplied operation context', async () => {
+		const ctx = mock<OperationContext>();
+		accessRepository.findAllProjectCredentialsForUser.mockResolvedValue([]);
+		accessRepository.findGlobalProjectCredentials.mockResolvedValue([]);
+
+		await service.findAllCredentialsForUser(member, ['credential:read'], ctx, {
+			includeGlobalCredentials: true,
+		});
+
+		expect(accessRepository.findAllProjectCredentialsForUser).toHaveBeenCalledWith(
+			expect.any(Object),
+			ctx,
+		);
+		expect(accessRepository.findGlobalProjectCredentials).toHaveBeenCalledWith(ctx);
+	});
+
+	it('deduplicates global credentials and skips globals without an owner project', async () => {
+		const shared = { ...mock<CredentialsEntity>({ id: 'shared' }), projectId: 'project-1' };
+		const duplicate = mock<CredentialsEntity>({ id: 'shared' });
+		const ownerProject = mock<Project>({ id: 'project-2' });
+		const global = mock<CredentialsEntity>({
+			id: 'global',
+			shared: [{ role: 'credential:owner', projectId: ownerProject.id }],
+		});
+		const ownerless = mock<CredentialsEntity>({ id: 'ownerless', shared: [] });
+		accessRepository.findAllProjectCredentialsForUser.mockResolvedValue([shared]);
+		accessRepository.findGlobalProjectCredentials.mockResolvedValue([duplicate, global, ownerless]);
+
+		const result = await service.findAllCredentialsForUser(
+			member,
+			['credential:read'],
+			{},
+			{
+				includeGlobalCredentials: true,
+			},
+		);
+
+		expect(result.map(({ id }) => id)).toEqual(['shared', 'global']);
+		expect(result[1]?.projectId).toBe(ownerProject.id);
+	});
+
+	it('describes missing credentials with their id', async () => {
+		const project = mock<Project>();
+		accessRepository.findCredentialNames.mockResolvedValue([{ id: 'existing', name: 'Stored' }]);
+		accessRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+			new Map([['existing', project]]),
+		);
+
+		await expect(service.describeCredentials(['existing', 'missing'])).resolves.toEqual([
+			{ id: 'existing', name: 'Stored', exists: true, ownerProject: project },
+			{ id: 'missing', name: 'missing', exists: false, ownerProject: null },
+		]);
+	});
+
+	it('returns only unusable credentials for a user', async () => {
+		accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set(['usable']));
+		accessRepository.findCredentialNames.mockResolvedValue([
+			{ id: 'unusable', name: 'Unavailable' },
+		]);
+		accessRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(new Map());
+
+		await expect(
+			service.findUnusableCredentialsForUser(member, ['usable', 'unusable']),
+		).resolves.toEqual([{ id: 'unusable', name: 'Unavailable', exists: true, ownerProject: null }]);
+	});
+
+	it('adds global credential ids for read and resolvable ids for connect', async () => {
+		accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set(['shared']));
+		accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global']);
+
+		await expect(
+			service.findCredentialIdsWithScopeForUser(['shared', 'global'], member, ['credential:read']),
+		).resolves.toEqual(new Set(['shared', 'global']));
+		expect(accessRepository.findGlobalProjectCredentialIds).toHaveBeenLastCalledWith(
+			['shared', 'global'],
+			false,
+		);
+
+		await service.findCredentialIdsWithScopeForUser(['shared', 'global'], member, [
+			'credential:connect',
+		]);
+		expect(accessRepository.findGlobalProjectCredentialIds).toHaveBeenLastCalledWith(
+			['shared', 'global'],
+			true,
+		);
+	});
+
+	it('forwards the operation context when finding ids by user and role', async () => {
+		const ctx = mock<OperationContext>();
+		accessRepository.findCredentialIdsByUserAndRoles.mockResolvedValue(['credential-1']);
+
+		await expect(
+			service.getCredentialIdsByUserAndRole(
+				['user-1'],
+				{
+					projectRoles: ['project:personalOwner'],
+					credentialRoles: ['credential:owner'],
 				},
-				relations: { shared: { project: true } },
-			});
+				ctx,
+			),
+		).resolves.toEqual(['credential-1']);
+		expect(accessRepository.findCredentialIdsByUserAndRoles).toHaveBeenCalledWith(
+			['user-1'],
+			['project:personalOwner'],
+			['credential:owner'],
+			ctx,
+		);
+	});
+
+	describe('scope classification', () => {
+		it.each([
+			{ scopes: ['credential:read'] as Scope[], expected: true },
+			{ scopes: ['credential:read', 'credential:list'] as Scope[], expected: false },
+			{ scopes: ['credential:update'] as Scope[], expected: false },
+			{ scopes: [] as Scope[], expected: false },
+		])('classifies read-only access for $scopes', ({ scopes, expected }) => {
+			expect(service.hasGlobalReadOnlyAccess(scopes)).toBe(expected);
+		});
+
+		it.each([
+			{ scopes: ['credential:connect'] as Scope[], expected: true },
+			{ scopes: ['credential:connect', 'credential:read'] as Scope[], expected: false },
+			{ scopes: ['credential:read'] as Scope[], expected: false },
+			{ scopes: [] as Scope[], expected: false },
+		])('classifies connect access for $scopes', ({ scopes, expected }) => {
+			expect(service.hasGlobalConnectAccess(scopes)).toBe(expected);
 		});
 	});
 
 	describe('findCredentialForUser', () => {
-		const credentialsId = 'cred_123';
-		const sharedCredential = mock<SharedCredentials>();
-		sharedCredential.credentials = mock<CredentialsEntity>({
-			id: credentialsId,
-			usageScope: 'project',
-		});
-		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
-		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'test' });
+		it('does not load instance credentials unless the caller requests them', async () => {
+			await service.findCredentialForUser('credential-1', owner, ['credential:read']);
 
-		test('should return instance credentials only when explicitly requested by a manager', async () => {
-			const instanceCredential = mock<CredentialsEntity>({
-				id: credentialsId,
-				usageScope: 'instance',
-			});
-			credentialsRepository.findOneBy.mockResolvedValueOnce(instanceCredential);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				owner,
-				['credential:read' as const],
-				{ includeInstanceCredentials: true },
-			);
-
-			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
-				id: credentialsId,
-				usageScope: 'instance',
-			});
-			expect(credential).toBe(instanceCredential);
-			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+			expect(accessRepository.findInstanceCredentialById).not.toHaveBeenCalled();
 		});
 
-		test('should not return instance credentials through generic access checks', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(
-				mock<SharedCredentials>({
-					credentials: mock<CredentialsEntity>({
-						id: credentialsId,
-						usageScope: 'instance',
-					}),
-				}),
-			);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				owner,
-				['credential:read' as const],
-			);
-
-			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
-			expect(credential).toBeNull();
-		});
-
-		test('should not return instance credentials to members', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findOne.mockResolvedValueOnce(null);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:read' as const],
-			);
-
-			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
-			expect(credential).toBeFalsy();
-		});
-
-		test('should ignore stale sharing rows for instance credentials', async () => {
-			const staleSharedCredential = mock<SharedCredentials>({
-				credentials: mock<CredentialsEntity>({
-					id: credentialsId,
-					usageScope: 'instance',
-				}),
-			});
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(staleSharedCredential);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:read' as const],
-			);
-
-			expect(credential).toBeNull();
-		});
-
-		test('should allow instance owner access to all credentials', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				owner,
-				['credential:read' as const],
-			);
-			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
-				where: { credentialsId },
-				relations: {
-					credentials: {
-						shared: { project: true },
-					},
-				},
-			});
-			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(credential).toEqual(sharedCredential.credentials);
-		});
-
-		test('should allow members and call RoleService correctly', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:read' as const],
-			);
-
-			expect(roleService.rolesWithScope).toHaveBeenCalledTimes(2);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
-
-			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					credentialsId,
-					role: In(['credential:owner', 'credential:user']),
-					project: {
-						projectRelations: {
-							role: In([
-								PROJECT_ADMIN_ROLE_SLUG,
-								PROJECT_OWNER_ROLE_SLUG,
-								PROJECT_EDITOR_ROLE_SLUG,
-								PROJECT_VIEWER_ROLE_SLUG,
-							]),
-							userId: member.id,
-						},
-					},
-				},
-				relations: {
-					credentials: {
-						shared: { project: true },
-					},
-				},
-			});
-			expect(credential).toEqual(sharedCredential.credentials);
-		});
-
-		test('should return null when no shared credential is found and not global', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findOne.mockResolvedValueOnce(null);
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:read' as const],
-			);
-			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					credentialsId,
-					role: In(['credential:owner', 'credential:user']),
-					project: {
-						projectRelations: {
-							role: In([
-								PROJECT_ADMIN_ROLE_SLUG,
-								PROJECT_OWNER_ROLE_SLUG,
-								PROJECT_EDITOR_ROLE_SLUG,
-								PROJECT_VIEWER_ROLE_SLUG,
-							]),
-							userId: member.id,
-						},
-					},
-				},
-				relations: {
-					credentials: {
-						shared: { project: true },
-					},
-				},
-			});
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: credentialsId,
-					isGlobal: true,
-					usageScope: 'project',
-				},
-				relations: {
-					shared: { project: true },
-				},
-			});
-			expect(credential).toEqual(null);
-		});
-
-		test('should return global credential when not shared but is global for credential:read scope', async () => {
-			const globalCredential = mock<CredentialsEntity>({ id: credentialsId, isGlobal: true });
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:read' as const],
-			);
-
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: credentialsId,
-					isGlobal: true,
-					usageScope: 'project',
-				},
-				relations: {
-					shared: { project: true },
-				},
-			});
-			expect(credential).toEqual(globalCredential);
-		});
-
-		test('should return global end-user credential for credential:connect scope', async () => {
-			const globalCredential = mock<CredentialsEntity>({
-				id: credentialsId,
-				isGlobal: true,
-				isResolvable: true,
-			});
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:connect' as const],
-			);
-
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: credentialsId,
-					isGlobal: true,
-					usageScope: 'project',
-				},
-				relations: {
-					shared: { project: true },
-				},
-			});
-			expect(credential).toEqual(globalCredential);
-		});
-
-		test('should not grant connect access to a global credential that is not an end-user credential', async () => {
-			const staticGlobalCredential = mock<CredentialsEntity>({
-				id: credentialsId,
-				isGlobal: true,
-				isResolvable: false,
-			});
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findOne.mockResolvedValueOnce(staticGlobalCredential);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:connect' as const],
-			);
-
-			expect(credential).toBeNull();
-		});
-
-		test('should not fallback to global credential for write scopes', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:update' as const],
-			);
-
-			expect(credentialsRepository.findOne).not.toHaveBeenCalled();
-			expect(credential).toEqual(null);
-		});
-
-		test('should not fallback to global credential for multiple scopes', async () => {
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:read' as const, 'credential:update' as const],
-			);
-
-			expect(credentialsRepository.findOne).not.toHaveBeenCalled();
-			expect(credential).toEqual(null);
-		});
-
-		test('should handle custom roles from RoleService', async () => {
-			roleService.rolesWithScope.mockImplementation(async (namespace) => {
-				if (namespace === 'project') {
-					return ['custom:project-admin-abc123', PROJECT_VIEWER_ROLE_SLUG];
-				} else if (namespace === 'credential') {
-					return ['custom:cred-manager-xyz789', 'credential:user'];
-				}
-				return [];
+		it('does not load instance credentials for a member', async () => {
+			await service.findCredentialForUser('credential-1', member, ['credential:read'], {
+				includeInstanceCredentials: true,
 			});
 
-			sharedCredentialsRepository.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await credentialsFinderService.findCredentialForUser(
-				credentialsId,
-				member,
-				['credential:update' as const],
-			);
-
-			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					credentialsId,
-					role: In(['custom:cred-manager-xyz789', 'credential:user']),
-					project: {
-						projectRelations: {
-							role: In(['custom:project-admin-abc123', PROJECT_VIEWER_ROLE_SLUG]),
-							userId: member.id,
-						},
-					},
-				},
-				relations: {
-					credentials: {
-						shared: { project: true },
-					},
-				},
-			});
-			expect(credential).toEqual(sharedCredential.credentials);
+			expect(accessRepository.findInstanceCredentialById).not.toHaveBeenCalled();
 		});
 
-		test('should handle RoleService failure gracefully', async () => {
-			roleService.rolesWithScope.mockRejectedValue(new Error('Role cache unavailable'));
+		it('does not fall back to a global credential for write scopes', async () => {
+			await expect(
+				service.findCredentialForUser('credential-1', member, ['credential:update']),
+			).resolves.toBeNull();
+
+			expect(accessRepository.findGlobalProjectCredentialById).not.toHaveBeenCalled();
+		});
+
+		it('does not fall back to a global credential for multiple scopes', async () => {
+			await service.findCredentialForUser('credential-1', member, [
+				'credential:read',
+				'credential:list',
+			]);
+
+			expect(accessRepository.findGlobalProjectCredentialById).not.toHaveBeenCalled();
+		});
+
+		it('returns a project credential before checking global access', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'credential-1' });
+			accessRepository.findProjectCredentialForUser.mockResolvedValue(credential);
 
 			await expect(
-				credentialsFinderService.findCredentialForUser(credentialsId, member, [
-					'credential:read' as const,
-				]),
-			).rejects.toThrow('Role cache unavailable');
+				service.findCredentialForUser('credential-1', member, ['credential:read']),
+			).resolves.toBe(credential);
+			expect(accessRepository.findGlobalProjectCredentialById).not.toHaveBeenCalled();
+		});
 
-			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
+		it('propagates role resolution failures', async () => {
+			roleService.rolesWithScope.mockRejectedValueOnce(new Error('role lookup failed'));
+
+			await expect(
+				service.findCredentialForUser('credential-1', member, ['credential:read']),
+			).rejects.toThrow('role lookup failed');
+		});
+
+		it('uses custom roles returned by the role service', async () => {
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:custom'] : ['credential:custom'],
+			);
+
+			await service.findCredentialForUser('credential-1', member, ['credential:read']);
+
+			expect(accessRepository.findProjectCredentialForUser).toHaveBeenCalledWith('credential-1', {
+				userId: member.id,
+				projectRoles: ['project:custom'],
+				credentialRoles: ['credential:custom'],
+			});
+		});
+	});
+
+	describe('global visibility and use', () => {
+		const viewOnlyUser = makeCustomUser('view-only', ['credential:read']);
+		const useUser = makeCustomUser('use-user', ['credential:read', 'credential:use']);
+
+		it('uses sharing access for a view-only credential lookup', async () => {
+			await service.findCredentialForUser('credential-1', viewOnlyUser, ['credential:read']);
+
+			expect(accessRepository.findProjectCredentialForUser).toHaveBeenCalledWith(
+				'credential-1',
+				expect.objectContaining({ userId: viewOnlyUser.id }),
+			);
+		});
+
+		it('uses the global override for a visibility-only credential lookup', async () => {
+			await service.findCredentialForUser('credential-1', viewOnlyUser, ['credential:read'], {
+				visibilityOnly: true,
+			});
+
+			expect(accessRepository.findProjectCredentialForUser).toHaveBeenCalledWith(
+				'credential-1',
+				null,
+			);
+		});
+
+		it('uses the global override when credential use is granted', async () => {
+			await service.findCredentialForUser('credential-1', useUser, ['credential:read']);
+
+			expect(accessRepository.findProjectCredentialForUser).toHaveBeenCalledWith(
+				'credential-1',
+				null,
+			);
+		});
+
+		it('uses sharing access for view-only credential ids', async () => {
+			await service.findCredentialIdsWithScopeForUser(['credential-1'], viewOnlyUser, [
+				'credential:read',
+			]);
+
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				expect.objectContaining({ userId: viewOnlyUser.id }),
+			);
+		});
+
+		it('uses the global override for visibility-only credential ids', async () => {
+			await service.findCredentialIdsWithScopeForUser(
+				['credential-1'],
+				viewOnlyUser,
+				['credential:read'],
+				{ visibilityOnly: true },
+			);
+
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				null,
+			);
 		});
 	});
 
 	describe('findCredentialsForUser', () => {
-		const credentials = [
-			mock<CredentialsEntity>({ id: 'cred1', shared: [] }),
-			mock<CredentialsEntity>({ id: 'cred2', shared: [] }),
-		];
-		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
-		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+		it('loads access roles through the repository callback', async () => {
+			useRepositoryRoleLoader();
 
-		beforeEach(() => {
-			vi.clearAllMocks();
+			await service.findCredentialsForUser(member, ['credential:read']);
+
+			expectRepositoryRoleLoader();
 		});
 
-		test('should allow global owner access to all credentials without role filtering', async () => {
-			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			const result = await credentialsFinderService.findCredentialsForUser(owner, [
-				'credential:read' as const,
-			]);
+		it('does not include global credentials for a write scope', async () => {
+			await service.findCredentialsForUser(member, ['credential:update']);
 
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: { isGlobal: false, usageScope: 'project' },
-				relations: { shared: true },
-			});
-			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, usageScope: 'project' },
-				relations: { shared: true },
-			});
-			expect(credentialsRepository.excludePendingAuthorization).toHaveBeenCalledWith({
-				isGlobal: false,
-				usageScope: 'project',
-			});
-			expect(credentialsRepository.excludePendingAuthorization).toHaveBeenCalledWith({
-				isGlobal: true,
-				usageScope: 'project',
-			});
-			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(result).toEqual([...credentials]);
+			expect(accessRepository.findGlobalProjectCredentials).not.toHaveBeenCalled();
 		});
 
-		test('should filter credentials by roles for regular members', async () => {
-			credentialsRepository.find.mockResolvedValueOnce(credentials);
+		it('does not include global credentials for multiple scopes', async () => {
+			await service.findCredentialsForUser(member, ['credential:read', 'credential:list']);
 
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:update' as const,
-			]);
-
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:update']);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:update']);
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: {
-					isGlobal: false,
-					usageScope: 'project',
-					shared: {
-						role: In(['credential:owner', 'credential:user']),
-						project: {
-							projectRelations: {
-								role: In([
-									PROJECT_ADMIN_ROLE_SLUG,
-									PROJECT_OWNER_ROLE_SLUG,
-									PROJECT_EDITOR_ROLE_SLUG,
-									PROJECT_VIEWER_ROLE_SLUG,
-								]),
-								userId: member.id,
-							},
-						},
-					},
-				},
-				relations: { shared: true },
-			});
-			// Should NOT fetch global credentials for update scope
-			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
-			expect(result).toEqual(credentials);
+			expect(accessRepository.findGlobalProjectCredentials).not.toHaveBeenCalled();
 		});
 
-		test('should include global credentials when user has read-only access', async () => {
-			const mockGlobalCredentials = [
-				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
-				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
-			];
-			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce(mockGlobalCredentials);
+		it('keeps project and credential role namespaces separate', async () => {
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:custom'] : ['credential:custom'],
+			);
 
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:read' as const,
-			]);
+			await service.findCredentialsForUser(member, ['credential:read']);
 
-			// Should include both non-global (cred1, cred2) and global (global1, global2)
-			expect(result).toHaveLength(4);
-			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2', 'global1', 'global2']);
-		});
-
-		test('should not include global credentials when user has write access', async () => {
-			const mockGlobalCredentials = [
-				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
-				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
-			];
-			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce(mockGlobalCredentials);
-
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:update' as const,
-			]);
-
-			// Should only include non-global credentials (cred1, cred2)
-			expect(result).toHaveLength(2);
-			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2']);
-			// Should not call fetchGlobalCredentials when not read-only
-			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
-		});
-
-		test('should not include global credentials when user has multiple scopes', async () => {
-			const mockGlobalCredentials = [
-				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
-				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
-			];
-			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce(mockGlobalCredentials);
-
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:read' as const,
-				'credential:list' as const,
-			]);
-
-			// Should only include non-global credentials (cred1, cred2)
-			expect(result).toHaveLength(2);
-			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2']);
-			// Should not call fetchGlobalCredentials when multiple scopes
-			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
-		});
-
-		test('should handle empty global credentials list with read-only access', async () => {
-			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce([]);
-
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:read' as const,
-			]);
-
-			expect(result).toEqual(credentials);
-			// Should call fetchGlobalCredentials when read-only
-			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, usageScope: 'project' },
-				relations: { shared: true },
+			expect(accessRepository.findProjectCredentialsForUser).toHaveBeenCalledWith({
+				userId: member.id,
+				projectRoles: ['project:custom'],
+				credentialRoles: ['credential:custom'],
 			});
 		});
 
-		test('should handle custom roles in filtering', async () => {
-			roleService.rolesWithScope.mockImplementation(async (namespace) => {
-				if (namespace === 'project') return ['custom:project-lead-456'];
-				if (namespace === 'credential') return ['custom:cred-admin-789'];
-				return [];
-			});
+		it('propagates partial role resolution failures', async () => {
+			roleService.rolesWithScope
+				.mockResolvedValueOnce(['project:admin'])
+				.mockRejectedValueOnce(new Error('credential roles failed'));
 
-			const singleCredResult = [credentials[0]];
-			credentialsRepository.find.mockResolvedValueOnce(singleCredResult);
-
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:delete' as const,
-			]);
-
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: {
-					isGlobal: false,
-					usageScope: 'project',
-					shared: {
-						role: In(['custom:cred-admin-789']),
-						project: {
-							projectRelations: {
-								role: In(['custom:project-lead-456']),
-								userId: member.id,
-							},
-						},
-					},
-				},
-				relations: { shared: true },
-			});
-			expect(result).toEqual(singleCredResult);
+			await expect(service.findCredentialsForUser(member, ['credential:read'])).rejects.toThrow(
+				'credential roles failed',
+			);
 		});
 	});
 
 	describe('findAllCredentialsForUser', () => {
-		const sharedCredentials = [
-			mock<SharedCredentials>({
-				credentials: mock<CredentialsEntity>({ id: 'cred1' }),
-				projectId: 'proj1',
-				credentialsId: 'cred1',
-				role: 'credential:owner',
-			}),
-			mock<SharedCredentials>({
-				credentials: mock<CredentialsEntity>({ id: 'cred2' }),
-				projectId: 'proj2',
-				credentialsId: 'cred2',
-				role: 'credential:user',
-			}),
-		];
-		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
-		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+		it('does not load global credentials without the include flag', async () => {
+			await service.findAllCredentialsForUser(member, ['credential:read']);
 
-		beforeEach(() => {
-			vi.clearAllMocks();
-
-			// Reset to default implementation for each test
-			roleService.rolesWithScope.mockImplementation(async (namespace) => {
-				if (namespace === 'project') {
-					return [
-						PROJECT_ADMIN_ROLE_SLUG,
-						PROJECT_OWNER_ROLE_SLUG,
-						PROJECT_EDITOR_ROLE_SLUG,
-						PROJECT_VIEWER_ROLE_SLUG,
-					];
-				} else if (namespace === 'credential') {
-					return ['credential:owner', 'credential:user'];
-				}
-				return [];
-			});
+			expect(accessRepository.findGlobalProjectCredentials).not.toHaveBeenCalled();
 		});
 
-		test('should allow global owner access without filtering', async () => {
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
-				sharedCredentials,
-			);
+		it('uses the global override for an owner', async () => {
+			await service.findAllCredentialsForUser(owner, ['credential:read']);
 
-			const result = await credentialsFinderService.findAllCredentialsForUser(owner, [
-				'credential:read' as const,
-			]);
-
-			expect(sharedCredentialsRepository.findCredentialsWithOptions).toHaveBeenCalledWith(
-				{ credentials: { usageScope: 'project' } },
-				undefined,
-			);
+			expect(accessRepository.findAllProjectCredentialsForUser).toHaveBeenCalledWith(null, {});
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(result).toEqual([
-				{ ...sharedCredentials[0].credentials, projectId: 'proj1' },
-				{ ...sharedCredentials[1].credentials, projectId: 'proj2' },
-			]);
-		});
-
-		test('should filter by roles for regular members', async () => {
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([
-				sharedCredentials[0],
-			]);
-
-			const result = await credentialsFinderService.findAllCredentialsForUser(member, [
-				'credential:read' as const,
-			]);
-
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
-			expect(sharedCredentialsRepository.findCredentialsWithOptions).toHaveBeenCalledWith(
-				{
-					credentials: { usageScope: 'project' },
-					role: In(['credential:owner', 'credential:user']),
-					project: {
-						projectRelations: {
-							role: In([
-								PROJECT_ADMIN_ROLE_SLUG,
-								PROJECT_OWNER_ROLE_SLUG,
-								PROJECT_EDITOR_ROLE_SLUG,
-								PROJECT_VIEWER_ROLE_SLUG,
-							]),
-							userId: member.id,
-						},
-					},
-				},
-				undefined,
-			);
-			expect(result).toEqual([{ ...sharedCredentials[0].credentials, projectId: 'proj1' }]);
-		});
-
-		test('should support transaction manager', async () => {
-			const mockTrx = mock<any>();
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
-
-			await credentialsFinderService.findAllCredentialsForUser(
-				member,
-				['credential:read' as const],
-				mockTrx,
-			);
-
-			expect(sharedCredentialsRepository.findCredentialsWithOptions).toHaveBeenCalledWith(
-				expect.any(Object),
-				mockTrx,
-			);
-		});
-
-		test('should include global credentials when includeGlobalCredentials flag is true', async () => {
-			const globalCredential = mock<CredentialsEntity>({
-				id: 'global1',
-				isGlobal: true,
-				shared: [
-					mock<SharedCredentials>({
-						credentialsId: 'global1',
-						role: 'credential:owner',
-						projectId: 'proj-owner',
-					}),
-				],
-			});
-
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
-				sharedCredentials,
-			);
-			credentialsRepository.manager.find = vi.fn().mockResolvedValueOnce([globalCredential]);
-
-			const result = await credentialsFinderService.findAllCredentialsForUser(
-				member,
-				['credential:read' as const],
-				undefined,
-				{ includeGlobalCredentials: true },
-			);
-
-			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, usageScope: 'project' },
-				relations: { shared: true },
-			});
-			expect(result).toHaveLength(3);
-			expect(result[2]).toEqual({ ...globalCredential, projectId: 'proj-owner' });
-		});
-
-		test('should not include global credentials when includeGlobalCredentials flag is false', async () => {
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
-				sharedCredentials,
-			);
-
-			const result = await credentialsFinderService.findAllCredentialsForUser(
-				member,
-				['credential:read' as const],
-				undefined,
-				{ includeGlobalCredentials: false },
-			);
-
-			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
-			expect(result).toHaveLength(2);
-		});
-
-		test('should not include global credentials when no options provided', async () => {
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
-				sharedCredentials,
-			);
-
-			const result = await credentialsFinderService.findAllCredentialsForUser(member, [
-				'credential:read' as const,
-			]);
-
-			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
-			expect(result).toHaveLength(2);
-		});
-
-		test('should skip global credentials without valid projectId', async () => {
-			const globalCredentialWithoutProject = mock<CredentialsEntity>({
-				id: 'global-no-proj',
-				isGlobal: true,
-				shared: [
-					mock<SharedCredentials>({
-						credentialsId: 'global-no-proj',
-						role: 'credential:user',
-						projectId: undefined as any,
-					}),
-				],
-			});
-
-			const globalCredentialWithProject = mock<CredentialsEntity>({
-				id: 'global-with-proj',
-				isGlobal: true,
-				shared: [
-					mock<SharedCredentials>({
-						credentialsId: 'global-with-proj',
-						role: 'credential:owner',
-						projectId: 'proj-owner',
-					}),
-				],
-			});
-
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
-			credentialsRepository.manager.find = vi
-				.fn()
-				.mockResolvedValueOnce([globalCredentialWithoutProject, globalCredentialWithProject]);
-
-			const result = await credentialsFinderService.findAllCredentialsForUser(
-				member,
-				['credential:read' as const],
-				undefined,
-				{ includeGlobalCredentials: true },
-			);
-
-			// Should only include the credential with valid projectId
-			expect(result).toHaveLength(1);
-			expect(result[0].id).toEqual('global-with-proj');
-		});
-
-		test('should deduplicate global credentials with shared credentials', async () => {
-			const sharedGlobalCred = mock<SharedCredentials>({
-				credentials: mock<CredentialsEntity>({ id: 'cred1' }),
-				projectId: 'proj1',
-				credentialsId: 'cred1',
-				role: 'credential:owner',
-			});
-
-			const globalCredential = mock<CredentialsEntity>({
-				id: 'cred1', // Same ID as shared credential
-				isGlobal: true,
-				shared: [
-					mock<SharedCredentials>({
-						credentialsId: 'cred1',
-						role: 'credential:owner',
-						projectId: 'proj-owner',
-					}),
-				],
-			});
-
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([
-				sharedGlobalCred,
-			]);
-			credentialsRepository.manager.find = vi.fn().mockResolvedValueOnce([globalCredential]);
-
-			const result = await credentialsFinderService.findAllCredentialsForUser(
-				member,
-				['credential:read' as const],
-				undefined,
-				{ includeGlobalCredentials: true },
-			);
-
-			// Should not duplicate cred1
-			expect(result).toHaveLength(1);
-			expect(result[0].id).toEqual('cred1');
-		});
-
-		test('should use transaction manager for fetching global credentials', async () => {
-			const mockTrx = mock<any>();
-			const mockFind = vi.fn().mockResolvedValueOnce([]);
-			mockTrx.find = mockFind;
-
-			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
-
-			await credentialsFinderService.findAllCredentialsForUser(
-				member,
-				['credential:read' as const],
-				mockTrx,
-				{ includeGlobalCredentials: true },
-			);
-
-			expect(mockFind).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true, usageScope: 'project' },
-				relations: { shared: true },
-			});
 		});
 	});
 
 	describe('findCredentialIdsWithScopeForUser', () => {
-		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE, id: 'owner123' });
-		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
+		it('short-circuits empty input', async () => {
+			await expect(
+				service.findCredentialIdsWithScopeForUser([], member, ['credential:read']),
+			).resolves.toEqual(new Set());
 
-		beforeEach(() => {
-			vi.clearAllMocks();
+			expect(accessRepository.findProjectCredentialIdsForUser).not.toHaveBeenCalled();
 		});
 
-		test('should return empty set for empty input', async () => {
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser([], member, [
-				'credential:read',
-			]);
+		it('uses the global override for an owner', async () => {
+			await service.findCredentialIdsWithScopeForUser(['credential-1'], owner, ['credential:read']);
 
-			expect(result).toEqual(new Set());
-			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				null,
+			);
 		});
 
-		test('should return all requested IDs for global owner', async () => {
-			const ids = ['cred-1', 'cred-2'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-				mock<SharedCredentials>({ credentialsId: 'cred-2' }),
-			]);
-			// Global credentials query for read-only scope
-			credentialsRepository.find.mockResolvedValueOnce([]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, owner, [
-				'credential:read',
-			]);
-
-			expect(result).toEqual(new Set(['cred-1', 'cred-2']));
-			// Owner should not trigger role resolution
-			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-				select: { credentialsId: true },
-				where: {
-					credentialsId: In(ids),
-					credentials: { usageScope: 'project' },
-				},
-			});
-		});
-
-		test('ignoreGlobalOverride forces role-based filtering even for a global owner', async () => {
-			const ids = ['cred-1', 'cred-2'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
-				ids,
+		it('forces sharing access when the global override is ignored', async () => {
+			await service.findCredentialIdsWithScopeForUser(
+				['credential-1'],
 				owner,
 				['credential:read'],
 				{ ignoreGlobalOverride: true },
 			);
 
-			expect(result).toEqual(new Set(['cred-1']));
-			// Owner now goes through role resolution, same as a regular member would.
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
-			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-				select: { credentialsId: true },
-				where: {
-					credentialsId: In(ids),
-					credentials: { usageScope: 'project' },
-					role: In(['credential:owner', 'credential:user']),
-					project: {
-						projectRelations: {
-							role: In([
-								PROJECT_ADMIN_ROLE_SLUG,
-								PROJECT_OWNER_ROLE_SLUG,
-								PROJECT_EDITOR_ROLE_SLUG,
-								PROJECT_VIEWER_ROLE_SLUG,
-							]),
-							userId: 'owner123',
-						},
-					},
-				},
-			});
-			// The global-credential merge is also an instance-wide override; it must
-			// not run (or query the DB) when ignoreGlobalOverride is set.
-			expect(credentialsRepository.find).not.toHaveBeenCalled();
-		});
-
-		test('should filter by roles for regular member', async () => {
-			const ids = ['cred-1', 'cred-2', 'cred-3'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
-				'credential:read',
-			]);
-
-			expect(result).toEqual(new Set(['cred-1']));
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
-			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-				select: { credentialsId: true },
-				where: {
-					credentialsId: In(ids),
-					credentials: { usageScope: 'project' },
-					role: In(['credential:owner', 'credential:user']),
-					project: {
-						projectRelations: {
-							role: In([
-								PROJECT_ADMIN_ROLE_SLUG,
-								PROJECT_OWNER_ROLE_SLUG,
-								PROJECT_EDITOR_ROLE_SLUG,
-								PROJECT_VIEWER_ROLE_SLUG,
-							]),
-							userId: member.id,
-						},
-					},
-				},
-			});
-		});
-
-		test('should include global credentials for read-only scope', async () => {
-			const ids = ['cred-1', 'global-1'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-			credentialsRepository.find.mockResolvedValueOnce([
-				mock<CredentialsEntity>({ id: 'global-1' }),
-			]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
-				'credential:read',
-			]);
-
-			expect(result).toEqual(new Set(['cred-1', 'global-1']));
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: { id: In(ids), isGlobal: true, usageScope: 'project' },
-				select: ['id'],
-			});
-		});
-
-		test('ignoreGlobalOverride excludes a global credential the user has no personal access to', async () => {
-			const ids = ['cred-1', 'global-1'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
-				ids,
-				owner,
-				['credential:read'],
-				{ ignoreGlobalOverride: true },
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				expect.objectContaining({ userId: owner.id }),
 			);
-
-			// Being flagged `isGlobal` is itself an instance-wide grant, not personal
-			// access, so it must not satisfy the check either.
-			expect(result).toEqual(new Set(['cred-1']));
-			expect(credentialsRepository.find).not.toHaveBeenCalled();
+			expect(accessRepository.findGlobalProjectCredentialIds).not.toHaveBeenCalled();
 		});
 
-		test('should include global end-user credentials for connect scope', async () => {
-			const ids = ['cred-1', 'global-1'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-			credentialsRepository.find.mockResolvedValueOnce([
-				mock<CredentialsEntity>({ id: 'global-1' }),
-			]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
-				'credential:connect',
-			]);
-
-			expect(result).toEqual(new Set(['cred-1', 'global-1']));
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: { id: In(ids), isGlobal: true, usageScope: 'project', isResolvable: true },
-				select: ['id'],
-			});
-		});
-
-		test('should not include global credentials for write scopes', async () => {
-			const ids = ['cred-1'];
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
+		it('does not load global ids for write scopes', async () => {
+			await service.findCredentialIdsWithScopeForUser(['credential-1'], member, [
 				'credential:update',
 			]);
 
-			expect(result).toEqual(new Set(['cred-1']));
-			expect(credentialsRepository.find).not.toHaveBeenCalled();
-		});
-
-		test('should return empty set when member has no access', async () => {
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
-
-			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
-				['cred-1', 'cred-2'],
-				member,
-				['credential:read'],
-			);
-
-			expect(result).toEqual(new Set());
+			expect(accessRepository.findGlobalProjectCredentialIds).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('findUnusableCredentialsForUser', () => {
-		const owner = mock<User>({ id: 'owner', role: GLOBAL_OWNER_ROLE });
-		const member = mock<User>({ id: 'member', role: GLOBAL_MEMBER_ROLE });
-
-		// A see-only instance role holds list and read but not use, so it must not
-		// short-circuit the per-credential question the way an Owner does.
-		const viewOnlyRole = {
-			slug: 'global:cred-viewer',
-			displayName: 'Credential viewer',
-			description: null,
-			systemRole: false,
-			roleType: 'global',
-			scopes: ['credential:list', 'credential:read'].map((scope) => ({
-				slug: scope,
-				displayName: scope,
-				description: null,
-			})),
-		} as Role;
-
-		it('reads nothing for an empty list', async () => {
-			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(member, []),
-			).resolves.toEqual([]);
-			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+		it('short-circuits empty input', async () => {
+			await expect(service.findUnusableCredentialsForUser(member, [])).resolves.toEqual([]);
+			expect(accessRepository.findCredentialNames).not.toHaveBeenCalled();
 		});
 
-		// `exists` drives the publish gate's "no longer exists, update the node"
-		// wording, so a user we could not resolve must not make live credentials
-		// look deleted.
-		it('describes the credentials as they are when the user cannot be resolved', async () => {
-			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
-			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
-				{ id: 'cred-1', name: 'Team Gmail' },
+		it('describes every credential when the user cannot be resolved', async () => {
+			accessRepository.findCredentialNames.mockResolvedValue([
+				{ id: 'credential-1', name: 'Credential' },
 			]);
-			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
-				new Map([['cred-1', ownerProject]]),
-			);
 
 			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(null, ['cred-1']),
-			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject }]);
-		});
-
-		it('names what the user cannot use, with the project to ask', async () => {
-			const ownerProject = mock<Project>({ id: 'p1', name: 'Sales Ops', type: 'team' });
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
-				{ id: 'cred-1', name: "Alice's Gmail" },
+				service.findUnusableCredentialsForUser(null, ['credential-1', 'missing']),
+			).resolves.toEqual([
+				{ id: 'credential-1', name: 'Credential', exists: true, ownerProject: null },
+				{ id: 'missing', name: 'missing', exists: false, ownerProject: null },
 			]);
-			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(
-				new Map([['cred-1', ownerProject]]),
-			);
-
-			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(member, ['cred-1']),
-			).resolves.toEqual([{ id: 'cred-1', name: "Alice's Gmail", exists: true, ownerProject }]);
+			expect(accessRepository.findProjectCredentialIdsForUser).not.toHaveBeenCalled();
 		});
 
-		it('returns nothing when the user can use every credential', async () => {
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
+		it('reports deleted credentials to a user with global use access', async () => {
+			accessRepository.findExistingCredentialIds.mockResolvedValue(['existing']);
 
 			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(member, ['cred-1']),
-			).resolves.toEqual([]);
-			expect(credentialsRepository.findNamesByIds).not.toHaveBeenCalled();
+				service.findUnusableCredentialsForUser(owner, ['existing', 'missing']),
+			).resolves.toEqual([{ id: 'missing', name: 'missing', exists: false, ownerProject: null }]);
 		});
 
-		it('asks nothing of a user who may use any credential', async () => {
-			credentialsRepository.findExistingIds.mockResolvedValueOnce(['cred-1']);
+		it('does not use instance-wide access when it is ignored', async () => {
+			accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set());
 
-			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1']),
-			).resolves.toEqual([]);
-			expect(sharedCredentialsRepository.find).not.toHaveBeenCalled();
+			await service.findUnusableCredentialsForUser(owner, ['credential-1'], {
+				ignoreGlobalUseScope: true,
+			});
+
+			expect(accessRepository.findExistingCredentialIds).not.toHaveBeenCalled();
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalled();
 		});
 
-		// Redaction asks this way: an Owner must not see execution data through a
-		// grant nobody else has, so the instance-wide scope is set aside.
-		it('does not let an instance-wide scope answer when ignoreGlobalUseScope is set', async () => {
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
-				{ id: 'cred-1', name: 'Team Gmail' },
-			]);
-			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+		it('returns no unusable credentials when personal access remains', async () => {
+			accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set(['credential-1']));
 
 			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1'], {
-					ignoreGlobalUseScope: true,
-				}),
-			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject: null }]);
-			// The per-credential query is asked for this user's own access only.
-			expect(credentialsRepository.findExistingIds).not.toHaveBeenCalled();
-		});
-
-		it('still clears an owner who is personally granted the credential, with the scope set aside', async () => {
-			sharedCredentialsRepository.find.mockResolvedValueOnce([
-				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
-			]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
-
-			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(owner, ['cred-1'], {
+				service.findUnusableCredentialsForUser(owner, ['credential-1'], {
 					ignoreGlobalUseScope: true,
 				}),
 			).resolves.toEqual([]);
+			expect(accessRepository.findCredentialNames).not.toHaveBeenCalled();
 		});
 
-		it('still reports a deleted credential to a user who may use any credential', async () => {
-			credentialsRepository.findExistingIds.mockResolvedValueOnce([]);
-			credentialsRepository.findNamesByIds.mockResolvedValueOnce([]);
-			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
+		it('does not grant universal use to a view-only global role', async () => {
+			const viewOnlyUser = makeCustomUser('view-only-user', ['credential:read']);
+			accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set());
 
-			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(owner, ['gone']),
-			).resolves.toEqual([{ id: 'gone', name: 'gone', exists: false, ownerProject: null }]);
-		});
+			await service.findUnusableCredentialsForUser(viewOnlyUser, ['credential-1']);
 
-		it('does not short-circuit for a role that can see but not use', async () => {
-			const viewer = mock<User>({ id: 'viewer', role: viewOnlyRole });
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.find.mockResolvedValueOnce([]);
-			credentialsRepository.findNamesByIds.mockResolvedValueOnce([
-				{ id: 'cred-1', name: 'Team Gmail' },
-			]);
-			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValueOnce(new Map());
-
-			await expect(
-				credentialsFinderService.findUnusableCredentialsForUser(viewer, ['cred-1']),
-			).resolves.toEqual([{ id: 'cred-1', name: 'Team Gmail', exists: true, ownerProject: null }]);
-			expect(sharedCredentialsRepository.find).toHaveBeenCalled();
+			expect(accessRepository.findExistingCredentialIds).not.toHaveBeenCalled();
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				expect.objectContaining({ userId: viewOnlyUser.id }),
+			);
 		});
 	});
 
 	describe('getCredentialIdsByUserAndRole', () => {
-		const userIds = ['user1', 'user2'];
-		const mockSharings = [
-			mock<SharedCredentials>({ credentialsId: 'cred1' }),
-			mock<SharedCredentials>({ credentialsId: 'cred2' }),
-		];
+		it('loads roles through the repository callback', async () => {
+			useRepositoryRoleLoader();
 
-		beforeEach(() => {
-			vi.clearAllMocks();
-
-			// Reset to default implementation
-			roleService.rolesWithScope.mockImplementation(async (namespace) => {
-				if (namespace === 'project') {
-					return [
-						PROJECT_ADMIN_ROLE_SLUG,
-						PROJECT_OWNER_ROLE_SLUG,
-						PROJECT_EDITOR_ROLE_SLUG,
-						PROJECT_VIEWER_ROLE_SLUG,
-					];
-				} else if (namespace === 'credential') {
-					return ['credential:owner', 'credential:user'];
-				}
-				return [];
+			await service.getCredentialIdsByUserAndRole(['user-1'], {
+				scopes: ['credential:read'],
 			});
+
+			expectRepositoryRoleLoader();
 		});
 
-		test('should use RoleService when scopes are provided', async () => {
-			sharedCredentialsRepository.findCredentialsByRoles.mockResolvedValueOnce(mockSharings);
-
-			const result = await credentialsFinderService.getCredentialIdsByUserAndRole(userIds, {
-				scopes: ['credential:read' as const, 'credential:update' as const],
+		it('resolves roles when scopes are provided', async () => {
+			await service.getCredentialIdsByUserAndRole(['user-1'], {
+				scopes: ['credential:read'],
 			});
 
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', [
-				'credential:read',
-				'credential:update',
-			]);
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', [
-				'credential:read',
-				'credential:update',
-			]);
-			expect(sharedCredentialsRepository.findCredentialsByRoles).toHaveBeenCalledWith(
-				userIds,
-				[
-					PROJECT_ADMIN_ROLE_SLUG,
-					PROJECT_OWNER_ROLE_SLUG,
-					PROJECT_EDITOR_ROLE_SLUG,
-					PROJECT_VIEWER_ROLE_SLUG,
-				],
-				['credential:owner', 'credential:user'],
-				undefined,
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'project',
+				['credential:read'],
+				expect.any(Function),
 			);
-			expect(result).toEqual([mockSharings[0].credentialsId, mockSharings[1].credentialsId]);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'credential',
+				['credential:read'],
+				expect.any(Function),
+			);
 		});
 
-		test('should use direct roles when provided', async () => {
-			const projectRoles = ['custom:project-admin'] as any;
-			const credentialRoles = ['custom:cred-viewer'] as any;
-			sharedCredentialsRepository.findCredentialsByRoles.mockResolvedValueOnce([mockSharings[0]]);
-
-			const result = await credentialsFinderService.getCredentialIdsByUserAndRole(userIds, {
-				projectRoles,
-				credentialRoles,
+		it('does not resolve roles when direct roles are provided', async () => {
+			await service.getCredentialIdsByUserAndRole(['user-1'], {
+				projectRoles: ['project:admin'],
+				credentialRoles: ['credential:user'],
 			});
 
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(sharedCredentialsRepository.findCredentialsByRoles).toHaveBeenCalledWith(
-				userIds,
-				projectRoles,
-				credentialRoles,
-				undefined,
-			);
-			expect(result).toEqual([mockSharings[0].credentialsId]);
 		});
 
-		test('should support transaction manager', async () => {
-			const mockTrx = mock<any>();
-			sharedCredentialsRepository.findCredentialsByRoles.mockResolvedValueOnce([]);
-
-			await credentialsFinderService.getCredentialIdsByUserAndRole(
-				userIds,
-				{ scopes: ['credential:read' as const] },
-				mockTrx,
-			);
-
-			expect(sharedCredentialsRepository.findCredentialsByRoles).toHaveBeenCalledWith(
-				expect.any(Array),
-				expect.any(Array),
-				expect.any(Array),
-				mockTrx,
-			);
-		});
-
-		test('should handle empty results', async () => {
-			sharedCredentialsRepository.findCredentialsByRoles.mockResolvedValueOnce([]);
-
-			const result = await credentialsFinderService.getCredentialIdsByUserAndRole(userIds, {
-				scopes: ['credential:read' as const],
-			});
-
-			expect(result).toEqual([]);
-		});
-	});
-
-	describe('RoleService integration edge cases', () => {
-		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
-
-		beforeEach(() => {
-			vi.clearAllMocks();
-		});
-
-		test('should handle empty role results from RoleService', async () => {
-			roleService.rolesWithScope.mockResolvedValue([]);
-			const emptyResult: CredentialsEntity[] = [];
-			credentialsRepository.find.mockResolvedValueOnce(emptyResult);
-
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:read' as const,
-			]);
-
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: {
-					isGlobal: false,
-					usageScope: 'project',
-					shared: {
-						role: In([]),
-						project: {
-							projectRelations: {
-								role: In([]),
-								userId: member.id,
-							},
-						},
-					},
-				},
-				relations: { shared: true },
-			});
-			expect(result).toEqual(emptyResult);
-		});
-
-		test('should handle RoleService failures in findCredentialsForUser', async () => {
-			roleService.rolesWithScope.mockRejectedValueOnce(new Error('Database connection failed'));
+		it('propagates role resolution failures', async () => {
+			roleService.rolesWithScope.mockRejectedValueOnce(new Error('role lookup failed'));
 
 			await expect(
-				credentialsFinderService.findCredentialsForUser(member, ['credential:read' as const]),
-			).rejects.toThrow('Database connection failed');
-
-			expect(credentialsRepository.find).not.toHaveBeenCalled();
-		});
-
-		test('should handle partial RoleService failures', async () => {
-			roleService.rolesWithScope
-				.mockResolvedValueOnce(['project:admin']) // First call succeeds
-				.mockRejectedValueOnce(new Error('Credential role lookup failed')); // Second call fails
-
-			await expect(
-				credentialsFinderService.findCredentialsForUser(member, ['credential:read' as const]),
-			).rejects.toThrow('Credential role lookup failed');
-		});
-
-		test('should maintain namespace isolation', async () => {
-			roleService.rolesWithScope.mockImplementation(async (namespace) => {
-				if (namespace === 'project') return ['workflow:owner']; // Wrong namespace
-				if (namespace === 'credential') return ['project:admin']; // Wrong namespace
-				return [];
-			});
-
-			const isolationResult: CredentialsEntity[] = [];
-			credentialsRepository.find.mockResolvedValueOnce(isolationResult);
-
-			const result = await credentialsFinderService.findCredentialsForUser(member, [
-				'credential:read' as const,
-			]);
-
-			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: {
-					isGlobal: false,
-					usageScope: 'project',
-					shared: {
-						role: In(['project:admin']), // Uses what RoleService returned for credential namespace
-						project: {
-							projectRelations: {
-								role: In(['workflow:owner']), // Uses what RoleService returned for project namespace
-								userId: member.id,
-							},
-						},
-					},
-				},
-				relations: { shared: true },
-			});
-			expect(result).toEqual(isolationResult);
-		});
-	});
-
-	describe('hasGlobalReadOnlyAccess', () => {
-		test('should return true for single credential:read scope', () => {
-			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:read']);
-
-			expect(result).toBe(true);
-		});
-
-		test('should return false for multiple scopes including credential:read', () => {
-			const result = credentialsFinderService.hasGlobalReadOnlyAccess([
-				'credential:read',
-				'credential:update',
-			]);
-
-			expect(result).toBe(false);
-		});
-
-		test('should return false for single non-read scope', () => {
-			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:update']);
-
-			expect(result).toBe(false);
-		});
-
-		test('should return false for empty scopes array', () => {
-			const result = credentialsFinderService.hasGlobalReadOnlyAccess([]);
-
-			expect(result).toBe(false);
-		});
-
-		test('should return false for credential:delete scope', () => {
-			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:delete']);
-
-			expect(result).toBe(false);
-		});
-
-		test('should return false for credential:shareGlobally scope', () => {
-			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:shareGlobally']);
-
-			expect(result).toBe(false);
-		});
-	});
-
-	describe('hasGlobalConnectAccess', () => {
-		test('should return true for single credential:connect scope', () => {
-			const result = credentialsFinderService.hasGlobalConnectAccess(['credential:connect']);
-
-			expect(result).toBe(true);
-		});
-
-		test('should return false for multiple scopes including credential:connect', () => {
-			const result = credentialsFinderService.hasGlobalConnectAccess([
-				'credential:connect',
-				'credential:read',
-			]);
-
-			expect(result).toBe(false);
-		});
-
-		test('should return false for single non-connect scope', () => {
-			const result = credentialsFinderService.hasGlobalConnectAccess(['credential:read']);
-
-			expect(result).toBe(false);
-		});
-
-		test('should return false for empty scopes array', () => {
-			const result = credentialsFinderService.hasGlobalConnectAccess([]);
-
-			expect(result).toBe(false);
+				service.getCredentialIdsByUserAndRole(['user-1'], {
+					scopes: ['credential:read'],
+				}),
+			).rejects.toThrow('role lookup failed');
 		});
 	});
 
 	describe('findGlobalCredentialById', () => {
-		const credentialId = 'cred-123';
-		const mockGlobalCredential = mock<CredentialsEntity>({
-			id: credentialId,
-			name: 'Global Test Credential',
-			type: 'testApi',
-			isGlobal: true,
-		});
+		it('requests shared projects only when required', async () => {
+			await service.findGlobalCredentialById('credential-1', { shared: { project: true } });
 
-		test('should find global credential by ID without relations', async () => {
-			credentialsRepository.findOne.mockResolvedValueOnce(mockGlobalCredential);
-
-			const result = await credentialsFinderService.findGlobalCredentialById(credentialId);
-
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: credentialId,
-					isGlobal: true,
-					usageScope: 'project',
-				},
-				relations: undefined,
-			});
-			expect(result).toEqual(mockGlobalCredential);
-		});
-
-		test('should find global credential by ID with relations', async () => {
-			const relations = { shared: { project: true as const } };
-			credentialsRepository.findOne.mockResolvedValueOnce(mockGlobalCredential);
-
-			const result = await credentialsFinderService.findGlobalCredentialById(
-				credentialId,
-				relations,
-			);
-
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: credentialId,
-					isGlobal: true,
-					usageScope: 'project',
-				},
-				relations,
-			});
-			expect(result).toEqual(mockGlobalCredential);
-		});
-
-		test('should return null when global credential not found', async () => {
-			credentialsRepository.findOne.mockResolvedValueOnce(null);
-
-			const result = await credentialsFinderService.findGlobalCredentialById('non-existent-id');
-
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					id: 'non-existent-id',
-					isGlobal: true,
-					usageScope: 'project',
-				},
-				relations: undefined,
-			});
-			expect(result).toBeNull();
-		});
-
-		test('should only query for global credentials', async () => {
-			credentialsRepository.findOne.mockResolvedValueOnce(null);
-
-			await credentialsFinderService.findGlobalCredentialById(credentialId);
-
-			expect(credentialsRepository.findOne).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: expect.objectContaining({
-						isGlobal: true,
-					}),
-				}),
+			expect(accessRepository.findGlobalProjectCredentialById).toHaveBeenCalledWith(
+				'credential-1',
+				true,
 			);
 		});
 
-		test('should handle repository errors', async () => {
-			const error = new Error('Database connection failed');
-			credentialsRepository.findOne.mockRejectedValueOnce(error);
-
-			await expect(credentialsFinderService.findGlobalCredentialById(credentialId)).rejects.toThrow(
-				'Database connection failed',
+		it('propagates repository errors', async () => {
+			accessRepository.findGlobalProjectCredentialById.mockRejectedValueOnce(
+				new Error('database failed'),
 			);
-		});
-	});
 
-	describe('the global override splits visibility from use', () => {
-		// A global credential scope bypasses project sharing. That override now needs
-		// `credential:use` as well, unless the caller declares itself see-only. The
-		// join path a member takes is the fail-closed fallback, so a view-only global
-		// role must land on exactly the query a member gets.
-		const globalCustomRole = (scopes: Scope[], slug: string): Role =>
-			({
-				slug,
-				displayName: slug,
-				description: null,
-				systemRole: false,
-				roleType: 'global',
-				scopes: scopes.map((scope) => ({ slug: scope, displayName: scope, description: null })),
-			}) as Role;
-
-		const viewOnly = mock<User>({
-			id: 'view-only',
-			role: globalCustomRole(['credential:list', 'credential:read'], 'global:cred-viewer'),
-		});
-		const canUse = mock<User>({
-			id: 'can-use',
-			role: globalCustomRole(
-				['credential:list', 'credential:read', 'credential:use'],
-				'global:cred-user',
-			),
-		});
-		const owner = mock<User>({ role: GLOBAL_OWNER_ROLE });
-
-		const memberJoin = (userId: string) => ({
-			role: In(['credential:owner', 'credential:user']),
-			project: {
-				projectRelations: {
-					role: In([
-						PROJECT_ADMIN_ROLE_SLUG,
-						PROJECT_OWNER_ROLE_SLUG,
-						PROJECT_EDITOR_ROLE_SLUG,
-						PROJECT_VIEWER_ROLE_SLUG,
-					]),
-					userId,
-				},
-			},
-		});
-
-		beforeEach(() => {
-			vi.clearAllMocks();
-		});
-
-		describe('findCredentialsForUser', () => {
-			test('falls back to the sharing join for a view-only global role', async () => {
-				credentialsRepository.find.mockResolvedValueOnce([]);
-
-				await credentialsFinderService.findCredentialsForUser(viewOnly, ['credential:read']);
-
-				expect(credentialsRepository.find).toHaveBeenCalledWith({
-					where: {
-						isGlobal: false,
-						usageScope: 'project',
-						shared: memberJoin(viewOnly.id),
-					},
-					relations: { shared: true },
-				});
-			});
-
-			test('takes the override for a view-only global role when the caller is see-only', async () => {
-				credentialsRepository.find.mockResolvedValueOnce([]);
-
-				await credentialsFinderService.findCredentialsForUser(viewOnly, ['credential:read'], {
-					visibilityOnly: true,
-				});
-
-				expect(credentialsRepository.find).toHaveBeenCalledWith({
-					where: { isGlobal: false, usageScope: 'project' },
-					relations: { shared: true },
-				});
-				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			});
-
-			test('takes the override once `credential:use` is granted', async () => {
-				credentialsRepository.find.mockResolvedValueOnce([]);
-
-				await credentialsFinderService.findCredentialsForUser(canUse, ['credential:read']);
-
-				expect(credentialsRepository.find).toHaveBeenCalledWith({
-					where: { isGlobal: false, usageScope: 'project' },
-					relations: { shared: true },
-				});
-				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			});
-
-			test('still returns globally-shared credentials to a view-only global role', async () => {
-				// `hasGlobalReadOnlyAccess` is an exact match on ['credential:read'] with
-				// length === 1, and is deliberately independent of the override. Widening
-				// any caller's scope array to ['credential:read','credential:use'] would
-				// silently stop returning global credentials in the picker.
-				const globalCredential = mock<CredentialsEntity>({ id: 'global1', isGlobal: true });
-				credentialsRepository.find.mockResolvedValueOnce([]);
-				(credentialsRepository.manager.find as Mock).mockResolvedValueOnce([globalCredential]);
-
-				const result = await credentialsFinderService.findCredentialsForUser(viewOnly, [
-					'credential:read',
-				]);
-
-				expect(result.map((c) => c.id)).toEqual(['global1']);
-			});
-
-			test('leaves the owner on the override, unchanged', async () => {
-				credentialsRepository.find.mockResolvedValueOnce([]);
-
-				await credentialsFinderService.findCredentialsForUser(owner, ['credential:read']);
-
-				expect(credentialsRepository.find).toHaveBeenCalledWith({
-					where: { isGlobal: false, usageScope: 'project' },
-					relations: { shared: true },
-				});
-				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('findCredentialForUser', () => {
-			test('falls back to the sharing join for a view-only global role', async () => {
-				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-				credentialsRepository.findOne.mockResolvedValueOnce(null);
-
-				await credentialsFinderService.findCredentialForUser('cred1', viewOnly, [
-					'credential:read',
-				]);
-
-				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
-					expect.objectContaining({
-						where: { credentialsId: 'cred1', ...memberJoin(viewOnly.id) },
-					}),
-				);
-			});
-
-			test('takes the override when the caller is see-only', async () => {
-				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-				credentialsRepository.findOne.mockResolvedValueOnce(null);
-
-				await credentialsFinderService.findCredentialForUser(
-					'cred1',
-					viewOnly,
-					['credential:read'],
-					{ visibilityOnly: true },
-				);
-
-				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
-					expect.objectContaining({ where: { credentialsId: 'cred1' } }),
-				);
-			});
-
-			test('takes the override once `credential:use` is granted', async () => {
-				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-				credentialsRepository.findOne.mockResolvedValueOnce(null);
-
-				await credentialsFinderService.findCredentialForUser('cred1', canUse, ['credential:read']);
-
-				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
-					expect.objectContaining({ where: { credentialsId: 'cred1' } }),
-				);
-			});
-
-			test('still resolves a globally-shared credential for a view-only global role', async () => {
-				const globalCredential = mock<CredentialsEntity>({ id: 'cred1', isGlobal: true });
-				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-				credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
-
-				const result = await credentialsFinderService.findCredentialForUser('cred1', viewOnly, [
-					'credential:read',
-				]);
-
-				expect(result).toBe(globalCredential);
-			});
-
-			test('leaves a write-scoped request alone: the write scope is its own gate', async () => {
-				// An API-created global role with credential:read + credential:delete but
-				// no credential:use must keep its delete. Requiring `use` for every
-				// non-see request would break it, and a see-only role cannot satisfy this
-				// request anyway because it does not hold the write scope.
-				const canDelete = mock<User>({
-					id: 'can-delete',
-					role: globalCustomRole(
-						['credential:read', 'credential:list', 'credential:delete'],
-						'global:cred-deleter',
-					),
-				});
-				sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-
-				await credentialsFinderService.findCredentialForUser('cred1', canDelete, [
-					'credential:delete',
-				]);
-
-				expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith(
-					expect.objectContaining({ where: { credentialsId: 'cred1' } }),
-				);
-				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('findCredentialIdsWithScopeForUser', () => {
-			test('falls back to the sharing join for a view-only global role', async () => {
-				sharedCredentialsRepository.find.mockResolvedValue([]);
-				credentialsRepository.find.mockResolvedValue([]);
-
-				await credentialsFinderService.findCredentialIdsWithScopeForUser(['cred1'], viewOnly, [
-					'credential:read',
-				]);
-
-				expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-					select: { credentialsId: true },
-					where: {
-						credentialsId: In(['cred1']),
-						credentials: { usageScope: 'project' },
-						...memberJoin(viewOnly.id),
-					},
-				});
-			});
-
-			test('takes the override when the caller is see-only', async () => {
-				sharedCredentialsRepository.find.mockResolvedValue([]);
-				credentialsRepository.find.mockResolvedValue([]);
-
-				await credentialsFinderService.findCredentialIdsWithScopeForUser(
-					['cred1'],
-					viewOnly,
-					['credential:read'],
-					{ visibilityOnly: true },
-				);
-
-				expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-					select: { credentialsId: true },
-					where: {
-						credentialsId: In(['cred1']),
-						credentials: { usageScope: 'project' },
-					},
-				});
-			});
-
-			test('takes the override once `credential:use` is granted', async () => {
-				sharedCredentialsRepository.find.mockResolvedValue([]);
-				credentialsRepository.find.mockResolvedValue([]);
-
-				await credentialsFinderService.findCredentialIdsWithScopeForUser(['cred1'], canUse, [
-					'credential:read',
-				]);
-
-				expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-					select: { credentialsId: true },
-					where: {
-						credentialsId: In(['cred1']),
-						credentials: { usageScope: 'project' },
-					},
-				});
-			});
-
-			test('still includes globally-shared credential ids for a view-only global role', async () => {
-				sharedCredentialsRepository.find.mockResolvedValue([]);
-				credentialsRepository.find.mockResolvedValue([mock<CredentialsEntity>({ id: 'cred1' })]);
-
-				const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(
-					['cred1'],
-					viewOnly,
-					['credential:read'],
-				);
-
-				expect([...result]).toEqual(['cred1']);
-			});
+			await expect(service.findGlobalCredentialById('credential-1')).rejects.toThrow(
+				'database failed',
+			);
 		});
 	});
 });

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,13 +10,16 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { InsightsConfig } from '@/modules/insights/insights.config';
 import { InsightsService } from '@/modules/insights/insights.service';
-import { OwnershipService } from '@/services/ownership.service';
 
-import type { InstanceReportDataPoint } from './database/entities/instance-monitoring-report';
+import type {
+	InstanceMonitoringReport,
+	InstanceReportDataPoint,
+} from './database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
+import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
 
@@ -29,6 +33,18 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
  */
 const MAX_ATTEMPTS = 3;
 
+/** How long a pending report waits after a failed attempt before the next one. */
+const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
+
+/** Longer than the HTTP timeout, so a stopped main does not hold a report forever. */
+const SEND_CLAIM_TIMEOUT_MS = 2 * Time.minutes.toMilliseconds;
+
+/**
+ * How long yesterday's slot stays due. Longer than the pass interval, so a slot
+ * late in the UTC day is still sent after midnight.
+ */
+const SLOT_GRACE_MS = Time.hours.toMilliseconds;
+
 /** The receiver rejects the payload itself, which a pending report resends unchanged. */
 const PAYLOAD_REJECTED_STATUSES = new Set([400, 413]);
 
@@ -39,13 +55,14 @@ class InstanceReportRejectedError extends OperationalError {
 	}
 }
 
-export class InstanceReportAlreadyCreatedError extends OperationalError {
-	constructor() {
-		super('Another process already created the instance report for today');
-	}
-}
-
 type SkipReason = 'max-retries' | 'slot-passed' | 'rejected';
+
+export interface DueReportWork {
+	expiredReport: InstanceMonitoringReport | null;
+	reportDue: boolean;
+	/** The slot a new report is created for, or `null` when no slot is due. */
+	slot: Date | null;
+}
 
 const SKIP_MESSAGES: Record<SkipReason, string> = {
 	'max-retries': 'Giving up on the instance report after repeated delivery failures',
@@ -54,18 +71,8 @@ const SKIP_MESSAGES: Record<SkipReason, string> = {
 };
 
 /**
- * How many missed days one report may carry.
- *
- * Insights buckets a range of more than 30 days by week, which cannot fill a
- * daily point, so a longer gap is unrecoverable. The oldest days are dropped and
- * the report still ends at yesterday, rather than the instance retrying a window
- * it can never read.
- */
-const MAX_BACKFILL_DAYS = 30;
-
-/**
- * Measures and delivers one instance report. *When* that happens is
- * {@link InstanceReportingScheduler}'s concern.
+ * Measures and delivers one instance report. How often a pass runs is
+ * {@link InstanceReportingTask}'s concern.
  */
 @Service()
 export class InstanceReportingService {
@@ -74,9 +81,10 @@ export class InstanceReportingService {
 	constructor(
 		private readonly config: InstanceReportingConfig,
 		private readonly reportRepository: InstanceMonitoringReportRepository,
+		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly insightsService: InsightsService,
+		private readonly insightsConfig: InsightsConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly license: License,
 		private readonly logger: Logger,
@@ -98,6 +106,60 @@ export class InstanceReportingService {
 			}),
 			timeout: REQUEST_TIMEOUT_MS,
 		});
+	}
+
+	/**
+	 * The work due at `now`, from the report time and the stored report rows.
+	 * A pending report inside its slot is due once its retry delay has elapsed.
+	 * A new slot expires the pending report, even during the retry delay. Then a
+	 * report is due for the latest slot at or before `now`, unless the day of
+	 * that slot is settled. Yesterday's slot counts only within its grace.
+	 */
+	async findDueWork(now: Date): Promise<DueReportWork> {
+		const reportTime = await this.settingsService.getReportTime();
+		let pending = await this.reportRepository.findPending();
+		const retryNow = pending ? await this.reportRepository.readDbNow() : now;
+		if (pending?.status === 'sending') {
+			if (
+				pending.lastAttemptAt === null ||
+				retryNow.getTime() - pending.lastAttemptAt.getTime() >= SEND_CLAIM_TIMEOUT_MS
+			) {
+				await this.reportRepository.releaseStaleSend(pending.id, pending.lastAttemptAt);
+				pending = await this.reportRepository.findPending();
+			}
+		}
+
+		let work: DueReportWork = { expiredReport: null, reportDue: false, slot: null };
+		if (pending?.status !== 'sending') {
+			const current =
+				pending && now.getTime() < slotOn(reportTime, slotDay(pending)) + Time.days.toMilliseconds
+					? pending
+					: null;
+			const slot = dueSlot(reportTime, now);
+			const reportDue = current
+				? !isInRetryDelay(current, retryNow)
+				: slot !== null && !(await this.reportRepository.hasSettledToday(slot));
+			work = { expiredReport: current ? null : pending, reportDue, slot };
+		}
+
+		return work;
+	}
+
+	/** Skip the report whose slot passed at `now`, then send the report due at `now`, if any. */
+	async sendDueReport(now: Date): Promise<void> {
+		const { expiredReport, reportDue, slot } = await this.findDueWork(now);
+
+		if (expiredReport) {
+			await this.skip(
+				expiredReport.id,
+				expiredReport.attempts,
+				'slot-passed',
+				expiredReport.lastError,
+			);
+		}
+		if (reportDue) {
+			await this.sendReport(slot);
+		}
 	}
 
 	/**
@@ -123,10 +185,13 @@ export class InstanceReportingService {
 	 *
 	 * A 400 or 413 skips the report at once, since a resend carries the same payload.
 	 *
-	 * @throws when delivery fails and a retry may succeed, or another process created
-	 * today's report, so the scheduler retries with backoff.
+	 * A new report is created for the UTC day of `slot` and ends on the day before
+	 * it, also when it is sent after midnight. Without a pending report and a
+	 * `slot`, nothing is sent.
+	 *
+	 * @throws when delivery fails and a retry may succeed, so the scheduler retries with backoff.
 	 */
-	async sendReport(): Promise<void> {
+	async sendReport(slot: Date | null): Promise<void> {
 		const licenseCert = this.config.instanceReportingAuthToken
 			? undefined
 			: await this.license.loadCertStr();
@@ -134,36 +199,40 @@ export class InstanceReportingService {
 			this.logger.warn(
 				'Skipping the instance report because this instance has no license certificate.',
 			);
-			return;
+		} else {
+			const report = await this.findOrCreateReport(slot);
+			if (report?.status === 'pending' && report.attempts >= MAX_ATTEMPTS) {
+				// Recover a stop between recording the last failure and settling the row.
+				await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
+			} else if (report?.status === 'pending') {
+				const claimedAt = await this.reportRepository.claimForSend(report.id);
+				if (claimedAt) {
+					await this.deliverReport(report, claimedAt, licenseCert);
+				}
+			}
 		}
+	}
 
-		const now = new Date();
+	private async findOrCreateReport(slot: Date | null): Promise<InstanceMonitoringReport | null> {
 		let report = await this.reportRepository.findPending();
-
-		// A crash between recording a failure and skipping the report leaves an
-		// exhausted row pending, so the budget is re-checked before sending rather
-		// than only after. Settling it here also ends the day for the scheduler.
-		if (report && report.attempts >= MAX_ATTEMPTS) {
-			await this.skip(report.id, report.attempts, 'max-retries', report.lastError);
-			return;
-		}
-
-		if (!report) {
-			const days = await this.missedDays(now);
-			if (days.length === 0) return;
-
-			if (days.length > 1) {
-				this.logger.info('Reporting days missed since the last delivered instance report', {
-					days,
-				});
-			}
-
-			report = await this.reportRepository.createPending(await this.collectDataPoints(days), now);
-			if (!report) {
-				throw new InstanceReportAlreadyCreatedError();
+		if (!report && slot) {
+			const days = await this.missedDays(slot);
+			if (days.length > 0) {
+				// `null` when a concurrent pass created the row. That pass sends it.
+				report = await this.reportRepository.createPending(
+					await this.collectDataPoints(days),
+					slot,
+				);
 			}
 		}
+		return report;
+	}
 
+	private async deliverReport(
+		report: InstanceMonitoringReport,
+		claimedAt: Date,
+		licenseCert: string | undefined,
+	): Promise<void> {
 		const payload = {
 			instanceId: this.instanceSettings.instanceId,
 			batchId: report.id,
@@ -173,6 +242,7 @@ export class InstanceReportingService {
 			...(licenseCert ? { licenseCert } : {}),
 		};
 
+		let accepted = false;
 		try {
 			const response = await this.http.request<unknown>({
 				url: INSTANCE_REPORTS_PATH,
@@ -202,64 +272,110 @@ export class InstanceReportingService {
 					`Instance report was rejected with status ${response.statusCode}`,
 				);
 			}
-			this.eventService.emit('instance-report-delivered');
+			accepted = true;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.eventService.emit('instance-report-failed');
-			await this.reportRepository.recordFailure(report.id, message, new Date());
-
-			// `recordFailure` incremented the count, so the in-memory row is one behind.
-			const attempts = report.attempts + 1;
-
-			if (error instanceof InstanceReportRejectedError) {
-				await this.skip(report.id, attempts, 'rejected', message);
-				return;
+			const recorded = await this.reportRepository.recordFailure(
+				report.id,
+				claimedAt,
+				message,
+				await this.reportRepository.readDbNow(),
+			);
+			if (recorded) {
+				this.eventService.emit('instance-report-failed');
+				const attempts = report.attempts + 1;
+				if (error instanceof InstanceReportRejectedError) {
+					await this.skip(report.id, attempts, 'rejected', message);
+				} else if (attempts >= MAX_ATTEMPTS) {
+					await this.skip(report.id, attempts, 'max-retries', message);
+				}
 			}
 
-			if (attempts >= MAX_ATTEMPTS) {
-				await this.skip(report.id, attempts, 'max-retries', message);
+			if (!(error instanceof InstanceReportRejectedError)) {
+				throw error;
 			}
-
-			throw error;
 		}
 
-		await this.reportRepository.markDelivered(report.id, new Date());
-		this.logger.debug('Sent instance report', { batchId: report.id });
+		if (accepted) {
+			const recorded = await this.reportRepository.markDelivered(
+				report.id,
+				await this.reportRepository.readDbNow(),
+			);
+			if (recorded) {
+				this.eventService.emit('instance-report-delivered');
+				this.logger.debug('Sent instance report', { batchId: report.id });
+			}
+		}
 	}
 
 	/** Stop trying to deliver this report; the next one covers its days again. */
-	async skip(
+	private async skip(
 		id: string,
 		attempts: number,
 		reason: SkipReason,
 		lastError: string | null,
 	): Promise<void> {
-		await this.reportRepository.markSkipped(id);
-
-		this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
+		if (await this.reportRepository.markSkipped(id)) {
+			this.logger.error(SKIP_MESSAGES[reason], { batchId: id, attempts, lastError });
+		}
 	}
 
 	/**
 	 * The UTC days this report must carry a daily point for, oldest first, ending
 	 * yesterday. Empty when yesterday is already reported.
 	 *
-	 * A day the instance was down for is still unreported once it comes back, so
-	 * the whole gap since the last delivered report is collected. Without that,
-	 * downtime silently loses days from the daily series.
+	 * Every day after the last delivered one is still owed, whatever happened to
+	 * the reports in between, so neither downtime nor skipped reports lose days
+	 * from the daily series. A first report carries the history insights holds.
 	 */
 	private async missedDays(now: Date): Promise<string[]> {
+		const yesterday = utcDayBefore(now, 1);
 		const lastCoveredDay = await this.reportRepository.findLastCoveredDay();
-		const days: string[] = [];
+		if (lastCoveredDay && lastCoveredDay >= yesterday) return [];
 
-		// No last covered day means this is the first report: send yesterday alone
-		// rather than importing however much history insights happens to hold.
-		for (let back = 1; back <= (lastCoveredDay ? MAX_BACKFILL_DAYS : 1); back++) {
-			const day = utcDayBefore(now, back);
-			if (lastCoveredDay && day <= lastCoveredDay) break;
-			days.unshift(day);
+		const firstDay = minDay(await this.firstOwedDay(lastCoveredDay, yesterday), yesterday);
+		// Only hourly rows split exactly into UTC days: Postgres compacts older hours
+		// into days of the session's time zone, which need not be UTC. One day of
+		// margin, since Postgres also dates this threshold in that time zone.
+		const oldestAllowedDay = utcDayBefore(
+			now,
+			Math.max(1, this.insightsConfig.compactionHourlyToDailyThresholdDays - 1),
+		);
+
+		const days: string[] = [];
+		for (let day = maxDay(firstDay, oldestAllowedDay); day <= yesterday; day = addUtcDays(day, 1)) {
+			days.push(day);
+		}
+
+		if (days.length > 1) {
+			this.logger.info(
+				lastCoveredDay
+					? 'Reporting days missed since the last delivered instance report'
+					: 'Reporting the insights history, since no instance report was delivered yet',
+				{ firstDay: days[0], lastDay: days.at(-1), count: days.length },
+			);
 		}
 
 		return days;
+	}
+
+	/**
+	 * The oldest day the next report owes: the day after the last delivered one,
+	 * but never before the first insights data, since nothing before it shows
+	 * that insights was collecting.
+	 */
+	private async firstOwedDay(lastCoveredDay: string | null, yesterday: string): Promise<string> {
+		const dayAfterCovered = lastCoveredDay ? addUtcDays(lastCoveredDay, 1) : null;
+
+		// Only yesterday is owed, which is the everyday case: skip the history read.
+		if (dayAfterCovered === yesterday) return yesterday;
+
+		const earliest = await this.insightsService.getEarliestDataDate();
+		const dataStart = earliest ? earliest.toISOString().slice(0, 10) : null;
+
+		// Without any data, a first report still carries yesterday, so that a new
+		// instance shows up on the receiver.
+		return maxDay(dayAfterCovered ?? dataStart ?? yesterday, dataStart);
 	}
 
 	/**
@@ -270,30 +386,15 @@ export class InstanceReportingService {
 	 * cumulative ones.
 	 */
 	private async collectDataPoints(days: string[]): Promise<InstanceReportDataPoint[]> {
-		const startDate = new Date(`${days[0]}T00:00:00.000Z`);
-		const endDate = new Date(
-			new Date(`${days.at(-1)}T00:00:00.000Z`).getTime() + Time.days.toMilliseconds,
-		);
-
-		// Report instance-wide numbers, so read as the instance owner, whose global
-		// role grants access to every workflow.
-		const owner = await this.ownershipService.getInstanceOwner();
-
-		const [byDay, { productionRootExecutions }] = await Promise.all([
-			// Per day rather than one total for the range, since a report may cover
-			// several days. A range of 1 to 30 days buckets by day; see MAX_BACKFILL_DAYS.
-			this.insightsService.getInsightsByTime({
-				user: owner,
-				startDate,
-				endDate,
-				timeZone: 'UTC',
+		const [totals, { productionRootExecutions }] = await Promise.all([
+			this.insightsService.getDailyExecutionTotals({
+				startDate: new Date(`${days[0]}T00:00:00.000Z`),
+				endDate: new Date(`${days.at(-1)}T00:00:00.000Z`),
 			}),
 			// Same source as the `productionRootExecutions` license metric, so the
 			// reported total matches what the license server sees.
 			this.licenseMetricsRepository.getLicenseRenewalMetrics(),
 		]);
-
-		const totals = new Map(byDay.map((row) => [row.date.slice(0, 10), row.values.total ?? 0]));
 
 		return [
 			{ kind: 'cumulative', name: 'billableExecutions', value: productionRootExecutions },
@@ -309,7 +410,49 @@ export class InstanceReportingService {
 	}
 }
 
+/** Epoch milliseconds of the configured time on this UTC day. */
+function slotOn(reportTime: string, day: Date): number {
+	const [hour, minute] = reportTime.split(':').map(Number);
+	return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour, minute);
+}
+
+/** The UTC day of the report's slot. A legacy row without `reportDate` falls back to `createdAt`. */
+function slotDay(report: InstanceMonitoringReport): Date {
+	return report.reportDate ? new Date(`${report.reportDate}T00:00:00.000Z`) : report.createdAt;
+}
+
+/** The latest slot at or before `now`, or `null` once yesterday's slot is past its grace. */
+function dueSlot(reportTime: string, now: Date): Date | null {
+	const today = slotOn(reportTime, now);
+	const yesterday = today - Time.days.toMilliseconds;
+	if (now.getTime() >= today) {
+		return new Date(today);
+	}
+	return now.getTime() - yesterday < SLOT_GRACE_MS ? new Date(yesterday) : null;
+}
+
+function isInRetryDelay(report: InstanceMonitoringReport, now: Date): boolean {
+	return (
+		report.lastAttemptAt !== null && now.getTime() - report.lastAttemptAt.getTime() < RETRY_DELAY_MS
+	);
+}
+
 /** The UTC calendar day `count` days before `instant`, as `YYYY-MM-DD`. */
 function utcDayBefore(instant: Date, count: number): string {
 	return new Date(instant.getTime() - count * Time.days.toMilliseconds).toISOString().slice(0, 10);
+}
+
+/** The UTC calendar day `count` days after `day`, as `YYYY-MM-DD`. */
+function addUtcDays(day: string, count: number): string {
+	return utcDayBefore(new Date(`${day}T00:00:00.000Z`), -count);
+}
+
+/** The later of two `YYYY-MM-DD` days; `null` counts as no bound. */
+function maxDay(day: string, other: string | null): string {
+	return other && other > day ? other : day;
+}
+
+/** The earlier of two `YYYY-MM-DD` days. */
+function minDay(day: string, other: string): string {
+	return other < day ? other : day;
 }

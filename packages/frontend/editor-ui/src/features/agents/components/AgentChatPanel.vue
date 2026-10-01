@@ -16,12 +16,14 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nLink,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
+	type AgentBuilderOpenSuspension,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -33,7 +35,11 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	findTailOpenInteractive,
+	getMessageInteractives,
+	parseApprovalInput,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
@@ -46,6 +52,7 @@ import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils
 import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
+import ApprovalCard from './interactive/ApprovalCard.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -60,6 +67,7 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
@@ -71,6 +79,7 @@ const props = withDefaults(
 		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
+		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
@@ -96,6 +105,9 @@ const {
 	messages,
 	queuedMessages,
 	removingQueueIds,
+	steeringQueueIds,
+	canSteer,
+	steerQueuedMessage,
 	removeQueuedMessage,
 	updateQueuedMessage,
 	isSubmitting,
@@ -153,12 +165,21 @@ const canSaveQueueEdit = computed(() => {
 	);
 });
 watch(queuedMessages, (items) => {
-	if (queueEdit.value && !items.some((item) => item.id === queueEdit.value?.item.id)) {
-		queueEdit.value.unavailable = true;
-	}
+	const edit = queueEdit.value;
+	if (!edit) return;
+	const current = items.find((item) => item.id === edit.item.id);
+	edit.unavailable = !current || !!current.steeringExecutionId;
 });
 function startQueueEdit(item: AgentChatQueueItem) {
+	if (item.steeringExecutionId) return;
 	queueEdit.value = { item, text: item.message, unavailable: false, saving: false };
+}
+function isQueueItemBusy(item: AgentChatQueueItem) {
+	return (
+		!!item.steeringExecutionId ||
+		steeringQueueIds.value.has(item.id) ||
+		removingQueueIds.value.has(item.id)
+	);
 }
 async function saveQueueEdit() {
 	const edit = queueEdit.value;
@@ -183,7 +204,7 @@ function onQueueEditKeydown(event: KeyboardEvent) {
 	}
 }
 
-const { jobs: backgroundJobs } = useAgentBackgroundJobs({
+const { jobs: backgroundJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
@@ -194,6 +215,9 @@ const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
 const backgroundTitle = computed(() => {
+	if (backgroundJobs.value.some((job) => job.status === 'suspended')) {
+		return locale.baseText('agents.chat.backgroundTasks.status.suspended');
+	}
 	const count = backgroundRunningCount.value;
 	if (count === 0) {
 		return locale.baseText('agents.chat.backgroundTasks.finished', {
@@ -231,7 +255,68 @@ const backgroundJobStatuses = computed(() => ({
 		icon: 'circle',
 		label: locale.baseText('agents.chat.backgroundTasks.status.waiting'),
 	},
+	suspended: {
+		icon: 'circle-pause',
+		label: locale.baseText('agents.chat.backgroundTasks.status.suspended'),
+	},
 }));
+
+const backgroundApproval = computed(() => {
+	if (!props.backgroundJobsActive) return undefined;
+	for (const job of backgroundJobs.value) {
+		if (job.status !== 'suspended' || !job.approval) continue;
+		const input = parseApprovalInput(job.approval.suspendPayload);
+		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
+	}
+	return undefined;
+});
+const pendingApproval = computed(() => {
+	const tail = messages.value.at(-1);
+	if (!tail) return undefined;
+	for (const payload of getMessageInteractives(tail)) {
+		if (
+			payload.toolName !== APPROVAL_TOOL_NAME ||
+			payload.resolvedAt !== undefined ||
+			!payload.runId
+		) {
+			continue;
+		}
+		return { runId: payload.runId, toolCallId: payload.toolCallId, input: payload.input };
+	}
+	return undefined;
+});
+const hasPendingApprovals = computed(
+	() => pendingApproval.value !== undefined || backgroundApproval.value !== undefined,
+);
+const pendingBackgroundResponses = ref(new Set<string>());
+
+async function respondToBackgroundApproval(
+	approval: AgentBuilderOpenSuspension,
+	resumeData: { approved: boolean },
+) {
+	if (pendingBackgroundResponses.value.has(approval.toolCallId)) return;
+	pendingBackgroundResponses.value.add(approval.toolCallId);
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	try {
+		await respondToApproval({ runId: approval.runId, toolCallId: approval.toolCallId, resumeData });
+	} catch (error) {
+		if (
+			disposed ||
+			!props.visible ||
+			props.projectId !== target.projectId ||
+			props.agentId !== target.agentId ||
+			props.continueSessionId !== target.continueSessionId
+		)
+			return;
+		toast.showError(error, locale.baseText('agents.chat.backgroundTasks.approvalError'));
+	} finally {
+		pendingBackgroundResponses.value.delete(approval.toolCallId);
+	}
+}
 const backgroundJobRows = computed(() =>
 	backgroundJobs.value.map((job) => ({
 		...job,
@@ -286,6 +371,7 @@ const backgroundElapsed = computed(() => {
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
 	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
 );
@@ -297,18 +383,26 @@ function focusInput(options?: FocusOptions) {
 watch(
 	[
 		showBackgroundJobs,
+		hasPendingApprovals,
 		() => props.projectId,
 		() => props.agentId,
 		() => props.continueSessionId,
 		() => props.visible,
 	],
-	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+	async (
+		[shown, approvalsShown, ...target],
+		[wasShown, approvalsWereShown, ...previousTarget],
+		onCleanup,
+	) => {
+		const removedFocusedCard =
+			(!shown && wasShown && backgroundJobCard.value?.contains(document.activeElement)) ||
+			(!approvalsShown &&
+				approvalsWereShown &&
+				approvalCards.value?.contains(document.activeElement));
 		if (
-			shown ||
-			!wasShown ||
+			!removedFocusedCard ||
 			!props.visible ||
-			target.some((value, index) => value !== previousTarget[index]) ||
-			!backgroundJobCard.value?.contains(document.activeElement)
+			target.some((value, index) => value !== previousTarget[index])
 		) {
 			return;
 		}
@@ -323,7 +417,7 @@ watch(
 			cancelled ||
 			disposed ||
 			!props.visible ||
-			showBackgroundJobs.value ||
+			hasPendingApprovals.value ||
 			document.activeElement !== document.body
 		) {
 			return;
@@ -699,6 +793,7 @@ onBeforeUnmount(() => {
 			:agent-id="agentId"
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
+			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
@@ -772,7 +867,38 @@ onBeforeUnmount(() => {
 					</div>
 				</N8nAiActivityStepGroup>
 			</div>
+			<div v-if="hasPendingApprovals" ref="approvalCards" data-testid="agent-chat-approvals">
+				<ApprovalCard
+					v-if="pendingApproval"
+					:key="pendingApproval.toolCallId"
+					:input="pendingApproval.input"
+					@submit="
+						resume({
+							runId: pendingApproval.runId,
+							toolCallId: pendingApproval.toolCallId,
+							resumeData: $event,
+						})
+					"
+				/>
+				<div
+					v-else-if="backgroundApproval"
+					:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
+					:class="$style.backgroundApproval"
+				>
+					<N8nText bold size="small">{{
+						locale.baseText('agents.chat.backgroundTasks.approvalFor', {
+							interpolate: { title: backgroundApproval.title },
+						})
+					}}</N8nText>
+					<ApprovalCard
+						:input="backgroundApproval.input"
+						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
+						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
+					/>
+				</div>
+			</div>
 			<ChatInputBase
+				v-else
 				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
@@ -811,8 +937,21 @@ onBeforeUnmount(() => {
 											:class="$style.queueEditNotice"
 											role="status"
 										>
-											{{ locale.baseText('agents.chat.queue.editUnavailable') }}
+											{{
+												locale.baseText(
+													item.steeringExecutionId && queuedMessages.includes(item)
+														? 'agents.chat.queue.editSteeringUnavailable'
+														: 'agents.chat.queue.editUnavailable',
+												)
+											}}
 										</p>
+										<span
+											v-else-if="item.steeringExecutionId"
+											:class="$style.queueEditNotice"
+											role="status"
+										>
+											{{ locale.baseText('agents.chat.queue.steering') }}
+										</span>
 										<span v-for="attachment in item.attachments" :key="attachment.id">{{
 											attachment.fileName
 										}}</span>
@@ -858,15 +997,33 @@ onBeforeUnmount(() => {
 										</template>
 										<template v-else>
 											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.steerTooltip')"
+												:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+												placement="top"
+											>
+												<N8nButton
+													variant="ghost"
+													size="xsmall"
+													:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+													:aria-label="locale.baseText('agents.chat.queue.steer')"
+													@click="steerQueuedMessage(item.id)"
+												>
+													<template #icon
+														><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
+													/></template>
+													{{ locale.baseText('agents.chat.queue.steer') }}
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
 												:content="locale.baseText('agents.chat.queue.edit')"
-												:disabled="!!queueEdit || removingQueueIds.has(item.id)"
+												:disabled="!!queueEdit || isQueueItemBusy(item)"
 												placement="top"
 											>
 												<N8nButton
 													icon-only
 													variant="ghost"
 													size="xsmall"
-													:disabled="!!queueEdit || removingQueueIds.has(item.id)"
+													:disabled="!!queueEdit || isQueueItemBusy(item)"
 													:aria-label="locale.baseText('agents.chat.queue.edit')"
 													@click="startQueueEdit(item)"
 												>
@@ -877,14 +1034,14 @@ onBeforeUnmount(() => {
 											</N8nTooltip>
 											<N8nTooltip
 												:content="locale.baseText('agents.chat.queue.remove')"
-												:disabled="removingQueueIds.has(item.id)"
+												:disabled="isQueueItemBusy(item)"
 												placement="top"
 											>
 												<N8nButton
 													icon-only
 													variant="ghost"
 													size="xsmall"
-													:disabled="removingQueueIds.has(item.id)"
+													:disabled="isQueueItemBusy(item)"
 													:aria-label="locale.baseText('agents.chat.queue.remove')"
 													@click="removeQueuedMessage(item.id)"
 												>
@@ -1005,6 +1162,12 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--sm);
 	border-bottom: var(--border);
 	border-bottom-style: dashed;
+}
+
+.backgroundApproval {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .backgroundJobList {

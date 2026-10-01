@@ -57,6 +57,13 @@ export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
 export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
+/**
+ * The instance's webhook and form base URLs. On the turn because they differ per instance:
+ * in the system prompt they would give every instance its own prompt-cache prefix instead of
+ * one shared across all instances.
+ */
+export const INSTANCE_URLS_OPEN_TAG = '<instance-urls>';
+export const INSTANCE_URLS_CLOSE_TAG = '</instance-urls>';
 /** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
 export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
 export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
@@ -150,7 +157,7 @@ function stripTrailingContextBlocks(message: string): string {
 }
 
 export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
-	return `<current-date-time>${dateTimeSection}\n</current-date-time>`;
+	return `<current-date-time>\n${dateTimeSection.trim()}\n</current-date-time>`;
 }
 
 export function buildProjectContextBlock(projectSection: string): string {
@@ -159,6 +166,18 @@ export function buildProjectContextBlock(projectSection: string): string {
 
 export function buildPastConversationsBlock(section: string): string {
 	return `${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+export function buildInstanceUrlsBlock(urls: {
+	webhookBaseUrl: string;
+	formBaseUrl: string;
+}): string {
+	return [
+		INSTANCE_URLS_OPEN_TAG,
+		`Webhook base URL: ${urls.webhookBaseUrl}`,
+		`Form base URL: ${urls.formBaseUrl}`,
+		INSTANCE_URLS_CLOSE_TAG,
+	].join('\n');
 }
 
 /**
@@ -236,6 +255,24 @@ export function extractAiPreferencesBlock(stored: string): string | undefined {
 		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
 	);
 	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
+}
+
+const PREVIEW_TABS_HEADER =
+	'Tabs the user has open in this conversation’s preview, as of this message:';
+
+/** Matches the service-written thread artifacts block inside one `<thread-context>` block. */
+const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>/;
+
+/**
+ * The thread artifacts block a stored user message carries, exactly as stored, or
+ * `undefined`. Read from the leading internal blocks only, like the preferences block.
+ * Compare against `asStoredThreadContextSection(freshBlock)`, never the raw render.
+ */
+export function extractThreadArtifactsBlock(stored: string): string | undefined {
+	const threadContext = leadingInternalBlocks(stored).find((block) =>
+		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
+	);
+	return threadContext ? THREAD_ARTIFACTS_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
 /** Longest a user-supplied value may be inside a block. Matches the instance-context bound. */
@@ -504,8 +541,17 @@ export function buildThreadArtifactsBlock(
 	context: InstanceAiThreadArtifactsContext | undefined,
 	resourceAttachments: InstanceAiResourceAttachment[] = [],
 ): string {
-	const previewArtifacts = context?.artifacts ?? [];
-	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) return '';
+	// A fixed order, so reordering tabs does not change the block and re-send it.
+	const previewArtifacts = [...(context?.artifacts ?? [])].sort((a, b) =>
+		`${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`),
+	);
+	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) {
+		// An empty list that the client sent means no tabs are open. The wording holds
+		// whether the user closed tabs or never had any.
+		return context
+			? `${THREAD_ARTIFACTS_OPEN_TAG}\nThe user has no tabs open in this conversation’s preview.\n${THREAD_ARTIFACTS_CLOSE_TAG}`
+			: '';
+	}
 
 	const executionByWorkflowId = new Map<string, string>();
 	for (const attachment of resourceAttachments) {
@@ -563,9 +609,7 @@ export function buildThreadArtifactsBlock(
 		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
 
 	const prose = [
-		...(previewLines.length > 0
-			? ['Artifacts the user can see in this conversation’s preview:', ...previewLines]
-			: []),
+		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
 		...(handoffLines.length > 0
 			? [
 					'The user opened this conversation from the editor, where they are looking at:',

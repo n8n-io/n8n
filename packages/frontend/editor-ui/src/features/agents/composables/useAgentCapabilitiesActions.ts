@@ -204,7 +204,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						nextTools[toolIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
 					},
-					onRemove: () => onRemoveTool(toolIndex),
+					onRemove: () => {
+						if (!localConfig.value?.tools?.[toolIndex]) return;
+						onRemoveTool(toolIndex);
+					},
 				},
 			});
 			return;
@@ -245,12 +248,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					nextMcpServers[mcpServerIndex] = updatedServer;
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
 				},
-				onRemove: () => {
-					const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
-						(_, i) => i !== mcpServerIndex,
-					);
-					scheduleConfigUpdate({ mcpServers: nextMcpServers });
-				},
+				onRemove: () => onRemoveTool((localConfig.value?.tools ?? []).length + mcpServerIndex),
 			},
 		});
 	}
@@ -401,9 +399,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
-		if (index < 0 || index >= currentTools.length) return;
-		const nextTools = currentTools.filter((_, i) => i !== index);
-		scheduleConfigUpdate({ tools: nextTools });
+		if (index < 0) return;
+		if (index < currentTools.length) {
+			scheduleConfigUpdate({ tools: currentTools.filter((_, i) => i !== index) });
+			return;
+		}
+
+		const mcpServers = localConfig.value?.mcpServers ?? [];
+		const mcpServerIndex = index - currentTools.length;
+		if (mcpServerIndex >= mcpServers.length) return;
+		scheduleConfigUpdate({ mcpServers: mcpServers.filter((_, i) => i !== mcpServerIndex) });
 	}
 
 	function onRemoveSkill(id: string) {

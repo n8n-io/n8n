@@ -29,6 +29,7 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import { parseBackgroundApprovalAction } from '../../background/sub-agent-background-state';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -56,7 +57,7 @@ function makeQueuedBridge(...args: ConstructorParameters<typeof AgentChatBridge>
 			payload: deepCopy(payload),
 			threadId,
 		});
-		return mock<AgentMessageQueue>();
+		return { status: 'accepted', item: mock<AgentMessageQueue>() };
 	});
 	const bridge = new AgentChatBridge(
 		bot,
@@ -77,7 +78,7 @@ function makeQueuedBridge(...args: ConstructorParameters<typeof AgentChatBridge>
 				.consumeQueuedMessage(
 					item.payload,
 					item.threadId,
-					{ executionId: 'execution-1', startedAt: new Date() },
+					{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
 					new AbortController().signal,
 					integration,
 				)
@@ -1269,6 +1270,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				findOpenSuspension: vi.fn().mockResolvedValue({ suspendPayload: {} }),
 			};
 			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
 			new AgentChatBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
@@ -1555,6 +1557,54 @@ describe('AgentChatBridge — consumeStream', () => {
 			finishChunk,
 		];
 
+		it('posts child approval buttons that can be resolved without callback storage', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const jobId = 'b6c2ef4a-3e69-4c38-a205-a0c8c0a5f115';
+			const token = 'a'.repeat(22);
+			componentMapper.toCard.mockImplementationOnce(
+				async (payload, _runId, _toolCallId, _schema, shorten) => {
+					expect(payload.title).toBe('Research: Approval required');
+					expect(payload.components).toContainEqual({
+						type: 'button',
+						label: 'Allow for this session',
+						value: 'session',
+					});
+					if (!shorten) throw new Error('Expected callback encoder');
+					for (const decision of [
+						{ approved: true },
+						{ approved: false },
+						{ approved: true, scope: 'session' },
+					]) {
+						const callback = await shorten('unused', JSON.stringify(decision));
+						expect(Buffer.byteLength(callback.id)).toBeLessThanOrEqual(64);
+						expect(parseBackgroundApprovalAction(callback.id)).toEqual({
+							runId: `background-job-${jobId}`,
+							toolCallId: token,
+							resumeData: decision,
+						});
+					}
+					return { type: 'card', children: [] };
+				},
+			);
+			await bridge.deliverBackgroundApproval(thread.id, {
+				jobId,
+				title: 'Research',
+				token,
+				toolCall: {
+					type: 'tool-call-suspended',
+					runId: 'child-run',
+					toolCallId: 'child-tool',
+					toolName: 'send_email',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_email',
+						supportsSessionApproval: true,
+					},
+				},
+			});
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ card: { type: 'card', children: [] } });
+		});
+
 		it('posts wake text to the stored Slack thread before returning', async () => {
 			const { bridge, bot, thread } = makeWakeBridge();
 			let resolvePost!: () => void;
@@ -1754,6 +1804,57 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 			return handlers;
 		}
+
+		it('cleans only retry attachments and gives no reply for a duplicate delivery', async () => {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue
+				.mockResolvedValueOnce({ status: 'accepted', item: mock<AgentMessageQueue>() })
+				.mockResolvedValue({ status: 'duplicate' });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				undefined,
+				attachmentService as never,
+				undefined,
+				queue,
+			);
+			const thread = makeThread();
+			const message = {
+				id: 'native-message',
+				text: 'look at this',
+				author: { userId: 'allowed-user', userName: 'Ada' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: async () => pngBytes,
+					},
+				],
+			};
+			await handlers.mention!(thread, message);
+			expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
+			await handlers.mention!(thread, message);
+			expect(attachmentService.deleteByIds).toHaveBeenCalledExactlyOnceWith(['att-2']);
+			expect(thread.post).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+
+			await handlers.mention!(thread, {
+				...message,
+				author: { userId: 'other-user', userName: 'Other' },
+			});
+			expect(queue.enqueue).toHaveBeenCalledTimes(2);
+			expect(attachmentService.storeInbound).toHaveBeenCalledTimes(2);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
 
 		// PNG magic bytes so the mime sniff confirms the declared type.
 		const pngBytes = Buffer.from([
@@ -3190,6 +3291,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const executor = makeAgentExecutor([finishChunk]);
 			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
 			new AgentChatBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',

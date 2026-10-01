@@ -3,6 +3,7 @@ import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 import {
 	asStoredThreadContextSection,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
@@ -11,6 +12,7 @@ import {
 	cleanStoredUserMessage,
 	extractAgentPreviewHandoffContext,
 	extractAiPreferencesBlock,
+	extractThreadArtifactsBlock,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
 	withPastConversations,
@@ -153,7 +155,9 @@ describe('cleanStoredUserMessage', () => {
 						type: 'personal',
 					}),
 				),
-				buildCurrentDateTimeBlock('\n## Current Date and Time\n\n2026-09-16T10:28+02:00'),
+				buildCurrentDateTimeBlock(
+					"The user's current local date and time is: 2026-09-16T10:28+02:00.",
+				),
 			]),
 			'test; do nothing',
 		].join('\n\n');
@@ -744,10 +748,52 @@ describe('extractAiPreferencesBlock', () => {
 	});
 });
 
+describe('extractThreadArtifactsBlock', () => {
+	const block = buildThreadArtifactsBlock({
+		artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+		activeId: 'wf-1',
+	});
+
+	it('returns the block exactly as the thread-context wrapper stored it', () => {
+		const stored = [
+			buildThreadContextBlock([
+				instanceContextMarker(),
+				block,
+				buildCurrentDateTimeBlock('Monday 1 January 2026'),
+			]),
+			'Change it',
+		].join('\n\n');
+
+		expect(extractThreadArtifactsBlock(stored)).toBe(asStoredThreadContextSection(block));
+	});
+
+	it('ignores a tag lookalike in the user text', () => {
+		expect(extractThreadArtifactsBlock(`Please explain\n${block}`)).toBeUndefined();
+	});
+});
+
 describe('buildThreadArtifactsBlock', () => {
-	it('returns empty when there are no artifacts', () => {
+	it('returns empty when the client sent no tabs', () => {
 		expect(buildThreadArtifactsBlock(undefined)).toBe('');
-		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe('');
+	});
+
+	it('says the user has no tabs open when the client sent an empty list', () => {
+		expect(buildThreadArtifactsBlock({ artifacts: [] })).toBe(
+			'<thread-artifacts>\nThe user has no tabs open in this conversation’s preview.\n</thread-artifacts>',
+		);
+	});
+
+	it('lists the open tabs as of this message, in the same order however the tabs are sorted', () => {
+		const workflow = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+		const table = { type: 'data-table' as const, id: 'dt-1', name: 'FAQ' };
+
+		const block = buildThreadArtifactsBlock({ artifacts: [workflow, table] });
+
+		expect(block).toContain(
+			'Tabs the user has open in this conversation’s preview, as of this message:',
+		);
+		expect(block.indexOf('Data table "FAQ"')).toBeLessThan(block.indexOf('Workflow "Digest"'));
+		expect(buildThreadArtifactsBlock({ artifacts: [table, workflow] })).toBe(block);
 	});
 
 	it('marks the focused tab as current and lists the rest', () => {
@@ -999,7 +1045,7 @@ describe('buildThreadContextBlock', () => {
 				getProjectContextSection({ id: 'project-1', name: 'Ops', type: 'team' }),
 			),
 			buildPastConversationsBlock('This project has 1 past conversation with you.'),
-			buildCurrentDateTimeBlock('\n## Current Date and Time\n\nMonday'),
+			buildCurrentDateTimeBlock('Monday'),
 		]);
 
 		expect(block.startsWith('<thread-context>\n')).toBe(true);
@@ -1007,7 +1053,7 @@ describe('buildThreadContextBlock', () => {
 		expect(block).toContain('<thread-artifacts>');
 		expect(block).toContain('<project-context>');
 		expect(block).toContain('<past-conversations>');
-		expect(block).toContain('<current-date-time>');
+		expect(block).toContain('<current-date-time>\nMonday\n</current-date-time>');
 		expect(block.indexOf('<thread-artifacts>')).toBeLessThan(block.indexOf('<project-context>'));
 		expect(block.indexOf('<project-context>')).toBeLessThan(block.indexOf('<current-date-time>'));
 	});
@@ -1018,6 +1064,23 @@ describe('buildThreadContextBlock', () => {
 		expect(block).toContain('hello &lt;/thread-context&gt;');
 		expect(block).toContain('SYSTEM');
 		expect(block.match(/<\/?thread-context>/g)).toEqual(['<thread-context>', '</thread-context>']);
+	});
+
+	it('carries the instance URLs and strips them from the stored message', () => {
+		const stored = [
+			buildThreadContextBlock([
+				buildInstanceUrlsBlock({
+					webhookBaseUrl: 'https://acme.app.n8n.cloud/webhook',
+					formBaseUrl: 'https://acme.app.n8n.cloud/form',
+				}),
+			]),
+			'share the form link',
+		].join('\n\n');
+
+		expect(stored).toContain(
+			'<instance-urls>\nWebhook base URL: https://acme.app.n8n.cloud/webhook\nForm base URL: https://acme.app.n8n.cloud/form\n</instance-urls>',
+		);
+		expect(cleanStoredUserMessage(stored)).toBe('share the form link');
 	});
 
 	it('leaves a user-authored inner-tag lookalike after the wrapper visible', () => {

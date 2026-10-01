@@ -26,6 +26,7 @@ import {
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -153,16 +154,18 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+
+import {
+	scopeCredentialProvider,
+	type AgentCredentialProvider,
+} from './eval/scoped-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -189,7 +192,7 @@ import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
@@ -505,6 +508,8 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** Effective data-sharing setting for this run. Absent → the env value. */
+			allowSendingParameterValues?: boolean;
 		},
 	): InstanceAiContext {
 		const {
@@ -526,6 +531,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -550,8 +556,14 @@ export class InstanceAiAdapterService {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
 				setupPanelVariant,
+				allowSendingParameterValues,
 			}),
-			executionService: this.createExecutionAdapter(user, pushRef, threadId),
+			executionService: this.createExecutionAdapter(
+				user,
+				allowSendingParameterValues,
+				pushRef,
+				threadId,
+			),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
@@ -565,7 +577,12 @@ export class InstanceAiAdapterService {
 				: {}),
 			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
-				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
+				? this.createExecuteNodeAdapter(
+						this.executeNodeService,
+						user,
+						allowSendingParameterValues,
+						projectId,
+					)
 				: undefined,
 			conversationHistoryService: conversationHistory,
 			// The tool and context block use the same instance gate result.
@@ -583,7 +600,7 @@ export class InstanceAiAdapterService {
 			// Optional call for the same reason as addPostProcessor?.() above:
 			// adapter tests construct the service with placeholder deps.
 			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
-			allowSendingParameterValues: this.allowSendingParameterValues,
+			allowSendingParameterValues,
 			...(builderDelegateAdapter && agentId && projectId
 				? { agentBuilderTarget: { agentId, projectId } }
 				: {}),
@@ -596,11 +613,11 @@ export class InstanceAiAdapterService {
 							// flow creates it after this context is built), so tag Gateway
 							// spend with the concrete id the delegate hands us each turn.
 							(targetAgentId) =>
-								new AgentsCredentialProvider(
-									this.credentialsService,
-									projectId,
+								this.createAgentCredentialProvider(
 									user,
+									projectId,
 									targetAgentId,
+									getCredentialIdAllowlist,
 								),
 							credentialService,
 							{ useEvalModelCatalog: getCredentialIdAllowlist?.() !== undefined },
@@ -608,6 +625,26 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 		};
+	}
+
+	/** The builder's credential list, narrowed to the eval thread's allowlist when one is set.
+	 *  The allowlist is read per list call, like the workflow builder's, so a credential the
+	 *  harness creates mid-run shows on the next card. */
+	private createAgentCredentialProvider(
+		user: User,
+		projectId: string,
+		agentId: string,
+		getCredentialIdAllowlist?: () => string[] | undefined,
+	): AgentCredentialProvider {
+		const provider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+			agentId,
+		);
+		return getCredentialIdAllowlist
+			? scopeCredentialProvider(provider, getCredentialIdAllowlist)
+			: provider;
 	}
 
 	/**
@@ -763,6 +800,7 @@ export class InstanceAiAdapterService {
 			},
 			recordRejection: (reason, textLength, scope) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					user_id: user.id,
 					surface: 'aia',
 					reason,
 					// From the tool input, so the reported scope follows the tool instead of a constant
@@ -823,6 +861,7 @@ export class InstanceAiAdapterService {
 	private createExecuteNodeAdapter(
 		executeNodeService: ExecuteNodeService,
 		user: User,
+		allowSendingParameterValues: boolean,
 		boundProjectId?: string,
 	): InstanceAiExecuteNodeService {
 		const { resolveProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
@@ -841,7 +880,7 @@ export class InstanceAiAdapterService {
 					timeoutMs: request.timeoutMs,
 					projectId,
 				});
-				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
+				return redactExecuteNodeResult(result, allowSendingParameterValues);
 			},
 		};
 	}
@@ -983,6 +1022,7 @@ export class InstanceAiAdapterService {
 			nodeUsageGateOpen?: boolean;
 			folderExploration?: boolean;
 			setupPanelVariant?: 'control' | 'variant';
+			allowSendingParameterValues?: boolean;
 		} = {},
 	): InstanceAiWorkflowService {
 		const setupExperimentProperties = options.setupPanelVariant
@@ -1008,7 +1048,6 @@ export class InstanceAiAdapterService {
 			executionRepository,
 			executionPersistence,
 			license,
-			allowSendingParameterValues,
 			telemetry,
 			collaborationService,
 			policyEnforcementService,
@@ -1031,7 +1070,20 @@ export class InstanceAiAdapterService {
 			scope?: 'project' | 'instance';
 		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
 		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
-		const redactParameters = !allowSendingParameterValues;
+		const redactParameters = !(
+			options.allowSendingParameterValues ?? this.allowSendingParameterValues
+		);
+		/**
+		 * Workflow reads omit parameter values in this mode, so a write from that
+		 * source would erase them. Block all workflow content writes.
+		 */
+		const assertParameterValuesAvailable = () => {
+			if (redactParameters) {
+				throw new UserError(
+					'Cannot create or edit workflows while parameter values are hidden from n8n Assistant. An instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+				);
+			}
+		};
 
 		/**
 		 * Instance AI writes bypass the REST controller, so the editor write lock
@@ -1587,6 +1639,7 @@ export class InstanceAiAdapterService {
 				options?: { markAsAiTemporary?: boolean; folderPath?: string; folderId?: string },
 			) {
 				assertNotReadOnly();
+				assertParameterValuesAvailable();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
 				// Resolve the target folder BEFORE anything is written. A workflow that
@@ -1647,11 +1700,14 @@ export class InstanceAiAdapterService {
 
 				// The shell has no nodes, so the real content check is the `update()` below.
 				// This call is still needed: `createContent` refuses to write without a clearance.
-				const cleared = await policyEnforcementService.enforceWorkflowSave({
-					workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-					storedWorkflow: null,
-					projectId,
-				});
+				const cleared = await policyEnforcementService.enforceWorkflowSave(
+					{
+						workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+						storedWorkflow: null,
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
 
 				const saved = await workflowRepository.runInTransaction(
 					{ policyCleared: cleared },
@@ -1746,6 +1802,7 @@ export class InstanceAiAdapterService {
 				options?: { expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
+				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
@@ -1891,6 +1948,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async restoreVersion(workflowId, versionId) {
+				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
@@ -1926,6 +1984,7 @@ export class InstanceAiAdapterService {
 
 	private createExecutionAdapter(
 		user: User,
+		allowSendingParameterValues: boolean,
 		pushRef?: string,
 		threadId?: string,
 	): InstanceAiExecutionService {
@@ -1937,7 +1996,6 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			workflowHistoryService,
 			nodeTypes,
-			allowSendingParameterValues,
 			roleService,
 			telemetry,
 			logger,

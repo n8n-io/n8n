@@ -79,7 +79,7 @@ jobs:
               !**/CHANGELOG.md
               !**/*.test.ts
               !**/*.spec.ts
-              !packages/testing/playwright/**
+              !packages/quality/testing/playwright/**
               !packages/frontend/@n8n/storybook/**
               !.devcontainer/**
               !scripts/agent-setup.mjs
@@ -92,7 +92,7 @@ jobs:
             unit:
               **
               !packages/@n8n/task-runner-python/**
-              !packages/testing/playwright/**
+              !packages/quality/testing/playwright/**
               !.github/**
               .github/workflows/test-unit-reusable.yml
               !**/*.md
@@ -111,8 +111,8 @@ jobs:
               .github/workflows/prepare-docker-reusable.yml
               .github/actions/build-n8n-docker/**
               .github/actions/load-n8n-docker/**
-              packages/testing/playwright/**
-              packages/testing/containers/**
+              packages/quality/testing/playwright/**
+              packages/quality/environments/containers/**
             dev-server-smoke:
               packages/frontend/editor-ui/vite.config.mts
               # If this job becomes too slow, use a smaller glob. Do not delete the assertion.
@@ -120,10 +120,10 @@ jobs:
               pnpm-workspace.yaml
               packages/@n8n/*/package.json
               packages/frontend/@n8n/frontend-vite-config/**
-              packages/testing/playwright/tests/dev-server-smoke/**
-              packages/testing/playwright/playwright.config.ts
-              packages/testing/playwright/playwright-projects.ts
-              packages/testing/playwright/package.json
+              packages/quality/testing/playwright/tests/dev-server-smoke/**
+              packages/quality/testing/playwright/playwright.config.ts
+              packages/quality/testing/playwright/playwright-projects.ts
+              packages/quality/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
             frontend-declarations:
               packages/frontend/@n8n/design-system/**
@@ -146,9 +146,9 @@ jobs:
               cubic.yaml
               .agents/review-rules/**
             e2e-performance:
-              packages/testing/playwright/tests/performance/**
-              packages/testing/playwright/utils/performance-helper.ts
-              packages/testing/containers/**
+              packages/quality/testing/playwright/tests/performance/**
+              packages/quality/testing/playwright/utils/performance-helper.ts
+              packages/quality/environments/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
             # Whole directories, not the `engine-*` files alone. Engine v2
             # routing lives in ordinary control plane code: `workflow-runner.ts`
@@ -169,8 +169,8 @@ jobs:
               packages/cli/src/webhooks/**
               packages/cli/src/workflows/triggers/**
               packages/cli/src/workflow-runner.ts
-              packages/testing/containers/**
-              packages/testing/playwright/**
+              packages/quality/environments/containers/**
+              packages/quality/testing/playwright/**
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
@@ -193,10 +193,10 @@ jobs:
               packages/cli/src/**/*.integration.test.ts
               packages/cli/src/modules/instance-registry/**
               packages/cli/vitest.*
-              packages/testing/containers/services/postgres.ts
-              packages/testing/containers/services/redis.ts
-              packages/testing/containers/postgres-versions.json
-              packages/testing/containers/test-containers.ts
+              packages/quality/environments/containers/services/postgres.ts
+              packages/quality/environments/containers/services/redis.ts
+              packages/quality/environments/containers/postgres-versions.json
+              packages/quality/environments/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
               docs/generated/**
@@ -214,10 +214,10 @@ jobs:
               packages/cli/vitest.config.base.ts
               packages/cli/vitest.config.migration.ts
               packages/cli/vitest.config.migration.testcontainers.ts
-              packages/testing/containers/services/postgres.ts
-              packages/testing/containers/services/redis.ts
-              packages/testing/containers/postgres-versions.json
-              packages/testing/containers/test-containers.ts
+              packages/quality/environments/containers/services/postgres.ts
+              packages/quality/environments/containers/services/redis.ts
+              packages/quality/environments/containers/postgres-versions.json
+              packages/quality/environments/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
 
@@ -247,7 +247,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
         run: |
-          PACKAGES=$(node packages/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          PACKAGES=$(node packages/quality/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
@@ -393,7 +393,7 @@ jobs:
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
           FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
+          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 

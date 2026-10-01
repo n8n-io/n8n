@@ -39,6 +39,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -152,9 +153,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
@@ -168,10 +167,10 @@ import {
 	buildAppliedPreferencesPayload,
 	renderAiPreferencesBlock,
 } from '@/services/ai-preference.service';
+import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
@@ -214,6 +213,7 @@ import {
 	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
@@ -221,6 +221,7 @@ import {
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
 	extractAiPreferencesBlock,
+	extractThreadArtifactsBlock,
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
@@ -835,6 +836,7 @@ export class InstanceAiService {
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -955,7 +957,6 @@ export class InstanceAiService {
 				});
 			});
 		});
-
 		this.liveness.start();
 	}
 
@@ -2558,6 +2559,8 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// Read per run so a settings change applies to the next message.
+		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
 		const thread = await memory.getThread(threadId);
@@ -2582,6 +2585,7 @@ export class InstanceAiService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			allowSendingParameterValues,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2851,8 +2855,6 @@ export class InstanceAiService {
 			runtimeSkills,
 			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
-			webhookBaseUrl: this.webhookBaseUrl,
-			formBaseUrl: this.formBaseUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
@@ -4211,9 +4213,18 @@ export class InstanceAiService {
 
 			// Keep setup handoffs first and the user's message last.
 			// Group ambient context in the thread-context wrapper.
+			// One read of the replayed history serves every section sent only when it changed.
+			let replayedHistory: Promise<AgentDbMessage[]> | undefined;
+			const loadReplayedHistory = async () =>
+				await (replayedHistory ??= this.getReplayedMessages(threadId));
 			const threadArtifactsBlock =
 				resumeReason === undefined
-					? buildThreadArtifactsBlock(threadArtifacts, contextAttachments)
+					? await this.resolveThreadArtifactsTurn(
+							threadId,
+							threadArtifacts,
+							contextAttachments,
+							loadReplayedHistory,
+						)
 					: '';
 			const [boundProject, pastConversationsSection] = await Promise.all([
 				this.resolveBoundProject(context),
@@ -4226,7 +4237,12 @@ export class InstanceAiService {
 			// already in the history the follow-up replays.
 			const aiPreferencesTurn =
 				aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
-					? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId)
+					? await this.resolveAiPreferencesTurn(
+							user.id,
+							boundProject,
+							threadId,
+							loadReplayedHistory,
+						)
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
 				instanceContext.state === 'injected' ? instanceContext.block : '',
@@ -4235,6 +4251,12 @@ export class InstanceAiService {
 				onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				resumeReason === undefined
+					? buildInstanceUrlsBlock({
+							webhookBaseUrl: this.webhookBaseUrl,
+							formBaseUrl: this.formBaseUrl,
+						})
+					: undefined,
 				pastConversationsSection
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,
@@ -4401,6 +4423,7 @@ export class InstanceAiService {
 			// a follow-up segment that skips the preferences path.
 			if (aiPreferencesTurn) {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
+					user_id: user.id,
 					count: aiPreferencesTurn.payload.preferences.length,
 					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
 					rendered_length: aiPreferencesTurn.payload.renderedLength,
@@ -5376,6 +5399,8 @@ export class InstanceAiService {
 		userId: string,
 		project: ProjectSummary | undefined,
 		threadId: string,
+		loadHistory: () => Promise<AgentDbMessage[]> = async () =>
+			await this.getReplayedMessages(threadId),
 	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
 		const resolved = await this.bestEffort(
 			'Instance AI failed to read the AI preferences for this turn',
@@ -5398,7 +5423,7 @@ export class InstanceAiService {
 		const history = await this.bestEffort(
 			'Instance AI failed to read the last AI preferences block of this thread',
 			{ threadId },
-			async () => await this.findAiPreferencesHistory(threadId),
+			async () => await this.findAiPreferencesHistory(loadHistory),
 		);
 		const lastBlock = history?.block;
 		const savedSinceLastBlock = history?.savedSinceLastBlock === true;
@@ -5457,9 +5482,9 @@ export class InstanceAiService {
 	 * current preferences must be injected again when the window has no block.
 	 */
 	private async findAiPreferencesHistory(
-		threadId: string,
+		loadHistory: () => Promise<AgentDbMessage[]>,
 	): Promise<{ block?: string; savedSinceLastBlock: boolean }> {
-		const history = await this.getReplayedMessages(threadId);
+		const history = await loadHistory();
 		let savedSinceLastBlock = false;
 		for (let i = history.length - 1; i >= 0; i--) {
 			const m = history[i];
@@ -5479,6 +5504,48 @@ export class InstanceAiService {
 			if (block !== undefined) return { block, savedSinceLastBlock };
 		}
 		return { savedSinceLastBlock };
+	}
+
+	/**
+	 * The open tabs block for this turn, or `''` when the agent already has the same
+	 * block in its replayed history. The agent reads the latest block as the current
+	 * tabs, so an unchanged block is not sent again.
+	 */
+	private async resolveThreadArtifactsTurn(
+		threadId: string,
+		context: InstanceAiThreadArtifactsContext | undefined,
+		attachments: InstanceAiResourceAttachment[],
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<string> {
+		const freshBlock = buildThreadArtifactsBlock(context, attachments);
+		if (!freshBlock) return '';
+		// A hand-off always rides its own turn: the parser rebuilds the attachments from it.
+		if (attachments.length > 0) return freshBlock;
+
+		const history = await this.bestEffort(
+			'Instance AI failed to read the last thread artifacts block of this thread',
+			{ threadId },
+			async () => ({ block: await this.findLastThreadArtifactsBlock(loadHistory) }),
+		);
+		// Send the block when the history cannot be read, so the agent never has stale tabs.
+		if (!history) return freshBlock;
+		// A "no tabs" block is sent like any other: after compaction, an observation can
+		// still say that tabs are open.
+		return asStoredThreadContextSection(freshBlock) === history.block ? '' : freshBlock;
+	}
+
+	/** The latest thread artifacts block in the replay window, or `undefined`. */
+	private async findLastThreadArtifactsBlock(
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<string | undefined> {
+		const history = await loadHistory();
+		for (let i = history.length - 1; i >= 0; i--) {
+			const m = history[i];
+			if (!('role' in m) || m.role !== 'user') continue;
+			const block = extractThreadArtifactsBlock(this.extractStoredMessageText(m.content));
+			if (block !== undefined) return block;
+		}
+		return undefined;
 	}
 
 	/**

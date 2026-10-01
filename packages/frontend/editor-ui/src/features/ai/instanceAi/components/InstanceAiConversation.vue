@@ -76,6 +76,7 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
+import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
@@ -219,9 +220,11 @@ const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role
 // ponytail: the host-seeded onboarding greeting shows line by line (CSS below), then the shared
 // thinking block plays a thinking beat, then the apps card takes the input slot. Once per
 // mount, so a reload replays it. `isStreaming` on the greeting copy hides the message actions.
-/** The second line has risen at ~1.3 s, the card lands at ~2.3 s. */
-const GREETING_LINES_MS = 1400;
+/** The third line has risen at ~1.7 s, the card lands at ~2.7 s. */
+const GREETING_LINES_MS = 1760;
 const GREETING_THINKING_MS = 940;
+/** Longer than the greeting's beat, so the last question does not land the moment the card closes. */
+const FOLLOW_UP_THINKING_MS = 1800;
 const greetingPhase = ref<'lines' | 'thinking' | null>(null);
 let greetingShown = false;
 let greetingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -259,7 +262,7 @@ watch(
 		followUpTimer = setTimeout(() => {
 			followUpHeld.value = false;
 			followUpTimer = null;
-		}, GREETING_THINKING_MS);
+		}, FOLLOW_UP_THINKING_MS);
 	},
 );
 onUnmounted(() => {
@@ -993,6 +996,7 @@ defineExpose({
 					<div :class="$style.inputContainer">
 						<div :class="$style.inputConstraint">
 							<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+							<LimitedModeNotice />
 							<CreditWarningBanner
 								v-if="creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
@@ -1010,9 +1014,7 @@ defineExpose({
 										kind="floating"
 									/>
 									<InstanceAiInput
-										v-else-if="
-											greetingPhase === null && !followUpHeld && !awaitingOnboardingGreeting
-										"
+										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
@@ -1204,12 +1206,17 @@ defineExpose({
 }
 
 // The onboarding greeting's paragraphs rise one after the other while `greetingPhase` is set.
+// One rule per paragraph of `ONBOARDING_OPENING.greeting` in the backend.
 .greetingLines p {
 	animation: greeting-rise 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both;
 }
 
 .greetingLines p:nth-of-type(2) {
-	animation: greeting-rise 280ms ease-out 1000ms both;
+	animation: greeting-rise 280ms ease-out 780ms both;
+}
+
+.greetingLines p:nth-of-type(3) {
+	animation: greeting-rise 280ms ease-out 1380ms both;
 }
 
 @keyframes greeting-rise {
@@ -1225,7 +1232,8 @@ defineExpose({
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.greetingLines p {
+	// `:nth-of-type(n)` matches the specificity of the per-line rules, so it overrides them too.
+	.greetingLines p:nth-of-type(n) {
 		animation: none;
 	}
 }

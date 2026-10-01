@@ -189,7 +189,12 @@ describe('move-workflows-to-folder MCP tool', () => {
 		expect(result.isError).toBe(true);
 		expect(mocks.workflowService.update).not.toHaveBeenCalled();
 		expect(result.structuredContent).toMatchObject({
-			failed: [expect.objectContaining({ workflowId: 'wf-1' })],
+			failed: [
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					error: expect.stringContaining('/workflow/wf-1?settings=true'),
+				}),
+			],
 		});
 	});
 });

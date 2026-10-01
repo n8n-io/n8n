@@ -4,8 +4,7 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
@@ -113,7 +112,13 @@ describe('update_user_preference MCP tool', () => {
 		expect(result.structuredContent).toMatchObject({ preference: { scope: 'user' } });
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
-			{ surface: 'mcp', scope_type: 'user', text_length: 10, replaced_existing: true },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				scope_type: 'user',
+				text_length: 10,
+				replaced_existing: true,
+			},
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
 			user_id: 'user-1',
@@ -131,7 +136,13 @@ describe('update_user_preference MCP tool', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-			{ surface: 'mcp', outcome: 'accepted_after_edit', scope_type: 'user', text_length: 9 },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				outcome: 'accepted_after_edit',
+				scope_type: 'user',
+				text_length: 9,
+			},
 		);
 	});
 
@@ -144,7 +155,13 @@ describe('update_user_preference MCP tool', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
-			{ surface: 'mcp', reason: 'duplicate', scope_type: 'project', text_length: 9 },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				reason: 'duplicate',
+				scope_type: 'project',
+				text_length: 9,
+			},
 		);
 	});
 
@@ -157,7 +174,7 @@ describe('update_user_preference MCP tool', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
-			{ surface: 'mcp', reason: 'not_permitted', text_length: 9 },
+			{ user_id: 'user-1', surface: 'mcp', reason: 'not_permitted', text_length: 9 },
 		);
 	});
 
@@ -210,6 +227,7 @@ describe('update_user_preference MCP tool', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'mcp',
 				offered_scope: 'user',
 				accepted_scope: 'project',
@@ -217,6 +235,7 @@ describe('update_user_preference MCP tool', () => {
 			},
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			user_id: 'user-1',
 			scope_type: 'project',
 			text_length: 'New text.'.length,
 			scope_changed: true,
@@ -277,7 +296,13 @@ describe('update_user_preference MCP tool', () => {
 		expect(logger.error).toHaveBeenCalledTimes(reason === 'failed' ? 1 : 0);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
-			{ surface: 'mcp', reason: rejectedReason, scope_type: 'user', text_length: 9 },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				reason: rejectedReason,
+				scope_type: 'user',
+				text_length: 9,
+			},
 		);
 	});
 });
