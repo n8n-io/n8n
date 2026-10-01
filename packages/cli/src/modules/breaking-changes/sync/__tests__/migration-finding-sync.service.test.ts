@@ -529,6 +529,32 @@ describe('MigrationFindingSyncService', () => {
 			);
 		});
 
+		it('awaits a sync that is already in flight instead of reading mid-sync', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a', 'rule-b']));
+			let release!: () => void;
+			breakingChangeService.detect.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				return detectionResult([]);
+			});
+
+			const running = service.sync(TARGET_VERSION);
+			let settled = false;
+			const stale = service.syncIfStale(TARGET_VERSION).then(() => {
+				settled = true;
+			});
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(settled).toBe(false);
+			release();
+			await Promise.all([running, stale]);
+
+			expect(settled).toBe(true);
+			expect(breakingChangeService.detect).toHaveBeenCalledTimes(1);
+		});
+
 		it('does not sync when the fingerprint matches the current rule set', async () => {
 			givenWorkflows(2);
 			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-b', 'rule-a']));

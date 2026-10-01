@@ -50,6 +50,13 @@ export class MigrationFindingSyncService {
 	 * shows the last leader sync.
 	 */
 	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<void> {
+		// A read during a sync waits for it, so the table is never read mid-sync.
+		const ongoing = this.ongoingSyncs.get(targetVersion);
+		if (ongoing) {
+			await ongoing;
+			return;
+		}
+
 		const record = await this.syncRepository.getForVersion(targetVersion, {});
 		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
 		if (record?.ruleSetFingerprint === computeRuleSetFingerprint(ruleIds)) return;
