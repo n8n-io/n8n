@@ -17,10 +17,11 @@ function isSameTab(a: InstanceAiThreadTabRef, b: InstanceAiThreadTabRef) {
 }
 
 /**
- * The stored tabs with `tab` open: removed from the closed tabs, and added at
- * the end when it is not open yet. Returns `null` when nothing changes.
+ * The stored tabs with `tab` shown, as during a live run: removed from the
+ * closed tabs, added at the end when it is not open yet, active, and with the
+ * preview open. Returns `null` when nothing changes.
  */
-export function withOpenTab(
+export function withShownTab(
 	stored: InstanceAiThreadTabsState | null,
 	tab: ArtifactTabChange,
 ): InstanceAiThreadTabsState | null {
@@ -34,10 +35,20 @@ export function withOpenTab(
 		name,
 		...(projectId ? { projectId } : {}),
 	};
-	if (stored === null) return { tabs: [merged], closedTabs: [], activeTab: null };
+	const activeTab = { type: tab.type, id: tab.id };
+	if (stored === null) {
+		return { tabs: [merged], closedTabs: [], activeTab, previewOpen: true };
+	}
 
 	const isClosed = stored.closedTabs.some((closed) => isSameTab(closed, tab));
-	if (!isClosed && existing?.name === merged.name && existing.projectId === merged.projectId) {
+	const isShown =
+		stored.activeTab !== null && isSameTab(stored.activeTab, tab) && stored.previewOpen === true;
+	if (
+		!isClosed &&
+		isShown &&
+		existing?.name === merged.name &&
+		existing.projectId === merged.projectId
+	) {
 		return null;
 	}
 
@@ -56,17 +67,11 @@ export function withOpenTab(
 		];
 	}
 
-	const openKeys = new Set(tabs.map((open) => `${open.type}:${open.id}`));
-	const activeTab =
-		stored.activeTab && openKeys.has(`${stored.activeTab.type}:${stored.activeTab.id}`)
-			? stored.activeTab
-			: null;
-
 	return {
-		...stored,
 		tabs,
 		closedTabs: closedTabs.slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
 		activeTab,
+		previewOpen: true,
 	};
 }
 
@@ -92,12 +97,13 @@ export class InstanceAiThreadTabsService {
 	}
 
 	/**
-	 * Open the tab of an artifact the agent created or changed. A tab the user
-	 * closed opens again. The first artifact of a thread creates its stored tabs.
+	 * Show the tab of an artifact the agent created or changed, as the frontend
+	 * does during a live run. A tab the user closed opens again. The first
+	 * artifact of a thread creates its stored tabs.
 	 */
-	async openArtifactTab(threadId: string, userId: string, tab: ArtifactTabChange): Promise<void> {
+	async showArtifactTab(threadId: string, userId: string, tab: ArtifactTabChange): Promise<void> {
 		await this.threadTabsRepository.updateState(threadId, userId, (stored) =>
-			withOpenTab(this.parseStored(threadId, stored), tab),
+			withShownTab(this.parseStored(threadId, stored), tab),
 		);
 	}
 

@@ -115,7 +115,7 @@ describe('Instance AI thread tabs', () => {
 	});
 
 	it('creates the stored tabs when the agent changes the first artifact of a thread', async () => {
-		await tabsService.openArtifactTab(threadId, user.id, {
+		await tabsService.showArtifactTab(threadId, user.id, {
 			type: 'workflow',
 			id: 'wf-1',
 			name: 'First Workflow',
@@ -124,23 +124,25 @@ describe('Instance AI thread tabs', () => {
 		await expect(tabsRepository.findState(threadId, user.id)).resolves.toEqual({
 			tabs: [{ type: 'workflow', id: 'wf-1', name: 'First Workflow' }],
 			closedTabs: [],
-			activeTab: null,
+			activeTab: { type: 'workflow', id: 'wf-1' },
+			previewOpen: true,
 		});
 	});
 
-	it('reopens a closed tab when the agent changes its artifact, and keeps the rest', async () => {
-		await tabsRepository.saveState(threadId, user.id, firstState);
+	it('reopens and shows a closed tab when the agent changes its artifact, and keeps the rest', async () => {
+		await tabsRepository.saveState(threadId, user.id, { ...firstState, previewOpen: false });
 
-		await tabsService.openArtifactTab(threadId, user.id, {
+		await tabsService.showArtifactTab(threadId, user.id, {
 			type: 'agent',
 			id: 'agent-1',
 			name: 'Helper',
 		});
 
 		await expect(tabsRepository.findState(threadId, user.id)).resolves.toEqual({
-			...firstState,
 			tabs: [...firstState.tabs, { type: 'agent', id: 'agent-1', name: 'Helper' }],
 			closedTabs: [],
+			activeTab: { type: 'agent', id: 'agent-1' },
+			previewOpen: true,
 		});
 		await expect(tabsRepository.count()).resolves.toBe(1);
 	});

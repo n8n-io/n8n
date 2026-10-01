@@ -2,7 +2,7 @@ import { MAX_INSTANCE_AI_THREAD_OPEN_TABS, type InstanceAiThreadTabsState } from
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
-import { InstanceAiThreadTabsService, withOpenTab } from '../instance-ai-thread-tabs.service';
+import { InstanceAiThreadTabsService, withShownTab } from '../instance-ai-thread-tabs.service';
 import type { InstanceAiThreadTabsRepository } from '../repositories/instance-ai-thread-tabs.repository';
 
 const THREAD_ID = 'thread-1';
@@ -60,9 +60,9 @@ describe('InstanceAiThreadTabsService', () => {
 		expect(repository.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, state);
 	});
 
-	describe('openArtifactTab', () => {
+	describe('showArtifactTab', () => {
 		it('writes the stored tabs with the artifact tab open', async () => {
-			await service.openArtifactTab(THREAD_ID, USER_ID, {
+			await service.showArtifactTab(THREAD_ID, USER_ID, {
 				type: 'workflow',
 				id: 'wf-1',
 				name: 'Sync',
@@ -71,13 +71,15 @@ describe('InstanceAiThreadTabsService', () => {
 			expect(repository.updateState).toHaveBeenCalledWith(THREAD_ID, USER_ID, expect.any(Function));
 			const update = repository.updateState.mock.calls[0][2];
 			expect(update(state)).toEqual({
-				...state,
 				tabs: [...state.tabs, { type: 'workflow', id: 'wf-1', name: 'Sync' }],
+				closedTabs: [],
+				activeTab: { type: 'workflow', id: 'wf-1' },
+				previewOpen: true,
 			});
 		});
 
 		it('creates the stored tabs when none or only invalid tabs are stored', async () => {
-			await service.openArtifactTab(THREAD_ID, USER_ID, {
+			await service.showArtifactTab(THREAD_ID, USER_ID, {
 				type: 'workflow',
 				id: 'wf-1',
 				name: 'Sync',
@@ -87,7 +89,8 @@ describe('InstanceAiThreadTabsService', () => {
 			const created = {
 				tabs: [{ type: 'workflow', id: 'wf-1', name: 'Sync' }],
 				closedTabs: [],
-				activeTab: null,
+				activeTab: { type: 'workflow', id: 'wf-1' },
+				previewOpen: true,
 			};
 			expect(update(null)).toEqual(created);
 			expect(update({ tabs: 'not-an-array' })).toEqual(created);
@@ -95,7 +98,7 @@ describe('InstanceAiThreadTabsService', () => {
 	});
 });
 
-describe('withOpenTab', () => {
+describe('withShownTab', () => {
 	const stored: InstanceAiThreadTabsState = {
 		tabs: [{ type: 'workflow', id: 'wf-1', name: 'Sync' }],
 		closedTabs: [
@@ -106,24 +109,40 @@ describe('withOpenTab', () => {
 		previewOpen: true,
 	};
 
-	it('creates a state with the tab when no state is stored', () => {
-		expect(withOpenTab(null, { type: 'agent', id: 'agent-1', name: 'Helper' })).toEqual({
+	it('creates a state that shows the tab when no state is stored', () => {
+		expect(withShownTab(null, { type: 'agent', id: 'agent-1', name: 'Helper' })).toEqual({
 			tabs: [{ type: 'agent', id: 'agent-1', name: 'Helper' }],
 			closedTabs: [],
-			activeTab: null,
+			activeTab: { type: 'agent', id: 'agent-1' },
+			previewOpen: true,
 		});
 	});
 
-	it('reopens a closed tab at the end and keeps the other closed tabs', () => {
-		expect(withOpenTab(stored, { type: 'data-table', id: 'dt-1', name: 'Leads' })).toEqual({
-			...stored,
+	it('reopens a closed tab at the end, shows it, and keeps the other closed tabs', () => {
+		expect(withShownTab(stored, { type: 'data-table', id: 'dt-1', name: 'Leads' })).toEqual({
 			tabs: [...stored.tabs, { type: 'data-table', id: 'dt-1', name: 'Leads' }],
 			closedTabs: [{ type: 'agent', id: 'agent-1' }],
+			activeTab: { type: 'data-table', id: 'dt-1' },
+			previewOpen: true,
 		});
+	});
+
+	it('opens the preview of a closed preview, and makes an open tab active', () => {
+		const result = withShownTab(
+			{
+				...stored,
+				tabs: [...stored.tabs, { type: 'agent', id: 'agent-2', name: 'Bot' }],
+				activeTab: null,
+				previewOpen: false,
+			},
+			{ type: 'agent', id: 'agent-2', name: 'Bot' },
+		);
+		expect(result?.activeTab).toEqual({ type: 'agent', id: 'agent-2' });
+		expect(result?.previewOpen).toBe(true);
 	});
 
 	it('keeps an open tab in place and updates its name', () => {
-		const result = withOpenTab(
+		const result = withShownTab(
 			{ ...stored, tabs: [...stored.tabs, { type: 'agent', id: 'agent-2', name: 'Bot' }] },
 			{ type: 'workflow', id: 'wf-1', name: 'Renamed' },
 		);
@@ -133,13 +152,13 @@ describe('withOpenTab', () => {
 		]);
 	});
 
-	it('returns null when the tab is open with the same details', () => {
-		expect(withOpenTab(stored, { type: 'workflow', id: 'wf-1', name: 'Sync' })).toBeNull();
-		expect(withOpenTab(stored, { type: 'workflow', id: 'wf-1' })).toBeNull();
+	it('returns null when the tab is shown with the same details', () => {
+		expect(withShownTab(stored, { type: 'workflow', id: 'wf-1', name: 'Sync' })).toBeNull();
+		expect(withShownTab(stored, { type: 'workflow', id: 'wf-1' })).toBeNull();
 	});
 
 	it('falls back to the stored name, then the id, when the change has no name', () => {
-		expect(withOpenTab(null, { type: 'workflow', id: 'wf-9' })?.tabs).toEqual([
+		expect(withShownTab(null, { type: 'workflow', id: 'wf-9' })?.tabs).toEqual([
 			{ type: 'workflow', id: 'wf-9', name: 'wf-9' },
 		]);
 	});
@@ -150,7 +169,7 @@ describe('withOpenTab', () => {
 			id: `wf-${i}`,
 			name: `Workflow ${i}`,
 		}));
-		const result = withOpenTab(
+		const result = withShownTab(
 			{ tabs, closedTabs: [], activeTab: { type: 'workflow', id: 'wf-0' } },
 			{ type: 'agent', id: 'agent-1', name: 'Helper' },
 		);
@@ -158,6 +177,6 @@ describe('withOpenTab', () => {
 		expect(result?.tabs).toHaveLength(MAX_INSTANCE_AI_THREAD_OPEN_TABS);
 		expect(result?.tabs.at(-1)).toEqual({ type: 'agent', id: 'agent-1', name: 'Helper' });
 		expect(result?.closedTabs).toEqual([{ type: 'workflow', id: 'wf-0' }]);
-		expect(result?.activeTab).toBeNull();
+		expect(result?.activeTab).toEqual({ type: 'agent', id: 'agent-1' });
 	});
 });

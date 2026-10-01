@@ -23,10 +23,10 @@ interface PendingCall {
 }
 
 /**
- * Opens the tab of each artifact the agent creates or changes, in the stored
+ * Shows the tab of each artifact the agent creates or changes, in the stored
  * tabs of the thread owner. The frontend does the same during a live run, but
  * a run that no browser shows (a closed browser tab, a background task) must
- * still reopen a tab the user closed.
+ * still reopen a tab the user closed and open the preview.
  */
 @Service()
 export class InstanceAiArtifactTabsTracker {
@@ -96,7 +96,7 @@ export class InstanceAiArtifactTabsTracker {
 	private async openTab(threadId: string, change: ArtifactTabChange): Promise<void> {
 		const userId = await this.threadRepository.findResourceId(threadId);
 		if (!userId) return;
-		await this.threadTabsService.openArtifactTab(threadId, userId, await this.withName(change));
+		await this.threadTabsService.showArtifactTab(threadId, userId, await this.withName(change));
 	}
 
 	/** The current name of the artifact. A rename can make the name in the tool call stale. */
