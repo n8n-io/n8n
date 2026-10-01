@@ -825,6 +825,29 @@ describe('ScalingService', () => {
 					expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalledWith(expectedDeadlineMs);
 				},
 			);
+
+			it('should count the time spent pausing the queues against the shutdown window', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.generic.gracefulShutdownTimeout = 4;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				queue.pause.mockReturnValue(new Promise((resolve) => setTimeout(resolve, 1_000)));
+				queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(2_499);
+
+				expect(hasStopped).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
+			});
 		});
 	});
 
