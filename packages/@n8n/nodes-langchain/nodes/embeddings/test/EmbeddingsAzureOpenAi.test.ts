@@ -258,6 +258,51 @@ describe('AzureOpenAIEmbeddings', () => {
 				});
 			};
 
+			// The Entra branch is the one this PR adds the egress check to, so it needs its own
+			// cases. The API-key copies cannot cover it: they dial a different code path.
+			describe('credential domain restrictions', () => {
+				const restricted = {
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'allowed.example.com',
+				};
+
+				it.each([
+					[
+						'a Foundry endpoint',
+						{ endpointType: 'foundry', foundryEndpoint: 'https://evil.example.com/openai/v1' },
+					],
+					['a classic endpoint', { endpoint: 'https://evil.example.com', apiVersion: 'v1' }],
+					['a resource-derived classic host', { resourceName: 'evil', apiVersion: 'v1' }],
+				])('refuses to send the token to %s outside the allowed domains', async (_name, target) => {
+					const mockContext = setupMockContext();
+					mockContext.getCredentials.mockResolvedValue({
+						...entraCredential,
+						...restricted,
+						...target,
+					});
+					selectEntra(mockContext);
+
+					await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+						'Domain not allowed',
+					);
+				});
+
+				it('allows a host the credential permits', async () => {
+					const mockContext = setupMockContext();
+					mockContext.getCredentials.mockResolvedValue({
+						...entraCredential,
+						...restricted,
+						endpointType: 'foundry',
+						foundryEndpoint: 'https://allowed.example.com/openai/v1',
+					});
+					selectEntra(mockContext);
+
+					await expect(
+						embeddingsAzureOpenAi.supplyData.call(mockContext, 0),
+					).resolves.toBeDefined();
+				});
+			});
+
 			it('should pass a token provider to a classic deployment, and no API key', async () => {
 				const mockContext = setupMockContext();
 				mockContext.getCredentials.mockResolvedValue({
