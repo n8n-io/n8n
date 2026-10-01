@@ -1,0 +1,64 @@
+packages/testing/rules-engine/package.json
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 31-32,40-41
+  s_4d4515bb8fac55::t_a953b30d025dac 44-45
+packages/testing/containers/eslint.config.mjs
+  s_4d4515bb8fac55::t_577a1e1af7556a 4-9,11
+packages/testing/playwright/oxlint.config.mts
+  s_4d4515bb8fac55::t_09152731b2cc93 38-84
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 1-37,85
+packages/testing/rules-engine/oxlint.config.mts
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 1-8
+packages/testing/containers/package.json
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 30-31,50-53
+packages/testing/playwright/package.json
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 51-52,62
+  s_4d4515bb8fac55::t_66d42f1c9a6663 97-98
+turbo.json
+  s_4d4515bb8fac55::t_8ba374c7de74a9 83-85,125-130,143-148
+packages/testing/code-health/oxlint.config.mts
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 1-8
+scripts/lint-parity/samples.json
+  s_4d4515bb8fac55::t_c9a79b0d06ca57 383
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 381
+packages/testing/janitor/eslint.config.mjs
+  s_4d4515bb8fac55::t_577a1e1af7556a 4-6
+scripts/lint-parity/oxlint-parity.mjs
+  s_4d4515bb8fac55::t_09152731b2cc93 236-241
+  s_4d4515bb8fac55::t_c9a79b0d06ca57 67
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_b3f0aaf5f15a52 44-49
+packages/testing/code-health/eslint.config.mjs
+  s_4d4515bb8fac55::t_577a1e1af7556a 4-6
+packages/testing/code-health/package.json
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 26-27,43-44
+  s_4d4515bb8fac55::t_a953b30d025dac 48-49
+packages/testing/rules-engine/eslint.config.mjs
+  s_4d4515bb8fac55::t_577a1e1af7556a 4-6
+packages/testing/janitor/oxlint.config.mts
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 1-8
+packages/testing/janitor/package.json
+  s_4d4515bb8fac55::t_a953b30d025dac 54-55
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 26-27,49-51
+packages/testing/containers/oxlint.config.mts
+  s_4d4515bb8fac55::t_53c8b7eb030ecb 1-14
+packages/testing/playwright/eslint.config.mjs
+  s_4d4515bb8fac55::t_c9a79b0d06ca57 21,36-78
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_82951911f7b53d 7763-7768,7778-7783,7824-7835,7867-7872,7879-7884,7939-7941,8029-8034,8057-8062,8069-8074
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e55491b6a060aaa4dffd82f4d4212b579874be77",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
