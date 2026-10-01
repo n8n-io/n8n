@@ -258,6 +258,47 @@ describe('TrustedSourceDiscoveryService', () => {
 			});
 		});
 
+		it('records an error when the local server names another issuer', async () => {
+			localServer.getMetadata.mockResolvedValue({
+				issuer: 'http://localhost:5678',
+				jwks_uri: 'http://localhost:5678/jwks',
+			});
+			const src = source({
+				managedBy: 'system',
+				issuer: 'http://localhost:9999',
+				authentication: { keys: { kind: 'local-keystore' } },
+			});
+
+			await refresh(src);
+
+			expect(localServer.getJwks).not.toHaveBeenCalled();
+			const result = recorded();
+			expect(result).toEqual({
+				status: 'error',
+				lastError: expect.stringContaining('names issuer "http://localhost:5678"'),
+			});
+			expect('metadata' in result).toBe(false);
+		});
+
+		it('records an error when the local server metadata has no jwks_uri', async () => {
+			localServer.getMetadata.mockResolvedValue({ issuer: 'http://localhost:5678' });
+			const src = source({
+				managedBy: 'system',
+				issuer: 'http://localhost:5678',
+				authentication: { keys: { kind: 'local-keystore' } },
+			});
+
+			await refresh(src);
+
+			expect(localServer.getJwks).not.toHaveBeenCalled();
+			const result = recorded();
+			expect(result).toEqual({
+				status: 'error',
+				lastError: expect.stringContaining('no jwks_uri'),
+			});
+			expect('metadata' in result).toBe(false);
+		});
+
 		it('records an error when the local server is not available', async () => {
 			localServer.getMetadata.mockRejectedValue(new Error('No local authorization server'));
 			const src = source({

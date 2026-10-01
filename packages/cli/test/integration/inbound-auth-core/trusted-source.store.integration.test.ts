@@ -308,6 +308,38 @@ describe('TrustedSourceStore (integration)', () => {
 			expect((await rows.findOneByOrFail({ id: a.id })).name).toBe('Re-keyed');
 		});
 
+		it('marks a changed issuer or config unchecked and voids a running discovery lease', async () => {
+			const row = await seedRow({ status: 'error', lastError: 'old' });
+			const source = await loadSource(row.id);
+			const claimedAt = new Date();
+			expect(await store.claimDiscovery(source, claimedAt)).toBe(true);
+
+			await store.update(row.id, { issuer: 'https://moved.example.com' });
+
+			expect(
+				await store.recordDiscovery(source, claimedAt, { status: 'healthy', lastError: null }),
+			).toBe(false);
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
+				status: 'unchecked',
+				lastError: null,
+				discoveryClaimedAt: null,
+			});
+		});
+
+		it('leaves the discovery state alone when only the name changes', async () => {
+			const row = await seedRow({ status: 'healthy' });
+			const source = await loadSource(row.id);
+			const claimedAt = new Date();
+			expect(await store.claimDiscovery(source, claimedAt)).toBe(true);
+
+			await store.update(row.id, { name: 'Renamed' });
+
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({ status: 'healthy' });
+			expect(
+				await store.recordDiscovery(source, claimedAt, { status: 'healthy', lastError: null }),
+			).toBe(true);
+		});
+
 		it('revalidates the config against the row schema', async () => {
 			const row = await seedRow();
 
