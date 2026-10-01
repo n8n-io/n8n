@@ -248,6 +248,19 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(replaced.body.exporterProtocol).toBe('http/protobuf');
 		});
 
+		it('stores the exporter endpoint without surrounding whitespace', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, exporterEndpoint: `  ${validSettings.exporterEndpoint}  ` });
+
+			expect(response.status).toBe(200);
+			expect(response.body.exporterEndpoint).toBe(validSettings.exporterEndpoint);
+
+			const read = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(read.body.exporterEndpoint).toBe(validSettings.exporterEndpoint);
+		});
+
 		it('rejects an unsupported exporter protocol with 400', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -529,6 +542,22 @@ describe('OpenTelemetry settings in Public API', () => {
 			expect(response.body).toEqual({ success: false, error: '401 Unauthorized' });
 		});
 
+		it('sends the exporter endpoint to the collector without surrounding whitespace', async () => {
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send({ ...testConnection, exporterEndpoint: `  ${testConnection.exporterEndpoint}  ` });
+
+			expect(response.status).toBe(200);
+			expect(sendTestTrace).toHaveBeenCalledWith(
+				expect.objectContaining({ exporterEndpoint: testConnection.exporterEndpoint }),
+			);
+		});
+
 		it('rejects a partial body with 400', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -536,6 +565,20 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send({ exporterEndpoint: 'http://collector.example.com:4318' });
 
 			expect(response.status).toBe(400);
+		});
+
+		it('rejects an unknown field with 400', async () => {
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/otel/test-trace')
+				.send({ ...testConnection, unknown: true });
+
+			expect(response.status).toBe(400);
+			expect(sendTestTrace).not.toHaveBeenCalled();
 		});
 
 		it('accepts a connection body written before exporterProtocol existed', async () => {
@@ -562,6 +605,22 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(testConnection);
 
 			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the API key lacks the otel:manage scope', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+			const sendTestTrace = vi
+				.spyOn(Container.get(OtelService), 'sendTestTrace')
+				.mockResolvedValue({ success: true });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.post('/settings/otel/test-trace')
+				.send(testConnection);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+			expect(sendTestTrace).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -118,6 +118,10 @@ export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
 export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
+export {
+	SamlConfigurationPublicDto,
+	UpdateSamlConfigurationPublicDto,
+} from './saml/saml-configuration-public.dto';
 
 export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
 export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
@@ -465,6 +469,7 @@ export {
 	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
+export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';
 
 export * from './evaluations';
 
@@ -598,6 +603,10 @@ export {
 	OtelSettingsQueryPublicDto,
 	UpdateOtelSettingsPublicDto,
 } from './otel/otel-settings-public.dto';
+export {
+	OtelTestTraceRequestPublicDto,
+	OtelTestTraceResultPublicDto,
+} from './otel/otel-test-trace-public.dto';
 
 export {
 	PromotionChangesDto,

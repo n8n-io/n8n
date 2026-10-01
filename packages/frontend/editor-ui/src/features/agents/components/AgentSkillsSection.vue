@@ -7,6 +7,7 @@ import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabili
 import type { AgentSkill } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -46,17 +47,19 @@ const skillIssueMessages = computed(() =>
 		@add="emit('add-skill')"
 	>
 		<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-			<AgentChipButton
-				icon="book-open"
-				:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-				:invalid-reasons="skillIssueMessages.get(id) ?? []"
-				:disabled="props.disabled"
-				:class="$style.skillChip"
-				data-testid="agent-capabilities-skill-row"
-				@click="emit('open-skill', id)"
-			>
-				{{ skill.name || id }}
-			</AgentChipButton>
+			<AgentItemContextMenu :disabled="props.disabled" @remove="emit('remove-skill', id)">
+				<AgentChipButton
+					icon="book-open"
+					:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+					:invalid-reasons="skillIssueMessages.get(id) ?? []"
+					:disabled="props.disabled"
+					:class="$style.skillChip"
+					data-testid="agent-capabilities-skill-row"
+					@click="emit('open-skill', id)"
+				>
+					{{ skill.name || id }}
+				</AgentChipButton>
+			</AgentItemContextMenu>
 		</div>
 	</AgentChipRow>
 </template>
