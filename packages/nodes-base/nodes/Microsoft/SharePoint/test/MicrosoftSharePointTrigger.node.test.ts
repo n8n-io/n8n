@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { MicrosoftSharePointTrigger } from '../MicrosoftSharePointTrigger.node';
 import { getDrives } from '../drive';
+import { getLists } from '../list';
 import { getSites } from '../site';
 import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../transport';
 import { microsoftApiRequestDelta } from '../transport/delta';
@@ -110,11 +111,31 @@ describe('Microsoft SharePoint Trigger', () => {
 			expect(list?.typeOptions?.searchListMethod).toBe(method);
 		});
 
-		it('registers both pickers on the node', () => {
+		it('registers every picker on the node', () => {
 			const { methods } = new MicrosoftSharePointTrigger();
 
 			expect(methods.listSearch.getSites).toBe(getSites);
 			expect(methods.listSearch.getDrives).toBe(getDrives);
+			expect(methods.listSearch.getLists).toBe(getLists);
+		});
+
+		it('offers a choice between a document library and a list', () => {
+			const resource = description.properties.find((p) => p.name === 'resource');
+
+			expect(resource?.type).toBe('options');
+			expect(resource?.default).toBe('documentLibrary');
+			expect((resource?.options ?? []).map((o) => ('value' in o ? o.value : undefined))).toEqual([
+				'documentLibrary',
+				'list',
+			]);
+		});
+
+		it.each([
+			['drive', 'documentLibrary'],
+			['list', 'list'],
+		])('shows %s only for the %s resource', (field, resource) => {
+			expect(locator(field)?.displayOptions?.show?.resource).toEqual([resource]);
+			expect(locator(field)?.displayOptions?.hide?.site).toEqual(['']);
 		});
 
 		it('hides the library until a site is chosen', () => {
@@ -194,6 +215,8 @@ describe('Microsoft SharePoint Trigger', () => {
 				mode?: 'manual' | 'trigger';
 				state?: PollState;
 				drive?: { mode: string; value: string };
+				list?: { mode: string; value: string };
+				resource?: 'documentLibrary' | 'list';
 				events?: SharePointEvent[];
 			} = {},
 		) => {
@@ -206,8 +229,10 @@ describe('Microsoft SharePoint Trigger', () => {
 			ctx.logger = mock<IPollFunctions['logger']>();
 			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
 				if (name === 'site') return { mode: 'list', value: 'site-1' } as never;
+				if (name === 'resource') return (overrides.resource ?? 'documentLibrary') as never;
 				if (name === 'drive')
 					return (overrides.drive ?? { mode: 'list', value: 'drive-1' }) as never;
+				if (name === 'list') return (overrides.list ?? { mode: 'list', value: 'list-1' }) as never;
 				if (name === 'events') return (overrides.events ?? ['changed', 'deleted']) as never;
 				if (name === 'authentication') return 'microsoftOAuth2Api' as never;
 				return fallback as never;
@@ -358,6 +383,48 @@ describe('Microsoft SharePoint Trigger', () => {
 			await poll();
 
 			expect(state.errorKey).toBeUndefined();
+		});
+
+		it('drains the list feed when watching a list', async () => {
+			const { poll } = pollSetup({ resource: 'list' });
+			deltaRequest.mockResolvedValue({ items: [], deltaLink: 'https://x', drained: true });
+
+			await poll();
+
+			expect(deltaRequest.mock.calls[0][0]).toMatchObject({
+				feed: 'listItem',
+				siteId: 'site-1',
+				listId: 'list-1',
+			});
+		});
+
+		it('classifies list entries by content type, not by a facet the feed lacks', async () => {
+			const { poll } = pollSetup({ resource: 'list' });
+			const item = { id: 'i', contentType: { name: 'Item' } };
+			deltaRequest.mockResolvedValue({
+				items: [item, { id: 'f', contentType: { name: 'Folder' } }],
+				deltaLink: 'https://x',
+				drained: true,
+			});
+
+			expect(await poll()).toEqual([[{ json: item }]]);
+		});
+
+		it('drops the stored position when the watched resource changes', async () => {
+			deltaRequest.mockResolvedValue({ items: [], deltaLink: 'https://lib', drained: true });
+			const shared: PollState = {};
+
+			await pollSetup({ state: shared }).poll();
+			await pollSetup({ state: shared, resource: 'list' }).poll();
+
+			expect(deltaRequest.mock.calls[1][0].cursor).toEqual({ kind: 'latest' });
+		});
+
+		it('names the list, not the library, when a watched list is gone', async () => {
+			const { poll } = pollSetup({ mode: 'manual', resource: 'list' });
+			deltaRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { statusCode: 404 }));
+
+			await expect(poll()).rejects.toThrow('The list being watched is no longer reachable');
 		});
 
 		it('rejects a list ID handed to the library field by expression', async () => {

@@ -16,8 +16,12 @@ export type PollState = {
 	errorAt?: number;
 };
 
-export const scopeOf = (credentialType: string, siteId: string, driveId: string): string =>
-	`${credentialType}|${siteId}|${driveId}`;
+export const scopeOf = (
+	credentialType: string,
+	resource: string,
+	siteId: string,
+	targetId: string,
+): string => `${credentialType}|${resource}|${siteId}|${targetId}`;
 
 /**
  * A stored link is reused only while the scope is unchanged. Resuming another

@@ -1,7 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 
 import { classifyEntry, collapseById, selectChanges } from '../../trigger/changes';
-import type { SharePointEvent } from '../../trigger/changes';
+import type { DeltaFeed, SharePointEvent } from '../../trigger/changes';
 
 describe('SharePoint trigger: delta entries', () => {
 	describe('classifyEntry', () => {
@@ -18,9 +18,46 @@ describe('SharePoint trigger: delta entries', () => {
 			['the drive root', undefined, { id: '1', root: {}, folder: {} }],
 			['an entry carrying neither facet', undefined, { id: '1' }],
 		] as Array<[string, SharePointEvent | undefined, IDataObject]>)(
-			'reads %s as %s',
+			'on the drive feed, reads %s as %s',
 			(_name, expected, entry) => {
-				expect(classifyEntry(entry)).toBe(expected);
+				expect(classifyEntry(entry, 'driveItem')).toBe(expected);
+			},
+		);
+
+		it.each([
+			// The list feed carries no file or folder facet at all, so the content
+			// type is the only thing identifying a folder, alive or deleted.
+			['a changed item', 'changed', { id: '1', contentType: { name: 'Item' } }],
+			['a changed document', 'changed', { id: '1', contentType: { name: 'Document' } }],
+			[
+				'a deleted document',
+				'deleted',
+				{ id: '1', contentType: { name: 'Document' }, deleted: { state: 'deleted' } },
+			],
+			['a folder', undefined, { id: '1', contentType: { name: 'Folder' } }],
+			[
+				'a deleted folder',
+				undefined,
+				{ id: '1', contentType: { name: 'Folder' }, deleted: { state: 'deleted' } },
+			],
+			// A generic list item can arrive with no content type selected at all.
+			['an item with no content type', 'changed', { id: '1' }],
+		] as Array<[string, SharePointEvent | undefined, IDataObject]>)(
+			'on the list feed, reads %s as %s',
+			(_name, expected, entry) => {
+				expect(classifyEntry(entry, 'listItem')).toBe(expected);
+			},
+		);
+
+		it.each([
+			// The drive feed has no contentType and the list feed has no facets, so
+			// reading the wrong one would drop or admit entries wholesale.
+			['driveItem', { id: '1', contentType: { name: 'Item' } }, undefined],
+			['listItem', { id: '1', file: {} }, 'changed'],
+		] as Array<[DeltaFeed, IDataObject, SharePointEvent | undefined]>)(
+			'on %s, ignores the other feed shape',
+			(feed, entry, expected) => {
+				expect(classifyEntry(entry, feed)).toBe(expected);
 			},
 		);
 	});
@@ -55,7 +92,9 @@ describe('SharePoint trigger: delta entries', () => {
 			[['deleted'], ['d']],
 			[[], []],
 		] as Array<[SharePointEvent[], string[]]>)('with %j selected, emits %j', (events, ids) => {
-			expect(selectChanges([changed, deleted, folder], events).map((e) => e.id)).toEqual(ids);
+			expect(
+				selectChanges([changed, deleted, folder], events, 'driveItem').map((e) => e.id),
+			).toEqual(ids);
 		});
 
 		it('emits the entry exactly as the feed sent it', () => {
@@ -67,7 +106,7 @@ describe('SharePoint trigger: delta entries', () => {
 				parentReference: { id: 'p', driveId: 'd' },
 			};
 
-			expect(selectChanges([entry], ['changed'])[0]).toEqual(entry);
+			expect(selectChanges([entry], ['changed'], 'driveItem')[0]).toEqual(entry);
 		});
 
 		it('collapses a repeated id first, so one file makes one event', () => {
@@ -76,7 +115,9 @@ describe('SharePoint trigger: delta entries', () => {
 				{ id: 'c', file: {}, name: 'v2' },
 			];
 
-			expect(selectChanges(entries, ['changed'])).toEqual([{ id: 'c', file: {}, name: 'v2' }]);
+			expect(selectChanges(entries, ['changed'], 'driveItem')).toEqual([
+				{ id: 'c', file: {}, name: 'v2' },
+			]);
 		});
 	});
 });
