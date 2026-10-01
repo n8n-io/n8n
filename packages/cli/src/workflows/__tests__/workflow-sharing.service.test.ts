@@ -2,7 +2,7 @@ import type { Logger, LicenseState } from '@n8n/backend-common';
 import type { ProjectRelationRepository, SharedWorkflowRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { WorkflowSharingService } from '../workflow-sharing.service';
 

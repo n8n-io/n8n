@@ -20,6 +20,7 @@ const stopGeneratingMock = vi.fn();
 const detachStreamMock = vi.fn();
 const loadHistoryMock = vi.fn();
 const refreshMock = vi.fn();
+const resumeMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
@@ -94,6 +95,7 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nApprovalCard: (await importOriginal<typeof import('@n8n/design-system')>()).N8nApprovalCard,
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
 	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
@@ -223,7 +225,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			sendMessage: sendMessageMock,
 			stopGenerating: stopGeneratingMock,
 			detachStream: detachStreamMock,
-			resume: vi.fn(),
+			resume: resumeMock,
 			cancelAndSteer: cancelAndSteerMock,
 			dismissFatalError: vi.fn(),
 		};
@@ -558,17 +560,26 @@ describe('AgentChatPanel', () => {
 			suspendPayload: {
 				type: 'approval',
 				toolName: 'send_email',
+				supportsSessionApproval: true,
 				args: { to: 'team@example.com' },
 			},
 		};
 
-		it.each([true, false])(
-			'sends approved=%s to the selected child while the parent streams',
-			async (approved) => {
-				backgroundJobsMock.value = [
-					{ ...job, status: 'suspended', approval },
-					{ ...job, id: 'job-2', title: 'Other child' },
-				];
+		it.each([
+			{ action: 'allow-once', decision: { approved: true } },
+			{ action: 'deny', decision: { approved: false } },
+			{ action: 'always-allow', decision: { approved: true, scope: 'session' } },
+		])(
+			'shows one child approval at a time and forwards $action while the parent streams',
+			async ({ action, decision }) => {
+				const nextJob: AgentBackgroundJobDto = {
+					...job,
+					id: 'job-2',
+					title: 'Other child',
+					status: 'suspended',
+					approval: { ...approval, runId: 'background-job-job-2', toolCallId: 'gate-2' },
+				};
+				backgroundJobsMock.value = [{ ...job, status: 'suspended', approval }, nextJob];
 				isStreamingMock.value = true;
 				let finishResponse!: () => void;
 				respondToApprovalMock.mockReturnValueOnce(
@@ -577,24 +588,39 @@ describe('AgentChatPanel', () => {
 					}),
 				);
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
+				expect(wrapper.text()).not.toContain('Approval for Other child');
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 				expect(wrapper.text()).toContain('Approval for Check escalations');
 				expect(wrapper.text()).toContain('Other child');
-				const button = wrapper.get(
-					`[data-testid="agent-approval-${approved ? 'approve' : 'reject'}"]`,
-				);
+				const button = wrapper.get(`[data-test-id="approval-card-${action}"]`);
 				await button.trigger('click');
 				expect(button.attributes('disabled')).toBeDefined();
 				expect(respondToApprovalMock).toHaveBeenCalledExactlyOnceWith({
 					runId: approval.runId,
 					toolCallId: approval.toolCallId,
-					resumeData: { approved },
+					resumeData: decision,
 				});
 				finishResponse();
 				await flushPromises();
 				expect(isStreamingMock.value).toBe(true);
 				expect(stopGeneratingMock).not.toHaveBeenCalled();
 				expect(sendMessageMock).not.toHaveBeenCalled();
+				backgroundJobsMock.value = [job, nextJob];
+				await nextTick();
+				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
+				expect(wrapper.text()).toContain('Approval for Other child');
+				expect(wrapper.text()).not.toContain('Approval for Check escalations');
+				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+				await wrapper.get(`[data-test-id="approval-card-${action}"]`).trigger('click');
+				expect(respondToApprovalMock).toHaveBeenNthCalledWith(2, {
+					runId: 'background-job-job-2',
+					toolCallId: 'gate-2',
+					resumeData: decision,
+				});
+				backgroundJobsMock.value = [job];
+				await nextTick();
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
 				wrapper.unmount();
 			},
@@ -608,7 +634,7 @@ describe('AgentChatPanel', () => {
 				respondToApprovalMock.mockReturnValueOnce(response.promise);
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
-				const button = wrapper.get('[data-testid="agent-approval-approve"]');
+				const button = wrapper.get('[data-test-id="approval-card-allow-once"]');
 				await button.trigger('click');
 				if (state === 'hidden') await wrapper.setProps({ visible: false });
 				if (state === 'switched') await wrapper.setProps({ continueSessionId: 't2' });
@@ -1329,27 +1355,100 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
-	it('keeps chat enabled when the interactive card is resolved', () => {
-		messagesMock.value = [
-			{
-				...openInteractiveMessage(),
-				status: 'success',
-				interactive: {
-					toolName: APPROVAL_TOOL_NAME,
+	it.each([
+		{ action: 'allow-once', decision: { approved: true } },
+		{ action: 'deny', decision: { approved: false } },
+		{ action: 'always-allow', decision: { approved: true, scope: 'session' } },
+	])(
+		'replaces the composer until $action resolves, then restores its draft and focus',
+		async ({ action, decision }) => {
+			const wrapper = mountPanel({}, document.body);
+			try {
+				const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+				composer.vm.$emit('update:modelValue', 'Keep this draft');
+				const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+				composer.vm.$emit('files-selected', [file]);
+				messagesMock.value = [
+					{
+						...openInteractiveMessage(),
+						interactive: {
+							toolName: APPROVAL_TOOL_NAME,
+							toolCallId: 'tc-1',
+							runId: 'run-1',
+							input: {
+								type: 'approval',
+								toolName: 'send_message',
+								args: {},
+								supportsSessionApproval: true,
+							},
+						},
+					},
+				];
+				await nextTick();
+				const approvals = wrapper.get('[data-testid="agent-chat-approvals"]');
+				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+				expect(document.activeElement).toBe(approvals.get('[role="listbox"]').element);
+				await approvals.get(`[data-test-id="approval-card-${action}"]`).trigger('click');
+				expect(resumeMock).toHaveBeenCalledExactlyOnceWith({
+					runId: 'run-1',
 					toolCallId: 'tc-1',
-					resolvedAt: 1,
-					input: { type: 'approval', toolName: 'send_message', args: {} },
-					resolvedValue: { approved: true },
+					resumeData: decision,
+				});
+
+				messagesMock.value[0].interactive!.resolvedAt = 1;
+				await flushPromises();
+				expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(false);
+				const restoredComposer = wrapper.findComponent({ name: 'ChatInputBase' });
+				expect(restoredComposer.props('modelValue')).toBe('Keep this draft');
+				expect(document.activeElement).toBe(restoredComposer.get('textarea').element);
+				restoredComposer.vm.$emit('submit');
+				await flushPromises();
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'Keep this draft',
+					[file],
+					expect.any(Function),
+				);
+			} finally {
+				wrapper.unmount();
+			}
+		},
+	);
+
+	it.each(['resolved', 'stale', 'previous turn'] as const)(
+		'keeps the composer available for a %s approval',
+		(state) => {
+			messagesMock.value = [
+				{
+					...openInteractiveMessage(),
+					status: 'success',
+					interactive: {
+						toolName: APPROVAL_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: state === 'stale' ? undefined : 'run-1',
+						resolvedAt: state === 'resolved' ? 1 : undefined,
+						input: { type: 'approval', toolName: 'send_message', args: {} },
+						resolvedValue: { approved: true },
+					},
 				},
-			},
-		];
+			];
+			if (state === 'previous turn') {
+				messagesMock.value.push({
+					id: 'assistant-2',
+					role: 'assistant',
+					content: 'Done',
+					status: 'success',
+				});
+			}
 
-		const wrapper = mountPanel();
-		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+			const wrapper = mountPanel();
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('disabled')).toBe(false);
-		expect(chatInput.props('placeholder')).toBe('Message Agent…');
-	});
+			expect(chatInput.props('disabled')).toBe(false);
+			expect(chatInput.props('placeholder')).toBe('Message Agent…');
+			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
 		messagesMock.value = [openInteractiveMessage()];

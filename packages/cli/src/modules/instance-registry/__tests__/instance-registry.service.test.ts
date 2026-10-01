@@ -235,60 +235,45 @@ describe('InstanceRegistryService', () => {
 				}),
 			);
 		});
+
+		it('should not start a heartbeat timer', async () => {
+			service = createService();
+			await service.init();
+			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
+			const heartbeatSpy = vi.spyOn(storage, 'heartbeat');
+
+			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
+
+			expect(heartbeatSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('heartbeat', () => {
-		it('should update storage after heartbeat interval', async () => {
+		it('should refresh lastSeen in storage', async () => {
 			service = createService();
 			await service.init();
+			const [before] = await service.getAllInstances();
 
-			const regBefore = await service.getAllInstances();
-			const lastSeenBefore = regBefore[0].lastSeen;
+			vi.advanceTimersByTime(1_000);
+			await service.heartbeat();
 
-			// Advance past heartbeat interval
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			const regAfter = await service.getAllInstances();
-			expect(regAfter[0].lastSeen).toBeGreaterThanOrEqual(lastSeenBefore);
+			const [after] = await service.getAllInstances();
+			expect(after.lastSeen).toBeGreaterThan(before.lastSeen);
 		});
 
 		it('should preserve registeredAt across heartbeats', async () => {
 			service = createService();
 			await service.init();
+			const [before] = await service.getAllInstances();
 
-			const regBefore = await service.getAllInstances();
-			const registeredAt = regBefore[0].registeredAt;
+			vi.advanceTimersByTime(1_000);
+			await service.heartbeat();
 
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			const regAfter = await service.getAllInstances();
-			expect(regAfter[0].registeredAt).toBe(registeredAt);
+			const [after] = await service.getAllInstances();
+			expect(after.registeredAt).toBe(before.registeredAt);
 		});
 
-		it('should continue after heartbeat failure', async () => {
-			service = createService();
-			await service.init();
-
-			// Access the storage via getAllInstances to get a reference for spying
-			// We need to spy on the storage's heartbeat method
-			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
-			const heartbeatSpy = vi
-				.spyOn(storage, 'heartbeat')
-				.mockRejectedValueOnce(new Error('Redis down'));
-
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			expect(logger.warn).toHaveBeenCalledWith('Heartbeat failed', expect.any(Object));
-
-			// Restore and verify heartbeat continues
-			heartbeatSpy.mockRestore();
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			const regs = await service.getAllInstances();
-			expect(regs).toHaveLength(1);
-		});
-
-		it('should reflect instanceRole changes in heartbeat', async () => {
+		it('should write the live instanceRole to storage', async () => {
 			const settings = makeInstanceSettings({ instanceRole: 'unset' });
 			service = new InstanceRegistryService(
 				settings,
@@ -298,35 +283,26 @@ describe('InstanceRegistryService', () => {
 			);
 			await service.init();
 
-			// Simulate role change (e.g., leader election completed)
-			Object.defineProperty(settings, 'instanceRole', {
-				value: 'leader',
-				writable: true,
-			});
+			Object.defineProperty(settings, 'instanceRole', { value: 'leader', writable: true });
+			await service.heartbeat();
 
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
+			const [registration] = await service.getAllInstances();
+			expect(registration.instanceRole).toBe('leader');
+		});
 
-			const local = service.getLocalInstance();
-			expect(local.instanceRole).toBe('leader');
+		it('should let a storage failure reach the caller', async () => {
+			service = createService();
+			await service.init();
+			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
+			const error = new Error('Redis down');
+			vi.spyOn(storage, 'heartbeat').mockRejectedValueOnce(error);
+
+			await expect(service.heartbeat()).rejects.toBe(error);
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('shutdown', () => {
-		it('should stop heartbeat timer', async () => {
-			service = createService();
-			await service.init();
-
-			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
-
-			await service.shutdown();
-
-			const heartbeatSpy = vi.spyOn(storage, 'heartbeat');
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
-
-			expect(heartbeatSpy).not.toHaveBeenCalled();
-			heartbeatSpy.mockRestore();
-		});
-
 		it('should unregister from storage', async () => {
 			service = createService();
 			await service.init();
@@ -390,6 +366,21 @@ describe('InstanceRegistryService', () => {
 			const local = service.getLocalInstance();
 			expect(local.hostId).toBe('main-local');
 			expect(local.schemaVersion).toBe(1);
+		});
+
+		it('should read the live instanceRole when building the local registration', async () => {
+			const settings = makeInstanceSettings({ instanceRole: 'unset' });
+			service = new InstanceRegistryService(
+				settings,
+				makeExecutionsConfig(),
+				makeScalingModeConfig(),
+				logger,
+			);
+			await service.init();
+
+			Object.defineProperty(settings, 'instanceRole', { value: 'leader', writable: true });
+
+			expect(service.getLocalInstance().instanceRole).toBe('leader');
 		});
 
 		it('getLastKnownState should delegate to storage', async () => {

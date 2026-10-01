@@ -60,6 +60,7 @@ import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-exe
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
+import type { AgentToolApprovalService } from '@/modules/agents/agent-tool-approval.service';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -252,6 +253,7 @@ describe('AgentExecutionRepository', () => {
 				chatExecutionService,
 				queue,
 				steering,
+				mock<AgentToolApprovalService>(),
 			),
 		};
 	}
@@ -470,7 +472,14 @@ describe('AgentExecutionRepository', () => {
 					storage,
 				);
 				const runner = new SubAgentBackgroundRunner(
-					new SubAgentRunner(sourceResolver, turns, storage, mockLogger(), new AiConfig()),
+					new SubAgentRunner(
+						sourceResolver,
+						turns,
+						storage,
+						mockLogger(),
+						new AiConfig(),
+						mock<AgentToolApprovalService>(),
+					),
 					service,
 					mockLogger(),
 					jobs,
