@@ -126,6 +126,8 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
+	private requestTimesOutAt = new WeakMap<NodeJS.Timeout, number>();
+
 	/** Request IDs that have already logged a task-type mismatch warning */
 	private mismatchWarned = new Set<string>();
 
@@ -147,9 +149,15 @@ export class TaskBroker {
 	}
 
 	private createRequestTimeout(requestId: string): NodeJS.Timeout {
-		return setTimeout(() => {
+		const now = Date.now();
+		const requestTimeoutMs =
+			this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds;
+		const timesOutAt = Math.min(now + requestTimeoutMs, this.shutdownDeadline ?? Infinity);
+		const timeout = setTimeout(() => {
 			this.handleRequestTimeout(requestId);
-		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+		}, timesOutAt - now);
+		this.requestTimesOutAt.set(timeout, timesOutAt);
+		return timeout;
 	}
 
 	/**
@@ -1019,6 +1027,15 @@ export class TaskBroker {
 				Math.max(deadline - Date.now(), 0),
 			);
 			cappedTaskIds.push(taskId);
+		}
+
+		for (const request of this.pendingTaskRequests) {
+			if (!request.timeout) continue;
+			const timesOutAt = this.requestTimesOutAt.get(request.timeout);
+			if (timesOutAt !== undefined && timesOutAt <= deadline) continue;
+
+			clearTimeout(request.timeout);
+			request.timeout = this.createRequestTimeout(request.requestId);
 		}
 
 		if (cappedTaskIds.length > 0) {
