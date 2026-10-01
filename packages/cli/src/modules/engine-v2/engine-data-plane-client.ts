@@ -16,13 +16,15 @@ import type {
 } from '@n8n/engine';
 import { mintIdentityToken } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
-import type {
-	CancelExecutionOutcome,
-	EngineDataPlaneProvider,
+import {
+	EngineDidNotAdmitError,
+	EngineRejectedWorkflowError,
+	type CancelExecutionOutcome,
+	type EngineDataPlaneProvider,
 } from '@/services/engine-data-plane-proxy.service';
 
 /** Must match the engine's `ExecutionStatus`. */
@@ -171,13 +173,16 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		const detail = reason ?? error;
 		const suffix = detail ? `: ${detail}` : '';
 
+		// The engine answers 400, 429 and 501 before it saves the execution.
 		switch (statusCode) {
 			case 400:
-				return new UserError(`Engine rejected the workflow${suffix}`);
+				return new EngineRejectedWorkflowError(`Engine rejected the workflow${suffix}`);
 			case 429:
-				return new OperationalError(`Engine did not admit the execution${suffix}`);
+				return new EngineDidNotAdmitError(`Engine did not admit the execution${suffix}`);
 			case 501:
-				return new UserError(`Engine does not support this workflow yet${suffix}`);
+				return new EngineRejectedWorkflowError(
+					`Engine does not support this workflow yet${suffix}`,
+				);
 			default:
 				return new OperationalError(`Engine responded with ${statusCode}${suffix}`);
 		}

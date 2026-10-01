@@ -17,7 +17,7 @@ clear, when to stay silent, what never to say — lives once in
 | `backend/`  | Backend  | `cli`, `@n8n/db`, `core`, `workflow`, node packages |
 | `db-migrations/` | DB migrations | `@n8n/db` migrations + their tests in `cli` |
 | `frontend/` | Frontend | `packages/frontend`                                 |
-| `qa-dx/`    | QA & DX  | `.github`, `docker`, `scripts`, `patches`, `packages/testing`, the lint/test/TS config packages, baselines |
+| `qa-dx/`    | QA & DX  | `.github`, `docker`, `scripts`, `patches`, `packages/quality`, the lint/test/TS config packages, baselines |
 | `testing/`  | Backend + Frontend | any package with a test suite            |
 
 A directory maps to one agent unless, like `testing/`, the policy is identical

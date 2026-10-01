@@ -4418,6 +4418,7 @@ export class InstanceAiService {
 			// a follow-up segment that skips the preferences path.
 			if (aiPreferencesTurn) {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
+					user_id: user.id,
 					count: aiPreferencesTurn.payload.preferences.length,
 					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
 					rendered_length: aiPreferencesTurn.payload.renderedLength,

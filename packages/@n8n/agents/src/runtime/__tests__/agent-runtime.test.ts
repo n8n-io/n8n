@@ -7,20 +7,32 @@ import { z } from 'zod';
 
 import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { Agent } from '../../sdk/agent';
+import { getModelCost } from '../../sdk/catalog';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
-import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
 import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
-import type { ExecutionOptions, StreamChunk } from '../../types/sdk/agent';
+import type { ExecutionOptions, GenerateResult, StreamChunk } from '../../types/sdk/agent';
+import type {
+	GuardrailDecision,
+	GuardrailsOptions,
+	ModelGuardrail,
+} from '../../types/sdk/guardrail';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
+import type {
+	BuiltTool,
+	InterruptibleToolContext,
+	ToolContext,
+	ToolApprovalContext,
+} from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
+import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
@@ -1418,6 +1430,416 @@ describe('AgentRuntime — empty stop turn retry', () => {
 		await runtime.generate('hi');
 
 		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('AgentRuntime — guardrails', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const stopDecision = (code: string): GuardrailDecision => ({ action: 'stop', code });
+
+	type GuardrailSpies = {
+		[K in keyof Required<ModelGuardrail>]: MockedFunction<NonNullable<ModelGuardrail[K]>>;
+	};
+
+	/** A hook whose every method is a spy. `before`/`beforeTool` allow unless overridden. */
+	function makeGuardrail(overrides: Partial<GuardrailSpies> = {}): GuardrailSpies {
+		return {
+			before: vi.fn<NonNullable<ModelGuardrail['before']>>().mockResolvedValue({ action: 'allow' }),
+			after: vi.fn<NonNullable<ModelGuardrail['after']>>().mockResolvedValue(undefined),
+			beforeTool: vi
+				.fn<NonNullable<ModelGuardrail['beforeTool']>>()
+				.mockResolvedValue({ action: 'allow' }),
+			afterTool: vi.fn<NonNullable<ModelGuardrail['afterTool']>>().mockResolvedValue(undefined),
+			...overrides,
+		};
+	}
+
+	function guardrailsOption(hook: ModelGuardrail): GuardrailsOptions {
+		return { hooks: [hook], agentId: 'agent-1', threadId: 'thread-1' };
+	}
+
+	/** A `stop` turn with no output; the loop retries it. */
+	function makeGenerateEmpty() {
+		return {
+			finishReason: 'stop',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		};
+	}
+
+	function createRuntimeWithEchoTool(handler: (input: { v: string }) => Promise<unknown>) {
+		const echoTool = new ToolBuilder('echo')
+			.description('Echo the input')
+			.input(z.object({ v: z.string() }))
+			.handler(handler)
+			.build();
+		return new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [echoTool],
+			checkpointStorage: 'memory',
+		});
+	}
+
+	function findToolCallBlock(messages: GenerateResult['messages']): ContentToolCall {
+		const assistantMsg = messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+	}
+
+	it('ends a generate run with finishReason guardrail when before() stops', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).not.toHaveBeenCalled();
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'test.stop' });
+		expect(result.error).toBeUndefined();
+		expect(hook.after).not.toHaveBeenCalled();
+	});
+
+	it('ends a stream run with a finish chunk that carries the guardrail stop', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('hi', { guardrails: guardrailsOption(hook) });
+		const chunks = await collectChunks(stream);
+
+		expect(streamText).not.toHaveBeenCalled();
+		const finish = chunks[chunks.length - 1];
+		expect(finish).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'test.stop' },
+		});
+		expect(chunks.some((c) => c.type === 'text-delta')).toBe(false);
+	});
+
+	it('reports canContinue false at the completing boundary after a guardrail stop', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+		const boundaries: Array<{ completing: boolean; canContinue: boolean }> = [];
+
+		const result = await runtime.generate('hi', {
+			guardrails: guardrailsOption(hook),
+			onInputBoundary: async (boundary) => {
+				boundaries.push({ completing: boundary.completing, canContinue: boundary.canContinue });
+				return [];
+			},
+		});
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(generateText).not.toHaveBeenCalled();
+		// The run's first boundary, then one completing boundary after the stop.
+		// The loop ends there instead of draining queued input per iteration.
+		expect(boundaries).toEqual([
+			{ completing: false, canContinue: true },
+			{ completing: true, canContinue: false },
+		]);
+	});
+
+	it('ends the run even when a boundary returns input after a guardrail stop', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+		const steered: AgentDbMessage = {
+			id: 'steered-input',
+			createdAt: new Date(),
+			role: 'user',
+			content: [{ type: 'text', text: 'queued while stopping' }],
+		};
+		const onInputBoundary = vi.fn(async () => [structuredClone(steered)]);
+
+		const result = await runtime.generate('hi', {
+			guardrails: guardrailsOption(hook),
+			onInputBoundary,
+		});
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'test.stop' });
+		expect(generateText).not.toHaveBeenCalled();
+		expect(onInputBoundary).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not start the next model call after a turn spends the session cap', async () => {
+		vi.mocked(getModelCost).mockResolvedValueOnce({ input: 1_000_000, output: 1_000_000 });
+		streamText.mockReturnValueOnce({
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'using tool' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'echo',
+								args: { v: 'x' },
+								input: { v: 'x' },
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'echo', input: { v: 'x' } }]),
+		});
+		const runtime = createRuntimeWithEchoTool(async () => ({ ok: true }));
+		const hook = createBudgetGuardrail({
+			ledger: new InMemorySpendLedger(),
+			sessionId: 'session-1',
+			sessionCostCapUsd: 1,
+		});
+
+		const { stream } = await runtime.stream('hi', { guardrails: { hooks: [hook] } });
+		const chunks = await collectChunks(stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.session' },
+		});
+	});
+
+	it('calls before() and after() once with the same context when the call is allowed', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail();
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.guardrail).toBeUndefined();
+		expect(hook.before).toHaveBeenCalledTimes(1);
+		expect(hook.after).toHaveBeenCalledTimes(1);
+
+		const [beforeCtx] = hook.before.mock.calls[0];
+		const [afterCtx, usage] = hook.after.mock.calls[0];
+		expect(afterCtx).toBe(beforeCtx);
+		expect(beforeCtx).toMatchObject({
+			callId: expect.any(String),
+			source: 'turn',
+			model: 'openai/gpt-4o-mini',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+		expect(usage).toMatchObject({ promptTokens: 10, completionTokens: 5, totalTokens: 15 });
+	});
+
+	it('checks each empty-turn retry as a new call', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+		const hook = makeGuardrail();
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(hook.before).toHaveBeenCalledTimes(2);
+		expect(hook.after).toHaveBeenCalledTimes(2);
+		const [first] = hook.before.mock.calls[0];
+		const [second] = hook.before.mock.calls[1];
+		expect(first.callId).not.toBe(second.callId);
+	});
+
+	it('ends the run when a guardrail stops the empty-turn retry', async () => {
+		generateText.mockResolvedValue(makeGenerateEmpty());
+		const before = vi
+			.fn<NonNullable<ModelGuardrail['before']>>()
+			.mockResolvedValueOnce({ action: 'allow' })
+			.mockResolvedValueOnce(stopDecision('test.retry'));
+		const hook = makeGuardrail({ before });
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'test.retry' });
+		expect(hook.after).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a tool call when beforeTool() stops and lets the model continue', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Understood'));
+		const handler = vi.fn(async ({ v }: { v: string }) => await Promise.resolve({ echoed: v }));
+		const hook = makeGuardrail({
+			beforeTool: vi.fn().mockResolvedValue(stopDecision('tool.stop')),
+		});
+		const runtime = createRuntimeWithEchoTool(handler);
+
+		const result = await runtime.generate('go', { guardrails: guardrailsOption(hook) });
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(hook.afterTool).not.toHaveBeenCalled();
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(result.guardrail).toBeUndefined();
+
+		const call = findToolCallBlock(result.messages);
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('tool.stop');
+	});
+
+	it('passes the handler result to afterTool() when the tool call is allowed', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'echo', { v: 'x' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail();
+		const runtime = createRuntimeWithEchoTool(
+			async ({ v }) => await Promise.resolve({ echoed: v }),
+		);
+
+		const result = await runtime.generate('go', { guardrails: guardrailsOption(hook) });
+
+		expect(result.finishReason).toBe('stop');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.afterTool).toHaveBeenCalledTimes(1);
+
+		const [beforeCtx] = hook.beforeTool.mock.calls[0];
+		const [afterCtx, toolResult] = hook.afterTool.mock.calls[0];
+		expect(beforeCtx).toMatchObject({
+			toolCallId: 'tc-1',
+			toolName: 'echo',
+			input: { v: 'x' },
+			runId: expect.any(String),
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+		});
+		expect(afterCtx).toBe(beforeCtx);
+		expect(toolResult).toEqual({ echoed: 'x' });
+	});
+
+	it('does not run beforeTool() again when a suspended tool resumes', async () => {
+		const approvalTool = new ToolBuilder('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.requireApproval()
+			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
+			.build();
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'delete', { id: 'rec-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const hook = makeGuardrail();
+		const guardrails = guardrailsOption(hook);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [approvalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const firstResult = await runtime.generate('Delete record rec-1', { guardrails });
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.afterTool).not.toHaveBeenCalled();
+
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, guardrails },
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.afterTool).toHaveBeenCalledTimes(1);
+		const [, toolResult] = hook.afterTool.mock.calls[0];
+		expect(toolResult).toEqual({ deleted: 'rec-1' });
+	});
+
+	it('checks an unexecuted sibling when the suspended call resumes', async () => {
+		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const siblingHandler = vi.fn(async () => await Promise.resolve({ done: true }));
+		const siblingTool = makeMockTool('normal_tool', siblingHandler);
+		const { runtime } = createRuntimeWithTools([suspendTool, siblingTool], 1);
+		const hook = makeGuardrail();
+		const guardrails = guardrailsOption(hook);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+					{ toolCallId: 'tc-2', toolName: 'normal_tool', args: { value: 'b' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const first = await runtime.generate('run tools', { guardrails });
+
+		expect(first.finishReason).toBe('tool-calls');
+		expect(siblingHandler).not.toHaveBeenCalled();
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+		expect(hook.beforeTool.mock.calls[0][0]).toMatchObject({ toolName: 'suspend_tool' });
+
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, guardrails },
+		);
+
+		expect(resumed.finishReason).toBe('stop');
+		expect(siblingHandler).toHaveBeenCalledTimes(1);
+		expect(hook.beforeTool).toHaveBeenCalledTimes(2);
+		expect(hook.beforeTool.mock.calls[1][0]).toMatchObject({
+			toolCallId: 'tc-2',
+			toolName: 'normal_tool',
+		});
+		expect(hook.afterTool).toHaveBeenCalledTimes(2);
+	});
+
+	it('checks an unexecuted pending tool when resume targets it', async () => {
+		const handler = vi.fn(async (_input: unknown, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		const hook = makeGuardrail();
+		const guardrails = guardrailsOption(hook);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools', { guardrails });
+
+		expect(first.finishReason).toBe('tool-calls');
+		expect(runtime.getState().pendingToolCalls['tc-2']?.suspended).toBe(false);
+		expect(hook.beforeTool).toHaveBeenCalledTimes(1);
+
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: first.runId, toolCallId: 'tc-2', guardrails },
+		);
+
+		expect(resumed.finishReason).toBe('tool-calls');
+		expect(hook.beforeTool).toHaveBeenCalledTimes(2);
+		expect(hook.beforeTool.mock.calls[1][0]).toMatchObject({ toolCallId: 'tc-2' });
+		expect(handler).toHaveBeenCalledTimes(2);
 	});
 });
 
@@ -2821,6 +3243,75 @@ function createRuntimeWithTools(
 }
 
 type ClaimForResume = (key: string, state: SerializableAgentState) => Promise<boolean>;
+
+describe('AgentRuntime — session approvals', () => {
+	beforeEach(() => generateText.mockReset());
+
+	it.each([{ requireApproval: true }, { needsApprovalFn: () => true }])(
+		'uses a new session grant for later calls: %j',
+		async (config) => {
+			const handler = vi.fn(async (input: unknown) => input);
+			const tool = wrapToolForApproval(
+				{
+					name: 'notion_search',
+					description: 'Search',
+					inputSchema: z.object({ id: z.string() }),
+					handler,
+				},
+				config,
+			);
+			const { runtime, bus } = createRuntimeWithTools([tool], 1);
+			const executionStarts = vi.fn();
+			bus.on(AgentEvent.ToolExecutionStart, executionStarts);
+			const approvedKeys = new Set<string>();
+			const approvalContext: ToolApprovalContext = {
+				approvedKeys,
+				onDecision: vi.fn(async (key) => {
+					approvedKeys.add(key);
+				}),
+			};
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', tool.name, { id: 'first' }),
+			);
+			const first = await runtime.generate('Search', { approvalContext });
+			const suspension = first.pendingSuspend![0];
+			expect(suspension.suspendPayload).toMatchObject({ supportsSessionApproval: true });
+			expect(handler).not.toHaveBeenCalled();
+
+			generateText
+				.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', tool.name, { id: 'second' }))
+				.mockResolvedValueOnce(makeGenerateSuccess());
+			const resumed = await runtime.resume(
+				'generate',
+				{ approved: true, scope: 'session' },
+				{
+					runId: suspension.runId,
+					toolCallId: suspension.toolCallId,
+					approvalContext,
+				},
+			);
+			expect(resumed.pendingSuspend).toBeUndefined();
+			expect(handler.mock.calls.map(([input]) => input)).toEqual([
+				{ id: 'first' },
+				{ id: 'second' },
+			]);
+			expect(executionStarts).toHaveBeenCalledTimes(2);
+			expect([...approvedKeys]).toEqual(['["tool","notion_search"]']);
+			expect(approvalContext.onDecision).toHaveBeenCalledExactlyOnceWith(
+				'["tool","notion_search"]',
+				{ approved: true, scope: 'session' },
+			);
+
+			const otherTool = { ...tool, name: 'other_notion_search' };
+			const other = createRuntimeWithTools([otherTool], 1).runtime;
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-3', otherTool.name, { id: 'third' }),
+			);
+			expect((await other.generate('Search', { approvalContext })).pendingSuspend).toHaveLength(1);
+		},
+	);
+});
+
 type ClaimingCheckpointStore = CheckpointStore & {
 	claimForResume: MockedFunction<ClaimForResume>;
 };

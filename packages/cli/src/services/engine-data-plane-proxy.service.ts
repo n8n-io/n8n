@@ -7,9 +7,23 @@ import type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+
+/** The engine refused the workflow before it saved an execution for it. */
+export class EngineRejectedWorkflowError extends UserError {}
+
+/** The engine did not admit the run, and saved no execution for it. */
+export class EngineDidNotAdmitError extends OperationalError {}
+
+/**
+ * Whether a failed start guarantees that the engine saved no execution. Any
+ * other failure, such as a server error or a lost response, can come after the
+ * save, so a run can exist under the requested id.
+ */
+export const isStartRefusedBeforeSave = (error: unknown): boolean =>
+	error instanceof EngineRejectedWorkflowError || error instanceof EngineDidNotAdmitError;
 
 /**
  * What a cancel request did. `cancelled: false` carries the status the
@@ -27,6 +41,11 @@ export type CancelExecutionOutcome =
  */
 export interface EngineDataPlaneProvider {
 	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
+
+	/**
+	 * Throws {@link EngineRejectedWorkflowError} or {@link EngineDidNotAdmitError}
+	 * only when the engine saved no execution.
+	 */
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
 	/**

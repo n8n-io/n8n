@@ -3,7 +3,7 @@ import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { hasPosition, type ExecutionCursor } from './execution-cursor';

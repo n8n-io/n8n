@@ -1,6 +1,6 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
 	Project,
@@ -76,7 +76,6 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialDescriptionsService } from './credential-descriptions.service';
@@ -1451,7 +1450,7 @@ export class CredentialsService {
 		const mergedCredentials = await this.prepareCredentialsForTest({
 			storedCredential,
 			user,
-			credentialsToTest: credentials,
+			credentialsToTest: storedCredential.isManaged ? undefined : credentials,
 		});
 
 		return await this.test(user.id, mergedCredentials);

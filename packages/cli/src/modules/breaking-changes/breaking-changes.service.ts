@@ -7,17 +7,19 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import { WorkflowRepository, WorkflowStatisticsRepository, type WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@n8n/backend-services';
 
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { groupNodesByType } from './group-nodes-by-type';
+import { summarizeExecutionStatistics } from './summarize-execution-statistics';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
@@ -43,6 +45,18 @@ export interface BreakingChangeDetectionResult extends BreakingChangeReportResul
 
 interface WorkflowRulesScan {
 	results: BreakingChangeWorkflowRuleResult[];
+	failedChecks: FailedRuleCheck[];
+}
+
+/** One rule that fired on one workflow. */
+export interface WorkflowRuleHit {
+	ruleId: string;
+	workflowId: string;
+}
+
+/** Result of re-checking one workflow. A pair in `failedChecks` has no hit because the check threw. */
+export interface WorkflowHitsResult {
+	hits: WorkflowRuleHit[];
 	failedChecks: FailedRuleCheck[];
 }
 
@@ -246,24 +260,19 @@ export class BreakingChangeService {
 				const workflowMetadata: WorkflowMetadata = {
 					name: workflow.name,
 					active: !!workflow.activeVersionId,
-					numberOfExecutions: statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
-					lastExecutedAt: statistics.sort(
-						(a, b) => b.latestEvent.getTime() - a.latestEvent.getTime(),
-					)[0]?.latestEvent,
+					...summarizeExecutionStatistics(statistics),
 					lastUpdatedAt: workflow.updatedAt,
 				};
 				workflowMetadataMap.set(workflow.id, workflowMetadata);
 
 				for (const rule of workflowLevelRules) {
-					let result: WorkflowDetectionReport;
-					try {
-						result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-					} catch (error) {
-						this.reportRuleError(error, rule.id, workflow.id);
-						failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
-						continue;
-					}
-					if (result.isAffected) {
+					const result = await this.runWorkflowRule(
+						rule,
+						workflow,
+						nodesGroupedByType,
+						failedChecks,
+					);
+					if (result?.isAffected) {
 						const affectedWorkflow: BreakingChangeAffectedWorkflow = {
 							id: workflow.id,
 							issues: result.issues,
@@ -362,9 +371,55 @@ export class BreakingChangeService {
 		return result;
 	}
 
+	/** Runs one rule on one workflow. A check that throws is reported and added to `failedChecks`. */
+	private async runWorkflowRule(
+		rule: IBreakingChangeWorkflowRule,
+		workflow: WorkflowEntity,
+		nodesGroupedByType: Map<string, INode[]>,
+		failedChecks: FailedRuleCheck[],
+	): Promise<WorkflowDetectionReport | undefined> {
+		try {
+			return await rule.detectWorkflow(workflow, nodesGroupedByType);
+		} catch (error) {
+			this.reportRuleError(error, rule.id, workflow.id);
+			failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
+			return undefined;
+		}
+	}
+
 	private reportRuleError(error: unknown, ruleId: string, workflowId: string) {
 		this.logger.warn('Breaking change rule failed for workflow, skipping', { ruleId, workflowId });
 		this.errorReporter.error(error, { extra: { ruleId, workflowId } });
+	}
+
+	/**
+	 * Re-checks one workflow against the workflow-level rules of a version.
+	 * Batch rules need every workflow to produce a result, so they are skipped here.
+	 * A workflow that no longer exists yields no hits.
+	 */
+	async detectWorkflowHits(
+		targetVersion: BreakingChangeVersion,
+		workflowId: string,
+	): Promise<WorkflowHitsResult> {
+		const workflow = await this.workflowRepository.findOne({
+			select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
+			where: { id: workflowId },
+		});
+		if (!workflow) return { hits: [], failedChecks: [] };
+
+		const workflowLevelRules = this.ruleRegistry
+			.getRules(targetVersion)
+			.filter((rule): rule is IBreakingChangeWorkflowRule => 'detectWorkflow' in rule);
+		const nodesGroupedByType = groupNodesByType(workflow.nodes);
+
+		const hits: WorkflowRuleHit[] = [];
+		const failedChecks: FailedRuleCheck[] = [];
+		for (const rule of workflowLevelRules) {
+			const result = await this.runWorkflowRule(rule, workflow, nodesGroupedByType, failedChecks);
+			if (result?.isAffected) hits.push({ ruleId: rule.id, workflowId });
+		}
+
+		return { hits, failedChecks };
 	}
 
 	private shouldCacheDetection(durationMs: number): boolean {

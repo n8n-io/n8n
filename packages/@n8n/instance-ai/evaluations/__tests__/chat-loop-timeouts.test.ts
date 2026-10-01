@@ -133,9 +133,10 @@ describe('waitForAllActivity under a budget', () => {
 		expect(cfg.client.cancelRun).toHaveBeenCalled();
 	});
 
-	it('ends the turn as a timeout when its budget runs out during the background wait', async () => {
+	it('ends the turn as a timeout and cancels the thread when its budget runs out during the background wait', async () => {
 		// The background wait is bounded by the budget left, so it returns rather
 		// than throws; without a check after it the turn would read as finished.
+		// The cancel is what stops the sub-agent the wait gave up on.
 		const now = Date.now();
 		const cfg = config({ startTime: now - 60_000, turnStartedAt: now - 900_000 + 300 });
 		cfg.events.push(event('run-finish', now), event('agent-spawned', now));
@@ -144,8 +145,10 @@ describe('waitForAllActivity under a budget', () => {
 			memoryTasks: [],
 		} as never);
 
-		await expect(waitForAllActivity(cfg)).rejects.toMatchObject({ timeout: { kind: 'turn', turn: 1 } });
-		expect(cfg.client.cancelRun).not.toHaveBeenCalled();
+		await expect(waitForAllActivity(cfg)).rejects.toMatchObject({
+			timeout: { kind: 'turn', turn: 1 },
+		});
+		expect(cfg.client.cancelRun).toHaveBeenCalledWith('thread-1');
 	});
 
 	it('returns normally when the run finishes inside every budget', async () => {
