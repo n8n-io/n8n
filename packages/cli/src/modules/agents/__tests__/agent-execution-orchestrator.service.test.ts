@@ -1755,6 +1755,29 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('attaches the budget guardrail saved on the published runtime', async () => {
+		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const runtime = {
+			...makeRuntime(),
+			budget: { enabled: true, sessionCostCapUsd: 1 },
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+
+		expect(runtime.agent.stream.mock.calls[0][1]?.guardrails?.hooks).toHaveLength(1);
+	});
+
 	it('rejects a production turn with a foreign thread or memory scope', async () => {
 		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
 		agentRepository.isN8nChatPublished.mockResolvedValue(true);

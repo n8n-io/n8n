@@ -154,6 +154,15 @@ export type AgentSseEvent =
 			server?: string;
 	  }
 	| {
+			/**
+			 * The run ended. `finishReason` mirrors the runtime finish chunk. A
+			 * `guardrail` stop carries the code of the hook that ended the run.
+			 */
+			type: 'finish';
+			finishReason: string;
+			guardrail?: { code: string };
+	  }
+	| {
 			type: 'error';
 			message: string;
 			/**
