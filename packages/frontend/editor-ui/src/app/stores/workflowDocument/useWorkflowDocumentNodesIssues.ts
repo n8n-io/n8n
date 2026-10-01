@@ -41,17 +41,6 @@ function hasAnyConnection(connections: INodeConnections): boolean {
 }
 
 export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssuesDeps) {
-	const nodesWithValidationIssues = computed<INodeUi[]>(() =>
-		deps.allNodes.value.filter((node) => {
-			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-			const isConnected =
-				hasAnyConnection(deps.outgoingConnectionsByNodeName(node.name)) ||
-				hasAnyConnection(deps.incomingConnectionsByNodeName(node.name));
-
-			return !node.disabled && isConnected && nodeHasIssues;
-		}),
-	);
-
 	/**
 	 * Nodes that stop the workflow being published, which is also what the
 	 * blocked-publish message counts, so the button and its reason always agree.
@@ -100,10 +89,6 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 			return true;
 		});
 	});
-
-	const nodesWithValidationIssuesCount = computed(() => nodesWithValidationIssues.value.length);
-
-	const hasNodeValidationIssues = computed(() => nodesWithValidationIssuesCount.value > 0);
 
 	const hasPublishBlockingIssues = computed(() => publishBlockingNodes.value.length > 0);
 
@@ -220,9 +205,6 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 	applyReconcileEntries(Array.from(deps.nodesById.value.keys()));
 
 	return {
-		nodesWithValidationIssues,
-		nodesWithValidationIssuesCount,
-		hasNodeValidationIssues,
 		publishBlockingNodes,
 		hasPublishBlockingIssues,
 		nodeValidationIssues,

@@ -84,34 +84,27 @@ function subNodeGraph({ agentDisabled = false } = {}) {
 }
 
 describe('useWorkflowDocumentNodesIssues', () => {
-	describe('hasNodeValidationIssues', () => {
-		it('includes execution issues', () => {
-			const node = connectedNode({ issues: { execution: true } });
-			const { hasNodeValidationIssues } = useWorkflowDocumentNodesIssues(createDeps([node]));
+	describe('nodeValidationIssues', () => {
+		// Feeds the assistant's build todos, which still ask whether a node is wired
+		// to anything rather than whether a run can reach it.
+		it('includes a connected node with parameter issues', () => {
+			const node = connectedNode({ issues: { parameters: { param1: ['Missing value'] } } });
+			const { nodeValidationIssues } = useWorkflowDocumentNodesIssues(createDeps([node]));
 
-			expect(hasNodeValidationIssues.value).toBe(true);
-		});
-
-		it('includes parameter issues', () => {
-			const node = connectedNode({
-				issues: { parameters: { param1: ['Missing value'] } },
-			});
-			const { hasNodeValidationIssues } = useWorkflowDocumentNodesIssues(createDeps([node]));
-
-			expect(hasNodeValidationIssues.value).toBe(true);
+			expect(nodeValidationIssues.value.length).toBeGreaterThan(0);
 		});
 
 		it.each([
 			['an output slot with no endpoints', emptyConnectionEntry],
 			['an output slot that is null', nulledConnectionEntry],
-		])('does not count a node left with %s as connected', (_label, connections) => {
+		])('skips a node left with %s', (_label, connections) => {
 			const node = connectedNode({ issues: { parameters: { param1: ['Missing value'] } } });
-			const { hasNodeValidationIssues } = useWorkflowDocumentNodesIssues({
+			const { nodeValidationIssues } = useWorkflowDocumentNodesIssues({
 				...createDeps([node]),
 				outgoingConnectionsByNodeName: connections,
 			});
 
-			expect(hasNodeValidationIssues.value).toBe(false);
+			expect(nodeValidationIssues.value).toEqual([]);
 		});
 	});
 
