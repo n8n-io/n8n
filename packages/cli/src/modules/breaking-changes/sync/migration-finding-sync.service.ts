@@ -1,4 +1,8 @@
-import type { BreakingChangeVersion, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import {
+	MIGRATION_REPORT_TARGET_VERSION,
+	type BreakingChangeVersion,
+	type BreakingChangeWorkflowRuleResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,8 +23,8 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
 }
 
 /**
- * Brings the `migration_finding` table in step with a fresh detection scan.
- * Nothing calls it yet; a later change schedules it and serves the report from the table.
+ * Brings the `migration_finding` table in step with detection results: a full
+ * scan over every workflow, or a re-check of one workflow after it was saved.
  */
 @Service()
 export class MigrationFindingSyncService {
@@ -140,6 +144,37 @@ export class MigrationFindingSyncService {
 		);
 
 		this.logger.debug('Migration finding sync completed', { targetVersion });
+	}
+
+	/**
+	 * Re-checks one workflow and updates its findings in one transaction.
+	 * It runs on whichever main handled the save, so it is not leader-gated: the
+	 * write is small and scoped to one workflow, and a later full sync corrects
+	 * any drift. The sync record marks a full scan, so this path never writes it.
+	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
+	 */
+	async syncWorkflow(workflowId: string): Promise<void> {
+		const targetVersion = MIGRATION_REPORT_TARGET_VERSION;
+		if (!targetVersion) return;
+
+		try {
+			const { hits, failedChecks } = await this.breakingChangeService.detectWorkflowHits(
+				targetVersion,
+				workflowId,
+			);
+			await this.syncBatch(
+				targetVersion,
+				[workflowId],
+				groupByWorkflow(hits),
+				groupByWorkflow(failedChecks),
+			);
+		} catch (error) {
+			this.logger.warn('Migration finding sync for one workflow failed', {
+				targetVersion,
+				workflowId,
+			});
+			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+		}
 	}
 
 	/** Reads, diffs, and writes one batch inside a single transaction. */
