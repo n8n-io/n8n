@@ -176,10 +176,10 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Regenerate')).toBeInTheDocument();
+				expect(screen.getByText('Refresh')).toBeInTheDocument();
 			});
 
-			await userEvent.click(screen.getByText('Regenerate'));
+			await userEvent.click(screen.getByText('Refresh'));
 
 			await waitFor(() => {
 				expect(screen.getByText('Instance Rule 1')).toBeInTheDocument();
@@ -397,7 +397,7 @@ describe('MigrationRules', () => {
 
 	describe('refresh functionality', () => {
 		it.each([true, false])(
-			'should always show the Regenerate button (shouldCache: %s)',
+			'should always show the Refresh button (shouldCache: %s)',
 			async (shouldCache) => {
 				vi.mocked(breakingChangesApi.getReport).mockResolvedValue({ ...mockReport, shouldCache });
 
@@ -407,7 +407,7 @@ describe('MigrationRules', () => {
 					expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				});
 
-				expect(screen.getByText('Regenerate')).toBeInTheDocument();
+				expect(screen.getByText('Refresh')).toBeInTheDocument();
 			},
 		);
 
@@ -434,7 +434,7 @@ describe('MigrationRules', () => {
 			});
 		});
 
-		it('should update the last synced time after Regenerate', async () => {
+		it('should update the last synced time after Refresh', async () => {
 			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			const newDate = new Date(Date.now() - 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -450,7 +450,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
 			});
 
-			await userEvent.click(screen.getByText('Regenerate'));
+			await userEvent.click(screen.getByText('Refresh'));
 
 			await waitFor(() => {
 				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
@@ -479,10 +479,10 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Regenerate')).toBeInTheDocument();
+				expect(screen.getByText('Refresh')).toBeInTheDocument();
 			});
 
-			await userEvent.click(screen.getByText('Regenerate'));
+			await userEvent.click(screen.getByText('Refresh'));
 
 			// API called and data reloaded
 			await waitFor(() => {
@@ -509,15 +509,15 @@ describe('MigrationRules', () => {
 		renderComponent();
 
 		await waitFor(() => {
-			expect(screen.getByText('Regenerate')).toBeInTheDocument();
+			expect(screen.getByText('Refresh')).toBeInTheDocument();
 		});
 
 		// Click refresh
-		await userEvent.click(screen.getByText('Regenerate'));
+		await userEvent.click(screen.getByText('Refresh'));
 
 		// Button should still be visible (with loading state) during refresh
 		await waitFor(() => {
-			const button = screen.getByText('Regenerate');
+			const button = screen.getByText('Refresh');
 			expect(button).toBeInTheDocument();
 			// Button should be disabled during loading
 			expect(button.closest('button')).toBeDisabled();
@@ -528,7 +528,7 @@ describe('MigrationRules', () => {
 
 		// Button should still be visible after refresh completes
 		await waitFor(() => {
-			const button = screen.getByText('Regenerate');
+			const button = screen.getByText('Refresh');
 			expect(button).toBeInTheDocument();
 			expect(button.closest('button')).not.toBeDisabled();
 		});
@@ -692,12 +692,12 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Regenerate')).toBeInTheDocument();
+				expect(screen.getByText('Refresh')).toBeInTheDocument();
 			});
 
 			vi.mocked(breakingChangesApi.refreshReport).mockRejectedValue(new Error('Refresh failed'));
 
-			await userEvent.click(screen.getByText('Regenerate'));
+			await userEvent.click(screen.getByText('Refresh'));
 
 			// Component still works after error
 			await waitFor(() => {

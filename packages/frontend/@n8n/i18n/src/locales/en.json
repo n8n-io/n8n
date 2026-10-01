@@ -4520,7 +4520,7 @@
 	"settings.migrationReport.description": "{compatibleCount} of your {totalCount} workflows are already compatible with version {version}. Review the details below to understand and resolve any compatibility problems. Learn more about all breaking changes in our",
 	"settings.migrationReport.documentationLink": "documentation",
 	"settings.migrationReport.progress.label": "{compatibleCount} of {totalCount} compatible",
-	"settings.migrationReport.refreshButton": "Regenerate",
+	"settings.migrationReport.refreshButton": "Refresh",
 	"settings.migrationReport.lastSynced": "Last synced {time}",
 	"settings.migrationReport.tabs.workflowIssues": "Workflow issues",
 	"settings.migrationReport.tabs.instanceIssues": "Instance issues",
