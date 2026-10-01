@@ -1,10 +1,4 @@
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestOptions,
-} from 'n8n-workflow';
-
+import type { AnyCredential, CredentialFields } from './credentials';
 import {
 	obj,
 	type AnySchema,
@@ -20,8 +14,8 @@ export interface NodeDefinition {
 	/** Short id, the first segment of every action id: `notion`. */
 	readonly id: string;
 	readonly displayName: string;
-	/** Credential types any action of this node accepts. */
-	readonly credentials: readonly string[];
+	/** Credential values any action of this node accepts, e.g. `[notionApi, notionOAuth2Api]`. */
+	readonly credentials: readonly AnyCredential[];
 	readonly baseUrl?: string;
 	readonly icon?: string;
 	/** The node also runs without a credential (a public HTTP API). */
@@ -30,59 +24,13 @@ export interface NodeDefinition {
 
 export const defineNode = <const N extends NodeDefinition>(node: N): N => node;
 
-/** An n8n credential type. `defineCredential` builds one. */
-export type CredentialDefinition = ICredentialType;
-
-export interface CredentialField {
-	readonly name: string;
-	readonly displayName: string;
-	readonly type: 'string';
-	readonly typeOptions?: { readonly password?: boolean };
-	readonly default?: string;
-	readonly required?: boolean;
-	readonly description?: string;
-}
-
-export interface CredentialSpec {
-	/** The credential type a node lists in `credentials`, e.g. `todoApi`. */
-	readonly name: string;
-	readonly displayName: string;
-	readonly documentationUrl?: string;
-	readonly properties: readonly CredentialField[];
-	/** Header and query values are templates, e.g. `'=Bearer {{$credentials.apiKey}}'`. */
-	readonly authenticate:
-		| {
-				readonly headers?: Readonly<Record<string, string>>;
-				readonly qs?: Readonly<Record<string, string>>;
-		  }
-		| ((
-				credentials: ICredentialDataDecryptedObject,
-				request: IHttpRequestOptions,
-		  ) => Promise<IHttpRequestOptions>);
-	readonly test?: ICredentialTestRequest;
-}
-
-export function defineCredential(spec: CredentialSpec): CredentialDefinition {
-	const { authenticate } = spec;
-	return {
-		name: spec.name,
-		displayName: spec.displayName,
-		...(spec.documentationUrl ? { documentationUrl: spec.documentationUrl } : {}),
-		properties: spec.properties.map((field) => ({
-			...field,
-			typeOptions: { ...field.typeOptions },
-			default: field.default ?? '',
-		})),
-		authenticate:
-			typeof authenticate === 'function'
-				? authenticate
-				: {
-						type: 'generic',
-						properties: { headers: { ...authenticate.headers }, qs: { ...authenticate.qs } },
-					},
-		...(spec.test ? { test: spec.test } : {}),
-	};
-}
+/**
+ * The credential `run()` reads: one branch per credential type, and `type` tells which. It is
+ * `undefined` when the node runs without a credential.
+ */
+export type CredentialOf<N extends NodeDefinition, C> =
+	| CredentialFields<C>
+	| (N extends { readonly authOptional: true } ? undefined : never);
 
 /** What the action does to the item stream. */
 export interface ActionFlow {
@@ -193,10 +141,12 @@ type DefaultedKeys<S extends Shape> = {
 /** The input `run()` gets. n8n fills in each default, so a field with `.default(v)` is always set. */
 export type RunInput<S extends Shape> = ObjectOf<S> & { [K in DefaultedKeys<S>]: Infer<S[K]> };
 
-export interface RunContext<Input, Output> {
+export interface RunContext<Input, Output, Cred = CredentialFields<AnyCredential> | undefined> {
 	/** Parameters for the current item, expressions resolved, defaults filled in, and validated. */
 	readonly input: Input;
 	readonly http: Http;
+	/** The settings of the credential the node runs with, e.g. a region. Never its secrets. */
+	readonly credential: Cred;
 	/** Emit one output item for the current input item. An item that breaks `output` throws here. */
 	emit(item: Output): void;
 }
@@ -211,6 +161,7 @@ export interface ActionDefinition<
 	S extends Shape,
 	O extends AnySchema,
 	N extends NodeDefinition = NodeDefinition,
+	C extends N['credentials'][number] = N['credentials'][number],
 > {
 	readonly node: N;
 	/** `<node>.<resource>.<operation>`, e.g. `notion.databasePage.getAll`. */
@@ -226,8 +177,8 @@ export interface ActionDefinition<
 	/** At most 120 characters. */
 	readonly summary: string;
 	readonly flow: ActionFlow;
-	/** Credential types this action accepts, when they differ from the node's. */
-	readonly credentials?: ReadonlyArray<N['credentials'][number]>;
+	/** Credentials this action accepts, when they differ from the node's. */
+	readonly credentials?: readonly C[];
 	readonly input: S;
 	readonly output: O;
 	/**
@@ -245,7 +196,7 @@ export interface ActionDefinition<
 		toOutput(fields: readonly ResourceField[], input: ObjectOf<S>): JsonSchema;
 	};
 	/** Runs once per input item; emit one or more output items. */
-	run(context: RunContext<RunInput<S>, Infer<O>>): Promise<void>;
+	run(context: RunContext<RunInput<S>, Infer<O>, CredentialOf<N, C>>): Promise<void>;
 	/**
 	 * Pure hatch on a new major: the parameters of an older major in, the parameters of this
 	 * major out. No I/O. Fixture pairs replay it.
@@ -260,17 +211,24 @@ export interface Action<S extends Shape = Shape, O extends AnySchema = AnySchema
 	readonly semver: string;
 	readonly inputSchema: JsonSchema;
 	readonly credentialTypes: readonly string[];
+	// The executor runs every action, so it passes the widest credential type.
+	run(context: RunContext<RunInput<S>, Infer<O>>): Promise<void>;
 }
 
-export function defineAction<S extends Shape, O extends AnySchema, N extends NodeDefinition>(
-	definition: ActionDefinition<S, O, N>,
-): Action<S, O> {
+export function defineAction<
+	S extends Shape,
+	O extends AnySchema,
+	N extends NodeDefinition,
+	C extends N['credentials'][number] = N['credentials'][number],
+>(definition: ActionDefinition<S, O, N, C>): Action<S, O> {
 	return {
 		...definition,
 		version: definition.version ?? 1,
 		semver: `${definition.version ?? 1}.${definition.minor ?? 0}.${definition.patch ?? 0}`,
 		inputSchema: obj(definition.input).json,
-		credentialTypes: definition.credentials ?? definition.node.credentials,
+		credentialTypes: (definition.credentials ?? definition.node.credentials).map(
+			({ name }) => name,
+		),
 	};
 }
 

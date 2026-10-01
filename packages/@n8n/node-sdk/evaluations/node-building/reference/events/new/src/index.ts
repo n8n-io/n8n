@@ -1,8 +1,8 @@
 import {
+	apiKey,
 	arr,
 	bool,
 	defineAction,
-	defineCredential,
 	defineNode,
 	int,
 	json,
@@ -15,21 +15,18 @@ import {
 	type Infer,
 } from '@n8n/node-sdk';
 
-export const credentials = [
-	defineCredential({
-		name: 'eventLogApi',
-		displayName: 'Event Log API',
-		properties: [
-			{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true } },
-		],
-		authenticate: { headers: { 'X-Events-Key': '={{$credentials.apiKey}}' } },
-	}),
-];
+const eventLogApi = apiKey({
+	name: 'eventLogApi',
+	displayName: 'Event Log API',
+	key: 'X-Events-Key',
+});
+
+export const credentials = [eventLogApi];
 
 export const node = defineNode({
 	id: 'eventLog',
 	displayName: 'Event Log',
-	credentials: ['eventLogApi'],
+	credentials: [eventLogApi],
 	baseUrl: 'http://127.0.0.1:18090/events/v1',
 });
 

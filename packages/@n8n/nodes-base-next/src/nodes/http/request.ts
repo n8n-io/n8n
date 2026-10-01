@@ -1,4 +1,5 @@
 import {
+	compat,
 	defineAction,
 	defineNode,
 	int,
@@ -15,7 +16,13 @@ import {
 export const httpRequest = defineNode({
 	id: 'httpRequest',
 	displayName: 'HTTP Request',
-	credentials: ['httpHeaderAuth', 'httpBearerAuth', 'httpBasicAuth', 'httpQueryAuth', 'oAuth2Api'],
+	credentials: [
+		compat('httpHeaderAuth'),
+		compat('httpBearerAuth'),
+		compat('httpBasicAuth'),
+		compat('httpQueryAuth'),
+		compat('oAuth2Api'),
+	],
 	authOptional: true,
 });
 

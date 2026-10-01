@@ -1,7 +1,7 @@
 import {
+	apiKey,
 	arr,
 	defineAction,
-	defineCredential,
 	defineNode,
 	isHttpError,
 	lit,
@@ -13,21 +13,19 @@ import {
 	union,
 } from '@n8n/node-sdk';
 
-export const credentials = [
-	defineCredential({
-		name: 'inventoryApi',
-		displayName: 'Inventory API',
-		properties: [
-			{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true } },
-		],
-		authenticate: { headers: { Authorization: '=ApiKey {{$credentials.apiKey}}' } },
-	}),
-];
+const inventoryApi = apiKey({
+	name: 'inventoryApi',
+	displayName: 'Inventory API',
+	key: 'Authorization',
+	prefix: 'ApiKey ',
+});
+
+export const credentials = [inventoryApi];
 
 export const node = defineNode({
 	id: 'inventory',
 	displayName: 'Inventory',
-	credentials: ['inventoryApi'],
+	credentials: [inventoryApi],
 	baseUrl: 'http://127.0.0.1:18090/inventory/v1',
 });
 

@@ -4,7 +4,8 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { generateNodeModule } from '../codegen';
-import { toContract, type Action, type CredentialDefinition } from '../define';
+import { toCredentialType, type AnyCredential } from '../credentials';
+import { toContract, type Action } from '../define';
 import { nodeNameOf } from '../runtime';
 import { runAction } from '../testing';
 import { checkContracts, loadProject, type Project } from './project';
@@ -167,8 +168,10 @@ async function describe(root: string, id: string | undefined) {
 
 const upperSnake = (name: string) => words(name).join('_').toUpperCase();
 
-function credentialFromEnv(definition: CredentialDefinition, prefix: string) {
+function credentialFromEnv(credential: AnyCredential, prefix: string) {
 	const variable = (field: string) => `${prefix.replace(/_$/, '')}_${upperSnake(field)}`;
+	const definition = toCredentialType(credential);
+	if (!definition) throw new CliError(`${credential.name} is a compat credential; use --file`);
 	const missing = definition.properties
 		.filter(({ name, required }) => required && process.env[variable(name)] === undefined)
 		.map(({ name }) => variable(name));
@@ -222,7 +225,6 @@ async function run(
 	const credential = readCredential(project, action, options);
 	const result = await runAction(action, {
 		input: parseInput(options.input ?? '{}'),
-		credentials: project.credentials,
 		...(credential ? { credential } : {}),
 	});
 	if (!result.ok) {

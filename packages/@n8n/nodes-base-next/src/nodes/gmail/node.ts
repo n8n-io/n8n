@@ -1,5 +1,6 @@
 import {
 	arr,
+	compat,
 	defineNode,
 	int,
 	isRecord,
@@ -14,7 +15,7 @@ import {
 export const gmail = defineNode({
 	id: 'gmail',
 	displayName: 'Gmail',
-	credentials: ['gmailOAuth2'],
+	credentials: [compat('gmailOAuth2')],
 	baseUrl: 'https://www.googleapis.com/gmail/v1/users/me',
 });
 

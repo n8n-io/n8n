@@ -1,6 +1,7 @@
 import {
 	arr,
 	bool,
+	compat,
 	defineAction,
 	defineNode,
 	int,
@@ -17,7 +18,7 @@ import {
 export const googleGemini = defineNode({
 	id: 'googleGemini',
 	displayName: 'Google Gemini',
-	credentials: ['googlePalmApi'],
+	credentials: [compat('googlePalmApi')],
 	baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
 });
 

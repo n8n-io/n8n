@@ -1,7 +1,6 @@
 export * from './schema';
 export {
 	defineAction,
-	defineCredential,
 	defineNode,
 	isHttpError,
 	lintContract,
@@ -11,9 +10,7 @@ export {
 	type ActionDefinition,
 	type ActionFlow,
 	type ContractDocument,
-	type CredentialDefinition,
-	type CredentialField,
-	type CredentialSpec,
+	type CredentialOf,
 	type Http,
 	type HttpError,
 	type HttpMethod,
@@ -24,6 +21,41 @@ export {
 	type RunContext,
 	type RunInput,
 } from './define';
+export {
+	apiKey,
+	basic,
+	bearer,
+	compat,
+	credentialDataOf,
+	custom,
+	oauth2,
+	toCredentialType,
+	type AnyCredential,
+	type Credential,
+	type CredentialData,
+	type CredentialFields,
+	type CredentialKey,
+	type CredentialScheme,
+} from './credentials';
+export {
+	defineWebhookTrigger,
+	definePollingTrigger,
+	toTriggerContract,
+	toTriggerNodeType,
+	type CustomPoll,
+	type PollConfig,
+	type PollCursor,
+	type PollingTrigger,
+	type PollingTriggerDefinition,
+	type Registration,
+	type Signature,
+	type Trigger,
+	type TriggerContract,
+	type WebhookHooks,
+	type WebhookRequest,
+	type WebhookTrigger,
+	type WebhookTriggerDefinition,
+} from './triggers';
 export { exampleOf, list, matches, parse, validate } from './validate';
 export { isRecord } from '@n8n/utils/is-record';
 export {

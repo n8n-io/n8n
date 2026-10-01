@@ -2,13 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import {
-	lintContract,
-	toContract,
-	type Action,
-	type CredentialDefinition,
-	type NodeDefinition,
-} from '../define';
+import { toCredentialType, type AnyCredential } from '../credentials';
+import { lintContract, toContract, type Action, type NodeDefinition } from '../define';
 import type { JsonSchema } from '../schema';
 import { exampleOf, validate } from '../validate';
 
@@ -16,7 +11,7 @@ export interface Project {
 	readonly root: string;
 	readonly node: NodeDefinition;
 	readonly actions: readonly Action[];
-	readonly credentials: readonly CredentialDefinition[];
+	readonly credentials: readonly AnyCredential[];
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -32,8 +27,8 @@ const isAction = (value: unknown): value is Action =>
 	isRecord(value.inputSchema) &&
 	Array.isArray(value.credentialTypes);
 
-const isCredential = (value: unknown): value is CredentialDefinition =>
-	isRecord(value) && typeof value.name === 'string' && Array.isArray(value.properties);
+const isCredential = (value: unknown): value is AnyCredential =>
+	isRecord(value) && typeof value.name === 'string' && isRecord(value.scheme);
 
 const isArrayOf = <T>(value: unknown, guard: (entry: unknown) => entry is T): value is T[] =>
 	Array.isArray(value) && value.every(guard);
@@ -51,7 +46,7 @@ export async function loadProject(root: string): Promise<Project> {
 	}
 	if (!isArrayOf(credentials, isCredential)) {
 		throw new Error(
-			'src/index.ts must export "credentials" (an array of defineCredential results)',
+			'src/index.ts must export "credentials" (an array of credential values, e.g. apiKey(...))',
 		);
 	}
 	return { root, node, actions, credentials };
@@ -109,8 +104,9 @@ function deriveOutputIssues(action: Action): string[] {
 
 const TEMPLATE_FIELD = /\$credentials\.(\w+)/g;
 
-function credentialIssues(credential: CredentialDefinition): string[] {
-	const auth = credential.authenticate;
+function credentialIssues(value: AnyCredential): string[] {
+	const credential = toCredentialType(value);
+	const auth = credential?.authenticate;
 	if (!auth || typeof auth === 'function') return [];
 	const fields = new Set(credential.properties.map(({ name }) => name));
 	const templates = [
@@ -125,7 +121,12 @@ function credentialIssues(credential: CredentialDefinition): string[] {
 
 /** Contract checks, one line each: `<file>: <action id>: <schema path>: <problem>`. */
 export function checkContracts({ root, node, actions, credentials }: Project): string[] {
-	const known = new Set(credentials.map(({ name }) => name));
+	// A compat credential is defined in nodes-base, so a project does not export it.
+	const known = new Set(
+		[...credentials, ...node.credentials.filter(({ scheme }) => scheme.kind === 'compat')].map(
+			({ name }) => name,
+		),
+	);
 	const at = (id: string) => (issue: string) => `${fileOf(root, id)}: ${id}: ${issue}`;
 	const actionIssues = actions.flatMap((action, index) =>
 		[
@@ -142,6 +143,7 @@ export function checkContracts({ root, node, actions, credentials }: Project): s
 		].map(at(action.id)),
 	);
 	const nodeIssues = node.credentials
+		.map(({ name }) => name)
 		.filter((type) => !known.has(type))
 		.map((type) => `credentials: "${type}" is not in the exported credentials`)
 		.map(at(node.id));

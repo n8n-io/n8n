@@ -1,4 +1,5 @@
 import {
+	compat,
 	defineNode,
 	defineResource,
 	int,
@@ -16,7 +17,7 @@ import {
 export const googleSheets = defineNode({
 	id: 'googleSheets',
 	displayName: 'Google Sheets',
-	credentials: ['googleSheetsOAuth2Api'],
+	credentials: [compat('googleSheetsOAuth2Api')],
 	baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
 });
 

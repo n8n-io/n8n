@@ -1,8 +1,8 @@
 import {
+	apiKey,
 	arr,
 	bool,
 	defineAction,
-	defineCredential,
 	defineNode,
 	int,
 	matches,
@@ -15,21 +15,18 @@ import {
 	type JsonSchema,
 } from '@n8n/node-sdk';
 
-export const credentials = [
-	defineCredential({
-		name: 'acmeTasksApi',
-		displayName: 'Acme Tasks API',
-		properties: [
-			{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true } },
-		],
-		authenticate: { headers: { 'X-Acme-Key': '={{$credentials.apiKey}}' } },
-	}),
-];
+const acmeTasksApi = apiKey({
+	name: 'acmeTasksApi',
+	displayName: 'Acme Tasks API',
+	key: 'X-Acme-Key',
+});
+
+export const credentials = [acmeTasksApi];
 
 export const node = defineNode({
 	id: 'acmeTasks',
 	displayName: 'Acme Tasks',
-	credentials: ['acmeTasksApi'],
+	credentials: [acmeTasksApi],
 	baseUrl: 'http://127.0.0.1:18090/acme-tasks/v1',
 });
 

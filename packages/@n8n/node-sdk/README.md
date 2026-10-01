@@ -40,26 +40,36 @@ A project follows one convention: `src/index.ts` exports `node`, `actions` (arra
 ## Credentials
 
 ```ts
-export const todoApi = defineCredential({
+export const todoApi = apiKey({
 	name: 'todoApi',
 	displayName: 'Todo API',
-	properties: [
-		{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true } },
-	],
-	authenticate: { headers: { Authorization: '=Bearer {{$credentials.apiKey}}' } },
+	key: 'Authorization',
+	prefix: 'Bearer ',
 	test: { request: { baseURL: 'https://api.todo.example.com/v1', url: '/me' } },
 });
+export const node = defineNode({ id: 'todo', displayName: 'Todo', credentials: [todoApi] });
 ```
 
-`defineCredential` returns an n8n `ICredentialType`. List its `name` in `defineNode({ credentials })`.
-In n8n, `httpRequestWithAuthentication` applies it. `runAction` applies it the same way.
-`authenticate` can also be a function `(credentials, request) => Promise<request>`.
+A credential is a value. The node lists the value, so `tsc` finds a missing or wrong credential.
+`apiKey`, `bearer`, `basic` and `oauth2` are config only. `custom` takes an `authenticate`
+function with typed data and an optional token exchange (`session`). `compat('gmailOAuth2')`
+names a legacy credential type that nodes-base still defines. `fields` are settings that
+`run({ credential })` reads with their types; secrets reach the HTTP client only.
+`toCredentialType` projects a value to the n8n `ICredentialType`.
+
+## Triggers
+
+`defineWebhookTrigger` declares the endpoint, an HMAC `verify`, and a `register` with create,
+check and delete requests. `definePollingTrigger` declares the request, the items, and a
+cursor (a time with a key, an ID, or a response token); n8n keeps the cursor in static data.
+`hooks`, `handle` and a function `poll` are the escape hatches. `toTriggerNodeType` projects a
+trigger to an n8n node type.
 
 ## Testing: `@n8n/node-sdk/testing`
 
 ```ts
 const fetch = mockHttp([{ method: 'GET', path: '/items', query: { limit: 2 }, reply: { json: { items: [] } } }]);
-const result = await runAction(getManyItems, { input: { limit: 2 }, credential, credentials, fetch });
+const result = await runAction(getManyItems, { input: { limit: 2 }, credential, fetch });
 // { ok: true, items: [...] } or { ok: false, error: { message, path?, httpStatus? } }
 ```
 

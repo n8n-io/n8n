@@ -1,5 +1,6 @@
 import type { ContractDocument } from './define';
 import type { JsonSchema } from './schema';
+import type { TriggerContract } from './triggers';
 
 const pascal = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const typeName = (id: string) => id.split('.').map(pascal).join('');
@@ -17,6 +18,8 @@ interface Alias {
 interface Mode {
 	/** Wrap leaves in `Value<I, C, T>` so they accept a lambda. */
 	input: boolean;
+	/** Input leaves take plain values: a trigger has no item to read. */
+	plain?: boolean;
 	indent: string;
 	/** Print short objects without docs on one line. The agent reads every byte of a module. */
 	compact?: boolean;
@@ -50,7 +53,7 @@ function valueTypesDoc(schema: JsonSchema, mode: Mode, indent: string): string {
 }
 
 function leaf(text: string, schema: JsonSchema, mode: Mode): string {
-	return mode.input && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
+	return mode.input && !mode.plain && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
 }
 
 interface Tag {
@@ -246,6 +249,12 @@ export interface GeneratedAction {
 	};
 }
 
+export interface GeneratedTrigger {
+	readonly contract: TriggerContract;
+	/** The n8n node type, e.g. `@n8n/nodes-base-next.githubRepositoryEvent`. */
+	readonly nodeType: string;
+}
+
 interface Factory {
 	readonly path: string[];
 	readonly summary: string;
@@ -342,7 +351,11 @@ const freeName = (base: string, taken: ReadonlySet<string>) =>
  * The TypeScript module for one node's actions. The agent reads this text, and `tsc` checks
  * the workflow against it, so what the agent sees is exactly what is enforced.
  */
-export function generateNodeModule(nodeId: string, actions: readonly GeneratedAction[]): string {
+export function generateNodeModule(
+	nodeId: string,
+	actions: readonly GeneratedAction[],
+	triggers: readonly GeneratedTrigger[] = [],
+): string {
 	const input: Mode = { input: true, indent: '', compact: true };
 	const output: Mode = { input: false, indent: '', compact: true };
 	const named = actions.map((action) => ({ ...action, name: typeName(action.contract.id) }));
@@ -416,14 +429,45 @@ export function generateNodeModule(nodeId: string, actions: readonly GeneratedAc
 		].join('\n');
 		return { path, summary: `${contract.action}. ${contract.summary} (${flow})`, text };
 	});
+	// A trigger starts a flow: its factory returns a `Flow`, and its output types `$json` after it.
+	const plain: Mode = { ...input, plain: true };
+	const triggerTypes = triggers.map(({ contract }) => {
+		const name = typeName(contract.id);
+		return [
+			`export type ${name}Input = ${renderTs(contract.input, plain)};`,
+			`export type ${name}Output = ${renderTs(contract.output, output)};`,
+		].join('\n');
+	});
+	const triggerFactories = triggers.map(({ contract, nodeType }): Factory => {
+		const [, ...path] = contract.id.split('.');
+		const name = typeName(contract.id);
+		const text = [
+			'<const N extends string>(',
+			`\t{ name, sample, ...parameters }: { name: N; sample?: ${name}Output[] } & ${name}Input,`,
+			`): Flow<${name}Output, Record<N, ${name}Output>> =>`,
+			`\ttrigger<N, ${name}Output>({ name, type: ${JSON.stringify(nodeType)}, version: ${contract.version}, parameters, sample })`,
+		].join('\n');
+		return {
+			path,
+			summary: `${contract.trigger}. ${contract.summary} (trigger, ${contract.source})`,
+			text,
+		};
+	});
+	const imports = [
+		'contractStep',
+		...(triggers.length > 0 ? ['trigger', 'type Flow'] : []),
+		'type OutputOf',
+		'type Step',
+		'type Value',
+	];
 	return (
 		[
 			`// Generated from the ${nodeId} action contracts. Do not edit.`,
-			"import { contractStep, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			`import { ${imports.join(', ')} } from '@n8n/workflow-sdk/next';`,
 			'',
-			types.join('\n\n'),
+			[...types, ...triggerTypes].join('\n\n'),
 			'',
-			`export const ${nodeId} = ${nest(factories, '')};`,
+			`export const ${nodeId} = ${nest([...factories, ...triggerFactories], '')};`,
 			'',
 		]
 			.join('\n')

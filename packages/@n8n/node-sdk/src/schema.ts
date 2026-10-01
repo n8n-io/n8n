@@ -6,6 +6,8 @@
 
 export interface JsonSchema {
 	type?: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null';
+	/** The label a form shows, e.g. a credential field. The key is the label when it is not set. */
+	title?: string;
 	description?: string;
 	enum?: readonly unknown[];
 	const?: unknown;

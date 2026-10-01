@@ -3,7 +3,6 @@ import { test } from 'node:test';
 
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 
-import { credentials } from '../index';
 import { getManyItems } from './item.get-all';
 
 const credential = { type: '__service__Api', data: { apiKey: 'test-key' } };
@@ -16,7 +15,7 @@ test('returnAll follows nextCursor to the last page', async () => {
 		{ path: '/items', reply: { json: { items: [first], nextCursor: 'c2' } } },
 		{ path: '/items', query: { cursor: 'c2' }, reply: { json: { items: [second], nextCursor: null } } },
 	]);
-	const result = await runAction(getManyItems, { input: { returnAll: true }, credential, credentials, fetch });
+	const result = await runAction(getManyItems, { input: { returnAll: true }, credential, fetch });
 	// Compare the whole result: on failure, the message shows `result.error`.
 	assert.deepEqual(result, { ok: true, items: [first, second] });
 	// `fetch.calls` records each request. Query values are strings; a JSON body is parsed.
@@ -29,18 +28,18 @@ test('returnAll follows nextCursor to the last page', async () => {
 
 test('limit stops without fetching the next page', async () => {
 	const fetch = mockHttp([{ path: '/items', reply: { json: { items: [first, second], nextCursor: 'c2' } } }]);
-	const result = await runAction(getManyItems, { input: { limit: 1 }, credential, credentials, fetch });
+	const result = await runAction(getManyItems, { input: { limit: 1 }, credential, fetch });
 	assert.deepEqual(result, { ok: true, items: [first] });
 	assert.equal(fetch.calls.length, 1);
 });
 
 test('returns the status of a failed request', async () => {
 	const fetch = mockHttp([{ path: '/items', reply: { status: 401, json: { error: 'unauthorized' } } }]);
-	const result = await runAction(getManyItems, { input: {}, credential, credentials, fetch });
+	const result = await runAction(getManyItems, { input: {}, credential, fetch });
 	assert.equal(result.ok ? undefined : result.error.httpStatus, 401);
 });
 
 test('rejects a limit below 1', async () => {
-	const result = await runAction(getManyItems, { input: { limit: 0 }, credential, credentials });
+	const result = await runAction(getManyItems, { input: { limit: 0 }, credential });
 	assert.equal(result.ok ? undefined : result.error.path, 'input.limit');
 });

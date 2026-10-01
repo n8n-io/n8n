@@ -14,16 +14,25 @@ import {
 	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
+	type IOAuth2Options,
 } from 'n8n-workflow';
 
+import {
+	credentialFieldsOf,
+	oauth2OptionsOf,
+	type AnyCredential,
+	type CredentialFields,
+} from './credentials';
 import {
 	isHttpError,
 	type Action,
 	type Http,
 	type HttpMethod,
 	type HttpRequest,
+	type NodeDefinition,
 	type RunInput,
 } from './define';
+import { toProperty } from './properties';
 import type { AnySchema, JsonSchema, Shape } from './schema';
 import { applyDefaults, validate } from './validate';
 import { NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
@@ -38,60 +47,16 @@ export const nodeNameOf = (actionId: string) =>
 		.map((part, index) => (index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
 		.join('');
 
-/**
- * n8n fills every property default into the parameters it runs with. An optional field
- * without a default gets '', which the runtime drops, so an unset field stays unset.
- */
-function toProperty(name: string, schema: AnySchema): INodeProperties {
-	const { json } = schema;
-	const unset = schema.isOptional && json.default === undefined;
-	const base = {
-		displayName: name,
-		name,
-		required: !schema.isOptional,
-		...(json['x-n8n-hint'] ? { description: json['x-n8n-hint'] } : {}),
-	};
-	if (json.enum) {
-		const options = json.enum.flatMap((value) =>
-			typeof value === 'string' || typeof value === 'number'
-				? [{ name: String(value), value }]
-				: [],
-		);
-		return { ...base, type: 'options', options, default: unset ? '' : (options[0]?.value ?? '') };
-	}
-	switch (json.type) {
-		case 'string':
-			return {
-				...base,
-				type: 'string',
-				default: typeof json.default === 'string' ? json.default : '',
-			};
-		case 'number':
-		case 'integer':
-			return {
-				...base,
-				type: 'number',
-				default: typeof json.default === 'number' ? json.default : unset ? '' : 0,
-			};
-		case 'boolean':
-			return { ...base, type: 'boolean', default: json.default === true };
-		default:
-			// Complex fields keep their JSON value; n8n resolves expressions inside it per item.
-			return {
-				...base,
-				type: 'json',
-				default: json.default !== undefined ? JSON.stringify(json.default) : unset ? '' : '{}',
-			};
-	}
-}
-
 /** The default of the legacy HTTP Request node. */
 const DEFAULT_TIMEOUT_MS = 300_000;
 
 // n8n sends `id[0]=a` for an array by default. Only a request with an array sets this.
 const REPEAT_KEYS: Pick<IHttpRequestOptions, 'arrayFormat'> = { arrayFormat: 'repeat' };
 
-function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IHttpRequestOptions {
+export function toRequestOptions(
+	request: HttpRequest,
+	baseUrl: string | undefined,
+): IHttpRequestOptions {
 	const query = Object.fromEntries(
 		Object.entries(request.query ?? {}).flatMap(([key, value]) =>
 			value === undefined ? [] : [[key, Array.isArray(value) ? [...value] : value]],
@@ -171,7 +136,7 @@ const headersOf = (headers: unknown): Record<string, string> =>
 	);
 
 /** Adds the `HttpError` fields (status, headers, body) to the error n8n threw. */
-function withResponse(error: unknown): unknown {
+export function withResponse(error: unknown): unknown {
 	const response = responseOf(error);
 	if (!(error instanceof Error) || !response) return error;
 	// Change the caught error in place, so n8n still shows its NodeApiError message.
@@ -186,8 +151,50 @@ export const AUTHENTICATION = 'authentication';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-const hasSelector = (action: Action) =>
-	action.credentialTypes.length > 1 || action.node.authOptional === true;
+/** What credential selection needs of an action or a trigger. */
+export interface CredentialUser {
+	readonly node: NodeDefinition;
+	readonly credentialTypes: readonly string[];
+}
+
+export const hasSelector = (unit: CredentialUser) =>
+	unit.credentialTypes.length > 1 || unit.node.authOptional === true;
+
+/** The credential type a node runs with: the selector value, else the first one it has. */
+export function credentialTypeOf(
+	unit: CredentialUser,
+	node: INode,
+	selected: unknown,
+): string | undefined {
+	const credentials = node.credentials ?? {};
+	return (
+		unit.credentialTypes.find((type) => type === selected) ??
+		(selected === 'none'
+			? undefined
+			: unit.credentialTypes.find((type) => credentials[type] !== undefined))
+	);
+}
+
+/** The credential value of a type. A bundle from before credential values lists names only. */
+export const credentialOf = (unit: CredentialUser, type: string | undefined) =>
+	unit.node.credentials.find((credential: AnyCredential | string) =>
+		typeof credential === 'object' ? credential.name === type : false,
+	);
+
+/** The settings `run()` reads and the base URL, from the stored data of the credential. */
+export async function credentialContextOf(
+	unit: CredentialUser,
+	type: string | undefined,
+	read: (type: string) => Promise<unknown>,
+): Promise<{ credential?: CredentialFields<AnyCredential>; baseUrl?: string }> {
+	const credential = credentialOf(unit, type);
+	if (!credential || !type) return { baseUrl: unit.node.baseUrl };
+	const needsData = Object.keys(credential.fields ?? {}).length > 0 || credential.baseUrl;
+	const fields = needsData
+		? credentialFieldsOf(credential, await read(type))
+		: { type: credential.name };
+	return { credential: fields, baseUrl: credential.baseUrl?.(fields) ?? unit.node.baseUrl };
+}
 
 /** Safety limits for one `run()` call. The defaults are far above normal use. */
 export interface ExecutorLimits {
@@ -204,7 +211,13 @@ export interface ExecutorHost {
 	readonly node: INode;
 	/** The raw parameter value, as `getNodeParameter` returns it. */
 	parameter(name: string, itemIndex: number): unknown;
-	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
+	request(
+		options: IHttpRequestOptions,
+		credentialType: string | undefined,
+		oauth2?: IOAuth2Options,
+	): Promise<unknown>;
+	/** The decrypted data of a credential type the node has. */
+	credentialData?(type: string): Promise<unknown>;
 	continueOnFail(): boolean;
 	/** Waits before a retry. */
 	wait?(ms: number): Promise<void>;
@@ -215,12 +228,18 @@ const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
 	itemCount: context.getInputData().length,
 	node: context.getNode(),
 	parameter: (name, itemIndex) => context.getNodeParameter(name, itemIndex, undefined),
-	request: async (options, credentialType) => {
+	request: async (options, credentialType, oauth2) => {
 		const response: unknown = credentialType
-			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
+			? await context.helpers.httpRequestWithAuthentication.call(
+					context,
+					credentialType,
+					options,
+					oauth2 ? { oauth2 } : undefined,
+				)
 			: await context.helpers.httpRequest(options);
 		return response;
 	},
+	credentialData: async (type) => await context.getCredentials(type),
 	continueOnFail: () => context.continueOnFail(),
 	wait: async (ms) => await sleep(ms, context.getExecutionCancelSignal()),
 });
@@ -232,7 +251,11 @@ function readParameter(
 	itemIndex: number,
 	isJson: boolean,
 ): unknown {
-	const value = host.parameter(name, itemIndex);
+	return parameterValue(host.parameter(name, itemIndex), isJson);
+}
+
+/** A raw parameter value; the text of a `json` property is parsed. */
+export function parameterValue(value: unknown, isJson: boolean): unknown {
 	if (!isJson || typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
 	try {
 		const parsed: unknown = JSON.parse(value);
@@ -260,25 +283,26 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const outputSchema: JsonSchema = action.output.json;
 	const isInput = (value: unknown): value is RunInput<S> =>
 		validate(value, action.inputSchema).length === 0;
-	const { credentialTypes } = action;
 
 	return async (host) => {
 		const limits = { ...DEFAULT_LIMITS, ...host.limits };
 		const wait = host.wait ?? (async (ms: number) => await sleep(ms));
-		const credentials = host.node.credentials ?? {};
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
-		const credentialType =
-			credentialTypes.find((type) => type === selected) ??
-			(selected === 'none'
-				? undefined
-				: credentialTypes.find((type) => credentials[type] !== undefined));
+		const credentialType = credentialTypeOf(action, host.node, selected);
+		const value = credentialOf(action, credentialType);
+		const oauth2 = value ? oauth2OptionsOf(value) : undefined;
+		const { credential, baseUrl } = await credentialContextOf(
+			action,
+			credentialType,
+			async (type) => await (host.credentialData?.(type) ?? Promise.resolve({})),
+		);
 		const send = async (
 			options: IHttpRequestOptions,
 			retryable: boolean,
 			retry: number,
 		): Promise<unknown> => {
 			try {
-				return await host.request(options, credentialType);
+				return await host.request(options, credentialType, oauth2);
 			} catch (caught) {
 				const error = withResponse(caught);
 				const delay = retryable ? retryDelay(error, retry) : undefined;
@@ -303,7 +327,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					const retryable =
 						request.retry ??
 						(IDEMPOTENT_METHODS.has(request.method ?? 'GET') || action.flow.idempotent === true);
-					return await send(toRequestOptions(request, action.node.baseUrl), retryable, 0);
+					return await send(toRequestOptions(request, baseUrl), retryable, 0);
 				},
 			};
 		};
@@ -339,7 +363,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				}
 				emitted.push({ json: item, pairedItem: { item: itemIndex } });
 			};
-			await action.run({ input, http: httpFor(itemIndex), emit });
+			await action.run({ input, http: httpFor(itemIndex), emit, credential });
 			return emitted;
 		};
 
@@ -361,14 +385,14 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	};
 }
 
-/** An n8n node type for one action; the platform part is `executorOf`. */
-export function toNodeType<S extends Shape, O extends AnySchema>(
-	action: Action<S, O>,
-): new () => INodeType {
+/** The credential slots of a node type and the selector property that picks one. */
+export function credentialDescriptionOf(
+	unit: CredentialUser,
+): Pick<INodeTypeDescription, 'credentials'> & { selector: INodeProperties[] } {
 	// A selector lets setup see one credential slot; each credential shows for its own value.
-	const { credentialTypes } = action;
-	const optional = action.node.authOptional === true;
-	const selector: INodeProperties[] = hasSelector(action)
+	const { credentialTypes } = unit;
+	const optional = unit.node.authOptional === true;
+	const selector: INodeProperties[] = hasSelector(unit)
 		? [
 				{
 					displayName: 'Authentication',
@@ -382,7 +406,19 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 				},
 			]
 		: [];
+	const credentials = credentialTypes.map((name) => ({
+		name,
+		required: !optional,
+		...(selector.length > 0 ? { displayOptions: { show: { [AUTHENTICATION]: [name] } } } : {}),
+	}));
+	return { selector, credentials };
+}
 
+/** An n8n node type for one action; the platform part is `executorOf`. */
+export function toNodeType<S extends Shape, O extends AnySchema>(
+	action: Action<S, O>,
+): new () => INodeType {
+	const { selector, credentials } = credentialDescriptionOf(action);
 	const description: INodeTypeDescription = {
 		displayName: `${action.node.displayName}: ${action.action}`,
 		name: nodeNameOf(action.id),
@@ -392,11 +428,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		defaults: { name: action.action },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: credentialTypes.map((name) => ({
-			name,
-			required: !optional,
-			...(selector.length > 0 ? { displayOptions: { show: { [AUTHENTICATION]: [name] } } } : {}),
-		})),
+		credentials,
 		properties: [
 			...selector,
 			...Object.entries(action.input).map(([name, schema]) => toProperty(name, schema)),

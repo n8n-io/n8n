@@ -2,19 +2,21 @@ import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialType,
 	IDataObject,
 	IHttpRequestOptions,
 	INode,
 } from 'n8n-workflow';
 
-import { isHttpError, type Action, type CredentialDefinition, type HttpError } from './define';
-import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
+import { toCredentialType } from './credentials';
+import { isHttpError, type Action, type HttpError } from './define';
+import { AUTHENTICATION, credentialOf, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
 
 export interface RunActionOptions {
 	readonly input: unknown;
 	readonly credential?: { readonly type: string; readonly data: Record<string, unknown> };
-	/** The credential types to look up `credential.type` in. */
-	readonly credentials?: readonly CredentialDefinition[];
+	/** Legacy credential types, for a `compat` credential. Other credentials project their own. */
+	readonly credentials?: readonly ICredentialType[];
 	/** Defaults to the global `fetch`. Pass `mockHttp(...)` in unit tests. */
 	readonly fetch?: typeof fetch;
 }
@@ -53,7 +55,7 @@ const isCredentialData = (
 /** The n8n expression `={{$credentials.x}}`, for the one form credential templates use. */
 function resolveTemplate<V>(
 	template: V,
-	credential: CredentialDefinition,
+	credential: ICredentialType,
 	data: IDataObject,
 ): V | string {
 	if (typeof template !== 'string' || !template.startsWith('=')) return template;
@@ -70,9 +72,9 @@ function resolveTemplate<V>(
 	return resolved;
 }
 
-/** Does what n8n's `httpRequestWithAuthentication` does for the credential forms `defineCredential` makes. */
+/** Does what n8n's `httpRequestWithAuthentication` does for the credential types `toCredentialType` makes. */
 async function authenticate(
-	credential: CredentialDefinition,
+	credential: ICredentialType,
 	data: ICredentialDataDecryptedObject,
 	options: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
@@ -86,9 +88,18 @@ async function authenticate(
 				resolveTemplate(value, credential, data),
 			]),
 		);
+	const basic = auth.properties.auth;
+	const user = basic ? resolveTemplate(basic.username, credential, data) : '';
+	const password = basic ? resolveTemplate(basic.password, credential, data) : '';
 	return {
 		...options,
-		headers: { ...options.headers, ...resolve(auth.properties.headers) },
+		headers: {
+			...options.headers,
+			...resolve(auth.properties.headers),
+			...(basic
+				? { Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}` }
+				: {}),
+		},
 		qs: { ...options.qs, ...resolve(auth.properties.qs) },
 	};
 }
@@ -139,7 +150,7 @@ const pathOf = (message: string) => /\b((?:input|output)[\w.[\]]*): /.exec(messa
 function credentialFor(
 	action: Action,
 	options: RunActionOptions,
-): CredentialDefinition | string | undefined {
+): ICredentialType | string | undefined {
 	const { credential } = options;
 	if (!credential) {
 		return action.credentialTypes.length > 0 && !action.node.authOptional
@@ -149,7 +160,9 @@ function credentialFor(
 	if (!action.credentialTypes.includes(credential.type)) {
 		return `${action.id} does not accept credential ${credential.type}. Accepts: ${action.credentialTypes.join(', ')}`;
 	}
+	const value = credentialOf(action, credential.type);
 	return (
+		(value ? toCredentialType(value) : undefined) ??
 		options.credentials?.find(({ name }) => name === credential.type) ??
 		`No credential definition for ${credential.type}. Pass it in "credentials".`
 	);
@@ -200,6 +213,7 @@ export async function runAction(
 				credential ? await authenticate(credential, data, request) : request,
 			);
 		},
+		credentialData: async () => await Promise.resolve(data),
 		continueOnFail: () => false,
 	};
 	try {

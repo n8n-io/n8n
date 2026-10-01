@@ -7,7 +7,7 @@ This file is the complete API reference. You do not have to read the SDK source.
 ## Layout
 
 - `src/index.ts` exports `node`, `actions` (array) and `credentials` (array). Keep these names.
-- `src/node.ts`: `defineNode`. `src/credentials.ts`: `defineCredential`.
+- `src/node.ts`: `defineNode`. `src/credentials.ts`: a credential builder (`apiKey`, `bearer`, `basic`, `oauth2`, `custom`).
 - `src/actions/<resource>.<operation>.ts`: one `defineAction` for each file. Add each action to `actions`.
 - `src/actions/<resource>.<operation>.test.ts`: unit tests with `node:test`, `runAction` and `mockHttp`.
 - `src/actions/item.get-all.ts` and its test are an example: a list with `returnAll`, `limit` and cursor pages.
@@ -29,13 +29,13 @@ Run `check` and `test` after each change. Both must pass.
 ## Node and credential
 
 ```ts
-defineNode({ id: '__service__', displayName: '__Service__', credentials: [__service__Api.name],
+// The node lists credential values, not names: tsc finds a missing import.
+defineNode({ id: '__service__', displayName: '__Service__', credentials: [__service__Api],
 	baseUrl: 'https://api.example.com/v1' }); // add `authOptional: true` if the API also works without a key
-defineCredential({
-	name: '__service__Api', displayName: '__Service__ API',
-	properties: [{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true }, required: true }],
-	// A template is '={{$credentials.<field>}}'. Send it in a header, or in the query: { qs: { api_key: '=...' } }.
-	authenticate: { headers: { 'X-Api-Key': '={{$credentials.apiKey}}' } },
+// The secret field is `apiKey`. Use `in: 'query'` for a query parameter, `bearer`, `basic` or `oauth2`
+// for other schemes, and `custom({ secrets, authenticate })` when the API signs requests.
+apiKey({
+	name: '__service__Api', displayName: '__Service__ API', key: 'X-Api-Key',
 	test: { request: { baseURL: 'https://api.example.com/v1', url: '/me' } },
 });
 ```
@@ -67,10 +67,10 @@ defineAction({
   An `.optional()` field can be `undefined`.
 - To fail an item, throw. Do not catch errors to emit `{ error }`: with "Continue on fail", n8n turns
   the thrown error into an `{ error: message }` item (or sends it to the error output) and runs the next item.
-- `credentials?: string[]` on an action overrides the node's credential types.
+- `credentials?: [someApi]` on an action narrows the node's credentials.
 - When the output shape depends on an input, declare all shapes and pick one in `deriveOutput`:
   `output: union(invoice, line)`, `deriveOutput: (input) => (input.split ? line.json : invoice.json)`.
-- Never read credentials in `run()`. The credential applies to each request.
+- The credential applies to each request. `run({ credential })` gets its `fields` (e.g. a region), never its secrets.
 
 ## Schemas
 
@@ -121,12 +121,12 @@ defineAction({
 const fetch = mockHttp([
 	{ method: 'POST', path: '/items', reply: { status: 201, json: { id: 'itm_1', name: 'A', ownerId: null } } },
 ]);
-const result = await runAction(createItem, { input: { name: 'A' }, credential, credentials, fetch });
+const result = await runAction(createItem, { input: { name: 'A' }, credential, fetch });
 assert.deepEqual(result, { ok: true, items: [{ id: 'itm_1', name: 'A', ownerId: null }] });
 assert.deepEqual(fetch.calls[0]?.body, { name: 'A' });
 ```
 
-- `runAction(action, { input, credential, credentials, fetch })` runs the action through the executor
+- `runAction(action, { input, credential, fetch })` runs the action through the executor
   n8n uses: it fills in defaults, validates the input, retries, and validates each item. An input value
   `''` counts as unset, as in n8n. It returns `{ ok: true, items }` or
   `{ ok: false, error: { message, path?, httpStatus? } }`. It does not throw.

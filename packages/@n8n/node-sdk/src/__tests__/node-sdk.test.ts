@@ -2,6 +2,7 @@ import { NodeApiError, type IExecuteFunctions, type INode, type JsonObject } fro
 
 import {
 	arr,
+	compat,
 	defineAction,
 	defineNode,
 	exampleOf,
@@ -26,7 +27,7 @@ import {
 const todo = defineNode({
 	id: 'todo',
 	displayName: 'Todo',
-	credentials: ['todoApi'],
+	credentials: [compat('todoApi')],
 	baseUrl: 'https://todo.test',
 });
 
@@ -184,7 +185,7 @@ describe('toNodeType', () => {
 		const open = defineNode({
 			id: 'web',
 			displayName: 'Web',
-			credentials: ['a', 'b'],
+			credentials: [compat('a'), compat('b')],
 			authOptional: true,
 		});
 		const { description } = new (toNodeType({

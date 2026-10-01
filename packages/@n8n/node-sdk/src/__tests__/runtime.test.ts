@@ -2,6 +2,7 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import {
 	arr,
+	compat,
 	defineAction,
 	defineNode,
 	int,
@@ -19,10 +20,12 @@ import {
 import { executorOf, type ExecutorHost } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
+const echoApi = compat('echoApi');
+
 const echo = defineNode({
 	id: 'echo',
 	displayName: 'Echo',
-	credentials: ['echoApi'],
+	credentials: [echoApi],
 	baseUrl: 'https://echo.test',
 	authOptional: true,
 });
@@ -251,11 +254,11 @@ describe('types', () => {
 			output: item,
 			async run() {},
 		};
-		defineAction({ ...definition, id: 'echo.item.fetch', credentials: ['echoApi'] });
+		defineAction({ ...definition, id: 'echo.item.fetch', credentials: [echoApi] });
 		// @ts-expect-error the id starts with the node id
 		defineAction({ ...definition, id: 'other.item.fetch' });
 		// @ts-expect-error the credential is not one of the node's
-		defineAction({ ...definition, id: 'echo.item.fetch', credentials: ['typoApi'] });
+		defineAction({ ...definition, id: 'echo.item.fetch', credentials: [compat('typoApi')] });
 		expect(requests).toHaveLength(5);
 	});
 });

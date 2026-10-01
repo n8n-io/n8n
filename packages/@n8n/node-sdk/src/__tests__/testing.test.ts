@@ -1,7 +1,8 @@
 import {
 	arr,
+	compat,
+	custom,
 	defineAction,
-	defineCredential,
 	defineNode,
 	int,
 	isHttpError,
@@ -10,16 +11,17 @@ import {
 } from '../index';
 import { mockHttp, runAction } from '../testing';
 
-const todoApi = defineCredential({
+const todoApi = custom({
 	name: 'todoApi',
 	displayName: 'Todo API',
-	properties: [
-		{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true } },
-		{ name: 'workspace', displayName: 'Workspace', type: 'string' },
-	],
-	authenticate: {
-		headers: { Authorization: '=Bearer {{$credentials.apiKey}}' },
-		qs: { workspace: '={{ $credentials.workspace }}' },
+	fields: { workspace: str().with({ title: 'Workspace' }) },
+	secrets: { apiKey: str().with({ title: 'API Key' }) },
+	async authenticate({ apiKey, workspace }, request) {
+		return await Promise.resolve({
+			...request,
+			headers: { ...request.headers, Authorization: `Bearer ${apiKey}` },
+			qs: { ...request.qs, workspace },
+		});
 	},
 	test: { request: { baseURL: 'https://todo.test/v1', url: '/me' } },
 });
@@ -27,7 +29,7 @@ const todoApi = defineCredential({
 const todo = defineNode({
 	id: 'todo',
 	displayName: 'Todo',
-	credentials: [todoApi.name],
+	credentials: [todoApi],
 	baseUrl: 'https://todo.test/v1',
 });
 
@@ -47,66 +49,6 @@ const listTasks = defineAction({
 });
 
 const credential = { type: 'todoApi', data: { apiKey: 'k-1', workspace: 'w-1' } };
-const credentials = [todoApi];
-
-describe('defineCredential', () => {
-	it('builds an n8n credential type with generic authentication', () => {
-		expect(todoApi).toEqual({
-			name: 'todoApi',
-			displayName: 'Todo API',
-			properties: [
-				{
-					name: 'apiKey',
-					displayName: 'API Key',
-					type: 'string',
-					typeOptions: { password: true },
-					default: '',
-				},
-				{
-					name: 'workspace',
-					displayName: 'Workspace',
-					type: 'string',
-					typeOptions: {},
-					default: '',
-				},
-			],
-			authenticate: {
-				type: 'generic',
-				properties: {
-					headers: { Authorization: '=Bearer {{$credentials.apiKey}}' },
-					qs: { workspace: '={{ $credentials.workspace }}' },
-				},
-			},
-			test: { request: { baseURL: 'https://todo.test/v1', url: '/me' } },
-		});
-	});
-
-	it('keeps an authenticate function', async () => {
-		const signed = defineCredential({
-			name: 'signedApi',
-			displayName: 'Signed API',
-			properties: [{ name: 'secret', displayName: 'Secret', type: 'string' }],
-			authenticate: async (data, request) => ({
-				...request,
-				headers: { ...request.headers, 'x-signature': `sig-${data.secret as string}` },
-			}),
-		});
-		const action = defineAction({
-			...listTasks,
-			id: 'todo.task.getAll',
-			node: { ...todo, credentials: ['signedApi'] },
-		});
-		const fetch = mockHttp([{ path: '/tasks', reply: { json: [] } }]);
-		const result = await runAction(action, {
-			input: {},
-			credential: { type: 'signedApi', data: { secret: 's' } },
-			credentials: [signed],
-			fetch,
-		});
-		expect(result).toEqual({ ok: true, items: [] });
-		expect(fetch.calls[0]?.headers['x-signature']).toBe('sig-s');
-	});
-});
 
 describe('runAction', () => {
 	it('applies the credential and parameter defaults, and returns the items', async () => {
@@ -118,7 +60,7 @@ describe('runAction', () => {
 				reply: { json: [{ id: 't1', tags: ['a'] }] },
 			},
 		]);
-		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const result = await runAction(listTasks, { input: {}, credential, fetch });
 		expect(result).toEqual({ ok: true, items: [{ id: 't1', tags: ['a'] }] });
 		expect(fetch.calls).toEqual([
 			expect.objectContaining({
@@ -130,7 +72,7 @@ describe('runAction', () => {
 	});
 
 	it('returns the path of an invalid input field', async () => {
-		const result = await runAction(listTasks, { input: { limit: 0 }, credential, credentials });
+		const result = await runAction(listTasks, { input: { limit: 0 }, credential });
 		expect(result).toEqual({
 			ok: false,
 			error: { message: 'input.limit: must be at least 1', path: 'input.limit' },
@@ -139,7 +81,7 @@ describe('runAction', () => {
 
 	it('returns the path of an invalid output field', async () => {
 		const fetch = mockHttp([{ path: '/tasks', reply: { json: [{ id: 't1', tags: 'a' }] } }]);
-		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const result = await runAction(listTasks, { input: {}, credential, fetch });
 		expect(result).toEqual({
 			ok: false,
 			error: {
@@ -151,7 +93,7 @@ describe('runAction', () => {
 
 	it('returns the HTTP status of a failed request', async () => {
 		const fetch = mockHttp([{ path: '/tasks', reply: { status: 404, json: { error: 'no' } } }]);
-		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const result = await runAction(listTasks, { input: {}, credential, fetch });
 		expect(result).toEqual({
 			ok: false,
 			error: expect.objectContaining({ httpStatus: 404 }),
@@ -178,7 +120,7 @@ describe('runAction', () => {
 				reply: { status: 429, json: { error: 'slow' }, headers: { 'Retry-After': '2' } },
 			},
 		]);
-		const result = await runAction(retryAfter, { input: {}, credential, credentials, fetch });
+		const result = await runAction(retryAfter, { input: {}, credential, fetch });
 		expect(result).toEqual({
 			ok: true,
 			items: [{ status: 429, retryAfter: '2', body: '{"error":"slow"}' }],
@@ -187,7 +129,7 @@ describe('runAction', () => {
 
 	it('fails a request that no mock route matches', async () => {
 		const fetch = mockHttp([{ method: 'POST', path: '/tasks', reply: { json: [] } }]);
-		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const result = await runAction(listTasks, { input: {}, credential, fetch });
 		expect(result).toEqual({
 			ok: false,
 			error: {
@@ -201,7 +143,7 @@ describe('runAction', () => {
 			{ path: '/tasks', query: { limit: 10 }, reply: { json: [{ id: 'first', tags: [] }] } },
 			{ path: '/tasks', query: { limit: 10, workspace: 'w-1' }, reply: { json: [] } },
 		]);
-		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const result = await runAction(listTasks, { input: {}, credential, fetch });
 		expect(result).toEqual({ ok: true, items: [] });
 	});
 
@@ -210,8 +152,8 @@ describe('runAction', () => {
 			{ path: '/tasks', times: 1, reply: { status: 404, json: { error: 'no' } } },
 			{ path: '/tasks', reply: { json: [{ id: 't1', tags: [] }] } },
 		]);
-		const first = await runAction(listTasks, { input: {}, credential, credentials, fetch });
-		const second = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const first = await runAction(listTasks, { input: {}, credential, fetch });
+		const second = await runAction(listTasks, { input: {}, credential, fetch });
 		expect([first.ok, second]).toEqual([false, { ok: true, items: [{ id: 't1', tags: [] }] }]);
 	});
 
@@ -224,7 +166,7 @@ describe('runAction', () => {
 			},
 		});
 		const fetch = mockHttp([{ path: '/tasks', reply: { json: [] } }]);
-		const result = await runAction(pageLoop, { input: {}, credential, credentials, fetch });
+		const result = await runAction(pageLoop, { input: {}, credential, fetch });
 		expect(result.ok ? '' : result.error.message).toMatch(/^mockHttp: more than 1000 calls/);
 		expect(fetch.calls).toHaveLength(1001);
 	});
@@ -234,9 +176,17 @@ describe('runAction', () => {
 			ok: false,
 			error: { message: 'todo.task.getAll needs a credential of type todoApi' },
 		});
-		expect(await runAction(listTasks, { input: {}, credential })).toEqual({
+		const legacyApi = compat('todoLegacyApi');
+		const legacy = defineAction({
+			...listTasks,
+			id: 'todo.task.getAll',
+			node: { ...todo, credentials: [legacyApi] },
+			credentials: [legacyApi],
+		});
+		const data = { type: 'todoLegacyApi', data: {} };
+		expect(await runAction(legacy, { input: {}, credential: data })).toEqual({
 			ok: false,
-			error: { message: 'No credential definition for todoApi. Pass it in "credentials".' },
+			error: { message: 'No credential definition for todoLegacyApi. Pass it in "credentials".' },
 		});
 	});
 });
