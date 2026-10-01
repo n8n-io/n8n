@@ -101,30 +101,31 @@ describe('resumePaused', () => {
 		const setupResult = setup();
 		const taskPath = '/root/research_0';
 		assertSubAgentTaskPath(taskPath);
-		const suspension: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getCheckpoint']>>> = {
-			runId: 'run-1',
-			serializedState: 'saved-state',
-			updatedAt: new Date(),
-			expiresAt: new Date(Date.now() + 96 * 3600_000),
-			checkpoint: mock<SerializableAgentState>({
-				finishReason: 'paused',
-				pendingToolCalls: approval
-					? { gate: mock<SerializableAgentState['pendingToolCalls'][string]>() }
-					: {},
-			}),
-			metadata: {
-				jobId: job.id,
-				taskPath,
-				resumeContext: { agentId: 'sub-1' },
-				sharedWorkspace: false,
-				messageContext: null,
-				runtimeSnapshot: 'saved-configuration',
-			},
-			scope: {
-				projectId: 'project-1',
-				principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
-			},
-		};
+		const suspension: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getCheckpoint']>>> =
+			{
+				runId: 'run-1',
+				serializedState: 'saved-state',
+				updatedAt: new Date(),
+				expiresAt: new Date(Date.now() + 96 * 3600_000),
+				checkpoint: mock<SerializableAgentState>({
+					finishReason: 'paused',
+					pendingToolCalls: approval
+						? { gate: mock<SerializableAgentState['pendingToolCalls'][string]>() }
+						: {},
+				}),
+				metadata: {
+					jobId: job.id,
+					taskPath,
+					resumeContext: { agentId: 'sub-1' },
+					sharedWorkspace: false,
+					messageContext: null,
+					runtimeSnapshot: 'saved-configuration',
+				},
+				scope: {
+					projectId: 'project-1',
+					principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+				},
+			};
 		setupResult.jobService.getCheckpoint.mockResolvedValue(suspension);
 		setupResult.jobRepository.findById.mockResolvedValue(job);
 		setupResult.jobRepository.resumeIfPaused.mockResolvedValue(true);
