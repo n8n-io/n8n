@@ -1,4 +1,4 @@
-import { paramCase, snakeCase } from 'change-case';
+import { kebabCase, snakeCase } from 'change-case';
 import { createHash } from 'crypto';
 import type {
 	IDataObject,
@@ -96,7 +96,7 @@ export class AwsS3V2 implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.bucketObjectLockEnabled) {
 							headers['x-amz-bucket-object-lock-enabled'] =
@@ -244,10 +244,18 @@ export class AwsS3V2 implements INodeType {
 
 						const region = responseData.LocationConstraint._ as string;
 
+						const includeCommonPrefixes = additionalFields.includeCommonPrefixes as
+							| boolean
+							| undefined;
+						const listPropertyName =
+							additionalFields.delimiter && includeCommonPrefixes
+								? 'ListBucketResult.CommonPrefixes'
+								: 'ListBucketResult.Contents';
+
 						if (returnAll) {
 							responseData = await awsApiRequestRESTAllItems.call(
 								this,
-								'ListBucketResult.Contents',
+								listPropertyName,
 								servicePath,
 								'GET',
 								basePath,
@@ -259,7 +267,7 @@ export class AwsS3V2 implements INodeType {
 							);
 						} else {
 							qs['max-keys'] = this.getNodeParameter('limit', 0);
-							responseData = await awsApiRequestREST.call(
+							const rawResponse = await awsApiRequestREST.call(
 								this,
 								servicePath,
 								'GET',
@@ -270,7 +278,11 @@ export class AwsS3V2 implements INodeType {
 								{},
 								region,
 							);
-							responseData = responseData.ListBucketResult.Contents;
+							const extracted =
+								additionalFields.delimiter && includeCommonPrefixes
+									? rawResponse.ListBucketResult?.CommonPrefixes
+									: rawResponse.ListBucketResult?.Contents;
+							responseData = Array.isArray(extracted) ? extracted : extracted ? [extracted] : [];
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -496,7 +508,7 @@ export class AwsS3V2 implements INodeType {
 							).toUpperCase();
 						}
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
 							headers['x-amz-grant-full-control'] = '';
@@ -793,7 +805,7 @@ export class AwsS3V2 implements INodeType {
 						}
 
 						if (additionalFields.acl) {
-							multipartHeaders['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							multipartHeaders['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
 							multipartHeaders['x-amz-grant-full-control'] = '';

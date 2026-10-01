@@ -1,23 +1,30 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { Request, Response } from 'express';
+import type { Mock, MockInstance } from 'vitest';
 
 import { createJitterMiddleware } from '../jitter';
+
+vi.mock('@n8n/utils/sleep', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/utils/sleep')>();
+	return { sleep: vi.fn(actual.sleep) };
+});
 
 describe('createJitterMiddleware', () => {
 	let mockReq: Request;
 	let mockRes: Response;
-	let mockNext: jest.Mock;
-	let randomSpy: jest.SpyInstance;
+	let mockNext: Mock;
+	let randomSpy: MockInstance;
 
 	beforeEach(() => {
 		mockReq = {} as Request;
 		mockRes = {} as Response;
-		mockNext = jest.fn();
-		jest.useFakeTimers();
-		randomSpy = jest.spyOn(Math, 'random');
+		mockNext = vi.fn();
+		vi.useFakeTimers();
+		randomSpy = vi.spyOn(Math, 'random');
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 		randomSpy.mockRestore();
 	});
 
@@ -31,11 +38,11 @@ describe('createJitterMiddleware', () => {
 		expect(mockNext).not.toHaveBeenCalled();
 
 		// Advance less than expected delay - next should not be called
-		await jest.advanceTimersByTimeAsync(149);
+		await vi.advanceTimersByTimeAsync(149);
 		expect(mockNext).not.toHaveBeenCalled();
 
 		// Advance to complete the delay
-		await jest.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(1);
 		await promise;
 
 		expect(mockNext).toHaveBeenCalledTimes(1);
@@ -47,7 +54,7 @@ describe('createJitterMiddleware', () => {
 
 		const promise = middleware(mockReq, mockRes, mockNext);
 
-		await jest.advanceTimersByTimeAsync(100);
+		await vi.advanceTimersByTimeAsync(100);
 		await promise;
 
 		expect(mockNext).toHaveBeenCalledTimes(1);
@@ -60,12 +67,25 @@ describe('createJitterMiddleware', () => {
 		const promise = middleware(mockReq, mockRes, mockNext);
 
 		// Should need full 200ms
-		await jest.advanceTimersByTimeAsync(199);
+		await vi.advanceTimersByTimeAsync(199);
 		expect(mockNext).not.toHaveBeenCalled();
 
-		await jest.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(1);
 		await promise;
 
+		expect(mockNext).toHaveBeenCalledTimes(1);
+	});
+
+	it('should delay through the shared sleep helper', async () => {
+		randomSpy.mockReturnValue(0.5);
+		const middleware = createJitterMiddleware({ minMs: 100, maxMs: 200 });
+
+		const promise = middleware(mockReq, mockRes, mockNext);
+
+		await vi.advanceTimersByTimeAsync(150);
+		await promise;
+
+		expect(sleep).toHaveBeenCalledWith(150);
 		expect(mockNext).toHaveBeenCalledTimes(1);
 	});
 
@@ -76,7 +96,7 @@ describe('createJitterMiddleware', () => {
 		const promise = middleware(mockReq, mockRes, mockNext);
 
 		// Default min is 100ms
-		await jest.advanceTimersByTimeAsync(100);
+		await vi.advanceTimersByTimeAsync(100);
 		await promise;
 
 		expect(mockNext).toHaveBeenCalledTimes(1);

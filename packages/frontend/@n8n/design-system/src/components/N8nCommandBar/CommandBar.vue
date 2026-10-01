@@ -33,7 +33,7 @@ const emit = defineEmits<{
 const NUM_LOADING_ITEMS_FULL = 8;
 const NUM_LOADING_ITEMS_PARTIAL = 3;
 
-const isOpen = ref(false);
+const isOpen = defineModel<boolean>('open', { default: false });
 const inputRef = ref<HTMLInputElement>();
 const selectedIndex = ref(-1);
 const inputValue = ref('');
@@ -187,6 +187,8 @@ const navigateBack = () => {
 };
 
 const selectItem = (item: CommandBarItem) => {
+	if (item.disabled) return;
+
 	if (item.children) {
 		navigateToChildren(item);
 		return;
@@ -234,7 +236,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 		case 'ArrowRight':
 			if (selectedIndex.value >= 0 && flattenedItems.value[selectedIndex.value]) {
 				const selectedItem = flattenedItems.value[selectedIndex.value];
-				if (selectedItem.children) {
+				if (selectedItem.children && !selectedItem.disabled) {
 					event.preventDefault();
 					void navigateToChildren(selectedItem);
 				}

@@ -94,6 +94,8 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 		);
 
 		// Step 3: Make versionId NOT NULL
-		await schemaBuilder.addNotNull('workflow_entity', 'versionId');
+		await schemaBuilder.addNotNull('workflow_entity', 'versionId', {
+			recreatesOnSqlite: true,
+		});
 	}
 }

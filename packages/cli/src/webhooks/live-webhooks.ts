@@ -1,11 +1,31 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
+import { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
+import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	Workflow,
+	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_PATH_SUFFIX,
+	WEBHOOK_NODE_TYPE,
+	nodeParametersAreStatic,
+	webhookDescriptionIsNativelyResolvable,
+} from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
+import { NotFoundError } from '@n8n/errors';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { NodeTypes } from '@/node-types';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
 import { authAllowlistedNodes } from './constants';
+import { matchesExpectedNodeType } from './node-type-matcher';
+import type { ExpectedWebhookNodeType } from './node-type-matcher';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type {
 	IWebhookResponseCallbackData,
@@ -13,14 +33,6 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks
@@ -35,6 +47,10 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly expressionEngineConfig: ExpressionEngineConfig,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -46,13 +62,13 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
-			select: ['nodes'],
+			relations: { activeVersion: true },
 		});
 
 		const isChatWebhookNode = (type: string, webhookId?: string) =>
-			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
+			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/${CHAT_TRIGGER_PATH_SUFFIX}` === path;
 
-		const nodes = workflowData?.nodes;
+		const nodes = workflowData?.activeVersion?.nodes;
 		const webhookNode = nodes?.find(
 			({ type, parameters, typeVersion, webhookId }) =>
 				(parameters?.path === path &&
@@ -62,6 +78,7 @@ export class LiveWebhooks implements IWebhookManager {
 				// we need to use webhookId for matching
 				isChatWebhookNode(type, webhookId),
 		);
+
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}
 
@@ -71,6 +88,7 @@ export class LiveWebhooks implements IWebhookManager {
 	async executeWebhook(
 		request: WebhookRequest,
 		response: Response,
+		expectedNodeType?: ExpectedWebhookNodeType,
 	): Promise<IWebhookResponseCallbackData> {
 		const httpMethod = request.method;
 		const path = request.params.path;
@@ -81,6 +99,8 @@ export class LiveWebhooks implements IWebhookManager {
 		request.params = {} as WebhookRequest['params'];
 
 		const webhook = await this.findWebhook(path, httpMethod);
+
+		response.locals.workflowId = webhook.workflowId;
 
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
@@ -94,33 +114,13 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			relations: {
-				activeVersion: true,
-				shared: true,
-			},
-		});
+		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
+			webhook.workflowId,
+		);
+		const { nodes, connections, versionId } = publishedVersion;
 
-		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
-		}
-
-		if (!workflowData.activeVersion) {
-			throw new NotFoundError(
-				`Active version not found for workflow with id "${webhook.workflowId}"`,
-			);
-		}
-
-		const { nodes, connections } = workflowData.activeVersion;
-
-		// Create a clean workflowData object with only activeVersion nodes/connections
-		// This prevents any downstream code from accidentally using the draft nodes
-		const activeWorkflowData: IWorkflowBase = {
-			...workflowData,
-			nodes,
-			connections,
-		};
+		// Use the published revision for both execution content and metadata.
+		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections, versionId };
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
@@ -133,52 +133,153 @@ export class LiveWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const ownerProjectId = workflowData.shared.find(
+		const ownerProjectId = workflowData.shared?.find(
 			(share) => share.role === 'workflow:owner',
 		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
+			// A production webhook is fired by a third party, so the run is attributed
+			// to whoever published the version it runs — the same published revision
+			// used for the content above, not the workflow row's pointer, which can
+			// already name the next version mid-publication.
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				webhook.workflowId,
+				versionId,
+			),
 		});
 
-		const webhookData = this.webhookService
-			.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
-			.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		const startNode = workflow.getNode(webhook.node);
 
-		// Get the node which has the webhook defined to know where to start from and to
-		// get additional data
-		const workflowStartNode = workflow.getNode(webhookData.node);
-
-		if (workflowStartNode === null) {
-			throw new NotFoundError('Could not find node to process webhook.');
+		if (this.webhookPhaseNeedsIsolate(startNode)) {
+			await workflow.expression.acquireIsolate();
 		}
 
-		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
-			sanitizeWebhookRequest(request);
-		}
+		try {
+			const webhookData = this.webhookService
+				.getNodeWebhooks(workflow, startNode as INode, additionalData)
+				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
-		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
-				activeWorkflowData, // Use activeWorkflowData instead of workflowData
-				workflowStartNode,
-				executionMode,
-				undefined,
-				undefined,
-				undefined,
-				request,
-				response,
-				async (error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					// Save static data if it changed
-					await this.workflowStaticDataService.saveStaticData(workflow);
-					resolve(data);
-				},
-			);
+			if (
+				expectedNodeType &&
+				!matchesExpectedNodeType(expectedNodeType, webhookData?.webhookDescription.nodeType)
+			) {
+				throw new WebhookNotFoundError(
+					{ path, httpMethod, webhookMethods: await this.getWebhookMethods(path) },
+					{ hint: 'production' },
+				);
+			}
+
+			// Get the node which has the webhook defined to know where to start from and to
+			// get additional data
+			const workflowStartNode = workflow.getNode(webhookData.node);
+
+			if (workflowStartNode === null) {
+				throw new NotFoundError('Could not find node to process webhook.');
+			}
+
+			if (!authAllowlistedNodes.has(workflowStartNode.type)) {
+				sanitizeWebhookRequest(request);
+			}
+
+			return await new Promise((resolve, reject) => {
+				const executionMode = 'webhook';
+				WebhookHelpers.executeWebhook(
+					workflow,
+					webhookData,
+					activeWorkflowData, // Use activeWorkflowData instead of workflowData
+					workflowStartNode,
+					executionMode,
+					undefined,
+					undefined,
+					undefined,
+					request,
+					response,
+					async (error: Error | null, data: object) => {
+						if (error !== null) {
+							return reject(error);
+						}
+						// Save static data if it changed
+						await this.workflowStaticDataService.saveStaticData(workflow);
+						resolve(data);
+					},
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
+			});
+		} finally {
+			// A no-op when the acquire was skipped.
+			await workflow.expression.releaseIsolate();
+		}
+	}
+
+	/**
+	 * Expression Engine VM acquisition builds a V8 isolate per request, which is
+	 * worth skipping when the webhook phase provably evaluates nothing: every
+	 * description field of the trigger resolves natively (see
+	 * `webhookDescriptionFields` in n8n-workflow) and the node's own parameters
+	 * contain no expressions. Anything not proven below acquires eagerly.
+	 *
+	 * TODO(native-evaluation rollout, CAT-4699): delete this gate and its flag; under
+	 * lazy acquisition with native evaluation the prediction is unnecessary.
+	 */
+	private webhookPhaseNeedsIsolate(startNode: INode | null): boolean {
+		if (!this.expressionEngineConfig.allowWebhookIsolateSkip) return true;
+		if (startNode === null) return true;
+
+		// Extend only after reviewing the node type's webhook() for
+		// evaluateExpression() calls or other internal evaluations.
+		if (startNode.type !== WEBHOOK_NODE_TYPE) return true;
+
+		// typeVersion 1 body parsing evaluates a hardcoded template.
+		if (startNode.typeVersion === 1) return true;
+
+		if (!nodeParametersAreStatic(startNode)) return true;
+
+		const webhooks = this.nodeTypes.getByNameAndVersion(startNode.type, startNode.typeVersion)
+			?.description.webhooks;
+		if (!webhooks?.length) return true;
+
+		return !webhooks.every(webhookDescriptionIsNativelyResolvable);
+	}
+
+	private async loadWebhookExecutionData(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
+		return this.workflowsConfig.useWorkflowPublicationService
+			? await this.loadFromPublishedVersion(workflowId)
+			: await this.loadFromActiveVersion(workflowId);
+	}
+
+	/**
+	 * New path for the workflow publication service. Behind a flag, disabled
+	 * by default.
+	 */
+	private async loadFromPublishedVersion(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
+		const publishedData =
+			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+		if (publishedData === null) {
+			throw new NotFoundError(`Published version not found for workflow with id "${workflowId}"`);
+		}
+		return { workflow: publishedData.workflow, publishedVersion: publishedData.publishedVersion };
+	}
+
+	/**
+	 * Old path, before the workflow publication service. Currently the default.
+	 */
+	private async loadFromActiveVersion(
+		workflowId: string,
+	): Promise<{ workflow: WorkflowEntity; publishedVersion: WorkflowHistory }> {
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: { activeVersion: true, shared: true },
 		});
+		if (workflowData === null) {
+			throw new NotFoundError(`Could not find workflow with id "${workflowId}"`);
+		}
+		if (!workflowData.activeVersion) {
+			throw new NotFoundError(`Active version not found for workflow with id "${workflowId}"`);
+		}
+		return { workflow: workflowData, publishedVersion: workflowData.activeVersion };
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
@@ -188,8 +289,10 @@ export class LiveWebhooks implements IWebhookManager {
 		}
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-		const webhookMethods = await this.getWebhookMethods(path);
 		if (webhook === null) {
+			// Only fetch the allowed methods when building the 404, to keep the
+			// happy path free of this uncached query
+			const webhookMethods = await this.getWebhookMethods(path);
 			throw new WebhookNotFoundError({ path, httpMethod, webhookMethods }, { hint: 'production' });
 		}
 

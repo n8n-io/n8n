@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
@@ -24,6 +24,7 @@ export class GSuiteAdmin implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Workspace Admin API',
+		schemaPath: 'Google/GSuiteAdmin',
 		defaults: {
 			name: 'Google Workspace Admin',
 		},
@@ -113,13 +114,20 @@ export class GSuiteAdmin implements INodeType {
 					{},
 					{ orgUnitPath: '/', type: 'all' },
 				)) as {
-					organizationUnits: Array<{
+					// the key is omitted entirely when the customer has no organizational units
+					organizationUnits?: Array<{
 						name: string;
 						orgUnitPath: string;
 					}>;
 				};
 
-				for (const unit of orgUnits.organizationUnits) {
+				// push default orgUnit (root), which is not returned from the API call above
+				returnData.push({
+					name: '/',
+					value: '/',
+				});
+
+				for (const unit of orgUnits.organizationUnits ?? []) {
 					returnData.push({
 						name: unit.name,
 						value: unit.orgUnitPath,
@@ -499,6 +507,10 @@ export class GSuiteAdmin implements INodeType {
 							};
 						}
 
+						if (additionalFields.orgUnitPath && typeof additionalFields.orgUnitPath === 'string') {
+							body.orgUnitPath = additionalFields.orgUnitPath;
+						}
+
 						if (additionalFields.customFields) {
 							const customFields = (additionalFields.customFields as IDataObject)
 								.fieldValues as IDataObject[];
@@ -517,8 +529,17 @@ export class GSuiteAdmin implements INodeType {
 									});
 								}
 
-								customSchemas[schemaName] ??= {};
-								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
+								if (!Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(customSchemas, schemaName, {});
+								}
+
+								if (Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(
+										customSchemas[schemaName] as Record<string, unknown>,
+										fieldName,
+										value,
+									);
+								}
 							});
 
 							if (Object.keys(customSchemas).length > 0) {
@@ -725,6 +746,7 @@ export class GSuiteAdmin implements INodeType {
 							phones?: IDataObject[];
 							suspended?: boolean;
 							roles?: { [key: string]: boolean };
+							orgUnitPath?: string;
 							customSchemas?: IDataObject;
 							password?: string;
 							changePasswordAtNextLogin?: boolean;
@@ -760,8 +782,8 @@ export class GSuiteAdmin implements INodeType {
 							body.primaryEmail = updateFields.primaryEmail as string;
 						}
 
-						if (updateFields.suspendUi) {
-							body.suspended = updateFields.suspendUi as boolean;
+						if (typeof updateFields.suspendUi === 'boolean') {
+							body.suspended = updateFields.suspendUi;
 						}
 
 						if (updateFields.roles) {
@@ -779,6 +801,10 @@ export class GSuiteAdmin implements INodeType {
 								directorySyncAdmin: roles.includes('directorySyncAdmin'),
 								mobileAdmin: roles.includes('mobileAdmin'),
 							};
+						}
+
+						if (updateFields.orgUnitPath && typeof updateFields.orgUnitPath === 'string') {
+							body.orgUnitPath = updateFields.orgUnitPath;
 						}
 
 						if (updateFields.customFields) {
@@ -799,8 +825,17 @@ export class GSuiteAdmin implements INodeType {
 									});
 								}
 
-								customSchemas[schemaName] ??= {};
-								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
+								if (!Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(customSchemas, schemaName, {});
+								}
+
+								if (Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(
+										customSchemas[schemaName] as Record<string, unknown>,
+										fieldName,
+										value,
+									);
+								}
 							});
 
 							if (Object.keys(customSchemas).length > 0) {

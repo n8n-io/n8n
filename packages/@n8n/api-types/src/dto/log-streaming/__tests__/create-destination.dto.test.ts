@@ -66,6 +66,62 @@ describe('CreateDestinationDto', () => {
 					},
 				},
 			},
+			{
+				name: 'webhook with nested proxy from fixedCollection',
+				request: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://example.com/webhook',
+					options: {
+						proxy: {
+							proxy: {
+								protocol: 'http',
+								host: '127.0.0.1',
+								port: 3128,
+							},
+						},
+					},
+				},
+				parsedResult: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://example.com/webhook',
+					options: {
+						proxy: {
+							proxy: {
+								protocol: 'http',
+								host: '127.0.0.1',
+								port: 3128,
+							},
+						},
+					},
+				},
+			},
+			{
+				name: 'webhook with nested redirect from fixedCollection',
+				request: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://example.com/webhook',
+					options: {
+						redirect: {
+							redirect: {
+								followRedirects: true,
+								maxRedirects: 10,
+							},
+						},
+					},
+				},
+				parsedResult: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://example.com/webhook',
+					options: {
+						redirect: {
+							redirect: {
+								followRedirects: true,
+								maxRedirects: 10,
+							},
+						},
+					},
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = CreateDestinationDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -375,6 +431,21 @@ describe('CreateDestinationDto', () => {
 					facility: 24,
 				},
 				expectedErrorPaths: ['facility'],
+			},
+			{
+				name: 'webhook with flat proxy (missing fixedCollection nesting)',
+				request: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://example.com/webhook',
+					options: {
+						proxy: {
+							protocol: 'http',
+							host: '127.0.0.1',
+							port: 3128,
+						},
+					},
+				},
+				expectedErrorPaths: ['proxy'],
 			},
 			{
 				name: 'circuit breaker with negative maxFailures',

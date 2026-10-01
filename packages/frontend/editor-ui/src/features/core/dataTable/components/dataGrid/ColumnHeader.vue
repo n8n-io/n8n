@@ -12,6 +12,7 @@ export type HeaderParamsWithDelete = IHeaderParams & {
 	onRename?: (columnId: string, newName: string) => void;
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;
+	readOnly: boolean;
 };
 
 const props = defineProps<{
@@ -213,8 +214,8 @@ onUnmounted(() => {
 				ref="renameInput"
 				:model-value="props.params.displayName"
 				:max-width="columnWidth"
-				:read-only="false"
-				:disabled="false"
+				:read-only="props.params.readOnly"
+				:disabled="props.params.readOnly"
 				class="ag-header-cell-text"
 				data-test-id="data-table-column-header-text"
 				@update:model-value="onNameSubmit"
@@ -232,11 +233,11 @@ onUnmounted(() => {
 		</div>
 
 		<N8nIconButton
+			variant="ghost"
 			v-show="isFilterButtonVisible"
 			data-test-id="data-table-column-header-filter-button"
 			icon="funnel"
-			type="tertiary"
-			text
+			:aria-label="i18n.baseText('dataTable.filterColumn')"
 			:class="{ 'filter-highlighted': hasActiveFilter }"
 			@click="onShowFilter"
 		/>
@@ -255,6 +256,8 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/utils';
+
 // TODO: neither scoped nor module works here. Is there a way to resolve this?
 .data-table-column-header-wrapper {
 	display: flex;
@@ -295,7 +298,7 @@ onUnmounted(() => {
 }
 
 .ag-header-cell-text {
-	@include mixins.utils-ellipsis;
+	@include utils.utils-ellipsis;
 	min-width: 0;
 
 	// Remove overflow hidden when inline edit is active to show border

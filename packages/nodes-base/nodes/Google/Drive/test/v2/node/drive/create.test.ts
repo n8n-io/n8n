@@ -1,22 +1,24 @@
 import * as create from '../../../../v2/actions/drive/create.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
+import type * as _importType1 from 'uuid';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function () {
+		googleApiRequest: vi.fn(async function () {
 			return {};
 		}),
 	};
 });
 
-jest.mock('uuid', () => {
-	const originalModule = jest.requireActual('uuid');
+vi.mock('uuid', async () => {
+	const originalModule = await vi.importActual<typeof _importType1>('uuid');
 	return {
 		...originalModule,
-		v4: jest.fn(function () {
+		v4: vi.fn(function () {
 			return '430c0ca1-2498-472c-9d43-da0163839823';
 		}),
 	};

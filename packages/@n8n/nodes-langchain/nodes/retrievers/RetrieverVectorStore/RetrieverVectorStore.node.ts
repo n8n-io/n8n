@@ -15,7 +15,7 @@ export class RetrieverVectorStore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vector Store Retriever',
 		name: 'retrieverVectorStore',
-		icon: 'fa:box-open',
+		icon: 'node:vector-store-retriever',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
@@ -48,6 +48,17 @@ export class RetrieverVectorStore implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiRetriever],
 		outputNames: ['Retriever'],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					relationHint: 'Connect to provide vectors for retrieval in RAG workflows',
+				},
+			],
+			inputs: {
+				ai_vectorStore: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Limit',

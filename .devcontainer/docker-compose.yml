@@ -3,10 +3,10 @@ volumes:
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     environment:
       - POSTGRES_DB=n8n
       - POSTGRES_PASSWORD=password

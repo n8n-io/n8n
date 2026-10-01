@@ -10,10 +10,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mock for programmaticEvaluation
-const mockProgrammaticEvaluation = jest.fn();
+const mockProgrammaticEvaluation = vi.fn();
 
 // Mock the programmatic evaluation module
-jest.mock('../../programmatic/programmatic-evaluation', () => ({
+vi.mock('../../programmatic/programmatic-evaluation', () => ({
 	programmaticEvaluation: (...args: unknown[]): unknown => mockProgrammaticEvaluation(...args),
 }));
 
@@ -33,6 +33,7 @@ function createMockEvaluationResult(
 		tools: { score: number; violations: Array<{ type: string; description: string }> };
 		fromAi: { score: number; violations: Array<{ type: string; description: string }> };
 		credentials: { score: number; violations: Array<{ type: string; description: string }> };
+		graphValidation: { score: number; violations: Array<{ type: string; description: string }> };
 		parameters: { score: number; violations: Array<{ type: string; description: string }> };
 		similarity: { score: number; violations: Array<{ type: string; description: string }> } | null;
 	}> = {},
@@ -46,6 +47,7 @@ function createMockEvaluationResult(
 		tools: { score: 1.0, violations: [] },
 		fromAi: { score: 0.8, violations: [] },
 		credentials: { score: 1.0, violations: [] },
+		graphValidation: { score: 1.0, violations: [] },
 		parameters: { score: 1.0, violations: [] },
 		similarity: null,
 		...overrides,
@@ -64,12 +66,14 @@ describe('Programmatic Evaluator', () => {
 		feedback.find((f) => f.evaluator === 'programmatic' && f.metric === metric);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createProgrammaticEvaluator()', () => {
 		it('should create an evaluator with correct name', async () => {
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			expect(evaluator.name).toBe('programmatic');
@@ -78,7 +82,9 @@ describe('Programmatic Evaluator', () => {
 		it('should call programmaticEvaluation with workflow and context', async () => {
 			mockProgrammaticEvaluation.mockResolvedValue(createMockEvaluationResult());
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -99,7 +105,9 @@ describe('Programmatic Evaluator', () => {
 		it('should pass reference workflows when provided in context', async () => {
 			mockProgrammaticEvaluation.mockResolvedValue(createMockEvaluationResult());
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -123,7 +131,9 @@ describe('Programmatic Evaluator', () => {
 				createMockEvaluationResult({ overallScore: 0.92 }),
 			);
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -141,7 +151,9 @@ describe('Programmatic Evaluator', () => {
 		it('should return feedback for all check categories', async () => {
 			mockProgrammaticEvaluation.mockResolvedValue(createMockEvaluationResult());
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -169,7 +181,9 @@ describe('Programmatic Evaluator', () => {
 				}),
 			);
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -191,7 +205,9 @@ describe('Programmatic Evaluator', () => {
 				}),
 			);
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -211,7 +227,9 @@ describe('Programmatic Evaluator', () => {
 				}),
 			);
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -238,7 +256,9 @@ describe('Programmatic Evaluator', () => {
 				}),
 			);
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();
@@ -251,7 +271,9 @@ describe('Programmatic Evaluator', () => {
 		it('should handle evaluation errors gracefully', async () => {
 			mockProgrammaticEvaluation.mockRejectedValue(new Error('Evaluation failed'));
 
-			const { createProgrammaticEvaluator } = await import('../../evaluators/programmatic');
+			const { createProgrammaticEvaluator } = await import(
+				'../../evaluators/programmatic/index.js'
+			);
 			const evaluator = createProgrammaticEvaluator(mockNodeTypes);
 
 			const workflow = createMockWorkflow();

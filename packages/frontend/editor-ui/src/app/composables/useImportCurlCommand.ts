@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { importCurlEventBus } from '@/app/event-bus';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -119,7 +119,7 @@ const isBinaryRequest = (curlJson: JSONOutput): boolean => {
 
 const toKeyValueArray = ([key, value]: [string, unknown]) => ({
 	name: key,
-	value: value?.toString() ?? '',
+	value: typeof value === 'string' ? value : `={{ ${value} }}`,
 });
 
 const extractHeaders = (headers: JSONOutput['headers'] = {}): HttpNodeHeaders => {
@@ -148,7 +148,9 @@ const extractQueries = (queries: JSONOutput['queries'] = {}): HttpNodeQueries =>
 	return {
 		sendQuery: true,
 		queryParameters: {
-			parameters: Object.entries(queries).map(toKeyValueArray),
+			parameters: Object.entries(queries).flatMap(([key, value]) =>
+				Array.isArray(value) ? value.map((v) => ({ name: key, value: v })) : [{ name: key, value }],
+			),
 		},
 	};
 };
@@ -201,7 +203,7 @@ const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
 const encodeBasicAuthentication = (username: string, password: string) =>
 	btoa(`${username}:${password}`);
 const jsonHasNestedObjects = (json: { [key: string]: string | number | object }) =>
-	Object.values(json).some((e) => typeof e === 'object');
+	Object.values(json).some((e) => typeof e === 'object' && e !== null);
 
 const mapCookies = (cookies: JSONOutput['cookies']): { cookie: string } | {} => {
 	if (!cookies) return {};
@@ -267,7 +269,14 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	const url = new URL(curlJson.url);
 	const queries = curlJson.queries ?? {};
 	for (const [key, value] of url.searchParams) {
-		queries[key] = value;
+		const existing = queries[key];
+		if (existing === undefined) {
+			queries[key] = value;
+		} else if (Array.isArray(existing)) {
+			queries[key] = [...existing, value];
+		} else {
+			queries[key] = [existing, value];
+		}
 	}
 
 	url.search = '';
@@ -391,12 +400,12 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
-		// @ts-ignore
+		// @ts-expect-error key is not optional in type
 		delete httpNodeParameters.options.redirect;
 	}
 
 	if (!Object.keys(httpNodeParameters.options.response.response).length) {
-		// @ts-ignore
+		// @ts-expect-error key is not optional in type
 		delete httpNodeParameters.options.response;
 	}
 

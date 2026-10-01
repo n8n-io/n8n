@@ -9,6 +9,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { verifySignature } from './MailerLiteTriggerHelpers';
 import { mailerliteApiRequest } from '../GenericFunctions';
 
 export class MailerLiteTriggerV2 implements INodeType {
@@ -120,6 +121,11 @@ export class MailerLiteTriggerV2 implements INodeType {
 					if (webhook.url === webhookUrl && webhook.events === events) {
 						// Set webhook-id to be sure that it can be deleted
 						webhookData.webhookId = webhook.id as string;
+						if (typeof webhook.secret === 'string') {
+							webhookData.webhookSecret = webhook.secret;
+						} else {
+							delete webhookData.webhookSecret;
+						}
 						return true;
 					}
 				}
@@ -145,6 +151,11 @@ export class MailerLiteTriggerV2 implements INodeType {
 				}
 
 				webhookData.webhookId = data.id as string;
+				if (typeof data.secret === 'string') {
+					webhookData.webhookSecret = data.secret;
+				} else {
+					delete webhookData.webhookSecret;
+				}
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -161,6 +172,7 @@ export class MailerLiteTriggerV2 implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 				return true;
 			},
@@ -168,6 +180,14 @@ export class MailerLiteTriggerV2 implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const body = this.getBodyData();
 
 		const data = body.fields as IDataObject[];

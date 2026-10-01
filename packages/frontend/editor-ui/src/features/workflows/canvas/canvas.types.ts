@@ -1,18 +1,33 @@
-import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type ExecutionStatus,
+	type IConnections,
+	type INodeConnections,
+	type INodeParameterResourceLocator,
+	type IWorkflowGroup,
+	type NodeConnectionType,
+} from 'n8n-workflow';
 import type {
+	Connection,
 	DefaultEdge,
+	GraphNode,
 	Node,
 	NodeProps,
 	Position,
 	OnConnectStartParams,
 	ViewportTransform,
 } from '@vue-flow/core';
+import type { AgentCapabilitySummary } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
+import type {
+	CanvasLayoutSource,
+	CanvasLayoutTarget,
+} from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -46,6 +61,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	Agent = 'n8n-nodes-base.messageAnAgent',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -66,15 +82,10 @@ export type CanvasNodeDefaultRender = {
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
-		inputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
-		outputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
+		placeholder?: boolean;
 	}>;
 };
 
@@ -93,8 +104,26 @@ export type CanvasNodeStickyNoteRender = {
 	options: Partial<{
 		width: number;
 		height: number;
-		color: number;
+		color: number | string; // 1-7 for presets, hex string for custom colors
 		content: string;
+	}>;
+};
+
+export type CanvasNodeAgentRender = {
+	type: CanvasNodeRenderType.Agent;
+	options: Partial<{
+		// The node's `agentId` resource-locator — referenced mode only (ignored
+		// in inline mode). Empty `value` => unconfigured card (shows the agent
+		// picker); set => rich card keyed by this agent.
+		agentId: INodeParameterResourceLocator;
+		// 'inline' renders the card from `inlineSummary` below instead of
+		// fetching the referenced agent's capability summary.
+		agentSource: 'referenced' | 'inline';
+		// Pre-projected summary of the node's embedded agent definition (when
+		// agentSource is 'inline'). The card renders only name/model/tools, so
+		// the full inline config (instructions, embedded tool parameters) stays
+		// out of the render options.
+		inlineSummary: AgentCapabilitySummary;
 	}>;
 };
 
@@ -105,19 +134,12 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	inputs: CanvasConnectionPort[];
-	outputs: CanvasConnectionPort[];
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
-		visible: boolean;
-	};
-	pinnedData: {
-		count: number;
 		visible: boolean;
 	};
 	execution: {
@@ -135,16 +157,85 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeAgentRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
+
+export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
+export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
+export const CANVAS_NODE_GROUP_INPUT_HANDLE = `${CanvasConnectionMode.Input}/${NodeConnectionTypes.Main}/0`;
+export const CANVAS_NODE_GROUP_OUTPUT_HANDLE = `${CanvasConnectionMode.Output}/${NodeConnectionTypes.Main}/0`;
+
+// Host override for group expansion; leaves persisted view state untouched.
+export type GroupExpansionMode = 'all' | 'errored';
+
+export function createCanvasGroupNodeId(groupId: string): string {
+	return `${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`;
+}
+
+export function parseCanvasGroupNodeId(id: string): string | undefined {
+	return id.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)
+		? id.slice(CANVAS_NODE_GROUP_ID_PREFIX.length)
+		: undefined;
+}
+
+/**
+ * The only execution states a group can surface — node-level statuses like
+ * `crashed` are folded into these during aggregation.
+ */
+export type GroupExecutionStatus =
+	| 'waiting'
+	| 'running'
+	| 'error'
+	| 'issues'
+	| 'warning'
+	| 'success';
+
+/** Per-node execution state used to roll a group up into one status. */
+export interface NodeExecutionSnapshot {
+	running: boolean;
+	waitingForNext: boolean;
+	waiting: string | undefined;
+	hasExecutionError: boolean;
+	hasValidationError: boolean;
+	status: ExecutionStatus | undefined;
+	/** Parameters changed since the last run — the single-node "dirty" warning. */
+	dirty: boolean;
+	iterations: number;
+}
+
+export interface CanvasGroupNodeData {
+	group: IWorkflowGroup;
+	nodesRect: { x: number; y: number; width: number; height: number };
+	isCollapsed: boolean;
+	isEmptyGroup?: boolean;
+	executionStatus?: GroupExecutionStatus;
+	allNodesDisabled?: boolean;
+}
+
+export type CanvasGroupNode = Node<CanvasGroupNodeData>;
+
+export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
+
+/** A rendered VueFlow node as auto-layout sees it: a regular node or a group node. */
+export type CanvasLayoutNode = GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>;
+export type CanvasLayoutNodeData = CanvasNodeData | CanvasGroupNodeData;
+
+export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
+export function isCanvasGroupNode(node: { type?: string }): boolean;
+export function isCanvasGroupNode(node: { type?: string }): boolean {
+	return node.type === CANVAS_NODE_GROUP_TYPE;
+}
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
+	// Real workflow endpoints behind this collapsed-group edge, one per merged connection.
+	canonicals?: Connection[];
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
@@ -177,6 +268,10 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
+	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
+	'fitView:onNodesInit': never;
+	/** Deferred setConnections — waits for VueFlow's onNodesInitialized so handles exist. */
+	'setConnections:onNodesInit': IConnections;
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
@@ -188,12 +283,14 @@ export type CanvasEventBusEvents = {
 	};
 	tidyUp: {
 		source: CanvasLayoutSource;
+		target?: CanvasLayoutTarget;
 		nodeIdsFilter?: string[];
 		trackEvents?: boolean;
 		trackHistory?: boolean;
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	'deprecated:tab-shortcut': never;
 };
 
 export interface CanvasNodeInjectionData {
@@ -220,26 +317,11 @@ export interface CanvasNodeHandleInjectionData {
 
 export type ConnectStartEvent = {
 	event?: MouseEvent | undefined;
+	/** True when a collapsed empty group's left input started the drag. */
+	isEmptyGroupTargetStart?: boolean;
 } & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
-
-export type ExecutionOutputMapData = {
-	total: number;
-	iterations: number;
-	byTarget?: {
-		[targetNodeId: string]: {
-			total: number;
-			iterations: number;
-		};
-	};
-};
-
-export type ExecutionOutputMap = {
-	[connectionType: string]: {
-		[outputIndex: string]: ExecutionOutputMapData;
-	};
-};
 
 export type BoundingBox = {
 	x: number;

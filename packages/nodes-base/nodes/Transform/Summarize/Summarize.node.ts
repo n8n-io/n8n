@@ -23,7 +23,8 @@ export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Summarize',
 		name: 'summarize',
-		icon: 'file:summarize.svg',
+		icon: 'node:summarize',
+		iconColor: 'amber',
 		group: ['transform'],
 		subtitle: '',
 		version: [1, 1.1],

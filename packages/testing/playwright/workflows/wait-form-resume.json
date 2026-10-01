@@ -1,0 +1,124 @@
+{
+	"name": "Wait Form Resume Test",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "start-wait-form-test",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"webhookId": "start-wait-form-test-id"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "capture-form-url",
+							"name": "formUrl",
+							"value": "={{ $execution.resumeFormUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "capture-url",
+			"name": "Capture Form URL",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [500, 300]
+		},
+		{
+			"parameters": {
+				"resume": "form",
+				"formTitle": "Test Form",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Name",
+							"fieldType": "text",
+							"requiredField": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "wait-form",
+			"name": "Wait for Form",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [700, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "result",
+							"name": "result",
+							"value": "Form submitted successfully",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "result",
+			"name": "Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [900, 300]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Capture Form URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Capture Form URL": {
+			"main": [
+				[
+					{
+						"node": "Wait for Form",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Form": {
+			"main": [
+				[
+					{
+						"node": "Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

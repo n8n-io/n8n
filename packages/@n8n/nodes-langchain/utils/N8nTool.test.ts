@@ -18,7 +18,7 @@ const mockNode: INode = {
 
 describe('Test N8nTool wrapper as DynamicStructuredTool', () => {
 	it('should wrap a tool', () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 
@@ -37,7 +37,7 @@ describe('Test N8nTool wrapper as DynamicStructuredTool', () => {
 
 describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 	it('should convert the tool to a dynamic tool', () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 
@@ -55,8 +55,27 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		expect(dynamicTool).toBeInstanceOf(DynamicTool);
 	});
 
+	// `getConnectedTools` stamps `sourceNodeName` before converting, and the MCP trigger needs it
+	// on the far side to tell a worker which node to run
+	it('should carry metadata over to the dynamic tool', () => {
+		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
+
+		const tool = new N8nTool(ctx, {
+			name: 'Dummy Tool',
+			description: 'A dummy tool for testing',
+			func: vi.fn(),
+			schema: z.object({ foo: z.string() }),
+		});
+		tool.metadata = { sourceNodeName: 'My Tool Node', isFromToolkit: false };
+
+		expect(tool.asDynamicTool().metadata).toEqual({
+			sourceNodeName: 'My Tool Node',
+			isFromToolkit: false,
+		});
+	});
+
 	it('should format fallback description correctly', () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 
@@ -84,7 +103,7 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 	});
 
 	it('should handle empty parameter list correctly', () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 
@@ -101,7 +120,7 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 	});
 
 	it('should parse correct parameters', async () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 
@@ -125,7 +144,7 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 	});
 
 	it('should recover when 1 parameter is passed directly', async () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 
@@ -148,7 +167,7 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 	});
 
 	it('should recover when JS object is passed instead of JSON', async () => {
-		const func = jest.fn();
+		const func = vi.fn();
 
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>({}, mockNode);
 

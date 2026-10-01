@@ -99,6 +99,8 @@ export interface PartialAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
+	/** Parent evaluation TestRun.id, exposed to Code nodes as `$evaluation.runId`. */
+	evaluationRunId?: string;
 }
 
 /** RPC methods that are exposed directly to the Code Node */

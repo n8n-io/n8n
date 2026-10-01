@@ -1,5 +1,11 @@
 import { ChatGroq } from '@langchain/groq';
 import {
+	proxyFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,11 +13,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 export class LmChatGroq implements INodeType {
 	description: INodeTypeDescription = {
@@ -101,6 +103,9 @@ export class LmChatGroq implements INodeType {
 				description:
 					'The model which will generate the completion. <a href="https://console.groq.com/docs/models">Learn more</a>.',
 				default: 'llama3-8b-8192',
+				builderHint: {
+					propertyHint: MODEL_SELECTION_HINT,
+				},
 			},
 			{
 				displayName: 'Options',
@@ -140,13 +145,15 @@ export class LmChatGroq implements INodeType {
 			temperature: number;
 		};
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
 		const model = new ChatGroq({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
-			httpAgent: getProxyAgent('https://api.groq.com/openai/v1'),
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, egressFilter }),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

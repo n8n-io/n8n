@@ -1,17 +1,21 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { ChatHubSidebar } from './components/ChatHubSidebar';
+import { ChatAgentCard } from './components/ChatAgentCard';
 
 export class ChatHubWorkflowAgentsPage extends BasePage {
-	readonly sidebar = new ChatHubSidebar(this.page.locator('#sidebar'));
+	async goto() {
+		await this.page.goto('/home/chat/workflow-agents');
+	}
+
+	readonly agentCards = new ChatAgentCard(this.page);
 
 	constructor(page: Page) {
 		super(page);
 	}
 
 	getAgentCards(): Locator {
-		return this.page.getByTestId('chat-agent-card');
+		return this.agentCards.getCards();
 	}
 
 	getEmptyText(): Locator {

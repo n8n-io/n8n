@@ -1,6 +1,6 @@
 import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
 import type {
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class StartNodeRemovedRule implements IBreakingChangeWorkflowRule {
 	private readonly START_NODE_TYPE = 'n8n-nodes-base.start';
 
@@ -23,7 +23,7 @@ export class StartNodeRemovedRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The Start node is no longer supported. Replace it with a Manual Trigger for manual executions, or with an Execute Workflow Trigger if used as a sub-workflow.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 		};
 	}
 

@@ -1,4 +1,4 @@
-import { IsBoolean, IsHexColor, IsOptional, IsString, IsIn } from 'class-validator';
+import { IsBoolean, IsHexColor, IsOptional, IsString, IsIn, Matches } from 'class-validator';
 
 import { KeyPairType } from './key-pair-type';
 
@@ -14,6 +14,9 @@ export class SourceControlPreferences {
 	repositoryUrl: string;
 
 	@IsString()
+	@Matches(/^[a-zA-Z0-9]/, {
+		message: 'branchName must start with an alphanumeric character',
+	})
 	branchName = 'main';
 
 	@IsBoolean()

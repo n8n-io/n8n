@@ -8,6 +8,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
@@ -17,7 +19,7 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 
 const renderComponent = createComponentRenderer(NodeIssueItem);
 
-function formatIssueMessage(value: string | string[]) {
+function formatNodeIssueMessage(value: string | string[]) {
 	return Array.isArray(value) ? value.join(', ') : value;
 }
 
@@ -28,7 +30,9 @@ describe('NodeIssueItem', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-		ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.setWorkflowId('test-workflow-id');
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.setActiveNodeName = vi.fn();
 	});
 
@@ -38,7 +42,7 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(),
-				formatIssueMessage,
+				formatNodeIssueMessage,
 			},
 		});
 
@@ -56,7 +60,7 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(() => nodeType),
-				formatIssueMessage,
+				formatNodeIssueMessage,
 			},
 		});
 
@@ -74,7 +78,7 @@ describe('NodeIssueItem', () => {
 			props: {
 				issue: { node: 'Linear', type: 'parameters', value: 'Missing API key' },
 				getNodeType: vi.fn(() => nodeType),
-				formatIssueMessage,
+				formatNodeIssueMessage,
 			},
 		});
 

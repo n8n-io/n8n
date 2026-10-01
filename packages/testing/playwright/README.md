@@ -1,4 +1,21 @@
-# Playwright E2E Test Guide
+# Playwright Test Orchestration Guide
+
+Playwright is not only the browser E2E runner. This package uses Playwright's
+worker lifecycle and project model to orchestrate browsers, APIs, n8n processes,
+service containers, deployment topologies, diagnostics, and benchmark artifacts.
+
+## Choose a suite
+
+| Goal | Start here |
+|------|------------|
+| Test a product UI or API journey | `tests/e2e/` |
+| Test PostgreSQL, queue mode, multi-main, encryption, or process lifecycle | `tests/infrastructure/` |
+| Measure infrastructure throughput or resource use | [`tests/infrastructure/benchmarks/README.md`](tests/infrastructure/benchmarks/README.md) |
+| Measure browser or canvas performance | `tests/performance/README.md` |
+| Test fixtures, startup, telemetry, or harness behavior | `tests/framework/` |
+
+Read `AGENTS.md` before you add a test. It defines suite boundaries, fixtures,
+container capabilities, and required verification.
 
 ## Development setup
 ```bash
@@ -10,8 +27,99 @@ pnpm build:docker # from root first to test against local changes
 ```bash
 pnpm test:all                 									# Run all tests (fresh containers, pnpm build:docker from root first to ensure local containers)
 pnpm test:local           											# Starts a local server and runs the E2E tests
-N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the instance running
+N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the running instance
 ```
+
+## Test Layout
+
+Product Playwright tests live under `tests/`. Most product tests are grouped
+under `tests/e2e/`, with infrastructure, performance, evaluation, and other
+test suites beside it.
+
+Framework and harness tests live under `tests/framework/`. These tests verify
+the test framework, fixtures, startup lifecycle, diagnostics, and harness
+contracts. They are not product E2E tests and must not be added under
+`tests/e2e/`.
+
+Run the framework unit tests with the package Vitest configuration:
+
+```bash
+pnpm exec vitest run tests/framework/telemetry.test.ts
+```
+
+Run the browser-backed harness contract tests with the dedicated configuration:
+
+```bash
+pnpm test:harness
+```
+
+Inspect the full E2E distribution without running tests or containers:
+
+```bash
+pnpm --silent distribution:count
+```
+
+The report counts selected specs, runnable tests, declared container images, and
+the Playwright worker profiles that would each start an n8n stack with one worker.
+It compares those stack starts with the fixture count from the distributor.
+
+Inspect the impact selection for a pull request:
+
+```bash
+pnpm --silent distribution:count -- --pr=<pull-request-number>
+```
+
+Pass an explicit changed-file list when no pull request exists:
+
+```bash
+pnpm --silent distribution:count -- \
+  --files=packages/core/src/example.ts,packages/workflow/src/example.ts \
+  --base=<base-sha>
+```
+
+## Develop against running containers (avoid docker rebuilds)
+
+Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
+need `pnpm build:docker` each time. Boot only the services your local dev
+servers need, and let dev mode pick them up.
+
+**Two-terminal workflow:**
+
+```bash
+# Terminal 1 — boot only the services. Writes packages/cli/bin/.env with the
+# host:port + credentials. Containers stay running in the background.
+pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy
+
+# Terminal 2 — run n8n locally as usual. It picks up the .env automatically.
+# Add `pnpm dev:fe:editor` in a third terminal for frontend hot reload.
+pnpm dev:be
+```
+
+Scope the `--services` list to what you actually need — booting fewer
+containers makes startup faster.
+
+| Service | What dev mode gets | Use when… |
+|---------|--------------------|-----------|
+| `postgres` | `DB_*` vars → PostgreSQL backend | testing migrations or PG-specific queries |
+| `redis` | `QUEUE_*`/`N8N_CACHE_*` → queue mode + cache | testing queue mode or distributed cache |
+| `mailpit` | `N8N_SMTP_*` → captured SMTP at `http://localhost:<mapped-port>` | testing email flows |
+| `proxy` | `HTTP_PROXY`/`HTTPS_PROXY`/`N8N_PROXY_*` → MockServer | testing outbound HTTP via the proxy |
+
+Other available services: `kafka`, `gitea`, `keycloak`, `kent`, `victoriaLogs`,
+`victoriaMetrics`, `vector`, `tracing`, `localstack`, `cloudflared`, `ngrok`.
+See `packages/testing/containers/README.md` for the full list.
+
+**Tear down when you're done:**
+
+```bash
+pnpm --filter n8n-containers services:clean
+```
+
+This stops the containers and removes `packages/cli/bin/.env`.
+
+**Running service-backed tests against this setup.** Tests with service-backed
+`capability` options skip local mode because the service helpers require an n8n
+test container. Run these tests with a container project.
 
 ## Separate Backend and Frontend URLs
 
@@ -45,7 +153,43 @@ pnpm test:chaos									# Runs the chaos tests
 # Development
 pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
+
+# Isolated local run: random port, throwaway DB, includes container-tagged tests
+pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 ```
+
+### `test:local:isolated` — local run with full isolation
+
+`pnpm test:local:isolated` is a generalized version of `test:local` for
+situations where `test:local`'s defaults aren't enough:
+
+- **Random free OS port** for n8n's HTTP server and the task-runner broker, so
+  multiple instances can run in parallel without colliding on `5678`/`5679`.
+  Pin a port with `N8N_BASE_URL=http://localhost:5680 …` when you need a
+  stable URL for browser inspection.
+- **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
+  n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully isolated
+  from your local `~/.n8n` install.
+- **Container-tagged tests included.** The local project selects `@licensed`,
+  `@db:reset`, and `@mode:*` tests. Service-backed tests still skip because
+  local mode does not provide the service container helpers.
+- **Self-managed n8n.** Boots n8n with a readiness check against
+  `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
+  Playwright's own webServer.
+
+Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local` uses):
+
+```bash
+N8N_TEST_ENV='{"N8N_ENABLED_MODULES":"my-module"}' \
+  pnpm test:local:isolated tests/e2e/my-module
+```
+
+The two underlying env-var levers — usable independently of the script:
+
+| Env var | Effect |
+|---------|--------|
+| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Includes `@mode:*`, `@licensed`, and `@db:reset` tests in local runs. Service-backed tests still skip. |
+| `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
 ## Test Tags
 ```typescript
@@ -53,7 +197,6 @@ test('basic test', ...)                              // All modes, fully paralle
 test('postgres only @mode:postgres', ...)            // Mode-specific
 test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 test('cloud resource test @cloud:trial', ...)       // Cloud resource constraints
-test('proxy test @capability:proxy', ...)           // Requires proxy server capability
 test('enterprise feature @licensed', ...)           // Requires enterprise license (container-only)
 ```
 
@@ -62,12 +205,49 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | Tag | Description | When to Use |
 |-----|-------------|-------------|
 | `@mode:X` | Infrastructure mode (postgres, queue, multi-main) | Tests requiring specific DB or architecture |
-| `@capability:X` | Container services (email, proxy, oidc, source-control, observability) | Tests needing external services |
 | `@licensed` | Enterprise license features | Tests for features behind license flags at startup |
 | `@cloud:X` | Resource constraints (trial, enterprise) | Performance tests with memory/CPU limits |
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
 | `@auth:X` | Authentication role (owner, admin, member, none) | Tests requiring specific user role |
 | `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
+| `@engine:v2` | Must pass on engine v2 as well | Runs under the `engine-v2:e2e` project (see below) |
+| `@engine:v1-only` | Engine v2 will never support this | Skipped under `engine-v2:e2e`; tracking only |
+| `@engine:v2-pending` | Engine v2 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
+
+### Engine v2 parity
+
+The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
+that runs engine v2 in its own container (`containerConfig.engine:
+'container'`, Postgres, single main). The main runs the `engine-v2` module in
+remote mode and dials the engine over the stack network. The engine container
+runs `n8n engine`, has no `DB_*` env and no encryption key, resolves
+credentials through the main's control plane server, and keeps its own
+`n8n_engine` database on the dedicated `engine-postgres` service. Execution
+responses travel back to the main over the stack's Redis. Under that stack
+every workflow the API helpers create gets `settings.engineType = 'v2'`, so a
+spec proves parity without changes.
+
+`@db:reset` clears the control plane only, so data plane execution rows live
+on inside a worker. The engine database is emptied once, when the worker takes
+its container.
+
+A workflow built in the UI does not get the setting, and a workflow without it
+runs on the legacy engine. A tagged spec must therefore create its workflow
+through `api.workflows` and run it through `api.workflows.runManually`, which
+fails the test when the run did not reach engine v2. A spec that starts the
+run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
+after the run, which checks the same thing. A tag the parity buckets do not
+know also fails the test, and names the three valid tags.
+
+The project only picks up specs with an `@engine:*` tag for now. Tag a spec
+`@engine:v2` once it passes on both engines; use the other two tags to track
+specs that engine v2 does not run yet:
+
+```bash
+pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-run-outcome.spec.ts
+```
+
+For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.
 
 ### Worker Isolation (Fresh Database)
 
@@ -184,18 +364,19 @@ You can use ProxyServer to mock API requests.
 ```typescript
 import { test, expect } from '../fixtures/base';
 
-// The `@capability:proxy` tag ensures tests only run when proxy infrastructure is available.
-test.describe('Proxy tests @capability:proxy', () => {
-  test('should mock HTTP requests', async ({ proxyServer, n8n }) => {
+test.use({ capability: 'proxy' });
+
+test.describe('Proxy tests', () => {
+  test('should mock HTTP requests', async ({ services, n8n }) => {
     // Create mock expectations
-    await proxyServer.createGetExpectation('/api/data', { result: 'mocked' });
+    await services.proxy.createGetExpectation('/api/data', { result: 'mocked' });
 
     // Execute workflow that makes HTTP requests
     await n8n.canvas.openNewWorkflow();
     // ... test implementation
 
     // Verify requests were proxied
-    expect(await proxyServer.wasGetRequestMade('/api/data')).toBe(true);
+    expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/api/data' })).toBe(true);
   });
 });
 ```
@@ -208,22 +389,22 @@ The ProxyServer service supports recording HTTP requests for test mocking and re
 
 ```typescript
 // Record all requests (the request is simplified/cleansed to method/path/body/query)
-await proxyServer.recordExpectations('test-folder');
+await services.proxy.recordExpectations('test-folder');
 
 // Record with filtering and options
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   host: 'googleapis.com',           // Filter by host (partial match)
   dedupe: true,                     // Remove duplicate requests
   raw: false                        // Save cleaned requests (default)
 });
 
 // Record raw requests with all headers and metadata
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   raw: true                         // Save complete original requests
 });
 
 // Record requests matching specific criteria
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   pathOrRequestDefinition: {
     method: 'POST',
     path: '/api/workflows'
@@ -236,9 +417,9 @@ await proxyServer.recordExpectations('test-folder', {
 Recorded expectations are saved as JSON files in the `expectations/` directory. To use them in tests, you must explicitly load them:
 
 ```typescript
-test('should use recorded expectations', async ({ proxyServer }) => {
+test('should use recorded expectations', async ({ services }) => {
   // Load expectations from a specific folder
-  await proxyServer.loadExpectations('test-folder');
+  await services.proxy.loadExpectations('test-folder');
 
   // Your test code here - requests will be mocked using loaded expectations
 });
@@ -249,14 +430,14 @@ test('should use recorded expectations', async ({ proxyServer }) => {
 **Remember to clean up expectations before or after test runs:**
 
 ```typescript
-test.beforeEach(async ({ proxyServer }) => {
+test.beforeEach(async ({ services }) => {
   // Clear any existing expectations before test
-  await proxyServer.clearAllExpectations();
+  await services.proxy.clearAllExpectations();
 });
 
-test.afterEach(async ({ proxyServer }) => {
+test.afterEach(async ({ services }) => {
   // Or clear expectations after test
-  await proxyServer.clearAllExpectations();
+  await services.proxy.clearAllExpectations();
 });
 ```
 
@@ -272,7 +453,7 @@ Use `N8N_CONTAINERS_KEEPALIVE=true` to keep containers running after tests compl
 - Manual testing against a pre-configured environment
 
 ```bash
-N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite --grep "@capability:email" --workers 1
+N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite tests/e2e/auth/password-reset.spec.ts --workers 1
 ```
 
 After tests complete, connection details are printed:
@@ -314,6 +495,102 @@ node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl vict
 3. Query locally:
    - **Metrics UI:** http://localhost:8428/vmui/
    - **Logs UI:** http://localhost:9428/select/vmui/
+
+## Janitor (Static Analysis)
+
+Janitor enforces test architecture patterns via static analysis. It runs as a **pre-commit hook** and blocks new violations from being introduced.
+
+Existing violations are tracked in a baseline file (`.janitor-baseline.json`) and don't block commits. Only **new** violations in your changed files will fail.
+
+### Quick Commands
+
+```bash
+# Run all rules on entire codebase
+pnpm janitor
+
+# Run on a specific file
+pnpm janitor --file=tests/e2e/my-test.spec.ts
+
+# Run a specific rule
+pnpm janitor --rule=dead-code
+pnpm janitor --rule=selector-purity
+
+# Dead code auto-removal
+pnpm janitor:fix --rule=dead-code
+
+# List all rules
+pnpm janitor --list
+
+# Verbose output (shows suggestions)
+pnpm janitor --verbose
+```
+
+### Rules
+
+| Rule | Severity | What it enforces |
+|------|----------|------------------|
+| `selector-purity` | error | Tests/flows use page objects, not raw locators |
+| `scope-lockdown` | error | Page locators scoped to their container |
+| `boundary-protection` | error | Pages don't import other pages |
+| `no-direct-page-instantiation` | error | Access pages through the facade, not `new XPage()` |
+| `dead-code` | warning | No unused methods/properties [fixable] |
+| `no-page-in-flow` | warning | Flows use page objects, not `page` directly |
+| `api-purity` | warning | Tests use API services, not raw HTTP calls |
+| `deduplication` | warning | Same test ID defined in one page object only |
+
+### Janitor Blocked My Commit - Now What?
+
+When the pre-commit hook blocks your commit, you'll see output like:
+
+```
+Found 2 violation(s)
+
+tests/e2e/my-test.spec.ts (2)
+   [ERR] L15: [selector-purity] Raw locator in test: page.getByTestId('save-button')
+   [ERR] L22: [selector-purity] Chained locator call: n8n.canvas.getNode('X').locator('.status')
+```
+
+**Steps to fix:**
+
+1. **Read the rule name and message** - it tells you exactly what's wrong
+2. **Move the selector into a page object** - the fix is almost always "put this in a page object method instead"
+3. **Re-run janitor on your file** to verify: `pnpm janitor --file=<your-file>`
+4. **Commit again**
+
+**Common fixes by rule:**
+
+| Rule | Problem | Fix |
+|------|---------|-----|
+| `selector-purity` | `page.getByTestId('x')` in test | Add a getter to the page object, call it from the test |
+| `selector-purity` | `someLocator.locator('.child')` in test | Add a method to the page object that returns the specific element |
+| `scope-lockdown` | `this.page.getByTestId('x')` in a component | Use `this.container.getByTestId('x')` instead |
+| `boundary-protection` | Page importing another page | Move the composition to a flow/composable |
+| `dead-code` | Unused method in page object | Delete it (or run `pnpm janitor:fix --rule=dead-code`) |
+
+**False positive?** If you believe the violation is wrong, raise it with the QA team. Don't bypass the hook.
+
+### Impact Analysis
+
+Find which tests are affected by a file or method change:
+
+```bash
+# File-level: which tests use this page object?
+pnpm janitor impact --file=pages/CanvasPage.ts
+
+# Method-level: which tests call this specific method?
+pnpm janitor method-impact --method=CanvasPage.addNode
+
+# Pipe to playwright to run only affected tests
+pnpm janitor impact --file=pages/CanvasPage.ts --test-list | xargs pnpm test:local
+```
+
+### Inventory (Codebase Discovery)
+
+```bash
+pnpm janitor inventory                    # Full inventory
+pnpm janitor inventory --summary          # Summary counts
+pnpm janitor inventory --category=pages   # Single category
+```
 
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).

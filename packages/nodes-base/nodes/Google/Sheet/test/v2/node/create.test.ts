@@ -4,25 +4,26 @@ import { execute } from '../../../v2/actions/sheet/create.operation';
 import type { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import { getExistingSheetNames, hexToRgb } from '../../../v2/helpers/GoogleSheets.utils';
 import { apiRequest } from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/helpers/GoogleSheets.utils', () => ({
-	getExistingSheetNames: jest.fn(),
-	hexToRgb: jest.fn(),
+vi.mock('../../../v2/helpers/GoogleSheets.utils', () => ({
+	getExistingSheetNames: vi.fn(),
+	hexToRgb: vi.fn(),
 }));
 
-jest.mock('../../../v2/transport', () => ({
-	apiRequest: jest.fn(),
+vi.mock('../../../v2/transport', () => ({
+	apiRequest: vi.fn(),
 }));
 
 describe('Google Sheet - Create', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	const mockExecuteFunctions = {
-		getInputData: jest.fn(),
-		getNodeParameter: jest.fn(),
+		getInputData: vi.fn(),
+		getNodeParameter: vi.fn(),
 		helpers: {
-			constructExecutionMetaData: jest.fn(),
+			constructExecutionMetaData: vi.fn(),
 		},
 	} as unknown as Partial<IExecuteFunctions>;
 
@@ -39,15 +40,15 @@ describe('Google Sheet - Create', () => {
 			replies: [{ addSheet: { properties: { title: sheetTitle } } }],
 		};
 
-		(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue(items);
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(mockExecuteFunctions.getInputData as Mock).mockReturnValue(items);
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			if (paramName === 'title') return sheetTitle;
 			if (paramName === 'options') return options;
 		});
-		(getExistingSheetNames as jest.Mock).mockResolvedValue(existingSheetNames);
-		(hexToRgb as jest.Mock).mockReturnValue(rgbColor);
-		(apiRequest as jest.Mock).mockResolvedValue(responseData);
-		(mockExecuteFunctions as IExecuteFunctions).helpers.constructExecutionMetaData = jest
+		(getExistingSheetNames as Mock).mockResolvedValue(existingSheetNames);
+		(hexToRgb as Mock).mockReturnValue(rgbColor);
+		(apiRequest as Mock).mockResolvedValue(responseData);
+		(mockExecuteFunctions as IExecuteFunctions).helpers.constructExecutionMetaData = vi
 			.fn()
 			.mockReturnValue([{ json: responseData }]);
 
@@ -78,14 +79,14 @@ describe('Google Sheet - Create', () => {
 		const existingSheetNames = ['existing-sheet'];
 		const sheetTitle = 'existing-sheet';
 
-		(mockExecuteFunctions as IExecuteFunctions).getInputData = jest.fn().mockReturnValue(items);
-		(mockExecuteFunctions as IExecuteFunctions).getNodeParameter = jest
+		(mockExecuteFunctions as IExecuteFunctions).getInputData = vi.fn().mockReturnValue(items);
+		(mockExecuteFunctions as IExecuteFunctions).getNodeParameter = vi
 			.fn()
 			.mockImplementation((paramName: string) => {
 				if (paramName === 'title') return sheetTitle;
 				if (paramName === 'options') return {};
 			});
-		(getExistingSheetNames as jest.Mock).mockResolvedValue(existingSheetNames);
+		(getExistingSheetNames as Mock).mockResolvedValue(existingSheetNames);
 
 		const result = await execute.call(
 			mockExecuteFunctions as IExecuteFunctions,

@@ -1,6 +1,6 @@
 import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
 import type {
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class FileAccessRule implements IBreakingChangeWorkflowRule {
 	private readonly FILE_NODES = ['n8n-nodes-base.readWriteFile', 'n8n-nodes-base.readBinaryFiles'];
 
@@ -22,9 +22,9 @@ export class FileAccessRule implements IBreakingChangeWorkflowRule {
 			title: 'File Access Restrictions',
 			description: 'File access is now restricted to a default directory for security purposes',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#set-default-value-for-n8n_restrict_file_access_to',
+				'https://docs.n8n.io/2-0-breaking-changes/#set-default-value-for-n8nrestrictfileaccessto',
 		};
 	}
 

@@ -1,5 +1,10 @@
 import { ChatCohere } from '@langchain/cohere';
 import type { LLMResult } from '@langchain/core/outputs';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -7,10 +12,10 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { createCohereV2ChatClient } from './cohereV2Client';
 
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
@@ -121,6 +126,11 @@ export class LmChatCohere implements INodeType {
 					},
 				},
 				default: 'command-a-03-2025',
+				builderHint: {
+					propertyHint:
+						"Choose a current Command model from the connected credential's model list. Check tool support when connecting it to an agent. " +
+						MODEL_SELECTION_HINT,
+				},
 			},
 			{
 				displayName: 'Options',
@@ -162,7 +172,9 @@ export class LmChatCohere implements INodeType {
 		};
 
 		const model = new ChatCohere({
-			apiKey: credentials.apiKey,
+			// Route chat requests through the `/v2/chat` endpoint; current Cohere
+			// models reject the legacy `/v1/chat` endpoint ChatCohere uses by default.
+			client: createCohereV2ChatClient({ apiKey: credentials.apiKey }),
 			model: modelName,
 			temperature: options.temperature,
 			maxRetries: options.maxRetries ?? 2,
@@ -171,7 +183,7 @@ export class LmChatCohere implements INodeType {
 		});
 
 		return {
-			response: model,
+			response: wrapChatModelMessageInput(model),
 		};
 	}
 }

@@ -1,0 +1,286 @@
+import { JSDOM } from 'jsdom';
+
+import {
+	COPY_BUTTON_PATTERN,
+	REVEAL_BUTTON_PATTERN,
+	REVEAL_PHRASE_PATTERNS,
+	SENSITIVE_ARIA_LABEL_PATTERN,
+	SENSITIVE_FIELD_LABEL_PATTERN,
+	SENSITIVE_TESTID_PATTERN,
+	highEntropyCandidates,
+	isSecretLabelledCell,
+	opaqueTokenCandidates,
+	shannonEntropy,
+} from './dom-matchers';
+
+describe('highEntropyCandidates', () => {
+	// Two tokens can share a high-entropy fragment. Picking one token's span would
+	// leave the other — and the shared fragment inside it — untouched.
+	it('falls back to the shared fragment when two tokens disagree', () => {
+		const fragment = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+
+		const hits = highEntropyCandidates(`first alpha.${fragment} second bravo.${fragment} end`);
+
+		expect(hits.map((hit) => hit.value)).toEqual([fragment]);
+	});
+
+	// The same key shown bare and inside a wrapper is one secret. Keeping both
+	// spans would offer the model a marker that captures the wrapper text.
+	it('merges a bare key with a wrapped rendering of it', () => {
+		const key = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+
+		const hits = highEntropyCandidates(`bare ${key} and wrapped session.${key}`);
+
+		expect(hits.map((hit) => hit.value)).toEqual([key]);
+	});
+
+	// A large inline script is one long undelimited run. Expansion must not
+	// rescan it for every match, or sensitivity analysis stalls the tool call.
+	it('stays linear on a large run of high-entropy segments', () => {
+		const text = Array.from({ length: 3200 }, () => 'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fD').join('.');
+
+		const started = performance.now();
+		highEntropyCandidates(text);
+
+		expect(performance.now() - started).toBeLessThan(1000);
+	});
+});
+
+describe('shannonEntropy', () => {
+	it('returns 0 for empty and repeated strings', () => {
+		expect(shannonEntropy('')).toBe(0);
+		expect(shannonEntropy('aaaaaa')).toBe(0);
+	});
+
+	it('returns log2(n) for n unique equally distributed characters', () => {
+		expect(shannonEntropy('ab')).toBeCloseTo(1, 5);
+		expect(shannonEntropy('abcd')).toBeCloseTo(2, 5);
+	});
+
+	it('rates opaque secret-shaped values above the threshold used by candidates', () => {
+		expect(shannonEntropy('notreal-IMzLaCKsU6ZxAbt2qFc9XYdRpQ7vNtBmKL')).toBeGreaterThanOrEqual(
+			4.5,
+		);
+	});
+
+	it('rates repetitive URL-like blobs below the threshold', () => {
+		expect(shannonEntropy('aaaaaaaaaaaaaaaaaaaaaa')).toBeLessThan(4.5);
+	});
+});
+
+describe('COPY_BUTTON_PATTERN', () => {
+	it.each([
+		'Copy',
+		'Copy key',
+		'Copy to clipboard',
+		'Click to copy',
+		'Schlüssel kopieren',
+		'Kopieren',
+		'Copier la clé',
+		'Copiar',
+		'Copia',
+		'Copiato',
+		'コピー',
+		'コピーする',
+		'复制',
+		'複製',
+		'복사',
+	])('matches copy-button label %p', (label) => {
+		expect(COPY_BUTTON_PATTERN.test(label)).toBe(true);
+	});
+
+	it.each(['Cancel', 'Save', 'Close', 'Schließen', 'Annuler', 'Cancelar', 'Submit'])(
+		'does not match unrelated label %p',
+		(label) => {
+			expect(COPY_BUTTON_PATTERN.test(label)).toBe(false);
+		},
+	);
+});
+
+describe('REVEAL_BUTTON_PATTERN', () => {
+	it.each([
+		'Reveal key',
+		'Reveal API key',
+		'Reveal secret',
+		'Show secret',
+		'Show API key',
+		'Unhide token',
+		'View password',
+		'Show access token',
+	])('matches reveal-button label %p', (label) => {
+		expect(REVEAL_BUTTON_PATTERN.test(label)).toBe(true);
+	});
+
+	it.each(['Show details', 'Reveal answer', 'Show more', 'Reveal', 'Show', 'View', 'Hide'])(
+		'does not match generic show/reveal label %p',
+		(label) => {
+			expect(REVEAL_BUTTON_PATTERN.test(label)).toBe(false);
+		},
+	);
+});
+
+describe('SENSITIVE_ARIA_LABEL_PATTERN', () => {
+	it.each([
+		'API key',
+		'Secret key',
+		'Live secret key',
+		'Access token',
+		'Auth token',
+		'Client secret',
+		'User password',
+		'Account credential',
+	])('matches sensitive aria-label %p', (label) => {
+		expect(SENSITIVE_ARIA_LABEL_PATTERN.test(label)).toBe(true);
+	});
+
+	it.each(['Email address', 'Username', 'First name', 'Search', 'Date picker', 'Account number'])(
+		'does not match neutral aria-label %p',
+		(label) => {
+			expect(SENSITIVE_ARIA_LABEL_PATTERN.test(label)).toBe(false);
+		},
+	);
+});
+
+describe('SENSITIVE_FIELD_LABEL_PATTERN', () => {
+	it.each([
+		'Client Secret',
+		'Signing Secret',
+		'Token',
+		'Verification Token',
+		'Personal Access Token',
+		'App password',
+		'API Key',
+		'Access key',
+		'Private key',
+		'Account credential',
+	])('matches secret field label %p', (label) => {
+		expect(SENSITIVE_FIELD_LABEL_PATTERN.test(label)).toBe(true);
+	});
+
+	it.each(['Client ID', 'App ID', 'App name', 'Date of App Creation', 'Background color'])(
+		'does not match public field label %p',
+		(label) => {
+			expect(SENSITIVE_FIELD_LABEL_PATTERN.test(label)).toBe(false);
+		},
+	);
+});
+
+describe('SENSITIVE_TESTID_PATTERN', () => {
+	it.each([
+		'admin-key',
+		'api-key',
+		'apikey-display',
+		'access-token',
+		'auth_token',
+		'secret-value',
+		'user-password',
+		'credential-input',
+		'session-token',
+		'KEY',
+	])('matches sensitive test-id %p', (id) => {
+		expect(SENSITIVE_TESTID_PATTERN.test(id)).toBe(true);
+	});
+
+	it.each(['submit-button', 'cancel-action', 'user-name', 'profile-avatar', 'monkey-button'])(
+		'does not match neutral test-id %p',
+		(id) => {
+			expect(SENSITIVE_TESTID_PATTERN.test(id)).toBe(false);
+		},
+	);
+});
+
+describe('REVEAL_PHRASE_PATTERNS', () => {
+	const matchesAny = (phrase: string) =>
+		REVEAL_PHRASE_PATTERNS.some((pattern) => pattern.test(phrase));
+
+	it.each([
+		"You won't see it again.",
+		"You won't be able to retrieve this key again.",
+		'You cannot see this password again.',
+		"We won't show it to you again.",
+		'Save your key',
+		'Copy this secret',
+		'Make sure you copy this token.',
+		'Notiere den Schlüssel unten.',
+		'We only show it once.',
+		'Treat this as a password.',
+		'Keep it secret.',
+	])('matches reveal phrase %p', (phrase) => {
+		expect(matchesAny(phrase)).toBe(true);
+	});
+
+	it.each([
+		'Save your work',
+		'See you again later',
+		'Backup your data',
+		'Welcome to the dashboard',
+		'You will receive a confirmation email',
+		'Show details',
+	])('does not match neutral phrase %p', (phrase) => {
+		expect(matchesAny(phrase)).toBe(false);
+	});
+});
+
+/** The value cell of a label/value fixture, which is always the last one. */
+function cell(html: string): Element {
+	const cells = new JSDOM(`<dl>${html}</dl>`).window.document.querySelectorAll('dd, td');
+	return cells[cells.length - 1];
+}
+
+describe('isSecretLabelledCell', () => {
+	it.each([
+		{ named: 'a dt partner naming a secret', html: '<dt>Client Secret</dt><dd>v</dd>' },
+		{
+			named: 'a th partner naming a secret',
+			html: '<table><tr><th>API Key</th><td>v</td></tr></table>',
+		},
+		{
+			named: 'a td partner naming a secret',
+			html: '<table><tr><td>Client Secret</td><td>v</td></tr></table>',
+		},
+		{ named: 'a decorated label', html: '<dt>Client Secret:</dt><dd>v</dd>' },
+		{ named: 'the cell id', html: '<dt>Issued</dt><dd id="client-secret">v</dd>' },
+		{ named: 'the cell test id', html: '<dt>Issued</dt><dd data-testid="client-secret">v</dd>' },
+		{ named: 'a camelCase test id', html: '<dt>Issued</dt><dd data-testid="clientSecret">v</dd>' },
+		{ named: 'a camelCase id', html: '<dt>Issued</dt><dd id="apiKeyValue">v</dd>' },
+	])('accepts $named', ({ html }) => {
+		expect(isSecretLabelledCell(cell(html))).toBe(true);
+	});
+
+	it.each([
+		{ named: 'a label the noun only qualifies', html: '<dt>Token expiry</dt><dd>v</dd>' },
+		{ named: 'a qualified label behind decoration', html: '<dt>Credential type:</dt><dd>v</dd>' },
+		{
+			named: 'a camelCase identifier merely containing a noun',
+			html: '<dt>Issued</dt><dd id="tokenizerOutput">v</dd>',
+		},
+		{
+			named: 'a camelCase test id merely containing a noun',
+			html: '<dt>Issued</dt><dd data-testid="secretaryPanel">v</dd>',
+		},
+		{
+			named: 'an identifier merely containing a noun',
+			html: '<dt>Issued</dt><dd id="tokenizer-output">v</dd>',
+		},
+		{ named: 'an unrelated label', html: '<dt>Client ID</dt><dd>v</dd>' },
+		{ named: 'no label at all', html: '<dd>v</dd>' },
+	])('rejects $named', ({ html }) => {
+		expect(isSecretLabelledCell(cell(html))).toBe(false);
+	});
+});
+
+describe('opaqueTokenCandidates', () => {
+	it('takes a long unbroken run whatever its charset', () => {
+		expect(opaqueTokenCandidates(cell('<dd>f8c1b2d47e6a903b5c4d1e8f2a7b6c95</dd>'))).toEqual([
+			{ type: 'password', value: 'f8c1b2d47e6a903b5c4d1e8f2a7b6c95' },
+		]);
+	});
+
+	it.each([
+		{ named: 'prose', html: '<dd>Every 90 days</dd>' },
+		{ named: 'a value under the length floor', html: '<dd>OAuth2</dd>' },
+		{ named: 'a mask', html: '<dd>••••••••••••••••••••</dd>' },
+	])('ignores $named', ({ html }) => {
+		expect(opaqueTokenCandidates(cell(html))).toEqual([]);
+	});
+});

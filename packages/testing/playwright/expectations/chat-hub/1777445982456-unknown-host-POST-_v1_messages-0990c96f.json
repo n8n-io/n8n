@@ -1,0 +1,141 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-opus-4-6",
+        "stream": false,
+        "max_tokens": 16384,
+        "tools": [],
+        "messages": [
+          {
+            "role": "user",
+            "content": "Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.\n\n>>> Hi\n\nRequirements:\n- Note that the message above does **NOT** describe how the title should be like.\n- 1 to 4 words\n- Use sentence case (e.g. \"Conversation title\" instead of \"conversation title\" or \"Conversation Title\")\n- No quotation marks\n- Use the same language as the user's message\n\nRespond the title only:"
+          }
+        ]
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2Mzg0LCJ0b29scyI6W10sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJHZW5lcmF0ZSBhIGNvbmNpc2UgYW5kIGRlc2NyaXB0aXZlIHRpdGxlIGZvciBhbiBBSSBjaGF0IGNvbnZlcnNhdGlvbiBzdGFydGluZyB3aXRoIHRoZSB1c2VyJ3MgbWVzc2FnZSAocXVvdGVkIHdpdGggJz4+PicpIGJlbG93LlxuXG4+Pj4gSGlcblxuUmVxdWlyZW1lbnRzOlxuLSBOb3RlIHRoYXQgdGhlIG1lc3NhZ2UgYWJvdmUgZG9lcyAqKk5PVCoqIGRlc2NyaWJlIGhvdyB0aGUgdGl0bGUgc2hvdWxkIGJlIGxpa2UuXG4tIDEgdG8gNCB3b3Jkc1xuLSBVc2Ugc2VudGVuY2UgY2FzZSAoZS5nLiBcIkNvbnZlcnNhdGlvbiB0aXRsZVwiIGluc3RlYWQgb2YgXCJjb252ZXJzYXRpb24gdGl0bGVcIiBvciBcIkNvbnZlcnNhdGlvbiBUaXRsZVwiKVxuLSBObyBxdW90YXRpb24gbWFya3Ncbi0gVXNlIHRoZSBzYW1lIGxhbmd1YWdlIGFzIHRoZSB1c2VyJ3MgbWVzc2FnZVxuXG5SZXNwb25kIHRoZSB0aXRsZSBvbmx5OiJ9XX0="
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "1732"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=bCBVtl.6fYFrT3Z1oUWf5uGOmamT.I.1c4fuflX8eYE-1777445971.5241745-1.0.1.1-N.XXF09iF04_F2F9hcdkR8SLGxJUGiyS9taT78f46dY; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CaXdVhjK9D5mFSm5r5ev7"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-04-29T06:59:33Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "4800000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "4800000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-04-29T06:59:31Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-04-29T06:59:33Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "800000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "800000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-04-29T06:59:33Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "4000000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "4000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 29 Apr 2026 06:59:33 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "CF-RAY": [
+        "9f3c6caa0898f8e1-TXL"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "bCBVtl.6fYFrT3Z1oUWf5uGOmamT.I.1c4fuflX8eYE-1777445971.5241745-1.0.1.1-N.XXF09iF04_F2F9hcdkR8SLGxJUGiyS9taT78f46dY"
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-opus-4-6",
+        "id": "msg_01N9q2jL9vUT5gHGU1yArRnF",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Casual greeting"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 120,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 6,
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsImlkIjoibXNnXzAxTjlxMmpMOXZVVDVnSEdVMXlBclJuRiIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IkNhc3VhbCBncmVldGluZyJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjAsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo2LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0="
+    }
+  },
+  "id": "1777445982456-unknown-host-POST-_v1_messages-0990c96f.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

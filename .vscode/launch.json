@@ -33,6 +33,21 @@
 			"killBehavior": "forceful"
 		},
 		{
+			"name": "Launch n8n CLI worker dev with debug",
+			"runtimeExecutable": "pnpm",
+			"cwd": "${workspaceFolder}/packages/cli",
+			"runtimeArgs": ["run", "dev:worker", "--", "--inspect-brk"],
+			"console": "integratedTerminal",
+			"restart": true,
+			"autoAttachChildProcesses": true,
+			"request": "launch",
+			"skipFiles": ["<node_internals>/**"],
+			"type": "node",
+			"envFile": "${workspaceFolder}/.env",
+			"outputCapture": "std",
+			"killBehavior": "polite"
+		},
+		{
 			"name": "Launch n8n CLI dev with debug",
 			"runtimeExecutable": "pnpm",
 			"cwd": "${workspaceFolder}/packages/cli",

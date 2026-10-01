@@ -43,7 +43,7 @@ const markdownOptions = {
 
 <template>
 	<VueMarkdown
-		class="chat-message-markdown"
+		class="n8n-markdown chat-message-markdown"
 		:source="text"
 		:options="markdownOptions"
 		:plugins="[linksNewTabPlugin]"

@@ -1,0 +1,97 @@
+operationId: getProjectUsers
+tags:
+  - Projects
+summary: List project members
+description: Returns a list of all members of a project including their role. Requires user:list scope.
+x-required-scope: user:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: The user's unique identifier.
+                    readOnly: true
+                    example: 123e4567-e89b-12d3-a456-426614174000
+                  email:
+                    type: string
+                    format: email
+                    description: The user's email address.
+                    readOnly: true
+                    example: john.doe@company.com
+                  firstName:
+                    type: string
+                    nullable: true
+                    maxLength: 32
+                    description: The user's first name.
+                    readOnly: true
+                    example: john
+                  lastName:
+                    type: string
+                    nullable: true
+                    maxLength: 32
+                    description: The user's last name.
+                    readOnly: true
+                    example: Doe
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: When the user was created.
+                    readOnly: true
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: When the user was last updated.
+                    readOnly: true
+                  role:
+                    type: string
+                    nullable: true
+                    description: The user's role in the project (e.g. project:admin, project:viewer).
+                    readOnly: true
+                    example: project:viewer
+                required:
+                  - id
+                  - email
+                  - firstName
+                  - lastName
+                  - createdAt
+                  - updatedAt
+                  - role
+                description: A project member (user with their role in the project).
+            nextCursor:
+              type: string
+              nullable: true
+              description: Paginate through project members by setting the cursor parameter to the nextCursor attribute returned by a previous request. Default value fetches the first page of the collection.
+              example: eyJvZmZzZXQiOjEwMCwibGltaXQiOjEwMH0=
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

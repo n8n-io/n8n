@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "citations": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "created": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

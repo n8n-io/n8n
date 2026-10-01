@@ -117,6 +117,10 @@ const versionDescription: INodeTypeDescription = {
 					value: 'MD5',
 				},
 				{
+					name: 'SHA1',
+					value: 'SHA1',
+				},
+				{
 					name: 'SHA256',
 					value: 'SHA256',
 				},
@@ -207,6 +211,10 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'MD5',
 					value: 'MD5',
+				},
+				{
+					name: 'SHA1',
+					value: 'SHA1',
 				},
 				{
 					name: 'SHA256',

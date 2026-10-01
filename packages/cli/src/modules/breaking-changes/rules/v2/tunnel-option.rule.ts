@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -7,7 +7,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class TunnelOptionRule implements IBreakingChangeInstanceRule {
 	id: string = 'tunnel-option-v2';
 
@@ -17,7 +17,7 @@ export class TunnelOptionRule implements IBreakingChangeInstanceRule {
 			title: 'Remove n8n --tunnel option',
 			description: 'The --tunnel CLI option has been removed and will be ignored',
 			category: BreakingChangeCategory.instance,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 			documentationUrl: 'https://docs.n8n.io/2-0-breaking-changes/#remove-n8n-tunnel-option',
 		};
 	}

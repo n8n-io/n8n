@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import type { SplunkError, SplunkFeedResponse } from './interfaces';
@@ -59,9 +60,17 @@ export function formatEntry(entry: any, doNotFormatContent = false): any {
 
 export async function parseXml(xml: string) {
 	return await new Promise((resolve, reject) => {
-		parseString(xml, { explicitArray: false }, (error, result) => {
-			error ? reject(error) : resolve(result);
-		});
+		parseString(
+			xml,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(error, result) => {
+				error ? reject(error) : resolve(result);
+			},
+		);
 	});
 }
 

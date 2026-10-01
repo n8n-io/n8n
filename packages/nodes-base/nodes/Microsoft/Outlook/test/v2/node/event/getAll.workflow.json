@@ -1,0 +1,92 @@
+{
+	"name": "Test getAll events",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "getAll",
+				"fromAllCalendars": false,
+				"calendarId": {
+					"__rl": true,
+					"value": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAAAJ9-JDAAA=",
+					"mode": "list",
+					"cachedResultName": "Calendar"
+				},
+				"includeRecurringInstances": false,
+				"returnAll": false,
+				"limit": 10,
+				"output": "simple",
+				"filters": {}
+			},
+			"id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+			"name": "Get Many Events",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 2,
+			"position": [1040, 360],
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "iXJCki7i5Vz0bdks",
+					"name": "Microsoft Outlook account 2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Many Events": [
+			{
+				"json": {
+					"id": "AAMkADlhOTA0MTc5event1",
+					"subject": "Single Event",
+					"bodyPreview": "A one-time event",
+					"start": {
+						"dateTime": "2023-09-05T07:00:00.0000000",
+						"timeZone": "UTC"
+					},
+					"end": {
+						"dateTime": "2023-09-05T08:00:00.0000000",
+						"timeZone": "UTC"
+					},
+					"organizer": {
+						"emailAddress": {
+							"name": "Test User",
+							"address": "test@example.com"
+						}
+					},
+					"attendees": [],
+					"webLink": "https://outlook.office365.com/owa/?itemid=event1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Get Many Events",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "dceb08aa-5897-44d1-afbc-748d1e8a2627",
+	"id": "2CYHzBXQw1nfPGtC",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

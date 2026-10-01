@@ -1,15 +1,18 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { verifySignature } from '../SlackTriggerHelpers';
+import type { Mock } from 'vitest';
 
-jest.mock('crypto', () => ({
-	...jest.requireActual('crypto'),
-	createHmac: jest.fn().mockReturnValue({
-		update: jest.fn().mockReturnThis(),
-		digest: jest
+import { downloadFile, verifySignature } from '../SlackTriggerHelpers';
+import type * as _importType0 from 'crypto';
+
+vi.mock('crypto', async () => ({
+	...(await vi.importActual<typeof _importType0>('crypto')),
+	createHmac: vi.fn().mockReturnValue({
+		update: vi.fn().mockReturnThis(),
+		digest: vi
 			.fn()
 			.mockReturnValue('a2114d57b48eac39b9ad189dd8316235a7b4a8d21a10bd27519666489c69b503'),
 	}),
-	timingSafeEqual: jest.fn(),
+	timingSafeEqual: vi.fn(),
 }));
 
 describe('SlackTriggerHelpers', () => {
@@ -21,21 +24,21 @@ describe('SlackTriggerHelpers', () => {
 	const testSignature = 'v0=a2114d57b48eac39b9ad189dd8316235a7b4a8d21a10bd27519666489c69b503';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Mock Date.now() to return a fixed timestamp
 		const fixedDate = new Date(parseInt(testTimestamp, 10) * 1000);
-		jest.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
+		vi.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn(),
-			getRequestObject: jest.fn(),
-			getNode: jest.fn().mockReturnValue({ name: 'Slack Trigger' }),
+			getCredentials: vi.fn(),
+			getRequestObject: vi.fn(),
+			getNode: vi.fn().mockReturnValue({ name: 'Slack Trigger' }),
 		};
 
 		// Default mock return values
 		mockWebhookFunctions.getRequestObject.mockReturnValue({
-			header: jest.fn().mockImplementation((header) => {
+			header: vi.fn().mockImplementation((header) => {
 				if (header === 'x-slack-signature') return testSignature;
 				if (header === 'x-slack-request-timestamp') return testTimestamp;
 				return null;
@@ -71,7 +74,7 @@ describe('SlackTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-slack-request-timestamp') return testTimestamp;
 					return null;
 				}),
@@ -89,7 +92,7 @@ describe('SlackTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-slack-signature') return testSignature;
 					return null;
 				}),
@@ -108,7 +111,7 @@ describe('SlackTriggerHelpers', () => {
 
 			// Mock Date.now() to return a timestamp that's more than 5 minutes after the request timestamp
 			const futureDate = new Date((parseInt(testTimestamp, 10) + 301) * 1000);
-			jest.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
+			vi.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -121,7 +124,7 @@ describe('SlackTriggerHelpers', () => {
 			});
 
 			// Mock the timingSafeEqual to return true for valid signature
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -136,7 +139,7 @@ describe('SlackTriggerHelpers', () => {
 			});
 
 			// Mock the timingSafeEqual to return false for invalid signature
-			(timingSafeEqual as jest.Mock).mockReturnValue(false);
+			(timingSafeEqual as Mock).mockReturnValue(false);
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -167,7 +170,7 @@ describe('SlackTriggerHelpers', () => {
 
 			// Mock Date.now() to return a timestamp that's more than 5 minutes after the request timestamp
 			const futureDate = new Date((parseInt(testTimestamp, 10) + 301) * 1000);
-			jest.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
+			vi.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
@@ -184,13 +187,54 @@ describe('SlackTriggerHelpers', () => {
 
 			// Keep Date.now() at the same time as the request timestamp (within 5 minute window)
 			const fixedDate = new Date(parseInt(testTimestamp, 10) * 1000);
-			jest.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
+			vi.spyOn(Date, 'now').mockImplementation(() => fixedDate.getTime());
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
 			// Should return true because timestamp is valid and signature secret is not required
 			expect(result).toBe(true);
 			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
+		});
+	});
+
+	describe('downloadFile', () => {
+		let requestWithAuthentication: Mock;
+
+		beforeEach(() => {
+			requestWithAuthentication = vi.fn().mockResolvedValue(Buffer.from('file'));
+			mockWebhookFunctions.helpers = { requestWithAuthentication };
+		});
+
+		it.each([
+			'https://files.slack.com/files-pri/T1-F1/download/test.txt',
+			'https://files.slack-gov.com/files-pri/T1-F1/download/test.txt',
+		])(
+			'should download a file from a Slack host with the Slack host allowlist: %s',
+			async (url) => {
+				await downloadFile.call(mockWebhookFunctions, url);
+
+				expect(requestWithAuthentication).toHaveBeenCalledWith(
+					'slackApi',
+					expect.objectContaining({
+						url,
+						allowedDomains: '*.slack.com, *.slack-gov.com',
+						sendCredentialsOnCrossOriginRedirect: false,
+					}),
+				);
+			},
+		);
+
+		it.each([
+			'https://example.com/file',
+			'http://localhost:9111/file',
+			'http://files.slack.com/file',
+			'https://files.slack.com.example.com/file',
+			'https://example.com/?host=files.slack.com',
+		])('should reject a file URL outside the Slack hosts: %s', async (url) => {
+			await expect(downloadFile.call(mockWebhookFunctions, url)).rejects.toThrow(
+				'The file URL is not an HTTPS Slack file URL',
+			);
+			expect(requestWithAuthentication).not.toHaveBeenCalled();
 		});
 	});
 });

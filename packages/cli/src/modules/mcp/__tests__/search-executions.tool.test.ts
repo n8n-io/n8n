@@ -1,0 +1,256 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { User } from '@n8n/db';
+import type { ExecutionSummary } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+
+import { encodeExecutionCursor } from '@/executions/execution-cursor';
+import { ExecutionListService } from '@/executions/execution-list.service';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { createSearchExecutionsTool } from '../tools/search-executions.tool';
+
+const createExecution = (overrides: Partial<ExecutionSummary> = {}): ExecutionSummary =>
+	({
+		id: 'exec-1',
+		workflowId: 'wf-1',
+		status: 'success',
+		mode: 'manual',
+		startedAt: '2024-06-01T10:00:00.000Z',
+		stoppedAt: '2024-06-01T10:01:00.000Z',
+		waitTill: undefined,
+		finished: true,
+		createdAt: '2024-06-01T10:00:00.000Z',
+		...overrides,
+	}) as ExecutionSummary;
+
+describe('search-executions MCP tool', () => {
+	const user = Object.assign(new User(), { id: 'user-1' });
+	const uuid = '01992380-0000-7000-8000-000000000001';
+	const time = '2026-09-07T12:00:00.000Z';
+	let executionListService: ExecutionListService;
+	let workflowFinderService: WorkflowFinderService;
+	let telemetry: Telemetry;
+
+	beforeEach(() => {
+		executionListService = mockInstance(ExecutionListService, {
+			buildSharingOptions: vi.fn().mockResolvedValue({
+				scopes: ['workflow:read'],
+				projectRoles: ['project:editor'],
+				workflowRoles: ['workflow:editor'],
+			}),
+			findPageWithCount: vi.fn().mockResolvedValue({
+				results: [],
+				count: 0,
+				estimated: false,
+				nextCursor: null,
+			}),
+		});
+		workflowFinderService = mockInstance(WorkflowFinderService, {
+			findWorkflowForUser: vi.fn().mockResolvedValue({
+				id: 'wf-1',
+				isArchived: false,
+				settings: { availableInMCP: true },
+			}),
+		});
+		telemetry = mockInstance(Telemetry, {
+			track: vi.fn(),
+		});
+	});
+
+	const createTool = () =>
+		createSearchExecutionsTool(user, executionListService, workflowFinderService, telemetry);
+
+	test('creates tool with correct metadata', () => {
+		const tool = createTool();
+
+		expect(tool.name).toBe('search_workflow_executions');
+		expect(tool.config.annotations?.readOnlyHint).toBe(true);
+		expect(typeof tool.handler).toBe('function');
+	});
+
+	test('returns executions with correct format', async () => {
+		const executions = [
+			createExecution({ id: 'exec-1', workflowId: 'wf-1', status: 'success' }),
+			createExecution({
+				id: 'exec-2',
+				workflowId: 'wf-1',
+				status: 'error',
+				// ExecutionSummary dates are typed incorrectly
+				// @ts-expect-error toSummary() returns ISO strings, not Dates
+				stoppedAt: '2024-06-01T10:02:00.000Z',
+			}),
+		];
+		(executionListService.findPageWithCount as Mock).mockResolvedValue({
+			results: executions,
+			count: 2,
+			estimated: false,
+			nextCursor: 'next-page-cursor',
+		});
+
+		const result = await createTool().handler({} as never, {} as never);
+
+		expect(result.structuredContent).toEqual({
+			data: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					status: 'success',
+					mode: 'manual',
+					startedAt: '2024-06-01T10:00:00.000Z',
+					stoppedAt: '2024-06-01T10:01:00.000Z',
+					waitTill: null,
+				},
+				{
+					id: 'exec-2',
+					workflowId: 'wf-1',
+					status: 'error',
+					mode: 'manual',
+					startedAt: '2024-06-01T10:00:00.000Z',
+					stoppedAt: '2024-06-01T10:02:00.000Z',
+					waitTill: null,
+				},
+			],
+			count: 2,
+			estimated: false,
+			nextCursor: 'next-page-cursor',
+		});
+	});
+
+	test('filters by workflowId and validates MCP access', async () => {
+		await createTool().handler({ workflowId: 'wf-1' } as never, {} as never);
+
+		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+			'wf-1',
+			user,
+			['workflow:read'],
+			{ includeActiveVersion: undefined },
+		);
+
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.workflowId).toBe('wf-1');
+	});
+
+	test('filters by status', async () => {
+		await createTool().handler({ status: ['error', 'crashed'] } as never, {} as never);
+
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.status).toEqual(['error', 'crashed']);
+	});
+
+	test('filters by time range', async () => {
+		await createTool().handler(
+			{
+				startedAfter: '2024-06-01T00:00:00.000Z',
+				startedBefore: '2024-06-07T23:59:59.999Z',
+			} as never,
+			{} as never,
+		);
+
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.startedAfter).toBe('2024-06-01T00:00:00.000Z');
+		expect(query.startedBefore).toBe('2024-06-07T23:59:59.999Z');
+	});
+
+	test('respects limit parameter and clamps to max', async () => {
+		await createTool().handler({ limit: 500 } as never, {} as never);
+
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.range.limit).toBe(200);
+	});
+
+	test('uses default limit when not provided', async () => {
+		await createTool().handler({} as never, {} as never);
+
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.range.limit).toBe(200);
+	});
+
+	// The tool does not bound the page itself. It hands the decoded cursor over,
+	// and the list service applies each store's position to that store.
+	test('forwards the decoded cursor instead of bounding the range', async () => {
+		const position = {
+			version: 1 as const,
+			v1: { id: '50', timestamp: time },
+			v2: { id: uuid, timestamp: time },
+		};
+
+		await createTool().handler({ cursor: encodeExecutionCursor(position) } as never, {} as never);
+
+		expect(executionListService.findPageWithCount).toHaveBeenCalledWith(
+			expect.anything(),
+			position,
+		);
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.range).toEqual({ limit: 200 });
+	});
+
+	test('returns an error for an invalid cursor', async () => {
+		const result = await createTool().handler({ cursor: 'not-a-cursor' } as never, {} as never);
+
+		expect(result.isError).toBe(true);
+		expect(executionListService.findPageWithCount).not.toHaveBeenCalled();
+	});
+
+	test('returns empty results with correct structure', async () => {
+		const result = await createTool().handler({} as never, {} as never);
+
+		expect(result.structuredContent).toEqual({
+			data: [],
+			count: 0,
+			estimated: false,
+			nextCursor: null,
+		});
+	});
+
+	test('delegates sharing options to the list service', async () => {
+		await createTool().handler({} as never, {} as never);
+
+		expect(executionListService.buildSharingOptions).toHaveBeenCalledWith('workflow:read');
+	});
+
+	test('tracks telemetry on success', async () => {
+		(executionListService.findPageWithCount as Mock).mockResolvedValue({
+			results: [createExecution()],
+			count: 1,
+			estimated: false,
+			nextCursor: null,
+		});
+
+		await createTool().handler({ workflowId: 'wf-1' } as never, {} as never);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User called mcp tool',
+			expect.objectContaining({
+				user_id: 'user-1',
+				tool_name: 'search_workflow_executions',
+				results: { success: true, data: { count: 1, estimated: false } },
+			}),
+		);
+	});
+
+	test('tracks telemetry on failure and returns error response', async () => {
+		(executionListService.findPageWithCount as Mock).mockRejectedValue(
+			new Error('DB connection lost'),
+		);
+
+		const result = await createTool().handler({} as never, {} as never);
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({
+			data: [],
+			count: 0,
+			estimated: false,
+			nextCursor: null,
+			error: 'DB connection lost',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User called mcp tool',
+			expect.objectContaining({
+				tool_name: 'search_workflow_executions',
+				results: { success: false, error: 'DB connection lost' },
+			}),
+		);
+	});
+});

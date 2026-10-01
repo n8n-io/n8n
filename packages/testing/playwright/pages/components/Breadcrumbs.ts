@@ -1,7 +1,13 @@
 import type { Page } from '@playwright/test';
 
+import { ActionToggle } from './ActionToggle';
+
 export class Breadcrumbs {
-	constructor(private readonly page: Page) {}
+	private readonly actionToggle: ActionToggle;
+
+	constructor(private readonly page: Page) {
+		this.actionToggle = new ActionToggle(page);
+	}
 
 	getBreadcrumbs() {
 		return this.page.getByTestId('breadcrumbs-item');
@@ -22,12 +28,8 @@ export class Breadcrumbs {
 		return this.page.getByTestId('home-project');
 	}
 
-	getHiddenBreadcrumb(resourceName: string) {
-		return this.getHiddenBreadcrumbs().filter({ hasText: resourceName });
-	}
-
 	getActionToggleDropdown(resourceName: string) {
-		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${resourceName}`);
+		return this.actionToggle.getAction(resourceName);
 	}
 
 	getFolderBreadcrumbsActionToggle() {

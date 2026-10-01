@@ -8,18 +8,30 @@ import * as workflowsApi from '@/app/api/workflows';
 import * as workflowsEEApi from '@/app/api/workflows.ee';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
+import {
+	getProjectPoolSettings,
+	getProjectSecretProviderConnectionsByProjectId,
+	updateProjectPoolSettings,
+} from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import type {
+	CreateProjectDto,
+	ProjectPoolSettingsResponse,
+	SecretProviderConnection,
+	UpdateProjectDto,
+	UpdateProjectPoolSettingsDto,
+} from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -39,6 +51,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
 	const currentProject = ref<Project | null>(null);
+	const currentProjectPoolSettings = ref<ProjectPoolSettingsResponse | null>(null);
 	const projectsCount = ref<ProjectsCount>({
 		personal: 0,
 		team: 0,
@@ -114,6 +127,26 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const searchProjects = async (params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchProjects(rootStore.restApiContext, params);
+	};
+
+	const searchShareableProjects = async (params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchShareableProjects(rootStore.restApiContext, params);
+	};
+
 	const fetchProject = async (id: string) =>
 		await projectsApi.getProject(rootStore.restApiContext, id);
 
@@ -142,24 +175,48 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const updateProject = async (id: Project['id'], projectData: UpdateProjectDto): Promise<void> => {
-		const { name, icon, description } = projectData;
+		const { name, icon, description, customTelemetryTags } = projectData;
 		const payload: UpdateProjectDto = {};
 		if (name !== undefined) payload.name = name;
 		if (icon !== undefined) payload.icon = icon;
 		if (description !== undefined) payload.description = description;
+		if (customTelemetryTags !== undefined) payload.customTelemetryTags = customTelemetryTags;
 		await projectsApi.updateProject(rootStore.restApiContext, id, payload);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === id);
-		const { name: nm, icon: ic, description: desc } = { name, icon, description };
 		if (projectIndex !== -1) {
-			if (nm !== undefined) myProjects.value[projectIndex].name = nm;
-			if (ic !== undefined) myProjects.value[projectIndex].icon = ic;
-			if (desc !== undefined) myProjects.value[projectIndex].description = desc;
+			if (name !== undefined) myProjects.value[projectIndex].name = name;
+			if (icon !== undefined) myProjects.value[projectIndex].icon = icon;
+			if (description !== undefined) myProjects.value[projectIndex].description = description;
 		}
 		if (currentProject.value) {
-			if (nm !== undefined) currentProject.value.name = nm;
-			if (ic !== undefined) currentProject.value.icon = ic;
-			if (desc !== undefined) currentProject.value.description = desc;
+			if (name !== undefined) currentProject.value.name = name;
+			if (icon !== undefined) currentProject.value.icon = icon;
+			if (description !== undefined) currentProject.value.description = description;
+			if (customTelemetryTags !== undefined)
+				currentProject.value.customTelemetryTags = customTelemetryTags;
 		}
+		if (name !== undefined) {
+			useFavoritesStore().renameFavorite(id, 'project', name);
+		}
+	};
+
+	const fetchProjectPoolSettings = async (projectId: string): Promise<void> => {
+		currentProjectPoolSettings.value = null;
+		currentProjectPoolSettings.value = await getProjectPoolSettings(
+			rootStore.restApiContext,
+			projectId,
+		);
+	};
+
+	const updateCurrentProjectPoolSettings = async (
+		projectId: string,
+		dto: UpdateProjectPoolSettingsDto,
+	): Promise<void> => {
+		currentProjectPoolSettings.value = await updateProjectPoolSettings(
+			rootStore.restApiContext,
+			projectId,
+			dto,
+		);
 	};
 
 	const addMember = async (
@@ -227,13 +284,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 		// Handle team projects
 		projectNavActiveId.value = workflowHomeProject?.id ?? null;
-		if (workflowHomeProject?.id && !currentProjectId.value) {
-			await getProject(workflowHomeProject?.id);
+		// Compare against the loaded project, not currentProjectId: a `?projectId=` query param
+		// makes currentProjectId truthy without currentProject ever being fetched
+		if (workflowHomeProject?.id && currentProject.value?.id !== workflowHomeProject.id) {
+			await getProject(workflowHomeProject.id);
 		}
 	};
 
 	const moveResourceToProject = async (
-		resourceType: 'workflow' | 'credential',
+		resourceType: 'workflow' | 'credential' | 'dataTable',
 		resourceId: string,
 		projectId: string,
 		parentFolderId?: string,
@@ -251,13 +310,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				resourceId,
 				projectId,
 			);
-			await credentialsStore.fetchAllCredentials(currentProjectId.value);
+			await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
 		}
 	};
 
 	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {
 		const [credentials, workflows, dataTables] = await Promise.all([
-			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
+			credentialsApi.getAllCredentials(rootStore.restApiContext, { filter: { projectId } }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
 			dataTableApi.fetchDataTablesApi(rootStore.restApiContext, projectId),
 		]);
@@ -267,6 +326,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 			workflows: workflows.count,
 			dataTables: dataTables.count,
 		};
+	};
+
+	const getProjectSecretProviders = async (
+		projectId: string,
+	): Promise<SecretProviderConnection[]> => {
+		return await getProjectSecretProviderConnectionsByProjectId(
+			rootStore.restApiContext,
+			projectId,
+		);
 	};
 
 	watch(
@@ -281,6 +349,16 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 			if (newRoute?.path?.includes('shared')) {
 				projectNavActiveId.value = 'shared';
+				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('assistant')) {
+				projectNavActiveId.value = 'instance-ai';
+				setCurrentProject(null);
+			}
+
+			if (newRoute?.path?.includes('/reviews')) {
+				projectNavActiveId.value = 'workflow-reviews';
 				setCurrentProject(null);
 			}
 
@@ -317,8 +395,11 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
+		globalProjectPermissions,
 		projectNavActiveId,
 		setCurrentProject,
+		searchProjects,
+		searchShareableProjects,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
@@ -329,6 +410,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		refreshCurrentProject,
 		createProject,
 		updateProject,
+		currentProjectPoolSettings,
+		fetchProjectPoolSettings,
+		updateCurrentProjectPoolSettings,
 		addMember,
 		updateMemberRole,
 		removeMember,
@@ -337,5 +421,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
 		getResourceCounts,
+		getProjectSecretProviders,
 	};
 });

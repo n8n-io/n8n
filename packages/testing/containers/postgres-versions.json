@@ -1,0 +1,12 @@
+{
+	"primary": "postgres:18.4-alpine",
+	"matrix": [
+		{ "major": 16, "support": "compatibility", "image": "postgres:16.14-alpine" },
+		{ "major": 17, "support": "supported", "image": "postgres:17.10-alpine" },
+		{ "major": 18, "support": "supported", "image": "postgres:18.4-alpine" }
+	],
+	"helm": {
+		"chartVersion": "18.8.7",
+		"imageDigest": "sha256:09a0a8dc1c52c5a0c4ccc7febe3d4d4df1e5d50816e2312ef0e21d3c09084ec0"
+	}
+}

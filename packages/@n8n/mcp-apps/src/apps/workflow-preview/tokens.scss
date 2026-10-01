@@ -1,0 +1,35 @@
+@use '@n8n/design-system/css/_primitives' as primitives;
+@use '@n8n/design-system/css/_tokens' as tokens;
+@use '@n8n/design-system/css/fonts/inter';
+
+:root {
+	color-scheme: light dark;
+	@include primitives.primitives;
+	@include tokens.theme;
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) {
+		@include tokens.theme-dark;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family:
+		InterVariable,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		Roboto,
+		sans-serif;
+	-webkit-font-smoothing: antialiased;
+	background: transparent;
+	color: var(--color--text--shade-1);
+}

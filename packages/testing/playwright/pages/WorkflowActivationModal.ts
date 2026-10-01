@@ -3,8 +3,12 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowActivationModal extends BasePage {
-	getModal(): Locator {
+	get container(): Locator {
 		return this.page.getByTestId('activation-modal');
+	}
+
+	getModal(): Locator {
+		return this.container;
 	}
 
 	getDontShowAgainCheckbox(): Locator {
@@ -21,11 +25,11 @@ export class WorkflowActivationModal extends BasePage {
 		await this.getGotItButton().click();
 	}
 
-	async clickDontShowAgain(): Promise<void> {
-		await this.getDontShowAgainCheckbox().click();
-	}
-
-	async clickGotIt(): Promise<void> {
+	/**
+	 * Closes the modal without persisting the "Don't show again" preference,
+	 * so the modal opens again on a later publish in the same context.
+	 */
+	async dismiss(): Promise<void> {
 		await this.getGotItButton().click();
 	}
 }

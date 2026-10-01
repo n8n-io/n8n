@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { AuthenticationType } from './types';
 
@@ -42,6 +42,14 @@ export const properties: INodeProperties[] = [
 		type: 'string',
 		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
 		required: true,
+		default: '',
+	},
+	{
+		displayName: 'Project',
+		name: 'project',
+		type: 'string',
+		description:
+			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
 		default: '',
 	},
 	{

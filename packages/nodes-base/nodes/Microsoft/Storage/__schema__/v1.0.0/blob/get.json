@@ -7,7 +7,16 @@
         "properties": {
             "type": "object",
             "properties": {
+                "accessTier": {
+                    "type": "string"
+                },
+                "accessTierInferred": {
+                    "type": "string"
+                },
                 "blobType": {
+                    "type": "string"
+                },
+                "contentDisposition": {
                     "type": "string"
                 },
                 "contentLength": {
@@ -52,5 +61,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

@@ -1,0 +1,167 @@
+{
+	"name": "test notion block getAll paginated",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4260fdbd-e92f-4712-8114-38b85f8289ea",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "block",
+				"operation": "getAll",
+				"blockId": {
+					"__rl": true,
+					"value": "aabb0011aabb0011aabb0011aabb0011",
+					"mode": "id"
+				},
+				"returnAll": false,
+				"limit": 4
+			},
+			"id": "5ab80e6a-c9c4-4cc5-9332-2fc7a3f8ae24",
+			"name": "Notion",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [1040, 360],
+			"credentials": {
+				"notionApi": {
+					"id": "CiZXWkDmjiZzpcL1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a664f506-72a5-4e50-80b4-97ed2e6eb334",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "aabb0011aabb0011aabb0011aabb0011",
+					"id": "b0000001-0000-0000-0000-000000000001",
+					"parent": {
+						"type": "block_id",
+						"block_id": "aabb0011-aabb-0011-aabb-0011aabb0011"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "paragraph",
+					"root_id": "aabb0011aabb0011aabb0011aabb0011",
+					"content": "Block 1"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "aabb0011aabb0011aabb0011aabb0011",
+					"id": "b0000002-0000-0000-0000-000000000002",
+					"parent": {
+						"type": "block_id",
+						"block_id": "aabb0011-aabb-0011-aabb-0011aabb0011"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "paragraph",
+					"root_id": "aabb0011aabb0011aabb0011aabb0011",
+					"content": "Block 2"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "aabb0011aabb0011aabb0011aabb0011",
+					"id": "b0000003-0000-0000-0000-000000000003",
+					"parent": {
+						"type": "block_id",
+						"block_id": "aabb0011-aabb-0011-aabb-0011aabb0011"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "paragraph",
+					"root_id": "aabb0011aabb0011aabb0011aabb0011",
+					"content": "Block 3"
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "aabb0011aabb0011aabb0011aabb0011",
+					"id": "b0000004-0000-0000-0000-000000000004",
+					"parent": {
+						"type": "block_id",
+						"block_id": "aabb0011-aabb-0011-aabb-0011aabb0011"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": false,
+					"archived": false,
+					"in_trash": false,
+					"type": "paragraph",
+					"root_id": "aabb0011aabb0011aabb0011aabb0011",
+					"content": "Block 4"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Notion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notion": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "PaginatedBlockTest",
+	"tags": []
+}

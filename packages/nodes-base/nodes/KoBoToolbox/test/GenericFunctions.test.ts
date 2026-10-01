@@ -1,8 +1,31 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { validateAttachmentUrl, downloadAttachments } from '../GenericFunctions';
+import { validateAttachmentUrl, downloadAttachments, formatSubmission } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('KoBoToolbox GenericFunctions', () => {
+	describe('formatSubmission', () => {
+		it('uses wildcard masks to format matching leaf fields', () => {
+			const result = formatSubmission(
+				{
+					'group/age_years': '42',
+					'group/favorite_colors': 'red blue',
+					'group/comment': 'hello',
+				},
+				['favorite_*'],
+				['age_*'],
+			);
+
+			expect(result).toEqual({
+				group: {
+					age_years: 42,
+					favorite_colors: ['red', 'blue'],
+					comment: 'hello',
+				},
+			});
+		});
+	});
+
 	describe('validateAttachmentUrl', () => {
 		describe('valid URLs', () => {
 			it('should accept URL with exact domain match', () => {
@@ -204,16 +227,16 @@ describe('KoBoToolbox GenericFunctions', () => {
 
 	describe('downloadAttachments', () => {
 		let mockExecuteFunctions: IExecuteFunctions;
-		let mockGetCredentials: jest.Mock;
-		let mockHttpRequest: jest.Mock;
-		let mockPrepareBinaryData: jest.Mock;
-		let mockGetNode: jest.Mock;
+		let mockGetCredentials: Mock;
+		let mockHttpRequest: Mock;
+		let mockPrepareBinaryData: Mock;
+		let mockGetNode: Mock;
 
 		beforeEach(() => {
-			mockGetCredentials = jest.fn();
-			mockHttpRequest = jest.fn();
-			mockPrepareBinaryData = jest.fn();
-			mockGetNode = jest.fn();
+			mockGetCredentials = vi.fn();
+			mockHttpRequest = vi.fn();
+			mockPrepareBinaryData = vi.fn();
+			mockGetNode = vi.fn();
 
 			mockExecuteFunctions = {
 				getCredentials: mockGetCredentials,

@@ -19,6 +19,7 @@ import {
 	RECOMMENDED_SECTION,
 	ROOT_DOLLAR_COMPLETIONS,
 	TARGET_NODE_PARAMETER_FACET,
+	WORKFLOW_DOCUMENT_FACET,
 } from './constants';
 import { createInfoBoxRenderer } from './infoBoxRenderer';
 
@@ -60,7 +61,11 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	const SKIP = new Set();
 	let recommendedCompletions: Completion[] = [];
 
-	if (isInHttpNodePagination()) {
+	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	if (!workflowDocumentId) return [];
+
+	if (isInHttpNodePagination(workflowDocumentId)) {
 		recommendedCompletions = [
 			{
 				label: '$pageCount',
@@ -120,28 +125,28 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 			: [];
 	}
 
-	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
-
-	if (!hasActiveNode(targetNodeParameterContext)) {
+	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {
 		return [];
 	}
 
-	if (await receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
+	if (await receivesNoBinaryData(workflowDocumentId, targetNodeParameterContext?.nodeName))
+		SKIP.add('$binary');
 
-	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
-		(nodeName) => {
-			const label = `$('${escapeMappingString(nodeName)}')`;
-			return {
-				label,
-				info: createInfoBoxRenderer({
-					name: label,
-					returnType: 'Object',
-					description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-				}),
-				section: PREVIOUS_NODES_SECTION,
-			};
-		},
-	);
+	const previousNodesCompletions = autocompletableNodeNames(
+		workflowDocumentId,
+		targetNodeParameterContext,
+	).map((nodeName) => {
+		const label = `$('${escapeMappingString(nodeName)}')`;
+		return {
+			label,
+			info: createInfoBoxRenderer({
+				name: label,
+				returnType: 'Object',
+				description: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+			}),
+			section: PREVIOUS_NODES_SECTION,
+		};
+	});
 
 	return recommendedCompletions
 		.concat(ROOT_DOLLAR_COMPLETIONS)

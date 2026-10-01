@@ -1,0 +1,126 @@
+/**
+ * Replace common credential patterns in free-form text with `[REDACTED]`.
+ *
+ * Used before persisting or transmitting user-supplied text (telemetry
+ * excerpts, eval report HTML, free-form feedback) where keys/tokens
+ * accidentally pasted into prompts or command lines could otherwise leak
+ * downstream.
+ *
+ * Conservative by design: matches well-known prefixed tokens, explicit
+ * `key=value` pairs, and quoted JSON/JS-object fields with sensitive
+ * names. We don't attempt to redact arbitrary long opaque strings — false
+ * positives on file paths, IDs, or base64 payloads would make the output
+ * unreadable.
+ */
+export const SECRET_KEYS =
+	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|session[_-]?cookie|token';
+
+// `\b` never fires inside a compound key (`webhook_secret`, `bot_token`)
+// because `_` is a word character, so key patterns also accept an optional
+// snake/kebab/dotted prefix (`slack.token`) before the secret word. The
+// quoted-field matchers can only start at a quote, so scanning the whole key
+// stays linear. The unanchored assignment matcher can start at every `\b` of a
+// long hyphenated or dotted non-secret token, where an unbounded prefix
+// backtracks through every separator at every start position (quadratic) — so
+// that one is length-bounded, and a `_`-joined unquoted key with a longer
+// prefix is the accepted gap.
+const QUOTED_KEY_PREFIX = '(?:[\\w.-]*[._-])?';
+const BOUNDED_KEY_PREFIX = '(?:[\\w.-]{0,128}[._-])?';
+
+export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
+	// PEM private-key blocks (RSA/EC/DSA/OpenSSH/PGP). Whole block, multiline.
+	/-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----/g,
+	// JWTs: `eyJ<header>.eyJ<payload>.<signature>` (both leading segments are
+	// base64url of a `{"` object, which makes this highly distinctive).
+	/\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+	// Authorization-header substrings. After an `Authorization:` label, match
+	// the `Bearer`, `Basic`, and `Token` schemes with values of any length. The
+	// value can be quoted. Elsewhere, a 12+ character minimum keeps prose such
+	// as "a Bearer token" or "basic usage" readable. Scheme values are opaque
+	// in practice (`id|secret`, `user:key`), so they run to the next delimiter
+	// rather than a token68 character class.
+	// An escaped character inside the value is part of the value.
+	/(?<=\bauthorization\s*[:=]\s*["']?)(?:Bearer|Basic|Token)\s+(?:\\.|[^\s"',;\\])+/gi,
+	/\b(?:Bearer\s+[^\s"',;]{12,}|(?:Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,})/gi,
+	// OpenAI / Anthropic API keys
+	/\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g,
+	// Stripe secret/restricted/publishable keys (`sk_live_…`, `rk_test_…`, …)
+	/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}/g,
+	// Google API keys
+	/\bAIza[0-9A-Za-z_-]{35}\b/g,
+	// Google OAuth access tokens
+	/\bya29\.[0-9A-Za-z_-]{20,}\b/g,
+	// Slack tokens (xoxb, xoxp, xoxa, xoxr, xoxs, xoxo)
+	/\bxox[abprso]-[A-Za-z0-9-]{10,}/g,
+	// GitHub tokens (ghp, ghs, gho, ghr, ghu)
+	/\bgh[psoru]_[A-Za-z0-9]{20,}/g,
+	// GitHub fine-grained personal access tokens
+	/\bgithub_pat_[A-Za-z0-9_]{22,}/g,
+	// AWS access key id
+	/\bAKIA[0-9A-Z]{16}\b/g,
+	// Telegram bot token (`<bot id>:<35-char secret>`, also inside `/bot…/` URLs)
+	/\b(?:bot)?\d{8,10}:[A-Za-z0-9_-]{35}\b/g,
+	// Discord bot token: three base64url segments, the first being the encoded
+	// application id (so it starts with the encoding of a snowflake's leading digit).
+	/\b[MNO][A-Za-z0-9_-]{22,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}\b/g,
+	// Linear API keys (`lin_api_…`) and OAuth tokens (`lin_oauth_…`)
+	/\blin_(?:api|oauth)_[A-Za-z0-9]{20,}/g,
+	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
+	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
+	// Quoted `"key": "value"` (JSON) and `'key': 'value'` (JS object) fields,
+	// matched as a whole. The key's quote and the value's quote are captured
+	// separately so a mixed form like `"password": 'secret'` is covered too.
+	// Run before the loose pattern so nested objects like
+	// `{"credentials": {"apiKey": "..."}}` don't have the outer key consume
+	// the inner key on its way to a non-quoted (object) value. The value
+	// body uses the unrolled JSON-string idiom `(?:(?!\2)[^\\\r\n]|\\.)*`: the
+	// negated class excludes the backslash so a backslash can only be consumed
+	// by the `\\.` escape branch. Keep the two alternatives disjoint (don't
+	// fold `\\` back into the negated class) — that keeps every run of
+	// backslashes to a single, unambiguous parse, so matching stays fast on any
+	// input. An escaped quote inside the value (`"abc\"def"`) still doesn't end
+	// the match early, via the escape branch. The negative lookahead skips
+	// values that are already a `[redacted]` / `[REDACTED]` / typed
+	// `[REDACTED:<type>:<index>]` placeholder so this stays idempotent when
+	// chained behind upstream object-walking redaction (langsmith trace
+	// payloads, mcp-browser markers).
+	new RegExp(
+		`(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\1\\s*:\\s*(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\.)*\\2`,
+		'gi',
+	),
+	// The same field inside a JSON-encoded string (an upstream response body
+	// serialized into an error `message`) has every quote escaped:
+	// `\"api_key\": \"…\"`. The pattern above can't see it because the key is
+	// followed by `\`, not by its quote. Here the value body has three units that
+	// are disjoint by their first two characters — a plain character, a `\x`
+	// escape other than the closing `\"`, or `\\` together with the token it
+	// escapes — so an inner escaped quote (`\\\"`) is consumed as one unit rather
+	// than ending the match early, and every input still has a single parse.
+	new RegExp(
+		`\\\\(["'])${QUOTED_KEY_PREFIX}(?:${SECRET_KEYS})\\\\\\1\\s*:\\s*\\\\(["'])(?!\\[(?:redacted|REDACTED)(?::[^\\]]*)?\\]\\\\\\2)(?:(?!\\2)[^\\\\\\r\\n]|\\\\(?!\\2)[^\\\\\\r\\n]|\\\\\\\\(?:\\\\.|[^\\\\\\r\\n]))*\\\\\\2`,
+		'gi',
+	),
+	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
+	// The negative lookbehind skips a keyword sitting at the `<type>` position of
+	// an upstream `[REDACTED:<type>:<index>]` marker (e.g. mcp-browser output), so
+	// the `secret:1]` tail isn't re-matched into a nested `[REDACTED:[REDACTED]`.
+	// Checking only the `[REDACTED:` prefix suffices: inside a marker a keyword can
+	// only start a `\b` match right after that prefix — every other keyword-shaped
+	// substring is preceded by `_` (snake_case type slug) or a digit, so no word
+	// boundary opens there. The value lookahead skips values that are already a
+	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
+	// idempotency convention as the quoted forms. A quoted value is consumed as
+	// a whole, including escapes, so `secret="alpha beta"` does not leave a tail.
+	new RegExp(
+		`(?<!\\[(?:redacted|REDACTED):)\\b${BOUNDED_KEY_PREFIX}(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)(?:"(?:[^"\\\\\\r\\n]|\\\\.)*"|'(?:[^'\\\\\\r\\n]|\\\\.)*'|\\S+)`,
+		'gi',
+	),
+];
+
+export function scrubSecretsInText(input: string): string {
+	let out = input;
+	for (const pattern of SECRET_VALUE_PATTERNS) {
+		out = out.replace(pattern, '[REDACTED]');
+	}
+	return out;
+}

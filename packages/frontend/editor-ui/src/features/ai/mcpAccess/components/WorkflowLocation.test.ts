@@ -1,19 +1,20 @@
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { createHomeProject, createParentFolder } from '@/features/ai/mcpAccess/mcp.test.utils';
 
-vi.mock('@/app/router', () => ({
-	default: {
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({
 		resolve: vi.fn(({ name, params }) => {
 			if (name === 'NodeViewExisting') {
-				return { fullPath: `/workflows/${params.name}` };
+				return { fullPath: `/workflows/${params.workflowId}` };
 			}
 			if (name === 'ProjectsWorkflows') {
 				return { fullPath: `/projects/${params.projectId}` };
 			}
 			return { fullPath: '/' };
 		}),
-	},
+	}),
 }));
 
 const createComponent = createComponentRenderer(WorkflowLocation);

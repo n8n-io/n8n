@@ -3,11 +3,11 @@ import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				status: 'success',
 				message: 'Profile will be saved on session termination',
@@ -24,12 +24,8 @@ const baseParameters = {
 };
 
 describe('Test Airtop, session save operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should save a profile on session termination successfully', async () => {
@@ -86,7 +82,7 @@ describe('Test Airtop, session save operation', () => {
 		};
 
 		await expect(save.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			"Please fill the 'Profile Name' parameter",
+			"Please fill the 'Browser Profile ID' parameter",
 		);
 	});
 
@@ -97,7 +93,7 @@ describe('Test Airtop, session save operation', () => {
 		};
 
 		await expect(save.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			"Please fill the 'Profile Name' parameter",
+			"Please fill the 'Browser Profile ID' parameter",
 		);
 	});
 });

@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { paginatedRequest, type StrapiFilters } from './strapi-utils';
+import { paginatedRequest, type StrapiFilters } from '@/utils/strapi-utils';
 
 export type StrapiCommunityNodeType = {
 	id: number;
@@ -20,7 +20,25 @@ export type StrapiCommunityNodeType = {
 	companyName?: string;
 	nodeDescription: INodeTypeDescription;
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
+	aiNodeSdkVersion?: number;
 };
+
+/**
+ * Picks the version to install from a vetted entry and the checksum that belongs to it.
+ * No requested version means the latest vetted one. `checksum` is undefined when the
+ * requested version is not vetted.
+ */
+export function selectVettedVersion(
+	vetted: Pick<StrapiCommunityNodeType, 'npmVersion' | 'checksum' | 'nodeVersions'>,
+	requestedVersion: string | undefined,
+): { version: string; checksum: string | undefined } {
+	const version = requestedVersion ?? vetted.npmVersion;
+	const checksum =
+		version === vetted.npmVersion
+			? vetted.checksum
+			: vetted.nodeVersions?.find((v) => v.npmVersion === version)?.checksum;
+	return { version, checksum };
+}
 
 export type CommunityNodesMetadata = Pick<
 	StrapiCommunityNodeType,
@@ -39,10 +57,14 @@ function getUrl(environment: 'staging' | 'production'): string {
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
 	qs: { filters?: StrapiFilters; fields?: string[] } = {},
+	maxAiNodeSdk: number,
+	maxN8nNodesApiVersion: number,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
 	const params = {
 		...qs,
+		maxAiNodeSdk,
+		maxN8nNodesApiVersion,
 		pagination: {
 			page: 1,
 			pageSize: 25,
@@ -53,10 +75,14 @@ export async function getCommunityNodeTypes(
 
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
+	maxAiNodeSdk: number,
+	maxN8nNodesApiVersion: number,
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
 	const params = {
 		fields: ['npmVersion', 'name', 'updatedAt'],
+		maxAiNodeSdk,
+		maxN8nNodesApiVersion,
 		pagination: {
 			page: 1,
 			pageSize: 500,

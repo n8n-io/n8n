@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -7,7 +7,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRule {
 	id: string = 'queue-worker-max-stalled-count-v2';
 
@@ -18,9 +18,9 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 			description:
 				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable has been removed and will be ignored',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#remove-queue_worker_max_stalled_count',
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-queueworkermaxstalledcount',
 		};
 	}
 

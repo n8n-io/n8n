@@ -13,7 +13,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
+import {
+	BINARY_AD_ATTRIBUTES,
+	createLdapClient,
+	escapeResolvables,
+	escapeValue,
+	resolveBinaryAttributes,
+} from './Helpers';
 import { ldapFields } from './LdapDescription';
 
 export class Ldap implements INodeType {
@@ -231,7 +237,7 @@ export class Ldap implements INodeType {
 		const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 
 		const items = this.getInputData();
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (nodeDebug) {
 			this.logger.info(
@@ -349,7 +355,17 @@ export class Ldap implements INodeType {
 					});
 				} else if (operation === 'search') {
 					const baseDN = this.getNodeParameter('baseDN', itemIndex) as string;
-					let searchFor = this.getNodeParameter('searchFor', itemIndex) as string;
+					const evaluate = (resolvable: string) =>
+						this.evaluateExpression(`${resolvable}`, itemIndex);
+
+					// The object class is spliced into the filter as a fragment, so an
+					// expression in it needs the same per-expression escaping as the filter
+					const rawSearchFor = this.getNodeParameter('searchFor', itemIndex, undefined, {
+						rawExpressions: true,
+					});
+					let searchFor =
+						typeof rawSearchFor === 'string' ? escapeResolvables(rawSearchFor, evaluate) : '';
+
 					const returnAll = this.getNodeParameter('returnAll', itemIndex);
 					const limit = this.getNodeParameter('limit', itemIndex, 0);
 					const options = this.getNodeParameter('options', itemIndex);
@@ -373,10 +389,22 @@ export class Ldap implements INodeType {
 					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
 
 					if (searchFor === 'custom') {
-						searchFor = this.getNodeParameter('customFilter', itemIndex) as string;
+						// Read the filter before expressions are interpolated, so only the
+						// values they resolve to get escaped and the filter syntax the user
+						// wrote stays intact
+						const customFilter = this.getNodeParameter('customFilter', itemIndex, undefined, {
+							rawExpressions: true,
+						}) as string;
+						searchFor = escapeResolvables(customFilter, evaluate);
 					} else {
-						const searchText = this.getNodeParameter('searchText', itemIndex) as string;
-						const attribute = this.getNodeParameter('attribute', itemIndex) as string;
+						const searchText = escapeResolvables(
+							this.getNodeParameter('searchText', itemIndex, undefined, {
+								rawExpressions: true,
+							}) as string,
+							evaluate,
+						);
+
+						const attribute = escapeValue(this.getNodeParameter('attribute', itemIndex) as string);
 						searchFor = `(&${searchFor}(${attribute}=${searchText}))`;
 					}
 
@@ -411,8 +439,9 @@ export class Ldap implements INodeType {
 					}
 					resolveBinaryAttributes(results.searchEntries);
 
-					returnItems.push.apply(
-						returnItems,
+					// Use `concat` instead of `push.apply`/spread to avoid
+					// "Maximum call stack size exceeded" on large result sets (NODE-5326).
+					returnItems = returnItems.concat(
 						results.searchEntries.map((result) => ({
 							json: result,
 							pairedItem: { item: itemIndex },

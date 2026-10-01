@@ -56,11 +56,15 @@ export async function todoistSyncRequest(
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
+	const nodeVersion = this.getNode().typeVersion;
+	const baseUrl =
+		nodeVersion >= 2.2 ? 'https://api.todoist.com/api/v1' : 'https://api.todoist.com/sync/v9';
+
 	const options: IRequestOptions = {
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v9${endpoint}`,
+		uri: `${baseUrl}${endpoint}`,
 		json: true,
 	};
 

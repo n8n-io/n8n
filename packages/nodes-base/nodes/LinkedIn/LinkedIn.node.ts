@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { assertParamIsString, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -23,6 +23,15 @@ export class LinkedIn implements INodeType {
 		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
+		},
+		builderHint: {
+			searchHint: 'LinkedIn API does not support scraping profiles or leads.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.phantombuster',
+					relationHint: 'For LinkedIn lead scraping and data extraction',
+				},
+			],
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -124,7 +133,15 @@ export class LinkedIn implements INodeType {
 			try {
 				if (resource === 'post') {
 					if (operation === 'create') {
-						let text = this.getNodeParameter('text', i) as string;
+						let text = this.getNodeParameter('text', i);
+						assertParamIsString('text', text, this.getNode());
+						if (text.trim() === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The Text field is empty. Enter text to publish the post.',
+								{ itemIndex: i, level: 'info' },
+							);
+						}
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);

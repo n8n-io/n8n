@@ -1,0 +1,16 @@
+type: object
+description: >-
+  Conflict response. `reason` and `workflowReviewRequestId` are present only
+  when the conflict is an open workflow review blocking publication.
+required:
+  - message
+properties:
+  message:
+    type: string
+  reason:
+    type: string
+    enum:
+      - review_pending
+      - changes_requested
+  workflowReviewRequestId:
+    type: string

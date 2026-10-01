@@ -1,0 +1,272 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete a file, use the delete_file tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please delete /tmp/interim-test.txt"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CeE6z8ovT2Z3MCC8dDWF5\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01LC4A1xXP3auktG1rpfcuk9\",\"name\":\"delete_file\",\"input\":{\"path\":\"/tmp/interim-test.txt\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":629,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":61,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-20T13:47:11Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-20T13:47:11Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-08-20T13:47:10Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-08-20T13:47:11Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a2e1d92c6ef3bb94-PRG",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Thu, 20 Aug 2026 13:47:11 GMT",
+			"request-id": "req_011CeE6z8CThGAD2RxASg9c3",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-b6e65748653ea3f1605720b9cfe7a338-cca2c7b55c120740-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are helpful. Answer questions concisely."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please delete /tmp/interim-test.txt"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01LC4A1xXP3auktG1rpfcuk9",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/interim-test.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01LC4A1xXP3auktG1rpfcuk9",
+							"content": "INTERRUPTED — this delete_file call never completed. The user was shown a confirmation (\"Delete \"/tmp/interim-test.txt\"?\") and never answered it. Its action did NOT take effect: nothing was saved, executed, or applied by this call. Do not describe this action as done. If it is still needed, explain to the user that it requires their approval and what approving will do, then re-issue it once.",
+							"is_error": true
+						},
+						{
+							"type": "text",
+							"text": "What is 1 + 1?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CeE6zD2g1JHbkoCqf5gzi\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"1 + 1 = 2\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":212,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":13,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-20T13:47:11Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-20T13:47:11Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-08-20T13:47:11Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-08-20T13:47:11Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a2e1d932ac29bb94-PRG",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Thu, 20 Aug 2026 13:47:11 GMT",
+			"request-id": "req_011CeE6zCYQJhwwxZ1XgEct2",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-66d0cb732117d7b6d3001270957fc73e-cc90527a425940cc-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a file manager. When asked to delete a file, use the delete_file tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Please delete /tmp/interim-test.txt"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01LC4A1xXP3auktG1rpfcuk9",
+							"name": "delete_file",
+							"input": {
+								"path": "/tmp/interim-test.txt"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01LC4A1xXP3auktG1rpfcuk9",
+							"content": "{\"deleted\":true,\"path\":\"/tmp/interim-test.txt\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delete_file",
+					"description": "Delete a file at the given path",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "File path to delete"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013b553b16edb3010ddfd15c4cd5262a5759a726b8ba24b870e4551a02898b378b65853a4429e0ca781febda06dc5962b2759a285d07b8f7cefee70b426c752d414232e4945c6c0138d8c523c00df370412062464fd3fc807a8bd260b124a8bada6bc42b36af3b7f92cbf9a5ecd8ae9b4800c8c4e6fc4a59a16c527fa7cfdf7cbddcd879f1fe77ffc8fafdfdc0aaf213b71820c82b709c0184d6474c9b6f48ec931c85fbf3388ec1b1508a377205d6bed1e8a74d7922b69006a623436f658dba737ae6959b15f918b20df153719945856a4ca40c8c63b35544c7b3e10ea735c7f37195053514d01ad9ad5ffeb0f6c519db25d06bee563e84d0691c2da94a4d8500009a9311a834e3d760b0aa96eb5240f129c67856b3416e796a0eb8410dd6442bb61ef1ba9e6d697abf1918f48b62e9a36bb528ff954e9fe1ed32609b78704e80ea68d71cb131701098473c13459c6a7836d2583603b6418e851b68ff5bd22b13096c4ed2574e71bf36afe5c3797c6310553e74c912f78c3b7a2c228e6444ec4b62c29c6456bedbdd06489495fa4a04f0ed137cfcdd0374749c5e03b3cdbeffa68f103128e8a1d6c2390d38adbe0e0c53bd9bdde529e6c51f1be1bad77ac81c71cec6efd03e59ea04b2f050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-20T13:47:12Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-20T13:47:12Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-08-20T13:47:12Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-08-20T13:47:12Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a2e1d936ff53bb94-PRG",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Thu, 20 Aug 2026 13:47:12 GMT",
+			"request-id": "req_011CeE6zGRp97hjGxRk4t93h",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-65548e4e6f77edda0b239804578b882d-ed4f8ab94b6ff6a3-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

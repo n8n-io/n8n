@@ -12,18 +12,26 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, User, WorkflowWithSharingsMetaDataAndCredentials } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	Project,
+	User,
+	WorkflowEntity,
+	WorkflowWithSharingsMetaDataAndCredentials,
+} from '@n8n/db';
 import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
+import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import {
-	ApplicationError,
+	UnexpectedError,
 	WorkflowActivationError,
 	calculateWorkflowChecksum,
 	type INode,
@@ -32,8 +40,10 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 
 import {
 	affixRoleToSaveCredential,
@@ -108,7 +118,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('router should switch based on flag', () => {
@@ -360,6 +370,136 @@ describe('PUT /workflows/:workflowId/share', () => {
 				expect.objectContaining({ projectId: project2.id, role: 'workflow:editor' }),
 			]),
 		);
+	});
+});
+
+describe('PUT /workflows/:workflowId/share - split share/unshare scopes', () => {
+	test('should allow owner to add new shares (share operation)', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('should allow owner to remove existing shares (unshare operation)', async () => {
+		const workflow = await createWorkflow({}, member);
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		// Verify initial state: owner + 1 shared
+		const initialSharing = await getWorkflowSharing(workflow);
+		expect(initialSharing).toHaveLength(2);
+
+		// Send empty shareWithIds to remove all shares
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('should allow both share and unshare in a single request', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+
+		// Replace member with anotherMember (unshare member, share anotherMember)
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+		const projectIds = sharedWorkflows.map((sw) => sw.projectId);
+		expect(projectIds).toContain(anotherMemberPersonalProject.id);
+		expect(projectIds).not.toContain(memberPersonalProject.id);
+	});
+
+	describe('personal space sharing disabled', () => {
+		let securitySettingsService: SecuritySettingsService;
+
+		beforeEach(async () => {
+			securitySettingsService = Container.get(SecuritySettingsService);
+		});
+
+		test('should forbid adding new shares when personal space sharing is disabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const workflow = await createWorkflow({}, member);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should allow removing existing shares when personal space sharing is disabled', async () => {
+			const workflow = await createWorkflow({}, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			// Verify initial state
+			const initialSharing = await getWorkflowSharing(workflow);
+			expect(initialSharing).toHaveLength(2);
+
+			// Disable personal space sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			// Unshare should still work
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [] });
+
+			expect(response.statusCode).toBe(200);
+
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should forbid mixed share+unshare when user lacks share scope', async () => {
+			const workflow = await createWorkflow({}, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			// Disable sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const tempUser = await createUser({ role: { slug: 'global:member' } });
+			const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				tempUser.id,
+			);
+
+			// Try to unshare anotherMember AND share tempUser - should fail because of share
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [tempUserPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			// State should be unchanged
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(2);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
 	});
 });
 
@@ -620,7 +760,7 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			},
 		]);
 
@@ -631,7 +771,7 @@ describe('GET /workflows/:workflowId', () => {
 		['owner', () => owner],
 		['admin', () => admin],
 	])(
-		'should return workflow with credentials saying %s does have access even when not shared',
+		'should return workflow with credentials saying %s can use them even when not shared',
 		async (_description, getActor) => {
 			const actor = getActor();
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -652,7 +792,7 @@ describe('GET /workflows/:workflowId', () => {
 				{
 					id: savedCredential.id,
 					name: savedCredential.name,
-					currentUserHasAccess: true,
+					currentUserCanUse: true,
 				},
 			]);
 
@@ -660,7 +800,7 @@ describe('GET /workflows/:workflowId', () => {
 		},
 	);
 
-	test('should return workflow with credentials for all users with or without access', async () => {
+	test('should return workflow with credentials for all users whether or not they can use them', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const workflowPayload = makeWorkflow({
@@ -677,7 +817,7 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: true, // one user has access
+				currentUserCanUse: true, // one user can use it
 			},
 		]);
 		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
@@ -691,15 +831,15 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: false, // the other one doesn't
+				currentUserCanUse: false, // the other one can't
 			},
 		]);
 		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
 	});
 
-	test('should return workflow with credentials for all users with access', async () => {
+	test('should return workflow with credentials for all users who can use them', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		// Both users have access to the credential (none is owner)
+		// Both users can use the credential (none is owner)
 		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflowPayload = makeWorkflow({
@@ -716,7 +856,7 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			},
 		]);
 		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
@@ -731,7 +871,7 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			},
 		]);
 		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
@@ -739,7 +879,7 @@ describe('GET /workflows/:workflowId', () => {
 
 	test('should return workflow credentials home project and shared with projects', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		// Both users have access to the credential (none is owner)
+		// Both users can use the credential (none is owner)
 		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflowPayload = makeWorkflow({
@@ -756,7 +896,7 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 				homeProject: {
 					id: memberPersonalProject.id,
 				},
@@ -764,6 +904,60 @@ describe('GET /workflows/:workflowId', () => {
 			},
 		]);
 		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
+	});
+
+	describe('with N8N_ENV_FEAT_CRED_SHARING enabled', () => {
+		beforeEach(() => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+		});
+
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+		});
+
+		test('reports currentUserCanUse from the identity-based check', async () => {
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+			const workflowPayload = makeWorkflow({
+				withPinData: false,
+				withCredential: { id: savedCredential.id, name: savedCredential.name },
+			});
+			const workflow = await createWorkflow(workflowPayload, owner);
+
+			const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+			const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+
+			expect(responseWorkflow.usedCredentials).toMatchObject([
+				{
+					id: savedCredential.id,
+					name: savedCredential.name,
+					currentUserCanUse: true,
+				},
+			]);
+		});
+
+		test('describes a referenced credential the user cannot use, unconditionally', async () => {
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const workflowPayload = makeWorkflow({
+				withPinData: false,
+				withCredential: { id: savedCredential.id, name: savedCredential.name },
+			});
+			const workflow = await createWorkflow(workflowPayload, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			const response = await authAnotherMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+			const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+
+			// Visible regardless of access: name, type and owner are unconditional.
+			expect(responseWorkflow.usedCredentials).toMatchObject([
+				{
+					id: savedCredential.id,
+					name: savedCredential.name,
+					currentUserCanUse: false,
+				},
+			]);
+		});
 	});
 });
 
@@ -776,6 +970,7 @@ describe('POST /workflows', () => {
 			.post('/workflows')
 			.send({ ...makeWorkflow(), projectId: teamProject.id });
 
+		expect(response.statusCode).toBe(400);
 		expect(response.body).toMatchObject({
 			code: 400,
 			message: "You don't have the permissions to save the workflow in this project.",
@@ -1095,6 +1290,126 @@ describe('PATCH /workflows/:workflowId', () => {
 			},
 		);
 
+		describe('credentials in an agent node parameter', () => {
+			// The agent node keeps the model credential and its tool credentials in
+			// the hidden `inlineAgent` parameter, not in `node.credentials`.
+			const OWNER_INSTRUCTIONS = 'Answer questions about the docs.';
+			const EDITOR_INSTRUCTIONS = 'Summarize the input.';
+
+			let ownerModelCredential: CredentialsEntity;
+			let ownerToolCredential: CredentialsEntity;
+			let memberCredential: CredentialsEntity;
+			let sharedWorkflow: WorkflowEntity;
+
+			const agentNode = (id: string, inlineAgent: unknown) =>
+				({
+					id,
+					name: id,
+					type: 'n8n-nodes-base.messageAnAgent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { agentSource: 'inline', inlineAgent },
+				}) as unknown as INode;
+
+			const inlineAgent = (credential: string, instructions: string, extra: object = {}) => ({
+				config: { model: 'gpt-4o-mini', credential, instructions, ...extra },
+			});
+
+			const ownerAgentNode = () =>
+				agentNode('agent-1', inlineAgent(ownerModelCredential.id, OWNER_INSTRUCTIONS));
+
+			const patchAsMember = async (nodes: INode[]) =>
+				await authMemberAgent
+					.patch(`/workflows/${sharedWorkflow.id}`)
+					.send({ versionId: sharedWorkflow.versionId, nodes });
+
+			const storedNodes = async () =>
+				(await workflowRepository.findOneByOrFail({ id: sharedWorkflow.id })).nodes;
+
+			beforeAll(async () => {
+				ownerModelCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				ownerToolCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+			});
+
+			beforeEach(async () => {
+				sharedWorkflow = await createWorkflow({ nodes: [ownerAgentNode()] }, owner);
+				await shareWorkflowWithUsers(sharedWorkflow, [member]);
+			});
+
+			it('keeps the stored agent node when the editor cannot use its credential', async () => {
+				const edited = agentNode(
+					'agent-1',
+					inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS),
+				);
+
+				// The node id matches the stored node, so the guard restores it.
+				const response = await patchAsMember([edited]);
+
+				expect(response.statusCode).toBe(200);
+				expect((await storedNodes())[0].parameters).toEqual(ownerAgentNode().parameters);
+			});
+
+			it('rejects a new agent node whose credential is not shared with the editor', async () => {
+				const planted = agentNode(
+					'agent-2',
+					inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it('rejects a node tool credential that is not shared with the editor', async () => {
+				const planted = agentNode(
+					'agent-2',
+					inlineAgent(memberCredential.id, EDITOR_INSTRUCTIONS, {
+						tools: [
+							{
+								type: 'node',
+								name: 'fetch',
+								node: {
+									nodeType: 'n8n-nodes-base.httpRequest',
+									nodeParameters: { url: 'https://example.com/hook' },
+									credentials: {
+										httpBearerAuth: { id: ownerToolCredential.id, name: 'Owner token' },
+									},
+								},
+							},
+						],
+					}),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it('reads the credential id from a JSON-encoded parameter', async () => {
+				const planted = agentNode(
+					'agent-2',
+					JSON.stringify(inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS)),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it("saves a new agent node that uses the editor's own credential", async () => {
+				const own = agentNode('agent-3', inlineAgent(memberCredential.id, EDITOR_INSTRUCTIONS));
+
+				const response = await patchAsMember([ownerAgentNode(), own]);
+
+				expect(response.statusCode).toBe(200);
+				expect(await storedNodes()).toHaveLength(2);
+			});
+		});
+
 		it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
@@ -1209,8 +1524,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -1247,8 +1562,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block owner activation on interim activation by member', async () => {
@@ -1278,8 +1593,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: ownerChecksum,
 			});
 
-			expect(activationAttemptResponse.status).toBe(400);
-			expect(activationAttemptResponse.body.code).toBe(100);
+			expect(activationAttemptResponse.status).toBe(409);
+			expect(activationAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member activation on interim activation by owner', async () => {
@@ -1318,8 +1633,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow settings on interim update by owner', async () => {
@@ -1351,8 +1666,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow name on interim update by owner', async () => {
@@ -1384,8 +1699,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 	});
 
@@ -1405,7 +1720,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						position: [240, 300],
 					},
 					{
-						id: 'uuid-1234',
+						id: 'uuid-5678',
 						parameters: {},
 						name: 'Cron',
 						type: 'n8n-nodes-base.cron',
@@ -1670,7 +1985,9 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(response.body).toEqual({});
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: { kind: 'user', user: { id: member.id } },
+		});
 	});
 
 	test('should move workflow to project root if `destinationParentFolderId` is not provided', async () => {
@@ -1800,7 +2117,9 @@ describe('PUT /:workflowId/transfer', () => {
 		});
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: { kind: 'user', user: { id: member.id } },
+		});
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
 		expect(workflowFromDB.active).toBe(false);
@@ -2147,7 +2466,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const workflow = await createActiveWorkflow({}, member);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
 		// ACT & ASSERT
@@ -2175,5 +2494,133 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.body).toMatchObject({
 			message: 'User is missing a scope required to perform this action',
 		});
+	});
+
+	test('should always load the workflow from the database, ignoring request workflowData', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const dbNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			parameters: {},
+			typeVersion: 1,
+			position: [240, 300],
+		};
+
+		const workflow = await createWorkflow({ nodes: [dbNode], connections: {} }, teamProject);
+
+		// Send tampered workflowData with an injected node
+		const tamperedWorkflowData = {
+			...workflow,
+			nodes: [
+				dbNode,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should NOT reject (the DB workflow exists and user has execute scope)
+		// It should use the DB version, not the tampered one
+		expect(response.status).not.toBe(403);
+		expect(response.status).not.toBe(404);
+	});
+});
+
+// The editor saves through PATCH /workflows/:id, which never asks for publication, so an editor
+// holding workflow:update but not workflow:publish keeps working. Guards the editor against the
+// publish-on-save rules the public API needs.
+describe('PATCH /workflows/:workflowId as an editor who may not publish', () => {
+	const publishedWorkflowIds: string[] = [];
+
+	afterEach(async () => {
+		// The published-version row references the workflow, so it has to go before the next truncate.
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+		for (const workflowId of publishedWorkflowIds) {
+			await publishedVersionRepository.removePublishedVersion(workflowId);
+		}
+		publishedWorkflowIds.length = 0;
+	});
+
+	// One role for the whole block: the roles table is not truncated between tests, so creating one
+	// per test would leave a row behind each time. It outlives the block rather than being deleted,
+	// because the last test's project relation still references it when a suite teardown would run.
+	let editorWithoutPublishSlug: string;
+
+	beforeAll(async () => {
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Editor without publish',
+			description: 'Can edit workflows but not publish them',
+		});
+		editorWithoutPublishSlug = role.slug;
+	});
+
+	const publishedWorkflowMemberCanOnlyEdit = async (label: string) => {
+		const project = await createTeamProject(`Project ${label}`, owner);
+		await linkUserToProject(member, project, editorWithoutPublishSlug);
+
+		const workflow = await createActiveWorkflow({}, project);
+		await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+			workflow.id,
+			workflow.versionId,
+		);
+		publishedWorkflowIds.push(workflow.id);
+
+		return workflow;
+	};
+
+	test('saves a content change on a published workflow as a draft', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('content');
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: workflow.nodes.map((node) =>
+				node.type === 'n8n-nodes-base.cron'
+					? { ...node, parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } } }
+					: node,
+			),
+			connections: workflow.connections,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.versionId).not.toBe(workflow.versionId);
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('saves a settings change on a published workflow', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('settings');
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: { ...(workflow.settings ?? {}), timezone: 'America/New_York' },
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.settings?.timezone).toBe('America/New_York');
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('is still refused when it explicitly asks to publish', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('publish');
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).send({});
+
+		expect(response.statusCode).toBe(403);
 	});
 });

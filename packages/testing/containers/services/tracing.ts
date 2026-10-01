@@ -2,7 +2,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { HelperContext, Service, ServiceResult } from './types';
+import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const JAEGER_OTLP_PORT = 4318;
 const JAEGER_UI_PORT = 16686;
@@ -44,6 +44,7 @@ export const tracing: Service<TracingResult> = {
 		network: StartedNetwork,
 		projectName: string,
 		config?: unknown,
+		ctx?: StartContext,
 	): Promise<TracingResult> {
 		const { deploymentMode = 'scaling' } = (config as TracingConfig) ?? {};
 
@@ -66,6 +67,7 @@ export const tracing: Service<TracingResult> = {
 			)
 			.withReuse()
 			.start();
+		ctx?.registerContainer?.(jaegerContainer);
 
 		const jaegerUiPort = jaegerContainer.getMappedPort(JAEGER_UI_PORT);
 		const internalOtlpEndpoint = `http://${JAEGER_HOSTNAME}:${JAEGER_OTLP_PORT}`;
@@ -93,6 +95,7 @@ export const tracing: Service<TracingResult> = {
 			)
 			.withReuse()
 			.start();
+		ctx?.registerContainer?.(tracerContainer);
 
 		const internalIngestEndpoint = `http://${N8N_TRACER_HOSTNAME}:${N8N_TRACER_INGEST_PORT}`;
 
@@ -118,6 +121,21 @@ export const tracing: Service<TracingResult> = {
 		};
 	},
 };
+
+export interface JaegerTraceQuery {
+	/** Lower-bound timestamp; defaults to 30 minutes ago. */
+	since?: Date;
+	/** Upper-bound timestamp; defaults to now. */
+	until?: Date;
+	/**
+	 * Service name(s) to fetch from Jaeger. n8n's OTEL exporter uses
+	 * `N8N_OTEL_EXPORTER_SERVICE_NAME` (default `n8n`). When unset, this method
+	 * fetches every service Jaeger has seen.
+	 */
+	services?: string[];
+	/** Max traces per service. Default: 1500 (Jaeger's hard ceiling). */
+	limit?: number;
+}
 
 export class TracingHelper {
 	private readonly meta: TracingMeta;
@@ -149,6 +167,41 @@ export class TracingHelper {
 			label,
 			subscribedEvents: ['*'],
 		};
+	}
+
+	/** List service names Jaeger has received traces for. */
+	async listServices(): Promise<string[]> {
+		const res = await fetch(`${this.jaegerUiUrl}/api/services`);
+		if (!res.ok) throw new Error(`Jaeger /api/services returned ${res.status}`);
+		const body = (await res.json()) as { data?: string[] };
+		return body.data ?? [];
+	}
+
+	/**
+	 * Fetch traces from Jaeger for one or more services. Returns the raw API
+	 * response shape (`{ data: Trace[] }`-merged) so callers can persist it as
+	 * JSON for later replay into a local Jaeger.
+	 */
+	async fetchTraces(query: JaegerTraceQuery = {}): Promise<unknown[]> {
+		const since = query.since ?? new Date(Date.now() - 30 * 60_000);
+		const until = query.until ?? new Date();
+		const limit = query.limit ?? 1500;
+		const services = query.services?.length ? query.services : await this.listServices();
+
+		const all: unknown[] = [];
+		for (const service of services) {
+			const params = new URLSearchParams({
+				service,
+				start: String(since.getTime() * 1000), // Jaeger expects microseconds
+				end: String(until.getTime() * 1000),
+				limit: String(limit),
+			});
+			const res = await fetch(`${this.jaegerUiUrl}/api/traces?${params}`);
+			if (!res.ok) continue; // some services may have no spans yet — skip silently
+			const body = (await res.json()) as { data?: unknown[] };
+			if (body.data?.length) all.push(...body.data);
+		}
+		return all;
 	}
 }
 

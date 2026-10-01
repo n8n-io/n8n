@@ -1,37 +1,40 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import { useToast } from '@n8n/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/app/utils/typeGuards';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { isTrimmedNodeExecutionData } from 'n8n-workflow';
 
-/**
- * @param providedWorkflowState - Optional workflow state to use instead of injecting.
- *   This is needed when called from the same component that provides WorkflowStateKey
- *   (e.g., WorkflowLayout), since Vue's provide/inject works parent-to-child only.
- */
-export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => {
+export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
 
 	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
+	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = providedWorkflowState ?? injectWorkflowState();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
+	const { markStateDirty } = uiStore;
 
 	const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -40,15 +43,44 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
-		const execution = await workflowsStore.getExecution(executionId);
-		const workflowObject = workflowsStore.workflowObject;
-		const workflowNodes = workflowsStore.getNodes();
+		let execution = await workflowsStore.getExecution(executionId);
+
+		// getExecution sends no redaction flag, so it always returns the policy-redacted
+		// payload: every item is an empty placeholder that would overwrite real node data.
+		const redactionInfo = execution?.data?.redactionInfo;
+		if (redactionInfo?.isRedacted) {
+			if (!redactionInfo.canReveal) {
+				// The preview disables the button for this, but the command bar and a pasted
+				// debug URL both reach here directly.
+				toast.showToast({
+					title: i18n.baseText('nodeView.showMessage.debug.redacted.title'),
+					message: i18n.baseText('executionsList.debug.button.redacted.tooltip'),
+					type: 'warning',
+				});
+				await router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
+				});
+				return;
+			}
+
+			// An unpermitted reveal request fails and records an audit event, so only ask
+			// for one when canReveal says it will succeed.
+			const unredacted = await workflowsStore.fetchExecutionDataById(executionId, {
+				redactExecutionData: false,
+			});
+			if (unredacted?.data) {
+				execution = unredacted;
+			}
+		}
+
+		const workflowNodes = workflowDocumentStore.value.allNodes;
 
 		if (!execution?.data?.resultData) {
 			return;
 		}
 
-		const { runData } = execution.data.resultData;
+		const { runData, pinData = {} } = execution.data.resultData;
 
 		const executionNodeNames = Object.keys(runData);
 		const missingNodeNames = executionNodeNames.filter(
@@ -57,8 +89,9 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowPinnedNodeNames = Object.keys(workflowsStore.workflow.pinData ?? {});
-		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
+		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore.value.pinnedDataByNodeName);
+		const executionDataNodeNames = new Set([...executionNodeNames, ...Object.keys(pinData)]);
+		const matchingPinnedNodeNames = [...executionDataNodeNames].filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
 
@@ -86,28 +119,37 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 			if (overWritePinnedDataConfirm === MODAL_CONFIRM) {
 				matchingPinnedNodeNames.forEach((name) => {
-					const node = workflowsStore.getNodeByName(name);
-					if (node) {
-						workflowsStore.unpinData({ node });
-					}
+					workflowDocumentStore.value.unpinNodeData(name);
 				});
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflowObject.id, executionId },
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
 				});
 				return;
 			}
 		}
 
 		// Set execution data
-		workflowState.resetAllNodesIssues();
-		workflowState.setWorkflowExecutionData(execution);
+		workflowDocumentStore.value.resetAllNodesIssues();
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setWorkflowExecutionData(
+			execution,
+		);
 
 		// Pin data of all nodes which do not have a parent node
-		const pinnableNodes = workflowNodes.filter(
-			(node: INodeUi) => !workflowObject.getParentNodes(node.name).length,
+		let pinnableNodes = workflowNodes.filter(
+			(node: INodeUi) => !workflowDocumentStore.value.getParentNodes(node.name).length,
 		);
+
+		// Data this execution recorded for AI-simulated nodes is fabricated —
+		// copying it to the editor pins fake data, so it needs an explicit opt-in.
+		const simulatedPinnableNodes = pinnableNodes.filter((node) =>
+			aiSimulatedDataGuard.isSimulatedNodeOutput(executionId, node.name),
+		);
+		if (simulatedPinnableNodes.length > 0 && !(await aiSimulatedDataGuard.confirmAdoption())) {
+			const simulatedNames = new Set(simulatedPinnableNodes.map((node) => node.name));
+			pinnableNodes = pinnableNodes.filter((node) => !simulatedNames.has(node.name));
+		}
 
 		let pinnings = 0;
 
@@ -117,15 +159,23 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				// Get the first main output that has data, preserving all execution data including binary
 				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
 				if (nodeData) {
+					// Pinning a placeholder would round-trip it through the next manual run and persist it to DB.
+					if (isTrimmedNodeExecutionData(nodeData)) {
+						return;
+					}
 					pinnings++;
-					workflowsStore.pinData({
-						node,
-						data: nodeData,
-						isRestoration: true,
-					});
+					workflowDocumentStore.value.pinNodeData(node.name, nodeData);
+
+					// Clear dirtiness timestamps so nodes don't appear dirty after restoration.
+					// The old pinData({ isRestoration: true }) handled this internally.
+					workflowDocumentStore.value.clearPinnedDataTimestamps(node.name);
 				}
 			}
 		});
+
+		if (pinnings > 0 || matchingPinnedNodeNames.length > 0) {
+			markStateDirty();
+		}
 
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.debug.title'),
@@ -167,7 +217,9 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		workflowsStore.isInDebugMode = false;
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setIsInDebugMode(false);
 	};
 
 	return {

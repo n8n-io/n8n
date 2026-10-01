@@ -10,8 +10,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
@@ -41,7 +40,7 @@ export class ToolThink implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Think Tool',
 		name: 'toolThink',
-		icon: 'fa:brain',
+		icon: 'node:think-tool',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],

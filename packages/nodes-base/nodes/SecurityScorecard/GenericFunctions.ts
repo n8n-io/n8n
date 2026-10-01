@@ -9,6 +9,33 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export const SECURITY_SCORECARD_API_BASE_URL = 'https://api.securityscorecard.io';
+const SECURITY_SCORECARD_REPORT_FILES_PATH = '/reports/files/';
+const URL_PROTOCOL_PATTERN = /^[a-z][a-z\d+\-.]*:/i;
+
+export function resolveReportDownloadUrl(reportUrlOrPath: string): string {
+	const trimmed = reportUrlOrPath.trim();
+
+	if (!trimmed) {
+		throw new Error('Report URL is required');
+	}
+
+	const reportFilePath = trimmed.replace(/^\/+/, '').replace(/^reports\/files\/?/, '');
+	const resolvedUrl = new URL(
+		URL_PROTOCOL_PATTERN.test(trimmed) ? trimmed : reportFilePath,
+		`${SECURITY_SCORECARD_API_BASE_URL}${SECURITY_SCORECARD_REPORT_FILES_PATH}`,
+	);
+
+	if (
+		resolvedUrl.origin !== SECURITY_SCORECARD_API_BASE_URL ||
+		!resolvedUrl.pathname.startsWith(SECURITY_SCORECARD_REPORT_FILES_PATH)
+	) {
+		throw new Error('Report URL must point to SecurityScorecard report files');
+	}
+
+	return resolvedUrl.toString();
+}
+
 export async function scorecardApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,

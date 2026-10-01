@@ -12,11 +12,13 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	AI_EVALUATION,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
 	AI_UNCATEGORIZED_CATEGORY,
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	CODE_NODE_TYPE,
@@ -45,6 +47,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	MARKDOWN_NODE_TYPE,
 	MERGE_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OTHER_TRIGGER_NODES_SUBCATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
 	REMOVE_DUPLICATES_NODE_TYPE,
@@ -61,17 +64,23 @@ import {
 	XML_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import type { SimplifiedNodeType } from '@/Interface';
+import type {
+	CommandCreateElement,
+	NodeFilterType,
+	SectionCreateElement,
+	SimplifiedNodeType,
+	ViewCreateElement,
+} from '@/Interface';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { getAiTemplatesCallout } from '../nodeCreator.utils';
+import { getAiTemplatesCallout, getSendAndWaitNodes } from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -100,7 +109,8 @@ export interface NodeViewItem {
 		displayName?: string;
 		tag?: {
 			type?: string;
-			text: string;
+			text?: string;
+			preview?: boolean;
 		};
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
@@ -108,12 +118,22 @@ export interface NodeViewItem {
 	category?: string | string[];
 }
 
+export type NodeViewElement = NodeViewItem | SectionCreateElement;
+
+export function isNodeViewItem(item: NodeViewElement): item is NodeViewItem {
+	return 'properties' in item;
+}
+
+export function isNodeViewSection(item: NodeViewElement): item is SectionCreateElement {
+	return item.type === 'section' && 'children' in item;
+}
+
 export interface NodeView {
-	value: string;
+	value: NodeFilterType;
 	title: string;
 	info?: string;
 	subtitle?: string;
-	items: NodeViewItem[];
+	items: NodeViewElement[];
 	nodeIcon?: NodeIconSource;
 }
 
@@ -169,9 +189,23 @@ function getEvaluationNode(
 	];
 }
 
+function getMessageAnAgentNode(
+	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
+	settingsStore: ReturnType<typeof useSettingsStore>,
+) {
+	if (!settingsStore.isModuleActive('agents')) return [];
+
+	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
+	if (!node) return [];
+
+	// The early-preview tag is attached centrally in `applyNodeTags`.
+	return [getNodeView(node)];
+}
+
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
@@ -180,19 +214,20 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
+	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
-	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
-	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
+	const websiteCategoryURLParams = new URLSearchParams(
+		templatesStore.websiteTemplateRepositoryParameters,
+	);
+	websiteCategoryURLParams.set('utm_user_role', 'AdvancedAI');
 	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
 		websiteCategoryURLParams,
 		TEMPLATE_CATEGORY_AI,
 	);
 
-	const askAiEnabled = useSettingsStore().isAskAiEnabled;
-	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
-
-	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
+	const callouts: NodeViewItem[] = settingsStore.isCanvasOnly
+		? []
+		: [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -200,9 +235,11 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			...callouts,
+			// shown only when agents module is active
+			// TODO: revert before GA release
+			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
-			...transformNode,
 			...evaluationNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,
@@ -356,7 +393,19 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	};
 }
 
-export function TriggerView() {
+function getAddEmptyGroupCommand(i18n: ReturnType<typeof useI18n>): CommandCreateElement {
+	return {
+		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+		type: 'command',
+		properties: {
+			title: i18n.baseText('nodeCreator.triggerHelperPanel.addGroup'),
+			icon: 'group',
+			description: i18n.baseText('nodeCreator.triggerHelperPanel.addGroupDescription'),
+		},
+	};
+}
+
+export function TriggerView(_nodes: SimplifiedNodeType[] = []) {
 	const i18n = useI18n();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
@@ -427,7 +476,7 @@ export function TriggerView() {
 					name: WEBHOOK_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
-					iconData: { type: 'icon', icon: 'webhook' },
+					icon: 'node:webhook',
 				},
 			},
 			{
@@ -439,7 +488,7 @@ export function TriggerView() {
 					name: FORM_TRIGGER_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
-					iconData: { type: 'icon', icon: 'form' },
+					icon: 'node:form-trigger',
 				},
 			},
 			{
@@ -476,6 +525,7 @@ export function TriggerView() {
 					icon: 'folder-open',
 				},
 			},
+			getAddEmptyGroupCommand(i18n),
 		],
 	};
 
@@ -492,12 +542,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		DATETIME_NODE_TYPE,
 		AI_TRANSFORM_NODE_TYPE,
 	];
-
-	const getSendAndWaitNodes = (nodes: SimplifiedNodeType[]) => {
-		return (nodes ?? [])
-			.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
-			.map((node) => node.name);
-	};
 
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
@@ -618,28 +662,37 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		],
 	};
 
-	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if (hasAINodes)
-		view.items.unshift({
-			key: AI_NODE_CREATOR_VIEW,
-			type: 'view',
-			properties: {
-				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-				icon: 'robot',
-				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				borderless: true,
-			},
-		} as NodeViewItem);
-
-	view.items.push({
-		key: TRIGGER_NODE_CREATOR_VIEW,
+	view.items.unshift({
+		key: AI_NODE_CREATOR_VIEW,
 		type: 'view',
 		properties: {
-			title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
-			icon: 'bolt-filled',
-			description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
+			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+			icon: 'robot',
+			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+			borderless: true,
 		},
+	} as NodeViewItem);
+
+	view.items.push({
+		type: 'section',
+		key: 'additional-workflow-elements',
+		title: '',
+		children: [
+			{
+				uuid: 'additional-workflow-elements-trigger',
+				key: TRIGGER_NODE_CREATOR_VIEW,
+				type: 'view',
+				properties: {
+					title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
+					icon: 'bolt-filled',
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
+				},
+			} satisfies ViewCreateElement,
+		],
+		hideHeader: true,
 	});
+
+	view.items.push(getAddEmptyGroupCommand(i18n));
 
 	return view;
 }
@@ -662,4 +715,19 @@ export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
 			name: 'badge-check',
 		},
 	};
+}
+
+export const NODE_CREATOR_VIEWS: Record<NodeFilterType, (nodes: SimplifiedNodeType[]) => NodeView> =
+	{
+		[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+		[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+		[AI_NODE_CREATOR_VIEW]: AIView,
+		[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
+		[AI_UNCATEGORIZED_CATEGORY]: AINodesView,
+		[AI_EVALUATION]: AINodesView,
+		[HUMAN_IN_THE_LOOP_CATEGORY]: HitlToolView,
+	};
+
+export function isNodeCreatorView(key: string): key is NodeFilterType {
+	return Object.hasOwn(NODE_CREATOR_VIEWS, key);
 }

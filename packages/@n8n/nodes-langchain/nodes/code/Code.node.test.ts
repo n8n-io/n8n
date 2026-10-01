@@ -1,6 +1,70 @@
-import { transformLegacyLangchainImport } from './Code.node';
+import { LOG_LEVELS, CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
+
+import {
+	transformLegacyLangchainImport,
+	createSandboxLogger,
+	createProductionConsoleLog,
+} from './Code.node';
 
 describe('Code.node', () => {
+	describe('createSandboxLogger', () => {
+		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent');
+
+		function buildMockLogger() {
+			const logger = {
+				error: vi.fn(),
+				warn: vi.fn(),
+				info: vi.fn(),
+				debug: vi.fn(),
+				// Sensitive properties that must never appear in the sandbox
+				globalConfig: vi.fn(),
+				instanceSettingsConfig: vi.fn(),
+				internalLogger: vi.fn(),
+			};
+			return logger;
+		}
+
+		it('should expose only non-silent log level methods', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			expect(Object.keys(sandboxLogger)).toEqual(expect.arrayContaining(logLevelKeys));
+			expect(Object.keys(sandboxLogger)).toHaveLength(logLevelKeys.length);
+		});
+
+		it('should not expose sensitive properties on the sandbox logger', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			expect((sandboxLogger as Record<string, unknown>).globalConfig).toBeUndefined();
+			expect((sandboxLogger as Record<string, unknown>).instanceSettingsConfig).toBeUndefined();
+			expect((sandboxLogger as Record<string, unknown>).internalLogger).toBeUndefined();
+		});
+
+		it('should not call sensitive properties when log methods are invoked', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			for (const level of logLevelKeys) {
+				sandboxLogger[level]('test message');
+			}
+
+			expect(mockLogger.globalConfig).not.toHaveBeenCalled();
+			expect(mockLogger.instanceSettingsConfig).not.toHaveBeenCalled();
+			expect(mockLogger.internalLogger).not.toHaveBeenCalled();
+		});
+
+		it('should delegate log method calls to the original logger', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			for (const level of logLevelKeys) {
+				sandboxLogger[level]('test message', { key: 'value' });
+				expect(mockLogger[level]).toHaveBeenCalledWith('test message', { key: 'value' });
+			}
+		});
+	});
+
 	describe('transformLegacyLangchainImport', () => {
 		describe('transforms legacy langchain imports to @langchain/classic', () => {
 			it('should transform langchain/chains to @langchain/classic/chains', () => {
@@ -113,6 +177,34 @@ describe('Code.node', () => {
 				const result = transformLegacyLangchainImport('langchain/stores/message/in_memory');
 				expect(result).toBe('@langchain/classic/stores/message/in_memory');
 			});
+		});
+	});
+
+	describe('createProductionConsoleLog', () => {
+		let logSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			logSpy.mockRestore();
+		});
+
+		it('passes output through with the workflow/node prefix when not redacted', () => {
+			createProductionConsoleLog('wf-1', 'My Node', false)('hello', 42);
+
+			expect(logSpy).toHaveBeenCalledWith('[Workflow "wf-1"][Node "My Node"]', 'hello', 42);
+		});
+
+		it('emits only the redaction marker when redacted', () => {
+			createProductionConsoleLog('wf-1', 'My Node', true)('secret-payload');
+
+			expect(logSpy).toHaveBeenCalledWith(
+				'[Workflow "wf-1"][Node "My Node"]',
+				CONSOLE_OUTPUT_REDACTED_MESSAGE,
+			);
+			expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
 		});
 	});
 });

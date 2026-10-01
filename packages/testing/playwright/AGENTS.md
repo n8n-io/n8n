@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## Purpose
+
+Playwright is n8n's general-purpose test orchestrator. Do not assume that every
+Playwright test drives the editor UI. This package also owns API tests, container
+topologies, process lifecycle tests, infrastructure validation, performance
+benchmarks, evaluation suites, and browser-backed harness contracts.
+
+Choose the suite by the behavior under test:
+
+| Behavior | Location | Runner |
+|----------|----------|--------|
+| Product UI or API journey | `tests/e2e/` | `test:local` or a container project |
+| Database, queue, multi-main, encryption, or process lifecycle | `tests/infrastructure/` | `test:infrastructure` or the named project |
+| Infrastructure throughput and resource use | `tests/infrastructure/benchmarks/` | `test:benchmark` |
+| Browser and canvas performance | `tests/performance/` | `test:performance` |
+| Fixture or harness contract | `tests/framework/` | `test:unit` or `test:harness` |
+| Evaluation scenario | Existing evaluation directory | Its named evaluation project |
+
+Use Playwright when the test needs its worker lifecycle, fixtures, retries,
+artifacts, project matrix, browser context, or managed container stack. Use
+Vitest for browser-free unit and integration tests that need none of these.
+
 ## Commands
 
 ```bash
@@ -8,7 +30,10 @@ pnpm --filter=n8n-playwright test:local <file-path>
 pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
 # Run with container capabilities (requires pnpm build:docker first)
-pnpm --filter=n8n-playwright test:container:sqlite --grep @capability:email
+pnpm --filter=n8n-playwright test:container:sqlite tests/e2e/auth/password-reset.spec.ts
+
+# Run one infrastructure benchmark
+pnpm --filter=n8n-playwright test:benchmark tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts
 
 # Lint and typecheck
 pnpm --filter=n8n-playwright lint
@@ -17,9 +42,171 @@ pnpm --filter=n8n-playwright typecheck
 
 Always trim output: `--reporter=list 2>&1 | tail -50`
 
-## Entry Points
+## Test Layout
 
-All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
+Product Playwright tests live under `tests/`. Keep product E2E specs under
+`tests/e2e/` and keep infrastructure, performance, evaluation, and related
+suites in their existing directories under `tests/`.
+
+Framework and harness tests live under `tests/framework/`. Use this directory
+for tests of fixtures, startup lifecycle, diagnostics, telemetry, and harness
+contracts. These tests are not product E2E specs and must not be placed under
+`tests/e2e/`.
+
+Framework unit tests use the package Vitest configuration. Browser-backed
+harness contract tests use `vitest.harness.config.ts` so they stay separate
+from browser-free unit tests.
+
+## Test Maintenance (Janitor)
+
+Static analysis for Playwright test architecture. Catches problems before they spread.
+
+> **CRITICAL: Always use TCR for code changes.**
+> When janitor identifies violations and you fix them, use `pnpm janitor tcr --execute` to safely commit. Never manually commit janitor-related fixes - TCR ensures tests pass before the commit lands.
+
+### Golden Rules
+
+1. **Analysis only?** Run `pnpm janitor` (no TCR needed)
+2. **Making code changes?** Use TCR: `pnpm janitor tcr --execute -m="chore: ..."`
+3. **Never** manually `git commit` janitor-related fixes - always go through TCR
+4. **Never** modify `.janitor-baseline.json` via TCR - baseline updates must be done manually
+
+### When to Use
+
+| User Says | Intent | Approach |
+|-----------|--------|----------|
+| "Clean up the test codebase" | Incremental cleanup | Create baseline first, then use `--max-diff-lines=500` for small PRs. |
+| "Start tracking violations" | Enable incremental cleanup | Run `janitor baseline` to snapshot current state, commit `.janitor-baseline.json`. |
+| "Add a test for X" | New test following patterns | After writing, run janitor to verify architecture compliance. |
+| "Fix architecture drift" | Enforce layered architecture | Run `selector-purity` and `no-page-in-flow` rules. |
+| "Find dead code" | Remove unused methods | Run `dead-code` rule with `--fix --write` for auto-removal. |
+| "Find copy-paste code" | Detect duplicates | Run `duplicate-logic` rule to find structural duplicates. |
+| "This file is messy" | Targeted cleanup | Analyze specific file, fix issues, TCR to safely commit. |
+| "Refactor this page object" | Safe refactoring | Use TCR - changes commit if tests pass, revert if they fail. |
+| "What tests would break?" | Impact analysis | Run `impact` command before changing shared code. |
+| "Prepare for PR" | Pre-commit check | Run janitor on changed files to catch violations early. |
+
+### Architecture Rules
+
+The janitor enforces a layered architecture:
+
+```
+Tests → Flows/Composables → Page Objects → Components → Playwright API
+```
+
+| Rule | What It Catches |
+|------|-----------------|
+| `selector-purity` | Raw locators in tests/flows: `page.getByTestId()`, `someLocator.locator()` |
+| `no-page-in-flow` | Flows accessing `page` directly (should use page objects) |
+| `boundary-protection` | Pages importing other pages (creates coupling) |
+| `scope-lockdown` | Unscoped locators that escape their container |
+| `dead-code` | Unused public methods in page objects |
+| `deduplication` | Same selector defined in multiple files |
+| `duplicate-logic` | Copy-pasted code across tests/pages (AST fingerprinting) |
+| `no-raw-editor-navigation` | Raw `page.goto()` to a `/workflow/` editor route in tests (use `n8n.start.*` so the canvas loader is awaited) |
+| `valid-owner-annotation` | A spec with no team owner, or an owner not in the canonical list (`CANONICAL_OWNERS` in the rule, mirroring Notion "Ownership v2") |
+
+### Commands
+
+```bash
+# Analyze entire codebase
+pnpm janitor
+
+# Analyze specific file
+pnpm janitor --file=pages/CanvasPage.ts --verbose
+
+# Run specific rule
+pnpm janitor --rule=dead-code
+
+# Auto-fix (dead-code only)
+pnpm janitor:fix --rule=dead-code
+
+# List all rules (short)
+pnpm janitor --list
+
+# Show detailed rule info (for AI agents)
+pnpm janitor rules --json
+
+# Discover test specs (for orchestration)
+pnpm janitor discover
+
+# Distribute specs across shards
+pnpm janitor orchestrate --shards=14
+```
+
+### Baseline (Incremental Cleanup)
+
+For codebases with existing violations, create a baseline to enable incremental cleanup:
+
+```bash
+# Create baseline - snapshots current violations
+pnpm janitor baseline
+
+# Commit the baseline
+git add .janitor-baseline.json && git commit -m "chore: add janitor baseline"
+```
+
+Once baseline exists, janitor and TCR **only fail on NEW violations**. Pre-existing violations are tracked but don't block work.
+
+> **Safeguard:** TCR blocks commits that modify `.janitor-baseline.json`. This prevents accidentally "fixing" violations by updating the baseline instead of the actual code. Baseline updates must be done manually after fixing violations.
+
+```bash
+# Update baseline after fixing violations (manual commit required)
+pnpm janitor baseline
+git add .janitor-baseline.json && git commit -m "chore: update baseline after cleanup"
+```
+
+### Incremental Cleanup Strategy
+
+For large cleanups, keep diffs small and reviewable:
+
+```bash
+# Show ALL violations (ignoring baseline) for cleanup work
+pnpm janitor --ignore-baseline --json
+
+# Find easiest files to fix (lowest violation count)
+pnpm janitor --ignore-baseline --json 2>/dev/null | jq '.fileReports | sort_by(.violationCount) | .[:5]'
+
+# TCR with max diff size (skip if changes are too large)
+pnpm janitor tcr --max-diff-lines=500 --execute -m="chore: cleanup"
+```
+
+**AI Cleanup Workflow:**
+1. Use `--ignore-baseline` to see all violations (not just new ones)
+2. Pick small fixes from the list
+3. Fix violations, then TCR to safely commit
+4. After fixing, run `pnpm janitor baseline` to update the baseline
+
+### TCR Workflow (Test && Commit || Revert)
+
+Safe refactoring loop: make changes, run affected tests, auto-commit or auto-revert.
+
+```bash
+# Dry run - see what would happen
+pnpm janitor tcr --verbose
+
+# Execute - actually commit/revert
+pnpm janitor tcr --execute -m="chore: remove dead code"
+
+# With guardrails - skip if diff too large
+pnpm janitor tcr --execute --max-diff-lines=500 -m="chore: cleanup"
+```
+
+### After Writing New Tests
+
+Always run janitor after adding or modifying tests to catch architecture violations early:
+
+```bash
+pnpm janitor --file=tests/my-new-test.spec.ts --verbose
+```
+
+See `packages/testing/janitor/README.md` for full documentation.
+
+## UI Entry Points
+
+UI journey tests should start with `n8n.start.*` methods. API, infrastructure,
+benchmark, lifecycle, and framework tests use their own fixtures and harnesses.
+See `composables/TestEntryComposer.ts` for UI entry points.
 
 | Method | Use Case |
 |--------|----------|
@@ -30,6 +217,110 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 | `fromImportedWorkflow(file)` | Test pre-built workflow JSON |
 | `withUser(user)` | Isolated browser context per user |
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
+
+## Accessibility Checks
+
+The `a11y` fixture runs axe-core against the current page, scoped to a named
+bucket. It **never throws** - a scan that can't run (bucket not on screen, axe
+failure) logs a warning and returns an empty array, so bolting a check onto an
+existing journey can't turn that journey red. Callers decide what to assert.
+
+```typescript
+test('canvas is accessible', async ({ n8n, a11y }) => {
+  await n8n.start.fromBlankCanvas();
+
+  const violations = await a11y.check('canvas');
+
+  expect(violations).toEqual([]);
+});
+```
+
+Buckets: `page` (whole document), `canvas`, `ndv`, `node-creator`, `sidebar`,
+`modal`. Defined in `fixtures/a11y.ts` (`A11Y_BUCKETS`). Scans run with WCAG 2.1
+A + AA rules; override per call with `a11y.check('modal', { tags, disableRules })`.
+
+When a journey acts as another user, `n8n.start.withUser()` returns a new
+`n8nPage`. Point the checker at it with `a11y.for(otherN8n)` - the derived
+checker reports into the same scan list.
+
+### Main landmark structure
+
+`utils/a11y-landmark-check.ts` checks the one structural rule axe cannot see on a
+composed layout: the page must have exactly one `<main>` element, that `<main>`
+must not sit inside another landmark, and `id="content"` must be unique. It walks
+the composed DOM - the document plus every open shadow tree, and slotted content
+from where it renders, not from where it is written - runs no axe rules, and
+leaves the default WCAG 2.1 A + AA tag selection alone.
+
+A `<section>` or `<form>` is a landmark only once it has an accessible name, so the
+check computes one: `aria-label`, an `aria-labelledby` reference resolved in the
+element's own root, or `title`. A reference resolves through the same routine, so
+the referenced element can name through its own reference, a naming attribute such
+as `img[alt]`, or its text. A reference to a missing or empty element names
+nothing, and a `<section>` full of text stays unnamed, because `region` does not
+take its name from content.
+
+```typescript
+import { assertMainLandmarkStructure } from '../../../utils/a11y-landmark-check';
+
+await assertMainLandmarkStructure(n8n.page);
+```
+
+`assertMainLandmarkStructure(page)` throws with each problem it found.
+`checkMainLandmarkStructure(page)` returns `{ ok, problems }` instead, for a
+caller that wants to report rather than fail. Regression cover for both lives in
+`tests/e2e/a11y/a11y-landmark-structure.spec.ts`, against synthetic markup.
+
+### Report and failure budget
+
+Every scan is attached to its test, so the raw axe results are always available
+on that test (including in Currents). Set `PLAYWRIGHT_A11Y_REPORT` to also
+register `reporters/a11y-reporter.ts`, which aggregates a run's scans into one
+axe HTML report at `a11y-report/index.html` plus a table in the GitHub job
+summary. Under sharding each shard reports the specs it ran. CI sets the
+variable for the e2e workflow, which uploads the report as its own artifact on a
+failing run; locally the reporter stays off unless asked for:
+
+```bash
+PLAYWRIGHT_A11Y_REPORT=1 pnpm --filter=n8n-playwright test:local
+```
+
+Violations are **reporting-only by default**. Set
+`PLAYWRIGHT_A11Y_MAX_VIOLATIONS` to the number of violations a single test may
+report before it fails:
+
+```bash
+# Fail any test reporting more than 5 violations
+PLAYWRIGHT_A11Y_MAX_VIOLATIONS=5 pnpm --filter=n8n-playwright test:local
+```
+
+Unset (the default), empty or malformed all mean "no budget", so the violations
+that already exist can't turn CI red. The budget is not applied to a test that
+already failed for another reason.
+
+### Per-bucket scores
+
+The reporter also scores each bucket the run exercised and writes one line for
+each of them, worst first:
+
+```
+[a11y] score bucket=canvas scans=2 rules=3 elements=7 score=31 critical=1 serious=3 moderate=1 minor=2
+```
+
+`elements` counts the distinct violating elements. An element is counted once
+for each screen it is broken on, however many rules it trips there, so a bucket
+the run scanned twice on the same screen reports its elements once. `score`
+weights those elements by impact (critical 10, serious 5, moderate 3, minor 1),
+taking the worst impact reported for each element, so it goes to zero as the
+bucket gets fixed. The same numbers go into the GitHub job summary as a bucket
+table.
+
+When `QA_METRICS_WEBHOOK_*` is set - CI sets it for the e2e workflow - the
+reporter sends the scores to the QA metrics webhook the perf metrics use. Each
+bucket writes three `qa_performance_metrics` rows (`a11y-score`,
+`a11y-violated-rules`, `a11y-violating-elements`) under the `a11y-buckets`
+benchmark, with the bucket in `dimensions`. The send is best-effort: a failure
+warns and the run carries on. See [.github/CI-TELEMETRY.md](../../../.github/CI-TELEMETRY.md).
 
 ## Test Isolation
 
@@ -145,6 +436,7 @@ See [Quality Corner: Test Migration Guide](https://www.notion.so/n8n/Best-Practi
 | Composable example | `composables/WorkflowComposer.ts` |
 | API helpers | `services/api-helper.ts` |
 | Capabilities | `fixtures/capabilities.ts` |
+| Accessibility fixture | `fixtures/a11y.ts` |
 
 ```typescript
 const member = await api.publicApi.createUser({...});
@@ -233,36 +525,52 @@ test('API-only test', async ({ api }) => {
 });
 ```
 
-## Code Style
+### Feature Flag Overrides
 
-- Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`
-- Use `nanoid()` for unique identifiers (parallel-safe)
-- API setup over UI setup when possible (faster, more reliable)
+To test features behind feature flags (experiments), use `TestRequirements` with storage overrides:
 
-## Architecture
+```typescript
+import type { TestRequirements } from '../../../Types';
 
+const requirements: TestRequirements = {
+  storage: {
+    N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ 'your_experiment': true }),
+  },
+};
+
+test.use({ requirements });
+
+test('test with feature flag enabled', async ({ n8n }) => {
+  // Feature flag is now active for this test
+});
 ```
-Tests (*.spec.ts)
-    ↓ uses
-Composables (*Composer.ts) - Multi-step business workflows
-    ↓ orchestrates
-Page Objects (*Page.ts) - UI interactions
-    ↓ extends
-BasePage - Common utilities
+
+**Common patterns:**
+
+```typescript
+// Single experiment
+{ storage: { N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '025_new_canvas': true }) } }
+
+// Multiple experiments
+{ storage: { N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+  '025_new_canvas': true,
+  '026_another_feature': 'variant_a'
+}) } }
+
+// Combined with other requirements
+const requirements: TestRequirements = {
+  storage: {
+    N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ 'your_experiment': true }),
+  },
+  capability: {
+    env: { TEST_ISOLATION: 'my-test-suite' },
+  },
+};
 ```
 
-See `CONTRIBUTING.md` for detailed patterns and conventions.
-
-## Reference Files
-
-| Purpose | File |
-|---------|------|
-| Multi-user testing | `tests/e2e/building-blocks/user-service.spec.ts` |
-| Entry points | `composables/TestEntryComposer.ts` |
-| Page object example | `pages/CanvasPage.ts` |
-| Composable example | `composables/WorkflowComposer.ts` |
-| API helpers | `services/api-helper.ts` |
-| Capabilities | `fixtures/capabilities.ts` |
+**Reference:** `Types.ts` for the full interface definition. Import depth follows
+the spec's own nesting. The example above assumes `tests/e2e/<area>/`; add one
+`../` per extra level down.
 
 ## Shard Rebalancing
 

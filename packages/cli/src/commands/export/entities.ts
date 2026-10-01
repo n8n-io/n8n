@@ -1,10 +1,11 @@
+import { safeJoinPath } from '@n8n/backend-common';
 import { Command } from '@n8n/decorators';
-import { z } from 'zod';
 import { Container } from '@n8n/di';
+import { z } from 'zod';
+
+import { ExportService } from '@/services/export.service';
 
 import { BaseCommand } from '../base-command';
-import { ExportService } from '@/services/export.service';
-import { safeJoinPath } from '@n8n/backend-common';
 
 const flagsSchema = z.object({
 	outputDir: z
@@ -17,6 +18,12 @@ const flagsSchema = z.object({
 			'Include execution history data tables, these are excluded by default as they can be very large',
 		)
 		.default(false),
+	includeDataTableRows: z.coerce
+		.boolean()
+		.describe(
+			'Include user-data table row contents. When false, only the data-table schemas (registry rows) are exported.',
+		)
+		.default(true),
 	keyFile: z
 		.string()
 		.describe('Optional path to a file containing a custom encryption key')
@@ -31,6 +38,7 @@ const flagsSchema = z.object({
 		'--outputDir=./exports',
 		'--outputDir=/path/to/backup',
 		'--includeExecutionHistoryDataTables=true',
+		'--includeDataTableRows=false',
 		'--keyFile=/path/to/key.txt',
 		'--outputDir=./exports --keyFile=/path/to/key.txt',
 	],
@@ -50,7 +58,9 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 			excludedDataTables.add('execution_metadata');
 		}
 
-		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables, keyFilePath);
+		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables, keyFilePath, {
+			includeDataTableRows: this.flags.includeDataTableRows,
+		});
 	}
 
 	catch(error: Error) {

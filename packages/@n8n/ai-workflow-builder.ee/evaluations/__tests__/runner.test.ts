@@ -24,7 +24,7 @@ function createMockEvaluator(
 ): Evaluator {
 	return {
 		name,
-		evaluate: jest.fn().mockResolvedValue(feedback),
+		evaluate: vi.fn().mockResolvedValue(feedback),
 	};
 }
 
@@ -32,7 +32,7 @@ function createMockEvaluator(
 function createFailingEvaluator(name: string, error: Error): Evaluator {
 	return {
 		name,
-		evaluate: jest.fn().mockRejectedValue(error),
+		evaluate: vi.fn().mockRejectedValue(error),
 	};
 }
 
@@ -45,7 +45,7 @@ describe('Runner - Local Mode', () => {
 				{ prompt: 'Create workflow C' },
 			];
 
-			const generateWorkflow = jest.fn().mockResolvedValue(createMockWorkflow());
+			const generateWorkflow = vi.fn().mockResolvedValue(createMockWorkflow());
 			const evaluator = createMockEvaluator('test');
 
 			const config: RunConfig = {
@@ -57,7 +57,7 @@ describe('Runner - Local Mode', () => {
 			};
 
 			// Import dynamically to avoid circular deps in test setup
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			const summary = await runEvaluation(config);
 
 			expect(generateWorkflow).toHaveBeenCalledTimes(3);
@@ -79,12 +79,12 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator1, evaluator2, evaluator3],
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			const summary = await runEvaluation(config);
 
 			// All evaluators should be called
@@ -105,12 +105,12 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [goodEvaluator, badEvaluator],
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			const summary = await runEvaluation(config);
 
 			// Should complete despite error
@@ -120,7 +120,7 @@ describe('Runner - Local Mode', () => {
 		});
 
 		it('should skip and continue when workflow generation fails', async () => {
-			const generateWorkflow = jest
+			const generateWorkflow = vi
 				.fn()
 				.mockResolvedValueOnce(createMockWorkflow())
 				.mockRejectedValueOnce(new Error('Generation failed'))
@@ -136,7 +136,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			const summary = await runEvaluation(config);
 
 			expect(summary.totalExamples).toBe(3);
@@ -153,7 +153,7 @@ describe('Runner - Local Mode', () => {
 
 			const evaluator: Evaluator = {
 				name: 'contextual',
-				evaluate: jest.fn(evaluate),
+				evaluate: vi.fn(evaluate),
 			};
 
 			const config: RunConfig = {
@@ -164,12 +164,12 @@ describe('Runner - Local Mode', () => {
 						context: { dos: 'Use Slack', donts: 'No HTTP' },
 					},
 				],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(evaluator.evaluate).toHaveBeenCalled();
@@ -184,19 +184,19 @@ describe('Runner - Local Mode', () => {
 
 			const evaluator: Evaluator = {
 				name: 'merged',
-				evaluate: jest.fn(evaluate),
+				evaluate: vi.fn(evaluate),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test', context: { donts: 'No HTTP' } }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator],
 				context: { dos: 'Use Slack' },
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(evaluator.evaluate).toHaveBeenCalled();
@@ -214,12 +214,12 @@ describe('Runner - Local Mode', () => {
 			const config1: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [highScoreEvaluator],
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			const summary1 = await runEvaluation(config1);
 			expect(summary1.passed).toBe(1);
 
@@ -227,7 +227,7 @@ describe('Runner - Local Mode', () => {
 			const config2: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [lowScoreEvaluator],
 				logger: silentLogger,
 			};
@@ -253,13 +253,13 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [evaluator1, evaluator2],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(collected).toHaveLength(1);
@@ -270,19 +270,19 @@ describe('Runner - Local Mode', () => {
 	describe('Lifecycle Hooks', () => {
 		it('should call onStart at beginning of run', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onStart: jest.fn(),
+				onStart: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(lifecycle.onStart).toHaveBeenCalledWith(config);
@@ -290,19 +290,19 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onExampleStart before each example', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onExampleStart: jest.fn(),
+				onExampleStart: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test 1' }, { prompt: 'Test 2' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(lifecycle.onExampleStart).toHaveBeenCalledTimes(2);
@@ -313,19 +313,19 @@ describe('Runner - Local Mode', () => {
 		it('should call onWorkflowGenerated after generation', async () => {
 			const workflow = createMockWorkflow('Generated');
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onWorkflowGenerated: jest.fn(),
+				onWorkflowGenerated: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(workflow),
+				generateWorkflow: vi.fn().mockResolvedValue(workflow),
 				evaluators: [],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(lifecycle.onWorkflowGenerated).toHaveBeenCalledWith(
@@ -336,7 +336,7 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onEvaluatorComplete after each evaluator', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onEvaluatorComplete: jest.fn(),
+				onEvaluatorComplete: vi.fn(),
 			};
 
 			const feedback1: Feedback[] = [
@@ -349,7 +349,7 @@ describe('Runner - Local Mode', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [
 					createMockEvaluator('eval1', feedback1),
 					createMockEvaluator('eval2', feedback2),
@@ -358,7 +358,7 @@ describe('Runner - Local Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(lifecycle.onEvaluatorComplete).toHaveBeenCalledTimes(2);
@@ -369,19 +369,19 @@ describe('Runner - Local Mode', () => {
 		it('should call onEvaluatorError when evaluator fails', async () => {
 			const error = new Error('Evaluator crashed');
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onEvaluatorError: jest.fn(),
+				onEvaluatorError: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createFailingEvaluator('failing', error)],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(lifecycle.onEvaluatorError).toHaveBeenCalledWith('failing', error);
@@ -389,19 +389,19 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onExampleComplete after each example', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onExampleComplete: jest.fn(),
+				onExampleComplete: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createMockEvaluator('test')],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(lifecycle.onExampleComplete).toHaveBeenCalledWith(
@@ -416,19 +416,19 @@ describe('Runner - Local Mode', () => {
 
 		it('should call onEnd with summary at end of run', async () => {
 			const lifecycle: Partial<EvaluationLifecycle> = {
-				onEnd: jest.fn(),
+				onEnd: vi.fn(),
 			};
 
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [createMockEvaluator('test')],
 				lifecycle,
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			const summary = await runEvaluation(config);
 
 			expect(lifecycle.onEnd).toHaveBeenCalledWith(summary);

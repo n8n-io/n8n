@@ -63,8 +63,8 @@ let member3Agent: SuperAgentTest;
 describe('Custom Role Functionality Tests', () => {
 	beforeAll(async () => {
 		mockInstance(UserManagementMailer, {
-			invite: jest.fn(),
-			passwordReset: jest.fn(),
+			invite: vi.fn(),
+			passwordReset: vi.fn(),
 		});
 
 		await utils.initCredentialsTypes();
@@ -244,7 +244,7 @@ describe('Custom Role Functionality Tests', () => {
 			await member2Agent
 				.post('/credentials')
 				.send({ ...newCredentialPayload, projectId: teamProjectA.id })
-				.expect(400);
+				.expect(403);
 
 			// Should not be able to update
 			await member2Agent
@@ -361,7 +361,7 @@ describe('Custom Role Functionality Tests', () => {
 			await member1Agent
 				.post('/credentials')
 				.send({ ...newCredentialPayload, projectId: teamProjectB.id })
-				.expect(400);
+				.expect(403);
 		});
 
 		test('should validate custom roles with single-scope restrictions work properly', async () => {
@@ -770,7 +770,7 @@ describe('Custom Role Functionality Tests', () => {
 			await member1Agent
 				.post('/credentials')
 				.send({ ...newCredentialPayload, projectId: teamProjectA.id })
-				.expect(400);
+				.expect(403);
 
 			// Test forbidden endpoints: PATCH /credentials/:id (update)
 			await member1Agent
@@ -839,7 +839,7 @@ describe('Custom Role Functionality Tests', () => {
 			await member3Agent
 				.post('/credentials')
 				.send({ ...newCredentialPayload, projectId: teamProjectA.id })
-				.expect(400);
+				.expect(403);
 
 			// Test forbidden endpoints: PATCH /credentials/:id (update)
 			await member3Agent

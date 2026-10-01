@@ -33,6 +33,7 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V1/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
+/* istanbul ignore next */
 function getInputs(
 	agent:
 		| 'toolsAgent'
@@ -102,6 +103,8 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatMinimax',
+						'@n8n/n8n-nodes-langchain.lmChatMoonshot',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
@@ -132,6 +135,8 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatLemonade',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatMinimax',
+						'@n8n/n8n-nodes-langchain.lmChatMoonshot',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
@@ -283,6 +288,18 @@ export class AgentV1 implements INodeType {
 				})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
+			builderHint: {
+				...baseDescription.builderHint,
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_memory: { required: false },
+					ai_tool: { required: false },
+					ai_outputParser: {
+						required: false,
+						displayOptions: { show: { hasOutputParser: [true] } },
+					},
+				},
+			},
 			credentials: [
 				{
 					name: 'mySql',
@@ -307,18 +324,6 @@ export class AgentV1 implements INodeType {
 				},
 			],
 			properties: [
-				{
-					displayName:
-						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'aiAgentStarterCallout',
-					type: 'callout',
-					default: '',
-					displayOptions: {
-						show: {
-							agent: ['conversationalAgent', 'toolsAgent'],
-						},
-					},
-				},
 				{
 					displayName:
 						"This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead.",

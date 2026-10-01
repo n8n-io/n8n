@@ -4,9 +4,17 @@ import type { ComponentInstance } from 'vue';
 import N8nRecycleScroller from './RecycleScroller.vue';
 
 export default {
-	title: 'Atoms/RecycleScroller',
+	title: 'Core/RecycleScroller',
 	component: N8nRecycleScroller,
 	argTypes: {},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A virtualized list container for efficiently rendering large datasets.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({
@@ -59,4 +67,4 @@ const Template: StoryFn = (args) => ({
 	</div>`,
 });
 
-export const RecycleScroller = Template.bind({});
+export const Default = Template.bind({});

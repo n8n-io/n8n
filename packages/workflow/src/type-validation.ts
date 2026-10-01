@@ -1,7 +1,7 @@
 import isObject from 'lodash/isObject';
 import { DateTime } from 'luxon';
 
-import { ApplicationError } from './errors';
+import { ApplicationError, BaseError, UserError } from './errors';
 import type {
 	FieldType,
 	FormFieldsParameter,
@@ -16,7 +16,7 @@ export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
 
 	if (!isValidNumber) {
-		throw new ApplicationError('Failed to parse value to number', { extra: { value } });
+		throw new UserError('Failed to parse value to number', { extra: { value } });
 	}
 	return Number(value);
 };
@@ -41,7 +41,7 @@ export const tryToParseAlphanumericString = (value: unknown): string => {
 	// Numbers not allowed as the first character
 	const regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 	if (!regex.test(parsed)) {
-		throw new ApplicationError('Value is not a valid alphanumeric string', { extra: { value } });
+		throw new UserError('Value is not a valid alphanumeric string', { extra: { value } });
 	}
 	return parsed;
 };
@@ -64,7 +64,7 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		}
 	}
 
-	throw new ApplicationError('Failed to parse value as boolean', {
+	throw new UserError('Failed to parse value as boolean', {
 		extra: { value },
 	});
 };
@@ -108,7 +108,7 @@ export const tryToParseDateTime = (value: unknown, defaultZone?: string): DateTi
 		return parsedDateTime;
 	}
 
-	throw new ApplicationError('Value is not a valid date', { extra: { dateString } });
+	throw new UserError('Value is not a valid date', { extra: { dateString } });
 };
 
 export const tryToParseTime = (value: unknown): string => {
@@ -116,7 +116,7 @@ export const tryToParseTime = (value: unknown): string => {
 		String(value),
 	);
 	if (!isTimeInput) {
-		throw new ApplicationError('Value is not a valid time', { extra: { value } });
+		throw new UserError('Value is not a valid time', { extra: { value } });
 	}
 	return String(value);
 };
@@ -135,11 +135,11 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 		}
 
 		if (!Array.isArray(parsed)) {
-			throw new ApplicationError('Value is not a valid array', { extra: { value } });
+			throw new UserError('Value is not a valid array', { extra: { value } });
 		}
 		return parsed;
 	} catch (e) {
-		throw new ApplicationError('Value is not a valid array', { extra: { value } });
+		throw new UserError('Value is not a valid array', { extra: { value } });
 	}
 };
 
@@ -151,17 +151,17 @@ export const tryToParseObject = (value: unknown): object => {
 		const o = jsonParse<object>(String(value), { acceptJSObject: true });
 
 		if (typeof o !== 'object' || Array.isArray(o)) {
-			throw new ApplicationError('Value is not a valid object', { extra: { value } });
+			throw new UserError('Value is not a valid object', { extra: { value } });
 		}
 		return o;
 	} catch (e) {
-		throw new ApplicationError('Value is not a valid object', { extra: { value } });
+		throw new UserError('Value is not a valid object', { extra: { value } });
 	}
 };
 
 export const tryToParseBinary = (value: unknown): IBinaryData => {
 	if (!value || typeof value !== 'object' || Array.isArray(value) || !isBinaryValue(value)) {
-		throw new ApplicationError('Value is not a valid binary data object', { extra: { value } });
+		throw new UserError('Value is not a valid binary data object', { extra: { value } });
 	}
 
 	return value;
@@ -203,69 +203,83 @@ const ALLOWED_FIELD_TYPES = [
 	'hiddenField',
 ];
 
+const tryToParseFormFieldOptions = (rawOptions: unknown, index: number): object => {
+	const asObject = Array.isArray(rawOptions) ? { values: rawOptions } : rawOptions;
+
+	const invalidValuesError = new UserError(
+		`Field dropdown in field ${index} has no 'values' property that contains an array of options`,
+	);
+
+	if (typeof asObject !== 'object' || asObject === null) throw invalidValuesError;
+
+	const { values } = asObject as { [key: string]: unknown };
+	if (!Array.isArray(values)) throw invalidValuesError;
+
+	const options: unknown[] = values;
+	for (const [optionIndex, option] of options.entries()) {
+		if (
+			typeof option !== 'object' ||
+			option === null ||
+			Object.keys(option).length !== 1 ||
+			typeof (option as { option?: unknown }).option !== 'string'
+		) {
+			throw new UserError(`Field dropdown in field ${index} has an invalid option ${optionIndex}`);
+		}
+	}
+
+	return asObject;
+};
+
 export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
 	const fields: FormFieldsParameter = [];
 
+	let rawFields: Array<{ [key: string]: unknown }>;
 	try {
-		const rawFields = jsonParse<Array<{ [key: string]: unknown }>>(value as string, {
+		rawFields = jsonParse<Array<{ [key: string]: unknown }>>(value as string, {
 			acceptJSObject: true,
 		});
+	} catch (error) {
+		// Keep the engine message, it contains the error position
+		throw new UserError(`Value is not valid JSON: ${(error as Error).message}`);
+	}
 
-		for (const [index, field] of rawFields.entries()) {
-			for (const key of Object.keys(field)) {
-				if (!ALLOWED_FORM_FIELDS_KEYS.includes(key)) {
-					throw new ApplicationError(`Key '${key}' in field ${index} is not valid for form fields`);
-				}
-				if (
-					key !== 'fieldOptions' &&
-					!['string', 'number', 'boolean'].includes(typeof field[key])
-				) {
-					field[key] = String(field[key]);
-				} else if (typeof field[key] === 'string' && key !== 'html') {
-					field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-				}
+	if (!Array.isArray(rawFields)) {
+		throw new UserError(
+			`Form fields must be an array of objects, but we got ${getValueDescription(rawFields)}`,
+		);
+	}
 
-				if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
-					throw new ApplicationError(
-						`Field type '${field[key] as string}' in field ${index} is not valid for form fields`,
-					);
-				}
+	for (const [index, field] of rawFields.entries()) {
+		if (typeof field !== 'object' || field === null || Array.isArray(field)) {
+			throw new UserError(
+				`Field ${index} must be an object, but we got ${getValueDescription(field)}`,
+			);
+		}
 
-				if (key === 'fieldOptions') {
-					if (Array.isArray(field[key])) {
-						field[key] = { values: field[key] };
-					}
-
-					if (
-						typeof field[key] !== 'object' ||
-						!(field[key] as { [key: string]: unknown }).values
-					) {
-						throw new ApplicationError(
-							`Field dropdown in field ${index} does has no 'values' property that contain an array of options`,
-						);
-					}
-
-					for (const [optionIndex, option] of (
-						(field[key] as { [key: string]: unknown }).values as Array<{
-							[key: string]: { option: string };
-						}>
-					).entries()) {
-						if (Object.keys(option).length !== 1 || typeof option.option !== 'string') {
-							throw new ApplicationError(
-								`Field dropdown in field ${index} has an invalid option ${optionIndex}`,
-							);
-						}
-					}
-				}
+		for (const key of Object.keys(field)) {
+			if (!ALLOWED_FORM_FIELDS_KEYS.includes(key)) {
+				throw new UserError(`Key '${key}' in field ${index} is not valid for form fields`);
+			}
+			if (key !== 'fieldOptions' && !['string', 'number', 'boolean'].includes(typeof field[key])) {
+				field[key] = String(field[key]);
+			} else if (typeof field[key] === 'string' && key !== 'html') {
+				field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
 			}
 
-			fields.push(field as FormFieldsParameter[number]);
-		}
-	} catch (error) {
-		if (error instanceof ApplicationError) throw error;
+			if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
+				throw new UserError(
+					`Field type '${field[key] as string}' in field ${index} is not valid for form fields`,
+				);
+			}
 
-		throw new ApplicationError('Value is not valid JSON');
+			if (key === 'fieldOptions') {
+				field[key] = tryToParseFormFieldOptions(field[key], index);
+			}
+		}
+
+		fields.push(field as FormFieldsParameter[number]);
 	}
+
 	return fields;
 };
 
@@ -289,21 +303,21 @@ export const tryToParseUrl = (value: unknown): string => {
 	try {
 		const parsed = new URL(String(value));
 		if (!ALLOWED_URL_PROTOCOLS.includes(parsed.protocol)) {
-			throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
+			throw new UserError(`The value "${String(value)}" is not a valid url.`, {
 				extra: { value },
 			});
 		}
 		return String(value);
 	} catch (e) {
-		if (e instanceof ApplicationError) throw e;
-		throw new ApplicationError(`The value "${String(value)}" is not a valid url.`, {
+		if (e instanceof ApplicationError || e instanceof BaseError) throw e;
+		throw new UserError(`The value "${String(value)}" is not a valid url.`, {
 			extra: { value },
 		});
 	}
 };
 
 export const tryToParseJwt = (value: unknown): string => {
-	const error = new ApplicationError(`The value "${String(value)}" is not a valid JWT token.`, {
+	const error = new UserError(`The value "${String(value)}" is not a valid JWT token.`, {
 		extra: { value },
 	});
 

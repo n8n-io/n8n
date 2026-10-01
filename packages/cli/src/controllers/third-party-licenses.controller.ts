@@ -1,8 +1,9 @@
-import { CLI_DIR } from '@/constants';
 import { Get, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
+
+import { CLI_DIR } from '@/constants';
 
 @RestController('/third-party-licenses')
 export class ThirdPartyLicensesController {

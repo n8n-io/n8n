@@ -1,0 +1,17 @@
+{
+	"id": "mcp-not-offered-for-workflow-build",
+	"userMessage": "Build me a workflow that posts a standup reminder to our Slack channel every weekday at 9am.",
+	"instanceState": {
+		"mcp": { "registry": ["slack", "notion"], "connected": [] }
+	},
+	"expectedToolInvocations": {
+		"allOfToolCalls": [{ "toolName": "build-workflow" }],
+		"noneOfToolCalls": [
+			{ "toolName": "mcp-servers", "args": { "action": "search" } },
+			{ "toolName": "mcp-servers", "args": { "action": "connect" } }
+		]
+	},
+	"rationale": "A workflow talks to a service through its node and credential, not an MCP connection. Slack is in the registry to make the wrong move available. `connected` is allowed — only offering a connection is the regression.",
+	"maxSteps": 24,
+	"timeoutMs": 120000
+}

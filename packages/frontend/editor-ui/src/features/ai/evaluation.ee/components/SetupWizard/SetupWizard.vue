@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import { VIEWS } from '@/app/constants';
 import StepHeader from '../shared/StepHeader.vue';
@@ -11,19 +10,25 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { useWorkflowEvaluationState } from '../../composables/useWorkflowEvaluationState';
 defineEmits<{
 	runTest: [];
 }>();
 
 const router = useRouter();
 const locale = useI18n();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const evaluationStore = useEvaluationStore();
+const nodeTypesStore = useNodeTypesStore();
+const evaluationState = useWorkflowEvaluationState();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasRuns = computed(() => {
-	return evaluationStore.testRunsByWorkflowId[workflowsStore.workflow.id]?.length > 0;
+	return evaluationStore.testRunsByWorkflowId[workflowDocumentStore.value.workflowId]?.length > 0;
 });
 
 const evaluationsAvailable = computed(() => {
@@ -50,14 +55,17 @@ const initializeActiveStep = () => {
 		return;
 	}
 
-	if (evaluationStore.evaluationTriggerExists && evaluationStore.evaluationSetMetricsNodeExist) {
+	if (
+		evaluationState.evaluationTriggerExists.value &&
+		evaluationState.evaluationSetMetricsNodeExist.value
+	) {
 		activeStepIndex.value = 3;
 	} else if (
-		evaluationStore.evaluationTriggerExists &&
-		evaluationStore.evaluationSetOutputsNodeExist
+		evaluationState.evaluationTriggerExists.value &&
+		evaluationState.evaluationSetOutputsNodeExist.value
 	) {
 		activeStepIndex.value = 2;
-	} else if (evaluationStore.evaluationTriggerExists) {
+	} else if (evaluationState.evaluationTriggerExists.value) {
 		activeStepIndex.value = 1;
 	} else {
 		activeStepIndex.value = 0;
@@ -74,11 +82,11 @@ const toggleStep = (index: number) => {
 function navigateToWorkflow(
 	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
 ) {
-	const routeWorkflowId = workflowsStore.workflow.id || 'new';
+	const routeWorkflowId = workflowDocumentStore.value.workflowId || 'new';
 
 	void router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: routeWorkflowId },
+		params: { workflowId: routeWorkflowId },
 		query: action ? { action } : undefined,
 	});
 }
@@ -96,7 +104,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="1"
 					:title="locale.baseText('evaluations.setupWizard.step1.title')"
-					:is-completed="evaluationStore.evaluationTriggerExists"
+					:is-completed="evaluationState.evaluationTriggerExists.value"
 					:is-active="activeStepIndex === 0"
 					@click="toggleStep(0)"
 				/>
@@ -114,10 +122,13 @@ function onSeePlans() {
 						</li>
 					</ul>
 
-					<div :class="$style.actionButton">
+					<div
+						v-if="!nodeTypesStore.isNodeTypeUnavailable(EVALUATION_TRIGGER_NODE_TYPE)"
+						:class="$style.actionButton"
+					>
 						<N8nButton
+							variant="subtle"
 							size="small"
-							type="secondary"
 							@click="navigateToWorkflow('addEvaluationTrigger')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step1.button') }}
@@ -131,7 +142,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="2"
 					:title="locale.baseText('evaluations.setupWizard.step2.title')"
-					:is-completed="evaluationStore.evaluationSetOutputsNodeExist"
+					:is-completed="evaluationState.evaluationSetOutputsNodeExist.value"
 					:is-active="activeStepIndex === 1"
 					@click="toggleStep(1)"
 				/>
@@ -145,8 +156,8 @@ function onSeePlans() {
 					</ul>
 					<div :class="$style.actionButton">
 						<N8nButton
+							variant="subtle"
 							size="small"
-							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step2.button') }}
@@ -160,7 +171,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="3"
 					:title="locale.baseText('evaluations.setupWizard.step3.title')"
-					:is-completed="evaluationStore.evaluationSetMetricsNodeExist"
+					:is-completed="evaluationState.evaluationSetMetricsNodeExist.value"
 					:is-active="activeStepIndex === 2"
 					:is-optional="true"
 					@click="toggleStep(2)"
@@ -183,9 +194,9 @@ function onSeePlans() {
 					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
+							variant="subtle"
 							v-if="!evaluationsQuotaExceeded"
 							size="small"
-							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
@@ -194,8 +205,8 @@ function onSeePlans() {
 							{{ locale.baseText('generic.seePlans') }}
 						</N8nButton>
 						<N8nButton
+							variant="ghost"
 							size="small"
-							text
 							style="color: var(--color--text--tint-1)"
 							@click="toggleStep(3)"
 						>
@@ -230,26 +241,28 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
-							v-if="evaluationStore.evaluationSetMetricsNodeExist && !evaluationsQuotaExceeded"
+							variant="subtle"
+							v-if="
+								evaluationState.evaluationSetMetricsNodeExist.value && !evaluationsQuotaExceeded
+							"
 							size="medium"
-							type="secondary"
 							:disabled="
-								!evaluationStore.evaluationTriggerExists ||
-								(!evaluationStore.evaluationSetOutputsNodeExist &&
-									!evaluationStore.evaluationSetMetricsNodeExist)
+								!evaluationState.evaluationTriggerExists.value ||
+								(!evaluationState.evaluationSetOutputsNodeExist.value &&
+									!evaluationState.evaluationSetMetricsNodeExist.value)
 							"
 							@click="$emit('runTest')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
 						</N8nButton>
 						<N8nButton
+							variant="subtle"
 							v-else
 							size="medium"
-							type="secondary"
 							:disabled="
-								!evaluationStore.evaluationTriggerExists ||
-								(!evaluationStore.evaluationSetOutputsNodeExist &&
-									!evaluationStore.evaluationSetMetricsNodeExist)
+								!evaluationState.evaluationTriggerExists.value ||
+								(!evaluationState.evaluationSetOutputsNodeExist.value &&
+									!evaluationState.evaluationSetMetricsNodeExist.value)
 							"
 							@click="navigateToWorkflow('executeEvaluation')"
 						>

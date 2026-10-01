@@ -1,21 +1,23 @@
+import type { Mocked } from 'vitest';
+
 import { createMockTool } from '../../__tests__/helpers';
 import type { PendingCallsManager } from '../PendingCallsManager';
 import { QueuedExecutionStrategy } from '../QueuedExecutionStrategy';
 
 describe('QueuedExecutionStrategy', () => {
 	let strategy: QueuedExecutionStrategy;
-	let mockPendingCalls: jest.Mocked<PendingCallsManager>;
+	let mockPendingCalls: Mocked<PendingCallsManager>;
 
 	beforeEach(() => {
 		mockPendingCalls = {
-			waitForResult: jest.fn(),
-			resolve: jest.fn(),
-			reject: jest.fn(),
-			get: jest.fn(),
-			has: jest.fn(),
-			remove: jest.fn(),
-			cleanupBySessionId: jest.fn(),
-		} as unknown as jest.Mocked<PendingCallsManager>;
+			waitForResult: vi.fn(),
+			resolve: vi.fn(),
+			reject: vi.fn(),
+			get: vi.fn(),
+			has: vi.fn(),
+			remove: vi.fn(),
+			cleanupBySessionId: vi.fn(),
+		} as unknown as Mocked<PendingCallsManager>;
 
 		strategy = new QueuedExecutionStrategy(mockPendingCalls);
 	});

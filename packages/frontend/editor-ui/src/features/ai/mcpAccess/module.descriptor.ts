@@ -1,16 +1,22 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import {
-	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+	MCP_AGENTS_VIEW,
+	MCP_CLIENTS_VIEW,
 	MCP_SETTINGS_VIEW,
+	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
-
-const i18n = useI18n();
 
 const SettingsMCPView = async () => await import('@/features/ai/mcpAccess/SettingsMCPView.vue');
+const SettingsMCPWorkflowsView = async () =>
+	await import('@/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue');
+const SettingsMCPAgentsView = async () =>
+	await import('@/features/ai/mcpAccess/SettingsMCPAgentsView.vue');
+const SettingsMCPClientsView = async () =>
+	await import('@/features/ai/mcpAccess/SettingsMCPClientsView.vue');
 
-export const MCPModule: FrontendModuleDescription = {
+export const MCPModule = defineFrontendModule({
 	id: 'mcp',
 	name: 'MCP Server',
 	description: 'Access your n8n instance through MCP clients',
@@ -28,26 +34,60 @@ export const MCPModule: FrontendModuleDescription = {
 				},
 			},
 		},
+		{
+			path: 'mcp/workflows',
+			name: MCP_WORKFLOWS_VIEW,
+			component: SettingsMCPWorkflowsView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'mcp/agents',
+			name: MCP_AGENTS_VIEW,
+			component: SettingsMCPAgentsView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'mcp/clients',
+			name: MCP_CLIENTS_VIEW,
+			component: SettingsMCPClientsView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
 	],
 	settingsPages: [
 		{
 			id: 'settings-mcp',
 			icon: 'mcp',
-			label: i18n.baseText('settings.mcp'),
+			get label() {
+				return useI18n().baseText('settings.mcp');
+			},
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], {
-					rbac: { scope: ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
-				});
+				return useRBACStore().hasScope([
+					'mcp:manage',
+					'mcp:oauth',
+					'mcpApiKey:create',
+					'mcpApiKey:rotate',
+				]);
 			},
 		},
 	],
-	modals: [
-		{
-			key: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
-			component: async () => await import('./modals/MCPConnectWorkflowsModal.vue'),
-			initialState: { open: false },
-		},
-	],
-};
+});

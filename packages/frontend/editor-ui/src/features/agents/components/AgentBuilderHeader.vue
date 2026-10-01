@@ -1,0 +1,347 @@
+<script setup lang="ts">
+/**
+ * Top header bar for the agent builder. Hosts breadcrumb navigation,
+ * agent switcher, publish button, and the existing action-menu dropdown.
+ *
+ * Navigation intents are emitted as events, except for the project breadcrumb
+ * which links back to the owning project/personal page.
+ */
+import { computed, onMounted, useCssModule } from 'vue';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import {
+	N8nBreadcrumbs,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nDropdownMenuItem,
+	N8nIcon,
+} from '@n8n/design-system';
+import type { IconOrEmoji, PathItem } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { PROJECT_AGENTS } from '@/features/agents/constants';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+
+import AgentPublishButton from './AgentPublishButton.vue';
+import AgentPreviewButton from './AgentPreviewButton.vue';
+import { useCreateAgent } from '../composables/useCreateAgent';
+import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import type { AgentResource } from '../types';
+
+const props = defineProps<{
+	agent: AgentResource | null;
+	projectId: string;
+	agentId: string;
+	projectName: string | null;
+	projectIcon: IconOrEmoji;
+	headerActions: Array<ActionDropdownItem<string>>;
+	saveStatus?: 'idle' | 'saving' | 'saved';
+	beforeRevertToPublished?: () => Promise<void> | void;
+	artifactMode?: boolean;
+	isPreviewOpen?: boolean;
+	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
+	editingLocked?: boolean;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	configValidationIssues?: AgentConfigValidationIssue[];
+	beforePublish?: () => Promise<boolean>;
+}>();
+
+const emit = defineEmits<{
+	'header-action': [item: string];
+	'open-preview': [];
+	'close-preview': [];
+	published: [agent: AgentResource];
+	unpublished: [agent: AgentResource];
+	reverted: [agent: AgentResource];
+	'switch-agent': [agentId: string];
+	'toggle-version-history': [];
+}>();
+
+const i18n = useI18n();
+const router = useRouter();
+const $style = useCssModule();
+
+const { createAgent } = useCreateAgent();
+const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
+onMounted(() => {
+	if (props.artifactMode) return;
+	void ensureLoaded();
+});
+
+const projectRoute = computed<RouteLocationRaw>(() => ({
+	name: PROJECT_AGENTS,
+	params: { projectId: props.projectId },
+}));
+
+const breadcrumbItems = computed<PathItem[]>(() => [
+	{
+		id: props.projectId,
+
+		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
+		href: router.resolve(projectRoute.value).href,
+	},
+]);
+
+const agentDisplayName = computed(() => props.agent?.name ?? '…');
+
+const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	const list = agentsList.value ?? [];
+	const others = list.filter((a) => a.id !== props.agentId);
+	if (others.length === 0) {
+		return [
+			{
+				id: '__empty__',
+				label: i18n.baseText('agents.builder.header.switcher.empty'),
+				disabled: true,
+			},
+		];
+	}
+	return others.map((a) => ({
+		id: a.id,
+		label: a.name,
+	}));
+});
+
+function onSwitcherSelect(id: string) {
+	if (id === '__empty__') return;
+	emit('switch-agent', id);
+}
+
+function onCreateAgent() {
+	createAgent('dropdown', props.projectId);
+}
+
+function onBreadcrumbSelect(item: PathItem) {
+	if (item.id !== props.projectId) return;
+	void router.push(projectRoute.value);
+}
+
+/**
+ * Converts an action item and its children to the dropdown menu format.
+ */
+function toMenuItem(
+	action: ActionDropdownItem<string>,
+): DropdownMenuItemProps<string, ActionDropdownItem<string>> {
+	return {
+		id: action.id,
+		label: action.label,
+		testId: action.testId,
+		icon: { type: 'icon', value: action.icon ?? 'file' },
+		disabled: action.disabled,
+		divided: action.divided,
+		checked: action.checked,
+		class: action.id === 'delete' ? $style.destructiveItem : undefined,
+		data: action,
+		children: action.children?.map(toMenuItem),
+	};
+}
+
+const menuItems = computed<Array<DropdownMenuItemProps<string, ActionDropdownItem<string>>>>(() =>
+	props.headerActions.map(toMenuItem),
+);
+
+function onMenuSelect(id: string) {
+	emit('header-action', id);
+}
+</script>
+
+<template>
+	<header :class="$style.header" data-testid="agent-builder-header">
+		<div :class="$style.left">
+			<N8nBreadcrumbs
+				v-if="!props.artifactMode"
+				:items="breadcrumbItems"
+				theme="medium"
+				@item-selected="onBreadcrumbSelect"
+			>
+				<template #prepend>
+					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
+				</template>
+				<template #append>
+					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
+					<N8nDropdownMenu
+						:items="switcherOptions"
+						placement="bottom-start"
+						data-testid="agent-header-switcher"
+						@select="onSwitcherSelect"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="small"
+								:class="$style.switcherButton"
+								:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
+							>
+								<span :class="[$style.switcherLabel, $style.agentSwitcherLabel]">{{
+									agentDisplayName
+								}}</span>
+								<N8nIcon icon="chevron-down" :size="12" />
+							</N8nButton>
+						</template>
+						<template #footer>
+							<div :class="$style.switcherFooter">
+								<N8nDropdownMenuItem
+									id="__new_agent__"
+									:label="i18n.baseText('agents.builder.header.switcher.newAgent')"
+									:icon="{ type: 'icon', value: 'plus' }"
+									test-id="agent-header-new-agent"
+									@select="onCreateAgent"
+								/>
+							</div>
+						</template>
+					</N8nDropdownMenu>
+					<N8nDropdownMenu
+						v-if="!props.artifactMode && menuItems.length > 0"
+						:items="menuItems"
+						placement="bottom-start"
+						:extra-popper-class="$style.headerActionsMenu"
+						data-testid="agent-header-actions"
+						@select="onMenuSelect"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon="ellipsis"
+								icon-only
+								:aria-label="i18n.baseText('node.moreActions')"
+							/>
+						</template>
+					</N8nDropdownMenu>
+				</template>
+			</N8nBreadcrumbs>
+		</div>
+		<div :class="$style.right">
+			<span
+				v-if="saveStatus && saveStatus !== 'idle'"
+				:class="$style.saveStatus"
+				data-testid="agent-header-save-status"
+			>
+				{{
+					saveStatus === 'saving'
+						? i18n.baseText('agents.builder.header.saving')
+						: i18n.baseText('agents.builder.header.saved')
+				}}
+			</span>
+			<AgentPreviewButton
+				:is-runnable="props.agent?.isRunnable === true"
+				:is-preview-open="props.isPreviewOpen"
+				:validation-issues="props.configValidationIssues ?? []"
+				test-id="agent-header-preview-btn"
+				@open-preview="emit('open-preview')"
+				@close-preview="emit('close-preview')"
+			/>
+			<AgentPublishButton
+				:agent="agent"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:is-saving="saveStatus === 'saving' || editingLocked"
+				:before-revert-to-published="beforeRevertToPublished"
+				:config-validation-status="configValidationStatus"
+				:config-validation-issues="props.configValidationIssues ?? []"
+				:before-publish="beforePublish"
+				@published="(a: AgentResource) => emit('published', a)"
+				@unpublished="(a: AgentResource) => emit('unpublished', a)"
+				@reverted="(a: AgentResource) => emit('reverted', a)"
+			/>
+		</div>
+	</header>
+</template>
+
+<style lang="scss" module>
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--md);
+	background-color: var(--background--surface);
+	border-bottom: var(--border);
+	flex-shrink: 0;
+	height: var(--n8n--agent-builder-header-height, var(--height--4xl));
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
+}
+
+.left {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	min-width: max-content;
+}
+
+.left :global(.n8n-breadcrumbs) {
+	min-width: max-content;
+}
+
+.left :global(.n8n-breadcrumbs > ul > li:first-child) {
+	display: none;
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	display: flex;
+	align-items: center;
+	min-height: var(--height--md);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
+	line-height: var(--line-height--sm);
+}
+
+.crumbSeparator {
+	color: var(--border-color);
+	margin-inline: var(--spacing--4xs);
+	user-select: none;
+	font-size: var(--font-size--xl);
+}
+
+.switcherButton {
+	font-size: var(--font-size--sm);
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+}
+
+.switcherLabel {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: var(--line-height--sm);
+}
+
+.agentSwitcherLabel {
+	max-width: 240px;
+}
+
+.switcherFooter {
+	border-top: var(--border);
+	padding: var(--spacing--3xs);
+}
+
+.right {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.saveStatus {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	user-select: none;
+}
+
+.headerActionsMenu {
+	--n8n--dropdown-menu-width: var(--spacing--5xl);
+}
+
+.destructiveItem,
+.destructiveItem * {
+	color: var(--text-color--danger) !important;
+}
+</style>

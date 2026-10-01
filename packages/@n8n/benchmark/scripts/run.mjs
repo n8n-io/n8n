@@ -7,8 +7,8 @@
  */
 // @ts-check
 import fs from 'fs';
-import minimist from 'minimist';
 import path from 'path';
+import { minimist } from 'zx';
 import { runInCloud } from './run-in-cloud.mjs';
 import { runLocally } from './run-locally.mjs';
 
@@ -137,7 +137,7 @@ async function parseAndValidateConfig() {
 }
 
 /**
- * @param {minimist.ParsedArgs} args
+ * @param {ReturnType<typeof minimist>} args
  */
 async function getAndValidateN8nSetup(args) {
 	// Last parameter is the n8n setup to use

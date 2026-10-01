@@ -39,19 +39,18 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<N8nTooltip :disabled="!tooltip" :show-after="TOOLTIP_DELAY_MS">
+	<N8nTooltip as-child :disabled="!tooltip" :show-after="TOOLTIP_DELAY_MS">
 		<template #content>{{ tooltip || label }}</template>
 		<N8nIconButton
-			type="secondary"
-			text
+			variant="ghost"
 			size="small"
 			icon-size="large"
 			:icon="icon"
 			:aria-label="label"
 			:data-test-id="testId"
-			:class="{ [$style.dangerAction]: danger }"
+			:class="danger ? $style.dangerAction : undefined"
 			v-bind="$attrs"
-			@click.stop="emit('click', $event)"
+			@click="emit('click', $event)"
 		/>
 	</N8nTooltip>
 </template>

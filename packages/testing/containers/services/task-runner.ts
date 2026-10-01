@@ -2,7 +2,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult } from './types';
+import { EXTERNAL_HOST, type Service, type ServiceResult } from './types';
 
 export interface TaskRunnerConfig {
 	taskBrokerUri: string;
@@ -19,6 +19,9 @@ export const taskRunner: Service<TaskRunnerResult> = {
 	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
 
 	getOptions(ctx) {
+		if (ctx.external) {
+			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` };
+		}
 		const { workers, mains, projectName } = ctx;
 		const taskBrokerHost =
 			workers > 0
@@ -26,7 +29,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				: mains > 1
 					? `${projectName}-n8n-main-1`
 					: `${projectName}-n8n`;
-		return { taskBrokerUri: `http://${taskBrokerHost}:5679` } as TaskRunnerConfig;
+		return { taskBrokerUri: `http://${taskBrokerHost}:5679` };
 	},
 
 	async start(network, projectName, config?: unknown): Promise<TaskRunnerResult> {
@@ -40,7 +43,8 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				.withExposedPorts(5680)
 				.withEnvironment({
 					N8N_RUNNERS_AUTH_TOKEN: 'test',
-					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
+					N8N_RUNNERS_LAUNCHER_BROKER_READINESS_POLL_INTERVAL_MS: '500',
+					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug', // Broker registration is logged at debug, and the stack waits on it
 					N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 					N8N_RUNNERS_MAX_CONCURRENCY: '5',
 					N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '0', // Disabled in tests to prevent cold-start delays
@@ -51,7 +55,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 					'com.docker.compose.service': 'task-runner',
 				})
 				.withName(`${projectName}-task-runner`)
-				.withReuse()
+				// Not reused: a launcher stays bound to the broker of the stack that started it
 				.withLogConsumer(consumer)
 				.start();
 

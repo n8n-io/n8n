@@ -1,0 +1,115 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "jsCode": {
+                                "type": "string"
+                            },
+                            "operation": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "availableInMCP": {
+                    "type": "boolean"
+                },
+                "binaryMode": {
+                    "type": "string"
+                },
+                "executionOrder": {
+                    "type": "string"
+                }
+            }
+        },
+        "shared": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "workflowId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -7,6 +7,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsExpressionResolveValues,
 	IExecuteData,
+	IGetDecryptedCredentialsOptions,
 	IGetNodeParameterOptions,
 	INode,
 	INodeCredentialDescription,
@@ -16,6 +17,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
 	NodeFeatures,
 	NodeInputConnections,
@@ -25,29 +27,29 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
-	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 
-import {
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
-} from '@/constants';
+import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import {
+	buildResumeUrlSuffix,
+	generateUrlSignature,
+	prepareUrlForSigning,
+} from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -66,6 +68,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new UnexpectedError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
 	}
 
 	getExecutionContext() {
@@ -244,32 +259,45 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.instanceBaseUrl;
 	}
 
+	async listAgents(): Promise<Array<{ id: string; name: string }>> {
+		if (!this.additionalData.listAgents || !this.additionalData.userId) {
+			return [];
+		}
+
+		return await this.additionalData.listAgents(this.additionalData.userId);
+	}
+
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
 	}
 
-	setSignatureValidationRequired() {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
-	}
-
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support signed resume URLs yet');
+		}
+
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
 		if (typeof executionId !== 'string') {
 			throw new UnexpectedError('Execution id is missing');
 		}
 
-		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+		const baseURL = new URL(
+			`${webhookWaitingBaseUrl}${buildResumeUrlSuffix(executionId, this.node.id)}`,
+		);
 
 		for (const [key, value] of Object.entries(parameters)) {
 			baseURL.searchParams.set(key, value);
 		}
 
+		// Sign the full URL (pathname + query params) using instance secret as HMAC key
+		// This ensures action parameters (like approved=true/false) cannot be tampered with
 		const urlForSigning = prepareUrlForSigning(baseURL);
-
-		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
-
-		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+		const signature = generateUrlSignature(
+			urlForSigning,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
 
 		return baseURL.toString();
 	}
@@ -282,24 +310,65 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
+	/**
+	 * Throws if the credential type has opted into node-level restriction and this
+	 * node is not listed in its supportedNodes. Extracted to keep `_getCredentials`
+	 * below the cyclomatic-complexity lint threshold.
+	 */
+	private assertCredentialUsableByNode(type: string, nodeType: string): void {
+		if (!this.additionalData.credentialsHelper.isCredentialUsableByNode(type, nodeType)) {
+			throw new NodeOperationError(
+				this.node,
+				`Credential type "${type}" is restricted to specific nodes`,
+				{ level: 'warning' },
+			);
+		}
+	}
+
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
 		executeData?: IExecuteData,
 		connectionInputData?: INodeExecutionData[],
 		itemIndex?: number,
+		options?: IGetDecryptedCredentialsOptions,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+
+		// Eval bypass: only mock when the node is fully unconfigured, so nodes
+		// probing multiple auth types still get production's throw. Handler
+		// presence (not execution mode) gates it — `evalLlmMockHandler` is set
+		// only by eval execution services, and eval agent tools run in modes
+		// other than 'evaluation'. `EvalMockedCredentialsHelper` catches the
+		// null-id `CredentialNotFoundError` and schema-synthesizes.
+		if (additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
+			if (!hasOtherCreds) {
+				return (await additionalData.credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: null, name: type },
+					type,
+					mode,
+					executeData,
+					undefined,
+					undefined,
+					options,
+				)) as T;
+			}
+		}
+
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// Hardcode for now for security reasons that only a single node can access
-		// all credentials
-		const fullAccess = [
-			HTTP_REQUEST_NODE_TYPE,
-			HTTP_REQUEST_TOOL_NODE_TYPE,
-			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-		].includes(node.type);
+		// all credentials. Set is shared with save-time validators (see
+		// `FULL_ACCESS_NODE_TYPES` in `@/constants`) — add new entries there.
+		const fullAccess = FULL_ACCESS_NODE_TYPES.has(node.type);
+
+		// Strict opt-in restriction: credentials that set restrictToSupportedNodes
+		// are only usable by nodes listed in their supportedNodes — overriding the
+		// fullAccess bypass that HTTP Request and its tool variants enjoy.
+		this.assertCredentialUsableByNode(type, node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -379,7 +448,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				runExecutionData,
 				runIndex,
 				workflow,
-			} as ICredentialsExpressionResolveValues;
+			};
 		}
 
 		const nodeCredentials = node.credentials
@@ -411,9 +480,29 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			executeData,
 			false,
 			expressionResolveValues,
+			options,
 		);
 
 		return decryptedDataObject as T;
+	}
+
+	/**
+	 * Returns the requested decrypted credentials for a context that no real task run backs
+	 * (a trigger, a poll, a webhook, and so on). The placeholder execute data only exists to
+	 * surface `node` to the credentials helper (e.g. for policy checks) — `data`/`source` are
+	 * unused.
+	 */
+	protected async _getRunlessCredentials<T extends object = ICredentialDataDecryptedObject>(
+		type: string,
+		options?: IGetDecryptedCredentialsOptions,
+	) {
+		return await this._getCredentials<T>(
+			type,
+			{ data: {}, node: this.node, source: null },
+			undefined,
+			undefined,
+			options,
+		);
 	}
 
 	@Memoized
@@ -448,7 +537,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
+			throw new UserError(`Could not get parameter "${parameterName}"`, {
+				extra: { parameterName },
+			});
 		}
 
 		if (options?.rawExpressions) {
@@ -488,8 +579,12 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			} else {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (e.context) e.context.parameter = parameterName;
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				e.cause = value;
+				Object.defineProperty(e, 'cause', {
+					value,
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
 				throw e;
 			}
 		}

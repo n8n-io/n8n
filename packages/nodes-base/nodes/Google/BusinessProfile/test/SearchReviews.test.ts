@@ -4,8 +4,8 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { searchReviews } from '../GenericFunctions';
 
 describe('GenericFunctions - searchReviews', () => {
-	const mockGoogleApiRequest = jest.fn();
-	const mockGetNodeParameter = jest.fn();
+	const mockGoogleApiRequest = vi.fn();
+	const mockGetNodeParameter = vi.fn();
 
 	const mockContext = {
 		helpers: {

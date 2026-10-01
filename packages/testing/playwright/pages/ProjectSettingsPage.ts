@@ -1,8 +1,16 @@
+import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ProjectHeader } from './components/ProjectHeader';
 
 export class ProjectSettingsPage extends BasePage {
+	readonly projectHeader = new ProjectHeader(this.page);
+
+	async goto(projectId: string) {
+		await this.page.goto(`/projects/${projectId}/settings`);
+	}
+
 	async fillProjectName(name: string) {
 		await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
 	}
@@ -41,36 +49,71 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByPlaceholder('Add users...');
 	}
 
+	async searchForMember(query: string) {
+		await this.getMembersSearchInput().click();
+		await this.page.keyboard.type(query, { delay: 50 });
+	}
+
 	getRoleDropdownFor(email: string) {
 		return this.getMembersTable()
 			.locator('tr')
 			.filter({ hasText: email })
-			.getByTestId('project-member-role-dropdown')
-			.getByRole('button');
+			.getByTestId('project-member-role-dropdown');
 	}
 
 	getMembersTable() {
 		return this.page.getByTestId('project-members-table');
 	}
 
-	async getMemberRowCount() {
-		const table = this.getMembersTable();
-		const rows = table.locator('tbody tr');
-		return await rows.count();
+	getMemberRows(): Locator {
+		return this.getMembersTable().locator('tbody tr');
 	}
 
-	async expectTableHasMemberCount(expectedCount: number) {
-		const actualCount = await this.getMemberRowCount();
-		expect(actualCount).toBe(expectedCount);
+	getMemberRowByEmail(email: string): Locator {
+		// Match the exact email, so `a@x.com` does not also match `ba@x.com`.
+		return this.getMemberRows().filter({ has: this.page.getByText(email, { exact: true }) });
 	}
 
-	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.getMembersSearchInput();
-		await expect(searchInput).toHaveValue(expectedValue);
+	/**
+	 * Rows for users who reach the project through a global role. Their access is
+	 * permanent, so the row has no role dropdown and no actions.
+	 */
+	getAlwaysHasAccessRows(): Locator {
+		return this.getMemberRows().filter({
+			has: this.page.getByTestId('project-member-access-label'),
+		});
+	}
+
+	getAccessLabelForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-access-label');
+	}
+
+	async expectRowAlwaysHasAccess(row: Locator) {
+		await expect(this.getAccessLabelForRow(row)).toHaveText('Full access');
+		await expect(this.getMemberRoleDropdownForRow(row)).toHaveCount(0);
+		await expect(row.getByTestId('action-toggle')).toHaveCount(0);
+	}
+
+	getMembersTableHeader(name: string): Locator {
+		return this.getMembersTable().getByText(name);
+	}
+
+	getMemberRoleDropdownForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-role-dropdown');
+	}
+
+	getDangerZoneTitle(): Locator {
+		return this.page.getByText('Danger zone');
+	}
+
+	getDangerZoneDescription(): Locator {
+		return this.page.getByText(
+			'When deleting a project, you can also choose to move all workflows and credentials to another project.',
+		);
 	}
 
 	getTitle() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	// Robust value assertions on inner form controls
@@ -105,6 +148,10 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('icon-picker-button');
 	}
 
+	getIconPickerIcon() {
+		return this.getIconPickerButton().locator('svg');
+	}
+
 	async clickIconPickerButton() {
 		await this.getIconPickerButton().click();
 	}
@@ -115,5 +162,20 @@ export class ProjectSettingsPage extends BasePage {
 
 	async selectFirstEmoji() {
 		await this.page.getByTestId('icon-picker-emoji').first().click();
+	}
+
+	getExternalSecretsSection(): Locator {
+		return this.page.getByTestId('external-secrets-section');
+	}
+
+	/**
+	 * The data table listing project-scoped secret provider connections.
+	 */
+	getExternalSecretsTable(): Locator {
+		return this.page.getByTestId('external-secrets-table');
+	}
+
+	getExternalSecretsTableRow(name: string): Locator {
+		return this.getExternalSecretsTable().getByText(name);
 	}
 }

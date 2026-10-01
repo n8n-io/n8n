@@ -1,0 +1,33 @@
+{
+	"description": "RLY-200 (workflow path): a scheduled scrape + web-search workflow where the user names no scraping/search tool, has no stored credential for one, and Gateway credits cover a scraping node on the instance. The build should discover coverage and use the covered node with the managed credential — NOT ask the user which provider to use (the observed failure asked 'how should I scrape / which web-search provider' and offered only key-requiring priors like SerpApi/Tavily). Build-only: correctness carried in process + outcome expectations (the covered node is a community node, so execution needs the managed credential which the harness doesn't provision). PREREQUISITES TO RUN: an AI-Gateway-licensed instance whose gateway config covers a scraping node AND has that community node installed (e.g. @mendable/n8n-nodes-firecrawl.firecrawl). NOT YET CALIBRATED against a real build.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, scrape our competitor's pricing page and the top web results about our product category, and save them to a data table."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"workflow",
+		"schedule",
+		"scraping",
+		"web-search",
+		"ai-gateway",
+		"n8n-connect",
+		"node-preference",
+		"data-table"
+	],
+	"triggerType": "schedule",
+	"datasets": ["ai-gateway"],
+	"processExpectations": [
+		"The agent did not ask the user which scraping or web-search service/provider to use — it discovered coverage (via node search or gatewayCreditsOnly enumeration) and used the Gateway-credits-covered node instead of prompting for a choice or offering key-requiring options.",
+		"The agent did not ask the user for an API key or route the scraping/web-search node to credential setup — Gateway credits cover it on this instance, so it treated it as connected."
+	],
+	"outcomeExpectations": [
+		"A Schedule Trigger runs the workflow on a recurring morning cadence.",
+		"A scraping / web-search node covered by Gateway credits fetches the competitor pricing page and the web results — its credential entry has `id: null` and `__aiGatewayManaged: true` (the managed option), not a service that requires the user's own API key.",
+		"The fetched results are written to an n8n Data Table."
+	]
+}

@@ -98,11 +98,13 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return {\"currentDate\":\"2023-04-11T13:51:59.965+00:00\"}\n"
+				"data": {
+					"currentDate": "2023-04-11T13:51:59.965+00:00"
+				}
 			},
 			"id": "7ba0c2a1-a683-4975-a2ca-70904111a3fc",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [-140, 140]
 		}

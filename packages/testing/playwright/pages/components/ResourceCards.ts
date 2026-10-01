@@ -7,10 +7,6 @@ import type { Locator, Page } from '@playwright/test';
 export class ResourceCards {
 	constructor(private page: Page) {}
 
-	getResourcesListWrapper(): Locator {
-		return this.page.getByTestId('resources-list-wrapper');
-	}
-
 	getFolders(): Locator {
 		return this.page.getByTestId('folder-card');
 	}
@@ -31,10 +27,18 @@ export class ResourceCards {
 		return this.getWorkflows().filter({ hasText: name });
 	}
 
+	getWorkflowCardText(name: string, text: string): Locator {
+		return this.getWorkflow(name).getByText(text);
+	}
+
 	getCredential(name: string): Locator {
 		return this.getCredentials().filter({
 			has: this.page.getByTestId('card-content').locator('h2').filter({ hasText: name }),
 		});
+	}
+
+	getCredentialGlobalBadge(name: string): Locator {
+		return this.getCredential(name).getByTestId('credential-global-badge');
 	}
 
 	getCardActionToggle(card: Locator): Locator {

@@ -5,16 +5,53 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *' # Runs daily at midnight
-  pull_request:
-    paths:
-      - '.github/workflows/test-e2e-performance-reusable.yml'
 
 jobs:
+  # Cache-aware: no-op if an ancestor already populated the SHA-keyed cache.
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
   build-and-test-performance:
+    needs: [prepare-docker]
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
-      test-mode: docker-build
+      test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:performance
-      shards: 1
+      workers: '1'
+      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
       currents-project-id: 'O9BJaN'
+      artifact-prefix: performance
     secrets: inherit
+
+  canvas-perf-sentinels:
+    name: Canvas Perf Sentinels
+    # Sentinels are nightly only — wall-clock browser perf has 15-30% variance,
+    # so gating PR runs on these would produce false-positive blockers.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build-and-test-performance
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: packages/testing/playwright/scripts/canvas-perf-sentinels.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Download performance shard artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: performance-shard-*
+          path: performance-artifacts
+          merge-multiple: false
+
+      - name: Run canvas perf sentinels
+        run: |
+          mapfile -t RESULTS_PATHS < <(find performance-artifacts -name 'test-results.json' -print)
+          if [ "${#RESULTS_PATHS[@]}" -eq 0 ]; then
+            echo "::warning::No test-results.json found in performance artifacts — sentinel skipped."
+            exit 0
+          fi
+          node packages/testing/playwright/scripts/canvas-perf-sentinels.mjs "${RESULTS_PATHS[@]}"

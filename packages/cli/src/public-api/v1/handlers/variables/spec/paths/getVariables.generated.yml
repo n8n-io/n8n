@@ -1,0 +1,140 @@
+operationId: getVariables
+tags:
+  - Variables
+summary: Retrieve variables
+description: Retrieve variables from your instance.
+x-required-scope: variable:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      example: VmwOO9HeTEj20kxM
+    required: false
+    name: projectId
+    in: query
+  - schema:
+      type: string
+      enum:
+        - empty
+    required: false
+    name: state
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    readOnly: true
+                  key:
+                    type: string
+                  value:
+                    type: string
+                    example: test
+                  type:
+                    type: string
+                    readOnly: true
+                  project:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: string
+                        readOnly: true
+                        example: VmwOO9HeTEj20kxM
+                      name:
+                        type: string
+                        example: Marketing
+                      type:
+                        type: string
+                        enum:
+                          - personal
+                          - team
+                        readOnly: true
+                        example: team
+                      icon:
+                        type: object
+                        description: Icon of the project, or null when the project has none
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - emoji
+                              - icon
+                          value:
+                            type: string
+                          color:
+                            type: string
+                        required:
+                          - type
+                          - value
+                        nullable: true
+                      description:
+                        type: string
+                        nullable: true
+                        example: Workflows the marketing team owns.
+                      customTelemetryTags:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                            - key
+                            - value
+                      creatorId:
+                        type: string
+                        nullable: true
+                        example: f9a2cbb8-0b1e-4b64-9c1c-0d5f5f1f2a3b
+                      createdAt:
+                        type: string
+                        format: date-time
+                        readOnly: true
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        readOnly: true
+                    required:
+                      - id
+                      - name
+                      - type
+                      - icon
+                      - description
+                      - customTelemetryTags
+                      - creatorId
+                      - createdAt
+                      - updatedAt
+                required:
+                  - id
+                  - key
+                  - value
+                  - type
+                  - project
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

@@ -1,0 +1,225 @@
+{
+	"name": "If/Switch branch wired directly to multi-input merge",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-200, 0],
+			"id": "trigger-9-0001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "cond-9-0001",
+							"leftValue": "={{ $json.kind }}",
+							"rightValue": "directory",
+							"operator": {
+								"type": "string",
+								"operation": "equals",
+								"name": "filter.operator.equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [0, 0],
+			"id": "if-9-0001",
+			"name": "Is Directory"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "assign-9-0001",
+							"name": "label",
+							"value": "directory",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, -100],
+			"id": "set-9-0001",
+			"name": "Flatten Directory"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"id": "merge-9-0001",
+			"name": "Merge All Entries"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "cond-9-0002",
+							"leftValue": "={{ $json.color }}",
+							"rightValue": "red",
+							"operator": {
+								"type": "string",
+								"operation": "equals",
+								"name": "filter.operator.equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.2,
+			"position": [0, 240],
+			"id": "switch-9-0001",
+			"name": "Route By Color"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "assign-9-0002",
+							"name": "label",
+							"value": "red",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 200],
+			"id": "set-9-0002",
+			"name": "Tag Red"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [400, 240],
+			"id": "merge-9-0002",
+			"name": "Merge Color Routes"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Is Directory",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Route By Color",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is Directory": {
+			"main": [
+				[
+					{
+						"node": "Flatten Directory",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge All Entries",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Flatten Directory": {
+			"main": [
+				[
+					{
+						"node": "Merge All Entries",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route By Color": {
+			"main": [
+				[
+					{
+						"node": "Tag Red",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge Color Routes",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Tag Red": {
+			"main": [
+				[
+					{
+						"node": "Merge Color Routes",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	"meta": {
+		"instanceId": "test-instance-id-9"
+	},
+	"id": "fixture-9",
+	"tags": []
+}

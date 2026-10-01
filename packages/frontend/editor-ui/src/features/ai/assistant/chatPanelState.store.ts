@@ -16,11 +16,13 @@ export const useChatPanelStateStore = defineStore(STORES.CHAT_PANEL_STATE, () =>
 	const width = ref(DEFAULT_CHAT_WIDTH);
 	const activeMode = ref<ChatPanelMode>('builder');
 	const showCoachmark = ref(false);
+	const focusRequested = ref(0);
 
 	return {
 		isOpen,
 		width,
 		activeMode,
 		showCoachmark,
+		focusRequested,
 	};
 });

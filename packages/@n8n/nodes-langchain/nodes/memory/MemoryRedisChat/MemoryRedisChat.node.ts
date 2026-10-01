@@ -12,15 +12,15 @@ import {
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { coerceSessionIdToString, getSessionId } from '@utils/helpers';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryRedisChat implements INodeType {
@@ -29,7 +29,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -94,6 +94,7 @@ export class MemoryRedisChat implements INodeType {
 				},
 			},
 			expressionSessionKeyProperty(1.4),
+			scopedSessionHint(1.6),
 			sessionKeyProperty,
 			{
 				displayName: 'Session Time To Live',
@@ -121,7 +122,11 @@ export class MemoryRedisChat implements INodeType {
 		if (nodeVersion >= 1.2) {
 			sessionId = getSessionId(this, itemIndex);
 		} else {
-			sessionId = this.getNodeParameter('sessionKey', itemIndex) as string;
+			sessionId = coerceSessionIdToString(
+				this,
+				this.getNodeParameter('sessionKey', itemIndex),
+				itemIndex,
+			);
 		}
 
 		const redisOptions: RedisClientOptions = {

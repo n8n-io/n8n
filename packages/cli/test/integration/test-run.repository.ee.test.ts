@@ -22,6 +22,25 @@ describe('TestRunRepository', () => {
 		await testDb.terminate();
 	});
 
+	describe('findOneByIdAndWorkflowId', () => {
+		it('returns the run when it belongs to the workflow', async () => {
+			const workflow = await createWorkflow();
+			const testRun = await createTestRun(workflow.id, { status: 'running' });
+
+			const result = await testRunRepository.findOneByIdAndWorkflowId(testRun.id, workflow.id);
+
+			expect(result).toEqual(expect.objectContaining({ id: testRun.id, workflowId: workflow.id }));
+		});
+
+		it('returns null when the run belongs to a different workflow', async () => {
+			const workflowA = await createWorkflow();
+			const workflowB = await createWorkflow();
+			const runB = await createTestRun(workflowB.id, { status: 'running' });
+
+			expect(await testRunRepository.findOneByIdAndWorkflowId(runB.id, workflowA.id)).toBeNull();
+		});
+	});
+
 	describe('getTestRunSummaryById', () => {
 		let workflow: IWorkflowDb & WorkflowEntity;
 

@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -10,23 +11,26 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { createTestNode } from '@/__tests__/mocks';
 
-const mockEditableWorkflow = {
-	value: {
-		nodes: [] as Array<{
-			id: string;
-			name: string;
-			type: string;
-			typeVersion: number;
-		}>,
-	},
-};
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
-		editableWorkflow: mockEditableWorkflow,
 	}),
 }));
 
@@ -44,7 +48,8 @@ vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => 
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: vi.fn(),
 }));
 
@@ -76,7 +81,9 @@ describe('useNodeCommands', () => {
 	});
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		vi.clearAllMocks();
+
+		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
 		const canvasOps = useCanvasOperations();
@@ -84,6 +91,7 @@ describe('useNodeCommands', () => {
 		mockCanvasEventBusEmit = vi.mocked(canvasEventBus.emit);
 
 		mockNodeTypesStore = useNodeTypesStore();
+		vi.spyOn(mockNodeTypesStore, 'isNodeTypeUnavailable').mockReturnValue(false);
 		mockSourceControlStore = useSourceControlStore();
 		mockWorkflowsStore = useWorkflowsStore();
 
@@ -104,7 +112,7 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflow', {
-			value: { isArchived: false, scopes: [] },
+			value: { isArchived: false, scopes: [], nodes: [] },
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
@@ -122,10 +130,6 @@ describe('useNodeCommands', () => {
 		});
 
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
-
-		mockEditableWorkflow.value.nodes = [];
-
-		vi.clearAllMocks();
 	});
 
 	describe('add node command', () => {
@@ -168,9 +172,8 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not include add node command when workflow is archived', () => {
-			Object.defineProperty(mockWorkflowsStore, 'workflow', {
-				value: { isArchived: true, scopes: [] },
-			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			workflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -222,6 +225,73 @@ describe('useNodeCommands', () => {
 
 			expect(mockGenerateMergedNodesAndActionsFn).toHaveBeenCalled();
 		});
+
+		it('should list a restricted node last, disabled and locked, instead of hiding it', () => {
+			mockGenerateMergedNodesAndActionsFn.mockReturnValue({
+				mergedNodes: [
+					createMockNodeType('n8n-nodes-base.gmail', 'Gmail'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				],
+			});
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const children = commands.value.find((cmd) => cmd.id === 'add-node')?.children ?? [];
+			expect(children.map((child) => child.id)).toEqual([
+				'n8n-nodes-base.slack',
+				'n8n-nodes-base.gmail',
+			]);
+			expect(children[0].disabled).toBe(false);
+			expect(children[1].disabled).toBe(true);
+			const restrictedTitle = children[1].title;
+			expect(typeof restrictedTitle === 'object' && restrictedTitle.props?.icon).toBe('lock');
+		});
+
+		it('should disable a credential-only node when HTTP Request is restricted', () => {
+			mockGenerateMergedNodesAndActionsFn.mockReturnValue({
+				mergedNodes: [
+					createMockNodeType('n8n-creds-base.sysdigApi', 'Sysdig'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				],
+			});
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const children = commands.value.find((cmd) => cmd.id === 'add-node')?.children ?? [];
+			expect(children.map((child) => [child.id, child.disabled ?? false])).toEqual([
+				['n8n-nodes-base.slack', false],
+				['n8n-creds-base.sysdigApi', true],
+			]);
+		});
+
+		it('should disable a node type the policy restricts', () => {
+			mockGenerateMergedNodesAndActionsFn.mockReturnValue({
+				mergedNodes: [
+					createMockNodeType('n8n-nodes-base.httpRequest', 'HTTP Request'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				],
+			});
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const children = commands.value.find((cmd) => cmd.id === 'add-node')?.children ?? [];
+			expect(children.map((child) => [child.id, child.disabled ?? false])).toEqual([
+				['n8n-nodes-base.httpRequest', false],
+				['n8n-nodes-base.slack', true],
+			]);
+		});
 	});
 
 	describe('open node command', () => {
@@ -237,15 +307,21 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should populate open node children with workflow nodes', () => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
-				{
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+				createTestNode({
 					id: 'node-2',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 1,
-				},
-			];
+				}),
+			]);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -267,6 +343,17 @@ describe('useNodeCommands', () => {
 
 			const stickyCommand = commands.value.find((cmd) => cmd.id === 'add-sticky');
 			expect(stickyCommand).toBeDefined();
+		});
+
+		it('should not include add sticky note command when the sticky note type is not loaded', () => {
+			vi.mocked(mockNodeTypesStore.isNodeTypeUnavailable).mockReturnValue(true);
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			expect(commands.value.find((cmd) => cmd.id === 'add-sticky')).toBeUndefined();
 		});
 
 		it('should not include add sticky note command when user lacks update permission', () => {
@@ -312,9 +399,15 @@ describe('useNodeCommands', () => {
 
 	describe('root open node items', () => {
 		beforeEach(() => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
-			];
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+			]);
 		});
 
 		it('should not show root open node items when query is too short', () => {

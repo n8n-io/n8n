@@ -1,6 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthIdentity } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { UrlService } from '@n8n/backend-services';
 
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';
@@ -90,7 +93,70 @@ describe('sso/saml/samlHelpers', () => {
 					userPrincipalName: 'test',
 				},
 				missingAttributes: [],
+				rawAttributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
 			});
+		});
+
+		test('returns the email verification attribute when it is mapped', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+						emailVerified: ['true'],
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+				emailVerified: 'emailVerified',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(flowResult, attributeMapping, {
+				instanceRole: null,
+				projectRoles: null,
+			});
+
+			expect(result.attributes?.emailVerified).toBe('true');
+			expect(result.missingAttributes).toEqual([]);
+		});
+
+		test('does not report a mapped email verification attribute that the response lacks', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+				emailVerified: 'emailVerified',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(flowResult, attributeMapping, {
+				instanceRole: null,
+				projectRoles: null,
+			});
+
+			expect(result.attributes?.emailVerified).toBeUndefined();
+			expect(result.missingAttributes).toEqual([]);
 		});
 
 		test('returns the missing attributes from the flow result', () => {
@@ -123,6 +189,7 @@ describe('sso/saml/samlHelpers', () => {
 					email: 'test@test.com',
 				},
 				missingAttributes: ['userPrincipalName', 'firstName', 'lastName'],
+				rawAttributes: { email: 'test@test.com' },
 			});
 		});
 		test('returns the attributes from the flow result with instance role', () => {
@@ -162,6 +229,13 @@ describe('sso/saml/samlHelpers', () => {
 					userPrincipalName: 'test',
 				},
 				missingAttributes: [],
+				rawAttributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					instanceRole: 'instanceRole',
+				},
 			});
 		});
 	});
@@ -203,6 +277,13 @@ describe('sso/saml/samlHelpers', () => {
 				n8nProjectRoles: ['projectRole1', 'projectRole2'],
 			},
 			missingAttributes: [],
+			rawAttributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				projectRoles: ['projectRole1', 'projectRole2'],
+			},
 		});
 	});
 
@@ -243,6 +324,118 @@ describe('sso/saml/samlHelpers', () => {
 				n8nProjectRoles: ['projectRole1'],
 			},
 			missingAttributes: [],
+			rawAttributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				projectRoles: 'projectRole1',
+			},
+		});
+	});
+
+	test('includes all raw attributes including custom ones not in the mapping', () => {
+		const flowResult = {
+			extract: {
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					customDepartment: 'engineering',
+					groups: ['devops', 'n8n-admins'],
+				},
+			},
+		} as any;
+		const attributeMapping = {
+			email: 'email',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = { instanceRole: null, projectRoles: null };
+
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+
+		expect(result.rawAttributes).toEqual({
+			email: 'test@test.com',
+			firstName: 'test',
+			lastName: 'test',
+			userPrincipalName: 'test',
+			customDepartment: 'engineering',
+			groups: ['devops', 'n8n-admins'],
+		});
+	});
+
+	test('returns empty rawAttributes when flowResult has no attributes', () => {
+		const flowResult = { extract: {} } as any;
+		const attributeMapping = {
+			email: 'email',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = { instanceRole: null, projectRoles: null };
+
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+
+		expect(result.rawAttributes).toEqual({});
+	});
+
+	describe('isConnectionTestRequest', () => {
+		const baseUrl = 'http://localhost:5678';
+		const testReturnUrl = `${baseUrl}/config/test/return`;
+
+		beforeAll(() => {
+			const urlService = mockInstance(UrlService);
+			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
+			Container.set(UrlService, urlService);
+		});
+
+		test('returns true when RelayState matches the test return URL exactly', () => {
+			expect(helpers.isConnectionTestRequest({ RelayState: testReturnUrl })).toBe(true);
+		});
+
+		test('returns true when RelayState starts with the test return URL (with testId)', () => {
+			expect(helpers.isConnectionTestRequest({ RelayState: `${testReturnUrl}?t=abc123` })).toBe(
+				true,
+			);
+		});
+
+		test('returns false when RelayState is unrelated', () => {
+			expect(helpers.isConnectionTestRequest({ RelayState: '/workflow/123' })).toBe(false);
+		});
+
+		test('returns false when RelayState is missing', () => {
+			expect(helpers.isConnectionTestRequest({})).toBe(false);
+		});
+	});
+
+	describe('extractTestIdFromRelayState', () => {
+		test('returns the value of the t query parameter', () => {
+			expect(
+				helpers.extractTestIdFromRelayState('http://localhost:5678/config/test/return?t=tok123'),
+			).toBe('tok123');
+		});
+
+		test('returns undefined when t query parameter is absent', () => {
+			expect(
+				helpers.extractTestIdFromRelayState('http://localhost:5678/config/test/return'),
+			).toBeUndefined();
+		});
+
+		test('returns undefined when RelayState is empty or malformed', () => {
+			expect(helpers.extractTestIdFromRelayState(undefined)).toBeUndefined();
+			expect(helpers.extractTestIdFromRelayState('')).toBeUndefined();
+			expect(helpers.extractTestIdFromRelayState('not-a-url')).toBeUndefined();
 		});
 	});
 });

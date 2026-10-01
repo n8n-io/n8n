@@ -11,6 +11,9 @@ export declare namespace Cloud {
 		displayName: string;
 		expirationDate: string;
 		metadata: PlanMetadata;
+		userIsTrialing?: boolean;
+		bannerConfig?: BannerConfig;
+		licenseFeatures?: Record<string, number>;
 	}
 
 	export interface PlanMetadata {
@@ -25,6 +28,46 @@ export declare namespace Cloud {
 		gracePeriod: number;
 	}
 
+	export interface BannerConfig {
+		// If set, show time left section
+		// - If text provided, use it
+		// - If text not provided, compute from expirationDate
+		timeLeft?: {
+			text?: string;
+		};
+
+		// If true, show executions section with progress bar and x/y text
+		showExecutions?: boolean;
+
+		// CTA button configuration
+		cta?: {
+			text?: string;
+			icon?: string;
+			size?: 'small' | 'medium';
+			/** @deprecated Use variant instead */
+			style?: 'primary' | 'success' | 'warning' | 'danger';
+			variant?: 'solid' | 'subtle' | 'ghost' | 'outline' | 'destructive' | 'success';
+			href?: string; // If provided, navigate to this URL; otherwise use upgrade flow
+		};
+
+		// Banner icon (left side) - if not set, no icon shown
+		icon?: string;
+
+		dismissible?: boolean;
+		forceShow?: boolean; // Override localStorage dismissal
+	}
+
+	export interface UpgradeOffer {
+		slug: string;
+		quotas: { monthlyExecutionsLimit: number; instanceAiCredits: number };
+		currency?: { code: string; symbol: string; position: 'prefix' | 'suffix' };
+		prices?: {
+			monthly: number;
+			yearlyPerMonth: number;
+			discountPct: number;
+		};
+	}
+
 	export type UserAccount = {
 		confirmed: boolean;
 		username: string;
@@ -34,9 +77,6 @@ export declare namespace Cloud {
 		selectedApps?: string[];
 		information?: {
 			[key: string]: string | string[];
-		};
-		trialBannerData?: {
-			bannerText: string;
 		};
 	};
 }
@@ -57,6 +97,12 @@ export async function getCurrentUsage(context: IRestApiContext): Promise<Instanc
 
 export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.UserAccount> {
 	return await get(context.baseUrl, '/cloud/proxy/user/me');
+}
+
+export async function getUpgradeOffer(
+	context: IRestApiContext,
+): Promise<Cloud.UpgradeOffer | Record<string, never>> {
+	return await post(context.baseUrl, '/cloud/proxy/upgrade-offer');
 }
 
 export async function sendConfirmationEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {

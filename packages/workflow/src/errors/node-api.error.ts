@@ -3,7 +3,9 @@
 import type { AxiosError } from 'axios';
 import { parseString } from 'xml2js';
 
+import { removeCircularRefs, sanitizeXmlName } from '../utils';
 import { NodeError } from './abstract/node.error';
+import type { Failure } from './failure';
 import type { ErrorLevel } from '@n8n/errors';
 import {
 	NO_OP_NODE_TYPE,
@@ -19,7 +21,6 @@ import type {
 	Functionality,
 	RelatedExecution,
 } from '../interfaces';
-import { removeCircularRefs } from '../utils';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
@@ -34,6 +35,8 @@ export interface NodeOperationErrorOptions {
 		subExecution?: RelatedExecution;
 		parentExecution?: RelatedExecution;
 	};
+	/** Why the operation failed, when the node knows. */
+	failure?: Failure;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -134,9 +137,13 @@ export class NodeApiError extends NodeError {
 			level,
 			functionality,
 			messageMapping,
+			failure,
 		}: NodeApiErrorOptions = {},
 	) {
 		if (errorResponse instanceof NodeApiError) {
+			// Re-wrapping hands back the original, so the declaration has to land on it:
+			// nodes routinely rethrow an error a shared request helper already wrapped.
+			if (failure) errorResponse.failure = failure;
 			return errorResponse;
 		}
 
@@ -272,19 +279,30 @@ export class NodeApiError extends NodeError {
 		if (functionality !== undefined) this.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
+		if (failure) {
+			this.failure = failure;
+		}
 	}
 
 	private setDescriptionFromXml(xml: string) {
-		parseString(xml, { explicitArray: false }, (_, result) => {
-			if (!result) return;
+		parseString(
+			xml,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(_, result) => {
+				if (!result) return;
 
-			const topLevelKey = Object.keys(result)[0];
-			this.description = this.findProperty(
-				result[topLevelKey],
-				POSSIBLE_ERROR_MESSAGE_KEYS,
-				POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
-			);
-		});
+				const topLevelKey = Object.keys(result)[0];
+				this.description = this.findProperty(
+					result[topLevelKey],
+					POSSIBLE_ERROR_MESSAGE_KEYS,
+					POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
+				);
+			},
+		);
 	}
 
 	/**

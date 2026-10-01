@@ -1,19 +1,19 @@
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class DataTableView extends BasePage {
+	async goto(projectId?: string) {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
+		await this.page.goto(url);
+	}
+
 	readonly addResource = new AddResource(this.page);
-
-	getDataTableOverviewTab() {
-		return this.page.getByTestId('tab-data-tables');
-	}
-
-	getDataTableProjectTab() {
-		return this.page.getByTestId('tab-project-data-tables');
-	}
+	readonly actionToggle = new ActionToggle(this.page);
 
 	getEmptyStateActionBox() {
-		return this.page.getByTestId('empty-data-table-action-box');
+		return this.getResourcesListEmptyState();
 	}
 
 	getEmptyStateActionBoxButton() {
@@ -32,16 +32,8 @@ export class DataTableView extends BasePage {
 		return this.page.getByTestId('create-from-scratch-option');
 	}
 
-	getImportCsvOption() {
-		return this.page.getByTestId('import-csv-option');
-	}
-
 	getProceedFromSelectButton() {
 		return this.page.getByTestId('proceed-from-select-button');
-	}
-
-	getNewDataTableConfirmButton() {
-		return this.page.getByTestId('confirm-add-data-table-button');
 	}
 
 	getDataTableCards() {
@@ -57,31 +49,27 @@ export class DataTableView extends BasePage {
 	}
 
 	getDataTableCardAction(actionName: string) {
-		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${actionName}`);
+		return this.actionToggle.getAction(actionName);
 	}
 
 	getDeleteDataTableModal() {
-		return this.page.locator('.el-message-box').filter({ hasText: 'Delete Data table' });
+		return new MessageBox(this.page).root.filter({ hasText: 'Delete Data table' });
 	}
 
 	getDeleteDataTableConfirmButton() {
-		return this.getDeleteDataTableModal().locator('.btn--confirm');
+		return new MessageBox(this.getDeleteDataTableModal()).confirmButton;
 	}
 
 	getDataTablePageSizeSelect() {
-		return this.page.getByTestId('resources-list-pagination').locator('.el-pagination__sizes');
+		return this.page.getByTestId('resources-list-pagination').getByTestId('pagination-sizes');
 	}
 
 	getDataTablePageOption(pageSize: string) {
-		return this.page.locator('.el-select-dropdown__item').filter({ hasText: `${pageSize}/page` });
+		return this.getVisiblePopoverOption(`${pageSize}/page`, { exact: true });
 	}
 
 	getPaginationNextButton() {
-		return this.page.getByTestId('resources-list-pagination').locator('button.btn-next');
-	}
-
-	async clickDataTableOverviewTab() {
-		await this.clickByTestId('tab-data-tables');
+		return this.page.getByTestId('resources-list-pagination').getByTestId('pagination-next');
 	}
 
 	async clickDataTableProjectTab() {
@@ -100,10 +88,6 @@ export class DataTableView extends BasePage {
 		await this.getDataTableCardActionsButton(dataTableName).click();
 	}
 
-	async clickDataTableCardAction(actionName: string) {
-		await this.getDataTableCardAction(actionName).click();
-	}
-
 	async clickDeleteDataTableConfirmButton() {
 		await this.getDeleteDataTableConfirmButton().click();
 	}
@@ -111,9 +95,5 @@ export class DataTableView extends BasePage {
 	async selectDataTablePageSize(pageSize: string) {
 		await this.getDataTablePageSizeSelect().click();
 		await this.getDataTablePageOption(pageSize).click();
-	}
-
-	async clickPaginationNextButton() {
-		await this.getPaginationNextButton().click();
 	}
 }

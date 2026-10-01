@@ -1,13 +1,20 @@
-import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	inTest,
+	isContainedWithin,
+	isEnvFeatureEnabled,
+	Logger,
+	ModuleRegistry,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import { isWindowsFilePath } from '@n8n/utils';
+import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, DirectoryLoader, Types } from 'n8n-core';
+import type { Class, OutputSchemaLookup, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
+	DirectoryLoader,
 	ErrorReporter,
 	InstanceSettings,
 	CustomDirectoryLoader,
@@ -17,6 +24,9 @@ import {
 	UnrecognizedNodeTypeError,
 	ExecutionContextHookRegistry,
 	CUSTOM_NODES_PACKAGE_NAME,
+	resolveOutputSchemaPath,
+	loadOutputSchema,
+	OUTPUT_PARSER_SCHEMA_VARIANT,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -27,8 +37,10 @@ import type {
 	IVersionedNodeType,
 	INodeProperties,
 	LoadedNodesAndCredentials,
+	NodeLoader,
 } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -46,7 +58,7 @@ export class LoadNodesAndCredentials {
 	// actual file, or the lazy loaded json
 	types: Types = { nodes: [], credentials: [] };
 
-	loaders: Record<string, DirectoryLoader> = {};
+	loaders: Record<string, NodeLoader> = {};
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
@@ -67,16 +79,25 @@ export class LoadNodesAndCredentials {
 		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
+		// Preserve any existing NODE_PATH (e.g. set by Docker ENV for global npm packages)
+		// so that the task runner subprocess can also resolve externally installed modules.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = module.paths.join(delimiter);
+		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+			.filter(Boolean)
+			.join(delimiter);
 
-		// @ts-ignore
+		// @ts-expect-error Node internal _initPaths
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
 		if (!inE2ETests) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+		}
+
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS')) {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
 
 		// Load nodes from `n8n-nodes-base`
@@ -93,11 +114,25 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		for (const dir of this.moduleRegistry.loadDirs) {
-			await this.loadNodesFromNodeModules(dir);
+		await this.loadNodesFromCustomDirectories();
+
+		for (const loader of this.moduleRegistry.nodeLoaders) {
+			if (loader.packageName in this.loaders) {
+				throw new UnexpectedError(
+					picocolors.red(`Node loader ${loader.packageName} is already registered.`),
+				);
+			}
+			try {
+				await loader.loadAll();
+				this.loaders[loader.packageName] = loader;
+			} catch (error) {
+				this.logger.error(`Failed to load package "${loader.packageName}"`, {
+					error: ensureError(error),
+				});
+				this.errorReporter.error(error, { extra: { packageName: loader.packageName } });
+			}
 		}
 
-		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
 	}
 
@@ -110,6 +145,30 @@ export class LoadNodesAndCredentials {
 		for (const loader of Object.values(this.loaders)) {
 			loader.releaseTypes();
 		}
+	}
+
+	/**
+	 * Returns the current node and credential types.
+	 * If types have been released from memory, re-runs postProcessLoaders to
+	 * repopulate them first, then releases after snapshotting.
+	 *
+	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
+	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
+	 * service or the frontend service writing static JSON files).
+	 */
+	async collectTypes(): Promise<Types> {
+		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+		if (needsReload) {
+			await this.postProcessLoaders();
+		}
+		const types: Types = {
+			nodes: this.types.nodes,
+			credentials: this.types.credentials,
+		};
+		if (needsReload) {
+			this.releaseTypes();
+		}
+		return types;
 	}
 
 	isKnownNode(type: string) {
@@ -134,19 +193,13 @@ export class LoadNodesAndCredentials {
 
 	private async loadNodesFromNodeModules(
 		nodeModulesDir: string,
-		packageName?: string,
+		packageName: string,
 	): Promise<void> {
-		const globOptions = {
+		const installedPackagePaths = await glob(packageName, {
 			cwd: nodeModulesDir,
 			onlyDirectories: true,
 			deep: 1,
-		};
-		const installedPackagePaths = packageName
-			? await glob(packageName, globOptions)
-			: [
-					...(await glob('n8n-nodes-*', globOptions)),
-					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-				];
+		});
 
 		for (const packagePath of installedPackagePaths) {
 			try {
@@ -182,7 +235,7 @@ export class LoadNodesAndCredentials {
 	resolveIcon(packageName: string, url: string): string | undefined {
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
 		const loader = this.loaders[packageName];
-		if (!loader) {
+		if (!loader || !(loader instanceof DirectoryLoader)) {
 			return undefined;
 		}
 
@@ -197,8 +250,14 @@ export class LoadNodesAndCredentials {
 
 		const pathPrefix = `/icons/${packageName}/`;
 		const urlFilePath = url.substring(pathPrefix.length);
-		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
+		if (isCustom && !isWindowsFilePath(urlFilePath)) {
+			const relativeFilePath = resolvePath(urlFilePath);
+			if (isContainedWithin(loader.directory, relativeFilePath)) {
+				return relativeFilePath;
+			}
+		}
 
+		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
 	}
 
@@ -218,11 +277,34 @@ export class LoadNodesAndCredentials {
 			return undefined;
 		}
 
-		const nodeParentPath = path.dirname(nodePath);
-		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
-		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+		return resolveOutputSchemaPath({
+			nodeDir: path.dirname(nodePath),
+			version,
+			resource,
+			operation,
+		});
+	}
 
-		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	/**
+	 * Schema lookup for mock/pin-data generation: parsed `__schema__` content
+	 * with version fallback (same major first, then older, then newer — see the
+	 * n8n-core resolver), resolved through `known.nodes` so it works for
+	 * community nodes and production installs alike.
+	 */
+	createOutputSchemaLookup(): OutputSchemaLookup {
+		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
+			const nodePath = this.known.nodes[type]?.sourcePath;
+			if (!nodePath) return undefined;
+
+			return loadOutputSchema({
+				nodeDir: path.dirname(nodePath),
+				version: typeVersion,
+				resource,
+				operation,
+				versionFallback: true,
+				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
+			});
+		};
 	}
 
 	getCustomDirectories(): string[] {
@@ -275,12 +357,26 @@ export class LoadNodesAndCredentials {
 			}
 			if (credType.authenticate !== undefined) return true;
 
-			return (
-				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
-			);
+			return this.extendsProxyAuthBaseType(credType);
+		});
+	}
+
+	/**
+	 * Whether a credential type reaches one of the OAuth base types through its
+	 * `extends` chain. Walks the chain transitively (cycle-guarded), since OAuth
+	 * credentials often extend a vendor intermediate (e.g. `atlassianOAuth2Api`)
+	 * rather than a base type directly.
+	 */
+	private extendsProxyAuthBaseType(credType: ICredentialType, seen = new Set<string>()): boolean {
+		if (!Array.isArray(credType.extends)) return false;
+
+		return credType.extends.some((parentName) => {
+			if (['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentName)) return true;
+			if (seen.has(parentName)) return false;
+			seen.add(parentName);
+
+			const parent = this.types.credentials.find((t) => t.name === parentName);
+			return parent !== undefined && this.extendsProxyAuthBaseType(parent, seen);
 		});
 	}
 
@@ -313,7 +409,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	private shouldInjectContextEstablishmentHooks() {
-		return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+		return isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS');
 	}
 
 	private injectContextEstablishmentHooks() {
@@ -405,7 +501,7 @@ export class LoadNodesAndCredentials {
 
 		// Create the main context establishment hooks property as a fixedCollection
 		const contextHooksProperty: INodeProperties = {
-			displayName: 'Identify user for dynamic credentials',
+			displayName: 'Identify user for end-user credentials',
 			name: 'contextEstablishmentHooks',
 			type: 'fixedCollection',
 			placeholder: 'Add User Identifier',
@@ -465,77 +561,58 @@ export class LoadNodesAndCredentials {
 	}
 
 	async postProcessLoaders() {
-		this.known = { nodes: {}, credentials: {} };
-		this.loaded = { nodes: {}, credentials: {} };
-		this.types = { nodes: [], credentials: [] };
+		const known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
+		const types: Types = { nodes: [], credentials: [] };
 
 		for (const loader of Object.values(this.loaders)) {
 			// Reload types if they were released from memory
 			await loader.ensureTypesLoaded();
 
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory, packageName } = loader;
-			this.types.nodes = this.types.nodes.concat(
-				types.nodes.map(({ name, ...rest }) => ({
+			const { known: loaderKnown, types: loaderTypes, packageName } = loader;
+			types.nodes = types.nodes.concat(
+				loaderTypes.nodes.map(({ name, ...rest }) => ({
 					...rest,
 					name: `${packageName}.${name}`,
 				})),
 			);
 
-			const processedCredentials = types.credentials.map((credential) => {
-				if (this.shouldAddDomainRestrictions(credential)) {
-					const clonedCredential = { ...credential };
-					clonedCredential.properties = this.injectDomainRestrictionFields([
-						...(clonedCredential.properties ?? []),
-					]);
-					return {
-						...clonedCredential,
-						supportedNodes:
-							loader instanceof PackageDirectoryLoader
-								? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-								: undefined,
-					};
-				}
-				return {
-					...credential,
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
-				};
-			});
+			const processedCredentials = loaderTypes.credentials.map((credential) => ({
+				...credential,
+				properties: injectDomainRestrictionFields(credential),
+				supportedNodes:
+					loader instanceof PackageDirectoryLoader
+						? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+						: undefined,
+			}));
 
-			this.types.credentials = this.types.credentials.concat(processedCredentials);
+			types.credentials = types.credentials.concat(processedCredentials);
 
 			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in loader.credentialTypes) {
-				const credentialType = loader.credentialTypes[credentialTypeName];
-				if (this.shouldAddDomainRestrictions(credentialType)) {
-					// Access properties through the type field
-					credentialType.type.properties = this.injectDomainRestrictionFields([
-						...(credentialType.type.properties ?? []),
-					]);
-				}
+			for (const credentialTypeName in loaderKnown.credentials) {
+				const credentialType = loader.getCredential(credentialTypeName);
+				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
 			}
 
-			for (const type in known.nodes) {
-				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[`${packageName}.${type}`] = {
+			for (const type in loaderKnown.nodes) {
+				const { className, sourcePath } = loaderKnown.nodes[type];
+				known.nodes[`${packageName}.${type}`] = {
 					className,
-					sourcePath: path.join(directory, sourcePath),
+					sourcePath: loader.resolveSourcePath(sourcePath),
 				};
 			}
 
-			for (const type in known.credentials) {
+			for (const type in loaderKnown.credentials) {
 				const {
 					className,
 					sourcePath,
 					supportedNodes,
 					extends: extendsArr,
-				} = known.credentials[type];
-				this.known.credentials[type] = {
+				} = loaderKnown.credentials[type];
+				known.credentials[type] = {
 					className,
-					sourcePath: path.join(directory, sourcePath),
+					sourcePath: loader.resolveSourcePath(sourcePath),
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
 							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
@@ -545,8 +622,31 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
+		// Publish the rebuilt registry. Everything below runs synchronously until the
+		// post-processor loop, so no reader can observe a half-built registry.
+		this.known = known;
+		this.loaded = loaded;
+		this.types = types;
+
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);
+
+		// Loaders filter base nodes only. Generated tool variants are filtered here.
+		this.types.nodes = this.types.nodes.filter(({ name }) => !this.excludeNodes.includes(name));
+		this.known.nodes = Object.fromEntries(
+			Object.entries(this.known.nodes).filter(([name]) => !this.excludeNodes.includes(name)),
+		);
+		this.known.credentials = Object.fromEntries(
+			Object.entries(this.known.credentials).map(([name, credential]) => [
+				name,
+				{
+					...credential,
+					supportedNodes: credential.supportedNodes?.filter(
+						(node) => !this.excludeNodes.includes(node),
+					),
+				},
+			]),
+		);
 
 		this.injectCustomApiCallOptions();
 
@@ -581,6 +681,16 @@ export class LoadNodesAndCredentials {
 		return loadedNode;
 	}
 
+	/**
+	 * Absolute path of a node's source file. A loader keeps the path relative to
+	 * its own package directory, so it must be resolved before any file access.
+	 */
+	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
+		const [packageName] = fullNodeType.split('.');
+		const loader = this.loaders[packageName];
+		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
+	}
+
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
 		const { loadedCredentials } = this;
 
@@ -598,15 +708,72 @@ export class LoadNodesAndCredentials {
 		throw new UnrecognizedCredentialTypeError(credentialType);
 	}
 
+	private reloadQueue: Promise<unknown> = Promise.resolve();
+
+	/**
+	 * Re-read the files already on disk for a loader and push the updated
+	 * descriptions to open editors. Touches no native module, so it works
+	 * inside the published image where the file watcher cannot run.
+	 *
+	 * Serialized here rather than at the call sites, because the endpoint and
+	 * the file watcher both reload and can fire on the same save. Concurrent
+	 * reloads would interleave reset()/loadAll(), leaving nodes unresolvable.
+	 */
+	private async reloadLoader(loader: DirectoryLoader) {
+		const run = this.reloadQueue.then(async () => {
+			this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+			try {
+				loader.reset();
+				await loader.loadAll();
+				await this.postProcessLoaders();
+				const { Push } = await import('@/push/index.js');
+				Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+			} catch (error) {
+				this.logger.error(`Hot reload failed for ${loader.packageName}`, {
+					error: ensureError(error),
+				});
+				throw new UserError(`Hot reload failed for ${loader.packageName}`, { cause: error });
+			}
+		});
+		this.reloadQueue = run.catch(() => {});
+		await run;
+	}
+
+	/**
+	 * Reload nodes from the custom directories on demand, for the dev reload
+	 * endpoint. Returns the package names that were reloaded. Throws if any
+	 * loader fails, so the endpoint does not report a broken node as reloaded.
+	 */
+	async reloadCustomNodes() {
+		const loaders = Object.values(this.loaders).filter(
+			(loader) => loader instanceof CustomDirectoryLoader,
+		);
+
+		for (const loader of loaders) {
+			await this.reloadLoader(loader);
+		}
+
+		return loaders.map((loader) => loader.packageName);
+	}
+
 	async setupHotReload() {
-		const { default: debounce } = await import('lodash/debounce');
+		const { default: debounce } = await import('lodash/debounce.js');
 
-		const { subscribe } = await import('@parcel/watcher');
-
-		const { Push } = await import('@/push');
-		const push = Container.get(Push);
+		let subscribe: typeof ParcelWatcher.subscribe;
+		try {
+			({ subscribe } = await import('@parcel/watcher'));
+		} catch (error) {
+			// No prebuild for this platform (e.g. musl in the official image). File
+			// watching is unavailable; POST /rest/dev/reload still works.
+			this.logger.warn(
+				'File watching for hot reload is unavailable on this platform. Use POST /rest/dev/reload to reload nodes.',
+				{ error: ensureError(error) },
+			);
+			return;
+		}
 
 		for (const loader of Object.values(this.loaders)) {
+			if (!(loader instanceof DirectoryLoader)) continue;
 			const { directory } = loader;
 			try {
 				await fsPromises.access(directory);
@@ -615,17 +782,9 @@ export class LoadNodesAndCredentials {
 				continue;
 			}
 
-			const reloader = debounce(async () => {
-				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
-				try {
-					loader.reset();
-					await loader.loadAll();
-					await this.postProcessLoaders();
-					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
-				} catch (error) {
-					this.logger.error(`Hot reload failed for ${loader.packageName}`);
-				}
-			}, 100);
+			// Already logged inside reloadLoader; swallow so a broken node does not
+			// reject into the watcher callback as an unhandled rejection.
+			const reloader = debounce(async () => await this.reloadLoader(loader).catch(() => {}), 100);
 
 			// For lazy loaded packages, we need to watch the dist directory
 			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
@@ -680,68 +839,5 @@ export class LoadNodesAndCredentials {
 				await subscribe(watchPath, onFileEvent, { ignore });
 			}
 		}
-	}
-
-	private shouldAddDomainRestrictions(
-		credential: ICredentialType | LoadedClass<ICredentialType>,
-	): boolean {
-		// Handle both credential types by extracting the actual ICredentialType
-		const credentialType = 'type' in credential ? credential.type : credential;
-
-		return (
-			credentialType.authenticate !== undefined ||
-			credentialType.genericAuth === true ||
-			(Array.isArray(credentialType.extends) &&
-				(credentialType.extends.includes('oAuth2Api') ||
-					credentialType.extends.includes('oAuth1Api') ||
-					credentialType.extends.includes('googleOAuth2Api')))
-		);
-	}
-
-	private injectDomainRestrictionFields(properties: INodeProperties[]): INodeProperties[] {
-		// Check if fields already exist to avoid duplicates
-		if (properties.some((prop) => prop.name === 'allowedHttpRequestDomains')) {
-			return properties;
-		}
-		const domainFields: INodeProperties[] = [
-			{
-				displayName: 'Allowed HTTP Request Domains',
-				name: 'allowedHttpRequestDomains',
-				type: 'options',
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-						description: 'Allow all requests when used in the HTTP Request node',
-					},
-					{
-						name: 'Specific Domains',
-						value: 'domains',
-						description: 'Restrict requests to specific domains',
-					},
-					{
-						name: 'None',
-						value: 'none',
-						description: 'Block all requests when used in the HTTP Request node',
-					},
-				],
-				default: 'all',
-				description: 'Control which domains this credential can be used with in HTTP Request nodes',
-			},
-			{
-				displayName: 'Allowed Domains',
-				name: 'allowedDomains',
-				type: 'string',
-				default: '',
-				placeholder: 'example.com, *.subdomain.com',
-				description: 'Comma-separated list of allowed domains (supports wildcards with *)',
-				displayOptions: {
-					show: {
-						allowedHttpRequestDomains: ['domains'],
-					},
-				},
-			},
-		];
-		return [...properties, ...domainFields];
 	}
 }

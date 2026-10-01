@@ -1,22 +1,31 @@
 import type { InstanceType } from '@n8n/constants';
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, SystemTaskMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
+import type { NodeLoader } from 'n8n-workflow';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
-import { MissingModuleError } from './errors/missing-module.error';
-import { ModuleConfusionError } from './errors/module-confusion.error';
-import { ModulesConfig } from './modules.config';
-import type { ModuleName } from './modules.config';
 import { LicenseState } from '../license-state';
 import { Logger } from '../logging/logger';
+import { MissingModuleError } from './errors/missing-module.error';
+import { ModuleConfusionError } from './errors/module-confusion.error';
+import { ModuleLoadError } from './errors/module-load.error';
+import { ModulesConfig } from './modules.config';
+import type { ModuleName } from './modules.config';
+
+const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
+
+export const getModuleEntryUrl = (modulesDir: string, moduleName: string, isEnterprise = false) =>
+	pathToFileURL(getModuleEntryPath(modulesDir, moduleName, isEnterprise)).href;
 
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
 
-	readonly loadDirs: string[] = [];
+	readonly nodeLoaders: NodeLoader[] = [];
 
 	readonly settings: Map<string, ModuleSettings> = new Map();
 
@@ -27,13 +36,20 @@ export class ModuleRegistry {
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly modulesConfig: ModulesConfig,
+		private readonly systemTaskMetadata: SystemTaskMetadata,
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
+		// policy-infrastructure leads: it registers the enforcement implementation
+		// that every policy feature's checks are run by.
+		'policy-infrastructure',
 		'insights',
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		// oauth-server precedes mcp: the mcp module registers its protected
+		// resource with the oauth-server module's registry on init.
+		'oauth-server',
 		'mcp',
 		'provisioning',
 		'breaking-changes',
@@ -45,6 +61,22 @@ export class ModuleRegistry {
 		'log-streaming',
 		'ldap',
 		'quick-connect',
+		'workflow-builder',
+		'favorites',
+		'redaction',
+		'instance-registry',
+		'otel',
+		'token-exchange',
+		'instance-version-history',
+		'encryption-key-manager',
+		'oauth-jwe',
+		'n8n-packages',
+		'runtime-credentials',
+		'mcp-registry',
+		'workflow-reviews',
+		'instance-ai',
+		'agents',
+		'inbound-auth-core',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -86,13 +118,35 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const entryPath = getModuleEntryPath(modulesDir, moduleName);
+
 			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
-			} catch {
+				await import(pathToFileURL(entryPath).href);
+			} catch (primaryError) {
+				// Only an absent entrypoint means the module may live in the enterprise
+				// directory instead. If the entrypoint is on disk, the failure comes from
+				// its own code - e.g. a dependency it cannot resolve - so surface it.
+				// Retrying with the enterprise path would replace it with a "cannot find
+				// module" error for a directory that never existed, and send the reader
+				// looking for a naming mistake. The filesystem is the reliable test here:
+				// a missing dependency and a missing entrypoint can both surface as
+				// `ERR_MODULE_NOT_FOUND`.
+				if (existsSync(entryPath)) throw new ModuleLoadError(moduleName, primaryError);
+
+				const enterpriseEntryPath = getModuleEntryPath(modulesDir, moduleName, true);
+
 				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
-				} catch (error) {
-					throw new MissingModuleError(moduleName, error instanceof Error ? error.message : '');
+					await import(pathToFileURL(enterpriseEntryPath).href);
+				} catch (enterpriseError) {
+					if (existsSync(enterpriseEntryPath)) {
+						throw new ModuleLoadError(moduleName, enterpriseError);
+					}
+
+					// Neither entrypoint is on disk.
+					throw new MissingModuleError(
+						moduleName,
+						primaryError instanceof Error ? primaryError.message : '',
+					);
 				}
 			}
 		}
@@ -102,9 +156,9 @@ export class ModuleRegistry {
 
 			if (entities?.length) this.entities.push(...entities);
 
-			const loadDir = await Container.get(ModuleClass).loadDir?.();
+			const loaders = await Container.get(ModuleClass).nodeLoaders?.();
 
-			if (loadDir) this.loadDirs.push(loadDir);
+			if (loaders?.length) this.nodeLoaders.push(...loaders);
 
 			await Container.get(ModuleClass).commands?.();
 		}
@@ -117,9 +171,15 @@ export class ModuleRegistry {
 	 * specific setup.
 	 *
 	 * `ModuleRegistry.loadModules` must have been called before.
+	 *
+	 * @param only Init only these modules, for a one-off command that needs a few of them.
 	 */
-	async initModules(instanceType: InstanceType) {
+	async initModules(instanceType: InstanceType, only?: ModuleName[]) {
+		const selected = only ? new Set<string>(only) : undefined;
+
 		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
+			if (selected && !selected.has(moduleName)) continue;
+
 			const { licenseFlag, instanceTypes, class: ModuleClass } = moduleEntry;
 
 			if (licenseFlag !== undefined && !this.licenseState.isLicensed(licenseFlag)) {
@@ -135,6 +195,12 @@ export class ModuleRegistry {
 			}
 
 			await Container.get(ModuleClass).init?.();
+
+			const systemTasks = await Container.get(ModuleClass).systemTasks?.();
+
+			for (const taskClass of systemTasks ?? []) {
+				this.systemTaskMetadata.register(taskClass);
+			}
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 

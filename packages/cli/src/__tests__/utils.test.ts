@@ -1,12 +1,92 @@
-import { generateNanoId } from '@n8n/utils';
-import type { INodeType } from 'n8n-workflow';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import type { INodeType, Workflow } from 'n8n-workflow';
 
 import {
 	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
+	satisfiesToolCapability,
 	setMicrosoftObservabilityDefaults,
+	containsExpression,
+	stripToolSuffix,
+	withExpressionIsolate,
 } from '../utils';
+
+describe('withExpressionIsolate', () => {
+	const acquireIsolate = vi.fn();
+	const releaseIsolate = vi.fn();
+	const workflow = { expression: { acquireIsolate, releaseIsolate } } as unknown as Workflow;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should acquire before the callback and release after when newly acquired', async () => {
+		acquireIsolate.mockResolvedValue(true);
+		const fn = vi.fn().mockResolvedValue('result');
+
+		await expect(withExpressionIsolate(workflow, fn)).resolves.toBe('result');
+
+		expect(acquireIsolate.mock.invocationCallOrder[0]).toBeLessThan(fn.mock.invocationCallOrder[0]);
+		expect(releaseIsolate.mock.invocationCallOrder[0]).toBeGreaterThan(
+			fn.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('should release when the callback throws', async () => {
+		acquireIsolate.mockResolvedValue(true);
+		const error = new Error('boom');
+
+		await expect(
+			withExpressionIsolate(workflow, async () => await Promise.reject(error)),
+		).rejects.toThrow(error);
+
+		expect(releaseIsolate).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not release an isolate the caller already held', async () => {
+		acquireIsolate.mockResolvedValue(false);
+
+		await withExpressionIsolate(workflow, async () => await Promise.resolve());
+
+		expect(releaseIsolate).not.toHaveBeenCalled();
+	});
+});
+
+describe('stripToolSuffix', () => {
+	it.each([
+		['@n8n/n8n-nodes-langchain.openAi', '@n8n/n8n-nodes-langchain.openAi'],
+		['@n8n/n8n-nodes-langchain.openAiTool', '@n8n/n8n-nodes-langchain.openAi'],
+		['@n8n/n8n-nodes-langchain.openAiHitlTool', '@n8n/n8n-nodes-langchain.openAi'],
+		['@n8n/n8n-nodes-langchain.slackTool', '@n8n/n8n-nodes-langchain.slack'],
+		['plain', 'plain'],
+		['n8n-nodes-base.set', 'n8n-nodes-base.set'],
+	])('strips %s -> %s', (input, expected) => {
+		expect(stripToolSuffix(input)).toBe(expected);
+	});
+});
+
+describe('satisfiesToolCapability', () => {
+	const nodeWith = (usableAsTool: boolean | undefined) =>
+		({ description: { usableAsTool } }) as INodeType;
+
+	it('exempts HITL tool names from the capability requirement', () => {
+		expect(satisfiesToolCapability('n8n-nodes-base.gmailHitlTool', nodeWith(undefined))).toBe(true);
+	});
+
+	it('accepts a tool name when the resolved node declares usableAsTool', () => {
+		expect(satisfiesToolCapability('n8n-nodes-base.gmailTool', nodeWith(true))).toBe(true);
+	});
+
+	it.each([undefined, false])(
+		'rejects a tool name when the resolved node has usableAsTool: %s',
+		(usableAsTool) => {
+			expect(satisfiesToolCapability('n8n-nodes-base.gmailTool', nodeWith(usableAsTool))).toBe(
+				false,
+			);
+		},
+	);
+});
 
 describe('shouldAssignExecuteMethod', () => {
 	it('should return true when node has no execute, poll, trigger, webhook (unless declarative), or methods', () => {
@@ -24,7 +104,7 @@ describe('shouldAssignExecuteMethod', () => {
 
 	it('should return false when node has execute', () => {
 		const nodeType = {
-			execute: jest.fn(),
+			execute: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -32,7 +112,7 @@ describe('shouldAssignExecuteMethod', () => {
 
 	it('should return false when node has poll', () => {
 		const nodeType = {
-			poll: jest.fn(),
+			poll: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -40,7 +120,7 @@ describe('shouldAssignExecuteMethod', () => {
 
 	it('should return false when node has trigger', () => {
 		const nodeType = {
-			trigger: jest.fn(),
+			trigger: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -49,7 +129,7 @@ describe('shouldAssignExecuteMethod', () => {
 	it('should return false when node has webhook and is not declarative', () => {
 		const nodeType = {
 			description: {},
-			webhook: jest.fn(),
+			webhook: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
@@ -58,7 +138,7 @@ describe('shouldAssignExecuteMethod', () => {
 	it('should return true when node has webhook but is declarative', () => {
 		const nodeType = {
 			description: { requestDefaults: {} }, // Declarative node
-			webhook: jest.fn(),
+			webhook: vi.fn(),
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(true);
@@ -245,7 +325,7 @@ describe('setMicrosoftObservabilityDefaults', () => {
 	const originalEnv = process.env;
 
 	beforeEach(() => {
-		jest.resetModules();
+		vi.resetModules();
 		process.env = { ...originalEnv };
 	});
 
@@ -329,5 +409,53 @@ describe('setMicrosoftObservabilityDefaults', () => {
 
 		expect(process.env.ENABLE_OBSERVABILITY).toBe('custom-value');
 		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
+	});
+});
+
+describe('containsExpression', () => {
+	it('returns true for a simple expression with {{...}}', () => {
+		expect(containsExpression('={{value}}')).toBe(true);
+	});
+
+	it('returns true when {{...}} appears later in the string', () => {
+		expect(containsExpression('=hello {{world}}')).toBe(true);
+	});
+
+	it('returns true when there is content inside the braces (including spaces)', () => {
+		expect(containsExpression('={{ value }}')).toBe(true);
+	});
+
+	it('returns true when there is trailing content after the }}', () => {
+		expect(containsExpression('={{value}} + 1')).toBe(true);
+	});
+
+	it('returns false when the string does not start with "="', () => {
+		expect(containsExpression('hello {{world}}')).toBe(false);
+	});
+
+	it('returns false when the string starts with "=" but has no {{...}}', () => {
+		expect(containsExpression('=hello world')).toBe(false);
+	});
+
+	it('returns false for empty placeholder {{}}', () => {
+		expect(containsExpression('={{}}')).toBe(false);
+	});
+
+	it('returns false when the string uses single braces {..} instead of double {{..}}', () => {
+		expect(containsExpression('={value}')).toBe(false);
+	});
+
+	it('returns false when the braces are incomplete', () => {
+		expect(containsExpression('={{value}')).toBe(false);
+		expect(containsExpression('={value}}')).toBe(false);
+		expect(containsExpression('={{value')).toBe(false);
+	});
+
+	it('returns true when there are multiple placeholders and at least one matches', () => {
+		expect(containsExpression('=x {{a}} y {{b}}')).toBe(true);
+	});
+
+	it('returns false when the string is empty', () => {
+		expect(containsExpression('')).toBe(false);
 	});
 });

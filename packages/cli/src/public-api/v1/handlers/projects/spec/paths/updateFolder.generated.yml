@@ -1,0 +1,83 @@
+operationId: updateFolder
+tags:
+  - Folders
+summary: Update a folder
+description: Update folder name or parent folder.
+x-required-scope: folder:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the folder.
+    name: folderId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: Renamed Folder
+            maxLength: 128
+          parentFolderId:
+            type: string
+            description: ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.
+            example: abc123
+        additionalProperties: false
+        minProperties: 1
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              readOnly: true
+              example: zLXWgYyZrZ4Gn1Vk
+            name:
+              type: string
+              example: My Folder
+            parentFolderId:
+              type: string
+              nullable: true
+              example: kRZ0ewrAEAhCkTBd
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+          required:
+            - id
+            - name
+            - parentFolderId
+            - createdAt
+            - updatedAt
+          additionalProperties: false
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

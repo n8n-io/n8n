@@ -11,8 +11,17 @@ import {
 import { WithCreatedAt } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
+// Version of the index structure. When a change to the indexer alters what it
+// extracts, bump this version. The staleness scan behind the rebuild on server
+// start then reindexes every workflow whose rows carry an older version.
+// Version 2: the indexer records `workflowCall` rows for sub-workflow tool and
+// retriever nodes, not only for the Execute Sub-workflow node.
+export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 2;
+
 export type DependencyType =
 	| 'credentialId'
+	| 'dataTableId'
+	| 'errorWorkflow'
 	| 'nodeType'
 	| 'webhookPath'
 	| 'workflowCall'
@@ -48,7 +57,7 @@ export class WorkflowDependency extends WithCreatedAt {
 
 	/**
 	 * The type of the dependency.
-	 * credentialId | nodeType | webhookPath | workflowCall | workflowIndexed
+	 * credentialId | dataTableId | errorWorkflow | nodeType | webhookPath | workflowCall | workflowIndexed
 	 */
 	@Column({ length: 32 })
 	@Index()

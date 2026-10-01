@@ -13,7 +13,7 @@ vi.mock('vue-router', () => {
 			push: vi.fn(),
 			resolve: vi.fn().mockReturnValue({ href: 'https://test.com' }),
 		}),
-		useRoute: () => ({}),
+		useRoute: () => ({ params: {} }),
 		RouterLink: vi.fn(),
 	};
 });

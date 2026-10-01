@@ -1,54 +1,44 @@
-import { mockDeep } from 'jest-mock-extended';
-import type { ITriggerFunctions, IDeferredPromise, IRun } from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { ITriggerFunctions, IRun } from 'n8n-workflow';
 import type { EventContext } from 'rhea';
+import type { Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { handleMessage } from './handleMessage';
 
-interface MockReceiver {
-	has_credit: jest.Mock<boolean>;
-	add_credit: jest.Mock;
-}
-
 describe('handleMessage', () => {
-	let mockTriggerFunctions: jest.Mocked<ITriggerFunctions>;
+	let mockTriggerFunctions: Mocked<ITriggerFunctions>;
 	let mockContext: EventContext;
-	let mockReceiver: MockReceiver;
-	let mockDeferredPromise: jest.Mocked<IDeferredPromise<IRun>>;
+	let mockDeferredPromise: Mocked<IDeferredPromise<IRun>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 
 		mockDeferredPromise = {
 			promise: Promise.resolve({} as IRun),
-			resolve: jest.fn(),
-			reject: jest.fn(),
-		} as jest.Mocked<IDeferredPromise<IRun>>;
-
-		mockReceiver = {
-			has_credit: jest.fn<boolean, []>().mockReturnValue(true),
-			add_credit: jest.fn(),
-		};
+			resolve: vi.fn(),
+			reject: vi.fn(),
+		} as Mocked<IDeferredPromise<IRun>>;
 
 		mockContext = {
 			message: {
 				body: 'test message',
 				message_id: 1,
 			},
-			receiver: mockReceiver as unknown as EventContext['receiver'],
 		} as EventContext;
 
 		mockTriggerFunctions = mockDeep<ITriggerFunctions>({
 			helpers: {
-				createDeferredPromise: jest.fn().mockReturnValue(mockDeferredPromise),
-				returnJsonArray: jest.fn((data) => data),
+				createDeferredPromise: vi.fn().mockReturnValue(mockDeferredPromise),
+				returnJsonArray: vi.fn((data) => data),
 			},
-			emit: jest.fn(),
+			emit: vi.fn(),
 		});
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('message handling', () => {
@@ -57,7 +47,6 @@ describe('handleMessage', () => {
 
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toBeNull();
@@ -67,7 +56,6 @@ describe('handleMessage', () => {
 		it('should return null for duplicate messages', async () => {
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: 1,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toBeNull();
@@ -77,7 +65,6 @@ describe('handleMessage', () => {
 		it('should emit message data correctly', async () => {
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toEqual({ messageId: 1 });
@@ -96,7 +83,6 @@ describe('handleMessage', () => {
 
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toEqual({ messageId: 'test-id-123' });
@@ -112,7 +98,6 @@ describe('handleMessage', () => {
 
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				jsonParseBody: true,
 			});
 
@@ -138,7 +123,6 @@ describe('handleMessage', () => {
 
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				jsonParseBody: false,
 			});
 
@@ -167,7 +151,6 @@ describe('handleMessage', () => {
 
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				onlyBody: true,
 			});
 
@@ -187,7 +170,6 @@ describe('handleMessage', () => {
 
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				onlyBody: false,
 			});
 
@@ -212,7 +194,6 @@ describe('handleMessage', () => {
 
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				jsonConvertByteArrayToString: true,
 			});
 
@@ -233,7 +214,6 @@ describe('handleMessage', () => {
 
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				jsonConvertByteArrayToString: false,
 			});
 
@@ -249,7 +229,6 @@ describe('handleMessage', () => {
 		it('should create deferred promise when parallelProcessing is false', async () => {
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				parallelProcessing: false,
 			});
 
@@ -264,7 +243,6 @@ describe('handleMessage', () => {
 		it('should not create deferred promise when parallelProcessing is true', async () => {
 			await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				parallelProcessing: true,
 			});
 
@@ -283,83 +261,13 @@ describe('handleMessage', () => {
 
 			const handlePromise = handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 				parallelProcessing: false,
 			});
 
-			jest.advanceTimersByTime(100);
+			vi.advanceTimersByTime(100);
 			await handlePromise;
 
 			expect(promiseResolved).toBe(true);
-		});
-	});
-
-	describe('receiver credit management', () => {
-		it('should add credit when receiver has no credit', async () => {
-			mockReceiver.has_credit.mockReturnValue(false);
-
-			await handleMessage.call(mockTriggerFunctions, mockContext, {
-				lastMessageId: undefined,
-				pullMessagesNumber: 50,
-				sleepTime: 20,
-			});
-
-			jest.advanceTimersByTime(25);
-
-			expect(mockReceiver.add_credit).toHaveBeenCalledWith(50);
-		});
-
-		it('should not add credit when receiver has credit', async () => {
-			mockReceiver.has_credit.mockReturnValue(true);
-
-			await handleMessage.call(mockTriggerFunctions, mockContext, {
-				lastMessageId: undefined,
-				pullMessagesNumber: 100,
-			});
-
-			jest.advanceTimersByTime(20);
-
-			expect(mockReceiver.add_credit).not.toHaveBeenCalled();
-		});
-
-		it('should use default sleepTime of 10ms when not provided', async () => {
-			mockReceiver.has_credit.mockReturnValue(false);
-
-			await handleMessage.call(mockTriggerFunctions, mockContext, {
-				lastMessageId: undefined,
-				pullMessagesNumber: 100,
-			});
-
-			jest.advanceTimersByTime(15);
-
-			expect(mockReceiver.add_credit).toHaveBeenCalledWith(100);
-		});
-
-		it('should use custom sleepTime when provided', async () => {
-			mockReceiver.has_credit.mockReturnValue(false);
-
-			await handleMessage.call(mockTriggerFunctions, mockContext, {
-				lastMessageId: undefined,
-				pullMessagesNumber: 100,
-				sleepTime: 50,
-			});
-
-			jest.advanceTimersByTime(30);
-			expect(mockReceiver.add_credit).not.toHaveBeenCalled();
-
-			jest.advanceTimersByTime(25);
-			expect(mockReceiver.add_credit).toHaveBeenCalledWith(100);
-		});
-
-		it('should handle missing receiver gracefully', async () => {
-			mockContext.receiver = undefined;
-
-			await expect(
-				handleMessage.call(mockTriggerFunctions, mockContext, {
-					lastMessageId: undefined,
-					pullMessagesNumber: 100,
-				}),
-			).resolves.toEqual({ messageId: 1 });
 		});
 	});
 
@@ -372,7 +280,6 @@ describe('handleMessage', () => {
 
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toEqual({ messageId: undefined });
@@ -388,7 +295,6 @@ describe('handleMessage', () => {
 
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toEqual({ messageId: bufferId });
@@ -402,7 +308,6 @@ describe('handleMessage', () => {
 
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toEqual({ messageId: 'string-id-123' });
@@ -416,7 +321,6 @@ describe('handleMessage', () => {
 
 			const result = await handleMessage.call(mockTriggerFunctions, mockContext, {
 				lastMessageId: undefined,
-				pullMessagesNumber: 100,
 			});
 
 			expect(result).toEqual({ messageId: 999 });

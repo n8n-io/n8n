@@ -17,6 +17,7 @@ export const enum EventMessageTypeNames {
 	aiNode = '$$EventMessageAiNode',
 	runner = '$$EventMessageRunner',
 	queue = '$$EventMessageQueue',
+	mcp = '$$EventMessageMcp',
 }
 
 export const enum MessageEventBusDestinationTypeNames {
@@ -57,7 +58,7 @@ export interface IAbstractEventMessage {
 // ===============================
 
 // Circuit Breaker Options Schema
-const circuitBreakerSchema = z
+export const circuitBreakerSchema = z
 	.object({
 		maxFailures: z.number().int().positive().optional(),
 		maxDuration: z.number().int().positive().optional(),
@@ -78,7 +79,7 @@ const webhookParameterItemSchema = z.object({
 });
 
 // Webhook Parameter Options Schema
-const webhookParameterOptionsSchema = z
+export const webhookParameterOptionsSchema = z
 	.object({
 		batch: z
 			.object({
@@ -90,8 +91,10 @@ const webhookParameterOptionsSchema = z
 		queryParameterArrays: z.enum(['indices', 'brackets', 'repeat']).optional(),
 		redirect: z
 			.object({
-				followRedirects: z.boolean().optional(),
-				maxRedirects: z.number().int().positive().optional(),
+				redirect: z.object({
+					followRedirects: z.boolean().optional(),
+					maxRedirects: z.number().int().positive().optional(),
+				}),
 			})
 			.optional(),
 		response: z
@@ -108,9 +111,11 @@ const webhookParameterOptionsSchema = z
 			.optional(),
 		proxy: z
 			.object({
-				protocol: z.enum(['https', 'http']),
-				host: z.string(),
-				port: z.number().int().positive(),
+				proxy: z.object({
+					protocol: z.enum(['https', 'http']),
+					host: z.string(),
+					port: z.number().int().positive(),
+				}),
 			})
 			.optional(),
 		timeout: z.number().int().positive().optional(),

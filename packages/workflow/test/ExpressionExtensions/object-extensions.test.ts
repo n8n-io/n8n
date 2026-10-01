@@ -1,6 +1,11 @@
 import { evaluate } from './helpers';
-import { ApplicationError } from '../../src/errors';
 import { objectExtensions } from '../../src/extensions/object-extensions';
+import { jsonParse } from '../../src/utils';
+
+const hasField = objectExtensions.functions.hasField as (
+	value: object,
+	extraArgs: string[],
+) => boolean;
 
 describe('Data Transformation Functions', () => {
 	describe('Object Data Transformation Functions', () => {
@@ -25,6 +30,20 @@ describe('Data Transformation Functions', () => {
 
 			test('should return false if the key does not exist in the object', () => {
 				expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toBe(false);
+			});
+
+			test('should return true for a key served through has/get traps without an own property descriptor', () => {
+				const target = { test1: 1 };
+				const proxy = new Proxy(target, {
+					has(_target, key) {
+						return key === 'test2';
+					},
+					get(_target, key) {
+						return key === 'test2' ? 'proxied value' : undefined;
+					},
+				});
+
+				expect(hasField(proxy, ['test2'])).toBe(true);
 			});
 		});
 
@@ -123,11 +142,22 @@ describe('Data Transformation Functions', () => {
 				).toEqual({ test1: 1, test2: { nested2: 'value' } });
 			});
 
+			test('should keep an own __proto__ field as an ordinary field', () => {
+				const compact = objectExtensions.functions.compact as (value: object) => object;
+				const value = jsonParse<object>('{"test1": 1, "__proto__": {"marker": "set"}}');
+
+				const result = compact(value);
+
+				expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+				expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+				expect(({} as Record<string, unknown>).marker).toBeUndefined();
+			});
+
 			test('should not allow prototype pollution', () => {
 				['{__proto__: {polluted: true}}', '{constructor: {prototype: {polluted: true}}}'].forEach(
 					(testExpression) => {
 						expect(() => evaluate(`={{ (${testExpression}).compact() }}`)).toThrow(
-							ApplicationError,
+							'invalid syntax',
 						);
 						expect(({} as any).polluted).toBeUndefined();
 					},
@@ -137,6 +167,10 @@ describe('Data Transformation Functions', () => {
 
 		test('.urlEncode should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).urlEncode() }}')).toEqual('test1=1&test2=2');
+		});
+
+		test('.urlEncode should encode special characters per WHATWG spec', () => {
+			expect(evaluate('={{ ({ name: "hello!()" }).urlEncode() }}')).toEqual('name=hello%21%28%29');
 		});
 
 		describe('.keys', () => {

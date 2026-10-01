@@ -9,9 +9,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@n8n/ai-utilities';
-
-import { processDocuments } from '../shared/processDocuments';
+import { processDocuments, type N8nJsonLoader } from '@n8n/ai-utilities';
 
 // This node is deprecated. Use VectorStoreZep instead.
 export class VectorStoreZepInsert implements INodeType {

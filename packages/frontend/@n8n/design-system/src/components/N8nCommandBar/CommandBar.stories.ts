@@ -41,6 +41,14 @@ const sampleItems = [
 		section: 'Actions',
 		handler: () => console.log('Duplicating workflow'),
 	},
+	{
+		id: 'publish-workflow',
+		title: 'Publish workflow (no permission)',
+		icon: { html: '🔒' },
+		section: 'Actions',
+		disabled: true,
+		handler: () => console.log('Never runs: the item is disabled'),
+	},
 
 	// Navigation section
 	{
@@ -101,7 +109,7 @@ const sampleItems = [
 ];
 
 export default {
-	title: 'Molecules/CommandBar',
+	title: 'Core/CommandBar',
 	component: N8nCommandBar,
 	argTypes: {
 		placeholder: {
@@ -118,6 +126,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'A searchable command palette for quickly executing actions.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

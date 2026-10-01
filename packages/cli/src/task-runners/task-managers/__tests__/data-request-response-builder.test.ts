@@ -1,5 +1,4 @@
 import type { PartialAdditionalData, TaskData } from '@n8n/task-runner';
-import { mock } from 'jest-mock-extended';
 import {
 	createRunExecutionData,
 	type IExecuteContextData,
@@ -8,6 +7,7 @@ import {
 	type IRunExecutionData,
 	type Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DataRequestResponseBuilder } from '../data-request-response-builder';
 
@@ -24,6 +24,7 @@ const additionalData = mock<PartialAdditionalData>({
 	currentNodeParameters: undefined,
 	executionTimeoutTimestamp: undefined,
 	restartExecutionId: undefined,
+	evaluationRunId: 'test-run-id-123',
 });
 
 const node = mock<INode>();
@@ -59,6 +60,7 @@ const metadata = {
 };
 
 const runExecutionData = mock<IRunExecutionData>({
+	resumeToken: 'test-resume-token-preserved',
 	executionData: {
 		contextData,
 		metadata,
@@ -107,6 +109,7 @@ describe('DataRequestResponseBuilder', () => {
 			currentNodeParameters: undefined,
 			executionTimeoutTimestamp: undefined,
 			restartExecutionId: undefined,
+			evaluationRunId: 'test-run-id-123',
 		});
 	});
 
@@ -128,8 +131,8 @@ describe('DataRequestResponseBuilder', () => {
 	it('clears nodeExecutionStack, waitingExecution and waitingExecutionSource from runExecutionData', () => {
 		const result = builder.buildFromTaskData(taskData);
 
-		expect(result.runExecutionData).toStrictEqual(
-			createRunExecutionData({
+		expect(result.runExecutionData).toStrictEqual({
+			...createRunExecutionData({
 				startData: runExecutionData.startData,
 				resultData: runExecutionData.resultData,
 				executionData: {
@@ -140,6 +143,7 @@ describe('DataRequestResponseBuilder', () => {
 					waitingExecutionSource: null,
 				},
 			}),
-		);
+			resumeToken: 'test-resume-token-preserved',
+		});
 	});
 });

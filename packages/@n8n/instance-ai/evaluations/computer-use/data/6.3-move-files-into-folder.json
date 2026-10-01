@@ -1,0 +1,27 @@
+{
+	"id": "6.3-move-files-into-folder",
+	"category": "filesystem-write",
+	"prompt": "Can you take the client_briefing.md and workflow_diagram.png files and move them into a new project folder to keep things organized?",
+	"setup": {
+		"seedFiles": [
+			{ "from": "client_briefing.md", "to": "client_briefing.md" },
+			{ "from": "workflow_diagram.png", "to": "workflow_diagram.png" }
+		]
+	},
+	"budgets": { "maxToolCalls": 15, "maxDurationMs": 180000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 15,
+			"maxToolResultTokensEst": 20000,
+			"maxSingleToolResultTokensEst": 10000
+		},
+		{ "type": "fs.fileExists", "glob": "*/client_briefing.md" },
+		{ "type": "fs.fileExists", "glob": "*/workflow_diagram.png" },
+		{ "type": "fs.fileNotExists", "glob": "client_briefing.md" },
+		{ "type": "fs.fileNotExists", "glob": "workflow_diagram.png" }
+	],
+	"tags": ["filesystem-write", "shell", "regression"]
+}

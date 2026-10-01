@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -7,6 +8,7 @@ import {
 	WorkflowEntity,
 	ProjectRelation,
 	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
@@ -14,21 +16,21 @@ import {
 } from '@n8n/db';
 import type { SharedCredentials, SettingsRepository } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
 
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const projectRepository = mockInstance(ProjectRepository);
 	const cacheService = mockInstance(CacheService);
 	const passwordUtility = mockInstance(PasswordUtility);
 	const logger = mockInstance(Logger);
@@ -41,13 +43,14 @@ describe('OwnershipService', () => {
 		logger,
 		passwordUtility,
 		projectRelationRepository,
+		projectRepository,
 		sharedWorkflowRepository,
 		userRepository,
 		settingsRepository,
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getWorkflowProjectCached()', () => {
@@ -81,6 +84,7 @@ describe('OwnershipService', () => {
 			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
 			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.projectId = 'some-project-id';
 			projectRelation.project = project;
 			projectRelation.user = owner;
 
@@ -125,6 +129,39 @@ describe('OwnershipService', () => {
 			expect(projectRelationRepository.getPersonalProjectOwners).not.toHaveBeenCalled();
 			expect(foundOwner).toEqual(owner);
 		});
+
+		test('should fetch owners for uncached projects in one repository call', async () => {
+			const firstOwner = Object.assign(new User(), { role: GLOBAL_OWNER_ROLE });
+			const secondOwner = Object.assign(new User(), { role: GLOBAL_OWNER_ROLE });
+			const ownerRelations = [
+				Object.assign(new ProjectRelation(), {
+					projectId: 'project-1',
+					user: firstOwner,
+				}),
+				Object.assign(new ProjectRelation(), {
+					projectId: 'project-2',
+					user: secondOwner,
+				}),
+			];
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce(ownerRelations);
+
+			const owners = await ownershipService.getPersonalProjectOwnersCached([
+				'project-1',
+				'project-2',
+			]);
+
+			expect(projectRelationRepository.getPersonalProjectOwners).toHaveBeenCalledTimes(1);
+			expect(projectRelationRepository.getPersonalProjectOwners).toHaveBeenCalledWith([
+				'project-1',
+				'project-2',
+			]);
+			expect(owners).toEqual(
+				new Map([
+					['project-1', firstOwner],
+					['project-2', secondOwner],
+				]),
+			);
+		});
 	});
 
 	describe('getProjectOwnerCached()', () => {
@@ -135,6 +172,7 @@ describe('OwnershipService', () => {
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
 				role: PROJECT_OWNER_ROLE_SLUG,
+				projectId: 'some-project-id',
 				project: mockProject,
 				user: mockOwner,
 			});
@@ -233,29 +271,91 @@ describe('OwnershipService', () => {
 		});
 	});
 
+	describe('invalidateProjectOwnerCacheByUserId()', () => {
+		test('should delete cache entry for personal project', async () => {
+			const project = new Project();
+			project.id = uuid();
+			projectRepository.getPersonalProjectForUser.mockResolvedValueOnce(project);
+
+			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
+
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(cacheService.deleteFromHash).toHaveBeenCalledWith('project-owner', project.id);
+		});
+
+		test('should not delete cache if user has no personal project', async () => {
+			projectRepository.getPersonalProjectForUser.mockResolvedValueOnce(null);
+
+			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
+
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('invalidateWorkflowProjectCacheForProject()', () => {
+		test('should delete cache entry for each workflow in the project', async () => {
+			const workflowIds = ['wf1', 'wf2', 'wf3'];
+			sharedWorkflowRepository.find.mockResolvedValueOnce(
+				workflowIds.map((workflowId) => Object.assign(new SharedWorkflow(), { workflowId })),
+			);
+
+			await ownershipService.invalidateWorkflowProjectCacheForProject('project-123');
+
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith({
+				where: { projectId: 'project-123', role: 'workflow:owner' },
+				select: ['workflowId'],
+			});
+			for (const workflowId of workflowIds) {
+				expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', workflowId);
+			}
+			expect(cacheService.deleteFromHash).toHaveBeenCalledTimes(workflowIds.length);
+		});
+
+		test('should not call deleteFromHash if project has no workflows', async () => {
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+
+			await ownershipService.invalidateWorkflowProjectCacheForProject('empty-project');
+
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getInstanceOwner()', () => {
-		test('should find owner using global owner role ID', async () => {
+		test('should find owner using global owner role ID, with the role relation loaded', async () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				relations: ['role'],
 			});
 		});
 	});
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
+			userRepository.exists.mockResolvedValueOnce(true);
 
-			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner already setup'),
-			);
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner already setup');
 
 			expect(userRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith(
 				'Request to claim instance ownership failed because instance owner already exists',
 			);
+		});
+
+		it('should throw a BadRequestError if the shell user is not found', async () => {
+			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.findOne.mockResolvedValueOnce(null);
+
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner shell user not found');
+
+			expect(userRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('should setup the instance owner successfully', async () => {
@@ -276,7 +376,7 @@ describe('OwnershipService', () => {
 			const expected = { ...user, ...payload, id: 'newUserId' };
 
 			userRepository.exists.mockResolvedValueOnce(false);
-			userRepository.findOneOrFail.mockResolvedValueOnce(user);
+			userRepository.findOne.mockResolvedValueOnce(user);
 			userRepository.save.mockResolvedValueOnce(expected);
 
 			const actual = await ownershipService.setupOwner(payload);
@@ -286,6 +386,68 @@ describe('OwnershipService', () => {
 				userId: 'newUserId',
 			});
 			expect(actual.id).toEqual('newUserId');
+		});
+
+		it('should normalize email to lowercase', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			const payload = {
+				email: 'Admin@Example.COM',
+				password: 'NewPassword123',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			};
+
+			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.findOne.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(user);
+
+			await ownershipService.setupOwner(payload);
+
+			expect(user.email).toBe('admin@example.com');
+		});
+
+		it('should skip hasInstanceOwner check when override is true', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			userRepository.findOne.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(user);
+
+			await ownershipService.setupOwner(
+				{ email: 'a@b.com', password: 'hash', firstName: 'A', lastName: 'B' },
+				{ overwriteExisting: true },
+			);
+
+			expect(userRepository.exists).not.toHaveBeenCalled();
+		});
+
+		it('should use pre-hashed password when preHashed is true', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			const preHashedPassword = '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
+
+			userRepository.findOne.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(user);
+
+			await ownershipService.setupOwner(
+				{ email: 'a@b.com', password: preHashedPassword, firstName: 'A', lastName: 'B' },
+				{ overwriteExisting: true, passwordIsHashed: true },
+			);
+
+			expect(user.password).toBe(preHashedPassword);
+			expect(passwordUtility.hash).not.toHaveBeenCalled();
 		});
 	});
 });

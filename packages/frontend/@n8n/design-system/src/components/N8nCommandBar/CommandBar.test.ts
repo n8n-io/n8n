@@ -63,6 +63,25 @@ describe('components', () => {
 			expect(wrapper.emitted()).toBeDefined();
 		});
 
+		it('emits update:open when opened via Cmd+K and when closed via Escape', async () => {
+			const wrapper = render(N8nCommandBar, {
+				props: { items: createSampleItems() },
+			});
+
+			await openCommandBar();
+
+			const openEvents = wrapper.emitted('update:open') ?? [];
+			expect(openEvents.length).toBeGreaterThanOrEqual(1);
+			expect(openEvents[openEvents.length - 1]).toEqual([true]);
+
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+			await waitFor(() => {
+				const events = wrapper.emitted('update:open') ?? [];
+				expect(events[events.length - 1]).toEqual([false]);
+			});
+		});
+
 		it('emits inputChange and filters results as user types', async () => {
 			const wrapper = render(N8nCommandBar, {
 				props: { items: createSampleItems() },
@@ -127,6 +146,30 @@ describe('components', () => {
 			await waitFor(() =>
 				expect(screen.queryByPlaceholderText('Type a command...')).not.toBeInTheDocument(),
 			);
+		});
+
+		it('does not run a disabled item on click or Enter, and stays open', async () => {
+			const onCreate = vi.fn();
+			const items = createSampleItems().map((it) =>
+				it.id === 'create' ? { ...it, handler: onCreate, disabled: true } : it,
+			);
+
+			render(N8nCommandBar, { props: { items } });
+			await openCommandBar();
+
+			const item = screen.getByText('Create new workflow');
+			expect(item.closest('[aria-disabled="true"]')).not.toBeNull();
+
+			await fireEvent.click(item);
+			expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument();
+
+			// Filter so the disabled item is the highlighted one, then press Enter on it.
+			const input = screen.getByPlaceholderText('Type a command...');
+			await fireEvent.update(input, 'Create new');
+			await fireEvent.keyDown(input, { key: 'Enter' });
+
+			expect(onCreate).not.toHaveBeenCalled();
+			expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument();
 		});
 
 		it('closes when clicking outside the command bar', async () => {

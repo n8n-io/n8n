@@ -6,8 +6,9 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { isValueExpression } from '@/app/utils/nodeTypesUtils';
-import { computed } from 'vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { computed, inject } from 'vue';
+import { ChatHubToolContextKey } from '@/app/constants';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
@@ -17,7 +18,7 @@ import {
 	N8nActionToggle,
 	N8nIcon,
 	N8nIconButton,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nText,
 } from '@n8n/design-system';
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
 	value: NodeParameterValueType;
 	showOptions?: boolean;
 	showExpressionSelector?: boolean;
+	showFocusPanel?: boolean;
 	customActions?: Array<{ label: string; value: string; disabled?: boolean }>;
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
@@ -38,6 +40,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	showOptions: true,
 	showExpressionSelector: true,
+	showFocusPanel: true,
 	customActions: () => [],
 	iconOrientation: 'vertical',
 	loading: false,
@@ -53,19 +56,27 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value?.activeNode ?? null);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
+const isChatHubToolContext = inject(ChatHubToolContextKey, false);
+
 const shouldShowExpressionSelector = computed(
-	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
+	() =>
+		!isChatHubToolContext &&
+		!props.parameter.noDataExpression &&
+		props.showExpressionSelector &&
+		!props.isReadOnly,
 );
 const isInEmbeddedNdv = useIsInExperimentalNdv();
 const experimentalNdvStore = useExperimentalNdvStore();
 
 const canBeOpenedInFocusPanel = computed(() => {
+	if (!props.showFocusPanel) return false;
+	if (isChatHubToolContext) return false;
 	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
 		return false;
 	}
@@ -181,10 +192,9 @@ const onViewSelected = (selected: string) => {
 		</div>
 		<div v-else :class="$style.controlsContainer">
 			<N8nIconButton
+				variant="ghost"
 				v-if="canBeOpenedInFocusPanel"
-				type="tertiary"
-				text
-				size="small"
+				size="xsmall"
 				icon-size="large"
 				icon="panel-right"
 				:class="$style.focusButton"
@@ -197,7 +207,7 @@ const onViewSelected = (selected: string) => {
 				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
-					size="small"
+					size="xsmall"
 					theme="dark"
 					icon-size="large"
 					:actions="actions"
@@ -207,9 +217,9 @@ const onViewSelected = (selected: string) => {
 				/>
 			</div>
 
-			<N8nRadioButtons
+			<N8nSegmentControl
 				v-if="shouldShowExpressionSelector"
-				size="small"
+				size="mini"
 				:class="$style.expressionSwitch"
 				:model-value="selectedView"
 				:disabled="isReadOnly"
@@ -221,10 +231,9 @@ const onViewSelected = (selected: string) => {
 			/>
 
 			<N8nIconButton
+				variant="ghost"
 				v-if="showDelete && onDelete"
-				type="tertiary"
-				text
-				size="small"
+				size="xsmall"
 				icon-size="large"
 				icon="trash-2"
 				:class="$style.deleteButton"
@@ -239,8 +248,8 @@ const onViewSelected = (selected: string) => {
 <style lang="scss" module>
 .container {
 	display: flex;
-	min-height: var(--parameter-input-options--height, 22px);
-	max-height: var(--parameter-input-options--height, 22px);
+	min-height: var(--parameter-input-options--height, 24px);
+	max-height: var(--parameter-input-options--height, 24px);
 	overflow: hidden;
 }
 
@@ -258,6 +267,7 @@ const onViewSelected = (selected: string) => {
 }
 
 .expressionSwitch {
+	--n8n-segment-control--height: 24px;
 	margin-right: var(--spacing--4xs);
 }
 

@@ -1,21 +1,20 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-import type { BooleanLicenseFeature } from '@n8n/constants';
+import { type BooleanLicenseFeature, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
+import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
-import type { NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
+import type { PaginatedRequest } from '@/public-api/types';
 
-import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
-
-const UNLIMITED_USERS_QUOTA = -1;
 
 export type ProjectScopeResource = 'workflow' | 'credential' | 'dataTable';
 
@@ -62,20 +61,22 @@ export const projectScope = (scopes: Scope | Scope[], resource: ProjectScopeReso
 	buildScopeMiddleware(Array.isArray(scopes) ? scopes : [scopes], resource, { globalOnly: false });
 
 export const validCursor = (
-	req: PaginatedRequest,
+	req: Request,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	if (req.query.cursor) {
-		const { cursor } = req.query;
+	const paginatedReq = req as unknown as PaginatedRequest;
+
+	if (paginatedReq.query.cursor) {
+		const { cursor } = paginatedReq.query;
 		try {
 			const paginationData = decodeCursor(cursor);
 			if ('offset' in paginationData) {
-				req.query.offset = paginationData.offset;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.offset = paginationData.offset;
+				paginatedReq.query.limit = paginationData.limit;
 			} else {
-				req.query.lastId = paginationData.lastId;
-				req.query.limit = paginationData.limit;
+				paginatedReq.query.lastId = paginationData.lastId;
+				paginatedReq.query.limit = paginationData.limit;
 			}
 		} catch (error) {
 			return res.status(400).json({
@@ -87,25 +88,82 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
-export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	return Container.get(License).isApiKeyScopesEnabled()
-		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: emptyMiddleware;
+/**
+ * Signals that an endpoint is deprecated via the RFC 9745 `Deprecation` response header. Callers
+ * pass a semantic `Date`; this middleware owns the on-the-wire formatting so the wire syntax
+ * (an RFC 9651 structured-field Date, `@<unix-seconds>`) never leaks to call sites.
+ *
+ * `since` is a fixed value owned by the caller — never derive it from `Date.now()`, so the header
+ * stays deterministic across requests.
+ */
+export const deprecated = ({ since }: DeprecationInfo) => {
+	const deprecation = `@${Math.floor(since.getTime() / 1000)}`;
+
+	return (_req: Request, res: express.Response, next: express.NextFunction): void => {
+		res.setHeader('Deprecation', deprecation);
+		next();
+	};
 };
+
+export type ScopeTaggedMiddleware = Middleware & {
+	__apiKeyScope: ApiKeyScope;
+};
+
+export type Middleware = (req: Request, res: Response, next: NextFunction) => unknown;
+
+function tagMiddleware(middleware: Middleware, apiKeyScope: ApiKeyScope): ScopeTaggedMiddleware {
+	const tagged: ScopeTaggedMiddleware = Object.assign(
+		(req: Request, res: Response, next: NextFunction) => middleware(req, res, next),
+		{ __apiKeyScope: apiKeyScope },
+	);
+	return tagged;
+}
+
+function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
+	return async (
+		req: AuthenticatedRequest,
+		res: express.Response,
+		next: express.NextFunction,
+	): Promise<void> => {
+		const { tokenGrant } = req;
+
+		if (!tokenGrant) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+
+		if (!tokenGrant.apiKeyScopes?.includes(endpointScope)) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+
+		next();
+		return;
+	};
+}
+
+export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
+	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
+
+/**
+ * Tags an endpoint with a composite `x-required-scope` value (comma-separated).
+ * Actual scope enforcement is deferred to the handler, which picks the required
+ * scope based on the request payload.
+ */
+export function publicApiCompositeScope(requiredScopes: string): ScopeTaggedMiddleware {
+	return Object.assign(
+		(_req: Request, _res: Response, next: NextFunction) => {
+			next();
+		},
+		{ __apiKeyScope: requiredScopes as ApiKeyScope },
+	);
+}
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
-	if ('scope' in config) {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
-			: globalScope(config.scope);
-	} else {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
-			: globalScope(config.globalScope);
-	}
+	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+	return tagMiddleware(makePublicApiScopeEnforcementMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (
@@ -114,9 +172,9 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
-	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
+	if (license.getUsersLimit() !== UNLIMITED_LICENSE_QUOTA) {
 		return res.status(403).json({
-			message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
+			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
 	}
 

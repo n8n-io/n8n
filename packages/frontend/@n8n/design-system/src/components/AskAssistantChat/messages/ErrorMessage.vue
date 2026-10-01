@@ -5,7 +5,7 @@ import type { ChatUI } from '../../../types/assistant';
 import N8nButton from '../../N8nButton';
 import N8nIcon from '../../N8nIcon';
 
-interface Props {
+export interface Props {
 	message: ChatUI.ErrorMessage & { id: string; read: boolean };
 	isFirstOfRole: boolean;
 	user?: {
@@ -27,8 +27,8 @@ const { t } = useI18n();
 			</p>
 			<N8nButton
 				v-if="message.retry"
-				type="secondary"
-				size="mini"
+				variant="subtle"
+				size="xsmall"
 				:class="$style.retryButton"
 				data-test-id="error-retry-button"
 				@click="() => message.retry?.()"

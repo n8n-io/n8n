@@ -6,6 +6,9 @@ export interface PendingCall {
 	timer: ReturnType<typeof setTimeout>;
 }
 
+/** Pending calls are keyed `${sessionId}_${messageId}`. */
+const belongsToSession = (callId: string, sessionId: string) => callId.startsWith(`${sessionId}_`);
+
 export class PendingCallsManager {
 	private pendingCalls: Record<string, PendingCall> = {};
 
@@ -62,13 +65,17 @@ export class PendingCallsManager {
 		return callId in this.pendingCalls;
 	}
 
+	hasForSession(sessionId: string): boolean {
+		return Object.keys(this.pendingCalls).some((callId) => belongsToSession(callId, sessionId));
+	}
+
 	remove(callId: string): void {
 		delete this.pendingCalls[callId];
 	}
 
 	cleanupBySessionId(sessionId: string): void {
 		for (const callId of Object.keys(this.pendingCalls)) {
-			if (callId.startsWith(`${sessionId}_`)) {
+			if (belongsToSession(callId, sessionId)) {
 				const pending = this.pendingCalls[callId];
 				if (pending) {
 					clearTimeout(pending.timer);

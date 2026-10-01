@@ -1,0 +1,659 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import { createInteractionTools } from './interaction';
+import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
+
+describe('createInteractionTools', () => {
+	let mockConnection: ReturnType<typeof createMockConnection>;
+	let tools: ReturnType<typeof createInteractionTools>;
+
+	beforeEach(() => {
+		mockConnection = createMockConnection();
+		tools = createInteractionTools(mockConnection.connection);
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_click
+	// -----------------------------------------------------------------------
+
+	describe('browser_click', () => {
+		const getTool = () => findTool(tools, 'browser_click');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_click');
+			});
+
+			it('has a non-empty description', () => {
+				expect(getTool().description.length).toBeGreaterThan(0);
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('accepts element with ref', () => {
+				expect(() => getTool().inputSchema.parse({ element: { ref: 'e1' } })).not.toThrow();
+			});
+
+			it('accepts element with selector', () => {
+				expect(() => getTool().inputSchema.parse({ element: { selector: '#btn' } })).not.toThrow();
+			});
+
+			it('rejects missing element', () => {
+				expect(() => getTool().inputSchema.parse({})).toThrow();
+			});
+
+			it('accepts optional button', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, button: 'right' }),
+				).not.toThrow();
+			});
+
+			it('rejects invalid button', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, button: 'back' }),
+				).toThrow();
+			});
+
+			it('accepts clickCount', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, clickCount: 2 }),
+				).not.toThrow();
+			});
+
+			it('accepts modifiers', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, modifiers: ['Control', 'Shift'] }),
+				).not.toThrow();
+			});
+
+			it('rejects invalid modifier', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, modifiers: ['Super'] }),
+				).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.click with ref target', async () => {
+				const result = await getTool().execute(
+					{ element: { ref: 'e1' }, button: 'left' },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.click).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e1' },
+					{
+						button: 'left',
+						clickCount: undefined,
+						modifiers: undefined,
+					},
+				);
+				expect(data.clicked).toBe(true);
+				expect(data.ref).toBe('e1');
+			});
+
+			it('calls adapter.click with selector target', async () => {
+				const result = await getTool().execute({ element: { selector: '#btn' } }, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(data.clicked).toBe(true);
+				expect(data.ref).toBeUndefined();
+			});
+
+			it('uses waitForCompletion', async () => {
+				await getTool().execute({ element: { ref: 'e1' } }, TOOL_CONTEXT);
+
+				expect(mockConnection.adapter.waitForCompletion).toHaveBeenCalled();
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_type
+	// -----------------------------------------------------------------------
+
+	describe('browser_type', () => {
+		const getTool = () => findTool(tools, 'browser_type');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_type');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires element and text', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: 'hello' }),
+				).not.toThrow();
+			});
+
+			it('rejects missing text', () => {
+				expect(() => getTool().inputSchema.parse({ element: { ref: 'e1' } })).toThrow();
+			});
+
+			it('rejects missing element', () => {
+				expect(() => getTool().inputSchema.parse({ text: 'hello' })).toThrow();
+			});
+
+			it('accepts a paste mode for values that must land in one operation', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: '{}', mode: 'paste' }),
+				).not.toThrow();
+			});
+
+			it('rejects an unknown mode', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, text: '{}', mode: 'slowly' }),
+				).toThrow();
+			});
+
+			it('accepts optional clear, submit, delay', () => {
+				expect(() =>
+					getTool().inputSchema.parse({
+						element: { ref: 'e1' },
+						text: 'hello',
+						clear: true,
+						submit: true,
+						delay: 50,
+					}),
+				).not.toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.type with correct args', async () => {
+				const result = await getTool().execute(
+					{ element: { ref: 'e1' }, text: 'hello', clear: true, submit: false },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.type).toHaveBeenCalledWith('page1', { ref: 'e1' }, 'hello', {
+					clear: true,
+					submit: false,
+					delay: undefined,
+				});
+				expect(data.typed).toBe(true);
+				expect(data.text).toBe('hello');
+				expect(data.ref).toBe('e1');
+			});
+
+			it('passes the paste mode down to the adapter', async () => {
+				await getTool().execute(
+					{ element: { ref: 'e1' }, text: '{"a": 1}', mode: 'paste' },
+					TOOL_CONTEXT,
+				);
+
+				expect(mockConnection.adapter.type).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e1' },
+					'{"a": 1}',
+					expect.objectContaining({ mode: 'paste' }),
+				);
+			});
+
+			it('routes a failure through the connection so it can be explained', async () => {
+				// The wrapper stays out of the error taxonomy; BrowserConnection owns it.
+				const failure = new Error('locator.pressSequentially: Timeout 30000ms exceeded.');
+				mockConnection.adapter.type.mockRejectedValue(failure);
+				const explainFailure = mockConnection.connection.explainFailure as unknown as ReturnType<
+					typeof vi.fn
+				>;
+				explainFailure.mockReturnValueOnce(new Error('explained'));
+
+				const result = await getTool().execute(
+					{ element: { ref: 'e1' }, text: 'hello' },
+					TOOL_CONTEXT,
+				);
+
+				expect(explainFailure).toHaveBeenCalledWith(failure);
+				expect(structuredOf(result).error).toBe('explained');
+			});
+
+			it('opens the call before acting, so an earlier block is not blamed on it', async () => {
+				const beginToolCall = mockConnection.connection.beginToolCall as unknown as ReturnType<
+					typeof vi.fn
+				>;
+
+				await getTool().execute({ element: { ref: 'e1' }, text: 'hello' }, TOOL_CONTEXT);
+
+				expect(beginToolCall.mock.invocationCallOrder[0]).toBeLessThan(
+					mockConnection.adapter.type.mock.invocationCallOrder[0],
+				);
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_select
+	// -----------------------------------------------------------------------
+
+	describe('browser_select', () => {
+		const getTool = () => findTool(tools, 'browser_select');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_select');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires element and values', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, values: ['opt1'] }),
+				).not.toThrow();
+			});
+
+			it('rejects missing values', () => {
+				expect(() => getTool().inputSchema.parse({ element: { ref: 'e1' } })).toThrow();
+			});
+
+			it('rejects non-array values', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ element: { ref: 'e1' }, values: 'opt1' }),
+				).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.select and returns selected values', async () => {
+				mockConnection.adapter.select.mockResolvedValue(['option1', 'option2']);
+
+				const result = await getTool().execute(
+					{ element: { selector: 'select#color' }, values: ['option1', 'option2'] },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.select).toHaveBeenCalledWith(
+					'page1',
+					{ selector: 'select#color' },
+					['option1', 'option2'],
+				);
+				expect(data.selected).toEqual(['option1', 'option2']);
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_drag
+	// -----------------------------------------------------------------------
+
+	describe('browser_drag', () => {
+		const getTool = () => findTool(tools, 'browser_drag');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_drag');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires from and to', () => {
+				expect(() =>
+					getTool().inputSchema.parse({
+						from: { ref: 'e1' },
+						to: { ref: 'e2' },
+					}),
+				).not.toThrow();
+			});
+
+			it('accepts mixed ref and selector', () => {
+				expect(() =>
+					getTool().inputSchema.parse({
+						from: { ref: 'e1' },
+						to: { selector: '#drop-zone' },
+					}),
+				).not.toThrow();
+			});
+
+			it('rejects missing from', () => {
+				expect(() => getTool().inputSchema.parse({ to: { ref: 'e2' } })).toThrow();
+			});
+
+			it('rejects missing to', () => {
+				expect(() => getTool().inputSchema.parse({ from: { ref: 'e1' } })).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.drag with from and to', async () => {
+				const result = await getTool().execute(
+					{ from: { ref: 'e1' }, to: { ref: 'e2' } },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.drag).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e1' },
+					{ ref: 'e2' },
+				);
+				expect(data.dragged).toBe(true);
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_hover
+	// -----------------------------------------------------------------------
+
+	describe('browser_hover', () => {
+		const getTool = () => findTool(tools, 'browser_hover');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_hover');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires element', () => {
+				expect(() => getTool().inputSchema.parse({ element: { ref: 'e1' } })).not.toThrow();
+			});
+
+			it('rejects missing element', () => {
+				expect(() => getTool().inputSchema.parse({})).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.hover', async () => {
+				const result = await getTool().execute(
+					{ element: { selector: '.menu-item' } },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.hover).toHaveBeenCalledWith('page1', {
+					selector: '.menu-item',
+				});
+				expect(data.hovered).toBe(true);
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_press
+	// -----------------------------------------------------------------------
+
+	describe('browser_press', () => {
+		const getTool = () => findTool(tools, 'browser_press');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_press');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires keys', () => {
+				expect(() => getTool().inputSchema.parse({ keys: 'Enter' })).not.toThrow();
+			});
+
+			it('rejects missing keys', () => {
+				expect(() => getTool().inputSchema.parse({})).toThrow();
+			});
+
+			it('rejects non-string keys', () => {
+				expect(() => getTool().inputSchema.parse({ keys: 13 })).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.press with keys', async () => {
+				const result = await getTool().execute({ keys: 'Control+A' }, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.press).toHaveBeenCalledWith('page1', 'Control+A');
+				expect(data.pressed).toBe('Control+A');
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_scroll
+	// -----------------------------------------------------------------------
+
+	describe('browser_scroll', () => {
+		const getTool = () => findTool(tools, 'browser_scroll');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_scroll');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('accepts element mode', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ mode: 'element', element: { ref: 'e1' } }),
+				).not.toThrow();
+			});
+
+			it('accepts direction mode', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ mode: 'direction', direction: 'down' }),
+				).not.toThrow();
+			});
+
+			it('accepts direction mode with amount', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ mode: 'direction', direction: 'up', amount: 500 }),
+				).not.toThrow();
+			});
+
+			it('rejects element mode without element', () => {
+				expect(() => getTool().inputSchema.parse({ mode: 'element' })).toThrow();
+			});
+
+			it('rejects direction mode without direction', () => {
+				expect(() => getTool().inputSchema.parse({ mode: 'direction' })).toThrow();
+			});
+
+			it('rejects invalid direction', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ mode: 'direction', direction: 'left' }),
+				).toThrow();
+			});
+
+			it('rejects missing mode', () => {
+				expect(() => getTool().inputSchema.parse({})).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('scrolls element into view', async () => {
+				const result = await getTool().execute(
+					{ mode: 'element', element: { ref: 'e5' } },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.scroll).toHaveBeenCalledWith('page1', { ref: 'e5' }, {});
+				expect(data.scrolled).toBe(true);
+			});
+
+			it('scrolls by direction', async () => {
+				const result = await getTool().execute(
+					{ mode: 'direction', direction: 'down', amount: 300 },
+					TOOL_CONTEXT,
+				);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.scroll).toHaveBeenCalledWith('page1', undefined, {
+					direction: 'down',
+					amount: 300,
+				});
+				expect(data.scrolled).toBe(true);
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_upload
+	// -----------------------------------------------------------------------
+
+	describe('browser_upload', () => {
+		const getTool = () => findTool(tools, 'browser_upload');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_upload');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires files array', () => {
+				expect(() => getTool().inputSchema.parse({ files: ['/path/to/file.txt'] })).not.toThrow();
+			});
+
+			it('accepts optional element', () => {
+				expect(() =>
+					getTool().inputSchema.parse({
+						element: { ref: 'e1' },
+						files: ['/path/to/file.txt'],
+					}),
+				).not.toThrow();
+			});
+
+			it('rejects missing files', () => {
+				expect(() => getTool().inputSchema.parse({})).toThrow();
+			});
+
+			it('rejects non-array files', () => {
+				expect(() => getTool().inputSchema.parse({ files: '/path/to/file.txt' })).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.upload with files', async () => {
+				const files = ['/tmp/a.png', '/tmp/b.pdf'];
+				const result = await getTool().execute({ element: { ref: 'e1' }, files }, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.upload).toHaveBeenCalledWith('page1', { ref: 'e1' }, files);
+				expect(data.uploaded).toBe(true);
+				expect(data.files).toEqual(files);
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// browser_dialog
+	// -----------------------------------------------------------------------
+
+	describe('browser_dialog', () => {
+		const getTool = () => findTool(tools, 'browser_dialog');
+
+		describe('metadata', () => {
+			it('has the correct name', () => {
+				expect(getTool().name).toBe('browser_dialog');
+			});
+		});
+
+		describe('inputSchema validation', () => {
+			it('requires action', () => {
+				expect(() => getTool().inputSchema.parse({ action: 'accept' })).not.toThrow();
+			});
+
+			it('accepts dismiss', () => {
+				expect(() => getTool().inputSchema.parse({ action: 'dismiss' })).not.toThrow();
+			});
+
+			it('accepts optional text', () => {
+				expect(() =>
+					getTool().inputSchema.parse({ action: 'accept', text: 'my input' }),
+				).not.toThrow();
+			});
+
+			it('rejects missing action', () => {
+				expect(() => getTool().inputSchema.parse({})).toThrow();
+			});
+
+			it('rejects invalid action', () => {
+				expect(() => getTool().inputSchema.parse({ action: 'close' })).toThrow();
+			});
+		});
+
+		describe('execute', () => {
+			it('calls adapter.dialog and returns dialog type', async () => {
+				mockConnection.adapter.dialog.mockResolvedValue('confirm');
+
+				const result = await getTool().execute({ action: 'accept', text: 'yes' }, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(mockConnection.adapter.dialog).toHaveBeenCalledWith('page1', 'accept', 'yes');
+				expect(data.handled).toBe(true);
+				expect(data.action).toBe('accept');
+				expect(data.dialogType).toBe('confirm');
+			});
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// snapshot input param (shared via createConnectedTool)
+	// -----------------------------------------------------------------------
+
+	describe('snapshot input param', () => {
+		const validInputs: Record<string, Record<string, unknown>> = {
+			browser_click: { element: { ref: 'e1' } },
+			browser_type: { element: { ref: 'e1' }, text: 'hi' },
+			browser_select: { element: { ref: 'e1' }, values: ['a'] },
+			browser_drag: { from: { ref: 'e1' }, to: { ref: 'e2' } },
+			browser_hover: { element: { ref: 'e1' } },
+			browser_press: { keys: 'Enter' },
+			browser_scroll: { mode: 'direction', direction: 'down' },
+			browser_upload: { files: ['/tmp/a.txt'] },
+			browser_dialog: { action: 'accept' },
+		};
+
+		it.each(Object.keys(validInputs))('%s accepts snapshot values and rejects invalid', (name) => {
+			const schema = findTool(tools, name).inputSchema;
+			expect(() => schema.parse({ ...validInputs[name], snapshot: 'interactive' })).not.toThrow();
+			expect(() =>
+				schema.parse({ ...validInputs[name], snapshot: 'non-interactive' }),
+			).not.toThrow();
+			expect(() => schema.parse({ ...validInputs[name], snapshot: 'full' })).toThrow();
+		});
+
+		it('returns an interactive snapshot when snapshot is "interactive"', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- button "OK"', refCount: 1 });
+
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' }, snapshot: 'interactive' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, true);
+			expect(data.snapshot).toBe('- button "OK"');
+		});
+
+		it('returns a plain snapshot when snapshot is "non-interactive"', async () => {
+			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- text "Done"', refCount: 0 });
+
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' }, snapshot: 'non-interactive' },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, false);
+			expect(data.snapshot).toBe('- text "Done"');
+		});
+
+		it('does not snapshot when the param is omitted', async () => {
+			const result = await findTool(tools, 'browser_click').execute(
+				{ element: { ref: 'e1' } },
+				TOOL_CONTEXT,
+			);
+			const data = structuredOf(result);
+
+			expect(mockConnection.adapter.snapshot).not.toHaveBeenCalled();
+			expect(data.snapshot).toBeUndefined();
+		});
+	});
+});

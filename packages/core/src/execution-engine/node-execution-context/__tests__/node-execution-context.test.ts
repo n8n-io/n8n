@@ -1,7 +1,5 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	INode,
 	INodeType,
 	INodeTypes,
@@ -10,10 +8,13 @@ import type {
 	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
+import { validateUrlSignature } from '@/utils/signature-helpers';
 
 import { NodeExecutionContext } from '../node-execution-context';
 
@@ -23,14 +24,14 @@ describe('NodeExecutionContext', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: 'abc123',
 		encryptionKey: 'testEncryptionKey',
-		hmacSignatureSecret: 'testHmacSignatureSecret',
+		hmacSignatureSecret: 'test-hmac-secret',
 	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();
 	const nodeType = mock<INodeType>({ description: mock() });
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({
 		id: '123',
 		name: 'Test Workflow',
@@ -41,13 +42,15 @@ describe('NodeExecutionContext', () => {
 	});
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 
 	const mode: WorkflowExecuteMode = 'manual';
 	let testContext: TestContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		testContext = new TestContext(workflow, node, additionalData, mode);
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	});
@@ -216,18 +219,21 @@ describe('NodeExecutionContext', () => {
 
 			let capturedExecutionContext: unknown;
 			const mockCredentialsHelper = {
-				getDecrypted: jest
+				getDecrypted: vi
 					.fn()
 					.mockImplementation(async (additionalData: IWorkflowExecuteAdditionalData) => {
 						// Capture the executionContext value at the moment getDecrypted is called
 						capturedExecutionContext = additionalData.executionContext;
 						return { token: 'test-token' };
 					}),
-				getCredentialsProperties: jest.fn(),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 			};
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper: mockCredentialsHelper,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 
 			const contextWithCredentials = new TestContext(
@@ -249,6 +255,148 @@ describe('NodeExecutionContext', () => {
 				mode,
 				undefined,
 				false,
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not build mock credentials in eval mode when the node has other credentials configured but not the requested type', async () => {
+			const testNode = mock<INode>({ type: 'n8n-nodes-base.graphql' });
+			testNode.credentials = { httpHeaderAuth: { id: 'cred1', name: 'Header' } };
+
+			const getCredentialsProperties = vi
+				.fn()
+				.mockReturnValue([{ displayName: 'JSON', name: 'json', type: 'json', default: '' }]);
+			const evalAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mock({ getCredentialsProperties }),
+				evalLlmMockHandler: vi.fn(),
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			});
+
+			const evalContext = new TestContext(workflow, testNode, evalAdditionalData, 'evaluation');
+
+			let resolved: unknown;
+			try {
+				resolved = await evalContext['_getCredentials']('httpCustomAuth');
+			} catch {
+				return;
+			}
+			expect(resolved).toBeUndefined();
+		});
+
+		it('builds mock credentials for an unconfigured node whenever the eval handler is set, regardless of mode', async () => {
+			// Agent-tool eval runs execute in 'internal' mode (and their
+			// workflow-tool sub-executions in 'chat'/'manual') — handler presence,
+			// not mode, is the bypass discriminator.
+			const testNode = mock<INode>({ type: 'n8n-nodes-base.slack' });
+			testNode.credentials = undefined;
+
+			const getDecrypted = vi.fn().mockResolvedValue({ token: '<api-key>' });
+			const evalAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mock({ getDecrypted }),
+				evalLlmMockHandler: vi.fn(),
+			});
+
+			const internalContext = new TestContext(workflow, testNode, evalAdditionalData, 'internal');
+
+			await expect(internalContext['_getCredentials']('slackApi')).resolves.toEqual({
+				token: '<api-key>',
+			});
+			expect(getDecrypted).toHaveBeenCalledWith(
+				evalAdditionalData,
+				{ id: null, name: 'slackApi' },
+				'slackApi',
+				'internal',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+			);
+		});
+
+		it('refuses to decrypt a restricted credential for a node not in supportedNodes', async () => {
+			const credentialDetails = { id: 'cred-r1', name: 'Restricted creds' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { restrictedApi: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn(),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(false),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('restrictedApi')).rejects.toThrow(
+				/restricted to specific nodes/i,
+			);
+			expect(mockCredentialsHelper.isCredentialUsableByNode).toHaveBeenCalledWith(
+				'restrictedApi',
+				'n8n-nodes-base.httpRequest',
+			);
+			expect(mockCredentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		it('proceeds with decryption when the credential is usable by the node', async () => {
+			// The restriction policy itself (which credentials are usable by which
+			// nodes) is exercised in the CredentialsHelper unit tests. Here we only
+			// verify that when the helper says "yes", _getCredentials calls through
+			// to getDecrypted — including on httpRequest nodes (fullAccess=true).
+			const credentialDetails = { id: 'cred-x', name: 'Some Cred' };
+			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			httpNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				httpNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
+		});
+	});
+
+	describe('_getRunlessCredentials', () => {
+		it('should pass placeholder execute data that only carries the node', async () => {
+			const credentialDetails = { id: 'cred-runless', name: 'Runless Cred' };
+			const runlessNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });
+			runlessNode.credentials = { someCred: credentialDetails };
+
+			const mockCredentialsHelper = {
+				getDecrypted: vi.fn().mockResolvedValue({ token: 'ok' }),
+				getCredentialsProperties: vi.fn(),
+				isCredentialUsableByNode: vi.fn().mockReturnValue(true),
+			};
+
+			const ctx = new TestContext(
+				workflow,
+				runlessNode,
+				mock<IWorkflowExecuteAdditionalData>({ credentialsHelper: mockCredentialsHelper }),
+				mode,
+			);
+
+			await expect(ctx['_getRunlessCredentials']('someCred')).resolves.toEqual({ token: 'ok' });
+			expect(mockCredentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'someCred',
+				mode,
+				{ data: {}, node: runlessNode, source: null },
+				false,
+				undefined,
 				undefined,
 			);
 		});
@@ -429,7 +577,7 @@ describe('NodeExecutionContext', () => {
 
 	describe('getSignedResumeUrl', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			testContext = new TestContext(
 				workflow,
 				mock<INode>({
@@ -438,29 +586,97 @@ describe('NodeExecutionContext', () => {
 				mock<IWorkflowExecuteAdditionalData>({
 					executionId: '123',
 					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+					formWaitingBaseUrl: 'http://localhost/form-waiting',
 				}),
 				mode,
 				createRunExecutionData({
-					validateSignature: true,
 					resultData: { runData: {} },
 				}),
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
-		it('should return a signed resume URL with no query parameters', () => {
+
+		it('rejects signed resume URLs in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => testContext.getSignedResumeUrl()).toThrow(
+					'Engine v2 does not support signed resume URLs yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
+		});
+
+		it('should return a resume URL with HMAC signature', () => {
 			const result = testContext.getSignedResumeUrl();
 
-			expect(result).toBe(
-				'http://localhost/waiting-webhook/123/node456?signature=8e48dfd1107c1a736f70e7399493ffc50a2e8edd44f389c5f9c058da961682e7',
+			// URL should contain base path and a signature (64-char hex HMAC-SHA256)
+			expect(result).toMatch(
+				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?signature=[a-f0-9]{64}$/,
 			);
 		});
 
-		it('should return a signed resume URL with query parameters', () => {
+		it('should return a resume URL with query parameters and HMAC signature', () => {
 			const result = testContext.getSignedResumeUrl({ approved: 'true' });
 
-			expect(result).toBe(
-				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
+			// URL should contain base path, approved param, and a signature (64-char hex HMAC-SHA256)
+			expect(result).toMatch(
+				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?approved=true&signature=[a-f0-9]{64}$/,
 			);
+		});
+
+		it('should generate consistent HMAC signatures for the same URL', () => {
+			const result1 = testContext.getSignedResumeUrl();
+			const result2 = testContext.getSignedResumeUrl();
+
+			// Same URL should produce the same HMAC signature
+			const token1 = new URL(result1).searchParams.get('signature');
+			const token2 = new URL(result2).searchParams.get('signature');
+
+			expect(token1).toBe(token2);
+		});
+
+		describe('when the node id is not a plain path segment', () => {
+			const NODE_ID = '../43/dddd2020-0000-4000-8000-000000002099';
+
+			const signedUrlForNodeId = (nodeId: string) =>
+				new URL(
+					new TestContext(
+						workflow,
+						mock<INode>({ id: nodeId }),
+						mock<IWorkflowExecuteAdditionalData>({
+							executionId: '123',
+							webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+							formWaitingBaseUrl: 'http://localhost/form-waiting',
+						}),
+						mode,
+						createRunExecutionData({ resultData: { runData: {} } }),
+					).getSignedResumeUrl({ approved: 'true' }),
+				);
+
+			it('should keep the node id inside its own path segment', () => {
+				expect(signedUrlForNodeId(NODE_ID).pathname).toBe(
+					'/waiting-webhook/123/..%2F43%2Fdddd2020-0000-4000-8000-000000002099',
+				);
+			});
+
+			it('should keep the signature scoped to the escaped path', () => {
+				const signature = signedUrlForNodeId(NODE_ID).searchParams.get('signature')!;
+
+				// Unescaped, the same ids normalise to a different path, so the signature over the
+				// escaped one must not validate against it.
+				const normalisedUrl = new URL(
+					`http://localhost/waiting-webhook/123/${NODE_ID}?approved=true&signature=${signature}`,
+				);
+				expect(normalisedUrl.pathname).toBe(
+					'/waiting-webhook/43/dddd2020-0000-4000-8000-000000002099',
+				);
+
+				expect(
+					validateUrlSignature(signature, normalisedUrl, instanceSettings.hmacSignatureSecret),
+				).toBe(false);
+			});
 		});
 	});
 

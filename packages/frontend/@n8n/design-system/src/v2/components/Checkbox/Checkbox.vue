@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { reactivePick } from '@vueuse/core';
 import { CheckboxIndicator, CheckboxRoot, Label, Primitive, useForwardProps } from 'reka-ui';
 import { computed, useAttrs, useId } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { CheckboxEmits, CheckboxProps, CheckboxSlots } from './Checkbox.types';
+import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -20,8 +19,11 @@ const modelValue = defineModel<boolean>({ default: undefined });
 const computedValue = computed(() => (props.indeterminate ? 'indeterminate' : modelValue.value));
 
 const attrs = useAttrs();
-const primitiveClass = computed(() => attrs.class);
-const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+const getRootAttrs = () => {
+	const rootAttrs = { ...attrs };
+	delete rootAttrs.class;
+	return rootAttrs;
+};
 
 function onUpdate(value: boolean | 'indeterminate') {
 	// @ts-expect-error - 'target' does not exist in type 'EventInit'
@@ -31,14 +33,10 @@ function onUpdate(value: boolean | 'indeterminate') {
 </script>
 
 <template>
-	<Primitive
-		:as
-		:class="[$style.checkbox, primitiveClass]"
-		:data-disabled="disabled ? '' : undefined"
-	>
+	<Primitive :as :class="[$style.checkbox, attrs.class]" :data-disabled="disabled ? '' : undefined">
 		<CheckboxRoot
 			:id="uuid"
-			v-bind="{ ...rootProps, ...rootAttrs }"
+			v-bind="{ ...rootProps, ...getRootAttrs() }"
 			:model-value="computedValue"
 			:name="name"
 			:disabled="disabled"
@@ -117,7 +115,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 .label {
 	flex: 1;
 	padding-top: 1px;
-	font-size: var(--font-size--sm);
+	font-size: var(--checkbox--label--font-size, var(--font-size--sm));
 	line-height: 1;
 	color: var(--color--text--shade-1);
 	cursor: inherit;

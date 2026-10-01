@@ -1,7 +1,12 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import type { IRow } from '../actions/Interfaces';
-import { getTableColumns, seaTableApiRequest, updateAble } from '../GenericFunctions';
+import {
+	getTableColumns,
+	seaTableApiRequest,
+	updateAble,
+	escapeSqlIdentifier,
+} from '../GenericFunctions';
 
 export async function getTableNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
@@ -237,7 +242,7 @@ export async function getRowIds(this: ILoadOptionsFunctions): Promise<INodePrope
 			'POST',
 			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
 			{
-				sql: `SELECT * FROM \`${tableName}\` ${lockQuery} LIMIT 1000`,
+				sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\` ${lockQuery} LIMIT 1000`,
 				convert_keys: false,
 			},
 		);

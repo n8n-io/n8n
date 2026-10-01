@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
@@ -36,7 +36,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type);
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
@@ -53,7 +53,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 
 	getWebhookName(): string {
 		if (this.webhookData === undefined) {
-			throw new ApplicationError('Only supported in webhook functions');
+			throw new UnexpectedError('Only supported in webhook functions');
 		}
 		return this.webhookData.webhookDescription.name;
 	}

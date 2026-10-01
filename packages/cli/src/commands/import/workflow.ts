@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -16,11 +16,11 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { IWorkflowToImport } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
+import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
+
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -34,6 +34,30 @@ function assertHasWorkflowsToImport(
 			throw new UserError('File does not seem to contain valid workflows.');
 		}
 	}
+}
+
+/**
+ * Creates workflow entities from plain objects while preserving versionMetadata metadata.
+ */
+function createWorkflowsWithVersionMetadata(
+	workflowRepository: WorkflowRepository,
+	workflows: IWorkflowToImport[],
+): IWorkflowWithVersionMetadata[] {
+	const createdWorkflows = workflowRepository.create(workflows);
+	return createdWorkflows.map((created, index) => ({
+		...created,
+		versionMetadata: workflows[index].versionMetadata,
+	}));
+}
+
+/**
+ * Creates a workflow entity from a plain object while preserving versionMetadata metadata.
+ */
+function createWorkflowWithVersionMetadata(
+	workflowRepository: WorkflowRepository,
+	workflow: IWorkflowToImport,
+): IWorkflowWithVersionMetadata {
+	return createWorkflowsWithVersionMetadata(workflowRepository, [workflow])[0];
 }
 
 const flagsSchema = z.object({
@@ -51,6 +75,16 @@ const flagsSchema = z.object({
 		.string()
 		.describe('The ID of the project to assign the imported workflows to')
 		.optional(),
+	activeState: z
+		.enum(['false', 'fromJson'], {
+			errorMap: () => ({
+				message: 'Valid values for flag "--activeState" are only "false" or "fromJson".',
+			}),
+		})
+		.describe(
+			'Whether to respect the JSON active field. "false" (default) deactivates all imported workflows. "fromJson" activates/deactivates each workflow based on its JSON active field.',
+		)
+		.default('false'),
 });
 
 @Command({
@@ -62,12 +96,28 @@ const flagsSchema = z.object({
 		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --activeState=fromJson',
 	],
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
+
 	async run(): Promise<void> {
 		const { flags } = this;
+
+		if (flags.activeState === 'fromJson' && this.globalConfig.executions.mode !== 'queue') {
+			throw new UserError(
+				'The "--activeState=fromJson" flag can only be used when n8n is running in queue or multi-main mode. In regular deployment mode, workflow activation is not supported.',
+			);
+		}
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -91,9 +141,15 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const project = await this.getProject(flags.userId, flags.projectId);
 
+		const ownerUser = await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
+		// This userId will be used as the actor for publish/unpublish workflow actions
+		const userId = flags.userId ?? ownerUser.id;
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
+		const result = await this.checkRelations(workflows, project.id, flags);
 
 		if (!result.success) {
 			throw new UserError(result.message);
@@ -101,13 +157,32 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		const { violations } = await Container.get(ImportService).importWorkflows(
+			workflows,
+			project.id,
+			userId,
+			{ activeState: flags.activeState },
+		);
 
-		this.reportSuccess(workflows.length);
+		this.logSkippedWorkflows(violations);
+
+		const importedCount = workflows.length - violations.length;
+
+		this.reportSuccess(importedCount);
+
+		Container.get(EventService).emit('server-cli-import', {
+			activeState: flags.activeState,
+			workflowCount: importedCount,
+			separate: flags.separate,
+		});
 	}
 
-	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
-		// The credential is not supposed to be re-owned.
+	private async checkRelations(
+		workflows: IWorkflowBase[],
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
+	) {
+		// The workflow is not supposed to be re-owned.
 		if (!userId && !projectId) {
 			return {
 				success: true as const,
@@ -126,7 +201,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -139,7 +214,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 				return {
 					success: false as const,
-					message: `The credential with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
+					message: `The workflow with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
 				};
 			}
 		}
@@ -157,6 +232,15 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 	private reportSuccess(total: number) {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
+	private logSkippedWorkflows(skipped: WorkflowImportViolations[]) {
+		for (const { name, violations } of skipped) {
+			this.logger.warn(
+				`Skipped workflow "${name}": ${violations.length} content-import policy violation(s)`,
+				{ violations },
+			);
+		}
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {
@@ -183,7 +267,10 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		return await Container.get(WorkflowRepository).existsBy({ id: workflowId });
 	}
 
-	private async readWorkflows(path: string, separate: boolean): Promise<WorkflowEntity[]> {
+	private async readWorkflows(
+		path: string,
+		separate: boolean,
+	): Promise<IWorkflowWithVersionMetadata[]> {
 		if (process.platform === 'win32') {
 			path = path.replace(/\\/g, '/');
 		}
@@ -197,7 +284,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			const workflowsArray = Array.isArray(workflows) ? workflows : [workflows];
 			assertHasWorkflowsToImport(workflowsArray);
 
-			return workflowRepository.create(workflowsArray);
+			return createWorkflowsWithVersionMetadata(workflowRepository, workflowsArray);
 		}
 
 		const files = await glob('*.json', {
@@ -205,7 +292,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			absolute: true,
 		});
 
-		const workflows = [];
+		const workflows: IWorkflowWithVersionMetadata[] = [];
 
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
@@ -216,7 +303,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			try {
 				assertHasWorkflowsToImport([workflow]);
 
-				workflows.push(workflowRepository.create(workflow));
+				workflows.push(createWorkflowWithVersionMetadata(workflowRepository, workflow));
 			} catch (error) {
 				this.logger.warn(`Skipping invalid workflow file: ${file}`);
 				continue;

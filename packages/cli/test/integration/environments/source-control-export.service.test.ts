@@ -19,20 +19,22 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { readFile as fsReadFile, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
+import type { MockedFunction } from 'vitest';
 
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import { SourceControlContext } from '@/modules/source-control.ee/types/source-control-context';
 
 import { createCredentials } from '../shared/db/credentials';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
 
 // Mock file system operations
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
+	let sourceControlContextFactory: SourceControlContextFactory;
 	let testUser: User;
 	let personalProject: Project;
 	let teamProject: Project;
@@ -44,8 +46,8 @@ describe('SourceControlExportService Integration', () => {
 	let projectRepository: ProjectRepository;
 
 	// Mocked functions
-	let mockFsWriteFile: jest.MockedFunction<typeof fsWriteFile>;
-	let mockFsReadFile: jest.MockedFunction<typeof fsReadFile>;
+	let mockFsWriteFile: MockedFunction<typeof fsWriteFile>;
+	let mockFsReadFile: MockedFunction<typeof fsReadFile>;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -63,13 +65,18 @@ describe('SourceControlExportService Integration', () => {
 		// Setup export directory for testing (no longer creating real directories)
 		exportDirectory = path.join(process.cwd(), 'test-exports-' + uuid());
 
-		// Mock the instance settings to use our test directory
+		// Mock the instance settings to use our test directory. Keep the real
+		// encryptionKey: the cipher and the test key provider both read it, so a
+		// mock function here breaks credential encrypt/decrypt.
+		const { encryptionKey } = Container.get(InstanceSettings);
 		mockInstance(InstanceSettings, {
 			n8nFolder: exportDirectory,
+			encryptionKey,
 		});
 
-		// Get the service from container (this will use real dependencies)
+		// Get the services from container (this will use real dependencies)
 		exportService = Container.get(SourceControlExportService);
+		sourceControlContextFactory = Container.get(SourceControlContextFactory);
 	});
 
 	afterAll(async () => {
@@ -79,11 +86,11 @@ describe('SourceControlExportService Integration', () => {
 
 	beforeEach(async () => {
 		// Setup mocks before each test
-		mockFsWriteFile = jest.mocked(fsWriteFile);
+		mockFsWriteFile = vi.mocked(fsWriteFile);
 		mockFsWriteFile.mockClear();
 		mockFsWriteFile.mockResolvedValue();
 
-		mockFsReadFile = jest.mocked(fsReadFile);
+		mockFsReadFile = vi.mocked(fsReadFile);
 		mockFsReadFile.mockClear();
 		// Default to empty tags file
 		mockFsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
@@ -100,7 +107,7 @@ describe('SourceControlExportService Integration', () => {
 			'TagEntity',
 		]);
 		// Reset mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {
@@ -134,7 +141,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Test Personal Credential',
 					type: 'testCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				personalProject,
 			);
@@ -194,7 +201,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Test Team Credential',
 					type: 'teamCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				teamProject,
 			);
@@ -268,7 +275,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Existing Credential',
 					type: 'existingType',
-					data: Container.get(Cipher).encrypt({ apiKey: 'test' }),
+					data: Container.get(Cipher).encryptWithInstanceKey({ apiKey: 'test' }),
 				},
 				personalProject,
 			);
@@ -300,7 +307,7 @@ describe('SourceControlExportService Integration', () => {
 			Object.assign(credential, {
 				name: 'Role Access Test Credential',
 				type: 'roleTestType',
-				data: Container.get(Cipher).encrypt({ testField: 'test-value' }),
+				data: Container.get(Cipher).encryptWithInstanceKey({ testField: 'test-value' }),
 			});
 
 			const savedCredential = await credentialsRepository.save(credential);
@@ -353,7 +360,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'OAuth Test Credential',
 					type: 'oauth2Credential',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				personalProject,
 			);
@@ -402,7 +409,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Nested Data Credential',
 					type: 'databaseCredential',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				teamProject,
 			);
@@ -449,7 +456,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Global Test Credential',
 					type: 'globalCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 					isGlobal: true,
 				},
 				personalProject,
@@ -496,7 +503,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Non-Global Credential',
 					type: 'standardCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 					isGlobal: false,
 				},
 				teamProject,
@@ -543,7 +550,9 @@ describe('SourceControlExportService Integration', () => {
 		}
 
 		async function exportTags() {
-			return await exportService.exportTagsToWorkFolder(new SourceControlContext(testUser));
+			return await exportService.exportTagsToWorkFolder(
+				await sourceControlContextFactory.createContext(testUser),
+			);
 		}
 
 		it('should export tags and mappings across multiple teams', async () => {

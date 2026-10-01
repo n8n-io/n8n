@@ -16,7 +16,7 @@ class NoXssConstraint implements ValidatorConstraintInterface {
 	}
 
 	defaultMessage() {
-		return 'Potentially malicious string';
+		return 'Only letters, numbers, spaces and punctuation are allowed';
 	}
 }
 

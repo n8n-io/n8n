@@ -1,0 +1,30 @@
+{
+	"name": "CAT-2662 parent",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": { "httpMethod": "POST", "path": "cat2662", "responseMode": "lastNode" },
+			"id": "parent-webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "cat2662"
+		},
+		{
+			"parameters": {
+				"workflowId": { "__rl": true, "value": "REPLACED_AT_RUNTIME", "mode": "id" },
+				"options": {}
+			},
+			"id": "parent-execute",
+			"name": "Execute Sub-workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.2,
+			"position": [220, 0]
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Execute Sub-workflow", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

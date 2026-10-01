@@ -1,16 +1,25 @@
 import { z } from 'zod';
 
-// TODO: Delete these from `cli` after all password-validation code starts using this schema
-const minLength = 8;
-const maxLength = 64;
+const MIN_LENGTH_FLOOR = 8;
+const MAX_LENGTH = 64;
 
-export const passwordSchema = z
-	.string()
-	.min(minLength, `Password must be ${minLength} to ${maxLength} characters long.`)
-	.max(maxLength, `Password must be ${minLength} to ${maxLength} characters long.`)
-	.refine((password) => /\d/.test(password), {
-		message: 'Password must contain at least 1 number.',
-	})
-	.refine((password) => /[A-Z]/.test(password), {
-		message: 'Password must contain at least 1 uppercase letter.',
-	});
+const envMinLength = parseInt(process.env.N8N_PASSWORD_MIN_LENGTH ?? '', 10);
+const minLength = Number.isFinite(envMinLength)
+	? Math.min(Math.max(envMinLength, MIN_LENGTH_FLOOR), MAX_LENGTH)
+	: MIN_LENGTH_FLOOR;
+
+export { minLength as passwordMinLength };
+
+export const createPasswordSchema = (min: number) =>
+	z
+		.string()
+		.min(min, `Password must be ${min} to ${MAX_LENGTH} characters long.`)
+		.max(MAX_LENGTH, `Password must be ${min} to ${MAX_LENGTH} characters long.`)
+		.refine((password) => /\d/.test(password), {
+			message: 'Password must contain at least 1 number.',
+		})
+		.refine((password) => /[A-Z]/.test(password), {
+			message: 'Password must contain at least 1 uppercase letter.',
+		});
+
+export const passwordSchema = createPasswordSchema(minLength);

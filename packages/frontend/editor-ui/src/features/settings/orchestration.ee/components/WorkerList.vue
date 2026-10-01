@@ -8,7 +8,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import WorkerCard from './WorkerCard.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';

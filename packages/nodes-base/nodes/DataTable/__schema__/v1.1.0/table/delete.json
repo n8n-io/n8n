@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "deletedTableId": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

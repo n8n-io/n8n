@@ -10,7 +10,20 @@
 			}
 		]
 	},
-	"alias": ["Binary", "File", "Text", "Open", "Import", "Save", "Export", "Disk", "Transfer"],
+	"alias": [
+		"Binary",
+		"Binary File",
+		"File",
+		"Text",
+		"Open",
+		"Import",
+		"Save",
+		"Export",
+		"Disk",
+		"Transfer",
+		"Read Binary File",
+		"Write Binary File"
+	],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

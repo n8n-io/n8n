@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { resolveDataTableId } from '../../common/utils';
 
@@ -80,14 +80,14 @@ describe('resolveDataTableId', () => {
 			ctx.getNode.mockReturnValue(mockNode);
 
 			const mockAggregateProxy = {
-				getManyAndCount: jest.fn().mockResolvedValue({
+				getManyAndCount: vi.fn().mockResolvedValue({
 					data: [{ id: 'resolved-table-id', name: 'my table' }],
 					count: 1,
 				}),
 			};
 
 			ctx.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const resourceLocator = {
@@ -109,14 +109,14 @@ describe('resolveDataTableId', () => {
 			ctx.getNode.mockReturnValue(mockNode);
 
 			const mockAggregateProxy = {
-				getManyAndCount: jest.fn().mockResolvedValue({
+				getManyAndCount: vi.fn().mockResolvedValue({
 					data: [{ id: 'table-id', name: 'customers' }],
 					count: 1,
 				}),
 			};
 
 			ctx.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const resourceLocator = {
@@ -137,14 +137,14 @@ describe('resolveDataTableId', () => {
 			ctx.getNode.mockReturnValue(mockNode);
 
 			const mockAggregateProxy = {
-				getManyAndCount: jest.fn().mockResolvedValue({
+				getManyAndCount: vi.fn().mockResolvedValue({
 					data: [],
 					count: 0,
 				}),
 			};
 
 			ctx.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const resourceLocator = {
@@ -163,14 +163,14 @@ describe('resolveDataTableId', () => {
 			ctx.getNode.mockReturnValue(mockNode);
 
 			const mockAggregateProxy = {
-				getManyAndCount: jest.fn().mockResolvedValue({
+				getManyAndCount: vi.fn().mockResolvedValue({
 					data: [{ id: 'table-id', name: 'users & customers' }],
 					count: 1,
 				}),
 			};
 
 			ctx.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const resourceLocator = {

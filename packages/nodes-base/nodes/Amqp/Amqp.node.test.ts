@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
@@ -11,24 +11,24 @@ import { Amqp } from './Amqp.node';
 
 // Mock the entire rhea module
 const mockSender = {
-	close: jest.fn(),
-	send: jest.fn().mockReturnValue({ id: 'test-message-id' }),
+	close: vi.fn(),
+	send: vi.fn().mockReturnValue({ id: 'test-message-id' }),
 };
 
 const mockConnection = {
-	close: jest.fn(),
-	open_sender: jest.fn().mockReturnValue(mockSender),
+	close: vi.fn(),
+	open_sender: vi.fn().mockReturnValue(mockSender),
 	options: { reconnect: true },
 };
 
 const mockContainer = {
-	connect: jest.fn().mockReturnValue(mockConnection),
-	on: jest.fn(),
-	once: jest.fn(),
+	connect: vi.fn().mockReturnValue(mockConnection),
+	on: vi.fn(),
+	once: vi.fn(),
 };
 
-jest.mock('rhea', () => ({
-	create_container: jest.fn(() => mockContainer),
+vi.mock('rhea', () => ({
+	create_container: vi.fn(() => mockContainer),
 }));
 
 describe('AMQP Node', () => {
@@ -41,12 +41,12 @@ describe('AMQP Node', () => {
 	});
 
 	const executeFunctions = mock<IExecuteFunctions>({
-		getNode: jest.fn().mockReturnValue({ name: 'AMQP Test Node' }),
-		continueOnFail: jest.fn().mockReturnValue(false),
+		getNode: vi.fn().mockReturnValue({ name: 'AMQP Test Node' }),
+		continueOnFail: vi.fn().mockReturnValue(false),
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeFunctions.getCredentials.calledWith('amqp').mockResolvedValue(credentials);
 		executeFunctions.getInputData.mockReturnValue([{ json: { testing: true } }]);
@@ -73,9 +73,9 @@ describe('AMQP Node', () => {
 	it('should throw error when sink is empty', async () => {
 		executeFunctions.getNodeParameter.calledWith('sink', 0).mockReturnValue('');
 
-		await expect(new Amqp().execute.call(executeFunctions)).rejects.toThrow(
-			new NodeOperationError(executeFunctions.getNode(), 'Queue or Topic required!'),
-		);
+		const promise = new Amqp().execute.call(executeFunctions);
+		await expect(promise).rejects.toThrow(NodeOperationError);
+		await expect(promise).rejects.toThrow('Queue or Topic required!');
 	});
 
 	it('should send message successfully', async () => {
@@ -118,6 +118,34 @@ describe('AMQP Node', () => {
 			application_properties: {},
 			body: '"specific-value"',
 		});
+	});
+
+	it('should pass the reconnect option through to the connection', async () => {
+		executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+			reconnect: false,
+		});
+
+		await new Amqp().execute.call(executeFunctions);
+
+		expect(mockContainer.connect).toHaveBeenLastCalledWith(
+			expect.objectContaining({ reconnect: false, reconnect_limit: 50 }),
+		);
+	});
+
+	it('should fail fast when the connection drops and reconnect is disabled', async () => {
+		executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+			reconnect: false,
+		});
+		// no 'sendable': the connection drops before anything can be sent
+		mockContainer.once.mockImplementation(() => {});
+		mockContainer.on.mockImplementation((event: string, callback: any) => {
+			if (event === 'connection_open') setImmediate(() => callback({}));
+			if (event === 'disconnected') {
+				setImmediate(() => callback({ error: new Error('Connection lost') }));
+			}
+		});
+
+		await expect(new Amqp().execute.call(executeFunctions)).rejects.toThrow('Connection lost');
 	});
 
 	it('should send data as object when configured', async () => {

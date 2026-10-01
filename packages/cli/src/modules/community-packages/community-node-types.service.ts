@@ -1,9 +1,13 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { ensureError, isToolType, NodeConnectionTypes } from 'n8n-workflow';
-
 import cloneDeep from 'lodash/cloneDeep';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isToolType, NodeConnectionTypes } from 'n8n-workflow';
+
+import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
+
 import {
 	getCommunityNodeTypes,
 	getCommunityNodesMetadata,
@@ -12,10 +16,12 @@ import {
 } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
-import { buildStrapiUpdateQuery } from './strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;
+
+// Strapi's qs parser has an arrayLimit of 100, so we batch IDs
+const STRAPI_ARRAY_LIMIT = 100;
 
 @Service()
 export class CommunityNodeTypesService {
@@ -27,14 +33,35 @@ export class CommunityNodeTypesService {
 		private readonly logger: Logger,
 		private config: CommunityPackagesConfig,
 		private communityPackagesService: CommunityPackagesService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/**
+	 * Same rule the node loader applies, so nothing offers a type that would not load.
+	 * The loader builds AI tool copies from loaded base nodes, so a copy follows its base node.
+	 */
+	private isLoadable(nodeTypeName: string) {
+		const baseName = nodeTypeName.slice(0, -'Tool'.length);
+		const isToolCopy =
+			nodeTypeName.endsWith('Tool') &&
+			this.communityNodeTypes.get(baseName)?.nodeDescription.usableAsTool === true;
+		const loaderName = isToolCopy ? baseName : nodeTypeName;
+
+		const { exclude, include } = this.globalConfig.nodes;
+		if (exclude.includes(loaderName)) return false;
+		return include.length === 0 || include.includes(loaderName);
+	}
 
 	private async detectUpdates(
 		environment: 'staging' | 'production',
 	): Promise<{ typesToUpdate?: number[]; scheduleRetry?: boolean }> {
 		let communityNodesMetadata: CommunityNodesMetadata[] = [];
 		try {
-			communityNodesMetadata = await getCommunityNodesMetadata(environment);
+			communityNodesMetadata = await getCommunityNodesMetadata(
+				environment,
+				this.config.aiNodeSdkVersion,
+				this.config.nodesApiVersion,
+			);
 		} catch (error) {
 			this.logger.error('Failed to fetch community nodes metadata', {
 				error: ensureError(error),
@@ -82,7 +109,12 @@ export class CommunityNodeTypesService {
 			let data: StrapiCommunityNodeType[] = [];
 			if (this.config.enabled && this.config.verifiedEnabled) {
 				if (this.communityNodeTypes.size === 0) {
-					data = await getCommunityNodeTypes(environment);
+					data = await getCommunityNodeTypes(
+						environment,
+						{},
+						this.config.aiNodeSdkVersion,
+						this.config.nodesApiVersion,
+					);
 					this.updateCommunityNodeTypes(data);
 					return;
 				}
@@ -98,8 +130,17 @@ export class CommunityNodeTypesService {
 					return;
 				}
 
-				const qs = buildStrapiUpdateQuery(typesToUpdate);
-				data = await getCommunityNodeTypes(environment, qs);
+				for (let i = 0; i < typesToUpdate.length; i += STRAPI_ARRAY_LIMIT) {
+					const batch = typesToUpdate.slice(i, i + STRAPI_ARRAY_LIMIT);
+					const qs = buildStrapiUpdateQuery(batch);
+					const batchData = await getCommunityNodeTypes(
+						environment,
+						qs,
+						this.config.aiNodeSdkVersion,
+						this.config.nodesApiVersion,
+					);
+					data.push(...batchData);
+				}
 			}
 
 			this.updateCommunityNodeTypes(data);
@@ -134,7 +175,10 @@ export class CommunityNodeTypesService {
 
 	private createAiTools() {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
-			(nodeType) => nodeType.nodeDescription.usableAsTool && !isToolType(nodeType.name),
+			(nodeType) =>
+				nodeType.nodeDescription.usableAsTool &&
+				!isToolType(nodeType.name) &&
+				!nodeType.nodeDescription.group?.includes('trigger'),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
 		for (const nodeType of usableAsTools) {
@@ -186,7 +230,12 @@ export class CommunityNodeTypesService {
 		const installedPackages = (await this.communityPackagesService.getAllInstalledPackages()) ?? [];
 		const installedPackageNames = new Set(installedPackages.map((p) => p.packageName));
 
-		return (nodeTypeName: string) => installedPackageNames.has(nodeTypeName.split('.')[0]);
+		// Matched on the entry's own package name, not derived by splitting the
+		// node type on its first dot: npm allows dots in package names, so the
+		// split mis-parses a package like `n8n-nodes-chatwoot.io` and reports an
+		// installed package as missing.
+		return (nodeType: Pick<StrapiCommunityNodeType, 'packageName'>) =>
+			installedPackageNames.has(nodeType.packageName);
 	}
 
 	async getCommunityNodeTypes(): Promise<CommunityNodeType[]> {
@@ -196,20 +245,40 @@ export class CommunityNodeTypesService {
 
 		const isInstalled = await this.createIsInstalled();
 
-		return Array.from(this.communityNodeTypes.values()).map((nodeType) => ({
-			...nodeType,
-			isInstalled: isInstalled(nodeType.name),
-		}));
+		return Array.from(this.communityNodeTypes.values())
+			.filter((nodeType) => this.isLoadable(nodeType.name))
+			.map((nodeType) => ({
+				...nodeType,
+				isInstalled: isInstalled(nodeType),
+			}));
 	}
 
 	async getCommunityNodeType(type: string): Promise<CommunityNodeType | null> {
 		const nodeType = this.communityNodeTypes.get(type);
 		const isInstalled = await this.createIsInstalled();
-		if (!nodeType) return null;
-		return { ...nodeType, isInstalled: isInstalled(nodeType.name) };
+		if (!nodeType || !this.isLoadable(nodeType.name)) return null;
+		return { ...nodeType, isInstalled: isInstalled(nodeType) };
 	}
 
-	findVetted(packageName: string) {
+	/**
+	 * Exact vetted entry for one node type, refreshing a stale catalog first.
+	 *
+	 * `getCommunityNodeType` reads the map as-is and reports nothing on a cold
+	 * one, so callers that must distinguish "not vetted" from "not fetched yet"
+	 * need the refresh. Carries `packageName`, so callers never have to derive it
+	 * from the node type.
+	 */
+	async findVettedNodeType(nodeType: string) {
+		if (this.updateRequired()) {
+			await this.fetchNodeTypes();
+		}
+		return await this.getCommunityNodeType(nodeType);
+	}
+
+	async findVetted(packageName: string) {
+		if (this.updateRequired()) {
+			await this.fetchNodeTypes();
+		}
 		const vettedTypes = Array.from(this.communityNodeTypes.values());
 		return vettedTypes.find((nodeType) => nodeType.packageName === packageName);
 	}

@@ -1,15 +1,25 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { Logger, isContainedWithin, safeJoinPath } from '@n8n/backend-common';
+import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { generateKeyPairSync } from 'crypto';
-import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
+import chunk from 'lodash/chunk';
+import isEqual from 'lodash/isEqual';
+import {
+	deepCopy,
+	jsonParse,
+	UserError,
+	type CredentialInformation,
+	type DataTableColumnType,
+	type ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
+import { containsExpression } from '@/utils';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -17,15 +27,132 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
+import type { StatusExportableCredential } from './types/exportable-credential';
+import type {
+	ExportableDataTable,
+	ExportableDataTableColumn,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
 import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { StatusResourceOwner } from './types/resource-owner';
-import type { StatusExportableCredential } from './types/exportable-credential';
 
-export function stringContainsExpression(testString: string): boolean {
-	return /^=.*\{\{.*\}\}/.test(testString);
+export function sanitizeCredentialData(
+	data: ICredentialDataDecryptedObject,
+): ICredentialDataDecryptedObject {
+	const result: ICredentialDataDecryptedObject = deepCopy(data);
+
+	for (const [key, value] of Object.entries(data)) {
+		if (value === null || key === 'oauthTokenData') {
+			// `oauthTokenData` is not synchable to force the pulling instance to reconnect
+			delete result[key];
+		} else if (typeof value === 'object') {
+			result[key] = sanitizeCredentialData(value as ICredentialDataDecryptedObject);
+		} else if (typeof value === 'string') {
+			result[key] = containsExpression(value) ? value : '';
+		}
+
+		// NOTE: number and boolean values are synchable for backward compatibility
+		// Typically numbers represent PORT numbers or other numeric values that aren't sensitives
+		// Boolean are usually represent non sensitive flags
+		// This could be revisited in the future
+	}
+
+	return result;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Recursively merges a single value based on its type.
+ * Handles strings, numbers, booleans, arrays, and plain objects.
+ */
+function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): unknown {
+	if (typeof sanitizedRemoteValue === 'string') {
+		if (containsExpression(sanitizedRemoteValue)) {
+			return sanitizedRemoteValue;
+		} else if (localValue !== undefined && localValue !== null) {
+			// Local value is preserved if it exists (secret handling)
+			return localValue;
+		}
+
+		// The remote field exists as an empty string (key is part of the schema)
+		// but local has no value for it. Preserve the empty string so the field
+		// is not silently dropped from the merged credential.
+		return '';
+	}
+
+	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
+		return sanitizedRemoteValue;
+	}
+
+	if (Array.isArray(sanitizedRemoteValue)) {
+		// Only merge by index if lengths match, otherwise array structure has changed
+		// and we can't reliably match items (could be additions/removals/reordering)
+		if (Array.isArray(localValue) && localValue.length === sanitizedRemoteValue.length) {
+			return sanitizedRemoteValue.map((sanitizedItem, index) => {
+				const localItem = localValue[index];
+				return mergeSingleValue(sanitizedItem, localItem);
+			});
+		}
+
+		return sanitizedRemoteValue;
+	}
+
+	if (isPlainObject(sanitizedRemoteValue)) {
+		if (isPlainObject(localValue)) {
+			return mergeRemoteCrendetialDataIntoLocalCredentialData({
+				local: localValue as ICredentialDataDecryptedObject,
+				remote: sanitizedRemoteValue as ICredentialDataDecryptedObject,
+			});
+		}
+
+		return sanitizedRemoteValue;
+	}
+
+	return undefined;
+}
+
+/**
+ * Merges remote credential data into local data.
+ * Remote expressions, numbers and boolean values overwrite local values.
+ */
+export function mergeRemoteCrendetialDataIntoLocalCredentialData({
+	local,
+	remote,
+}: {
+	local: ICredentialDataDecryptedObject;
+	remote: ICredentialDataDecryptedObject;
+}): ICredentialDataDecryptedObject {
+	const merged: ICredentialDataDecryptedObject = {};
+
+	const sanitizedRemote = sanitizeCredentialData(remote);
+
+	for (const [key, sanitizedRemoteValue] of Object.entries(sanitizedRemote)) {
+		const localValue = local[key];
+		const mergedValue = mergeSingleValue(sanitizedRemoteValue, localValue);
+
+		if (mergedValue !== undefined) {
+			merged[key] = mergedValue as CredentialInformation;
+		}
+	}
+
+	// Keep local fields the remote stub does not carry. A field left at its default value
+	// is not persisted, so it never reaches the stub; an absent field carries the same
+	// "no value to give" meaning as a present-but-blank one, which is already preserved
+	// above. Without this it would be dropped on pull and reset to its default. This also
+	// covers oauthTokenData, which sanitization always strips from the remote.
+	for (const [key, localValue] of Object.entries(local)) {
+		if (!(key in sanitizedRemote)) {
+			merged[key] = localValue;
+		}
+	}
+
+	return merged;
 }
 
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
@@ -41,6 +168,10 @@ export function getCredentialExportPath(
 	credentialExportFolder: string,
 ): string {
 	return safeJoinPath(credentialExportFolder, `${credentialId}.json`);
+}
+
+export function getDataTableExportPath(dataTableId: string, dataTableExportFolder: string): string {
+	return safeJoinPath(dataTableExportFolder, `${dataTableId}.json`);
 }
 
 export function getVariablesPath(gitFolder: string): string {
@@ -73,18 +204,55 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	}
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return (
+		typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+	);
+}
+
 export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
 	try {
 		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
 			fallbackValue: { folders: [] },
 		});
 	} catch (error) {
-		// Return fallback if file not found
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
 			return { folders: [] };
 		}
 		throw error;
 	}
+}
+
+export async function readDataTablesFromSourceControlFile(
+	file: string,
+): Promise<ExportableDataTable[]> {
+	try {
+		return jsonParse<ExportableDataTable[]>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: [],
+		});
+	} catch (error) {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
+			return [];
+		}
+		throw error;
+	}
+}
+
+/**
+ * Maps items in fixed-size batches (concurrency within a batch, batches sequential)
+ * to bound the peak memory of per-item work. Preserves input order; rejects on the
+ * first failing item, like `Promise.all`.
+ */
+export async function mapInBatches<T, R>(
+	items: T[],
+	batchSize: number,
+	fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+	const results: R[] = [];
+	for (const batch of chunk(items, batchSize)) {
+		results.push(...(await Promise.all(batch.map(fn))));
+	}
+	return results;
 }
 
 export function sourceControlFoldersExistCheck(
@@ -115,44 +283,8 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
-export async function generateSshKeyPair(keyType: KeyPairType) {
-	const sshpk = await import('sshpk');
-	const keyPair: KeyPair = {
-		publicKey: '',
-		privateKey: '',
-	};
-	let generatedKeyPair: KeyPair;
-	switch (keyType) {
-		case 'ed25519':
-			generatedKeyPair = generateKeyPairSync('ed25519', {
-				privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
-				publicKeyEncoding: { format: 'pem', type: 'spki' },
-			});
-			break;
-		case 'rsa':
-			generatedKeyPair = generateKeyPairSync('rsa', {
-				modulusLength: 4096,
-				publicKeyEncoding: {
-					type: 'spki',
-					format: 'pem',
-				},
-				privateKeyEncoding: {
-					type: 'pkcs8',
-					format: 'pem',
-				},
-			});
-			break;
-	}
-	const keyPublic = sshpk.parseKey(generatedKeyPair.publicKey, 'pem');
-	keyPublic.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
-	keyPair.publicKey = keyPublic.toString('ssh');
-	const keyPrivate = sshpk.parsePrivateKey(generatedKeyPair.privateKey, 'pem');
-	keyPrivate.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
-	keyPair.privateKey = keyPrivate.toString('ssh-private');
-	return {
-		privateKey: keyPair.privateKey,
-		publicKey: keyPair.publicKey,
-	};
+export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair> {
+	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
 export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
@@ -165,11 +297,12 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 }
 
 function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
-	return (
-		files.filter((file, index, self) => {
-			return self.findIndex((f) => f.id === file.id) === index;
-		}) || []
-	);
+	if (!files || !Array.isArray(files)) {
+		return [];
+	}
+	return files.filter((file, index, self) => {
+		return self.findIndex((f) => f.id === file.id) === index;
+	});
 }
 
 export function getTrackingInformationFromPullResult(
@@ -249,32 +382,127 @@ export function normalizeAndValidateSourceControlledFilePath(
 }
 
 export function hasOwnerChanged(
-	owner1?: StatusResourceOwner,
-	owner2?: StatusResourceOwner,
+	owner1?: RemoteResourceOwner | StatusResourceOwner | null,
+	owner2?: StatusResourceOwner | null,
 ): boolean {
 	// We only compare owners when there is at least one team owner
 	// because personal owners projects are not synced with source control
-	if (owner1?.type !== 'team' && owner2?.type !== 'team') {
+
+	// If either is missing, check if the other is a team owner
+	if (!owner1 || !owner2) {
+		// If one exists and is a team owner, the absence of the other is a change
+		const existingOwner = owner1 || owner2;
+		if (!existingOwner) return false;
+		if (typeof existingOwner === 'string') return false;
+		return existingOwner.type === 'team';
+	}
+
+	// Handle string format (legacy personal email)
+	if (typeof owner1 === 'string') {
+		return false; // Personal projects are not synced
+	}
+
+	if (owner1.type !== 'team' && owner2.type !== 'team') {
 		return false;
 	}
 
-	return owner1?.projectId !== owner2?.projectId;
+	// For team projects, compare IDs
+	// owner1 could be TeamResourceOwner (with teamId) or StatusResourceOwner (with projectId)
+	// owner2 could also be TeamResourceOwner (with teamId) or StatusResourceOwner (with projectId)
+	const owner1TeamId = 'teamId' in owner1 ? owner1.teamId : owner1.projectId;
+	const owner2TeamId = 'teamId' in owner2 ? owner2.teamId : owner2.projectId;
+	return owner1TeamId !== owner2TeamId;
 }
 
 /**
- * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
- * between local and remote versions
+ * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
+ * descriptions and owners between local and remote versions
  */
+function normalizeDescription(description: string | null | undefined): string | null {
+	return description ? description : null;
+}
+
 export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
+	direction: 'push' | 'pull',
 ): boolean {
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	// Description edits don't bump the versionId. On pull, skip legacy remote files
+	// without a `description` key: importing them can't change the local description.
+	const hasDescriptionChanged =
+		direction === 'pull' && remote.description === undefined
+			? false
+			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
+}
+
+/**
+ * Compares two data table columns arrays to check if they are equal
+ */
+function areDataTableColumnsEqual(
+	localColumns: ExportableDataTableColumn[],
+	remoteColumns: ExportableDataTableColumn[],
+): boolean {
+	if (localColumns.length !== remoteColumns.length) {
+		return false;
+	}
+
+	const sortedLocal = [...localColumns].sort((a, b) => a.id.localeCompare(b.id));
+	const sortedRemote = [...remoteColumns].sort((a, b) => a.id.localeCompare(b.id));
+
+	return sortedLocal.every((localCol, idx) => {
+		const remoteCol = sortedRemote[idx];
+		return (
+			localCol.id === remoteCol.id &&
+			localCol.name === remoteCol.name &&
+			localCol.type === remoteCol.type &&
+			localCol.index === remoteCol.index
+		);
+	});
+}
+
+/**
+ * Checks if a data table has been modified by comparing basic properties and schema (columns)
+ * between local and remote versions.
+ *
+ * Data tables only use PersonalResourceOwner or TeamResourceOwner (no legacy string format).
+ */
+export function isDataTableModified(
+	localDt: StatusExportableDataTable,
+	remoteDt: ExportableDataTable,
+): boolean {
+	if (localDt.name !== remoteDt.name) {
+		return true;
+	}
+
+	const ownerChanged = hasOwnerChanged(remoteDt.ownedBy, localDt.ownedBy);
+	if (ownerChanged) {
+		return true;
+	}
+
+	return !areDataTableColumnsEqual(localDt.columns, remoteDt.columns);
+}
+
+/**
+ * Identity of a data table column across instances for identity adoption:
+ * columns matching by `(name, type)` adopt the incoming column id.
+ */
+export function getDataTableColumnKey(
+	column: Pick<ExportableDataTableColumn, 'name' | 'type'>,
+): string {
+	return `${column.name}:${column.type}`;
+}
+
+/**
+ * Type guard to check if a string is a valid DataTableColumnType.
+ */
+export function isValidDataTableColumnType(type: string): type is DataTableColumnType {
+	return ['string', 'number', 'boolean', 'date'].includes(type);
 }
 
 export function areSameCredentials(
@@ -285,6 +513,21 @@ export function areSameCredentials(
 		credA.name === credB.name &&
 		credA.type === credB.type &&
 		!hasOwnerChanged(credA.ownedBy, credB.ownedBy) &&
-		Boolean(credA.isGlobal) === Boolean(credB.isGlobal)
+		Boolean(credA.isGlobal) === Boolean(credB.isGlobal) &&
+		Boolean(credA.isResolvable) === Boolean(credB.isResolvable) &&
+		Boolean(credA.resolvableAllowFallback) === Boolean(credB.resolvableAllowFallback) &&
+		!hasSynchableCredentialDataChanged(credA.data, credB.data)
 	);
+}
+
+function hasSynchableCredentialDataChanged(
+	data1: ICredentialDataDecryptedObject | undefined,
+	data2: ICredentialDataDecryptedObject | undefined,
+): boolean {
+	if (!data1 && !data2) return false;
+	if (!data1 || !data2) return true;
+
+	const sanitizedData1 = sanitizeCredentialData(data1);
+	const sanitizedData2 = sanitizeCredentialData(data2);
+	return !isEqual(sanitizedData1, sanitizedData2);
 }

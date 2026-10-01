@@ -1,0 +1,300 @@
+import { Service } from '@n8n/di';
+import { DataSource, IsNull } from '@n8n/typeorm';
+import { Cipher } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { BaseRepository } from './base-repository';
+import { DeploymentKey, OAUTH_JWE_PRIVATE_KEY_TYPE } from '../entities/deployment-key';
+import { DbLock, DbLockService } from '../services/db-lock.service';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
+
+/**
+ * Marker for signing-secret rows whose value is wrapped with the instance
+ * key. Rows without it hold the value in the original stored form.
+ */
+const SECRET_WRAP_ALGORITHM = 'aes-256-gcm';
+
+export type DeploymentKeySortField = 'createdAt' | 'updatedAt' | 'status';
+export type DeploymentKeySortDirection = 'ASC' | 'DESC';
+
+export type ListDeploymentKeysOptions = {
+	type?: string;
+	sortField: DeploymentKeySortField;
+	sortDirection: DeploymentKeySortDirection;
+	skip: number;
+	take: number;
+	createdAtFrom?: Date;
+	createdAtTo?: Date;
+};
+
+class DeploymentKeyStore extends BaseRepository<DeploymentKey> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(DeploymentKey, dataSource.manager, transactionRunner);
+	}
+
+	managerForContext(ctx: OperationContext) {
+		return this.managerFor(ctx);
+	}
+}
+
+@Service()
+export class DeploymentKeyRepository {
+	private readonly store: DeploymentKeyStore;
+
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+		private readonly dbLockService: DbLockService,
+		private readonly cipher: Cipher,
+	) {
+		this.store = new DeploymentKeyStore(dataSource, transactionRunner);
+	}
+
+	/**
+	 * Reads the active signing secret of the given type and returns it in
+	 * usable form. Storage format is this repository's concern: a row marked
+	 * with {@link SECRET_WRAP_ALGORITHM} is unwrapped with the instance key.
+	 *
+	 * With `rewrapLegacy`, a row found in the original stored form is
+	 * rewritten in place to the wrapped form. The conditional update keys on
+	 * `algorithm IS NULL`, so concurrent instances upgrading the same row
+	 * cannot double-wrap it, and the returned secret is identical either way.
+	 * The flag exists because not every reader may write: one-off CLI commands
+	 * must not mutate deployment state and may run with read-only DB
+	 * credentials, so callers opt into the rewrite explicitly.
+	 */
+	async findActiveSigningSecret(
+		type: string,
+		{ rewrapLegacy = false }: { rewrapLegacy?: boolean } = {},
+	): Promise<string | null> {
+		const row = await this.store.findOne({ where: { type, status: 'active' } });
+		if (!row) return null;
+		if (row.algorithm === SECRET_WRAP_ALGORITHM) {
+			try {
+				return this.cipher.decryptDEKWithInstanceKey(row.value);
+			} catch {
+				throw new UnexpectedError(
+					`Deployment key '${type}' cannot be read with this instance encryption key`,
+				);
+			}
+		}
+		// Only the pre-wrap form (algorithm NULL) may pass through as-is; any
+		// other marker means a format this version cannot read — fail loudly
+		// instead of handing ciphertext to the caller as if it were the secret.
+		if (row.algorithm !== null) {
+			throw new UnexpectedError(
+				`Deployment key '${type}' has an unsupported storage format '${row.algorithm}'`,
+			);
+		}
+		if (rewrapLegacy) {
+			await this.store.update(
+				{ id: row.id, algorithm: IsNull() },
+				{
+					value: this.cipher.encryptDEKWithInstanceKey(row.value),
+					algorithm: SECRET_WRAP_ALGORITHM,
+				},
+			);
+		}
+		return row.value;
+	}
+
+	/**
+	 * Inserts an active signing secret of the given type in wrapped form.
+	 * On a unique-index conflict (concurrent multi-main startup) the insert is
+	 * silently ignored; the caller should read the winner's value afterwards.
+	 */
+	async seedSigningSecret(type: string, secret: string): Promise<void> {
+		await this.insertIgnoringConflict({
+			type,
+			value: this.cipher.encryptDEKWithInstanceKey(secret),
+			status: 'active',
+			algorithm: SECRET_WRAP_ALGORITHM,
+		});
+	}
+
+	/**
+	 * Seeds the legacy aes-256-cbc data-encryption row exactly once. The
+	 * check and insert run inside a `DbLock` critical section, so mains
+	 * starting concurrently cannot create duplicate rows.
+	 */
+	async seedLegacyCbcKey(encryptedValue: string): Promise<void> {
+		await this.dbLockService.withLockContext(DbLock.DATA_ENCRYPTION_KEY_SEED, async (ctx) => {
+			const repo = this.store.managerForContext(ctx).getRepository(DeploymentKey);
+			const existing = await repo.findOne({
+				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+			});
+			if (existing) return;
+			// a create()-built entity instance, so the @BeforeInsert id hook runs
+			// (a plain object literal would skip it and violate the NOT NULL id)
+			await repo.save(
+				repo.create({
+					type: 'data_encryption',
+					value: encryptedValue,
+					algorithm: 'aes-256-cbc',
+					status: 'inactive',
+				}),
+			);
+		});
+	}
+
+	async findActiveIdentifier(type: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({ where: { type, status: 'active' } });
+	}
+
+	async seedActiveIdentifier(type: string, value: string): Promise<void> {
+		await this.insertIgnoringConflict({ type, value, status: 'active', algorithm: null });
+	}
+
+	async findDataEncryptionKeys(): Promise<DeploymentKey[]> {
+		return await this.store.find({ where: { type: 'data_encryption' } });
+	}
+
+	async findActiveDataEncryptionKeys(): Promise<DeploymentKey[]> {
+		return await this.store.find({ where: { type: 'data_encryption', status: 'active' } });
+	}
+
+	async findDataEncryptionKeyById(id: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({ where: { id, type: 'data_encryption' } });
+	}
+
+	async findDataEncryptionKeyByAlgorithm(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({ where: { type: 'data_encryption', algorithm } });
+	}
+
+	async findActiveDataEncryptionKeyByAlgorithm(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({
+			where: { type: 'data_encryption', algorithm, status: 'active' },
+		});
+	}
+
+	async seedActiveDataEncryptionKey(value: string, algorithm: string): Promise<void> {
+		await this.insertIgnoringConflict({
+			type: 'data_encryption',
+			value,
+			algorithm,
+			status: 'active',
+		});
+	}
+
+	async insertInactiveDataEncryptionKey(value: string, algorithm: string): Promise<DeploymentKey> {
+		return await this.store.save(
+			this.store.create({ type: 'data_encryption', value, algorithm, status: 'inactive' }),
+		);
+	}
+
+	async rewrapLegacyDataEncryptionValue(
+		id: string,
+		oldValue: string,
+		wrappedValue: string,
+	): Promise<void> {
+		await this.store.update(
+			{ id, type: 'data_encryption', value: oldValue },
+			{ value: wrappedValue },
+		);
+	}
+
+	async findAndCountForList(
+		opts: ListDeploymentKeysOptions,
+	): Promise<{ items: DeploymentKey[]; count: number }> {
+		const qb = this.store.createQueryBuilder('deploymentKey');
+
+		if (opts.type) {
+			qb.andWhere('deploymentKey.type = :type', { type: opts.type });
+		}
+
+		if (opts.createdAtFrom && opts.createdAtTo) {
+			qb.andWhere('deploymentKey.createdAt BETWEEN :from AND :to', {
+				from: opts.createdAtFrom,
+				to: opts.createdAtTo,
+			});
+		} else if (opts.createdAtFrom) {
+			qb.andWhere('deploymentKey.createdAt >= :from', { from: opts.createdAtFrom });
+		} else if (opts.createdAtTo) {
+			qb.andWhere('deploymentKey.createdAt <= :to', { to: opts.createdAtTo });
+		}
+
+		qb.orderBy(`deploymentKey.${opts.sortField}`, opts.sortDirection);
+
+		// Stable secondary sort so pagination is deterministic when ties occur.
+		if (opts.sortField !== 'createdAt') {
+			qb.addOrderBy('deploymentKey.createdAt', 'DESC');
+		}
+		qb.addOrderBy('deploymentKey.id', 'ASC');
+
+		qb.skip(opts.skip).take(opts.take);
+
+		const [items, count] = await qb.getManyAndCount();
+		return { items, count };
+	}
+
+	/**
+	 * Inserts the entity if no active row with that type exists yet.
+	 * On a unique-index conflict (concurrent multi-main startup), the insert
+	 * is silently ignored. The caller should read the winner's value afterwards.
+	 */
+	private async insertIgnoringConflict(
+		entityData: Pick<DeploymentKey, 'type' | 'value' | 'status' | 'algorithm'>,
+	): Promise<void> {
+		const entity = this.store.create(entityData);
+		await this.store.createQueryBuilder().insert().values(entity).orIgnore().execute();
+	}
+
+	async insertAndActivateDataEncryptionKey(
+		value: string,
+		algorithm: string,
+	): Promise<DeploymentKey> {
+		const entity = this.store.create({
+			type: 'data_encryption',
+			value,
+			algorithm,
+			status: 'active',
+		});
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const tx = this.store.managerForContext(ctx);
+			await tx.update(
+				DeploymentKey,
+				{ type: entity.type, status: 'active' },
+				{ status: 'inactive' },
+			);
+			return await tx.save(DeploymentKey, entity);
+		});
+	}
+
+	async activateDataEncryptionKey(id: string): Promise<void> {
+		await this.transactionRunner.run({}, async (ctx) => {
+			const tx = this.store.managerForContext(ctx);
+			const target = await tx.findOne(DeploymentKey, {
+				where: { id, type: 'data_encryption' },
+			});
+			if (!target) throw new UnexpectedError(`Data encryption key '${id}' not found`);
+
+			await tx.update(
+				DeploymentKey,
+				{ type: 'data_encryption', status: 'active' },
+				{ status: 'inactive' },
+			);
+			await tx.update(DeploymentKey, { id, type: 'data_encryption' }, { status: 'active' });
+		});
+	}
+
+	async deactivateDataEncryptionKey(id: string): Promise<void> {
+		await this.store.update({ id, type: 'data_encryption' }, { status: 'inactive' });
+	}
+
+	async findActiveOAuthJweKey(algorithm: string): Promise<DeploymentKey | null> {
+		return await this.store.findOne({
+			where: { type: OAUTH_JWE_PRIVATE_KEY_TYPE, algorithm, status: 'active' },
+		});
+	}
+
+	async insertActiveOAuthJweKey(id: string, value: string, algorithm: string): Promise<void> {
+		await this.store.insert({
+			id,
+			type: OAUTH_JWE_PRIVATE_KEY_TYPE,
+			value,
+			algorithm,
+			status: 'active',
+		});
+	}
+}

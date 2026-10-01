@@ -6,7 +6,7 @@ import {
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Query, Body, Patch, Param, Licensed } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowHistoryRequest } from '@/requests';
@@ -67,6 +67,18 @@ export class WorkflowHistoryController {
 				body.versionIds,
 			);
 			return { versions };
+		} catch (e) {
+			if (e instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Could not find workflow');
+			}
+			throw e;
+		}
+	}
+
+	@Get('/workflow/:workflowId/publish-timeline')
+	async getPublishTimeline(req: WorkflowHistoryRequest.GetList) {
+		try {
+			return await this.historyService.getPublishTimeline(req.user, req.params.workflowId);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');

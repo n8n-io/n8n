@@ -1,0 +1,28 @@
+{
+	"id": "1.2-gcp-oauth",
+	"category": "browser",
+	"prompt": "I need Google Sheets credentials. Can you create a Google Cloud project, enable the Sheets API, set up the OAuth consent screen, and get me the client ID and secret?",
+	"budgets": { "maxToolCalls": 80, "maxDurationMs": 900000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 80,
+			"maxToolResultTokensEst": 250000,
+			"maxSingleToolResultTokensEst": 50000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["google.*cloud|console\\.cloud\\.google\\.com|sheets api"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
+		}
+	],
+	"tags": ["browser", "oauth", "requires:browser-bootstrap", "requires:third-party-account:gcp"]
+}

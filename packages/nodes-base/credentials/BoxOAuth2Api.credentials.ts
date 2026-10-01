@@ -48,5 +48,23 @@ export class BoxOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'body',
 		},
+		{
+			displayName: 'Primary Signature Key',
+			name: 'signingKeyPrimary',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				"Used to verify the authenticity of webhook requests. Find it in the Box Developer Console under your app's Webhooks tab > Manage signature keys.",
+		},
+		{
+			displayName: 'Secondary Signature Key',
+			name: 'signingKeySecondary',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				"Used to verify the authenticity of webhook requests during key rotation. Find it in the Box Developer Console under your app's Webhooks tab > Manage signature keys.",
+		},
 	];
 }

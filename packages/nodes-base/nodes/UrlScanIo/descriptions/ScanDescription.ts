@@ -142,7 +142,7 @@ export const scanFields: INodeProperties[] = [
 				displayName: 'Custom Agent',
 				name: 'customAgent',
 				description:
-					'<code>User-Agent</code> header to set for this scan. Defaults to <code>n8n</code>',
+					'<code>User-Agent</code> header to set for this scan. Defaults to n8n standard outbound User-Agent.',
 				type: 'string',
 				default: '',
 			},

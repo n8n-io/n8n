@@ -7,13 +7,14 @@ import type {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ICredentialContext, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 
 describe('DynamicCredentialResolverRegistry', () => {
 	let registry: DynamicCredentialResolverRegistry;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockMetadata: jest.Mocked<CredentialResolverEntryMetadata>;
+	let mockLogger: Mocked<Logger>;
+	let mockMetadata: Mocked<CredentialResolverEntryMetadata>;
 
 	// Mock resolver classes
 	const createMockResolver = (
@@ -49,18 +50,18 @@ describe('DynamicCredentialResolverRegistry', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockMetadata = {
-			getClasses: jest.fn(),
-		} as unknown as jest.Mocked<CredentialResolverEntryMetadata>;
+			getClasses: vi.fn(),
+		} as unknown as Mocked<CredentialResolverEntryMetadata>;
 
 		registry = new DynamicCredentialResolverRegistry(mockMetadata, mockLogger);
 	});
@@ -69,11 +70,11 @@ describe('DynamicCredentialResolverRegistry', () => {
 		describe('successful registration', () => {
 			it('should register a single resolver', async () => {
 				const mockResolver = createMockResolver('test.resolver');
-				const MockResolverClass = jest.fn(() => mockResolver) as unknown as CredentialResolverClass;
+				const MockResolverClass = vi.fn(() => mockResolver) as unknown as CredentialResolverClass;
 				Object.defineProperty(MockResolverClass, 'name', { value: 'TestResolver' });
 
 				mockMetadata.getClasses.mockReturnValue([MockResolverClass]);
-				jest.spyOn(Container, 'get').mockReturnValue(mockResolver);
+				vi.spyOn(Container, 'get').mockReturnValue(mockResolver);
 
 				await registry.init();
 
@@ -87,9 +88,9 @@ describe('DynamicCredentialResolverRegistry', () => {
 				const resolver2 = createMockResolver('test.resolver');
 				const resolver3 = createMockResolver('api.resolver');
 
-				const MockClass1 = jest.fn(() => resolver1) as unknown as CredentialResolverClass;
-				const MockClass2 = jest.fn(() => resolver2) as unknown as CredentialResolverClass;
-				const MockClass3 = jest.fn(() => resolver3) as unknown as CredentialResolverClass;
+				const MockClass1 = vi.fn(() => resolver1) as unknown as CredentialResolverClass;
+				const MockClass2 = vi.fn(() => resolver2) as unknown as CredentialResolverClass;
+				const MockClass3 = vi.fn(() => resolver3) as unknown as CredentialResolverClass;
 
 				Object.defineProperty(MockClass1, 'name', { value: 'OAuthResolver' });
 				Object.defineProperty(MockClass2, 'name', { value: 'TestResolver' });
@@ -97,7 +98,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 				mockMetadata.getClasses.mockReturnValue([MockClass1, MockClass2, MockClass3]);
 
-				const containerGetSpy = jest.spyOn(Container, 'get');
+				const containerGetSpy = vi.spyOn(Container, 'get');
 				containerGetSpy.mockReturnValueOnce(resolver1);
 				containerGetSpy.mockReturnValueOnce(resolver2);
 				containerGetSpy.mockReturnValueOnce(resolver3);
@@ -122,13 +123,13 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 			it('should call init() method on resolvers that have it', async () => {
 				const mockResolver = createMockResolver('test.resolver', true);
-				const initSpy = jest.spyOn(mockResolver, 'init' as any);
+				const initSpy = vi.spyOn(mockResolver, 'init' as any);
 
-				const MockResolverClass = jest.fn(() => mockResolver) as unknown as CredentialResolverClass;
+				const MockResolverClass = vi.fn(() => mockResolver) as unknown as CredentialResolverClass;
 				Object.defineProperty(MockResolverClass, 'name', { value: 'TestResolver' });
 
 				mockMetadata.getClasses.mockReturnValue([MockResolverClass]);
-				jest.spyOn(Container, 'get').mockReturnValue(mockResolver);
+				vi.spyOn(Container, 'get').mockReturnValue(mockResolver);
 
 				await registry.init();
 
@@ -140,22 +141,22 @@ describe('DynamicCredentialResolverRegistry', () => {
 				const resolver1 = createMockResolver('resolver1');
 				const resolver2 = createMockResolver('resolver2');
 
-				const MockClass1 = jest.fn(() => resolver1) as unknown as CredentialResolverClass;
-				const MockClass2 = jest.fn(() => resolver2) as unknown as CredentialResolverClass;
+				const MockClass1 = vi.fn(() => resolver1) as unknown as CredentialResolverClass;
+				const MockClass2 = vi.fn(() => resolver2) as unknown as CredentialResolverClass;
 
 				Object.defineProperty(MockClass1, 'name', { value: 'Resolver1' });
 				Object.defineProperty(MockClass2, 'name', { value: 'Resolver2' });
 
 				// First init with resolver1
 				mockMetadata.getClasses.mockReturnValue([MockClass1]);
-				jest.spyOn(Container, 'get').mockReturnValue(resolver1);
+				vi.spyOn(Container, 'get').mockReturnValue(resolver1);
 				await registry.init();
 
 				expect(registry.getAllResolvers()).toEqual([resolver1]);
 
 				// Re-init with resolver2
 				mockMetadata.getClasses.mockReturnValue([MockClass2]);
-				jest.spyOn(Container, 'get').mockReturnValue(resolver2);
+				vi.spyOn(Container, 'get').mockReturnValue(resolver2);
 				await registry.init();
 
 				expect(registry.getAllResolvers()).toEqual([resolver2]);
@@ -165,11 +166,11 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 		describe('error handling', () => {
 			it('should skip resolver when instantiation fails', async () => {
-				const MockResolverClass = jest.fn() as unknown as CredentialResolverClass;
+				const MockResolverClass = vi.fn() as unknown as CredentialResolverClass;
 				Object.defineProperty(MockResolverClass, 'name', { value: 'FailingResolver' });
 
 				mockMetadata.getClasses.mockReturnValue([MockResolverClass]);
-				jest.spyOn(Container, 'get').mockImplementation(() => {
+				vi.spyOn(Container, 'get').mockImplementation(() => {
 					throw new Error('Instantiation failed');
 				});
 
@@ -184,11 +185,11 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 			it('should skip resolver when init() fails', async () => {
 				const mockResolver = createMockResolver('test.resolver', true, true);
-				const MockResolverClass = jest.fn(() => mockResolver) as unknown as CredentialResolverClass;
+				const MockResolverClass = vi.fn(() => mockResolver) as unknown as CredentialResolverClass;
 				Object.defineProperty(MockResolverClass, 'name', { value: 'TestResolver' });
 
 				mockMetadata.getClasses.mockReturnValue([MockResolverClass]);
-				jest.spyOn(Container, 'get').mockReturnValue(mockResolver);
+				vi.spyOn(Container, 'get').mockReturnValue(mockResolver);
 
 				await registry.init();
 
@@ -201,8 +202,8 @@ describe('DynamicCredentialResolverRegistry', () => {
 			});
 
 			it('should skip duplicate resolver names and log warning', async () => {
-				const MockClass1 = jest.fn() as unknown as CredentialResolverClass;
-				const MockClass2 = jest.fn() as unknown as CredentialResolverClass;
+				const MockClass1 = vi.fn() as unknown as CredentialResolverClass;
+				const MockClass2 = vi.fn() as unknown as CredentialResolverClass;
 
 				Object.defineProperty(MockClass1, 'name', { value: 'FirstResolver' });
 				Object.defineProperty(MockClass2, 'name', { value: 'SecondResolver' });
@@ -216,7 +217,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 				mockMetadata.getClasses.mockReturnValue([MockClass1, MockClass2]);
 
-				const containerGetSpy = jest.spyOn(Container, 'get');
+				const containerGetSpy = vi.spyOn(Container, 'get');
 				containerGetSpy.mockReturnValueOnce(resolver1);
 				containerGetSpy.mockReturnValueOnce(resolver2);
 
@@ -233,9 +234,9 @@ describe('DynamicCredentialResolverRegistry', () => {
 				const resolver1 = createMockResolver('success.resolver');
 				const resolver3 = createMockResolver('another.success');
 
-				const MockClass1 = jest.fn(() => resolver1) as unknown as CredentialResolverClass;
-				const MockClass2 = jest.fn() as unknown as CredentialResolverClass;
-				const MockClass3 = jest.fn(() => resolver3) as unknown as CredentialResolverClass;
+				const MockClass1 = vi.fn(() => resolver1) as unknown as CredentialResolverClass;
+				const MockClass2 = vi.fn() as unknown as CredentialResolverClass;
+				const MockClass3 = vi.fn(() => resolver3) as unknown as CredentialResolverClass;
 
 				Object.defineProperty(MockClass1, 'name', { value: 'SuccessResolver' });
 				Object.defineProperty(MockClass2, 'name', { value: 'FailingResolver' });
@@ -243,7 +244,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 				mockMetadata.getClasses.mockReturnValue([MockClass1, MockClass2, MockClass3]);
 
-				const containerGetSpy = jest.spyOn(Container, 'get');
+				const containerGetSpy = vi.spyOn(Container, 'get');
 				containerGetSpy.mockReturnValueOnce(resolver1);
 				containerGetSpy.mockImplementationOnce(() => {
 					throw new Error('Failed');
@@ -262,11 +263,11 @@ describe('DynamicCredentialResolverRegistry', () => {
 	describe('getResolverByName', () => {
 		it('should return resolver by name', async () => {
 			const mockResolver = createMockResolver('test.resolver');
-			const MockResolverClass = jest.fn(() => mockResolver) as unknown as CredentialResolverClass;
+			const MockResolverClass = vi.fn(() => mockResolver) as unknown as CredentialResolverClass;
 			Object.defineProperty(MockResolverClass, 'name', { value: 'TestResolver' });
 
 			mockMetadata.getClasses.mockReturnValue([MockResolverClass]);
-			jest.spyOn(Container, 'get').mockReturnValue(mockResolver);
+			vi.spyOn(Container, 'get').mockReturnValue(mockResolver);
 
 			await registry.init();
 
@@ -290,15 +291,15 @@ describe('DynamicCredentialResolverRegistry', () => {
 			const resolver1 = createMockResolver('resolver1');
 			const resolver2 = createMockResolver('resolver2');
 
-			const MockClass1 = jest.fn(() => resolver1) as unknown as CredentialResolverClass;
-			const MockClass2 = jest.fn(() => resolver2) as unknown as CredentialResolverClass;
+			const MockClass1 = vi.fn(() => resolver1) as unknown as CredentialResolverClass;
+			const MockClass2 = vi.fn(() => resolver2) as unknown as CredentialResolverClass;
 
 			Object.defineProperty(MockClass1, 'name', { value: 'Resolver1' });
 			Object.defineProperty(MockClass2, 'name', { value: 'Resolver2' });
 
 			mockMetadata.getClasses.mockReturnValue([MockClass1, MockClass2]);
 
-			const containerGetSpy = jest.spyOn(Container, 'get');
+			const containerGetSpy = vi.spyOn(Container, 'get');
 			containerGetSpy.mockReturnValueOnce(resolver1);
 			containerGetSpy.mockReturnValueOnce(resolver2);
 
@@ -322,11 +323,11 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 		it('should not allow mutation of internal map', async () => {
 			const mockResolver = createMockResolver('test.resolver');
-			const MockResolverClass = jest.fn(() => mockResolver) as unknown as CredentialResolverClass;
+			const MockResolverClass = vi.fn(() => mockResolver) as unknown as CredentialResolverClass;
 			Object.defineProperty(MockResolverClass, 'name', { value: 'TestResolver' });
 
 			mockMetadata.getClasses.mockReturnValue([MockResolverClass]);
-			jest.spyOn(Container, 'get').mockReturnValue(mockResolver);
+			vi.spyOn(Container, 'get').mockReturnValue(mockResolver);
 
 			await registry.init();
 

@@ -1,5 +1,5 @@
 import { ExecutionsConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import { BinaryDataConfig } from 'n8n-core';
 
 import type {
@@ -9,7 +9,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 	constructor(
 		private readonly config: BinaryDataConfig,
@@ -25,7 +25,7 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 			description:
 				'Binary files are now stored on disk (default in regular mode) or in database (default in queue mode) instead of in memory',
 			category: BreakingChangeCategory.infrastructure,
-			severity: 'low',
+			impact: 'behaviorChanges',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#remove-in-memory-binary-data-mode',
 		};

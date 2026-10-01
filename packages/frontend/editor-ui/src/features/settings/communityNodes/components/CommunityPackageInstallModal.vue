@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import { useInstallNode } from '../composables/useInstallNode';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -20,6 +20,7 @@ import {
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 interface ModalData {
 	packageName?: string;
@@ -42,6 +43,8 @@ const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(packageName.value));
 
 const openNPMPage = () => {
 	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
@@ -52,16 +55,15 @@ const onInstallClick = async () => {
 	if (!userAgreed.value) {
 		checkboxWarning.value = true;
 	} else {
-		telemetry.track('user started cnr package install', {
-			input_string: packageName.value,
-			source: 'cnr settings page',
-		});
-
 		infoTextErrorMessage.value = '';
 		const result = await installNode({
 			type: 'unverified',
 			packageName: packageName.value,
 			nodeType: modalData.value?.nodeType,
+			telemetry: {
+				source: 'cnr settings page',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
 		});
 		if (result.error && 'httpStatusCode' in result.error && result.error.httpStatusCode === 400) {
 			infoTextErrorMessage.value = result.error.message;

@@ -1,4 +1,10 @@
-import { AzureChatOpenAI } from '@langchain/openai';
+import { AzureChatOpenAI, ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import {
 	NodeOperationError,
 	NodeConnectionTypes,
@@ -8,10 +14,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-
 import { setupApiKeyAuthentication } from './credentials/api-key';
 import { setupOAuth2Authentication } from './credentials/oauth2';
+import { searchModels } from './methods/searchModels';
 import { properties } from './properties';
 import { AuthenticationType } from './types';
 import type {
@@ -19,12 +24,16 @@ import type {
 	AzureOpenAIOAuth2ModelConfig,
 	AzureOpenAIOptions,
 } from './types';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAzureOpenAi implements INodeType {
+	methods = {
+		listSearch: {
+			searchModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
-		displayName: 'Azure OpenAI Chat Model',
+		displayName: 'Azure AI Foundry Chat Model',
 
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
@@ -32,7 +41,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		version: 1,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Azure OpenAI Chat Model',
+			name: 'Azure AI Foundry Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -47,6 +56,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					},
 				],
 			},
+			// The old label, in full and in part. Fuzzy search matches a pattern into a target, so
+			// the full former name finds nothing unless it is here verbatim.
+			alias: ['Azure OpenAI Chat Model', 'Azure OpenAI', 'Azure AI Foundry', 'Foundry'],
 		},
 
 		inputs: [],
@@ -104,22 +116,80 @@ export class LmChatAzureOpenAi implements INodeType {
 			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 
 			const timeout = options.timeout;
+
+			if (modelConfig.azureFoundryBaseURL) {
+				const foundryURL = modelConfig.azureFoundryBaseURL;
+				const configuration: ClientOptions = {
+					baseURL: foundryURL,
+					fetch: aiClientFetch,
+					fetchOptions: {
+						dispatcher: getProxyAgent(
+							foundryURL,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+							this.helpers.getSecureEgressFilter(),
+						),
+					},
+				};
+				if (modelConfig.azureADTokenProvider) {
+					configuration.apiKey = modelConfig.azureADTokenProvider;
+				}
+				const model = new ChatOpenAI({
+					model: modelName,
+					...(modelConfig.azureOpenAIApiKey ? { apiKey: modelConfig.azureOpenAIApiKey } : {}),
+					...options,
+					timeout,
+					maxRetries: options.maxRetries ?? 2,
+					configuration,
+					callbacks: [new N8nLlmTracing(this)],
+					modelKwargs: options.responseFormat
+						? {
+								response_format: { type: options.responseFormat },
+							}
+						: undefined,
+					onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+				});
+
+				this.logger.info(`Azure OpenAI (Foundry) client initialized for model: ${modelName}`);
+				return { response: model };
+			}
+
+			// One resolved host for both the client and the proxy. Passing it explicitly also stops
+			// LangChain falling back to AZURE_OPENAI_ENDPOINT, which the proxy would not know about.
+			// `||` not `??`: a cleared Endpoint field stores '' rather than undefined.
+			const azureOpenAIEndpoint =
+				modelConfig.azureOpenAIEndpoint ||
+				`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`;
+
 			const model = new AzureChatOpenAI({
+				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
+				// so the Responses API hits an invalid endpoint and causes a connection error.
+				// See: https://github.com/langchain-ai/langchainjs/issues/9038
+				useResponsesApi: false,
 				// Model name is required so logs are correct
 				// Also ensures internal logic (like mapping "maxTokens" to "maxCompletionTokens") is correct
 				model: modelName,
 				azureOpenAIApiDeploymentName: modelName,
 				...modelConfig,
 				...options,
+				azureOpenAIEndpoint,
 				timeout,
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
+					fetch: aiClientFetch,
 					fetchOptions: {
-						dispatcher: getProxyAgent(undefined, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						// Same host the client dials, so NO_PROXY and the egress filter apply to it.
+						dispatcher: getProxyAgent(
+							azureOpenAIEndpoint,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+							this.helpers.getSecureEgressFilter(),
+						),
 					},
 				},
 				modelKwargs: options.responseFormat

@@ -1,26 +1,30 @@
-import { generateUrlSignature } from '../signature-helpers';
+import { buildResumeUrlSuffix } from '../signature-helpers';
 
-describe('signature-helpers', () => {
-	const secret = 'test-secret';
-	const baseUrl = 'http://localhost:5678';
+describe('buildResumeUrlSuffix', () => {
+	it('should leave a uuid node id unchanged', () => {
+		expect(buildResumeUrlSuffix('123', 'dddd2020-0000-4000-8000-000000002099')).toBe(
+			'/123/dddd2020-0000-4000-8000-000000002099',
+		);
+	});
 
-	describe('generateUrlSignature', () => {
-		it('should generate a signature token', () => {
-			const url = `${baseUrl}/webhook/abc`;
-			const token = generateUrlSignature(url, secret);
-			expect(token).toBe('fe7f1e4c11f875b2d24681e0b28d0bfed6d66381af5b0ab9633da2202a895243');
-		});
+	it('should confine a node id to a single path segment', () => {
+		expect(buildResumeUrlSuffix('123', '../43/other')).toBe('/123/..%2F43%2Fother');
+	});
 
-		it('should generate a different token for a different url', () => {
-			const url = `${baseUrl}/webhook/def`;
-			const token = generateUrlSignature(url, secret);
-			expect(token).toBe('ab8e72e7a0e47689596a6550283cbef9e2797b7370b0d6d99c89ee7c2394ea8f');
-		});
+	it('should confine a node id that opens a query string', () => {
+		expect(buildResumeUrlSuffix('123', 'x?approved=true')).toBe('/123/x%3Fapproved%3Dtrue');
+	});
 
-		it('should generate a different token for a different secret', () => {
-			const url = `${baseUrl}/webhook/abc`;
-			const token = generateUrlSignature(url, 'different-secret');
-			expect(token).toBe('84a99b6950e12ffcf1fcf8e0fc0986c0c8a46df331932efd79b17e0c11801bd2');
+	describe('when the node id is a bare dot segment', () => {
+		// Encoding leaves `.` and `..` untouched, so the documented outcome is a link that
+		// collapses on parsing and no longer resolves. Pinned so the limitation stays visible.
+		it.each([
+			{ nodeId: '.', suffix: '/123/.', pathname: '/waiting-webhook/123/' },
+			{ nodeId: '..', suffix: '/123/..', pathname: '/waiting-webhook/' },
+		])('should collapse the path for a node id of "$nodeId"', ({ nodeId, suffix, pathname }) => {
+			expect(buildResumeUrlSuffix('123', nodeId)).toBe(suffix);
+
+			expect(new URL(`http://localhost/waiting-webhook${suffix}`).pathname).toBe(pathname);
 		});
 	});
 });

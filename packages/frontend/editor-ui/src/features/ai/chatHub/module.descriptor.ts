@@ -1,10 +1,11 @@
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_WORKFLOW_AGENTS_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,
-	TOOLS_SELECTOR_MODAL_KEY,
+	TOOL_SETTINGS_MODAL_KEY,
+	TOOLS_MANAGER_MODAL_KEY,
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
@@ -22,19 +23,31 @@ const ChatPersonalAgentsView = async () =>
 const SettingsChatHubView = async () =>
 	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
-export const ChatModule: FrontendModuleDescription = {
+export const ChatModule = defineFrontendModule({
 	id: 'chat-hub',
 	name: 'Chat',
 	description: 'Chat with LLM models or your n8n AI agents.',
 	icon: 'chat',
 	modals: [
 		{
-			key: TOOLS_SELECTOR_MODAL_KEY,
-			component: async () => await import('./components/ToolsSelectorModal.vue'),
+			key: TOOL_SETTINGS_MODAL_KEY,
+			component: async () => await import('./components/ToolSettingsModal.vue'),
 			initialState: {
 				open: false,
 				data: {
-					selected: [],
+					node: null,
+					existingToolNames: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: TOOLS_MANAGER_MODAL_KEY,
+			component: async () => await import('./components/ToolsManagerModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					tools: [],
 					onConfirm: () => {},
 				},
 			},
@@ -53,7 +66,7 @@ export const ChatModule: FrontendModuleDescription = {
 		},
 		{
 			key: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
-			component: async () => await import('./components/CredentialSelectorModal.vue'),
+			component: async () => await import('../components/CredentialSelectorModal.vue'),
 			initialState: {
 				open: false,
 				data: {
@@ -191,4 +204,4 @@ export const ChatModule: FrontendModuleDescription = {
 			},
 		},
 	],
-};
+});

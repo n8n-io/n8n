@@ -2,6 +2,7 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { user, group } from './descriptions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 import { BASE_URL } from './helpers/constants';
 import { encodeBodyAsFormUrlEncoded } from './helpers/utils';
 import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
@@ -15,15 +16,11 @@ export class AwsIam implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interacts with Amazon IAM',
+		schemaPath: 'Aws/IAM',
 		defaults: { name: 'AWS IAM' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		requestDefaults: {
 			baseURL: BASE_URL,
 			json: true,
@@ -32,6 +29,7 @@ export class AwsIam implements INodeType {
 			},
 		},
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

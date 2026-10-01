@@ -3,8 +3,8 @@ import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';
@@ -54,7 +54,7 @@ const mockResolver: ICredentialResolver = {
 	},
 	async deleteSecret() {},
 	async validateIdentity() {},
-	validateOptions: jest.fn(),
+	validateOptions: vi.fn(),
 };
 
 beforeAll(async () => {
@@ -64,7 +64,7 @@ beforeAll(async () => {
 	oauthService = Container.get(OauthService);
 
 	// Mock OAuth service to avoid actual OAuth flow
-	oauthService.generateAOauth2AuthUri = jest
+	oauthService.generateAOauth2AuthUri = vi
 		.fn()
 		.mockResolvedValue('https://oauth.example.com/authorize');
 	mockInstance(EnterpriseCredentialsService);
@@ -89,7 +89,9 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 				id: randomId(),
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
-				data: cipher.encrypt({ clientId: 'test-client-id' }),
+				// These routes only serve end-user credentials.
+				isResolvable: true,
+				data: cipher.encryptWithInstanceKey({ clientId: 'test-client-id' }),
 			}),
 		);
 		credentialId = credential.id;
@@ -99,7 +101,7 @@ describe('POST /credentials/:id/authorize - CORS Integration', () => {
 			id: randomId(),
 			name: 'Test Resolver',
 			type: 'test-resolver',
-			config: cipher.encrypt(JSON.stringify({ apiKey: 'test-api-key' })),
+			config: cipher.encryptWithInstanceKey(JSON.stringify({ apiKey: 'test-api-key' })),
 		});
 		resolverId = resolver.id;
 
@@ -207,7 +209,9 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 				id: randomId(),
 				name: 'Test OAuth2 Credential',
 				type: 'oAuth2Api',
-				data: cipher.encrypt({ clientId: 'test-client-id' }),
+				// These routes only serve end-user credentials.
+				isResolvable: true,
+				data: cipher.encryptWithInstanceKey({ clientId: 'test-client-id' }),
 			}),
 		);
 		credentialId = credential.id;
@@ -217,7 +221,7 @@ describe('DELETE /credentials/:id/revoke - CORS Integration', () => {
 			id: randomId(),
 			name: 'Test Resolver',
 			type: 'test-resolver',
-			config: cipher.encrypt(JSON.stringify({ apiKey: 'test-api-key' })),
+			config: cipher.encryptWithInstanceKey(JSON.stringify({ apiKey: 'test-api-key' })),
 		});
 		resolverId = resolver.id;
 
@@ -304,10 +308,10 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 	test('should set CORS headers on GET request', async () => {
 		// Mock the workflow status service to return a valid response
 		const { CredentialResolverWorkflowService } = await import(
-			'../services/credential-resolver-workflow.service'
+			'../services/credential-resolver-workflow.service.js'
 		);
 		const workflowService = Container.get(CredentialResolverWorkflowService);
-		jest.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([
+		vi.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([
 			{
 				credentialId: 'cred-123',
 				resolverId: 'resolver-123',

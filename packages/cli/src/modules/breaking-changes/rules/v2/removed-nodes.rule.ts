@@ -1,6 +1,6 @@
 import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
 import type {
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 	private readonly REMOVED_NODES = [
 		'n8n-nodes-base.spontit',
@@ -26,7 +26,7 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
-			severity: 'low',
+			impact: 'executionsFail',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#removed-nodes-for-retired-services',
 		};

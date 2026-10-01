@@ -9,14 +9,16 @@ import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
 	DEFAULT_ID_COLUMN_NAME,
 	ADD_ROW_ROW_ID,
 } from '@/features/core/dataTable/constants';
-import { useDataTablePagination } from '@/features/core/dataTable/composables/useDataTablePagination';
+import {
+	useDataTablePagination,
+	type PageSize,
+} from '@/features/core/dataTable/composables/useDataTablePagination';
 import { useAgGrid } from '@/features/core/dataTable/composables/useAgGrid';
 import { useDataTableColumns } from '@/features/core/dataTable/composables/useDataTableColumns';
 import { useDataTableSelection } from '@/features/core/dataTable/composables/useDataTableSelection';
@@ -24,14 +26,15 @@ import { useDataTableOperations } from '@/features/core/dataTable/composables/us
 import { useDataTableColumnFilters } from '@/features/core/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 
-import { ElPagination } from 'element-plus';
+import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
 registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
 	search?: string;
+	readOnly?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -47,11 +50,16 @@ const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
+const defaultColDef = computed(() => ({
+	...GRID_FILTER_CONFIG.defaultColDef,
+	editable: !props.readOnly,
+}));
+
 const agGrid = useAgGrid<DataTableRow>({
 	gridContainerRef,
 	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
 	pinnedBottomRowId: ADD_ROW_ROW_ID,
-	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
+	defaultColDef: defaultColDef.value,
 });
 
 const dataTableColumns = useDataTableColumns({
@@ -60,6 +68,7 @@ const dataTableColumns = useDataTableColumns({
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -80,6 +89,7 @@ const {
 
 const selection = useDataTableSelection({
 	gridApi: agGrid.gridApi,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const dataTableOperations = useDataTableOperations({
@@ -161,6 +171,7 @@ watch(
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
 	addColumn: dataTableOperations.onAddColumn,
+	fetchDataTableRows: dataTableOperations.fetchDataTableRows,
 });
 </script>
 
@@ -201,20 +212,18 @@ defineExpose({
 				@filter-changed="onFilterChanged"
 			/>
 			<div :class="$style.footer">
-				<ElPagination
-					v-model:current-page="currentPage"
-					v-model:page-size="pageSize"
+				<N8nPagination
+					:page="currentPage"
+					:items-per-page="pageSize"
 					data-test-id="data-table-content-pagination"
-					background
 					:total="totalItems"
 					:page-sizes="pageSizeOptions"
-					layout="total, prev, pager, next, sizes"
-					@update:current-page="setCurrentPage"
-					@size-change="(val: number) => setPageSize(val as 10 | 20 | 50)"
+					@update:page="setCurrentPage"
+					@update:items-per-page="(val: number) => setPageSize(val as PageSize)"
 				/>
 			</div>
 		</div>
-		<SelectedItemsInfo
+		<N8nSelectedItemsInfo
 			:selected-count="selection.selectedCount.value"
 			@delete-selected="dataTableOperations.handleDeleteSelected"
 			@clear-selection="selection.handleClearSelection"
@@ -248,6 +257,28 @@ defineExpose({
 	--ag-input-padding-start: var(--spacing--2xs);
 	--ag-input-background-color: var(--color--background--light-2);
 	--ag-focus-shadow: none;
+
+	// Theme-aware scrollbar styling (dark mode support)
+	:global(.ag-body-horizontal-scroll-viewport),
+	:global(.ag-body-vertical-scroll-viewport) {
+		scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+		@supports selector(::-webkit-scrollbar) {
+			&::-webkit-scrollbar {
+				height: var(--spacing--2xs);
+				width: var(--spacing--2xs);
+			}
+
+			&::-webkit-scrollbar-track {
+				background: transparent;
+			}
+
+			&::-webkit-scrollbar-thumb {
+				border-radius: var(--radius);
+				background: var(--color--foreground--shade-1);
+			}
+		}
+	}
 
 	:global(.ag-cell) {
 		display: flex;
@@ -428,28 +459,5 @@ defineExpose({
 	justify-content: flex-end;
 	margin-bottom: var(--spacing--lg);
 	padding-right: var(--spacing--xl);
-
-	:global(.el-pagination__sizes) {
-		height: 100%;
-		position: relative;
-		top: -1px;
-
-		input {
-			height: 100%;
-			min-height: 28px;
-		}
-
-		:global(.el-input__suffix) {
-			width: var(--spacing--md);
-		}
-	}
-
-	// A hacky solution for element ui bug where clicking svg inside .more button does not work
-	:global(.el-pager .more) {
-		background: transparent !important;
-		svg {
-			z-index: -1;
-		}
-	}
 }
 </style>

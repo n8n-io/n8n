@@ -1,5 +1,11 @@
 import * as assert from 'assert/strict';
-import type { INode, INodeType, IRunData, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeType,
+	type IRunData,
+	type Workflow,
+} from 'n8n-workflow';
 
 import type { DirectedGraph } from './directed-graph';
 
@@ -44,11 +50,16 @@ export function anyReachableRootHasRunData(
 		parentNodes.add(connection.from);
 	}
 
-	// Find all root nodes (nodes with no incoming connections)
+	// Find all root nodes (nodes with no incoming Main connections).
+	// Sub-node connections (ai_chatMemory, ai_languageModel, etc.) should not
+	// disqualify a trigger from being a root – sub-nodes are executed internally
+	// by their parent and are not independent starting points.
 	const rootNodes = new Set<INode>();
 	for (const parentNode of parentNodes) {
-		const hasParents = workflow.getDirectParentConnections(parentNode).length > 0;
-		if (!hasParents) {
+		const hasMainParents = workflow
+			.getDirectParentConnections(parentNode)
+			.some((c) => c.type === NodeConnectionTypes.Main);
+		if (!hasMainParents) {
 			rootNodes.add(parentNode);
 		}
 	}

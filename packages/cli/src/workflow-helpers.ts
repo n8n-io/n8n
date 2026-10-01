@@ -1,57 +1,75 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
-import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type {
-	IDataObject,
-	INodeCredentialsDetails,
-	IRun,
-	ITaskData,
-	IWorkflowBase,
-	IWorkflowSettings,
-	RelatedExecution,
+import {
+	collectSubWorkflowOutput,
+	getLastExecutedNodeData,
+	Workflow,
+	UnexpectedError,
+	dropInvalidWorkflowGroups,
+	formatWorkflowStructureIssuePath,
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	isSafeObjectProperty,
+	makeGetNodeTypeForGrouping,
+	normalizeGroupDescription,
+	resolveNodeWebhookId,
+	resolveVariables,
+	safeParseWorkflowStructure,
+	summarizeDynamicCredentialsUsage,
+	validateWorkflowGroups,
+	type IDataObject,
+	type INodeCredentialsDetails,
+	type INodeTypes,
+	type IRun,
+	type ITaskData,
+	type IWorkflowBase,
+	type IWorkflowSettings,
+	type RelatedExecution,
+	type GetNodeTypeForGrouping,
+	type NodeGroupRuleOptions,
+	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { NodeTypes } from '@/node-types';
 
 import { OwnershipService } from './services/ownership.service';
 
+export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
+export { getLastExecutedNodeData, getLastExecutedNodeRuns } from 'n8n-workflow';
+
 /**
- * Returns the data of the last executed node
+ * Validates that pinned data does not exceed size limits.
+ * (Backend counterpart of the frontend's `usePinnedData.isValidSize()`).
+ * Check 1: pinData alone must not exceed MAX_PINNED_DATA_SIZE (12 MB).
+ * Check 2: workflow (without pinData) + pinData must not exceed MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE (~16 MB - 2 KB).
  */
-export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, pinData = {} } = inputData.data.resultData;
-	const { lastNodeExecuted } = inputData.data.resultData;
+export function validatePinDataSize(workflow: IWorkflowBase): void {
+	if (!workflow.pinData) return;
 
-	if (lastNodeExecuted === undefined) {
-		return undefined;
+	const pinDataStr = JSON.stringify(workflow.pinData);
+	const pinDataSize = Buffer.byteLength(pinDataStr, 'utf8');
+
+	if (pinDataSize > MAX_PINNED_DATA_SIZE) {
+		throw new BadRequestError(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
 	}
 
-	if (runData[lastNodeExecuted] === undefined) {
-		return undefined;
+	const { pinData: _, ...workflowWithoutPinData } = workflow;
+	const workflowSize =
+		Buffer.byteLength(JSON.stringify(workflowWithoutPinData), 'utf8') + pinDataSize;
+	const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+	if (workflowSize > limit) {
+		const limitMB = Math.floor(limit / (1024 * 1024));
+		throw new BadRequestError(
+			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
+		);
 	}
-
-	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
-
-	let lastNodePinData = pinData[lastNodeExecuted];
-
-	if (lastNodePinData && inputData.mode === 'manual') {
-		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
-
-		const itemsPerRun = lastNodePinData.map((item, index) => {
-			return { json: item, pairedItem: { item: index } };
-		});
-
-		return {
-			startTime: 0,
-			executionIndex: 0,
-			executionTime: 0,
-			data: { main: [itemsPerRun] },
-			source: lastNodeRunData.source,
-		};
-	}
-
-	return lastNodeRunData;
 }
 
 /**
@@ -66,6 +84,134 @@ export function addNodeIds(workflow: IWorkflowBase) {
 			node.id = uuid();
 		}
 	});
+}
+
+/**
+ * Assign webhookId to any webhook node that is missing one.
+ * The UI does this on the frontend when adding nodes to the canvas,
+ * but workflows created via the API skip that step.
+ */
+export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeTypes) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	for (const node of nodes) {
+		try {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			resolveNodeWebhookId(node, nodeType.description);
+		} catch {
+			// node type not found, skip
+		}
+	}
+}
+
+/**
+ * Validates nodeGroups on the save path, rejecting with a `BadRequestError`.
+ *
+ * The rules and messages live in `validateWorkflowGroups` (n8n-workflow), the
+ * single source of truth shared with validate-time surfaces; this wrapper throws
+ * the first violation, preserving the historical throw-on-first behavior. See
+ * that function for the basic-vs-full checks contract (`getNodeType: null` runs
+ * basic checks only, e.g. a git import, so legacy-invalid groups don't block
+ * the import).
+ *
+ * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
+ * may not have IDs until that step assigns them.
+ */
+export function validateWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
+		connections?: IWorkflowBase['connections'];
+	},
+	getNodeType: GetNodeTypeForGrouping | null,
+	rules: NodeGroupRuleOptions = {},
+) {
+	const result = validateWorkflowGroups({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+		...rules,
+	});
+
+	if (!result.valid) {
+		throw new BadRequestError(result.violations[0].message);
+	}
+}
+
+/**
+ * Normalizes group descriptions on import, mutating in place.
+ *
+ * Authoring paths (internal REST + public API) reject invalid or over-cap
+ * descriptions via their DTOs. Import paths accept arbitrary JSON, so instead of
+ * rejecting they drop non-string descriptions and truncate over-long ones —
+ * keeping the import lenient while honouring the plain-text, capped contract.
+ * Returns a warning per adjusted group so callers can surface it.
+ */
+export function sanitizeNodeGroupDescriptions(
+	workflow: Pick<IWorkflowBase, 'nodeGroups'>,
+): string[] {
+	const warnings: string[] = [];
+	for (const group of workflow.nodeGroups ?? []) {
+		// Imported JSON is untyped at runtime despite the `string` contract.
+		const original: unknown = group.description;
+		if (original === undefined) continue;
+
+		const normalized = normalizeGroupDescription(original);
+		if (normalized === original) continue;
+
+		if (normalized === undefined) {
+			delete group.description;
+			if (typeof original !== 'string') {
+				warnings.push(`Group "${group.name}" description was not plain text and was removed.`);
+			}
+		} else {
+			group.description = normalized;
+			warnings.push(
+				`Group "${group.name}" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+			);
+		}
+	}
+	return warnings;
+}
+
+/**
+ * BadRequestError thrown by validateWorkflowStructure when a workflow fails
+ * structural Zod / graph validation. Carries the original WorkflowStructureIssue[]
+ * so downstream consumers (e.g. Instance AI workflow build tooling) can build
+ * rich diagnostics — node JSON at the offending path, value at the path, and a
+ * full nodes[] name map — without reparsing the flattened message string.
+ *
+ * The status code (400) and `Workflow structure is invalid. <details>` message
+ * are unchanged from before this class existed, so REST clients are unaffected.
+ */
+export class WorkflowStructureBadRequestError extends BadRequestError {
+	constructor(
+		message: string,
+		readonly issues: WorkflowStructureIssue[],
+	) {
+		super(message);
+	}
+}
+
+export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
+	const result = safeParseWorkflowStructure(workflow);
+
+	if (result.success) return;
+
+	const details = result.issues
+		.map(({ path, message, code }) => {
+			const formattedPath = Array.isArray(path)
+				? formatWorkflowStructureIssuePath(path)
+				: 'workflow';
+
+			return `${formattedPath} (${code}): ${message}`;
+		})
+		.join('; ');
+
+	throw new WorkflowStructureBadRequestError(
+		`Workflow structure is invalid. ${details}`,
+		result.issues,
+	);
 }
 
 /**
@@ -103,17 +249,28 @@ export function removeDefaultValues(
 		delete cleanedSettings.executionTimeout;
 	}
 
+	// Remove credentialResolverId if it was cleared (empty string from UI clear action)
+	if (!cleanedSettings.credentialResolverId) {
+		delete cleanedSettings.credentialResolverId;
+	}
+
 	return cleanedSettings;
 }
 
+export type ReplaceInvalidCredentialsCache = Map<string, INodeCredentialsDetails>;
+
+function credentialCacheKey(parts: readonly string[]): string {
+	return JSON.stringify(parts) ?? '';
+}
+
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
-export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflow: T): Promise<T> {
+export async function replaceInvalidCredentials<T extends IWorkflowBase>(
+	workflow: T,
+	projectId: string,
+	cache: ReplaceInvalidCredentialsCache = new Map(),
+): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
-
-	// caching
-	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
-	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
@@ -125,88 +282,113 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Reject credential types that resolve to object internals,
+			// so the dynamic lookups and writes below cannot reach the prototype chain.
+			if (!isSafeObjectProperty(nodeCredentialType)) {
+				continue;
+			}
+			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
+			if (nodeCredentials === null || nodeCredentials === undefined) {
+				continue;
+			}
+			// AI Gateway managed credentials have no real DB record — skip, handled at execution time
+			if (nodeCredentials.__aiGatewayManaged) continue;
+
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
-				// init cache for type
-				if (!credentialsByName[nodeCredentialType]) {
-					credentialsByName[nodeCredentialType] = {};
-				}
-				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Container.get(CredentialsRepository).findBy({
+				const cacheKey = credentialCacheKey(['name', nodeCredentialType, name]);
+				const cachedCredential = cache.get(cacheKey);
+				if (cachedCredential === undefined) {
+					const credentials = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
 						name,
-						type: nodeCredentialType,
-					});
+						nodeCredentialType,
+						projectId,
+					);
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
-						credentialsByName[nodeCredentialType][name] = {
+						const resolvedCredential = {
 							id: credentials[0].id,
 							name: credentials[0].name,
 						};
-						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+						cache.set(cacheKey, resolvedCredential);
+						node.credentials[nodeCredentialType] = { ...resolvedCredential };
 						continue;
 					}
 
 					// nothing found - add invalid credentials to cache to prevent further DB checks
-					credentialsByName[nodeCredentialType][name] = {
+					cache.set(cacheKey, {
 						id: null,
 						name,
-					};
+					});
 				} else {
 					// get credentials from cache
-					node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+					node.credentials[nodeCredentialType] = { ...cachedCredential };
 				}
 				continue;
 			}
 
 			// Node has credentials with an ID
 
-			// init cache for type
-			if (!credentialsById[nodeCredentialType]) {
-				credentialsById[nodeCredentialType] = {};
+			const idCacheKey = credentialCacheKey(['id', nodeCredentialType, nodeCredentials.id]);
+			const idAndNameCacheKey = credentialCacheKey([
+				'idAndName',
+				nodeCredentialType,
+				nodeCredentials.id,
+				nodeCredentials.name,
+			]);
+			const cachedFallback = cache.get(idAndNameCacheKey);
+			if (cachedFallback !== undefined) {
+				node.credentials[nodeCredentialType] = { ...cachedFallback };
+				continue;
 			}
 
 			// check if credentials for ID-type are not yet cached
-			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
+			const cachedById = cache.get(idCacheKey);
+			if (cachedById === undefined) {
 				// check first if ID-type combination exists
 				const credentials = await Container.get(CredentialsRepository).findOneBy({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
 				if (credentials) {
-					credentialsById[nodeCredentialType][nodeCredentials.id] = {
+					const resolvedCredential = {
 						id: credentials.id,
 						name: credentials.name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][nodeCredentials.id];
+					cache.set(idCacheKey, resolvedCredential);
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Container.get(CredentialsRepository).findBy({
-					name: nodeCredentials.name,
-					type: nodeCredentialType,
-				});
+				const credsByName = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
+					nodeCredentials.name,
+					nodeCredentialType,
+					projectId,
+				);
 				// if credential name-type combination is unique, take it
 				if (credsByName?.length === 1) {
 					// add found credential to cache
-					credentialsById[nodeCredentialType][credsByName[0].id] = {
+					const resolvedCredential = {
 						id: credsByName[0].id,
 						name: credsByName[0].name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][credsByName[0].id];
+					cache.set(idAndNameCacheKey, resolvedCredential);
+					cache.set(
+						credentialCacheKey(['id', nodeCredentialType, credsByName[0].id]),
+						resolvedCredential,
+					);
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 
 				// nothing found - add invalid credentials to cache to prevent further DB checks
-				credentialsById[nodeCredentialType][nodeCredentials.id] = nodeCredentials;
+				cache.set(idAndNameCacheKey, { ...nodeCredentials });
 				continue;
 			}
 
 			// get credentials from cache
-			node.credentials[nodeCredentialType] =
-				credentialsById[nodeCredentialType][nodeCredentials.id];
+			node.credentials[nodeCredentialType] = { ...cachedById };
 		}
 	}
 
@@ -225,18 +407,7 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	// Either projectId passed or use project from workflow
 	const projectIdToUse = projectId ?? project?.id;
 
-	return Object.freeze(
-		variables.reduce((acc, curr) => {
-			if (!curr.project) {
-				// always set globals
-				acc[curr.key] = curr.value;
-			} else if (projectIdToUse && curr.project.id === projectIdToUse) {
-				// project variables override globals
-				acc[curr.key] = curr.value;
-			}
-			return acc;
-		}, {} as IDataObject),
-	);
+	return Object.freeze(resolveVariables(variables, projectIdToUse));
 }
 
 /**
@@ -269,43 +440,127 @@ export function shouldRestartParentExecution(
  * the parent resumes), not which specific child. Only one child will successfully resume the parent
  * due to the atomic status check in ActiveExecutions.add().
  *
- * @param executionRepository - The execution repository for database operations
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns whether the parent's stack was patched: `false` when the child carried no usable
+ * result, or the parent was not in a state that can take one
  */
 export async function updateParentExecutionWithChildResults(
-	executionRepository: ExecutionRepository,
 	parentExecutionId: string,
 	subworkflowResults: IRun,
-): Promise<void> {
-	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
-	if (!lastExecutedNodeData?.data) return;
-	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
+	childExecution?: RelatedExecution,
+	childWorkflowData?: IWorkflowBase,
+): Promise<boolean> {
+	const subworkflowError = subworkflowResults.data.resultData.error;
+	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
+	if (!subworkflowError && !lastExecutedNodeData?.data) return false;
+	const executionPersistence = Container.get(ExecutionPersistence);
+	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
 		unflattenData: true,
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return false;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return false;
 	}
 
-	// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
-	// so that the Execute Workflow node returns the correct data when parent execution is resumed
-	// and the Execute Workflow node is executed again in disabled mode.
-	nodeExecutionStack[0].data = lastExecutedNodeData.data;
+	// The parent may have moved on to a later wait since this child was spawned, and that wait
+	// belongs to whichever children it parked on. A child left over from an earlier wait would
+	// otherwise overwrite the node's input and resume the parent past the wait it is sitting in.
+	// A parent parked by an older build carries no ids, so an untagged stack entry takes any child.
+	const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+	if (
+		childExecution &&
+		waitingChildExecutionIds?.length &&
+		!waitingChildExecutionIds.includes(childExecution.executionId)
+	) {
+		return false;
+	}
 
-	await executionRepository.updateExistingExecution(
+	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
+	// (never calling `executeWorkflow` again), so the child's private-credential usage must
+	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	if (Object.keys(dynamicCredentialsUsage).length > 0) {
+		// Union with a sibling child's earlier report ("run once for each item" spawns several
+		// children per wait) — flags only ever accumulate, like every other flag writer.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			dynamicCredentialsUsage: {
+				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...dynamicCredentialsUsage,
+			},
+		};
+
+		// Also stamp the parent's waiting task and runtime data right away: the parent may sit
+		// in 'waiting' for a long time with the child's output already embedded in its data,
+		// and redaction scans runData task flags. The resume pops this task; the stash above
+		// restores the flags onto its replacement.
+		const waitingTasks =
+			parentWithSubWorkflowResults.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
+		const waitingTask = waitingTasks?.[waitingTasks.length - 1];
+		if (waitingTask) {
+			if (dynamicCredentialsUsage.usedDynamicCredentials) {
+				waitingTask.usedDynamicCredentials = true;
+			}
+			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
+				waitingTask.attemptedDynamicCredentials = true;
+			}
+		}
+		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
+		if (
+			dynamicCredentialsUsage.usedDynamicCredentials &&
+			dynamicCredentialsUsage.dynamicCredentialsResolvedUserId &&
+			runtimeData
+		) {
+			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
+		}
+	}
+
+	if (subworkflowError) {
+		// Record the error on the waiting parent's Execute Workflow node so the node
+		// fails with error on resume instead of appearing as successful. `subExecution`
+		// links the parent's node run to the failed child execution in the UI.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			resumeError: subworkflowError,
+			...(childExecution && { subExecution: childExecution }),
+		};
+	} else if (lastExecutedNodeData?.data) {
+		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+		// so that the Execute Workflow node returns the correct data when parent execution is resumed
+		// and the Execute Workflow node is executed again in disabled mode.
+		const policy = subworkflowResults.data.subWorkflowOutput;
+		if (policy) {
+			if (!childWorkflowData) {
+				throw new UnexpectedError('The saved child workflow is required to collect its output.');
+			}
+			const workflow = new Workflow({
+				...childWorkflowData,
+				nodeTypes: Container.get(NodeTypes),
+			});
+			nodeExecutionStack[0].data = {
+				main: await collectSubWorkflowOutput(subworkflowResults, workflow, policy),
+			};
+		} else {
+			// Executions saved without a policy keep the legacy resume behavior.
+			nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		}
+	}
+
+	await executionPersistence.updateExistingExecution(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+
+	return true;
 }
 
 /**
@@ -331,4 +586,24 @@ export function getActiveVersionUpdateValue(
 	}
 
 	return dbWorkflow.activeVersionId ? updatedVersion : null;
+}
+
+/**
+ * Removes the last run data entry so the node is not displayed as executed twice
+ * when resuming. If the entry had an inputOverride (e.g. for chat tool or HITL
+ * nodes), a placeholder entry is pushed back preserving only the inputOverride
+ * and source so the LLM's input stays visible in logs after the execution resumes.
+ */
+export function preserveInputOverride(runDataArray: ITaskData[]): void {
+	const entryToPop = runDataArray.pop()!;
+	const preservedInputOverride = entryToPop.inputOverride;
+	if (preservedInputOverride) {
+		runDataArray.push({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: entryToPop.source,
+			inputOverride: preservedInputOverride,
+		});
+	}
 }

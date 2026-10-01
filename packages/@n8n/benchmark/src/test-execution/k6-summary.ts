@@ -160,10 +160,9 @@ Example JSON:
  */
 
 type TrendStat = 'avg' | 'min' | 'med' | 'max' | 'p(90)' | 'p(95)';
-type MetricType = 'trend' | 'rate' | 'counter';
 type MetricContains = 'time' | 'default' | 'data';
 
-interface TrendValues {
+export interface TrendValues {
 	avg: number;
 	min: number;
 	med: number;
@@ -172,48 +171,48 @@ interface TrendValues {
 	'p(95)': number;
 }
 
-interface RateValues {
+export interface RateValues {
 	rate: number;
 	passes: number;
 	fails: number;
 }
 
-interface CounterValues {
+export interface CounterValues {
 	count: number;
 	rate: number;
 }
 
-interface K6TrendMetric {
+export interface K6TrendMetric {
 	type: 'trend';
 	contains: 'time';
 	values: TrendValues;
 }
 
-interface RateMetric {
+export interface RateMetric {
 	type: 'rate';
 	contains: 'default';
 	values: RateValues;
 }
 
-interface K6CounterMetric {
+export interface K6CounterMetric {
 	type: 'counter';
 	contains: MetricContains;
 	values: CounterValues;
 }
 
-interface Options {
+export interface Options {
 	summaryTrendStats: TrendStat[];
 	summaryTimeUnit: string;
 	noColor: boolean;
 }
 
-interface State {
+export interface State {
 	isStdOutTTY: boolean;
 	isStdErrTTY: boolean;
 	testRunDurationMs: number;
 }
 
-interface Metrics {
+export interface Metrics {
 	http_req_tls_handshaking: K6TrendMetric;
 	checks: RateMetric;
 	http_req_sending: K6TrendMetric;
@@ -231,7 +230,7 @@ interface Metrics {
 	data_sent: K6CounterMetric;
 }
 
-interface K6Check {
+export interface K6Check {
 	name: string;
 	path: string;
 	id: string;
@@ -239,7 +238,7 @@ interface K6Check {
 	fails: number;
 }
 
-interface RootGroup {
+export interface RootGroup {
 	name: string;
 	path: string;
 	id: string;
@@ -247,7 +246,7 @@ interface RootGroup {
 	checks: K6Check[];
 }
 
-interface K6EndOfTestSummary {
+export interface K6EndOfTestSummary {
 	options: Options;
 	state: State;
 	metrics: Metrics;

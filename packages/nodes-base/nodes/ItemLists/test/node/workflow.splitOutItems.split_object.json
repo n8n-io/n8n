@@ -30,11 +30,34 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const data = {\n  entry1: {\n    id: 1,\n    info: 'some info 1',\n  },\n  entry2: {\n    id: 2,\n    info: 'some info 2',\n  },\n  entry3: {\n    id: 3,\n    info: 'some info 3',\n  },\n};\n\n\nconst data2 = [\n  'a', 'b', 'c'\n];\n\nconst data3 = {\n  a: 1,\n  b: 2,\n  c: 3,\n};\n\nreturn {data, data2, data3, data4: null, tag: 'bar'};"
+				"data": {
+					"data": {
+						"entry1": {
+							"id": 1,
+							"info": "some info 1"
+						},
+						"entry2": {
+							"id": 2,
+							"info": "some info 2"
+						},
+						"entry3": {
+							"id": 3,
+							"info": "some info 3"
+						}
+					},
+					"data2": ["a", "b", "c"],
+					"data3": {
+						"a": 1,
+						"b": 2,
+						"c": 3
+					},
+					"data4": null,
+					"tag": "bar"
+				}
 			},
 			"id": "faa78fac-468d-42b8-96e9-0fb62c312da3",
 			"name": "Code1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [760, 800]
 		},

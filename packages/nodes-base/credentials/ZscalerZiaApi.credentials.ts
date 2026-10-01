@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -8,6 +7,7 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 export class ZscalerZiaApi implements ICredentialType {
 	name = 'zscalerZiaApi';
@@ -122,7 +122,7 @@ export class ZscalerZiaApi implements ICredentialType {
 			?.find((entry) => entry.includes('JSESSIONID'));
 
 		if (!cookie) {
-			throw new ApplicationError('No cookie returned. Please check your credentials.', {
+			throw new UserError('No cookie returned. Please check your credentials.', {
 				level: 'warning',
 			});
 		}

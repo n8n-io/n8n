@@ -6,9 +6,15 @@
             "properties": {
                 "approved": {
                     "type": "boolean"
+                },
+                "respondedAt": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
                 }
             }
         }
     },
-    "version": 1
+    "version": 3
 }

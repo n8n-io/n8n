@@ -1,12 +1,11 @@
 import type { PushMessage } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 
 import type { OnPushMessage } from '@/push/types';
-import { TypedEmitter } from '@/typed-emitter';
 
 export interface AbstractPushEvents {
 	message: OnPushMessage;
@@ -64,6 +63,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.emit('message', { pushRef, userId, msg });
 	}
 
+	protected getConnection(pushRef: string): Connection | undefined {
+		return this.connections[pushRef];
+	}
+
 	protected remove(pushRef?: string) {
 		if (!pushRef) return;
 
@@ -109,10 +112,16 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.sendTo(pushMsg, [pushRef], asBinary);
 	}
 
-	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+	sendToUsers(
+		pushMsg: PushMessage,
+		userIds: Array<User['id']>,
+		options?: { excludePushRef?: string },
+	) {
 		const { connections } = this;
-		const userPushRefs = Object.keys(connections).filter((pushRef) =>
-			userIds.includes(this.userIdByPushRef[pushRef]),
+		const userIdSet = new Set(userIds);
+		const userPushRefs = Object.keys(connections).filter(
+			(pushRef) =>
+				pushRef !== options?.excludePushRef && userIdSet.has(this.userIdByPushRef[pushRef]),
 		);
 
 		this.sendTo(pushMsg, userPushRefs);

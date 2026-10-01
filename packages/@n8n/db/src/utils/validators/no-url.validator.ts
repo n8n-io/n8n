@@ -10,7 +10,7 @@ class NoUrlConstraint implements ValidatorConstraintInterface {
 	}
 
 	defaultMessage() {
-		return 'Potentially malicious string';
+		return 'URLs are not allowed';
 	}
 }
 

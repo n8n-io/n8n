@@ -12,7 +12,7 @@ export class ChatHubProviderSettingsModal extends BaseModal {
 	}
 
 	getEnabledToggle(): Locator {
-		return this.root.getByLabel(/^Enable /).locator('..');
+		return this.root.getByTestId('chat-provider-enabled-switch');
 	}
 
 	getCredentialPicker(): Locator {
@@ -23,12 +23,8 @@ export class ChatHubProviderSettingsModal extends BaseModal {
 		return this.root.getByTitle('Update Credential');
 	}
 
-	getClearCredentialButton(): Locator {
-		return this.root.getByTitle('Clear selection');
-	}
-
 	getLimitModelsToggle(): Locator {
-		return this.root.getByLabel('Limit models').locator('..');
+		return this.root.getByTestId('chat-provider-limit-models-switch');
 	}
 
 	getModelSelector(): Locator {

@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -167,6 +167,19 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
+				displayName: 'Prompt Caching',
+				name: 'promptCaching',
+				type: 'options',
+				default: 'disabled',
+				description:
+					'Whether to cache the prompt so that repeat calls are cheaper and faster. Do not enable for one-off calls: in this case writing the cache costs more than it saves. The value sets how long cached content stays valid before it has to be written again. <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank">Learn more</a>.',
+				options: [
+					{ name: 'Disabled', value: 'disabled' },
+					{ name: '5 Minutes', value: '5m' },
+					{ name: '1 Hour', value: '1h' },
+				],
+			},
+			{
 				displayName: 'Code Execution',
 				name: 'codeExecution',
 				type: 'boolean',
@@ -270,6 +283,18 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName:
+			'Cache reads and writes are billed at different rates than regular input tokens, so reported prompt/total tokens are only an approximation of actual billable usage',
+		name: 'promptCachingNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				'/options.promptCaching': ['5m', '1h'],
+			},
+		},
+	},
 ];
 
 const displayOptions = {
@@ -283,6 +308,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 interface MessageOptions {
 	includeMergedResponse?: boolean;
+	promptCaching?: 'disabled' | '5m' | '1h';
 	codeExecution?: boolean;
 	webSearch?: boolean;
 	allowedDomains?: string;
@@ -312,10 +338,20 @@ function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image'
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
-	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
+	const rawMessages = this.getNodeParameter('messages.values', i, []) as Message[];
 	const addAttachments = this.getNodeParameter('addAttachments', i, false) as boolean;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+
+	const messages = rawMessages.filter(
+		(m) => typeof m.content !== 'string' || m.content.trim() !== '',
+	);
+
+	if (!addAttachments && messages.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 
 	const { tools, connectedTools } = await getTools.call(this, options);
 
@@ -336,12 +372,30 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		top_p: options.topP,
 		top_k: options.topK,
+		...(options.promptCaching && options.promptCaching !== 'disabled'
+			? { cache_control: { type: 'ephemeral', ttl: options.promptCaching } }
+			: {}),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
 		body,
 		enableAnthropicBetas: { codeExecution: options.codeExecution },
 	})) as MessagesResponse;
+
+	const captureUsage = () => {
+		const usage = response.usage;
+		if (usage) {
+			// Cached tokens are reported outside input_tokens, so they have to be added
+			// back in or enabling caching would look like a drop in token usage.
+			const inputTokens =
+				usage.input_tokens +
+				(usage.cache_creation_input_tokens ?? 0) +
+				(usage.cache_read_input_tokens ?? 0);
+			accumulateTokenUsage(this, inputTokens, usage.output_tokens);
+		}
+	};
+
+	captureUsage();
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -382,6 +436,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			body,
 			enableAnthropicBetas: { codeExecution: options.codeExecution },
 		})) as MessagesResponse;
+
+		captureUsage();
 	}
 
 	const mergedResponse = options.includeMergedResponse

@@ -395,13 +395,28 @@ export const documentFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				description:
-					'Query in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html">Elasticsearch Query DSL</a>',
+					'Query in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html">Elasticsearch Query DSL</a>. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				placeholder: placeholders.query,
+				hint: 'Use query parameters for dynamic values instead of embedding expressions in the query',
+			},
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				description:
+					'Array of values to use for $1, $2, and so on, in order. Values can be strings, numbers, booleans, null, or arrays of these values.',
+				type: 'json',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '={{ [] }}',
+				placeholder: '{{ [$json.name, 30] }}',
+				validateType: 'array',
+				hint: 'Build the array inside the expression, for example {{ [$json.name, 30] }} sets $1 to the name and $2 to 30',
 			},
 			{
 				displayName: 'Request Cache',

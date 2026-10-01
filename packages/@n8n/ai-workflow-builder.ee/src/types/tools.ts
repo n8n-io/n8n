@@ -48,6 +48,7 @@ export interface ProgressReporter {
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
+	setCustomTitle: (title: string) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
 }
 
@@ -180,18 +181,6 @@ export interface NodeConfigurationEntry {
  * Value: array of configuration entries with version and parameters
  */
 export type NodeConfigurationsMap = Record<string, NodeConfigurationEntry[]>;
-
-/**
- * Output type for get workflow examples tool
- */
-export interface GetWorkflowExamplesOutput {
-	examples: Array<{
-		name: string;
-		description?: string;
-		workflow: string;
-	}>;
-	totalResults: number;
-}
 
 /**
  * Output type for get node configuration examples tool

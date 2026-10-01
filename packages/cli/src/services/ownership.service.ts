@@ -1,9 +1,13 @@
+import { OwnerSetupRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { CacheService, EventService } from '@n8n/backend-services';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	Project,
 	User,
 	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	Role,
@@ -11,15 +15,13 @@ import {
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from '@n8n/backend-common';
-import { CacheService } from '@/services/cache/cache.service';
-import { OwnerSetupRequestDto } from '@n8n/api-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { PasswordUtility } from './password.utility';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
+
 import config from '@/config';
+import { BadRequestError } from '@n8n/errors';
+
+import { PasswordUtility } from './password.utility';
 
 @Service()
 export class OwnershipService {
@@ -29,6 +31,7 @@ export class OwnershipService {
 		private logger: Logger,
 		private passwordUtility: PasswordUtility,
 		private projectRelationRepository: ProjectRelationRepository,
+		private projectRepository: ProjectRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
@@ -81,7 +84,10 @@ export class OwnershipService {
 	}
 
 	/**
-	 * Retrieve the project that owns the workflow. Note that workflow ownership is **immutable**.
+	 * Retrieve the project that owns the workflow. The result is cached. Workflow
+	 * ownership can change in bulk (e.g. when a user is deleted and their resources
+	 * are transferred), so any bulk owner change must invalidate this cache via
+	 * {@link invalidateWorkflowProjectCacheByIds} afterwards.
 	 */
 	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
 		const cachedValue = await this.cacheService.getHashValue<Partial<Project>>(
@@ -119,23 +125,77 @@ export class OwnershipService {
 	 * Personal project ownership is **immutable**.
 	 */
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
-		const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
-			'project-owner',
-			projectId,
+		const owners = await this.getPersonalProjectOwnersCached([projectId]);
+		return owners.get(projectId) ?? null;
+	}
+
+	async getPersonalProjectOwnersCached(projectIds: string[]): Promise<Map<string, User>> {
+		const ownerByProjectId = new Map<string, User>();
+		const cacheResults = await Promise.all(
+			[...new Set(projectIds)].map(async (projectId) => {
+				const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
+					'project-owner',
+					projectId,
+				);
+				return {
+					projectId,
+					owner: cachedValue ? this.reconstructUser(cachedValue) : undefined,
+				};
+			}),
 		);
-
-		if (cachedValue) {
-			const user = this.reconstructUser(cachedValue);
-			if (user) return user;
+		for (const { projectId, owner } of cacheResults) {
+			if (owner) ownerByProjectId.set(projectId, owner);
 		}
+		const projectIdsToFetch = cacheResults
+			.filter(({ owner }) => !owner)
+			.map(({ projectId }) => projectId);
 
-		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
-		const owner = ownerRel[0]?.user ?? null;
-		if (owner) {
-			void this.cacheService.setHash('project-owner', { [projectId]: this.copyUser(owner) });
+		if (projectIdsToFetch.length === 0) return ownerByProjectId;
+
+		const ownerRelations =
+			await this.projectRelationRepository.getPersonalProjectOwners(projectIdsToFetch);
+		const ownersToCache: Record<string, Partial<User>> = {};
+		for (const { projectId, user } of ownerRelations) {
+			ownerByProjectId.set(projectId, user);
+			ownersToCache[projectId] = this.copyUser(user);
 		}
+		void this.cacheService.setHash('project-owner', ownersToCache);
 
-		return owner;
+		return ownerByProjectId;
+	}
+
+	async invalidateProjectOwnerCacheByUserId(userId: string) {
+		const personalProject = await this.projectRepository.getPersonalProjectForUser(userId);
+		if (personalProject) {
+			await this.cacheService.deleteFromHash('project-owner', personalProject.id);
+		}
+	}
+
+	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: { projectId, role: 'workflow:owner' },
+			select: ['workflowId'],
+		});
+		await Promise.all(
+			rows.map(
+				async ({ workflowId }) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
+	}
+
+	/**
+	 * Invalidate the cached project for specific workflows. Use after a bulk
+	 * ownership change where the workflow IDs are already known and their
+	 * `workflow:owner` rows have moved to a different project.
+	 */
+	async invalidateWorkflowProjectCacheByIds(workflowIds: string[]): Promise<void> {
+		await Promise.all(
+			workflowIds.map(
+				async (workflowId) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
 	}
 
 	addOwnedByAndSharedWith(
@@ -189,6 +249,9 @@ export class OwnershipService {
 	async getInstanceOwner() {
 		return await this.userRepository.findOneOrFail({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			// Permission checks read `user.role`. Without it, they show the owner
+			// less than they should, and report no error.
+			relations: ['role'],
 		});
 	}
 
@@ -212,25 +275,36 @@ export class OwnershipService {
 		});
 	}
 
-	async setupOwner(payload: OwnerSetupRequestDto) {
+	async setupOwner(
+		payload: OwnerSetupRequestDto,
+		options?: { overwriteExisting?: boolean; passwordIsHashed?: boolean },
+	) {
 		const { email, firstName, lastName, password } = payload;
-		if (await this.hasInstanceOwner()) {
+
+		if (!options?.overwriteExisting && (await this.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to claim instance ownership failed because instance owner already exists',
 			);
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOneOrFail({
+		let shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		shellUser.email = email;
+		if (!shellUser) {
+			this.logger.error('Could not find shell user with global:owner role');
+			throw new BadRequestError('Instance owner shell user not found');
+		}
+
+		shellUser.email = email.toLowerCase();
 		shellUser.firstName = firstName;
 		shellUser.lastName = lastName;
 		shellUser.lastActiveAt = new Date();
-		shellUser.password = await this.passwordUtility.hash(password);
+		shellUser.password = options?.passwordIsHashed
+			? password
+			: await this.passwordUtility.hash(password);
 
 		shellUser = await this.userRepository.save(shellUser, { transaction: false });
 

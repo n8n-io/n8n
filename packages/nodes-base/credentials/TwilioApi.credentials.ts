@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class TwilioApi implements ICredentialType {
 	name = 'twilioApi';
@@ -79,6 +84,12 @@ export class TwilioApi implements ICredentialType {
 				password:
 					'={{ $credentials.authType === "apiKey" ? $credentials.apiKeySecret : $credentials.authToken }}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			url: '=https://api.twilio.com/2010-04-01/Accounts/{{$credentials.accountSid}}.json',
 		},
 	};
 }

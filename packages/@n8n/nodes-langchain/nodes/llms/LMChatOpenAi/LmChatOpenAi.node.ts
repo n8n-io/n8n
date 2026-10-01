@@ -1,7 +1,10 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
+import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
+	jsonParse,
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -10,13 +13,19 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
+import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	aiClientFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
@@ -29,6 +38,10 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	name: 'notice',
 	type: 'notice',
 	default: '',
+};
+
+const OPENAI_MODEL_BUILDER_HINT = {
+	propertyHint: MODEL_SELECTION_HINT,
 };
 
 const completionsResponseFormat: INodeProperties = {
@@ -188,6 +201,7 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-5-mini',
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -199,6 +213,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'gpt-5-mini' },
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{
@@ -589,6 +604,14 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Extra Body',
+						name: 'extraBody',
+						type: 'json',
+						default: '{}',
+						description:
+							'Optional additional JSON properties to include in the request body when making requests to OpenAI-compatible APIs',
+					},
+					{
 						displayName: 'Conversation ID',
 						name: 'conversationId',
 						default: '',
@@ -745,11 +768,12 @@ export class LmChatOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 
 		if (options.baseURL) {
-			checkDomainRestrictions(this, credentials, options.baseURL);
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
@@ -757,22 +781,20 @@ export class LmChatOpenAi implements INodeType {
 
 		const timeout = options.timeout;
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? 'https://api.openai.com/v1',
+				{
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				},
+				this.helpers.getSecureEgressFilter(),
+			),
 		};
-		if (
-			credentials.header &&
-			typeof credentials.headerName === 'string' &&
-			credentials.headerName &&
-			typeof credentials.headerValue === 'string'
-		) {
-			configuration.defaultHeaders = {
-				...configuration.defaultHeaders,
-				[credentials.headerName]: credentials.headerValue,
-			};
-		}
+		const customHeader = getCustomCredentialHeader(credentials);
+		configuration.defaultHeaders = mergeCustomHeaders(
+			credentials,
+			(configuration.defaultHeaders ?? {}) as Record<string, string>,
+		);
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: Record<string, unknown> = {};
@@ -784,6 +806,27 @@ export class LmChatOpenAi implements INodeType {
 			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
 				modelKwargs.reasoning_effort = options.reasoningEffort;
 			}
+		}
+
+		if (options.extraBody) {
+			let extraBody: Record<string, unknown>;
+			try {
+				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value in the "Extra Body" field is not valid JSON',
+					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
+				);
+			}
+			if (!isPlainObject(extraBody)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value in the "Extra Body" field must be a JSON object',
+					{ itemIndex },
+				);
+			}
+			Object.assign(modelKwargs, extraBody);
 		}
 
 		const includedOptions = pick(options, [
@@ -802,7 +845,9 @@ export class LmChatOpenAi implements INodeType {
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [
+				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+			],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)
@@ -831,7 +876,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		return {
-			response: model,
+			response: responsesApiEnabled ? model : wrapChatModelMessageInput(model),
 		};
 	}
 }

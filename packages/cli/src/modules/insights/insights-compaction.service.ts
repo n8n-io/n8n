@@ -1,19 +1,29 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
-import { Time } from '@n8n/constants';
+
+type CompactionRunState = {
+	startedAt: number;
+	batchesProcessed: number;
+	rowsCompacted: number;
+	signal: AbortSignal;
+};
+
+type CompactionStopReason = 'max-batches' | 'max-runtime' | 'aborted';
 
 /**
  * This service is responsible for compacting lower granularity insights data
- * into higher granularity to control the size of the insights data.
+ * into higher granularity to control the size of the insights data. The
+ * periodic cadence, overlap protection, and graceful stop live on the
+ * `insights-compaction` system task's runner.
  */
 @Service()
 export class InsightsCompactionService {
-	private compactInsightsTimer: NodeJS.Timeout | undefined;
-
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
@@ -23,49 +33,147 @@ export class InsightsCompactionService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startCompactionTimer() {
-		this.stopCompactionTimer();
-		this.compactInsightsTimer = setInterval(
-			async () => await this.compactInsights(),
-			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toMilliseconds,
-		);
-		this.logger.debug('Started compaction timer');
+	/** One full compaction run: raw→hour, hour→day, day→week, in bounded batches. */
+	async compactInsights(signal: AbortSignal) {
+		const runState: CompactionRunState = {
+			startedAt: Date.now(),
+			batchesProcessed: 0,
+			rowsCompacted: 0,
+			signal,
+		};
+
+		const stoppedAfterRawToHour = await this.compactStage({
+			stageName: 'raw-to-hour',
+			beforeBatchMessage: 'Compacting raw data to hourly aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} raw data to hourly aggregates`,
+			compactBatch: this.compactRawToHour.bind(this),
+			runState,
+		});
+		if (stoppedAfterRawToHour) return;
+
+		const stoppedAfterHourToDay = await this.compactStage({
+			stageName: 'hour-to-day',
+			beforeBatchMessage: 'Compacting hourly data to daily aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} hourly data to daily aggregates`,
+			compactBatch: this.compactHourToDay.bind(this),
+			runState,
+		});
+		if (stoppedAfterHourToDay) return;
+
+		await this.compactStage({
+			stageName: 'day-to-week',
+			beforeBatchMessage: 'Compacting daily data to weekly aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} daily data to weekly aggregates`,
+			compactBatch: this.compactDayToWeek.bind(this),
+			runState,
+		});
 	}
 
-	stopCompactionTimer() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
-			this.logger.debug('Stopped compaction timer');
+	private async compactStage({
+		stageName,
+		beforeBatchMessage,
+		afterBatchMessage,
+		compactBatch,
+		runState,
+	}: {
+		stageName: string;
+		beforeBatchMessage: string;
+		afterBatchMessage: (rowsCompacted: number) => string;
+		compactBatch: () => Promise<number>;
+		runState: CompactionRunState;
+	}) {
+		let numberOfCompactedData: number;
+
+		do {
+			const stopReason = this.getCompactionRunStopReason(runState);
+			if (stopReason !== undefined) {
+				this.logCompactionRunLimitReached(stopReason, stageName, runState);
+				return true;
+			}
+
+			this.logger.debug(beforeBatchMessage);
+			numberOfCompactedData = await compactBatch();
+			this.logger.debug(afterBatchMessage(numberOfCompactedData));
+
+			runState.batchesProcessed++;
+			runState.rowsCompacted += numberOfCompactedData;
+
+			const stopReasonAfterBatch = this.getCompactionRunStopReason(runState);
+			if (stopReasonAfterBatch !== undefined) {
+				this.logCompactionRunLimitReached(stopReasonAfterBatch, stageName, runState);
+				return true;
+			}
+
+			await this.waitBeforeNextBatchIfFull(numberOfCompactedData, runState);
+		} while (numberOfCompactedData === this.insightsConfig.compactionBatchSize);
+
+		return false;
+	}
+
+	private getCompactionRunStopReason(
+		runState: CompactionRunState,
+	): CompactionStopReason | undefined {
+		if (runState.signal.aborted) {
+			return 'aborted';
+		}
+
+		if (
+			this.insightsConfig.compactionMaxBatchesPerRun > 0 &&
+			runState.batchesProcessed >= this.insightsConfig.compactionMaxBatchesPerRun
+		) {
+			return 'max-batches';
+		}
+
+		if (
+			this.insightsConfig.compactionMaxRuntimeSeconds > 0 &&
+			Date.now() - runState.startedAt >=
+				this.insightsConfig.compactionMaxRuntimeSeconds * Time.seconds.toMilliseconds
+		) {
+			return 'max-runtime';
+		}
+
+		return undefined;
+	}
+
+	private logCompactionRunLimitReached(
+		reason: CompactionStopReason,
+		stageName: string,
+		runState: CompactionRunState,
+	) {
+		const details = {
+			reason,
+			stageName,
+			batchesProcessed: runState.batchesProcessed,
+			rowsCompacted: runState.rowsCompacted,
+			compactionMaxBatchesPerRun: this.insightsConfig.compactionMaxBatchesPerRun,
+			compactionMaxRuntimeSeconds: this.insightsConfig.compactionMaxRuntimeSeconds,
+		};
+		if (reason === 'aborted') {
+			this.logger.debug('Stopping insights compaction because the run was aborted', details);
+		} else {
+			this.logger.warn('Stopping insights compaction because a per-run limit was reached', details);
 		}
 	}
 
-	async compactInsights() {
-		let numberOfCompactedRawData: number;
+	private async waitBeforeNextBatchIfFull(
+		numberOfCompactedData: number,
+		runState: CompactionRunState,
+	) {
+		if (
+			numberOfCompactedData !== this.insightsConfig.compactionBatchSize ||
+			this.insightsConfig.compactionBatchDelayMilliseconds <= 0
+		) {
+			return;
+		}
 
-		// Compact raw data to hourly aggregates
-		do {
-			this.logger.debug('Compacting raw data to hourly aggregates');
-			numberOfCompactedRawData = await this.compactRawToHour();
-			this.logger.debug(`Compacted ${numberOfCompactedRawData} raw data to hourly aggregates`);
-		} while (numberOfCompactedRawData === this.insightsConfig.compactionBatchSize);
-
-		let numberOfCompactedHourData: number;
-
-		// Compact hourly data to daily aggregates
-		do {
-			this.logger.debug('Compacting hourly data to daily aggregates');
-			numberOfCompactedHourData = await this.compactHourToDay();
-			this.logger.debug(`Compacted ${numberOfCompactedHourData} hourly data to daily aggregates`);
-		} while (numberOfCompactedHourData === this.insightsConfig.compactionBatchSize);
-
-		let numberOfCompactedDayData: number;
-		// Compact daily data to weekly aggregates
-		do {
-			this.logger.debug('Compacting daily data to weekly aggregates');
-			numberOfCompactedDayData = await this.compactDayToWeek();
-			this.logger.debug(`Compacted ${numberOfCompactedDayData} daily data to weekly aggregates`);
-		} while (numberOfCompactedDayData === this.insightsConfig.compactionBatchSize);
+		try {
+			await sleep(this.insightsConfig.compactionBatchDelayMilliseconds, runState.signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
 	}
 
 	/**

@@ -23,32 +23,38 @@ const waitForEventHandler = async (ms = 500) => {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-const testReloadEvent = async (pubsubEventBus: PubSubEventBus) => {
-	const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
-	const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
-	const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
-	const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+const testReloadEvent = async (
+	pubsubEventBus: PubSubEventBus,
+	{ connectsAllProviders = false }: { connectsAllProviders?: boolean } = {},
+) => {
+	const initSpy = vi.spyOn(DummyProvider.prototype, 'init');
+	const connectSpy = vi.spyOn(DummyProvider.prototype, 'connect');
+	const disconnectSpy = vi.spyOn(DummyProvider.prototype, 'disconnect');
+	const updateSpy = vi.spyOn(DummyProvider.prototype, 'update');
 
-	const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
-	const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
-	const disconnectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'disconnect');
-	const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+	const initAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'init');
+	const connectAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'connect');
+	const disconnectAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'disconnect');
+	const updateAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'update');
 
 	// Emit event and wait for async handler to complete
 	pubsubEventBus.emit('reload-external-secrets-providers');
 	await waitForEventHandler();
 
-	// load enabled provider
 	expect(disconnectSpy).toHaveBeenCalled();
 	expect(initSpy).toHaveBeenCalled();
 	expect(connectSpy).toHaveBeenCalled();
 	expect(updateSpy).toHaveBeenCalled();
 
-	// init disabled provider
-	expect(disconnectDisabledSpy).toHaveBeenCalled();
-	expect(initDisabledSpy).toHaveBeenCalled();
-	expect(connectDisabledSpy).not.toHaveBeenCalled();
-	expect(updateDisabledSpy).not.toHaveBeenCalled();
+	expect(disconnectAnotherSpy).toHaveBeenCalled();
+	expect(initAnotherSpy).toHaveBeenCalled();
+	if (connectsAllProviders) {
+		expect(connectAnotherSpy).toHaveBeenCalled();
+		expect(updateAnotherSpy).toHaveBeenCalled();
+	} else {
+		expect(connectAnotherSpy).not.toHaveBeenCalled();
+		expect(updateAnotherSpy).not.toHaveBeenCalled();
+	}
 };
 
 describe('External Secrets Event Handling', () => {
@@ -67,7 +73,7 @@ describe('External Secrets Event Handling', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterAll(async () => {
@@ -85,6 +91,7 @@ describe('External Secrets Event Handling', () => {
 
 			const config = Container.get(ExternalSecretsConfig);
 			(config as any).externalSecretsForProjects = false;
+			(config as any).externalSecretsMultipleConnections = false;
 
 			const settingsRepository = Container.get(SettingsRepository);
 			const cipher = Container.get(Cipher);
@@ -104,7 +111,7 @@ describe('External Secrets Event Handling', () => {
 
 			await settingsRepository.save({
 				key: 'feature.externalSecrets',
-				value: cipher.encrypt(settings),
+				value: cipher.encryptWithInstanceKey(settings),
 				loadOnStartup: false,
 			});
 
@@ -136,7 +143,7 @@ describe('External Secrets Event Handling', () => {
 			(config as any).externalSecretsForProjects = true;
 
 			const cipher = Container.get(Cipher);
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
+			const encryptedSettings = cipher.encryptWithInstanceKey(JSON.stringify({}));
 
 			const connectionRepository = Container.get(SecretsProviderConnectionRepository);
 			await connectionRepository.save({
@@ -150,7 +157,7 @@ describe('External Secrets Event Handling', () => {
 				providerKey: 'another-vault',
 				type: 'another_dummy',
 				encryptedSettings,
-				isEnabled: false,
+				isEnabled: true,
 			});
 
 			module = Container.get(ExternalSecretsModule);
@@ -165,6 +172,6 @@ describe('External Secrets Event Handling', () => {
 		});
 
 		it('should reload providers when reload-external-secrets-providers event is emitted', async () =>
-			await testReloadEvent(pubsubEventBus));
+			await testReloadEvent(pubsubEventBus, { connectsAllProviders: true }));
 	});
 });

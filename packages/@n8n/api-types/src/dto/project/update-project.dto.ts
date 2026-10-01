@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+	projectCustomTelemetryTagsSchema,
 	projectDescriptionSchema,
 	projectIconSchema,
 	projectNameSchema,
@@ -12,6 +13,7 @@ const updateProjectShape = {
 	name: projectNameSchema.optional(),
 	icon: projectIconSchema.optional(),
 	description: projectDescriptionSchema.optional(),
+	customTelemetryTags: projectCustomTelemetryTagsSchema.optional(),
 };
 
 export class UpdateProjectDto extends Z.class(updateProjectShape) {}

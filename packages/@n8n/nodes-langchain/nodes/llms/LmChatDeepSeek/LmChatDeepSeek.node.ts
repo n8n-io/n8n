@@ -1,5 +1,12 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,13 +14,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
@@ -116,6 +120,11 @@ export class LmChatDeepSeek implements INodeType {
 					},
 				},
 				default: 'deepseek-chat',
+				builderHint: {
+					propertyHint:
+						'Choose deepseek-chat or deepseek-reasoner according to the task. Confirm their current capabilities in the provider documentation instead of assuming a fixed underlying version. ' +
+						MODEL_SELECTION_HINT,
+				},
 			},
 			{
 				displayName: 'Options',
@@ -229,11 +238,16 @@ export class LmChatDeepSeek implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: aiClientFetch,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

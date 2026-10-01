@@ -24,9 +24,10 @@ import {
 	resolveCondition,
 } from './utils';
 import type { ConditionResult } from './types';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	path: string;
 	condition: FilterConditionValue;
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { debounce } = useDebounce();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const condition = ref<FilterConditionValue>(props.condition);
 
@@ -85,6 +87,7 @@ const conditionResult = computedAsync<ConditionResult>(
 		return await resolveCondition({
 			condition: currentCondition,
 			options: currentOptions,
+			workflowDocumentId: workflowDocumentStore.value.documentId,
 		});
 	},
 	{ status: 'resolve_error' },
@@ -226,18 +229,16 @@ watch(
 		data-test-id="filter-condition"
 	>
 		<N8nIconButton
+			variant="ghost"
 			v-if="canDrag && !readOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			v-if="canRemove && !readOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="trash-2"
 			data-test-id="filter-remove-condition"

@@ -1,0 +1,270 @@
+{
+	"bomFormat": "CycloneDX",
+	"specVersion": "1.7",
+	"version": 1,
+	"metadata": {
+		"component": {
+			"name": "n8n",
+			"group": "",
+			"version": "2.25.2",
+			"description": "n8n Workflow Automation Tool",
+			"purl": "pkg:npm/n8n@2.25.2",
+			"bom-ref": "pkg:npm/n8n@2.25.2",
+			"properties": [
+				{
+					"name": "cdx:npm:bin",
+					"value": "n8n"
+				},
+				{
+					"name": "cdx:npm:has_binary",
+					"value": "true"
+				},
+				{
+					"name": "cdx:npm:scripts",
+					"value": "clean, typecheck, build, build:data, build:agent-library, buildAndDev, dev, dev:worker, dev:webhook, format, format:check, lint, lint:fix, start, test, test:unit, test:unit:changed, test:integration, test:integration:changed, test:dev, test:sqlite, test:sqlite:migrations, test:sqlite:migrations:tc, test:postgres, test:postgres:migrations, test:postgres:migrations:tc, test:postgres:tc, test:postgres:integration:tc, test:mariadb, test:win, test:dev:win, test:sqlite:win, test:postgres:win, test:mariadb:win, watch"
+				}
+			],
+			"type": "application"
+		}
+	},
+	"components": [
+		{
+			"type": "library",
+			"group": "",
+			"name": "zwitch",
+			"version": "2.0.4",
+			"scope": "optional",
+			"licenses": [
+				{
+					"license": {
+						"id": "MIT",
+						"url": "https://opensource.org/licenses/MIT"
+					}
+				}
+			],
+			"purl": "pkg:npm/zwitch@2.0.4",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/zwitch/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/zwitch/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/zwitch/package.json"
+					}
+				]
+			}
+		},
+		{
+			"type": "library",
+			"group": "",
+			"name": "n8n-workflow",
+			"version": "2.25.0",
+			"scope": "required",
+			"licenses": [
+				{
+					"expression": "SEE LICENSE IN LICENSE.md"
+				}
+			],
+			"purl": "pkg:npm/n8n-workflow@2.25.0",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/n8n-workflow/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/n8n-workflow/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/n8n-workflow/package.json"
+					}
+				]
+			}
+		},
+		{
+			"type": "library",
+			"group": "",
+			"name": "jszip",
+			"version": "3.10.1",
+			"scope": "optional",
+			"licenses": [
+				{
+					"expression": "(MIT OR GPL-3.0-or-later)"
+				}
+			],
+			"purl": "pkg:npm/jszip@3.10.1",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/jszip/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/jszip/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/jszip/package.json"
+					}
+				]
+			}
+		},
+		{
+			"type": "library",
+			"group": "",
+			"name": "binascii",
+			"version": "0.0.2",
+			"scope": "optional",
+			"purl": "pkg:npm/binascii@0.0.2",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/binascii/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/binascii/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/binascii/package.json"
+					}
+				]
+			}
+		},
+		{
+			"type": "library",
+			"group": "@n8n",
+			"name": "tournament",
+			"version": "1.2.0",
+			"scope": "optional",
+			"licenses": [
+				{
+					"expression": "SEE LICENSE IN LICENSE.md"
+				}
+			],
+			"purl": "pkg:npm/%40n8n/tournament@1.2.0",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/@n8n/tournament/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/@n8n/tournament/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/@n8n/tournament/package.json"
+					}
+				]
+			}
+		},
+		{
+			"type": "library",
+			"group": "",
+			"name": "wa-sqlite",
+			"version": "1.0.9",
+			"scope": "optional",
+			"purl": "pkg:npm/wa-sqlite@1.0.9",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/wa-sqlite/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/wa-sqlite/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/wa-sqlite/package.json"
+					}
+				]
+			}
+		},
+		{
+			"type": "library",
+			"group": "@n8n",
+			"name": "db",
+			"version": "1.25.0",
+			"scope": "required",
+			"licenses": [
+				{
+					"expression": "SEE LICENSE IN LICENSE.md"
+				}
+			],
+			"purl": "pkg:npm/%40n8n/db@1.25.0",
+			"properties": [
+				{
+					"name": "SrcFile",
+					"value": "/home/runner/work/n8n/n8n/compiled/node_modules/@n8n/db/package.json"
+				}
+			],
+			"evidence": {
+				"identity": [
+					{
+						"field": "purl",
+						"confidence": 0.7,
+						"methods": [
+							{
+								"technique": "manifest-analysis",
+								"confidence": 0.7,
+								"value": "/home/runner/work/n8n/n8n/compiled/node_modules/@n8n/db/package.json"
+							}
+						],
+						"concludedValue": "/home/runner/work/n8n/n8n/compiled/node_modules/@n8n/db/package.json"
+					}
+				]
+			}
+		}
+	]
+}

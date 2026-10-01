@@ -1,0 +1,46 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"mode": "hostedChat",
+				"public": true,
+				"options": {
+					"loadPreviousSession": "memory"
+				}
+			},
+			"id": "1ad0933d-072a-4187-9138-57883fdc908f",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [368, 240],
+			"webhookId": "a9f8eff2-024f-48fa-a8d2-a0af8ec5806f"
+		},
+		{
+			"parameters": {
+				"promptType": "auto",
+				"options": {}
+			},
+			"id": "4d2b6c5f-1f8c-4d1c-9d2e-18a2b6e3a8a1",
+			"name": "Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [640, 240]
+		},
+		{
+			"parameters": {},
+			"id": "7c5b1f82-0b34-4e82-8b91-77c3b16c5b21",
+			"name": "Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [760, 480]
+		}
+	],
+	"connections": {
+		"Chat Trigger": {
+			"main": [[{ "node": "Agent", "type": "main", "index": 0 }]]
+		},
+		"Memory": {
+			"ai_memory": [[{ "node": "Agent", "type": "ai_memory", "index": 0 }]]
+		}
+	}
+}

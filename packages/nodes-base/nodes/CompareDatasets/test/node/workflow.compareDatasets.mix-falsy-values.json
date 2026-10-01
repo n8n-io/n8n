@@ -1,0 +1,261 @@
+{
+	"name": "compare datasets mix falsy values test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-0001-0001-0001-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 400]
+		},
+		{
+			"parameters": {
+				"data": [
+					{
+						"sku": "abcd",
+						"qty": 1,
+						"otherField": "yes"
+					}
+				]
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000002",
+			"name": "Input A1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [460, 160]
+		},
+		{
+			"parameters": {
+				"data": [
+					{
+						"sku": "abcd",
+						"qty": 0
+					}
+				]
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000003",
+			"name": "Input B1",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [460, 400]
+		},
+		{
+			"parameters": {
+				"data": [
+					{
+						"sku": "abcd",
+						"qty": 1,
+						"otherField": "yes"
+					}
+				]
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000008",
+			"name": "Input A2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [460, 640]
+		},
+		{
+			"parameters": {
+				"data": [
+					{
+						"sku": "abcd",
+						"qty": 0
+					}
+				]
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000009",
+			"name": "Input B2",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [460, 880]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "sku",
+							"field2": "sku"
+						}
+					]
+				},
+				"resolve": "mix",
+				"preferWhenMix": "input1",
+				"exceptWhenMix": "qty",
+				"options": {}
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000004",
+			"name": "prefer A except qty",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.3,
+			"position": [740, 280]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "sku",
+							"field2": "sku"
+						}
+					]
+				},
+				"resolve": "mix",
+				"preferWhenMix": "input2",
+				"exceptWhenMix": "qty",
+				"options": {}
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000005",
+			"name": "prefer B except qty",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.3,
+			"position": [740, 760]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000006",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1020, 280]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "a1b2c3d4-0001-0001-0001-000000000007",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1020, 760]
+		}
+	],
+	"pinData": {
+		"Set": [
+			{
+				"json": {
+					"sku": "abcd",
+					"qty": 0,
+					"otherField": "yes"
+				}
+			}
+		],
+		"Set1": [
+			{
+				"json": {
+					"sku": "abcd",
+					"qty": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Input A1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Input B1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Input A2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Input B2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input A1": {
+			"main": [
+				[
+					{
+						"node": "prefer A except qty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input B1": {
+			"main": [
+				[
+					{
+						"node": "prefer A except qty",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Input A2": {
+			"main": [
+				[
+					{
+						"node": "prefer B except qty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input B2": {
+			"main": [
+				[
+					{
+						"node": "prefer B except qty",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"prefer A except qty": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"prefer B except qty": {
+			"main": [
+				[],
+				[],
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"id": "201",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

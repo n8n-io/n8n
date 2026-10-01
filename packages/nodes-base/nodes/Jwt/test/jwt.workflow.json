@@ -355,6 +355,89 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.3,
 			"position": [580, 1360]
+		},
+		{
+			"parameters": {
+				"claims": {
+					"audience": "test",
+					"issuer": "test",
+					"jwtid": "123",
+					"subject": "test"
+				},
+				"headerClaims": "{\n  \"x5t\": \"abc123thumbprint\",\n  \"kid\": \"header-kid\"\n}",
+				"options": {
+					"kid": "option-kid"
+				}
+			},
+			"id": "7c1e9a64-2f3b-4a51-9d2e-6f0b1c8d4e10",
+			"name": "Sign with custom header",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [120, 1720],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "decode",
+				"token": "={{ $json.token }}",
+				"options": {
+					"complete": true
+				}
+			},
+			"id": "b5d8f217-3a4c-4e62-8c1f-9a2b3c4d5e60",
+			"name": "Decode4",
+			"type": "n8n-nodes-base.jwt",
+			"typeVersion": 1,
+			"position": [380, 1720],
+			"credentials": {
+				"jwtAuth": {
+					"id": "kDnfvqrCBJvtlX3o",
+					"name": "JWT Auth account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a1b2c3d4-0001-4001-8001-000000000001",
+							"name": "header.alg",
+							"value": "={{ $json.header.alg }}",
+							"type": "string"
+						},
+						{
+							"id": "a1b2c3d4-0002-4002-8002-000000000002",
+							"name": "header.typ",
+							"value": "={{ $json.header.typ }}",
+							"type": "string"
+						},
+						{
+							"id": "a1b2c3d4-0003-4003-8003-000000000003",
+							"name": "header.kid",
+							"value": "={{ $json.header.kid }}",
+							"type": "string"
+						},
+						{
+							"id": "a1b2c3d4-0004-4004-8004-000000000004",
+							"name": "header.x5t",
+							"value": "={{ $json.header.x5t }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c9e0f1a2-4b5c-4d6e-9f70-1a2b3c4d5e70",
+			"name": "Decode4 Output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [580, 1720]
 		}
 	],
 	"pinData": {
@@ -423,6 +506,18 @@
 					}
 				}
 			}
+		],
+		"Decode4 Output": [
+			{
+				"json": {
+					"header": {
+						"alg": "HS256",
+						"typ": "JWT",
+						"kid": "header-kid",
+						"x5t": "abc123thumbprint"
+					}
+				}
+			}
 		]
 	},
 	"connections": {
@@ -441,6 +536,11 @@
 					},
 					{
 						"node": "Sign with kid",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sign with custom header",
 						"type": "main",
 						"index": 0
 					}
@@ -555,6 +655,28 @@
 				[
 					{
 						"node": "Verify3 Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sign with custom header": {
+			"main": [
+				[
+					{
+						"node": "Decode4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Decode4": {
+			"main": [
+				[
+					{
+						"node": "Decode4 Output",
 						"type": "main",
 						"index": 0
 					}

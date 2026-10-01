@@ -17,8 +17,8 @@ on:
         description: 'Encryption key for n8n operations.'
         required: true
       CURRENTS_RECORD_KEY:
-        description: 'Currents record key for uploading test results.'
-        required: true
+        description: 'Currents record key for test reporting. Empty on fork PRs.'
+        required: false
 
 env:
   NODE_OPTIONS: --max-old-space-size=3072
@@ -29,7 +29,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.git_ref }}
 

@@ -54,7 +54,15 @@ export const mysqlService: Service<MySqlResult> = {
 		};
 	},
 
-	env(): Record<string, string> {
-		return {};
+	env(result: MySqlResult, external?: boolean): Record<string, string> {
+		if (!external) return {};
+		return {
+			DB_TYPE: 'mysqldb',
+			DB_MYSQLDB_HOST: result.meta.externalHost,
+			DB_MYSQLDB_PORT: String(result.meta.externalPort),
+			DB_MYSQLDB_DATABASE: result.meta.database,
+			DB_MYSQLDB_USER: result.meta.username,
+			DB_MYSQLDB_PASSWORD: result.meta.password,
+		};
 	},
 };

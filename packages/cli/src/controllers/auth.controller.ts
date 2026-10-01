@@ -1,5 +1,10 @@
-import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import {
+	LoginRequestDto,
+	ResolveSignupTokenQueryDto,
+	SSO_LOGIN_REQUIRED_ERROR_CODE,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
@@ -17,11 +22,7 @@ import { Response } from 'express';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { AuthError, BadRequestError, ForbiddenError, InternalServerError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
@@ -81,7 +82,7 @@ export class AuthController {
 		}
 
 		const preliminaryUser = await emailHandler.handleLogin(emailOrLdapLoginId, password);
-		this.validateSsoRestrictions(preliminaryUser);
+		this.validateSsoRestrictions(preliminaryUser, emailOrLdapLoginId);
 
 		const { user, usedAuthenticationMethod } = await this.authenticateWithPassword(
 			currentAuthenticationMethod,
@@ -112,14 +113,19 @@ export class AuthController {
 		}
 	}
 
-	private validateSsoRestrictions(preliminaryUser: User | undefined): void {
+	private validateSsoRestrictions(preliminaryUser: User | undefined, userEmail: string): void {
 		const shouldBlockSsoUser =
 			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
 			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug &&
 			!preliminaryUser?.settings?.allowSSOManualLogin;
 
 		if (shouldBlockSsoUser) {
-			throw new AuthError('SSO is enabled, please log in with SSO');
+			this.eventService.emit('user-login-failed', {
+				authenticationMethod: 'email',
+				userEmail,
+				reason: 'SSO is enabled, please log in with SSO',
+			});
+			throw new AuthError('SSO is enabled, please log in with SSO', SSO_LOGIN_REQUIRED_ERROR_CODE);
 		}
 	}
 
@@ -211,7 +217,14 @@ export class AuthController {
 			);
 		}
 
-		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(payload);
+		if (!payload.token) {
+			this.logger.debug('Request to resolve signup token failed because token is missing');
+			throw new BadRequestError('Token is required');
+		}
+
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
+			payload.token,
+		);
 
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
@@ -245,7 +258,7 @@ export class AuthController {
 		}
 
 		const inviter = users.find((user) => user.id === inviterId);
-		if (!inviter?.email || !inviter?.firstName) {
+		if (!inviter?.email) {
 			this.logger.error(
 				'Request to resolve signup token failed because inviter does not exist or is not set up',
 				{

@@ -44,7 +44,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/contacts/{{$parameter.contactId}}',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}',
 					},
 					output: {
 						postReceive: [
@@ -65,7 +65,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.contactId}}',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}',
 					},
 					output: {
 						postReceive: [
@@ -100,7 +100,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/lookup?email={{$parameter.email}}&phone={{$parameter.phone}}',
+						url: '/contacts/lookup',
 					},
 					output: {
 						postReceive: [
@@ -121,7 +121,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/contacts/{{$parameter.contactId}}',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}',
 					},
 					send: {
 						preSend: [validEmailAndPhonePreSendAction, splitTagsPreSendAction],
@@ -830,6 +830,12 @@ const lookupProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
+		routing: {
+			send: {
+				type: 'query',
+				property: 'email',
+			},
+		},
 	},
 	{
 		displayName: 'Phone',
@@ -844,6 +850,12 @@ const lookupProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
+		routing: {
+			send: {
+				type: 'query',
+				property: 'phone',
+			},
+		},
 	},
 ];
 

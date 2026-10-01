@@ -2,6 +2,8 @@ import type { StartedNetwork } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { CADVISOR_PORT } from './cadvisor';
+import { EXPORTER_PORT } from './postgres-exporter';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const VICTORIA_METRICS_HTTP_PORT = 8428;
@@ -47,12 +49,12 @@ function generateScrapeConfig(targets: ScrapeTarget[]): string {
     static_configs:
 ${targetConfigs}
     metrics_path: '/metrics'
-    scrape_interval: '5s'`);
+    scrape_interval: '2s'`);
 	}
 
 	return `
 global:
-  scrape_interval: 15s
+  scrape_interval: 2s
 
 scrape_configs:
 ${scrapeConfigs.join('\n')}
@@ -63,7 +65,7 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 	description: 'VictoriaMetrics',
 
 	getOptions(ctx: StartContext): VictoriaMetricsConfig {
-		const { mains, workers, projectName } = ctx;
+		const { mains, workers, webhooks, projectName } = ctx;
 		const scrapeTargets: ScrapeTarget[] = [];
 
 		for (let i = 1; i <= mains; i++) {
@@ -75,12 +77,41 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				port: 5678,
 			});
 		}
+		for (let i = 1; i <= webhooks; i++) {
+			scrapeTargets.push({
+				job: 'n8n-webhook',
+				instance: `n8n-webhook-${i}`,
+				host: `${projectName}-n8n-webhook-${i}`,
+				port: 5678,
+			});
+		}
 		for (let i = 1; i <= workers; i++) {
 			scrapeTargets.push({
 				job: 'n8n-worker',
 				instance: `n8n-worker-${i}`,
 				host: `${projectName}-n8n-worker-${i}`,
 				port: 5678,
+			});
+		}
+
+		// Add postgres-exporter scrape target when it will be started
+		const services = ctx.config.services ?? [];
+		if (ctx.usePostgres && services.includes('victoriaMetrics')) {
+			scrapeTargets.push({
+				job: 'postgres',
+				instance: 'postgres',
+				host: 'postgres-exporter',
+				port: EXPORTER_PORT,
+			});
+		}
+
+		// Add cAdvisor scrape target so per-container CPU/memory/IO is queryable.
+		if (services.includes('cadvisor')) {
+			scrapeTargets.push({
+				job: 'cadvisor',
+				instance: 'cadvisor',
+				host: 'cadvisor',
+				port: CADVISOR_PORT,
 			});
 		}
 
@@ -146,7 +177,11 @@ export interface MetricResult {
 	value: number;
 }
 
-export interface WaitForMetricOptions {
+export interface MetricQueryOptions {
+	latencyOffset?: string;
+}
+
+export interface WaitForMetricOptions extends MetricQueryOptions {
 	timeoutMs?: number;
 	intervalMs?: number;
 	predicate?: (values: MetricResult[]) => boolean;
@@ -170,8 +205,10 @@ export class MetricsHelper {
 		return await response.text();
 	}
 
-	async query(query: string): Promise<MetricResult[]> {
-		const response = await fetch(`${this.endpoint}/api/v1/query?${new URLSearchParams({ query })}`);
+	async query(query: string, options: MetricQueryOptions = {}): Promise<MetricResult[]> {
+		const params = new URLSearchParams({ query });
+		if (options.latencyOffset !== undefined) params.set('latency_offset', options.latencyOffset);
+		const response = await fetch(`${this.endpoint}/api/v1/query?${params}`);
 		if (!response.ok) {
 			throw new Error(`VictoriaMetrics query failed: ${response.status}`);
 		}
@@ -203,7 +240,7 @@ export class MetricsHelper {
 
 		while (Date.now() < deadline) {
 			try {
-				const values = await this.query(query);
+				const values = await this.query(query, options);
 				if (predicate(values)) return values[0] ?? null;
 			} catch {
 				// Ignore transient errors during polling

@@ -14,8 +14,13 @@ export class FloatingUiHelper {
 	getVisiblePopper() {
 		// Match both Element+ poppers (.el-popper:visible) and Reka UI poppers ([data-state="open"])
 		return this.page.locator(
-			'.el-popper:visible, [data-state="open"][role="dialog"], [data-state="open"][role="menu"]',
+			'.el-popper:visible, [data-state="open"][role="dialog"], [data-state="open"][role="menu"], [data-state="open"][role="listbox"]',
 		);
+	}
+
+	/** Tooltip content is teleported out of its trigger, so scope it to the page. */
+	getTooltip() {
+		return this.page.getByTestId('tooltip-content').filter({ visible: true });
 	}
 
 	getVisiblePopoverMenuItem(name?: GetByRoleName, options: GetByRoleOptionsWithoutName = {}) {

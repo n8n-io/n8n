@@ -1,8 +1,7 @@
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { readdirSync, readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
-	IDeferredPromise,
 	INodeType,
 	INodeTypes,
 	IRun,
@@ -13,8 +12,9 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import { UnrecognizedNodeTypeError } from '@/errors';
 import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -57,11 +57,14 @@ export function WorkflowExecuteAdditionalData(
 	return mock<IWorkflowExecuteAdditionalData>({
 		hooks,
 		currentNodeExecutionIndex: 0,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 		// Not setting this to undefined would set it to a mock which would trigger
 		// conditions in the WorkflowExecute which only check if a property exists,
 		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for
 		// example skip running the `workflowExecuteBefore` hook in the tests.
 		restartExecutionId: undefined,
+		encryptedRunnerIdentity: undefined,
 	});
 }
 
@@ -136,7 +139,7 @@ export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {
-			throw new ApplicationError('Workflow data does not contain pinData');
+			throw new UnexpectedError('Workflow data does not contain pinData');
 		}
 
 		const nodeData = preparePinData(workflowData.pinData);

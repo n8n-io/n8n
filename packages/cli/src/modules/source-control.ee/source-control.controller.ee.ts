@@ -1,17 +1,19 @@
-import { IWorkflowToImport } from '@/interfaces';
 import {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	type GitCommitInfo,
 	type SourceControlledFile,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
@@ -21,9 +23,8 @@ import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { IWorkflowToImport } from '@/interfaces';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -31,14 +32,34 @@ export class SourceControlController {
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly sourceControlContextFactory: SourceControlContextFactory,
 		private readonly eventService: EventService,
 	) {}
 
 	@Get('/preferences')
-	async getPreferences(): Promise<SourceControlPreferences> {
-		// returns the settings with the privateKey property redacted
-		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+	async getPreferences(req: AuthenticatedRequest): Promise<Partial<SourceControlPreferences>> {
+		const preferences = this.sourceControlPreferencesService.getPreferences();
+
+		if (hasGlobalScope(req.user, 'sourceControl:manage')) {
+			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+			return { ...preferences, publicKey };
+		}
+
+		const publicSubset = {
+			branchReadOnly: preferences.branchReadOnly,
+		};
+
+		const ctx = await this.sourceControlContextFactory.createContext(req.user);
+		if (ctx.authorizedProjects.length > 0) {
+			return {
+				...publicSubset,
+				connected: preferences.connected,
+				branchName: preferences.branchName,
+				branchColor: preferences.branchColor,
+			};
+		}
+
+		return publicSubset;
 	}
 
 	@Post('/preferences')
@@ -162,6 +183,7 @@ export class SourceControlController {
 	}
 
 	@Get('/get-branches')
+	@GlobalScope('sourceControl:manage')
 	async getBranches() {
 		try {
 			return await this.sourceControlService.getBranches();
@@ -179,11 +201,6 @@ export class SourceControlController {
 		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
 
 		try {
-			await this.sourceControlService.setGitUserDetails(
-				`${req.user.firstName} ${req.user.lastName}`,
-				req.user.email,
-			);
-
 			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 
@@ -233,6 +250,7 @@ export class SourceControlController {
 
 	@Get('/get-status', { middlewares: [sourceControlEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 		try {
 			const result = await this.sourceControlService.getStatus(
 				req.user,
@@ -240,18 +258,25 @@ export class SourceControlController {
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
 
 	@Get('/status')
 	async status(req: SourceControlRequest.GetStatus) {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 		try {
 			return await this.sourceControlService.getStatus(
 				req.user,
 				new SourceControlGetStatus(req.query),
 			);
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

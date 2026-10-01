@@ -14,6 +14,7 @@ export class MicrosoftOutlook extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Microsoft Outlook API',
 			defaultVersion: 2,
+			schemaPath: 'Microsoft/Outlook',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

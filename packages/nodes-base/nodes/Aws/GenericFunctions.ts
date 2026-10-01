@@ -1,13 +1,15 @@
 import type {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { parseString as parseXml } from 'xml2js';
 import type {
 	AwsAssumeRoleCredentialsType,
@@ -15,7 +17,13 @@ import type {
 } from '../../credentials/common/aws/types';
 
 export async function getAwsCredentials(
-	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	context:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions
+		| IWebhookFunctions,
 ) {
 	let credentialsType: 'aws' | 'awsAssumeRole' = 'aws';
 
@@ -90,12 +98,20 @@ export async function awsApiRequestSOAP(
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseXml(response as string, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
+			parseXml(
+				response as string,
+				{
+					explicitArray: false,
+					tagNameProcessors: [sanitizeXmlName],
+					attrNameProcessors: [sanitizeXmlName],
+				},
+				(err, data) => {
+					if (err) {
+						return reject(err);
+					}
+					resolve(data);
+				},
+			);
 		});
 	} catch (error) {
 		return response;

@@ -1,0 +1,88 @@
+import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import type {
+	IExecuteFunctions,
+	INodeCredentialDescription,
+	INodeProperties,
+	INodeType,
+	Icon,
+	ISupplyDataFunctions,
+	ThemeIconColor,
+	IBuilderHint,
+} from 'n8n-workflow';
+
+export type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'retrieve-as-tool';
+
+export interface NodeMeta {
+	displayName: string;
+	name: string;
+	hidden?: boolean;
+	description: string;
+	docsUrl: string;
+	icon: Icon;
+	iconColor?: ThemeIconColor;
+	credentials?: INodeCredentialDescription[];
+	operationModes?: NodeOperationMode[];
+	categories?: string[];
+	subcategories?: Record<string, string[]>;
+	builderHint?: IBuilderHint;
+}
+
+export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorStore> {
+	meta: NodeMeta;
+	methods?: INodeType['methods'];
+
+	sharedFields: INodeProperties[];
+	insertFields?: INodeProperties[];
+	loadFields?: INodeProperties[];
+	retrieveFields?: INodeProperties[];
+	updateFields?: INodeProperties[];
+	hidden?: true;
+	/**
+	 * The text-search operations call `similaritySearchWithScore(prompt, k, filter)` instead of
+	 * embedding the prompt and calling `similaritySearchVectorWithScore`. The store must override
+	 * `similaritySearchWithScore`: the base class version calls `embeddings.embedQuery` first,
+	 * which a backend that embeds server-side cannot do.
+	 */
+	searchByText?: true;
+
+	/**
+	 * Optional function called once before any documents are inserted.
+	 * Use this for one-time setup operations like clearing an index.
+	 * Only called for node version 1.1+ where batch processing is used.
+	 */
+	beforeInsert?: (
+		context: IExecuteFunctions | ISupplyDataFunctions,
+		embeddings: Embeddings,
+		itemIndex: number,
+	) => Promise<void>;
+
+	/**
+	 * Function to populate the vector store with documents
+	 * Used during the 'insert' operation mode
+	 */
+	populateVectorStore: (
+		context: IExecuteFunctions | ISupplyDataFunctions,
+		embeddings: Embeddings,
+		documents: Array<Document<Record<string, unknown>>>,
+		itemIndex: number,
+	) => Promise<void>;
+
+	/**
+	 * Function to get the vector store client
+	 * This function is called for all operation modes
+	 */
+	getVectorStoreClient: (
+		context: IExecuteFunctions | ISupplyDataFunctions,
+		filter: Record<string, never> | undefined,
+		embeddings: Embeddings,
+		itemIndex: number,
+	) => Promise<T>;
+
+	/**
+	 * Optional function to release resources associated with the vector store client
+	 * Called after the vector store operations are complete
+	 */
+	releaseVectorStoreClient?: (vectorStore: T) => void;
+}

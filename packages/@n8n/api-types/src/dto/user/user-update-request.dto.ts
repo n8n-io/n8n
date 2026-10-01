@@ -18,19 +18,13 @@ const nameSchema = () =>
 		.min(1)
 		.max(32)
 		.refine(xssCheck, {
-			message: 'Potentially malicious string',
+			message: 'Name can only contain letters, numbers, spaces and punctuation',
 		})
 		.refine(urlCheck, {
-			message: 'Potentially malicious string',
+			message: 'Name cannot contain a URL',
 		});
 
 export class UserUpdateRequestDto extends Z.class({
-	email: z.string().email(),
 	firstName: nameSchema().optional(),
 	lastName: nameSchema().optional(),
-	mfaCode: z.string().optional(),
-	/**
-	 * The current password is required when changing the email address and MFA is disabled.
-	 */
-	currentPassword: z.string().optional(),
 }) {}

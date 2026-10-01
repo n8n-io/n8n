@@ -1,3 +1,27 @@
+import { expect, type Locator } from '@playwright/test';
+
+/**
+ * Hovers `trigger` until `target` becomes visible, re-hovering on every
+ * attempt. Use for hover-revealed UI (node toolbars, list item actions):
+ * re-renders can dismiss the hover state, so a single hover followed by a
+ * flat wait is flaky.
+ */
+export const hoverToReveal = async (
+	trigger: Locator,
+	target: Locator,
+	{ intervals = [500, 1_000, 2_000], timeout = 10_000 } = {},
+): Promise<void> => {
+	await expect
+		.poll(
+			async () => {
+				await trigger.hover();
+				return await target.isVisible().catch(() => false);
+			},
+			{ intervals, timeout },
+		)
+		.toBe(true);
+};
+
 /**
  * Retries the given assertion until it passes or the timeout is reached
  *

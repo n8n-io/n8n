@@ -1,0 +1,146 @@
+{
+	"name": "slack tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"query": "test",
+				"limit": 2,
+				"options": {
+					"searchChannel": ["test-002", "test-003"],
+					"channelTypes": ["public_channel", "private_channel"],
+					"keywordSearchOnly": true,
+					"includeArchivedChannels": true,
+					"includeBots": true,
+					"includeMessageBlocks": true
+				}
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.7,
+			"position": [1040, 360],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"author_name": "michael.k",
+					"author_user_id": "U0362BXQYJW",
+					"team_id": "T0364MSFHV2",
+					"channel_id": "C08514ZPKB8",
+					"channel_name": "test-002",
+					"message_ts": "1734322597.935429",
+					"content": "test message",
+					"is_author_bot": false,
+					"permalink": "https://myspace-qhg7381.slack.com/archives/C08514ZPKB8/p1734322597935429",
+					"blocks": [
+						{
+							"type": "rich_text",
+							"block_id": "+bc",
+							"elements": [
+								{
+									"type": "rich_text_section",
+									"elements": [
+										{
+											"type": "text",
+											"text": "test message"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"author_name": "michael.k",
+					"author_user_id": "U0362BXQYJW",
+					"team_id": "T0364MSFHV2",
+					"channel_id": "C08514ZPKB8",
+					"channel_name": "test-002",
+					"message_ts": "1734322341.161179",
+					"content": "another test message",
+					"is_author_bot": false,
+					"permalink": "https://myspace-qhg7381.slack.com/archives/C08514ZPKB8/p1734322341161179",
+					"blocks": [
+						{
+							"type": "rich_text",
+							"block_id": "FGAKN",
+							"elements": [
+								{
+									"type": "rich_text_section",
+									"elements": [
+										{
+											"type": "text",
+											"text": "another test message"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0ea58133-0522-40ae-ab51-ec3c1eced057",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "qJdEfiBgYLdfYOTs",
+	"tags": []
+}

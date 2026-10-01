@@ -52,10 +52,16 @@ const visible = computed(() =>
 			</div>
 		</template>
 		<N8nIconButton
+			variant="subtle"
+			size="small"
 			:class="$style.pinDataButton"
-			type="tertiary"
 			:active="props.pinnedData.hasData.value"
 			icon="pin"
+			:aria-label="
+				locale.baseText(
+					pinnedData.hasData.value ? 'ndv.pinData.unpin.title' : 'ndv.pinData.pin.title',
+				)
+			"
 			:disabled="props.disabled"
 			data-test-id="ndv-pin-data"
 			@click="emit('togglePinData')"

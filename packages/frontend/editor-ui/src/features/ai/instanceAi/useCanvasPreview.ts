@@ -1,0 +1,606 @@
+import { computed, ref, watch } from 'vue';
+import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system';
+import {
+	getLatestBuildResult,
+	getLatestBuilderTarget,
+	getLatestWorkflowSetupResult,
+	getLatestWorkflowUpdateResult,
+	getLatestDataTableResult,
+	getLatestDeletedDataTableId,
+	getLatestAgentBuilderTarget,
+	getExecutionResultsByWorkflow,
+	type ExecutionResult,
+} from './canvasPreview.utils';
+import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
+import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
+import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import {
+	ARTIFACT_TAB_ICONS,
+	useOpenArtifactTabs,
+	type ThreadTabsStorage,
+} from './composables/useOpenArtifactTabs';
+import type { ThreadRuntime } from './instanceAi.store';
+
+export interface ArtifactTab {
+	id: string;
+	type: 'workflow' | 'data-table' | 'agent';
+	name: string;
+	icon: IconName;
+	projectId?: string;
+	/** An agent artifact with no agent row behind it yet. */
+	pending?: boolean;
+	/** The AI is actively mutating this artifact right now. */
+	building?: boolean;
+}
+
+interface UseCanvasPreviewOptions {
+	thread: ThreadRuntime;
+	threadId: () => string;
+	initialAgentId?: () => string | undefined;
+	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
+	tabsStorage?: ThreadTabsStorage;
+}
+
+interface LinkedAgentTarget {
+	agentId: string;
+	projectId: string;
+}
+
+/**
+ * The artifact a message attachment refers to, if any. A nodes attachment refers
+ * to its parent workflow only when it carries the workflow name, which marks that
+ * workflow as a thread artifact.
+ */
+function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undefined {
+	if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
+	if (attachment.type === 'nodes' && attachment.workflowName) return attachment.workflowId;
+	return undefined;
+}
+
+export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
+	// --- Tab state ---
+	const activeTabId = ref<string>();
+	// The stored tabs of the thread remember this. It applies once they load.
+	const isPreviewOpen = ref(false);
+	const linkedAgentTarget = ref<LinkedAgentTarget>();
+
+	function setPreviewOpen(open: boolean, persist = true) {
+		if (isPreviewOpen.value === open) return;
+		isPreviewOpen.value = open;
+		// Save the change, so a reload shows the preview as it was, also when the
+		// agent opened it.
+		if (persist) tabs.saveTabs(activeTabId.value);
+	}
+
+	const buildingArtifactIds = useBuildingArtifactIds(thread);
+	const isAgentWorking = useIsAgentWorking(thread);
+
+	// Tab the user picked while the agent was working. The auto-open watchers
+	// below keep it in view until the run settles, so a streamed tool call
+	// cannot undo the click. The pick lapses when something else moves the
+	// selection, for example when the picked artifact is deleted.
+	const userTabId = ref<string>();
+	watch(isAgentWorking, (working) => {
+		if (!working) userTabId.value = undefined;
+	});
+
+	// All previewable artifacts in the current thread, derived from resource registry.
+	const artifactTabs = computed((): ArtifactTab[] => {
+		const result: ArtifactTab[] = [];
+		const linkedAgent = linkedAgentTarget.value;
+		for (const entry of thread.producedArtifacts.values()) {
+			if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+				result.push({
+					id: entry.id,
+					type: entry.type,
+					name: entry.name,
+					icon: ARTIFACT_TAB_ICONS[entry.type],
+					projectId:
+						entry.projectId ??
+						(entry.type === 'agent' && linkedAgent?.agentId === entry.id
+							? linkedAgent.projectId
+							: undefined),
+					pending: entry.pending,
+					building: buildingArtifactIds.value.has(entry.id),
+				});
+			}
+		}
+
+		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
+			const indexedAgent = [...thread.resourceNameIndex.values()].find(
+				(entry) => entry.type === 'agent' && entry.id === linkedAgent.agentId,
+			);
+			result.push({
+				id: linkedAgent.agentId,
+				type: 'agent',
+				name: indexedAgent?.name ?? linkedAgent.agentId,
+				icon: ARTIFACT_TAB_ICONS.agent,
+				projectId: indexedAgent?.projectId ?? linkedAgent.projectId,
+				building: buildingArtifactIds.value.has(linkedAgent.agentId),
+			});
+		}
+
+		return result;
+	});
+
+	// The tabs the user has open. The user can close artifacts and reorder tabs.
+	const tabs = useOpenArtifactTabs({
+		artifactTabs: () => artifactTabs.value,
+		storage: tabsStorage,
+		previewOpen: () => isPreviewOpen.value,
+	});
+	const openTabs = tabs.openTabs;
+
+	// Derived preview state from active tab
+	const activeWorkflowId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'workflow' ? tab.id : null;
+	});
+
+	const activeDataTableId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'data-table' ? tab.id : null;
+	});
+
+	const activeDataTableProjectId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
+	});
+
+	const activeAgentId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' ? tab.id : null;
+	});
+
+	const activeAgentProjectId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
+	});
+
+	const activeAgentPending = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'agent' && tab.pending === true;
+	});
+
+	const executionResultsByWorkflow = computed(() => {
+		const results = new Map<string, ExecutionResult>();
+		for (const message of thread.messages) {
+			if (!message.agentTree) continue;
+			for (const [workflowId, result] of getExecutionResultsByWorkflow(message.agentTree)) {
+				results.set(workflowId, result);
+			}
+		}
+		return results;
+	});
+
+	const activeWorkflowExecutionResult = computed(() => {
+		const workflowId = activeWorkflowId.value;
+		return workflowId ? executionResultsByWorkflow.value.get(workflowId) : undefined;
+	});
+
+	const dataTableRefreshKey = ref(0);
+
+	const isPreviewVisible = computed(
+		() =>
+			isPreviewOpen.value &&
+			activeTabId.value !== undefined &&
+			openTabs.value.some((tab) => tab.id === activeTabId.value),
+	);
+
+	// --- Resource attachments (workflow or agent hand-offs) ---
+	// A workflow or agent attached to a message surfaces as an artifact tab via the
+	// resource registry. The first one is opened on arrival. (Its execution, if
+	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
+	const firstAttachedArtifactId = computed(() => {
+		const tabIds = new Set(openTabs.value.map(({ id }) => id));
+		for (const message of thread.messages) {
+			for (const attachment of message.attachments ?? []) {
+				const artifactId = getAttachedArtifactId(attachment);
+				if (artifactId && tabIds.has(artifactId)) return artifactId;
+			}
+		}
+		return undefined;
+	});
+
+	// An unsaved new-agent artifact carries no attachment (there is no agent to
+	// attach yet), so it opens off the thread's pending marker instead — the user
+	// arrived here by asking for a new agent, so it should already be on screen.
+	const pendingAgentTabId = computed(() => artifactTabs.value.find((tab) => tab.pending)?.id);
+	const initialAgentTabId = computed(() => {
+		const agentId = initialAgentId?.();
+		if (!agentId) return undefined;
+		return artifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
+	});
+
+	const initialArtifactId = computed(
+		() =>
+			firstAttachedArtifactId.value ??
+			pendingAgentTabId.value ??
+			initialAgentTabId.value ??
+			thread.pendingWorkflowAttachment?.id,
+	);
+
+	// Open the arriving resource. Only when nothing is open, so it never steals
+	// focus from an agent-driven open or a user selection.
+	// Wait for the stored tabs, so a preview the user closed does not open for a moment.
+	watch(
+		[initialArtifactId, tabs.isLoaded],
+		([id, isLoaded]) => {
+			if (!id || !isLoaded || activeTabId.value !== undefined) return;
+			activeTabId.value = id;
+			if (tabs.storedPreviewOpen.value !== false) setPreviewOpen(true, false);
+		},
+		{ immediate: true },
+	);
+
+	watch(
+		[isPreviewOpen, openTabs, () => thread.isHydratingThread, initialArtifactId, tabs.isLoaded],
+		([open, currentTabs, isHydrating, initialId, isLoaded]) => {
+			// Wait for the stored tabs, so a closed tab does not open first.
+			if (isHydrating || !isLoaded) return;
+			if (open === true && activeTabId.value === undefined && currentTabs[0]) {
+				activeTabId.value = currentTabs.some((tab) => tab.id === initialId)
+					? initialId
+					: currentTabs[0].id;
+			}
+		},
+		{ immediate: true },
+	);
+
+	// Show the tab that was active, and the preview state, from when the user last
+	// changed the tabs. A tab the user picks while the stored tabs load wins,
+	// because the stored tabs are then ignored.
+	watch(tabs.isLoaded, (isLoaded) => {
+		if (!isLoaded) return;
+		const stored = tabs.storedActiveTab.value;
+		// Restore the tab first, so the first-tab fallback does not pick another one.
+		if (stored && openTabs.value.some((tab) => tab.id === stored.id)) {
+			activeTabId.value = stored.id;
+		}
+		const storedPreviewOpen = tabs.storedPreviewOpen.value;
+		if (storedPreviewOpen !== undefined && storedPreviewOpen !== isPreviewOpen.value) {
+			setPreviewOpen(storedPreviewOpen, false);
+		}
+	});
+
+	// --- Actions ---
+
+	function selectTab(tabId: string) {
+		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
+		tabs.reopenTab(tabId);
+		activeTabId.value = tabId;
+		userTabId.value = isAgentWorking.value ? tabId : undefined;
+		setPreviewOpen(true);
+		tabs.saveTabs(tabId);
+	}
+
+	/** Open a tab for a resource the user picked, and show it. */
+	function openTab(tab: ArtifactTab) {
+		tabs.openTab(tab);
+		selectTab(tab.id);
+	}
+
+	function reorderTab(tabId: string, toIndex: number) {
+		tabs.moveTab(tabId, toIndex);
+		tabs.saveTabs(activeTabId.value);
+	}
+
+	function closeTab(tabId: string) {
+		const nextTabId = tabs.closeTab(tabId);
+		if (activeTabId.value === tabId) {
+			activeTabId.value = nextTabId;
+			if (userTabId.value === tabId) userTabId.value = undefined;
+			if (nextTabId === undefined) setPreviewOpen(false);
+		}
+		tabs.saveTabs(activeTabId.value);
+	}
+
+	function closePreview() {
+		userTabId.value = undefined;
+		setPreviewOpen(false);
+		tabs.saveTabs(activeTabId.value);
+	}
+
+	// Show an artifact the agent just touched. Do not override a tab the user
+	// picked during this run while it is still the one on screen.
+	function showAgentArtifact(tabId: string) {
+		// The agent changed this artifact, so a tab the user closed opens again.
+		const reopened = tabs.reopenTab(tabId);
+		const pinned = userTabId.value !== undefined && userTabId.value === activeTabId.value;
+		if (!pinned) activeTabId.value = tabId;
+		setPreviewOpen(true);
+		if (reopened) tabs.saveTabs(activeTabId.value);
+	}
+
+	/**
+	 * Open or switch the preview to a workflow.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openWorkflowPreview(workflowId: string): boolean {
+		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
+		selectTab(workflowId);
+		return true;
+	}
+
+	/**
+	 * Open or switch the preview to a data table.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
+		if (activeTabId.value === dataTableId && isPreviewOpen.value) return false;
+		selectTab(dataTableId);
+		return true;
+	}
+
+	/**
+	 * Open or switch the preview to an agent.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openAgentPreview(agentId: string, projectId: string): boolean {
+		linkedAgentTarget.value = { agentId, projectId };
+		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
+		selectTab(agentId);
+		return true;
+	}
+
+	// --- Guard: fall back if active tab is removed from registry ---
+	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
+	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
+
+	watch(openTabs, (currentTabs) => {
+		if (activeTabId.value === undefined || currentTabs.length === 0) return;
+		const stillExists = currentTabs.some((t) => t.id === activeTabId.value);
+		if (!stillExists) {
+			activeTabId.value = currentTabs[0].id;
+		}
+	});
+
+	// --- Auto-open canvas when AI creates/modifies a workflow ---
+
+	const workflowRefreshKey = ref(0);
+
+	const latestBuildResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestBuildResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
+	// Auto-open logic:
+	//   - During hydration (loading past conversations from the server) → skip,
+	//     so re-entering an old thread doesn't pop the panel for past artifacts.
+	//   - Otherwise (live build / late run-sync delivery) → open or switch tab.
+	//
+	// `flush: 'sync'` is required: hydration runs `messages.value = […]` then
+	// clears `hydratingThreadId` in the same microtask. With the default `pre`
+	// flush the callback would fire AFTER that clear and skip the gate.
+	watch(
+		() => latestBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestBuildResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			const targetId = latestBuildResult.value.workflowId;
+			showAgentArtifact(targetId);
+			// Refresh only the tab on screen; a tab opened later mounts fresh anyway.
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open canvas when an edit-mode builder spawns ---
+	// The workflow-builder carries the existing workflow id in
+	// `targetResource.id` from the moment it is spawned. Opening the preview
+	// then — instead of waiting for the first build-workflow result — lets the
+	// user see what is being edited as soon as the sub-agent is called.
+	// Keyed by agentId so a fresh builder spawn re-triggers the preview.
+
+	const latestBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const target = getLatestBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestBuilderTarget.value?.agentId,
+		(agentId) => {
+			if (!agentId || !latestBuilderTarget.value) return;
+			if (thread.isHydratingThread) return;
+
+			showAgentArtifact(latestBuilderTarget.value.workflowId);
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open canvas when an agent-builder sub-agent spawns ---
+	// Mirrors the workflow-builder spawn-open above. The builder node id is
+	// stable per target agent (`agent-builder:<id>`). Include the activity in the
+	// watch key so an edit can open the preview after a read-only builder turn.
+	// Config refreshes are driven by the agents event bus.
+
+	const latestAgentBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const target = getLatestAgentBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => {
+			const target = latestAgentBuilderTarget.value;
+			return target ? `${target.agentId}:${target.activity ?? ''}` : undefined;
+		},
+		() => {
+			const target = latestAgentBuilderTarget.value;
+			if (!target) return;
+			if (thread.isHydratingThread) return;
+			if (target.activity === 'exploring' || target.activity === 'testing') {
+				return;
+			}
+
+			showAgentArtifact(target.targetAgentId);
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// These tools modify the workflow (credentials, parameters) but aren't detected
+	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
+
+	const latestSetupResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowSetupResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestSetupResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSetupResult.value) return;
+
+			const targetId = latestSetupResult.value.workflowId;
+
+			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
+		},
+	);
+
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
+
+	const latestUpdateResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowUpdateResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestUpdateResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestUpdateResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			const targetId = latestUpdateResult.value.workflowId;
+
+			showAgentArtifact(targetId);
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open data table preview when AI creates/modifies a data table ---
+
+	const latestDataTableResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestDataTableResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestDataTableResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestDataTableResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			const targetId = latestDataTableResult.value.dataTableId;
+			showAgentArtifact(targetId);
+			if (activeTabId.value === targetId) {
+				dataTableRefreshKey.value++;
+			}
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Close data table preview if the active table is deleted ---
+
+	const latestDeletedDataTableId = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const id = getLatestDeletedDataTableId(msg.agentTree);
+				if (id) return id;
+			}
+		}
+		return null;
+	});
+
+	watch(latestDeletedDataTableId, (deletedId) => {
+		if (deletedId && deletedId === activeTabId.value) {
+			const remaining = openTabs.value.filter((t) => t.id !== deletedId);
+			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
+			if (!activeTabId.value) {
+				setPreviewOpen(false);
+			}
+		}
+	});
+
+	// --- Signal persisted builder config mutations onto the agents event bus ---
+	useAgentMutationRefresh(thread);
+
+	return {
+		activeTabId,
+		openTabs,
+		/** False until the stored tabs of the thread load. */
+		tabsLoaded: tabs.isLoaded,
+		activeWorkflowId,
+		activeDataTableId,
+		activeDataTableProjectId,
+		activeAgentId,
+		activeAgentProjectId,
+		activeAgentPending,
+		activeWorkflowExecutionResult,
+		dataTableRefreshKey,
+		isPreviewVisible,
+		workflowRefreshKey,
+		selectTab,
+		openTab,
+		reorderTab,
+		closeTab,
+		closePreview,
+		openWorkflowPreview,
+		openDataTablePreview,
+		openAgentPreview,
+	};
+}

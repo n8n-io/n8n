@@ -1,0 +1,79 @@
+{
+	"name": "RocketChat read subscription",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4de08470-bb1a-4204-aec0-6a0d2c811f2f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "subscriptions",
+				"operation": "read",
+				"roomId": "ROOM1"
+			},
+			"id": "1a73099f-169a-4471-8409-a61eb9298e5d",
+			"name": "RocketChat",
+			"type": "n8n-nodes-base.rocketchat",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"rocketchatApi": {
+					"id": "rocketchat-test-account",
+					"name": "RocketChat account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "ef8ae0b9-229b-4211-b46d-e6e3cf0f84b7",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "RocketChat",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RocketChat": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f8f4c773-6779-4aef-83b8-6d170aa16f3f",
+	"id": "JjNLWkF8NYvMWx58",
+	"tags": []
+}

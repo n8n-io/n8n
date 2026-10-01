@@ -1,22 +1,23 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as alert from '../../../v2/actions/alert';
 import * as transport from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({
-	splunkApiJsonRequest: jest.fn(),
+vi.mock('../../../v2/transport', () => ({
+	splunkApiJsonRequest: vi.fn(),
 }));
 
 describe('Splunk, alert resource', () => {
 	const response = [{ id: '123' }, { id: '345' }];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	test('getMetrics operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
-		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue(response);
+		(transport.splunkApiJsonRequest as Mock).mockReturnValue(response);
 		const responseData = await alert.getMetrics.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
@@ -27,7 +28,7 @@ describe('Splunk, alert resource', () => {
 
 	test('getReport operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
-		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue(response);
+		(transport.splunkApiJsonRequest as Mock).mockReturnValue(response);
 		const responseData = await alert.getReport.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',

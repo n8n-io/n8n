@@ -18,9 +18,7 @@ describe('Test YouTube Node', () => {
 
 	const youtubeNock = nock('https://www.googleapis.com/youtube');
 	beforeAll(() => {
-		jest
-			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
-			.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
+		vi.useFakeTimers({}).setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
 	});
 
 	describe('Channel', () => {

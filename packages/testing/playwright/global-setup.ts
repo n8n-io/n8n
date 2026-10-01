@@ -32,7 +32,7 @@ async function globalSetup() {
 		await api.resetDatabase();
 		console.log('✅ Database reset completed successfully');
 	} catch (error) {
-		console.error('❌ Failed to reset database:', error);
+		console.error('❌ Failed to reset database', error);
 		throw error; // This will fail the entire test suite if database reset fails
 	} finally {
 		await requestContext.dispose();

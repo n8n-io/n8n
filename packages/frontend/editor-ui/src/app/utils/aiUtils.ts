@@ -7,7 +7,7 @@ interface MemoryMessage {
 	lc: number;
 	type: string;
 	id: string[];
-	kwargs: {
+	kwargs?: {
 		content: unknown;
 		additional_kwargs: Record<string, unknown>;
 	};
@@ -25,6 +25,27 @@ const fallbackParser = (execData: IDataObject) => ({
 	data: execData,
 	parsed: false,
 });
+
+function isMemoryMessage(message: unknown): message is MemoryMessage {
+	if (typeof message !== 'object' || message === null || Array.isArray(message)) {
+		return false;
+	}
+	if (!('lc' in message) || typeof message.lc !== 'number') {
+		return false;
+	}
+	if (!('type' in message) || typeof message.type !== 'string') {
+		return false;
+	}
+	if (
+		!('id' in message) ||
+		!Array.isArray(message.id) ||
+		!message.id.every((item): item is string => typeof item === 'string')
+	) {
+		return false;
+	}
+
+	return true;
+}
 
 const outputTypeParsers: {
 	[key in AllowedEndpointType]: (execData: IDataObject) => {
@@ -93,12 +114,9 @@ const outputTypeParsers: {
 			(execData?.response as IDataObject)?.chat_history;
 		if (Array.isArray(chatHistory)) {
 			const responseText = chatHistory
+				.filter(isMemoryMessage)
 				.map((content: MemoryMessage) => {
-					if (
-						content.type === 'constructor' &&
-						content.id?.includes('messages') &&
-						content.kwargs
-					) {
+					if (content.type === 'constructor' && content.id.includes('messages') && content.kwargs) {
 						interface MessageContent {
 							type: string;
 							text?: string;
@@ -126,7 +144,10 @@ const outputTypeParsers: {
 								})
 								.join('\n');
 						}
-						if (Object.keys(content.kwargs.additional_kwargs).length) {
+						if (
+							content.kwargs.additional_kwargs &&
+							Object.keys(content.kwargs.additional_kwargs).length
+						) {
 							message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
 						}
 						if (content.id.includes('HumanMessage')) {

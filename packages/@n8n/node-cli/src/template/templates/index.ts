@@ -1,5 +1,9 @@
 import { customTemplate } from './declarative/custom/template';
 import { githubIssuesTemplate } from './declarative/github-issues/template';
+import { customMemoryTemplate } from './programmatic/ai/memory-custom/template';
+import { customChatModelTemplate } from './programmatic/ai/model-ai-custom/template';
+import { customChatModelExampleTemplate } from './programmatic/ai/model-ai-custom-example/template';
+import { openaiChatModelTemplate } from './programmatic/ai/model-openai-compatible/template';
 import { exampleTemplate } from './programmatic/example/template';
 
 export const templates = {
@@ -9,6 +13,10 @@ export const templates = {
 	},
 	programmatic: {
 		example: exampleTemplate,
+		openaiChatModel: openaiChatModelTemplate,
+		customChatModel: customChatModelTemplate,
+		customChatMemory: customMemoryTemplate,
+		customChatModelExample: customChatModelExampleTemplate,
 	},
 } as const;
 

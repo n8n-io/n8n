@@ -40,6 +40,8 @@ export function setToolCodex(
 ): void {
 	const resources = description.codex?.resources ?? {};
 	const existingToolsSubcategory = description.codex?.subcategories?.Tools;
+	// Keep the original node's search aliases so tool variants stay discoverable
+	const alias = description.codex?.alias;
 
 	description.codex = {
 		categories: ['AI'],
@@ -49,5 +51,6 @@ export function setToolCodex(
 				preserveExisting && existingToolsSubcategory ? existingToolsSubcategory : [toolSubcategory],
 		},
 		resources,
+		...(alias && { alias }),
 	};
 }

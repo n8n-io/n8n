@@ -10,13 +10,14 @@ import { arrayExtensions } from './array-extensions';
 import { booleanExtensions } from './boolean-extensions';
 import { dateExtensions } from './date-extensions';
 import { joinExpression, splitExpression } from './expression-parser';
-import type { ExpressionChunk, ExpressionCode } from './expression-parser';
+import type { ExpressionChunk } from './expression-parser';
 import type { ExtensionMap } from './extensions';
 import { numberExtensions } from './number-extensions';
 import { objectExtensions } from './object-extensions';
 import { stringExtensions } from './string-extensions';
 import { checkIfValueDefinedOrThrow } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { isSafeObjectProperty } from '../utils';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -55,7 +56,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(genericExtensions),
 	]),
 );
-
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const EXPRESSION_EXTENSION_REGEX = new RegExp(
 	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );
@@ -419,11 +420,11 @@ export const extendTransform = (expression: string): { code: string } | undefine
 					path.replace(
 						types.builders.conditionalExpression(
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							test as any,
+							test,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							consequent as any,
+							consequent,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							alternative as any,
+							alternative,
 						),
 					);
 				}
@@ -454,26 +455,36 @@ interface FoundFunction {
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
+	// Coerce to string early so the name is stable for the property check below
+	const name = typeof functionName === 'string' ? functionName : String(functionName);
+
+	// Ensure the property name is in the allowed set before looking it up
+	if (!isSafeObjectProperty(name)) {
+		throw new ExpressionExtensionError(
+			`Cannot access "${name}" via expression extension due to security concerns`,
+		);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
-		foundFunction = arrayExtensions.functions[functionName];
-	} else if (isDate(input) && functionName !== 'toDate' && functionName !== 'toDateTime') {
+		foundFunction = arrayExtensions.functions[name];
+	} else if (isDate(input) && name !== 'toDate' && name !== 'toDateTime') {
 		// If it's a string date (from $json), convert it to a Date object,
 		// unless that function is `toDate`, since `toDate` does something
 		// very different on date objects
 		input = new Date(input as string);
-		foundFunction = dateExtensions.functions[functionName];
+		foundFunction = dateExtensions.functions[name];
 	} else if (typeof input === 'string') {
-		foundFunction = stringExtensions.functions[functionName];
+		foundFunction = stringExtensions.functions[name];
 	} else if (typeof input === 'number') {
-		foundFunction = numberExtensions.functions[functionName];
+		foundFunction = numberExtensions.functions[name];
 	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
-		foundFunction = dateExtensions.functions[functionName];
+		foundFunction = dateExtensions.functions[name];
 	} else if (input !== null && typeof input === 'object') {
-		foundFunction = objectExtensions.functions[functionName];
+		foundFunction = objectExtensions.functions[name];
 	} else if (typeof input === 'boolean') {
-		foundFunction = booleanExtensions.functions[functionName];
+		foundFunction = booleanExtensions.functions[name];
 	}
 
 	// Look for generic or builtin
@@ -482,13 +493,13 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		const inputAny: any = input;
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll return that instead
-		if (inputAny && functionName && typeof inputAny[functionName] === 'function') {
+		if (inputAny && name && typeof inputAny[name] === 'function') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			return { type: 'native', function: inputAny[functionName] };
+			return { type: 'native', function: inputAny[name] };
 		}
 
 		// Use a generic version if available
-		foundFunction = genericExtensions[functionName];
+		foundFunction = genericExtensions[name];
 	}
 
 	if (!foundFunction) {
@@ -563,7 +574,7 @@ export function extendOptional(
 	};
 }
 
-const EXTENDED_SYNTAX_CACHE: Record<string, string> = {};
+const EXTENDED_SYNTAX_CACHE = new Map<string, string>();
 
 export function extendSyntax(bracketedExpression: string, forceExtend = false): string {
 	const chunks = splitExpression(bracketedExpression);
@@ -580,8 +591,9 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 	}
 
 	// If we've seen this expression before grab it from the cache
-	if (bracketedExpression in EXTENDED_SYNTAX_CACHE) {
-		return EXTENDED_SYNTAX_CACHE[bracketedExpression];
+	const cachedExpression = EXTENDED_SYNTAX_CACHE.get(bracketedExpression);
+	if (cachedExpression !== undefined) {
+		return cachedExpression;
 	}
 
 	const extendedChunks = chunks.map((chunk): ExpressionChunk => {
@@ -610,13 +622,13 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 			return {
 				...chunk,
 				text,
-			} as ExpressionCode;
+			};
 		}
 		return chunk;
 	});
 
 	const expression = joinExpression(extendedChunks);
 	// Cache the expression so we don't have to do this transform again
-	EXTENDED_SYNTAX_CACHE[bracketedExpression] = expression;
+	EXTENDED_SYNTAX_CACHE.set(bracketedExpression, expression);
 	return expression;
 }

@@ -89,8 +89,10 @@ export type TestCase = z.infer<typeof testCaseSchema>;
 // Evaluation input schema
 export const evaluationInputSchema = z.object({
 	userPrompt: z.string(),
+	existingWorkflow: z.custom<SimpleWorkflow>().optional(),
 	generatedWorkflow: z.custom<SimpleWorkflow>(),
 	referenceWorkflows: z.array(z.custom<SimpleWorkflow>()).optional(),
+	agentTextResponse: z.string().optional(),
 	preset: z.enum(['strict', 'standard', 'lenient']).optional(),
 });
 

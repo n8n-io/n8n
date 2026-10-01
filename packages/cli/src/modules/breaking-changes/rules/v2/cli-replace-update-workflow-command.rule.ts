@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -7,7 +7,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule {
 	id: string = 'cli-activate-all-workflows-v2';
 
@@ -18,7 +18,7 @@ export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule 
 			description:
 				'The CLI command update:workflow has been replaced with publish:workflow and unpublish:workflow for better clarity.',
 			category: BreakingChangeCategory.instance,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#replace-cli-command-updateworkflow',
 		};

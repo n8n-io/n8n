@@ -1,5 +1,6 @@
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import type { IExecuteFunctions, IBinaryData, IDataObject } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
 
@@ -7,20 +8,25 @@ import * as file from './actions/file';
 import * as image from './actions/image';
 import * as prompt from './actions/prompt';
 import * as text from './actions/text';
+import type { File } from './helpers/interfaces';
 import * as utils from './helpers/utils';
 import * as transport from './transport';
-import type { File } from './helpers/interfaces';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
-	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
-	const getBaseUrlMock = jest.spyOn(utils, 'getBaseUrl');
+	let apiRequestMock: MockInstance;
+	let getConnectedToolsMock: MockInstance;
+	let downloadFileMock: MockInstance;
+	let uploadFileMock: MockInstance;
+	let getBaseUrlMock: MockInstance;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
+		getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+		downloadFileMock = vi.spyOn(utils, 'downloadFile');
+		uploadFileMock = vi.spyOn(utils, 'uploadFile');
+		getBaseUrlMock = vi.spyOn(utils, 'getBaseUrl');
 	});
 
 	describe('Text -> Message', () => {
@@ -274,6 +280,295 @@ describe('Anthropic Node', () => {
 		});
 	});
 
+	describe('Text -> Message prompt caching', () => {
+		const mockNodeParameters = (options: IDataObject) => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'addAttachments':
+						return false;
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+		};
+
+		it('should send a top-level cache breakpoint when prompt caching is enabled', async () => {
+			mockNodeParameters({ promptCaching: '5m', system: 'You are a helpful assistant.' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					system: 'You are a helpful assistant.',
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+					cache_control: { type: 'ephemeral', ttl: '5m' },
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should send a one hour cache breakpoint when the 1h option is selected', async () => {
+			mockNodeParameters({ promptCaching: '1h' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+					cache_control: { type: 'ephemeral', ttl: '1h' },
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should not send a cache breakpoint when prompt caching is disabled', async () => {
+			mockNodeParameters({ promptCaching: 'disabled', system: 'You are a helpful assistant.' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			// An exact body match, so an unconditional cache_control would fail here.
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					system: 'You are a helpful assistant.',
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should keep the cache breakpoint on follow-up requests in the tool call loop', async () => {
+			mockNodeParameters({ promptCaching: '5m' });
+
+			// Every call receives the same mutable body object, so the recorded arguments
+			// all point at its final state. Snapshot each payload as it is sent, otherwise
+			// the first request would be asserted against the grown conversation.
+			const responses = [
+				{
+					content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
+					stop_reason: 'tool_use',
+				},
+				{ content: [{ type: 'text', text: 'Done.' }], stop_reason: 'end_turn' },
+			];
+			const sentBodies: IDataObject[] = [];
+			apiRequestMock.mockImplementation(
+				async (_method: string, _endpoint: string, parameters: { body: IDataObject }) => {
+					sentBodies.push(structuredClone(parameters.body));
+					return responses[sentBodies.length - 1];
+				},
+			);
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(sentBodies).toHaveLength(2);
+
+			// First request: only the original prompt, breakpoint already in place.
+			expect(sentBodies[0]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [{ role: 'user', content: 'Hello, world!' }],
+				tools: [],
+				cache_control: { type: 'ephemeral', ttl: '5m' },
+			});
+
+			// Follow-up request: the conversation has grown by the tool exchange, and the
+			// breakpoint has to survive it -- this is where caching actually pays off.
+			expect(sentBodies[1]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [
+					{ role: 'user', content: 'Hello, world!' },
+					{
+						role: 'assistant',
+						content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
+					},
+					{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '' }] },
+				],
+				tools: [],
+				cache_control: { type: 'ephemeral', ttl: '5m' },
+			});
+		});
+
+		it('should count cached tokens towards the reported token usage', async () => {
+			mockNodeParameters({ promptCaching: '5m' });
+			executeFunctionsMock.getExecuteData.mockReturnValue(
+				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
+			);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+				usage: {
+					input_tokens: 12,
+					output_tokens: 34,
+					cache_creation_input_tokens: 500,
+					cache_read_input_tokens: 1000,
+				},
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			// Anthropic reports cached tokens outside input_tokens, so all three add up.
+			expect(executeFunctionsMock.setMetadata).toHaveBeenCalledWith({
+				tokenUsage: { inputTokens: 1512, outputTokens: 34 },
+			});
+		});
+
+		it('should report token usage unchanged when the response has no cache fields', async () => {
+			mockNodeParameters({});
+			executeFunctionsMock.getExecuteData.mockReturnValue(
+				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
+			);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+				usage: { input_tokens: 12, output_tokens: 34 },
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(executeFunctionsMock.setMetadata).toHaveBeenCalledWith({
+				tokenUsage: { inputTokens: 12, outputTokens: 34 },
+			});
+		});
+	});
+
+	describe('Empty Prompt Validation', () => {
+		it('should throw error when text messages are all empty without attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'addAttachments':
+						return false;
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text messages are whitespace-only without attachments', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '   ' }];
+					case 'addAttachments':
+						return false;
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should NOT throw for empty messages when attachments are enabled', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: '' }];
+					case 'addAttachments':
+						return true;
+					case 'attachmentsInputType':
+						return 'url';
+					case 'attachmentsUrls':
+						return 'https://example.com/file.pdf';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
+			executeFunctionsMock.helpers.httpRequest.mockResolvedValue({
+				headers: { 'content-type': 'application/pdf' },
+			});
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Response' }],
+				stop_reason: 'end_turn',
+			});
+
+			await expect(text.message.execute.call(executeFunctionsMock, 0)).resolves.toBeDefined();
+		});
+
+		it('should throw error when image analyze text is empty', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'inputType':
+						return 'url';
+					case 'imageUrls':
+						return 'https://example.com/image.png';
+					case 'text':
+						return '';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(image.analyze.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+	});
+
 	describe('File -> Upload', () => {
 		it('should upload file from URL', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
@@ -288,9 +583,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({
-				url: 'https://api.anthropic.com',
-			});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			downloadFileMock.mockResolvedValue({
 				fileContent: Buffer.from('test file content'),
 				mimeType: 'application/pdf',
@@ -343,7 +636,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			const mockBinaryData: IBinaryData = {
 				mimeType: 'application/pdf',
 				fileName: 'test.pdf',
@@ -758,7 +1051,7 @@ describe('Anthropic Node', () => {
 						return undefined;
 				}
 			});
-			executeFunctionsMock.getCredentials.mockResolvedValue({});
+			getBaseUrlMock.mockResolvedValue('https://api.anthropic.com');
 			apiRequestMock.mockResolvedValue({
 				content: [
 					{

@@ -10,7 +10,7 @@ import type { SecretsProvider } from './types';
 export class ExternalSecretsProviderRegistry {
 	private providers = new Map<string, SecretsProvider>();
 
-	add(name: string, provider: SecretsProvider): void {
+	set(name: string, provider: SecretsProvider): void {
 		this.providers.set(name, provider);
 	}
 
@@ -30,8 +30,18 @@ export class ExternalSecretsProviderRegistry {
 		return new Map(this.providers);
 	}
 
-	getConnected(): SecretsProvider[] {
-		return Array.from(this.providers.values()).filter((p) => p.state === 'connected');
+	getConnected(): Map<string, SecretsProvider> {
+		const result = new Map<string, SecretsProvider>();
+		for (const [name, provider] of this.providers) {
+			if (provider.state === 'connected') {
+				result.set(name, provider);
+			}
+		}
+		return result;
+	}
+
+	getConnectedNames(): string[] {
+		return Array.from(this.getConnected().keys());
 	}
 
 	getNames(): string[] {

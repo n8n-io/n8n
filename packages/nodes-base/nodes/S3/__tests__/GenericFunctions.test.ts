@@ -7,25 +7,26 @@ import {
 	s3ApiRequestSOAP,
 	s3ApiRequestSOAPAllItems,
 } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('aws4');
-jest.mock('xml2js');
+vi.mock('aws4', () => ({ sign: vi.fn() }));
+vi.mock('xml2js');
 
 describe('S3 Node Generic Functions', () => {
 	let mockContext: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockContext = {
-			getNode: jest.fn().mockReturnValue({ name: 'S3' }),
-			getCredentials: jest.fn().mockResolvedValue({
+			getNode: vi.fn().mockReturnValue({ name: 'S3' }),
+			getCredentials: vi.fn().mockResolvedValue({
 				endpoint: 'https://s3.amazonaws.com',
 				accessKeyId: 'test-key',
 				secretAccessKey: 'test-secret',
 				region: 'us-east-1',
 			}),
 			helpers: {
-				request: jest.fn(),
+				request: vi.fn(),
 			},
 		};
 	});
@@ -77,6 +78,86 @@ describe('S3 Node Generic Functions', () => {
 				expect.any(Object),
 			);
 		});
+
+		it.each([
+			{
+				forcePathStyle: true,
+				signedPathPrefix: '/test-bucket',
+				uriPrefix: 'https://s3.amazonaws.com/test-bucket',
+			},
+			{
+				forcePathStyle: false,
+				signedPathPrefix: '',
+				uriPrefix: 'https://test-bucket.s3.amazonaws.com',
+			},
+		])(
+			'should encode plus signs when forcePathStyle is $forcePathStyle',
+			async ({ forcePathStyle, signedPathPrefix, uriPrefix }) => {
+				for (const fileKey of ['has+plus.txt', 'has%2Bplus.txt']) {
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
+
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
+
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/has%2Bplus.txt?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/has%2Bplus.txt`,
+						}),
+					);
+				}
+			},
+		);
+
+		it.each([
+			{
+				forcePathStyle: true,
+				signedPathPrefix: '/test-bucket',
+				uriPrefix: 'https://s3.amazonaws.com/test-bucket',
+			},
+			{
+				forcePathStyle: false,
+				signedPathPrefix: '',
+				uriPrefix: 'https://test-bucket.s3.amazonaws.com',
+			},
+		])(
+			'should preserve encoded slashes when forcePathStyle is $forcePathStyle',
+			async ({ forcePathStyle, signedPathPrefix, uriPrefix }) => {
+				for (const fileKey of [
+					'folder%2Ffile.txt',
+					'folder%2F..%2Fsecret.txt',
+					'folder%252Ffile.txt',
+				]) {
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
+
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
+
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/${fileKey}?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/${fileKey}`,
+						}),
+					);
+				}
+			},
+		);
 	});
 
 	describe('s3ApiRequestREST', () => {
@@ -105,7 +186,7 @@ describe('S3 Node Generic Functions', () => {
 			const mockParsedResponse = { root: { key: 'value' } };
 
 			mockContext.helpers.request.mockResolvedValueOnce(mockXmlResponse);
-			(parseString as jest.Mock).mockImplementation((_, __, callback) =>
+			(parseString as Mock).mockImplementation((_, __, callback) =>
 				callback(null, mockParsedResponse),
 			);
 
@@ -117,7 +198,7 @@ describe('S3 Node Generic Functions', () => {
 		it('should handle XML parsing errors', async () => {
 			const mockError = new Error('XML Parse Error');
 			mockContext.helpers.request.mockResolvedValueOnce('<invalid>xml');
-			(parseString as jest.Mock).mockImplementation((_, __, callback) => callback(mockError));
+			(parseString as Mock).mockImplementation((_, __, callback) => callback(mockError));
 
 			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/');
 
@@ -145,7 +226,7 @@ describe('S3 Node Generic Functions', () => {
 				.mockResolvedValueOnce('<xml>first</xml>')
 				.mockResolvedValueOnce('<xml>second</xml>');
 
-			(parseString as jest.Mock)
+			(parseString as Mock)
 				.mockImplementationOnce((_, __, callback) => callback(null, firstResponse))
 				.mockImplementationOnce((_, __, callback) => callback(null, secondResponse));
 

@@ -1,10 +1,13 @@
-import { CreateVariableRequestDto, VariableListRequestDto } from '@n8n/api-types';
+import {
+	CreateVariableRequestDto,
+	UpdateVariableRequestDto,
+	VariableListRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 
@@ -56,7 +59,7 @@ export class VariablesController {
 	async updateVariable(
 		req: AuthenticatedRequest<{ id: string }>,
 		_res: Response,
-		@Body payload: CreateVariableRequestDto,
+		@Body payload: UpdateVariableRequestDto,
 	) {
 		const id = req.params.id;
 		try {

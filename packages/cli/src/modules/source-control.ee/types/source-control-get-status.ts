@@ -2,10 +2,12 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import type { StatusExportableCredential } from './exportable-credential';
+import type { ExportableDataTable, StatusExportableDataTable } from './exportable-data-table';
 import type { ExportableFolder } from './exportable-folders';
 import type { ExportableProjectWithFileName } from './exportable-project';
 import type { ExportableTagEntity, ExportableWorkflowTagMapping } from './exportable-tags';
 import type { ExportableVariable } from './exportable-variable';
+import type { SourceControlActionOrigin } from './source-control-action-origin';
 import type { SourceControlWorkflowVersionId } from './source-control-workflow-version-id';
 
 export interface SourceControlGetStatusVerboseResult {
@@ -20,6 +22,9 @@ export interface SourceControlGetStatusVerboseResult {
 	varMissingInLocal: ExportableVariable[];
 	varMissingInRemote: ExportableVariable[];
 	varModifiedInEither: ExportableVariable[];
+	dtMissingInLocal: ExportableDataTable[];
+	dtMissingInRemote: StatusExportableDataTable[];
+	dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable>;
 	tagsMissingInLocal: ExportableTagEntity[];
 	tagsMissingInRemote: ExportableTagEntity[];
 	tagsModifiedInEither: ExportableTagEntity[];
@@ -56,6 +61,8 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
+	origin?: SourceControlActionOrigin;
+
 	constructor(values: {
 		direction: 'push' | 'pull';
 		preferLocalVersion: string | boolean;
@@ -64,5 +71,7 @@ export class SourceControlGetStatus {
 		this.direction = values.direction || 'push';
 		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
 		this.verbose = booleanFromString(values.verbose) || false;
+		// Never read from `values`, an untrusted `origin` query parameter must not be propagated through.
+		this.origin = 'ui';
 	}
 }

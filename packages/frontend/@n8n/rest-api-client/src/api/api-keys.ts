@@ -1,7 +1,8 @@
 import type {
+	ApiKeyOwnership,
 	CreateApiKeyRequestDto,
 	UpdateApiKeyRequestDto,
-	ApiKey,
+	ApiKeyList,
 	ApiKeyWithRawValue,
 } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
@@ -9,8 +10,24 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
-export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
-	return await makeRestApiRequest(context, 'GET', '/api-keys');
+export async function getApiKeys(
+	context: IRestApiContext,
+	options: {
+		take?: number;
+		skip?: number;
+		ownership?: ApiKeyOwnership;
+		label?: string;
+		ownerIds?: string[];
+		sortBy?: string;
+	} = {},
+): Promise<ApiKeyList> {
+	const { ownerIds, ...rest } = options;
+	return await makeRestApiRequest(context, 'GET', '/api-keys', {
+		...rest,
+		// Comma-joined so it survives query-string serialization; the backend
+		// splits it back into an array.
+		...(ownerIds?.length ? { ownerIds: ownerIds.join(',') } : {}),
+	});
 }
 
 export async function getApiKeyScopes(context: IRestApiContext): Promise<ApiKeyScope[]> {
@@ -37,4 +54,11 @@ export async function updateApiKey(
 	payload: UpdateApiKeyRequestDto,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, payload);
+}
+
+export async function rotateApiKey(
+	context: IRestApiContext,
+	id: string,
+): Promise<ApiKeyWithRawValue> {
+	return await makeRestApiRequest(context, 'POST', `/api-keys/${id}/rotate`);
 }

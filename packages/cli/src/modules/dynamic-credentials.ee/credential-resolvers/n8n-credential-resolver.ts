@@ -41,8 +41,9 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		const key = await this.resolveIdentifier(context, handle.configuration);
+		const key = await this.resolveIdentifier(context, handle.configuration, executionId);
 
 		const data = await this.storage.getCredentialData(
 			credentialId,
@@ -54,7 +55,7 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		if (!data) {
 			throw new CredentialResolverDataNotFoundError();
 		}
-		const plaintext = this.cipher.decrypt(data);
+		const plaintext = await this.cipher.decryptV2(data);
 		try {
 			const secret = jsonParse<ICredentialDataDecryptedObject>(plaintext);
 			return secret;
@@ -70,10 +71,11 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		context: ICredentialContext,
 		data: ICredentialDataDecryptedObject,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<void> {
-		const key = await this.resolveIdentifier(context, handle.configuration);
+		const key = await this.resolveIdentifier(context, handle.configuration, executionId);
 
-		const encryptedData = this.cipher.encrypt(data);
+		const encryptedData = await this.cipher.encryptV2(data);
 
 		await this.storage.setCredentialData(
 			credentialId,
@@ -89,8 +91,9 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<void> {
-		const key = await this.resolveIdentifier(context, handle.configuration);
+		const key = await this.resolveIdentifier(context, handle.configuration, executionId);
 		await this.storage.deleteCredentialData(
 			credentialId,
 			key,
@@ -110,14 +113,28 @@ export class N8NCredentialResolver implements ICredentialResolver {
 	private async resolveIdentifier(
 		context: ICredentialContext,
 		configuration: CredentialResolverConfiguration,
+		executionId?: string,
 	): Promise<string> {
-		return await this.n8nIdentifier.resolve(context, configuration);
+		return await this.n8nIdentifier.resolve(context, configuration, executionId);
+	}
+
+	/**
+	 * The identity this resolver keys on IS the n8n user id, so the owning user
+	 * is the resolved identifier.
+	 */
+	async resolveOwningUserId(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+		executionId?: string,
+	): Promise<string> {
+		return await this.resolveIdentifier(context, handle.configuration, executionId);
 	}
 
 	async validateIdentity(
 		context: ICredentialContext,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<void> {
-		await this.resolveIdentifier(context, handle.configuration);
+		await this.resolveIdentifier(context, handle.configuration, executionId);
 	}
 }

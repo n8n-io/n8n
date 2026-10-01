@@ -21,54 +21,33 @@ Microbenchmarks for measuring and tracking performance of critical code paths.
 
 ```bash
 pnpm --filter=@n8n/performance bench          # Run benchmarks
-pnpm --filter=@n8n/performance bench:baseline # Save new baseline
-pnpm --filter=@n8n/performance bench:ci       # CI check (fails if >10% slower)
+pnpm --filter=@n8n/performance bench:baseline  # Save baseline for local comparison
+pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% = fail)
 ```
+
+## CI Regression Detection
+
+CI benchmarks are paused. CI used [CodSpeed](https://codspeed.io), and `@codspeed/vitest-plugin` does not support Vitest 5 yet. Add the `performance` job back to `.github/workflows/ci-master.yml` when the plugin supports Vitest 5.
+
+Until then, use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session. Local results measure wall-clock time and have 15-30% variance.
 
 ## Adding a Benchmark
 
-### 1. Create a bench file
+Use `defineBench` from `bench-options.ts`. It runs one benchmark with the shared tuning. Keep every benchmark name unique.
 
 ```typescript
 // benchmarks/my-feature/thing.bench.ts
-import { bench, describe } from 'vitest';
+import { describe } from 'vitest';
 
-describe('My Feature', () => {
-  bench('operation name', () => {
-    // Code to measure - runs thousands of times
-    doTheThing();
-  });
-});
-```
+import { defineBench } from '../bench-options';
 
-### 2. Add setup outside the bench function
-
-```typescript
 // Setup runs once, not measured
 const data = createTestData();
-const instance = new MyClass();
 
 describe('My Feature', () => {
-  bench('with small input', () => {
-    instance.process(data.small);
+  defineBench('operation name', () => {
+    doTheThing(data);
   });
-
-  bench('with large input', () => {
-    instance.process(data.large);
-  });
-});
-```
-
-### 3. Add warmup if needed
-
-```typescript
-// Warmup ensures JIT compilation is done before measuring
-for (let i = 0; i < 1000; i++) {
-  instance.process(data.small);
-}
-
-describe('My Feature', () => {
-  // Now benchmarks measure hot path, not JIT compilation
 });
 ```
 
@@ -87,54 +66,13 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 | rme | Margin of error - lower = more reliable |
 | samples | Number of iterations run |
 
-## Regression Detection
-
-Benchmarks are compared against a saved baseline:
-
-- **>10% slower** = regression (CI fails)
-- **>10% faster** = improvement (consider updating baseline)
-
-### Local Workflow
-
-```bash
-# 1. Before making changes, save a baseline
-pnpm --filter=@n8n/performance bench:baseline
-
-# 2. Make your changes/refactors
-
-# 3. Check for regressions
-pnpm --filter=@n8n/performance bench:ci
-```
-
-### After Intentional Improvements
-
-```bash
-# Save new baseline to reflect the improvement
-pnpm --filter=@n8n/performance bench:baseline
-```
-
 ## Current Benchmarks
 
 | Area | What it measures | Why it matters |
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
+| Workflow graph traversal | `getChildNodes` / `getParentNodes` on branching graphs | Runs on every execution (`checkReadyForExecution`) and across the editor; must stay linear in graph size |
 
-## Current Status
-
-This is a proof-of-concept for local regression detection.
-
-### CI Integration (TODO)
-
-Baselines are hardware-specific (an 8-core MacBook baseline is meaningless on a 2-core runner). CI needs its own baseline management:
-
-- **Option A:** Store baselines as CI artifacts, restore before comparison
-- **Option B:** External storage (S3, dedicated benchmark service)
-- **Option C:** Compare against previous CI run on same runner type
-
-## Known Limitations
-
-- **Local noise**: Background processes affect results. Run multiple times to verify.
-- **Baselines are machine-specific**: Cannot commit baselines to git - they must be generated on the same hardware they'll be compared against.
 
 ## Tips
 

@@ -1,0 +1,109 @@
+<script lang="ts" setup>
+import { computed, ref } from 'vue';
+import { ElSwitch } from 'element-plus';
+import { N8nAlertDialog, N8nPreviewBadge, N8nSettingsRow, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
+import { useToast } from '@n8n/composables/useToast';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
+const props = defineProps<{
+	initialEnabled: boolean;
+	managedByEnv: boolean;
+}>();
+
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const i18n = useI18n();
+const { showToast, showError } = useToast();
+
+const enabled = ref(props.initialEnabled);
+const showDisableDialog = ref(false);
+const isSaving = ref(false);
+
+const toggleValue = computed({
+	get: () => enabled.value,
+	set: (value: boolean) => {
+		if (!value) {
+			showDisableDialog.value = true;
+			return;
+		}
+		void persist(true);
+	},
+});
+
+async function persist(value: boolean): Promise<void> {
+	const previousValue = enabled.value;
+	enabled.value = value;
+	isSaving.value = true;
+
+	try {
+		const response = await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
+			workflowReviews: { enabled: value },
+		});
+		if (response.workflowReviews) {
+			enabled.value = response.workflowReviews.enabled;
+			settingsStore.setWorkflowReviewsPolicy(response.workflowReviews);
+		}
+		showToast({
+			type: 'success',
+			title: i18n.baseText(
+				`settings.security.workflowReviews.success.${enabled.value ? 'enabled' : 'disabled'}`,
+			),
+			message: '',
+		});
+	} catch (error) {
+		enabled.value = previousValue;
+		showError(error, i18n.baseText('settings.security.workflowReviews.error'));
+	} finally {
+		isSaving.value = false;
+	}
+}
+
+function confirmDisable() {
+	showDisableDialog.value = false;
+	void persist(false);
+}
+</script>
+
+<template>
+	<N8nSettingsRow>
+		<template #info>
+			<div :class="$style.titleRow">
+				<N8nText :bold="true">
+					{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
+				</N8nText>
+				<N8nPreviewBadge size="small" data-test-id="security-workflow-reviews-preview-tag" />
+			</div>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
+			</N8nText>
+		</template>
+		<template #action>
+			<ElSwitch
+				v-model="toggleValue"
+				size="large"
+				:disabled="managedByEnv || isSaving"
+				data-test-id="security-workflow-reviews-toggle"
+			/>
+
+			<N8nAlertDialog
+				:open="showDisableDialog"
+				:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
+				:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
+				@action="confirmDisable"
+				@cancel="showDisableDialog = false"
+				@update:open="showDisableDialog = $event"
+			/>
+		</template>
+	</N8nSettingsRow>
+</template>
+
+<style module>
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+</style>

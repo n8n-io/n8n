@@ -20,7 +20,7 @@ export class ChatHubPersonalAgentModal extends BaseModal {
 	}
 
 	getSystemPromptField() {
-		return this.root.getByPlaceholder(/Enter system prompt/);
+		return this.root.getByPlaceholder(/Enter instructions/);
 	}
 
 	getModelSelectorButton(): Locator {

@@ -3,10 +3,13 @@ import { parseArgs } from 'node:util';
 
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
+import { createServiceStack, writeDevEnvFile } from './service-stack';
 import type { CloudflaredResult } from './services/cloudflared';
+import type { KentResult } from './services/kent';
 import type { KeycloakResult } from './services/keycloak';
 import type { MailpitResult } from './services/mailpit';
 import type { NgrokResult } from './services/ngrok';
+import { services as SERVICE_REGISTRY } from './services/registry';
 import type { TracingResult } from './services/tracing';
 import type { ServiceName } from './services/types';
 import type { VictoriaLogsResult } from './services/victoria-logs';
@@ -44,7 +47,10 @@ ${colors.yellow}Usage:${colors.reset}
   npm run stack [options]
 
 ${colors.yellow}Options:${colors.reset}
+  --services-only   Start services only (no n8n containers), write .env for local dev
+  --services <list> Comma-separated services (e.g. postgres,redis,mailpit,proxy,kafka)
   --postgres        Use PostgreSQL instead of SQLite
+  --engine          Run engine v2 in its own container (implies --postgres, not for --services-only)
   --queue           Enable queue mode (requires PostgreSQL)
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
@@ -54,9 +60,11 @@ ${colors.yellow}Options:${colors.reset}
   --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
   --ngrok           Enable ngrok tunnel for public URL (requires NGROK_AUTHTOKEN env var)
   --mailpit         Enable Mailpit for email testing
+  --kent            Enable Kent (Sentry mock) for error tracking testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
+  --network <name>  Docker network name (default: auto-generated)
   --env KEY=VALUE   Set environment variables
   --plan <plan>     Use performance plan preset (${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')})
   --help, -h        Show this help
@@ -108,6 +116,11 @@ ${Object.keys(BASE_PERFORMANCE_PLANS)
 	.map((name) => `  npm run stack --plan ${name}`)
 	.join('\n')}
 
+  ${colors.bright}# Services only (local dev — writes .env for pnpm start)${colors.reset}
+  pnpm services --services postgres
+  pnpm services --services postgres,redis
+  pnpm services --services postgres,mailpit,proxy
+
   ${colors.bright}# Parallel instances${colors.reset}
   npm run stack --name test-1
   npm run stack --name test-2
@@ -127,8 +140,11 @@ async function main() {
 		args: process.argv.slice(2),
 		options: {
 			help: { type: 'boolean', short: 'h' },
+			'services-only': { type: 'boolean' },
 			postgres: { type: 'boolean' },
+			engine: { type: 'boolean' },
 			queue: { type: 'boolean' },
+			services: { type: 'string' },
 			'source-control': { type: 'boolean' },
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
@@ -137,9 +153,11 @@ async function main() {
 			tunnel: { type: 'boolean' },
 			ngrok: { type: 'boolean' },
 			mailpit: { type: 'boolean' },
+			kent: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
+			network: { type: 'string' },
 			env: { type: 'string', multiple: true },
 			plan: { type: 'string' },
 		},
@@ -152,8 +170,20 @@ async function main() {
 		process.exit(0);
 	}
 
+	const servicesOnly = values['services-only'] ?? false;
+
 	// Build services array from CLI flags
+	const validServiceNames = new Set(Object.keys(SERVICE_REGISTRY));
 	const services: ServiceName[] = [];
+	if (values.services) {
+		for (const name of values.services.split(',').map((s) => s.trim())) {
+			if (!validServiceNames.has(name)) {
+				log.error(`Unknown service: '${name}'. Available: ${[...validServiceNames].join(', ')}`);
+				process.exit(1);
+			}
+			services.push(name as ServiceName);
+		}
+	}
 	if (values['source-control']) services.push('gitea');
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
@@ -162,12 +192,19 @@ async function main() {
 	if (values.tunnel) services.push('cloudflared');
 	if (values.ngrok) services.push('ngrok');
 	if (values.mailpit) services.push('mailpit');
+	if (values.kent) services.push('kent');
 
 	// Build configuration
 	const config: N8NConfig = {
-		postgres: values.postgres ?? false,
+		postgres: Boolean(values.postgres || values.engine),
+		...(values.engine ? { engine: 'container' as const } : {}),
 		services,
-		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
+		projectName:
+			values.name ??
+			(servicesOnly
+				? `n8n-svc-${Math.random().toString(36).substring(7)}`
+				: `n8n-stack-${Math.random().toString(36).substring(7)}`),
+		networkName: values.network,
 	};
 
 	// Handle queue mode (mains > 1 or workers > 0)
@@ -200,9 +237,13 @@ async function main() {
 		if (values.queue || values.mains || values.workers) {
 			log.warn('Performance plans use SQLite only. Queue mode ignored.');
 		}
+		if (values.engine) {
+			log.warn('Performance plans use SQLite only. Engine v2 ignored.');
+		}
 
 		config.resourceQuota = plan;
 		config.postgres = false; // Force SQLite for performance plans
+		delete config.engine; // Engine v2 needs Postgres
 		config.mains = 1; // Force single instance for performance plans
 		config.workers = 0;
 
@@ -225,6 +266,73 @@ async function main() {
 				log.warn(`Invalid env format: ${envStr} (expected KEY=VALUE)`);
 			}
 		}
+	}
+
+	// Services-only mode: start containers, write .env, no n8n
+	if (servicesOnly) {
+		if (services.length === 0) {
+			log.error('No services specified. Use flags like --postgres, --redis, --mailpit, etc.');
+			process.exit(1);
+		}
+		if (values.engine) {
+			// TODO(CAT-4579): write the engine env into `.env` and make the flag work here.
+			log.warn('Services-only mode starts no n8n. Engine v2 ignored.');
+		}
+
+		log.header('Starting service containers');
+		log.info(`Project: ${config.projectName}`);
+		log.info(`Services: ${services.join(', ')}`);
+
+		try {
+			const stack = await createServiceStack({
+				services,
+				projectName: config.projectName,
+				networkName: config.networkName,
+			});
+
+			const envVars = writeDevEnvFile(stack, services);
+			if (Object.keys(envVars).length > 0) {
+				log.success(`Wrote ${Object.keys(envVars).length} env vars to packages/cli/bin/.env`);
+			}
+
+			// Print summary
+			log.header('Services running');
+			for (const name of services) {
+				const result = stack.serviceResults[name];
+				if (!result) continue;
+
+				const service = SERVICE_REGISTRY[name];
+				const vars = {
+					...(service.env?.(result, true) ?? {}),
+					...(service.extraEnv?.(result, true) ?? {}),
+				};
+				const varSummary = Object.entries(vars)
+					.map(([k, v]) => `${k}=${v}`)
+					.join(', ');
+				log.success(`${name}${varSummary ? `: ${varSummary}` : ''}`);
+			}
+
+			// Print mailpit UI URL if running
+			const mailpitResult = stack.serviceResults.mailpit as MailpitResult | undefined;
+			if (mailpitResult) {
+				console.log('');
+				log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
+			}
+
+			console.log('');
+			log.info('Containers are running in the background');
+			log.info(`Run ${colors.bright}pnpm dev${colors.reset} in another terminal to start n8n`);
+			log.info(
+				`Cleanup: ${colors.bright}pnpm --filter n8n-containers services:clean${colors.reset}`,
+			);
+			console.log('');
+		} catch (error) {
+			log.error(
+				`Failed to start services: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			process.exit(1);
+		}
+		return;
 	}
 
 	log.header('Starting n8n Stack');
@@ -312,6 +420,15 @@ async function main() {
 			log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
 		}
 
+		const kentResult = stack.serviceResults.kent as KentResult | undefined;
+		if (kentResult) {
+			console.log('');
+			log.header('Sentry Mock (Kent)');
+			log.info(`Kent UI: ${colors.cyan}${kentResult.meta.apiUrl}${colors.reset}`);
+			log.info(`Backend DSN: ${colors.cyan}${kentResult.meta.sentryDsn}${colors.reset}`);
+			log.info(`Frontend DSN: ${colors.cyan}${kentResult.meta.frontendDsn}${colors.reset}`);
+		}
+
 		console.log('');
 		log.info('Containers are running in the background');
 		log.info(
@@ -347,11 +464,13 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Mode: ${modeStr}`);
 
 	const enabledFeatures: string[] = [];
+	if (config.engine) enabledFeatures.push(`Engine v2 (${config.engine})`);
 	if (services.includes('gitea')) enabledFeatures.push('Source Control (Gitea)');
 	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
 	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');
 	if (services.includes('tracing')) enabledFeatures.push('Tracing (Jaeger)');
 	if (services.includes('mailpit')) enabledFeatures.push('Email (Mailpit)');
+	if (services.includes('kent')) enabledFeatures.push('Sentry Mock (Kent)');
 
 	if (enabledFeatures.length > 0) {
 		log.info(`Services: ${enabledFeatures.join(', ')}`);
@@ -390,8 +509,14 @@ function displayConfig(config: N8NConfig) {
 
 // Run if executed directly
 if (require.main === module) {
-	main().catch((error) => {
-		log.error(`Unexpected error: ${error}`);
-		process.exit(1);
-	});
+	// Keep the event loop alive while main() runs. Without this, the process
+	// can exit between async Docker API calls (e.g. after exposeHostPorts
+	// resolves but before Network.start() creates new I/O handles).
+	const keepAlive = setInterval(() => {}, 30_000);
+	main()
+		.catch((error) => {
+			log.error(`Unexpected error: ${error}`);
+			process.exit(1);
+		})
+		.finally(() => clearInterval(keepAlive));
 }

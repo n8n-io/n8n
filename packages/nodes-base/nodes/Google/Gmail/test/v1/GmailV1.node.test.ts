@@ -34,13 +34,11 @@ function normalizeDraftMail(mail: string) {
 
 describe('Test Gmail Node v1', () => {
 	beforeAll(() => {
-		jest
-			.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] })
-			.setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
+		vi.useFakeTimers({ toFake: ['Date'] }).setSystemTime(new Date('2024-12-16 12:34:56.789Z'));
 	});
 
 	afterAll(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Messages', () => {

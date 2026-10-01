@@ -1,24 +1,32 @@
-import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
-import { paginatedRequest } from '../strapi-utils';
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('../strapi-utils', () => ({
-	paginatedRequest: jest.fn(),
+import { paginatedRequest } from '@/utils/strapi-utils';
+
+import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
+
+vi.mock('@/utils/strapi-utils', () => ({
+	paginatedRequest: vi.fn(),
 }));
 
-const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof paginatedRequest>;
+const mockPaginatedRequest = paginatedRequest as MockedFunction<typeof paginatedRequest>;
+
+const AI_SDK_VERSION = 1;
 
 describe('community-node-types-utils', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getCommunityNodeTypes', () => {
 		it('should call paginatedRequest with correct URL for production', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodeTypes('production');
+			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
+				maxAiNodeSdk: AI_SDK_VERSION,
+				maxN8nNodesApiVersion: N8N_NODES_API_VERSION,
 				pagination: {
 					page: 1,
 					pageSize: 25,
@@ -29,11 +37,13 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for staging', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodeTypes('staging');
+			await getCommunityNodeTypes('staging', {}, AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api-staging.n8n.io/api/community-nodes',
 				{
+					maxAiNodeSdk: AI_SDK_VERSION,
+					maxN8nNodesApiVersion: N8N_NODES_API_VERSION,
 					pagination: {
 						page: 1,
 						pageSize: 25,
@@ -50,11 +60,13 @@ describe('community-node-types-utils', () => {
 				fields: ['name', 'version'],
 			};
 
-			await getCommunityNodeTypes('production', qs);
+			await getCommunityNodeTypes('production', qs, AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
 				filters: { packageName: { $eq: 'test-package' } },
 				fields: ['name', 'version'],
+				maxAiNodeSdk: AI_SDK_VERSION,
+				maxN8nNodesApiVersion: N8N_NODES_API_VERSION,
 				pagination: {
 					page: 1,
 					pageSize: 25,
@@ -69,7 +81,12 @@ describe('community-node-types-utils', () => {
 			];
 			mockPaginatedRequest.mockResolvedValue(mockData as any);
 
-			const result = await getCommunityNodeTypes('production');
+			const result = await getCommunityNodeTypes(
+				'production',
+				{},
+				AI_SDK_VERSION,
+				N8N_NODES_API_VERSION,
+			);
 
 			expect(result).toEqual(mockData);
 		});
@@ -79,12 +96,14 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for production', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('production');
+			await getCommunityNodesMetadata('production', AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api.n8n.io/api/community-nodes',
 				{
 					fields: ['npmVersion', 'name', 'updatedAt'],
+					maxAiNodeSdk: AI_SDK_VERSION,
+					maxN8nNodesApiVersion: N8N_NODES_API_VERSION,
 					pagination: {
 						page: 1,
 						pageSize: 500,
@@ -97,12 +116,14 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for staging', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('staging');
+			await getCommunityNodesMetadata('staging', AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api-staging.n8n.io/api/community-nodes',
 				{
 					fields: ['npmVersion', 'name', 'updatedAt'],
+					maxAiNodeSdk: AI_SDK_VERSION,
+					maxN8nNodesApiVersion: N8N_NODES_API_VERSION,
 					pagination: {
 						page: 1,
 						pageSize: 500,
@@ -115,14 +136,14 @@ describe('community-node-types-utils', () => {
 		it('should use larger pageSize than getCommunityNodeTypes', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('production');
+			await getCommunityNodesMetadata('production', AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			const metadataCall = mockPaginatedRequest.mock.calls[0];
 			expect(metadataCall[1].pagination.pageSize).toBe(500);
 
 			mockPaginatedRequest.mockClear();
 
-			await getCommunityNodeTypes('production');
+			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			const nodeTypesCall = mockPaginatedRequest.mock.calls[0];
 			expect(nodeTypesCall[1].pagination.pageSize).toBe(25);
@@ -131,7 +152,7 @@ describe('community-node-types-utils', () => {
 		it('should request only specific fields', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('production');
+			await getCommunityNodesMetadata('production', AI_SDK_VERSION, N8N_NODES_API_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				expect.any(String),
@@ -149,7 +170,11 @@ describe('community-node-types-utils', () => {
 			];
 			mockPaginatedRequest.mockResolvedValue(mockMetadata as any);
 
-			const result = await getCommunityNodesMetadata('production');
+			const result = await getCommunityNodesMetadata(
+				'production',
+				AI_SDK_VERSION,
+				N8N_NODES_API_VERSION,
+			);
 
 			expect(result).toEqual(mockMetadata);
 		});

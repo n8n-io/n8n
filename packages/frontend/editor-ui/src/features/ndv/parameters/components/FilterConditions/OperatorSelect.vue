@@ -8,10 +8,7 @@ import type { FilterOperatorType } from 'n8n-workflow';
 import { Primitive } from 'reka-ui';
 
 import { N8nIcon } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 
 interface Props {
 	selected: string;
@@ -115,7 +112,7 @@ const onSelect = (operatorId: string): void => {
 	gap: var(--spacing--3xs);
 	width: 100%;
 	height: 100%;
-	min-height: 30px;
+	min-height: var(--height--md);
 	padding: 0 var(--spacing--2xs);
 	border: var(--border-width) var(--border-style) var(--input--border-color, var(--border-color));
 	border-top-left-radius: var(--input--radius--top-left, var(--input--radius, 0));

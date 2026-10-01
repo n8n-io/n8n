@@ -1,15 +1,15 @@
-import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
-import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
-	AddDataTableRowsDto,
-	CreateDataTableDto,
-	UpdateDataTableDto,
 	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
+	PublicCreateDestination,
+	UpdateOtelSettingsDto,
+	TestOtelTraceDto,
+	UpdateSamlConfigurationDto,
+	UpdateLdapConfigurationDto,
+	LdapSyncDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 import type { AuthlessRequest } from '@/requests';
-import type { Risk } from '@/security-audit/types';
 
 export type PaginatedRequest = AuthenticatedRequest<
 	{},
@@ -22,83 +22,37 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace ExecutionRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			includeData?: boolean;
-			workflowId?: string;
-			lastId?: string;
-			projectId?: string;
-		}
-	>;
-
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
-	type Delete = Get;
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
-}
-
-export declare namespace TagRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
-	type Get = AuthenticatedRequest<{ id: string }>;
-	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
-}
-
-export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
-}
-
 export declare namespace WorkflowRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			tags?: string;
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			workflowId?: number;
-			active: boolean;
-			name?: string;
-			projectId?: string;
-			excludePinnedData?: boolean;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
-	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
+}
+
+export declare namespace PackageRequest {
+	type Import = AuthenticatedRequest<
+		{},
+		{},
+		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+
+	type ImportSelection = AuthenticatedRequest<
+		{},
+		{},
+		{
+			selectedProjectId?: string;
+			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
+			selectedWorkflowIds?: string;
+			deletedWorkflowIds?: string;
+			workflowConflictPolicy?: string;
+			workflowIdPolicy?: string;
+		},
+		Record<string, never>
+	>;
 }
 
 export declare namespace UserRequest {
@@ -123,13 +77,6 @@ export declare namespace UserRequest {
 		{ transferId?: string; includeRole: boolean }
 	>;
 
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
-	>;
-
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthlessRequest<
@@ -144,42 +91,6 @@ export declare namespace UserRequest {
 	>;
 }
 
-export declare namespace CredentialRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{ limit?: number; cursor?: string; offset?: number }
-	>;
-
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		{ type: string; name: string; data: ICredentialDataDecryptedObject },
-		{}
-	>;
-
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{
-			type?: string;
-			name?: string;
-			data?: ICredentialDataDecryptedObject;
-			isGlobal?: boolean;
-			isResolvable?: boolean;
-			isPartialData?: boolean;
-		},
-		{}
-	>;
-
-	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
-
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
-}
-
-export type OperationID = 'getUsers' | 'getUser';
-
 type PaginationBase = { limit: number };
 
 export type PaginationOffsetDecoded = PaginationBase & { offset: number };
@@ -191,16 +102,14 @@ export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalR
 export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
-	not?: { required?: string[] };
 }
 export interface IDependency {
-	if?: { properties: {} };
+	if?: { properties: {}; required?: string[] };
 	then?: { allOf: IRequired[] };
-	else?: { allOf: IRequired[] };
 }
 
 export interface IJsonSchema {
-	additionalProperties: boolean;
+	additionalProperties: false;
 	type: 'object';
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
@@ -212,46 +121,9 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type List = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
-
-	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
-
-	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
 	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
 
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
+	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
 	type DeleteRows = AuthenticatedRequest<
 		{ dataTableId: string },
@@ -266,13 +138,51 @@ export declare namespace DataTableRequest {
 }
 
 // ----------------------------------
-//           /audit
+//           /community-packages
 // ----------------------------------
 
-export declare namespace AuditRequest {
-	type Generate = AuthenticatedRequest<
-		{},
-		{},
-		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
-	>;
+export declare namespace CommunityPackageRequest {
+	type Install = AuthenticatedRequest<{}, {}, { name: string; version?: string }>;
+	type List = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
+	type Uninstall = AuthenticatedRequest<{ name: string }>;
+}
+
+export declare namespace LogStreamingRequest {
+	type GetEventTypes = AuthenticatedRequest;
+	type GetDestinations = AuthenticatedRequest;
+	type GetDestination = AuthenticatedRequest<{ id: string }>;
+	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
+	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
+	type TestDestination = AuthenticatedRequest<{ id: string }>;
+	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//        /settings/otel
+// ----------------------------------
+
+export declare namespace OtelSettingsRequest {
+	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
+}
+
+// ----------------------------------
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
+}
+
+// ----------------------------------
+//        /settings/ldap
+// ----------------------------------
+
+export declare namespace LdapRequest {
+	type GetConfig = AuthenticatedRequest;
+	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
+	type GetSync = PaginatedRequest;
+	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
 }

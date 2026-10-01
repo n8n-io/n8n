@@ -221,7 +221,7 @@ describe('N8nAlertDialog', () => {
 		});
 
 		describe('actionVariant', () => {
-			it('should default to solid variant (primary button)', async () => {
+			it('should default to solid variant', async () => {
 				const user = userEvent.setup();
 				const { getByTestId, getByRole } = renderAlertDialog({
 					title: 'Save?',
@@ -230,10 +230,10 @@ describe('N8nAlertDialog', () => {
 				await user.click(getByTestId('alert-trigger'));
 
 				const actionButton = getByRole('button', { name: 'Confirm' });
-				expect(actionButton.className).toContain('primary');
+				expect(actionButton.className).toContain('solid');
 			});
 
-			it('should apply destructive variant (danger button)', async () => {
+			it('should apply destructive variant', async () => {
 				const user = userEvent.setup();
 				const { getByTestId, getByRole } = renderAlertDialog({
 					title: 'Delete?',
@@ -243,7 +243,7 @@ describe('N8nAlertDialog', () => {
 				await user.click(getByTestId('alert-trigger'));
 
 				const actionButton = getByRole('button', { name: 'Confirm' });
-				expect(actionButton.className).toContain('danger');
+				expect(actionButton.className).toContain('destructive');
 			});
 		});
 

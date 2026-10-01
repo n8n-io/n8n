@@ -1,12 +1,24 @@
-import { WebSocketState } from '@/app/push-connection/useWebSocketClient';
+import { WebSocketState, type WebSocketStateType } from '@/app/push-connection/useWebSocketClient';
 
 /** Mocked WebSocket class to help testing */
 export class MockWebSocket extends EventTarget {
-	readyState: number = WebSocketState.CONNECTING;
+	readyState: WebSocketStateType = WebSocketState.CONNECTING;
+	binaryType: BinaryType = 'blob';
 
-	constructor(public url: string) {
+	constructor(url: string) {
 		super();
+
+		MockWebSocket._instance = this;
+		MockWebSocket.init(url);
 	}
+
+	static _instance: MockWebSocket;
+
+	static getInstance() {
+		return MockWebSocket._instance;
+	}
+
+	static init = vi.fn();
 
 	simulateConnectionOpen() {
 		this.dispatchEvent(new Event('open'));

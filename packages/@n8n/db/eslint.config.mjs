@@ -1,27 +1,35 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Single source of truth for project-owned entity transfer decisions
+const ownershipTransferManifest = require('../../cli/src/services/ownership-transfer/ownership-transfer.manifest.json');
+const acknowledgedProjectOwnedEntities = [
+	...ownershipTransferManifest.transferred,
+	...ownershipTransferManifest.notTransferred,
+].map(({ name, path }) => ({ name, path }));
 
 export default defineConfig(
-	baseConfig,
+	{
+		ignores: ['scripts/**'],
+	},
+	backendConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
-			// TODO: Remove this
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
-			'@typescript-eslint/no-unsafe-assignment': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/unbound-method': 'warn',
-			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-unsafe-call': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
-			'@typescript-eslint/no-restricted-types': 'warn',
-			'no-useless-escape': 'warn',
-			'no-empty': 'warn',
+			'n8n-local-rules/project-owned-entity-transfer': [
+				'error',
+				{ acknowledged: acknowledgedProjectOwnedEntities },
+			],
 		},
+	},
+	{
+		files: ['src/migrations/sqlite/1681134145996-AddUserActivatedProperty.ts'],
+		rules: { '@typescript-eslint/no-base-to-string': 'warn' },
+	},
+	{
+		files: ['src/migrations/sqlite/1646992772331-CreateUserManagement.ts'],
+		rules: { 'no-useless-escape': 'warn' },
 	},
 	{
 		files: ['**/*.test.ts', '**/__tests__/**/*.ts'],

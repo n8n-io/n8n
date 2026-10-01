@@ -1,0 +1,83 @@
+{
+	"name": "switch v1 regex tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e539c1c7-e5f2-4e38-9f2f-77ecb958d1d1",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"data": [{ "name": "alpha-123" }, { "name": "beta" }]
+			},
+			"id": "c7a61fc7-46d5-4b3f-b7c0-0d38ac53ef57",
+			"name": "Code",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"dataType": "string",
+				"value1": "={{ $json.name }}",
+				"rules": {
+					"rules": [
+						{
+							"operation": "regex",
+							"value2": "/^alpha-\\d+$/",
+							"output": 0
+						},
+						{
+							"operation": "notRegex",
+							"value2": "/^alpha/",
+							"output": 1
+						}
+					]
+				},
+				"fallbackOutput": -1
+			},
+			"id": "948b6a9b-4f6c-4dbe-a21b-13c3fc3dbe59",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 1,
+			"position": [440, 0]
+		},
+		{
+			"parameters": {},
+			"id": "f7fb1f31-d11f-4204-b9d7-cb2ae1fb15d6",
+			"name": "Regex Match",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [660, -100]
+		},
+		{
+			"parameters": {},
+			"id": "d6203921-0664-44b5-9889-b87d51529a77",
+			"name": "Regex Not Match",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [660, 100]
+		}
+	],
+	"pinData": {
+		"Regex Match": [{ "json": { "name": "alpha-123" } }],
+		"Regex Not Match": [{ "json": { "name": "beta" } }]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Code", "type": "main", "index": 0 }]]
+		},
+		"Code": {
+			"main": [[{ "node": "Switch", "type": "main", "index": 0 }]]
+		},
+		"Switch": {
+			"main": [
+				[{ "node": "Regex Match", "type": "main", "index": 0 }],
+				[{ "node": "Regex Not Match", "type": "main", "index": 0 }]
+			]
+		}
+	}
+}

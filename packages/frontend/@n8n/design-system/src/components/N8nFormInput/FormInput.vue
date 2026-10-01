@@ -197,6 +197,7 @@ defineExpose({ inputRef });
 			{{ tooltipText }}
 		</template>
 		<ElSwitch
+			:id="name"
 			:model-value="modelValue as SwitchModelValuePropType"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
@@ -215,6 +216,7 @@ defineExpose({ inputRef });
 			<slot v-if="$slots.default" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
+				:id="name"
 				ref="inputRef"
 				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				:model-value="modelValue"
@@ -239,6 +241,7 @@ defineExpose({ inputRef });
 			</N8nSelect>
 			<N8nInput
 				v-else
+				:id="name"
 				ref="inputRef"
 				:name="name"
 				:type="type as InputTypePropType"

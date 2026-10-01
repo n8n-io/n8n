@@ -47,7 +47,7 @@ const classes = computed(() => ({
 <style lang="scss" module>
 .card {
 	border-radius: var(--radius--lg);
-	border: var(--border);
+	border: 1px solid var(--border-color);
 	background-color: var(--color--background--light-3);
 	padding: var(--card--padding, var(--spacing--sm));
 	display: flex;
@@ -78,6 +78,7 @@ const classes = computed(() => ({
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
+	gap: var(--n8n--card-body--gap, 0);
 }
 
 .icon {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/vue';
 import ChatButtons from './ChatButtons.vue';
 import type { ChatHubMessageButton } from '@n8n/api-types';
@@ -9,7 +9,7 @@ describe('ChatButtons', () => {
 		{ text: 'Reject', link: 'https://example.com/reject', type: 'secondary' },
 	];
 
-	let fetchMock: ReturnType<typeof vi.fn>;
+	let fetchMock: Mock;
 	const originalFetch = global.fetch;
 
 	beforeEach(() => {

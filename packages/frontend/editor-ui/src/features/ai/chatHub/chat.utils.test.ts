@@ -1,6 +1,59 @@
 import { describe, it, expect } from 'vitest';
-import { splitMarkdownIntoChunks, isWaitingForApproval } from './chat.utils';
+import {
+	splitMarkdownIntoChunks,
+	isWaitingForApproval,
+	enrichMimeTypesWithExtensions,
+	isFileAcceptedByAccept,
+} from './chat.utils';
 import type { ChatMessage } from './chat.types';
+
+describe('isFileAcceptedByAccept', () => {
+	it('accepts everything when an unrestricted token is present', () => {
+		expect(isFileAcceptedByAccept('any.bin', 'application/octet-stream', '')).toBe(true);
+		expect(isFileAcceptedByAccept('any.bin', 'application/octet-stream', '*')).toBe(true);
+		expect(isFileAcceptedByAccept('any.bin', 'application/octet-stream', '*/*')).toBe(true);
+		expect(
+			isFileAcceptedByAccept('any.bin', 'application/octet-stream', '*/*,application/pdf'),
+		).toBe(true);
+	});
+
+	it('accepts files matching exact MIME type', () => {
+		expect(isFileAcceptedByAccept('a.csv', 'text/csv', 'text/csv,application/pdf')).toBe(true);
+		expect(isFileAcceptedByAccept('a.pdf', 'application/pdf', 'text/csv,application/pdf')).toBe(
+			true,
+		);
+	});
+
+	it('accepts files matching MIME wildcard', () => {
+		expect(isFileAcceptedByAccept('photo.png', 'image/png', 'image/*,application/pdf')).toBe(true);
+	});
+
+	it('rejects files whose MIME type does not match any pattern', () => {
+		expect(isFileAcceptedByAccept('archive.zip', 'application/zip', 'image/*,text/csv')).toBe(
+			false,
+		);
+	});
+
+	it('accepts files matching an extension entry when MIME type is empty (e.g. .md on macOS)', () => {
+		expect(isFileAcceptedByAccept('readme.md', '', 'text/markdown,.md')).toBe(true);
+	});
+
+	it('matches extension entries case-insensitively', () => {
+		expect(isFileAcceptedByAccept('NOTES.MD', '', 'text/markdown,.md')).toBe(true);
+		expect(isFileAcceptedByAccept('notes.md', '', 'TEXT/MARKDOWN,.MD')).toBe(true);
+	});
+
+	it('rejects files when neither MIME nor extension matches', () => {
+		expect(isFileAcceptedByAccept('archive.zip', '', 'text/markdown,.md')).toBe(false);
+	});
+});
+
+describe('enrichMimeTypesWithExtensions', () => {
+	it('normalizes unrestricted MIME type tokens', () => {
+		expect(enrichMimeTypesWithExtensions('*')).toBe('*/*');
+		expect(enrichMimeTypesWithExtensions('*/*,application/pdf')).toBe('*/*');
+	});
+});
 
 describe('splitMarkdownIntoChunks', () => {
 	it('should return empty array for empty string', () => {

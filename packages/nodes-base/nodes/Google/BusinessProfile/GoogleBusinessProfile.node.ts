@@ -13,6 +13,7 @@ export class GoogleBusinessProfile implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Business Profile API',
+		schemaPath: 'Google/BusinessProfile',
 		defaults: {
 			name: 'Google Business Profile',
 		},
