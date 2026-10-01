@@ -88,7 +88,10 @@ describe('AgentSchedulesRow', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('Daily summary');
-		expect(wrapper.text()).toContain('agents.builder.capabilities.deactivated');
+		expect(wrapper.text()).not.toContain('agents.builder.capabilities.deactivated');
+		expect(
+			wrapper.get('[data-testid="agent-capabilities-task-row"]').attributes('aria-description'),
+		).toBe('agents.builder.capabilities.deactivated');
 		expect(wrapper.findAll('[data-testid="agent-capabilities-task-row"]')).toHaveLength(1);
 	});
 

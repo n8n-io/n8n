@@ -26,7 +26,7 @@ const items = computed<Array<ContextMenuNode<Action>>>(() => {
 					? 'agents.builder.contextMenu.deactivate'
 					: 'agents.builder.contextMenu.activate',
 			),
-			icon: { type: 'icon', value: 'power' },
+			icon: { type: 'icon', value: props.enabled ? 'timer' : 'play' },
 			disabled: props.disabled,
 		});
 	}

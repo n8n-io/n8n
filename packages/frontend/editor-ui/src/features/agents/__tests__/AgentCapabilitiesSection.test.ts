@@ -308,7 +308,8 @@ describe('AgentCapabilitiesSection', () => {
 				document.body,
 			);
 			const chip = wrapper.findAll(`[data-testid="${testId}"]`)[chipIndex];
-			expect(chip.text()).toContain('agents.builder.capabilities.deactivated');
+			expect(chip.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+			expect(chip.text()).not.toContain('agents.builder.capabilities.deactivated');
 			await chip.trigger('click');
 			expect(wrapper.emitted('open-tool')).toHaveLength(1);
 			await chip.trigger('contextmenu');
@@ -323,7 +324,7 @@ describe('AgentCapabilitiesSection', () => {
 			);
 			expect(wrapper.emitted('update:config')).toEqual([[{ tools: activatedTools }]]);
 			await wrapper.setProps({ tools: activatedTools });
-			expect(chip.text()).not.toContain('agents.builder.capabilities.deactivated');
+			expect(chip.attributes('aria-description')).toBeUndefined();
 			await chip.trigger('contextmenu');
 			await userEvent.click(
 				await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.deactivate' }),
@@ -364,7 +365,7 @@ describe('AgentCapabilitiesSection', () => {
 		);
 		await flushPromises();
 		const skill = wrapper.get('[data-testid="agent-capabilities-skill-row"]');
-		expect(skill.text()).toContain('agents.builder.capabilities.deactivated');
+		expect(skill.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
 		await skill.trigger('click');
 		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
 		await skill.trigger('contextmenu');
@@ -374,7 +375,7 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.emitted('toggle-skill')).toEqual([[{ id: 'skill-1', enabled: true }]]);
 
 		const subAgent = wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]')[0];
-		expect(subAgent.text()).toContain('agents.builder.capabilities.deactivated');
+		expect(subAgent.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
 		await subAgent.trigger('contextmenu');
 		await userEvent.click(
 			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
@@ -451,7 +452,7 @@ describe('AgentCapabilitiesSection', () => {
 			document.body,
 		);
 		const group = wrapper.get('[data-testid="agent-capabilities-tool-row"]');
-		expect(group.text()).not.toContain('agents.builder.capabilities.deactivated');
+		expect(group.attributes('aria-description')).toBeUndefined();
 		await group.trigger('contextmenu');
 		expect(
 			(await screen.findAllByRole('menuitem')).map((item) => item.textContent?.trim()),
@@ -468,7 +469,7 @@ describe('AgentCapabilitiesSection', () => {
 		const deactivatedTools = [{ ...tools[0], enabled: false }, tools[1]];
 		expect(wrapper.emitted('update:config')).toEqual([[{ tools: deactivatedTools }]]);
 		await wrapper.setProps({ tools: deactivatedTools });
-		expect(group.text()).toContain('agents.builder.capabilities.deactivated');
+		expect(group.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
 		expect(wrapper.emitted('open-tool')).toBeUndefined();
 	});
 

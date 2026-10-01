@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -62,6 +62,9 @@ const emit = defineEmits<{
 			},
 		]"
 		:disabled="props.disabled"
+		:aria-description="
+			props.deactivated ? i18n.baseText('agents.builder.capabilities.deactivated') : undefined
+		"
 		@click="emit('click', $event)"
 	>
 		<span v-if="props.icon || $slots.icon" :class="$style.iconWrapper">
@@ -77,12 +80,6 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
-		<N8nTag
-			v-if="props.deactivated"
-			:text="i18n.baseText('agents.builder.capabilities.deactivated')"
-			:clickable="false"
-			:class="$style.deactivatedTag"
-		/>
 		<N8nTooltip
 			v-if="!props.deactivated && (props.invalid || props.warning)"
 			:disabled="reasons.length === 0"
@@ -121,7 +118,7 @@ const emit = defineEmits<{
 	}
 }
 
-.default:not(:disabled):hover {
+.default:not(:disabled):not(.deactivated):hover {
 	background-color: var(--background--hover);
 }
 
@@ -134,13 +131,8 @@ const emit = defineEmits<{
 	border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
-.deactivated .text,
-.deactivated .iconWrapper {
-	color: var(--text-color--subtle);
-}
-
-.deactivatedTag {
-	flex-shrink: 0;
+.deactivated {
+	background: light-dark(var(--background--disabled), var(--background--surface));
 }
 
 .warning {
