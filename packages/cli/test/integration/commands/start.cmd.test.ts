@@ -33,6 +33,7 @@ import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
@@ -52,6 +53,7 @@ mockInstance(OwnershipService);
 mockInstance(ExternalHooks);
 mockInstance(ExecutionsPruningService);
 mockInstance(WorkflowHistoryCompactionService);
+mockInstance(WorkflowStatisticsRollupService);
 mockInstance(DurableScheduler);
 // Also proves `run()`'s dynamic `.js` import resolves to the same module as this
 // static one - otherwise the mock would silently not apply and the real recovery
