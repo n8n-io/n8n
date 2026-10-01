@@ -157,13 +157,14 @@ describe('SettingsOpenTelemetryView', () => {
 	it('shows the save bar instead of saving when clicking Enable', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
 
-		const { getByTestId, store } = render();
+		const { getByTestId, getByText, store } = render();
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
 
 		await waitFor(() => expect(getByTestId('settings-save-bar')).toBeInTheDocument());
 		expect(store.settings.enabled).toBe(true);
+		expect(getByText(/Tracing is on/)).toBeInTheDocument();
 		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
 	});
 
@@ -179,6 +180,7 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await waitFor(() => expect(getByTestId('settings-save-bar')).toBeInTheDocument());
 		expect(store.settings.enabled).toBe(false);
+		expect(getByText(/Tracing is off/)).toBeInTheDocument();
 		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
 	});
 
