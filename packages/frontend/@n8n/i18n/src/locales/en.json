@@ -8074,7 +8074,7 @@
 	"agents.chat.backgroundTasks.status.cancelled": "Canceled",
 	"agents.chat.plan.title": "Plan: {title}",
 	"agents.chat.plan.progress": "{done} of {total} task done | {done} of {total} tasks done",
-	"agents.chat.plan.closed": "Closed",
+	"agents.chat.plan.viewTrace": "View trace",
 	"agents.chat.plan.status.pending": "Pending",
 	"agents.chat.plan.status.inProgress": "In progress",
 	"agents.chat.plan.status.done": "Done",

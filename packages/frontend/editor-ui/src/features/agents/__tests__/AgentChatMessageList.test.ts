@@ -1,7 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { planMessage, planTask, planView } from './fixtures/agent-plan';
 
 const copySpy = vi.fn();
 
@@ -126,6 +127,77 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('hides plan progress during streaming and completion but keeps errors and chat text', async () => {
+		const initial = planView();
+		const document = { ...initial.document, presentation: { label: 'Research candidates' } };
+		const previous = { ...planMessage(initial), id: 'previous', content: 'Starting research.' };
+		const pending: ChatMessage = {
+			...planMessage(undefined, {
+				tool: 'update_plan',
+				toolCallId: 'update',
+				state: 'running',
+				input: { planId: initial.planId, expectedRevision: 1, document },
+			}),
+			id: 'update',
+			status: 'streaming',
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [previous, pending], messagingState: 'receiving' },
+		});
+		const calls = () =>
+			wrapper
+				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.flatMap((steps) => steps.props('toolCalls') as ToolCall[]);
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(true);
+		const completed: ChatMessage = {
+			...pending,
+			status: 'success',
+			toolCalls: [
+				{ ...pending.toolCalls![0], state: 'done', output: { ...initial, revision: 2, document } },
+			],
+		};
+		await wrapper.setProps({ messages: [previous, completed], messagingState: 'idle' });
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="markdown-chunk"]')).toHaveLength(1);
+		await wrapper.setProps({
+			messages: [previous, { ...completed, content: 'Found candidates.' }],
+		});
+		expect(wrapper.text()).toContain('Found candidates.');
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [{ ...completed.toolCalls![0], output: { error: 'conflict' } }],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [
+						{
+							...completed.toolCalls![0],
+							output: {
+								...initial,
+								revision: 2,
+								document: { ...document, items: [...document.items, planTask(99)] },
+							},
+						},
+					],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		wrapper.unmount();
+	});
+
 	it('keeps signal expansion and order when the response gains tools and text', async () => {
 		const message: ChatMessage = {
 			id: 'wake:assistant',

@@ -92,6 +92,12 @@ function prepareDocument(data: ToolDocument, previous?: AgentPlanDocument): Agen
 
 function presentPlan(plan: StoredPlan | null) {
 	if (!plan) return null;
+	const startedAt =
+		plan.data.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.map((item) => item.startedAt)
+			.filter((timestamp): timestamp is string => timestamp !== null)
+			.sort()[0] ?? null;
 	const withoutTiming = <Item extends AgentPlanItem>(item: Item) => {
 		const { startedAt, endedAt, ...visible } = item;
 		return visible;
@@ -100,6 +106,8 @@ function presentPlan(plan: StoredPlan | null) {
 		planId: plan.id,
 		revision: plan.revision,
 		closed: plan.closedAt !== null,
+		startedAt,
+		closedAt: plan.closedAt?.toISOString() ?? null,
 		document: {
 			...plan.data,
 			items: plan.data.items.map((item) =>
@@ -172,13 +180,7 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 			.systemInstruction(
 				'Use planning for potentially long-running work, work with multiple steps, or work with complex dependencies. ' +
 					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
-					'For sub-agent work on a plan task, always use spawn_background_subagent, even for short or sequential tasks. ' +
-					'Do not use delegate_subagent for plan work. ' +
-					'This rule overrides the default foreground-delegation guidance for plan work. ' +
-					'If spawn_background_subagent is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
 					'Keep task and group statuses current. Accept results before marking work Done. ' +
-					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
-					'Wait for the plan update to succeed before announcing the change. ' +
 					'Underlying runs do not set plan statuses.',
 			)
 			.build(),

@@ -909,13 +909,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			expect(tools.find((tool) => tool.name === 'create_plan')?.systemInstruction).toBe(
 				'Use planning for potentially long-running work, work with multiple steps, or work with complex dependencies. ' +
 					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
-					'For sub-agent work on a plan task, always use spawn_background_subagent, even for short or sequential tasks. ' +
-					'Do not use delegate_subagent for plan work. ' +
-					'This rule overrides the default foreground-delegation guidance for plan work. ' +
-					'If spawn_background_subagent is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
 					'Keep task and group statuses current. Accept results before marking work Done. ' +
-					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
-					'Wait for the plan update to succeed before announcing the change. ' +
 					'Underlying runs do not set plan statuses.',
 			);
 			if (backgroundTasksEnabled) {
