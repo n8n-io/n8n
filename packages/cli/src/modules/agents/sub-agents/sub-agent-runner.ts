@@ -1,6 +1,7 @@
 import {
 	assertSubAgentTaskPath,
 	deriveSubAgentTelemetry,
+	isFinishReason,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
@@ -587,7 +588,7 @@ function buildGenerateResultFromRecord(
 	pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [],
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
-	const finishReason = toKnownFinishReason(record.finishReason);
+	const finishReason = isFinishReason(record.finishReason) ? record.finishReason : undefined;
 	const result: GenerateResult = {
 		runId,
 		messages,
@@ -618,21 +619,4 @@ function createAssistantMessages(text: string): AgentMessage[] {
 			content: [{ type: 'text', text }],
 		},
 	];
-}
-
-function toKnownFinishReason(
-	value: string,
-): NonNullable<GenerateResult['finishReason']> | undefined {
-	if (
-		value === 'stop' ||
-		value === 'length' ||
-		value === 'content-filter' ||
-		value === 'tool-calls' ||
-		value === 'error' ||
-		value === 'other' ||
-		value === 'max-iterations'
-	) {
-		return value;
-	}
-	return undefined;
 }

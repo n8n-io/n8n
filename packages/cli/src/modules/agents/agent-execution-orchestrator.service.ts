@@ -740,6 +740,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					projectId,
 					message,
