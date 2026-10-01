@@ -729,6 +729,20 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
 	});
 
+	it('dismisses a pending removal confirmation when editing becomes locked', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-managed';
+		const wrapper = mountModal('example_edit', true);
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(true);
+
+		await wrapper.setProps({ disabled: true });
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+		expect(wrapper.emitted('channel-disconnected')).toBeUndefined();
+	});
+
 	it('shows no Back action when editing a channel directly', async () => {
 		connectedCredentials.value.example = 'credential-old';
 		const wrapper = mountModal('example_edit');
