@@ -1,4 +1,5 @@
 import { createWorkflowWithHistory, shareWorkflowWithUsers } from '@n8n/backend-test-utils';
+import { InstanceAiConfig } from '@n8n/config';
 import {
 	TransactionRunner,
 	UserRepository,
@@ -19,6 +20,11 @@ import { setupTestServer } from '@test-integration/utils';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
+
+// Enable the routes before setupTestServer starts the module.
+beforeAll(() => {
+	Container.get(InstanceAiConfig).workflowSuggestionsEnabled = true;
+});
 
 const testServer = setupTestServer({
 	endpointGroups: ['instance-ai'],
