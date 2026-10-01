@@ -1,0 +1,30 @@
+packages/core/src/execution-engine/workflow-execute.ts
+  s_d654bdfec331fe::t_f50c735ec728c1 159-160,163,165-168
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_d654bdfec331fe::t_e218cd80ed4db6 61,622-688
+  s_c6d1e46bb10a17::t_a6a54633e72a1e 689-692
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e62cfbb18270bd6c1d3ecdd7b7e3fbbd1e0eed46",
+  "prompts": {},
+  "sessions": {
+    "s_c6d1e46bb10a17": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e82938e6-4e49-4f32-9781-c47c9e98f60e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d654bdfec331fe": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3b34c393-f2ac-4228-a403-31d3c434cf42",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

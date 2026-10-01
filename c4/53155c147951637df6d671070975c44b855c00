@@ -1,0 +1,55 @@
+packages/@n8n/instance-ai/src/stream/instance-context-reach.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 6,20,27,36,48
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_5be157f6e91b85::t_d27f10970a1a87 52
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 486,488,566
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5be157f6e91b85::t_d90756876cc3ae 12
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceContextLabels.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 37,44,49,51
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_5be157f6e91b85::t_d90756876cc3ae 18,320-323,333,340
+  s_5be157f6e91b85::t_6c33e8fbf27cf8 232,319
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_5be157f6e91b85::t_6c33e8fbf27cf8 301
+  s_5be157f6e91b85::t_d27f10970a1a87 312,326,340,365,396,1808,1811
+  s_5be157f6e91b85::t_9b7fd951fdab68 2581-2583
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_5be157f6e91b85::t_641cc8111fe196 3,418,422,428-430,434-435,439,444,452-453,456-457,462,467,472-474
+packages/cli/src/modules/mcp/__tests__/get-instance-context.tool.test.ts
+  s_5be157f6e91b85::t_dca61715920111 49
+packages/@n8n/instance-ai/src/stream/__tests__/instance-context-reach.test.ts
+  s_5be157f6e91b85::t_b967589637138e 1-2,156-157
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 194
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 64,69
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 299
+packages/@n8n/instance-ai/src/stream/work-summary-accumulator.ts
+  s_5be157f6e91b85::t_d27f10970a1a87 11,13,24,101
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  s_5be157f6e91b85::t_6c33e8fbf27cf8 384
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_5be157f6e91b85::t_9b7fd951fdab68 311-321
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_5be157f6e91b85::t_6c33e8fbf27cf8 474
+  s_5be157f6e91b85::t_8b1197513e4940 526-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c453155c147951637df6d671070975c44b855c00",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

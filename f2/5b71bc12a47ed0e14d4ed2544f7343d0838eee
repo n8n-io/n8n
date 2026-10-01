@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_a52facf53351c5::t_dfe7423ae8332d 306,315,320,323-339,342-354,371-376,380,382-403,411-418,422-423,432,436-437,439-440,442,444-446,450-453,455,457-470,472-555,568,570,575-578,581-626,628-651,662-673,675-728,740-741,743-783,792-796,799,802-837,842-857,860,868-914,916-918,980-984,987-990,992,994-995,999,1012-1028,1034-1064,1066,1095-1108,1116-1144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f25b71bc12a47ed0e14d4ed2544f7343d0838eee",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  h_c63dce324dfc7b 167-168,1907-1909,1915-1916,1929,1931,1935-1937
+  s_979d7116c069a1::t_1c563e1b86a4b9 1910-1914,1917-1928,1930,1932-1934
+packages/cli/src/commands/import/workflow.ts
+  h_c63dce324dfc7b 23,156-158,161
+  s_979d7116c069a1::t_86504867773a48 159-160
+packages/cli/src/events/maps/relay.event-map.ts
+  h_c63dce324dfc7b 1040-1044,1047-1049,1051,1055-1057
+  s_979d7116c069a1::t_9f1e62e47f6ecb 1045-1046,1050,1052-1054
+packages/cli/src/commands/export/workflow.ts
+  h_c63dce324dfc7b 15,174,177,179,183
+  s_979d7116c069a1::t_c21a89d57ac808 175-176,178,180-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "61756c13e2ede6b3b97b893c78aad44cf4398ebb",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_979d7116c069a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37a984bf-d7e5-4153-9817-2e23d82ebc31",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

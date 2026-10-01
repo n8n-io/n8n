@@ -1,0 +1,36 @@
+packages/@n8n/db/src/migrations/common/1785843640527-CreateWorkflowReviewActivityTables.ts
+  s_87b7dc096911b8::t_2579a45a5540c9 9-17
+  s_87b7dc096911b8::t_19d79a26f0ac03 38-40,44
+  s_87b7dc096911b8::t_570f4dc54afc58 43
+packages/@n8n/db/src/entities/index.ts
+  ai_agent 76-79
+  s_87b7dc096911b8::t_59ebdfef9490ad 165
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables.test.ts
+  s_87b7dc096911b8::t_94b2f4c6272c10 182,252,283,313
+  s_87b7dc096911b8::t_0ce6746fdac744 230,235-240
+packages/@n8n/db/src/entities/workflow-review-activity-comment.ee.ts
+  s_87b7dc096911b8::t_e88f1d9502b6ba 7
+docs/generated/postgres-schema/public.workflow_review_activity.md
+  s_87b7dc096911b8::t_6b3e4af4d3db1b 19
+packages/@n8n/db/src/entities/workflow-review-activity.ee.ts
+  s_87b7dc096911b8::t_b3e24422749f21 6
+  s_87b7dc096911b8::t_0945a2fd8ba1de 9
+docs/generated/sqlite-schema/workflow_review_activity.md
+  s_87b7dc096911b8::t_6b3e4af4d3db1b 9,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d322b230e1215fea5b7e199915bf6ac873c97d1",
+  "prompts": {},
+  "sessions": {
+    "s_87b7dc096911b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a6260b0-b810-4125-8749-e2239809baa5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

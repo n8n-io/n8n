@@ -1,0 +1,26 @@
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_8f52ec7b6c500a::t_6ce68a35bbae17 47-48
+  s_8f52ec7b6c500a::t_7db2b14ecf7d65 15-21,29
+  s_8f52ec7b6c500a::t_5042bc6437cbf3 66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4b132c9107e42de103a0142298a1e004de0c5486",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8f52ec7b6c500a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "423ca37e-9e4c-479c-b2d1-af1ced0a48f6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_701c3478d6707a::t_0175d625627764 167
+  s_339360d3808066::t_cfc89da8c06162 11,31-33,67-68,87-88,138,147-148,150-153,155,161,212-214,225-226,240,250,252,254-257,259,277-278,312,334,356,359,361,366-367,371,373-374,379,386-387,391,400-402
+packages/@n8n/db/src/entities/binary-data-file.ts
+  s_701c3478d6707a::t_0a639a34ada2e0 6-8
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_339360d3808066::t_38c55fc41f4830 8,19-20,50,103-110,120-126,128,142,148,150-151,154,156,168,173-174,199-201
+packages/cli/src/modules/agents/__tests__/agent-knowledge-commands.test.ts
+  s_339360d3808066::t_d3a8790f987c5d 21-23
+packages/cli/src/modules/agents/__tests__/agent-knowledge-file-store.test.ts
+  s_339360d3808066::t_333f970ca579a3 1-123
+packages/cli/src/modules/agents/__tests__/register-blob-byte-stores.test.ts
+  s_339360d3808066::t_1f91631274239d 1-86
+packages/cli/src/modules/agents/agent-knowledge-file-store.ts
+  s_339360d3808066::t_a5cd07ee1d33cd 1-122
+packages/cli/src/modules/agents/agent-knowledge-retrieval.ts
+  s_339360d3808066::t_4ec43826aac82e 1,4-5,191-193
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_339360d3808066::t_fd6d372aeb06bb 8,33,220,501-502,525-529,561-563,565-572,650-652
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  s_339360d3808066::t_5c9276b614096e 8-9
+packages/cli/src/modules/agents/agents.module.ts
+  s_339360d3808066::t_745973092a272e 37-42,44,48-53
+packages/cli/src/modules/agents/entities/agent-file.entity.ts
+  s_339360d3808066::t_8c54006e0eac3b 1,10,20-29,32,35-37
+packages/cli/src/modules/agents/register-blob-byte-stores.ts
+  s_339360d3808066::t_6f2846693cad04 1-34
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_339360d3808066::t_575559d7b910e1 6,10,107-110,120,139,149-150,531,539,546,551,558,562,577,598-601,609,677,688-689,698,713,718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1fc591a3910140632b7e782bb2f25dee0e6d9530",
+  "prompts": {},
+  "sessions": {
+    "s_339360d3808066": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cc405351-a624-4aec-bcd6-63cc3c0200c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_701c3478d6707a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff033f2c-41d7-434c-b328-ad4b53b50d81",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

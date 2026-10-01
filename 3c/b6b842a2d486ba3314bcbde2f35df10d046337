@@ -1,0 +1,142 @@
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  ai_agent 55,90,94-95,102-103,110-111,1522
+packages/cli/src/modules/insights/__tests__/insights-compaction.service.integration.test.ts
+  ai_agent 2,364
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  s_d0acb9a890c95a::t_5b5193e3097fea 16,23,27-28
+  h_32d8cd6a0d6aad 22
+packages/cli/src/modules/agents/agents.module.ts
+  ai_agent 158
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  ai_agent 52,56,69,73,93,95,97,111,116,139,163,187,208,213,234,239
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_d0acb9a890c95a::t_18c55bf554f5f0 2025-2026,2028,2031-2035,2037-2039
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  ai_agent 206,210,212-215,234,239-240,242-244,246-248
+packages/cli/src/modules/insights/__tests__/insights-compaction.task.test.ts
+  ai_agent 1-27
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_d0acb9a890c95a::t_e5b5643525ab76 60-61
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  ai_agent 5,18-19,21,66,73-77,79,82-88,90,92-95,98-99,134-135
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  ai_agent 6,15,19,22-27,30-32,34,37,46,51-52,54,56,62,64-66
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  ai_agent 2-3,8-14,16-23,35
+packages/cli/src/modules/insights/__tests__/insights-pruning.task.test.ts
+  s_d0acb9a890c95a::t_12bbe1c26b267d 20
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  ai_agent 1-31
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_d0acb9a890c95a::t_e7486d0d15e9dd 26-29
+packages/@n8n/eslint-config/src/rules/no-on-leader-takeover.ts
+  ai_agent 1-34
+packages/cli/src/modules/instance-registry/__tests__/check.service.test.ts
+  s_d0acb9a890c95a::t_cf302311f77860 124
+  s_d0acb9a890c95a::t_e527b852fc6e8e 142-161
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.service.ts
+  ai_agent 5,13-19,40,44,52-53
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_d0acb9a890c95a::t_b333c42d64f08f 204
+  s_d0acb9a890c95a::t_0feaf7e8454a89 209-213
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  ai_agent 1-31
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  ai_agent 4,52-57,104,312-313,315
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  s_d0acb9a890c95a::t_b33ebe8d6a9e41 23-39
+packages/cli/src/commands/start.ts
+  ai_agent 432
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  ai_agent 1-59
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  ai_agent 1-38
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  ai_agent 1-22
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  s_d0acb9a890c95a::t_d506656c23ebec 45
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry.service.test.ts
+  ai_agent 190,198
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_d0acb9a890c95a::t_5624e4e4ab757d 24-27
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.service.test.ts
+  ai_agent 41,46-49,52,62,65,80,88,99,107,115,126
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  ai_agent 19-21,26-28,76,81,84,86
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  ai_agent 2,25,54-55,117-122,136
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_d0acb9a890c95a::t_4d2a386db6194a 17-18
+packages/cli/eslint.config.mjs
+  ai_agent 58-60,387-414,416-420,425
+packages/@n8n/eslint-config/src/rules/index.ts
+  ai_agent 35,71
+packages/cli/src/modules/insights/insights-compaction.service.ts
+  ai_agent 20-22,35
+packages/cli/test/integration/commands/start.cmd.test.ts
+  ai_agent 32,58,93
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  ai_agent 33
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.task.test.ts
+  ai_agent 1-24
+packages/cli/src/modules/instance-registry/checks/check.service.ts
+  s_d0acb9a890c95a::t_7aaf0a92648562 141-143
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_d0acb9a890c95a::t_2a2bdb8b9406f3 27-28
+  s_d0acb9a890c95a::t_349e144043108b 38-40
+packages/cli/src/modules/insights/insights.module.ts
+  ai_agent 16
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  ai_agent 1-22
+packages/cli/test/integration/insights/insights-vs-workflow-statistics.integration.test.ts
+  ai_agent 7,167,169-174,183-184,243
+packages/cli/src/modules/insights/insights-pruning.service.ts
+  s_d0acb9a890c95a::t_293dd6ed591969 35,38-42
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  ai_agent 1-32
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  ai_agent 5,8,10,14,17-22,25-27,29,31-32,35-36,38,40-42,46,48,50-52
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_d0acb9a890c95a::t_e81089b2f86aaf 25-26
+packages/cli/src/services/pruning/__tests__/execution-pruning-soft-delete.task.test.ts
+  ai_agent 1-51
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  ai_agent 2-4,9-15,17-24,35
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key.service.test.ts
+  ai_agent 60,87,140-141,145,147-148,153-155,157-165,188,208,227,231-241
+packages/cli/src/modules/insights/__tests__/insights-pruning.service.test.ts
+  s_d0acb9a890c95a::t_f8c122f547ff7a 55-58,60
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  ai_agent 1-38
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  ai_agent 1-42
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  ai_agent 1-36
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_d0acb9a890c95a::t_8de0bdcd017abd 1577,1579,1581-1583,1585
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_d0acb9a890c95a::t_e8367e05965237 15-16
+packages/@n8n/eslint-config/src/rules/no-on-leader-takeover.test.ts
+  ai_agent 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3cb6b842a2d486ba3314bcbde2f35df10d046337",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d0acb9a890c95a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "becbda50-7e9b-4312-a9b1-20c68808bcfc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

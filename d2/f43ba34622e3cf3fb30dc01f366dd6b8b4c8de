@@ -1,0 +1,132 @@
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_f3e0cf8bc1e610::t_3bd5b76811943d 246
+  s_f3e0cf8bc1e610::t_e4d8bef8eb3bf5 52-53
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_f3e0cf8bc1e610::t_155e18548aac54 199-200,203-206
+  s_f3e0cf8bc1e610::t_0dcab7944c34ee 1099-1101
+  s_f3e0cf8bc1e610::t_b2286c5bcf0381 207
+packages/cli/src/utils/__tests__/ttl-map.test.ts
+  s_f3e0cf8bc1e610::t_674c45484d8891 1-47
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_f3e0cf8bc1e610::t_8d6ce97a6a75be 137-171
+  s_f3e0cf8bc1e610::t_2cc3755f933bfa 172-221
+packages/cli/src/utils/ttl-map.ts
+  s_f3e0cf8bc1e610::t_1d554736d7552a 61-72
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_f3e0cf8bc1e610::t_6a0efe74d0653d 56,68-69
+  s_f3e0cf8bc1e610::t_e4d9b79df47ded 58-67
+  s_f3e0cf8bc1e610::t_8b2126ac505f65 46
+  s_f3e0cf8bc1e610::t_5985a8140656e1 1-2,18,25-29
+  s_f3e0cf8bc1e610::t_b9f43fa01fdd22 77-96
+  s_f3e0cf8bc1e610::t_3a8e976119ecc5 30
+  s_f3e0cf8bc1e610::t_89652521173e90 48-51,57,74-75
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_f3e0cf8bc1e610::t_cbb1e002da1b66 55-64,66,79,82-83,97,99,113-114,129-132,144-147,157-158,169,175-176
+  s_f3e0cf8bc1e610::t_d2abe48482dfb0 67,69-73,84,95-119
+  s_f3e0cf8bc1e610::t_ddea47aea1a66f 155-156,160-161
+  s_f3e0cf8bc1e610::t_8636de8c20cfba 31-32,37-38,49
+  s_f3e0cf8bc1e610::t_dee5d4c1e26249 120-121
+  s_f3e0cf8bc1e610::t_d6c81140f26142 122,125,128,133-142
+  s_f3e0cf8bc1e610::t_4da1395598996f 143
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f3e0cf8bc1e610::t_21219f7ed9c14b 8204-8211,8216-8238
+  s_f3e0cf8bc1e610::t_a197621f93f9e5 8239-8240
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_f3e0cf8bc1e610::t_249b555ffe7192 9
+  s_f3e0cf8bc1e610::t_0e46b4b9716da3 73-77,80,85,89
+packages/@n8n/agents/src/workspace/filesystem/n8n-sandbox-filesystem.ts
+  s_f3e0cf8bc1e610::t_10bc28c99d5536 4
+  s_f3e0cf8bc1e610::t_9c133b6e0c04f9 37-41
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_f3e0cf8bc1e610::t_e8152c88af97f0 83-85
+  s_f3e0cf8bc1e610::t_c1045fc3b6b531 244,253
+  s_f3e0cf8bc1e610::t_5692c0fdce4046 350,358-359
+  s_f3e0cf8bc1e610::t_b53f9357a830c9 52
+  s_f3e0cf8bc1e610::t_2e48a9ff1d42fa 47-51,53,60-68
+  s_f3e0cf8bc1e610::t_af986f232851ce 24
+  s_f3e0cf8bc1e610::t_591fca08b629f4 86-88
+  s_f3e0cf8bc1e610::t_52b80074c1293b 245-252
+  s_f3e0cf8bc1e610::t_018e739785e8fc 284-317
+packages/@n8n/agents/src/workspace/filesystem/daytona-filesystem.ts
+  s_f3e0cf8bc1e610::t_759b0de2c3b7ce 24
+  s_f3e0cf8bc1e610::t_955c765fa7373b 39-43
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_f3e0cf8bc1e610::t_900d38001e63b9 1140-1144
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_f3e0cf8bc1e610::t_6aeddaa57be2d8 24-26
+  s_f3e0cf8bc1e610::t_ce595222c3f000 23
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_f3e0cf8bc1e610::t_747da028fce55c 45-46,56-60
+  s_f3e0cf8bc1e610::t_e54fd7fc01582b 182,200-201,203-207
+  s_f3e0cf8bc1e610::t_c971431cb60f19 208,379-384
+  s_f3e0cf8bc1e610::t_eeddcedf75a41b 8
+  s_f3e0cf8bc1e610::t_a7b29b6c17a8f5 61,209,237-238,251,265,353,364,372,385,387,392
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_f3e0cf8bc1e610::t_18e5c7bda94272 200-216
+  s_f3e0cf8bc1e610::t_ba554964be0e1a 271-272
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_f3e0cf8bc1e610::t_271b8aef2c9115 224-231
+  s_f3e0cf8bc1e610::t_067bdf8d375cc8 84-88
+  s_f3e0cf8bc1e610::t_d0366330282ca1 42
+packages/@n8n/agents/src/__tests__/workspace/scoped-workspace.test.ts
+  s_f3e0cf8bc1e610::t_2290b21a7f9e2d 1-59,100
+  s_f3e0cf8bc1e610::t_e1d2ba8addebe1 60-73,87-99
+  s_f3e0cf8bc1e610::t_315688099c5ef6 74-86
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f3e0cf8bc1e610::t_a24bc0f0ec6978 444,465
+  s_f3e0cf8bc1e610::t_b204e6d2bd41b9 549
+  s_f3e0cf8bc1e610::t_388d67c411269c 140-145
+  s_f3e0cf8bc1e610::t_cdae7a3b2df080 701,719,724-725,727-745,749-760
+  s_f3e0cf8bc1e610::t_6c9266043103b3 55
+  s_f3e0cf8bc1e610::t_25f8b8e9f4451f 878,891
+  s_f3e0cf8bc1e610::t_89408c19320607 845
+  s_f3e0cf8bc1e610::t_d6d3ebeafc1cdd 908
+  s_f3e0cf8bc1e610::t_35d07cb01e1475 172-185
+  s_f3e0cf8bc1e610::t_dda285317348b8 405-408
+  s_f3e0cf8bc1e610::t_7649b11ba51e60 255,275-278
+  s_f3e0cf8bc1e610::t_c0f6aaa7ebdd76 294,298-300,324-325,341-342,346-386
+  s_f3e0cf8bc1e610::t_79c61c96334532 221-225,236,238-240
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_f3e0cf8bc1e610::t_f380e1bb7a75e3 211,213-215,217,236-237,241-244
+  s_f3e0cf8bc1e610::t_87719a5dac3cb4 40-44
+  s_f3e0cf8bc1e610::t_10a82ec0cdd8b0 231
+  s_f3e0cf8bc1e610::t_3e30adf149c10d 45-46,51,94,121,126,157,163-164,216,218,221-230,232-235
+  s_f3e0cf8bc1e610::t_c3490b93341eee 219-220
+  s_f3e0cf8bc1e610::t_dc10a7b000c9b0 20
+  s_f3e0cf8bc1e610::t_d96a844f39fbde 87-93,95-104,108,112,116,120,125,130,134,138,142,146
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_f3e0cf8bc1e610::t_944935ccdab7e9 383-423
+  s_f3e0cf8bc1e610::t_221dbea49a0710 26
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_f3e0cf8bc1e610::t_ef82d69edc29f9 314-317
+  s_f3e0cf8bc1e610::t_4f0c541cce3bcb 35-38
+  s_f3e0cf8bc1e610::t_96d9429496aafe 108-111
+  s_f3e0cf8bc1e610::t_a5a85334c10179 286-289
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_f3e0cf8bc1e610::t_9a916e9db9839f 1-135
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_f3e0cf8bc1e610::t_b6d501131c40e2 283-317
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f3e0cf8bc1e610::t_ec2a663287a51d 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d2f43ba34622e3cf3fb30dc01f366dd6b8b4c8de",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

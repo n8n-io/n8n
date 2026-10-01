@@ -1,0 +1,46 @@
+packages/testing/playwright/services/api-helper.ts
+  s_ef18334740ddd6::t_a4ed201debc715 482,497-499
+  s_ef18334740ddd6::t_33e7983611b26c 472-481,483-496,500-503,505-520
+  s_ef18334740ddd6::t_7f4a3050aec6ee 504
+packages/testing/playwright/tests/e2e/settings/log-streaming/log-streaming-delivery.spec.ts
+  s_ef18334740ddd6::t_db3e00395c7225 25
+  s_ef18334740ddd6::t_72257f821cedff 35
+  s_2051811d838811::t_7cca38ed5906d0 270-274,279,281,283-288,290-302,304-305,307-310
+  s_2051811d838811::t_090a7fe767c027 82-83,98-107
+  s_ef18334740ddd6::t_5c027129b6c683 1-12,14-24,26-34,36-81,84-97,108-141,144-210,219-220,222-269,275-278,280,289,306,311-313
+  s_ef18334740ddd6::t_1666206ae914f7 211-218
+  s_ef18334740ddd6::t_309627ac1cc053 13
+  s_ef18334740ddd6::t_62cb24833bb522 142-143
+packages/testing/playwright/pages/SettingsLogStreamingPage.ts
+  s_ef18334740ddd6::t_85d34969cc9735 293-310
+  s_2051811d838811::t_ab09d41bf833ad 320-325,327
+  s_ef18334740ddd6::t_4df7640d011a7b 235-292,311-319,326,328
+packages/testing/playwright/tests/e2e/settings/log-streaming/log-streaming.spec.ts
+  s_ef18334740ddd6::t_4202a2d08f6d90 77-98
+packages/testing/playwright/services/public-api-helper.ts
+  s_ef18334740ddd6::t_ccbe28fb3f187a 73-77,79-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "b905b1697e99c65dafadf3f317bf6eb4a71fbbc5",
+  "prompts": {},
+  "sessions": {
+    "s_2051811d838811": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4825b508-5ac5-4652-b436-9f1cd5631b75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ef18334740ddd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe5df5cb-c77c-498f-9741-c7adac9a21dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

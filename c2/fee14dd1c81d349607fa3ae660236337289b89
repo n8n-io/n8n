@@ -1,0 +1,224 @@
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_8df6e188366881::t_5fe6508436fed3 167,196
+  s_8df6e188366881::t_109c4a4a35a847 3,90-95
+  s_8df6e188366881::t_07e2f872868e6c 27-28,63-66
+  s_8df6e188366881::t_98c9b586496749 152,200
+  s_8df6e188366881::t_624c1e8a3e535d 111,141-147
+  s_8df6e188366881::t_e03f6250aa85b5 34-44,52-55,59-62,67-68,72-77
+  s_8df6e188366881::t_b7a384f189e6ed 107-108,110,136-140,148,197-199,201-205,207-213,220-230,257-262
+  s_8df6e188366881::t_990804e72f0723 290,303-306,316,325-332,340-343
+  s_8df6e188366881::t_3e72053ed8bad9 4,185,195
+  s_8df6e188366881::t_fc8cbcb8f5287d 1,14-16,149-151,153-166,168-184,186-194
+  s_8df6e188366881::t_6dcda687223541 214-219,231-256
+  s_8df6e188366881::t_1604c7ec7c1c65 206
+  s_8df6e188366881::t_b8217e664efa8d 6-10,109,112-135
+  s_8df6e188366881::t_37faa5d0c18223 294-297
+  s_8df6e188366881::t_dcb828c88ae532 274-276,278
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_8df6e188366881::t_de4dea3a75625a 46-52
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_8df6e188366881::t_4c47fe990bd1fc 105-106,110,170-171,183-194,196-233
+  s_8df6e188366881::t_fe78c92897b60f 195
+.agents/specs/agent-steering.md
+  s_8df6e188366881::t_98467eceaf1308 1-31
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_8df6e188366881::t_cba7628916ee39 128-129
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_8df6e188366881::t_5b58111c175726 841-879
+  s_8df6e188366881::t_62a9e3feb4d510 790-840,880-881
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_8df6e188366881::t_743f7a8a74f604 58-63,66-70
+  s_8df6e188366881::t_c1acb592b5d77a 22-25,49,57,64-65,71
+  s_8df6e188366881::t_83c7d262b010d9 72
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_8df6e188366881::t_0dbdd85a075c02 422-447
+packages/@n8n/api-types/src/agent-sse.ts
+  s_8df6e188366881::t_0b746dd59537c0 46
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_8df6e188366881::t_c1acb592b5d77a 51-52,58-59
+  s_8df6e188366881::t_743f7a8a74f604 45-50,53-57
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_8df6e188366881::t_0b746dd59537c0 1,8,16,268-273,407-409,511-527
+  s_8df6e188366881::t_ad0ddb76464615 528-529
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_8df6e188366881::t_91e0c9fe2b5faa 179
+  s_8df6e188366881::t_0d39194935b76d 308,317
+  s_8df6e188366881::t_98c9b586496749 376
+  s_8df6e188366881::t_0cd173f8a07587 309-316,383
+  s_8df6e188366881::t_972752ac454ceb 382,384-396
+  s_8df6e188366881::t_684f929607d6da 286-287,290-291,294-295,304,325-326
+  s_8df6e188366881::t_b8217e664efa8d 293,296
+  s_8df6e188366881::t_88d56c500af498 358-365,370,380
+  s_8df6e188366881::t_05cb2c69c104a8 318
+  s_8df6e188366881::t_d0ff4d747bd668 288-289,292,297-303,307,319-320,322-324
+  s_8df6e188366881::t_07e2f872868e6c 305-306
+  s_8df6e188366881::t_b96f2a181dd890 788-818
+  s_8df6e188366881::t_5fe6508436fed3 321
+  s_8df6e188366881::t_7ecab8f76fdff9 23
+  s_8df6e188366881::t_8272f3036d9aa9 350-357
+  s_8df6e188366881::t_13eec7071e0550 327-349,366-369,371-375,377-379,381,397-398
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatQueue.test.ts
+  s_8df6e188366881::t_ccac2d6ab63e3a 20,114-132
+  s_8df6e188366881::t_c25794b80327e0 21
+  s_8df6e188366881::t_c8ef64cf87ac83 133-134
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_8df6e188366881::t_7ecab8f76fdff9 132-133
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_8df6e188366881::t_de4dea3a75625a 347-358
+packages/@n8n/db/src/migrations/common/1789566244031-AddAgentSteering.ts
+  s_8df6e188366881::t_2948470a1e4097 1-33,48-52,54-76
+  s_8df6e188366881::t_743f7a8a74f604 34-47
+  s_8df6e188366881::t_03a324185f70e2 53
+packages/cli/test/migration/1789566244031-add-agent-steering.test.ts
+  s_8df6e188366881::t_7e690777f3c296 78,90-92
+  s_8df6e188366881::t_e8c0a069676035 58,60,62-65
+  s_8df6e188366881::t_0d4f9bd5f8821c 1-57,59,61,66-77,79-89,93-105
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_8df6e188366881::t_cba7628916ee39 977
+  s_8df6e188366881::t_07e2f872868e6c 808-844,926,943-976,979,996-997,1020-1029,1063
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-queue-send-now.dto.test.ts
+  s_8df6e188366881::t_5997ad91921bce 1-26
+packages/cli/src/modules/agents/agent-message-queue.types.ts
+  s_8df6e188366881::t_5368fced6fe015 2,11,16
+  s_8df6e188366881::t_2e3d8c2d743fb2 35,38-41,43-44,63
+  s_8df6e188366881::t_fc8cbcb8f5287d 42
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_8df6e188366881::t_bd4fbd05de1b38 19,21-22,260-262,264-265,267-271,273
+  s_8df6e188366881::t_1add581109b012 5,91-92,97,154-155,206-207,584,698,1047
+  s_8df6e188366881::t_551565f153b973 508,581-583,585,597,983,1044-1046,1048,1073
+  s_8df6e188366881::t_069760f3f829bd 259,263,266,272,274,560,1021
+  s_8df6e188366881::t_d6c32a6ae312eb 275-277
+  s_8df6e188366881::t_1c3a0b23bda969 278
+packages/@n8n/agents/src/types/index.ts
+  s_8df6e188366881::t_cba7628916ee39 51
+packages/@n8n/api-types/src/agents/types.ts
+  s_8df6e188366881::t_682ba8cb2d7a46 371,378,383-386,389-390
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_8df6e188366881::t_1add581109b012 5,51-52,204,221
+  s_8df6e188366881::t_19be9e6b2cd2e2 75-76,264-265
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_8df6e188366881::t_0ff6d00f71091e 7,302-336
+  s_8df6e188366881::t_1add581109b012 8,184,253,286-301
+  s_8df6e188366881::t_0614d2280792aa 469-479
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_8df6e188366881::t_1add581109b012 190
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_8df6e188366881::t_b79c68deaaa59b 97-127
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_8df6e188366881::t_f1d697a2af8f14 14,30,98-99,103-104,107-109,294-295,364-365,759-786,1090-1104,1188-1190
+  s_8df6e188366881::t_e1899aa5745017 31,1108,1110-1125,1191
+  s_8df6e188366881::t_a8073d560d835f 1105-1107
+  s_8df6e188366881::t_03801812efaa66 1109
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_8df6e188366881::t_0b746dd59537c0 12-13,59-61,64
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_8df6e188366881::t_4c4c7bd1ced098 403-412
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_8df6e188366881::t_8a8ee63bdca1c3 386,392-396,431-435
+  s_8df6e188366881::t_b610bd402ef62a 12,206-250
+  s_8df6e188366881::t_cab8383cb8709b 251,586-605,612,617,625,628,631-633,637
+  s_8df6e188366881::t_d2d39e480be183 830-831,842,844,887
+  s_8df6e188366881::t_826e76f17e1773 190-192
+  s_8df6e188366881::t_1604c7ec7c1c65 662
+  s_8df6e188366881::t_b29f9158abc4bf 832-840,847,888-896
+  s_8df6e188366881::t_5368fced6fe015 7-11,14-15,30,45,48,78,112-116,121,139,144,172-174,203,205
+  s_8df6e188366881::t_6dcda687223541 1000
+  s_8df6e188366881::t_f79b19c3c97827 1042-1046
+  s_8df6e188366881::t_9fdcedc58a4951 330-348,350-351,355,359-365,367-372,473-489,493-505
+  s_8df6e188366881::t_b8217e664efa8d 411-417,456
+  s_8df6e188366881::t_f790606fd06dc6 13
+  s_8df6e188366881::t_98c9b586496749 349,448-455
+  s_8df6e188366881::t_07e2f872868e6c 624,626-627,629-630,634,1035-1041,1047-1055
+  s_8df6e188366881::t_5fe6508436fed3 352-354,356-358,366
+  s_8df6e188366881::t_caaf88d83461d5 253-329,373-385,387-391,397-410,418-430,436-447,457,472,851,871
+  s_8df6e188366881::t_b49bbc80289273 513-518,580-585,606-611,613-616,618-623,635-636,638-661,663-669
+  s_8df6e188366881::t_d94670efe7624e 193-198,687,999
+  s_8df6e188366881::t_0cd173f8a07587 204
+  s_8df6e188366881::t_913d89396942af 201-202,252,471,511-512,685,828-829,845,857-858,885-886,997-998
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_8df6e188366881::t_f790906f46d0a7 46-69,71-84
+  s_8df6e188366881::t_f33d8510c7ace0 70
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_8df6e188366881::t_8a60e2dd81f8ab 13,264
+  s_8df6e188366881::t_e13d721aebd88f 16,261-263,265-305
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_8df6e188366881::t_0ecd3bdc8b6d4e 9,670-687
+  s_8df6e188366881::t_aa4bdcbad80e11 11,657-669
+  s_8df6e188366881::t_c2b036cb637c7f 688
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_8df6e188366881::t_cba7628916ee39 187-193,245-246
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_8df6e188366881::t_cba7628916ee39 81-84
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_8df6e188366881::t_1add581109b012 88
+packages/frontend/editor-ui/src/features/agents/components/AgentChatQueue.vue
+  s_8df6e188366881::t_fe78c92897b60f 18-21,23,25,40,176-178
+  s_8df6e188366881::t_2ab87df5f694d8 16-17,26,28,35,38-39,90,92-102,115,121-126,170-175,179-180,192-201,203-211,222-226,289-296
+  s_8df6e188366881::t_05acba3828dad0 22,104-114,182-187,189-191
+  s_8df6e188366881::t_f852067e0ac68b 24,27,116-117,119-120
+  s_8df6e188366881::t_069760f3f829bd 91,103,188,202
+  s_8df6e188366881::t_aef54dbd27a91b 118
+  s_8df6e188366881::t_76bd02859a4bef 297
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_8df6e188366881::t_2ab87df5f694d8 103-105,626,628,630
+  s_8df6e188366881::t_05acba3828dad0 106,627
+  s_8df6e188366881::t_f852067e0ac68b 629
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_8df6e188366881::t_ae050624f7103e 104
+  s_8df6e188366881::t_f4b7e7d5635982 47
+  s_8df6e188366881::t_fe78c92897b60f 359,362,366
+  s_8df6e188366881::t_9ca2dfc040d77e 103,416,418,433
+  s_8df6e188366881::t_cd4002a1ceadbf 281
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8df6e188366881::t_05acba3828dad0 7733-7734
+  s_8df6e188366881::t_f852067e0ac68b 7729
+  s_8df6e188366881::t_2ab87df5f694d8 7726-7728,7730-7732
+packages/@n8n/agents/src/index.ts
+  s_8df6e188366881::t_cba7628916ee39 81
+packages/@n8n/api-types/src/agents/dto.ts
+  s_8df6e188366881::t_682ba8cb2d7a46 274-293
+  s_8df6e188366881::t_0ff6d00f71091e 294-297
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatQueue.test.ts
+  s_8df6e188366881::t_c25794b80327e0 24,26,28
+  s_8df6e188366881::t_864bbab705d9ff 39-48
+  s_8df6e188366881::t_feb7cf8d82f932 23,25,27,31-37
+  s_8df6e188366881::t_fb44b63c564135 38
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_8df6e188366881::t_3705c5bbb06c9e 570
+docs/generated/postgres-schema/README.md
+  s_8df6e188366881::t_d1bc8013ec0505 22,26,518,531,594-595
+docs/generated/postgres-schema/public.agent_execution.md
+  s_8df6e188366881::t_2d3ec0f7b52e0f 7,20,41,67,80,101-102
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_8df6e188366881::t_8c5f5ed141d7bd 100,113
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_8df6e188366881::t_61d48fc57b7467 15-16,26,48,68-69,90,103
+docs/generated/postgres-schema/public.agents.md
+  s_8df6e188366881::t_0a58ec8bf7fbfc 225-226
+docs/generated/sqlite-schema/README.md
+  s_8df6e188366881::t_e4e80f19253778 22,26,183,505,518,581-582
+docs/generated/sqlite-schema/agent_execution.md
+  s_8df6e188366881::t_67dd5236370724 9,18,31,71,84,105-106
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_8df6e188366881::t_0bb03d9fe1c939 101,114
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_8df6e188366881::t_4e62373d30fe61 9,26-27,35-39,50,69-70,91,104
+docs/generated/sqlite-schema/agents.md
+  s_8df6e188366881::t_1dab5fe40232a7 227-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c2fee14dd1c81d349607fa3ae660236337289b89",
+  "prompts": {},
+  "sessions": {
+    "s_8df6e188366881": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa32-71fc-7c92-8307-000695716d8b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

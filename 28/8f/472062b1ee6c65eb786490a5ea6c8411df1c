@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.workflow.json
+  s_ebd7b9f2821ae5::t_04de250aa6169b 1-123
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_ebd7b9f2821ae5::t_04de250aa6169b 123,139-141
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/getAllReplies.test.ts
+  s_ebd7b9f2821ae5::t_04de250aa6169b 1-48
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/index.ts
+  s_ebd7b9f2821ae5::t_446707d34b5a21 6,10,42-47,80,89
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/getAllReplies.operation.ts
+  s_ebd7b9f2821ae5::t_446707d34b5a21 1-66
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/node.type.ts
+  s_ebd7b9f2821ae5::t_446707d34b5a21 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "288f472062b1ee6c65eb786490a5ea6c8411df1c",
+  "prompts": {},
+  "sessions": {
+    "s_ebd7b9f2821ae5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74f2c17b-04a6-4afc-bf2c-d5405449b36a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

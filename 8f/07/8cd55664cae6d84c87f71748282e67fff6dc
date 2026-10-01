@@ -1,0 +1,19 @@
+.devcontainer/codespaces/cloud-session.test.mjs
+  s_eb6a84a6eaaf11::t_e69ef4a710a24f 30-37,69-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f078cd55664cae6d84c87f71748282e67fff6dc",
+  "prompts": {},
+  "sessions": {
+    "s_eb6a84a6eaaf11": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08a63-95f6-7100-b9f1-15ef6684c424",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

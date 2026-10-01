@@ -1,0 +1,24 @@
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_fe79996699ca9b::t_34bca4b688a9fc 364
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_fe79996699ca9b::t_041f8a16691220 64,68,70-74
+  s_fe79996699ca9b::t_1817cd7c74a71d 286
+  s_fe79996699ca9b::t_0e092b96f95a09 472-477,480-482,484-488
+  s_fe79996699ca9b::t_b0d141088a4b28 461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6a9941a6fe9e3c947d8571644ffe6bf60c43df5",
+  "prompts": {},
+  "sessions": {
+    "s_fe79996699ca9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9779d03-88bc-478d-b26f-5d92048ba3c8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

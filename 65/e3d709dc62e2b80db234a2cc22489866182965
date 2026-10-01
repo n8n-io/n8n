@@ -1,0 +1,21 @@
+packages/frontend/@n8n/composables/src/durations.ts
+  s_0241aca425ded4::t_b753f7f6b5d1ac 2-7
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_0241aca425ded4::t_a029d32e50864b 2,4-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "65e3d709dc62e2b80db234a2cc22489866182965",
+  "prompts": {},
+  "sessions": {
+    "s_0241aca425ded4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94e2fc6d-04e0-4ab1-b85a-8d7e2dd6f2d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

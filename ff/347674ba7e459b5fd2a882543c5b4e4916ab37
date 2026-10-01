@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d1a2b68f3a210d::t_db8a43e809af9d 7266
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_d1a2b68f3a210d::t_de1f01e6859bd3 181-183,185,189-191
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_d1a2b68f3a210d::t_57345c7eb88cab 231,233-234,237,243,245,252-256,259-260,266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ff347674ba7e459b5fd2a882543c5b4e4916ab37",
+  "prompts": {},
+  "sessions": {
+    "s_d1a2b68f3a210d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f81ef92-2511-4593-aebf-e1571a612f03",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

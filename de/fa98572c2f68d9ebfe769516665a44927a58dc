@@ -1,0 +1,61 @@
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_74dc43a5ee571f::t_2211f7ac8ce9ea 131
+  s_74dc43a5ee571f::t_69e27444bc39a6 191,199
+  s_74dc43a5ee571f::t_aa54917434a88f 38
+packages/cli/src/executions/pre-execution-checks/workflow-pre-execute.ts
+  s_74dc43a5ee571f::t_213df4031d8cc9 31
+  s_74dc43a5ee571f::t_c39ebe3bdb22c7 15-17,23,65-67
+packages/cli/src/executions/pre-execution-checks/__tests__/workflow-pre-execute.test.ts
+  s_74dc43a5ee571f::t_baf0fc81ca1f18 44,57,66,76,97,106
+  s_74dc43a5ee571f::t_e51c862367427d 2,6,13,18,84-96,98-103
+packages/cli/src/executions/pre-execution-checks/index.ts
+  s_74dc43a5ee571f::t_f634ea9f1fada1 3
+packages/cli/src/workflow-runner.ts
+  s_74dc43a5ee571f::t_fb7b805df7aacd 311,322-324,326-327
+  s_74dc43a5ee571f::t_b2e6b53f637254 266
+  s_74dc43a5ee571f::t_ae0deae3959747 366-376,378-386
+  s_74dc43a5ee571f::t_8c37e9bbdfc206 310,317,325
+  s_74dc43a5ee571f::t_49564883b8981b 53
+  s_74dc43a5ee571f::t_69c72d38dabcc3 103
+  s_74dc43a5ee571f::t_df4efee6fd5394 377
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_74dc43a5ee571f::t_62cde7f043178c 247
+  s_74dc43a5ee571f::t_02e14df0761762 82
+  s_74dc43a5ee571f::t_550f869c7e79e6 49
+  s_74dc43a5ee571f::t_978804ef88b136 192
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_74dc43a5ee571f::t_31d0e76254da16 44
+  s_74dc43a5ee571f::t_58c7c71026e46d 952
+  s_74dc43a5ee571f::t_d5508d8551d7b0 941
+  s_74dc43a5ee571f::t_ce9b1249e993e1 942,953
+packages/cli/src/workflow-execute-additional-data.ts
+  s_74dc43a5ee571f::t_5e24c115dde693 328
+  s_74dc43a5ee571f::t_faf5296a931c69 69
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_74dc43a5ee571f::t_68f90203a26763 240,310,322
+  s_74dc43a5ee571f::t_a1514207a2ad93 133
+  s_74dc43a5ee571f::t_b53fbab0f45de1 112
+  s_74dc43a5ee571f::t_6c6de297945f87 279
+  s_74dc43a5ee571f::t_84e1b20813e3cb 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "defa98572c2f68d9ebfe769516665a44927a58dc",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74dc43a5ee571f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "005fc3ff-735a-4494-a3a8-82f316ec18a2",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

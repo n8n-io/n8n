@@ -1,0 +1,19 @@
+packages/cli/src/workflows/workflow-publish-guard-proxy.service.ts
+  s_e1e4b3d27a43c7::t_98660e76a9a08e 3-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0e5619389dc2a2ced17731e3d722421bd8ae6660",
+  "prompts": {},
+  "sessions": {
+    "s_e1e4b3d27a43c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5077ca3-5832-47d5-aa3e-d844ee003686",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

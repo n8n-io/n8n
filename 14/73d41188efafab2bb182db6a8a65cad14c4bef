@@ -1,0 +1,46 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_5f0b8b63fb02ca::t_ac2822ffdc0c90 1-2,5,698-840,857-861,877-880,910-914
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5f0b8b63fb02ca::t_50e84652a6c3a5 3,45,67,73-74,93,238-253,269-279,284-286,294-302,313-315,326-327,329,432
+  s_5f0b8b63fb02ca::t_58bde8d373c8f3 236,280-283,303-312
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_5f0b8b63fb02ca::t_dac4c2ca8e80ab 1-6,25-89
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_5f0b8b63fb02ca::t_50e84652a6c3a5 5-6,8,87-100,106-125
+  s_5f0b8b63fb02ca::t_37f702f72f5c0f 7
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_5f0b8b63fb02ca::t_50e84652a6c3a5 3,527-528,532,550-574,576
+  s_5f0b8b63fb02ca::t_db7c3dc1fc3648 575,577-578
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_5f0b8b63fb02ca::t_50e84652a6c3a5 289-291
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_5f0b8b63fb02ca::t_f588f70774b174 36
+  s_5f0b8b63fb02ca::t_ac2822ffdc0c90 1-2
+  s_5f0b8b63fb02ca::t_ca62a6e5166b68 3-7,11-12,30-35,37-76
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_5f0b8b63fb02ca::t_f588f70774b174 60,67,99
+  s_5f0b8b63fb02ca::t_3e7e9a8c6db5b1 12-22,33,37-38,46,59,250-315,602,621,624-625,627-649,652-654,658,660,662-669,671-712
+  s_5f0b8b63fb02ca::t_794bf40b17b47a 100,169,622-623,626,650-651,655-657,659,661,670,713,738,747
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5f0b8b63fb02ca::t_dac4c2ca8e80ab 1,18,36,97,493-498,522,528-529,563-662,664-722
+packages/@n8n/api-types/src/dto/index.ts
+  s_5f0b8b63fb02ca::t_50e84652a6c3a5 586
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_5f0b8b63fb02ca::t_02224863bb103d 1-2,38-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1473d41188efafab2bb182db6a8a65cad14c4bef",
+  "prompts": {},
+  "sessions": {
+    "s_5f0b8b63fb02ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a540-b6f2-7653-aeb8-9213c2e9e6df",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

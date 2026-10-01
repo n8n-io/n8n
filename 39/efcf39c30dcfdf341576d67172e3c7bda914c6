@@ -1,0 +1,32 @@
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_5498409d12d03d::t_9a39ab55b32c6b 43-44
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_5498409d12d03d::t_e53cc91956b9e9 797,804,826
+  s_5498409d12d03d::t_dc3ec4d42340da 120
+  s_5498409d12d03d::t_4ac7f6f1923c11 168
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_5498409d12d03d::t_7e3c226c5e9aad 508-510
+  s_5498409d12d03d::t_3b3b02275d21c9 457,459
+  s_5498409d12d03d::t_16ff6252d4b415 536-538
+  s_5498409d12d03d::t_2c6b018ed80629 603-605
+  s_5498409d12d03d::t_06d91fce186fc5 573-575
+  s_5498409d12d03d::t_ca9f3654a362d2 1057
+  s_5498409d12d03d::t_8ea15abbcaa4a1 1175-1177,1179
+  s_5498409d12d03d::t_a74c51a940e43b 365-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39efcf39c30dcfdf341576d67172e3c7bda914c6",
+  "prompts": {},
+  "sessions": {
+    "s_5498409d12d03d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70db0817-ca21-48df-8edb-aa5562a5b07f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

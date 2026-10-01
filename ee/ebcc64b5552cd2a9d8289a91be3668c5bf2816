@@ -1,0 +1,60 @@
+packages/cli/templates/partials/app-block-form.handlebars
+  s_b747434994d4d3::t_fe855eaf54ff23 2,6,10,14-17,21,30,37-38,40-41,43-44,48,50,55,59-60,64
+packages/cli/templates/partials/app-block-table.handlebars
+  s_b747434994d4d3::t_88f6d7d5a15ff3 2,6-7,9-11,16,18,21,26,34,40,54
+packages/cli/src/modules/apps/rendering/__tests__/app-chat-markdown.test.ts
+  s_b747434994d4d3::t_281e87bf083640 1-2,4-8,11-13,20-79,82-86
+  s_b747434994d4d3::t_fe526eb27edb52 80-81
+  s_b747434994d4d3::t_4a270cbdd30812 3,9-10,14-19
+packages/cli/src/modules/apps/rendering/blocks/__tests__/table.renderer.test.ts
+  s_b747434994d4d3::t_790c078a6f5022 129,206
+packages/@n8n/instance-ai/skills/app-builder/references/agent-chat.md
+  s_b747434994d4d3::t_7e270a568a9dcc 46-48
+packages/cli/src/modules/apps/rendering/styles/app-chat.css
+  s_b747434994d4d3::t_6b0df8f1feb21d 28-33,65-116
+packages/cli/templates/app-chat.js
+  s_b747434994d4d3::t_144766017e024d 23,105
+  s_b747434994d4d3::t_515752ec5e74c3 12
+  s_b747434994d4d3::t_68e1817d1945a4 15-20,77,104,111-113
+  s_b747434994d4d3::t_7c21a2f2e1535d 8-11,13-14,21-22,24-76,78-103,106-110,114-117,158-164,194,202,233-234
+  s_b747434994d4d3::t_6a46fbfffbda15 235
+packages/cli/templates/app.js
+  s_b747434994d4d3::t_d736def80e75e5 57
+packages/cli/src/modules/apps/rendering/styles/app.css
+  s_b747434994d4d3::t_ddd35fc7ec990b 255,261-392,553-554
+  s_b747434994d4d3::t_4cea02532534f5 208-214
+  s_b747434994d4d3::t_29ad889b141cae 29-38
+  s_b747434994d4d3::t_132867f68c52f9 196-198
+  s_b747434994d4d3::t_7cd5deedae7c4d 393,550-552,555
+packages/cli/templates/partials/app-block-button.handlebars
+  s_b747434994d4d3::t_b2a1e447703600 3,5
+packages/@n8n/instance-ai/skills/app-builder/references/styling.md
+  s_b747434994d4d3::t_96c33fd4ef775b 35-49,188,193,250,252-254,266-277
+packages/cli/templates/partials/app-block-agent-chat.handlebars
+  s_b747434994d4d3::t_88f6d7d5a15ff3 7-8
+packages/cli/templates/partials/app-block-image.handlebars
+  s_b747434994d4d3::t_0c7f4051755b03 2
+packages/cli/templates/partials/app-block-unsupported.handlebars
+  s_b747434994d4d3::t_127eabba996581 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "eeebcc64b5552cd2a9d8289a91be3668c5bf2816",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b747434994d4d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31dcea0c-f774-4635-91f0-b09bb660c7c9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

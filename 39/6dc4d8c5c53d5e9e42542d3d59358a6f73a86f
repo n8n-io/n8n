@@ -1,0 +1,13 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/routes-through-the-house-gateway-across-a-session-boundary.json
+  ai_agent 2-38
+packages/@n8n/instance-ai/evaluations/data/workflows/tags-work-for-review-across-a-session-boundary.json
+  ai_agent 2-38
+packages/@n8n/instance-ai/evaluations/data/workflows/applies-the-house-naming-prefix-across-a-session-boundary.json
+  ai_agent 2-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "396dc4d8c5c53d5e9e42542d3d59358a6f73a86f",
+  "prompts": {}
+}

@@ -1,0 +1,69 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  ai_agent 13-22
+  s_adb5d982725a9c::t_d3c63738e50f78 27-28,30,34,49-50,63,67-81,84-91,96,99-104,112-129,135-140,145-147,151,155-159,172,180,201,206,256,259,269
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_adb5d982725a9c::t_b1a4cd69964450 19
+  s_adb5d982725a9c::t_7f3f5b0fc02206 57
+  s_adb5d982725a9c::t_e3273b7ca7ad94 117-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/useInstanceAiEmbedThreads.ts
+  s_adb5d982725a9c::t_c4ecd1045de88f 16
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_adb5d982725a9c::t_82e8ae9a70835d 262-314
+  s_adb5d982725a9c::t_0e70886e7f64b5 53
+  s_adb5d982725a9c::t_711881ff86500c 344-346
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_adb5d982725a9c::t_d02fa965cbdaa5 37
+  s_adb5d982725a9c::t_39e65f03a6d7e5 44
+  s_adb5d982725a9c::t_be652e49026cef 180-185
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_adb5d982725a9c::t_4d3aac629ee7b0 277
+  s_adb5d982725a9c::t_06faf9ea520882 6,52,54,57,63,93,95,117-189,224-235,239-250,271-272,276,310-320
+  ai_agent 236-238,273-275
+  s_adb5d982725a9c::t_54727420fc07ac 65
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_adb5d982725a9c::t_8418089a7c362b 77
+  s_adb5d982725a9c::t_95fc61de0e988b 2
+  s_adb5d982725a9c::t_9cf1df1b998741 18
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_adb5d982725a9c::t_f7bbe4c0a4fa2c 297-318,325-348
+  s_adb5d982725a9c::t_05f2e799d4c9d9 24,26,30
+  ai_agent 319-324
+  s_adb5d982725a9c::t_0efd10d873023c 416-420,422-429
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/instanceAiEmbed.types.ts
+  s_adb5d982725a9c::t_4ba6bb8cdf13df 2,4,12-15,18,40
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_adb5d982725a9c::t_0db9d822d1ec3f 43-44
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiLayout.ts
+  s_adb5d982725a9c::t_18a417168b5556 2,5-8,25-33
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_adb5d982725a9c::t_e0dbaac5ae232a 65-69
+  s_adb5d982725a9c::t_a2c3626dc2f0e3 389,398-406
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_adb5d982725a9c::t_1d96f5aabe3738 136-140
+  s_adb5d982725a9c::t_226336a66ae883 27-28
+  s_adb5d982725a9c::t_fc5837298a11ed 344-348
+  s_adb5d982725a9c::t_415b6bd53c36f8 203-206
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_adb5d982725a9c::t_1f05448c3acaa4 130-140
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/useInstanceAiEmbedThreads.test.ts
+  s_adb5d982725a9c::t_1d451562d96fe7 1-2
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_adb5d982725a9c::t_92af930745dfea 141-178
+  s_adb5d982725a9c::t_07a2c7a80b5839 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d532ede3a5d839d4283d63d2d0429c3cd3438566",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

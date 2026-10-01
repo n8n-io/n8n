@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Slack/test/Slack.node.test.ts
+  s_7459af96ce1e09::t_ed7120bbaf2084 1-17
+packages/nodes-base/nodes/Slack/Slack.node.ts
+  s_7459af96ce1e09::t_42792609f6c7f9 16
+  s_7459af96ce1e09::t_3345f0341a739e 27
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  s_7459af96ce1e09::t_fa2a3b06b5035f 320-385
+  s_7459af96ce1e09::t_91f31f8077768e 762-766,768-772,774-778,780
+packages/nodes-base/credentials/SlackOAuth2Api.credentials.ts
+  s_7459af96ce1e09::t_7774433ae5b03a 12-13
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_7459af96ce1e09::t_0206460f92c970 67
+packages/nodes-base/credentials/test/SlackOAuth2Api.credentials.test.ts
+  s_7459af96ce1e09::t_7423a2ea1d9e49 24-29
+packages/nodes-base/nodes/Slack/test/v2/MessageDescription.test.ts
+  s_7459af96ce1e09::t_4b1bed898c499b 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "f9892e419579cd1b4d015b9f72f3e08302574acf",
+  "prompts": {},
+  "sessions": {
+    "s_7459af96ce1e09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24a936bf-c203-41a4-950c-affe826a9a10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

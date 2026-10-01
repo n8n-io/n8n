@@ -1,0 +1,613 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupBootstrap.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 22
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 833
+packages/@n8n/mcp-browser-extension/src/approvedHosts.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-105
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 6-13,30-34,42-47,51-59,70-73,76-79
+packages/@n8n/engine/src/auth/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-12
+packages/@n8n/engine/src/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4-10
+packages/@n8n/api-types/src/schemas/json-value.schema.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-21
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 24-27,30-37,90,141-142,311-348,592-595,718-741,745
+pnpm-lock.yaml
+  ai_agent 14,25-26,29,44,46-47,49-50,112-113,130-131,136-137,331-332,361-362,483-485,541-542,653-660,733-734,810-812,986,998,1001,1016,1019,1022,1028,1043,1048,1055,1156,1159,1162,1165,1168,1185-1186,1192,1262,1265,1268,1271,1274,1310,1316,1327,1334,2306-2308,2334-2336,2370,2672,2698-2699,2702,2705,2710-2711,2722-2723,2728-2729,2735,2743,2745,2748,2767-2772,2782-2784,2975,3204,3222,3225,3228,3231,3234,3237,3240,3243,3246,3249,3252,3255,3258,3261,3264,3267,3270,3273,3276,3279,3282,3297,3333,3342,3408,3747,4127,4130,4148,4151,4154,4157,4160,4163,4172,4288-4289,4291-4292,4294-4295,4297-4298,4300-4301,4303-4304,4306-4307,4309-4310,4325,4331,4349,4373,4451,4456-4457,4513,4534-4535,4577,4788,4827,4830,4833,6534,6569-6570,6600,7236,7297,7432-7433,7480-7481,7490-7491,7496-7497,7537-7545,7775-7777,7779,8875-8876,8878-8879,8881-8882,9641-9642,9645,10041-10042,10856-10857,11000-11001,11090-11091,12193,12230,12601-12602,12913-12914,14531-14532,15007-15010,15757,15820-15823,15843-15846,15875-15876,16285-16288,16296-16299,16312-16315,16325-16328,16532-16535,16810,17025-17027,18712-18713,19694-19698,19999-20002,20235-20238,20903-20904,21988-21990,22699-22701,23287-23288,23895,23897-23898,23950,23952,23954,23966,23968,23975,24024-24030,24083,24089,24095,24102,24112,24129,24135,24144,24146,24164,24168,24263-24264,24307-24308,24348,24350,24429-24430,24565-24566,24608-24609,24639,24654,24673,24676,24709,24711,24717,24730,24746,24748,24779,24800,24802,24823,24825,24872,24874,24899,24901,24936,24938,24969,24971,25004,25006-25009,25052,25107,25116,25125,25127,25140,25150,25161,25183-25184,25226-25227,25262,25264,25301,25303,25316,25318,25355,25435,25437,25441-25442,25698-25699,25706,25752,25759,25774,25799,25815,25822,25826,26362,26364,26456,26458-26459,26471,26473,26475,26483,26485,26492,26494,26497,26507,26509,26516,26518-26519,26784,26791,26793-26796,26799-26804,26817,26820,26822,27233,27241-27242,27247,27255-27256,27478,27672,27674-27675,27678,27684,27688,27690-27692,27713,27715,27722,27726-27728,27744,27780,27784-27786,27803,27850,27866,27882,27884,27887,27889,27895,27898,27901,27903,27908,27910,27915,27917,27920,27922,27924,27930,27934,27936,27946,27948,27958,27960-27962,27971,27973-27975,27984,27986-27988,27998,28000-28002,28012,28014-28015,28025,28027,28031,28033,28044,28046,28050,28052,28062,28064,28074,28076,28083,28085,28091,28093,28096,28098,28101,28103,28371,28373-28374,28379,28382,28573,28589,28889,28891,28915,28921,28932,28935,28941,28959,28975,28993,29011,29020,29029,29046,29049,29054,29063,29081,29090,29106,29122,29130,29133,29135,29138-29139,29184,29190,29196,29203,29211,29219,29230,29241,29250,29255,29257,29260,29265,29271-29272,29277-29278,29284,29286,29292,29294,29300,29307,29313,29319,29328,29343,29349,29359,29375,29389,29397,29399,29404,29406,29412,29419,29425,29433,29435-29436,30185,30189,30193,30208,30211,30218,30225-30226,30234,30237,30242,30245,30390,30422,30473,30479,30502,30513,30536,30558,30630,30634,30663,30741,30747,30775,30788,30891,30936,31181,32662,32688,32718,32731,33094,33096-33098,33414,33570,33646,33656-33657,34002,34012,34362-34363,34588-34595,34619-34620,34641,35093-35098,35103-35104,35117-35120,35135-35140,35377-35378,36194-36195,37785,37787-37789,37804,37806-37808,37823,37825-37827,38043,38045,38253-38254,39355,39377-39378,39577,39700-39703,39982-39985,40675-40677,40877,41291-41292,41309-41310,42130-42134,42804,42811,43109,43649,43709,43717-43719,44057-44058
+packages/frontend/editor-ui/src/app/layouts/DemoLayout.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 31,88
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3343,3377,3685-3735
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 330-367
+packages/frontend/editor-ui/src/features/setupPanel/setupPanel.utils.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,43-48,50-52
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 39,60
+packages/cli/src/commands/__tests__/start.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 199,235,258-323,348
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-2,180,213-224,248-251,267-287,327,341,352,366,651-826,2451-2488
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,52,113-149,161,169-171
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  ai_agent 11-12,54-56,110,134
+packages/cli/src/modules/mcp/mcp.controller.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 23-27,149,224-228,235
+packages/@n8n/workflow-sdk/src/utils/workflow-json-engine-helpers.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-85
+packages/@n8n/engine/src/auth/authenticate.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-36
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 153
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/workflowToolInputFields.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-165
+packages/@n8n/nodes-langchain/utils/aws/listBedrockInferenceProfiles.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-65
+packages/cli/src/public-api/public-api-validation-error.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-26
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3-4,8-12,15,20-22
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 325,340-349
+packages/frontend/@n8n/design-system/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 17-20
+packages/frontend/@n8n/design-system/src/components/N8nEmptyState/EmptyStateIconCards.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 112
+packages/nodes-base/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 952
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2,22-23,90-98,102-104
+packages/testing/playwright/expectations/execution.logs/1777281716392-unknown-host-POST-_v1_messages-hey-a1b2c3d4.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 117
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 55,311-316,334,345,379,386-389,395,405,432
+packages/@n8n/mcp-browser-extension/vitest.config.mts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-2,5-9
+packages/cli/src/webhooks/__tests__/webhook-blank-file-inputs.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-107
+docker/get-n8n.sh
+  s_b8cf31d243acdd::t_3d6055aa703aed 28,34-53,55,57,383,387,400-402,404-406,408,415,417
+packages/cli/src/modules/mcp/__tests__/mcp.controller.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 31,52-53,127,186,225,313,346,352-380
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2-3,20,49,56-57,86-95,180,186,275-305
+packages/frontend/editor-ui/src/app/layouts/documentStoreNullWindow.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-170
+packages/frontend/editor-ui/src/app/utils/nodes/nodeTransforms.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 23-26,244-252,254-257
+packages/@n8n/engine/src/testing/__tests__/start-engine-server.integration.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,14-17
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 104,625-645,714-731
+packages/frontend/editor-ui/src/features/setupPanel/setupPanel.utils.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 36-37,132-162
+package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 48,124-125,201-203
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 117-122
+packages/frontend/@n8n/design-system/src/icons/lucide/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 7-13
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,6,17-19,25,47-49,61,70,72-79,83,111-112,125,132,239-241
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiInputMenuItems.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 14,23,74-76,207-209,225-230,296
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 20-24,154-155,160,170-171,334
+packages/frontend/editor-ui/src/features/credentials/__tests__/credentials.store.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,224-436
+packages/testing/playwright/expectations/chat-hub/1777446004258-unknown-host-POST-_v1_messages-a3133d3a.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,141
+packages/@n8n/instance-ai/src/tools/workflows/workflow-validation-warnings.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2-4,42-72
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 117
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseSetupModal.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,233-234
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 296-301
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.controller.ee.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 115-118
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1,6,25-29
+packages/cli/src/public-api/v1/shared/spec/responses/unprocessableEntity.yml
+  s_b8cf31d243acdd::t_3d6055aa703aed 1
+packages/cli/src/modules/instance-ai/telemetry-redaction.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-129
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/methods/listModels.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3-7,9-10,13,15,21,52,56-61
+packages/cli/src/services/__tests__/oauth-token-verifier-proxy.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 21-24,38,44-47
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1,8
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 149-151
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 19,165-182
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 48,651,653,830-925
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 15-83,124-140,142-166,168-169,171-175
+packages/@n8n/instance-ai/src/tools/workflows/validate-workflow.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 9,672
+packages/@n8n/permissions/src/constants.ee.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 121
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVectorStoresModal.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 10,48,166,356
+packages/@n8n/agents/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 116
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 285-288
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 448-450
+packages/cli/src/services/oauth-token-verifier-proxy.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 19-36,47-53
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseConnectStep.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 2,7-10,21,24-33,43-53,56,70-75,78-79,84-89,93,127,133,146,160
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 6-12,38-40,87,91,105-127,130,140,155,189-190,193-198,229-233,238,279,289,291-292,305-306,316,322,338-339,342-347,351-353,362-366,368-376,378,381-390,393-399,413,451-465
+packages/@n8n/engine/src/auth/__tests__/identity-token.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-165
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-telemetry.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 30,48
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 81-82,93-94,142-145,153,158-167,170-173,176,181,213-215,222-224,227-250,337-369
+packages/@n8n/config/src/configs/engine.config.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-2,5-10,44-52
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 199-201,204-205,207,211-236
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 8,20-25,45,61,88,98,112,120,133,147,161
+packages/@n8n/engine/src/auth/express-request.d.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-10
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 116
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 65,78,123-128,141,145-146,149-150,155,158-159,161,164-165,168-170,175-262,399,405,474-484,579-589,669,675,873,927,932-935
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,5,38-44,67-69,127,132-135,141,148-151,178-183,211-212,281-282,313-315,321
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseConnectStep.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 6,38,68,113-136,150,159-160,163-179,196-222
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_b8cf31d243acdd::t_3d6055aa703aed 167-171
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 162,347,361,379,403,430
+packages/cli/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 183-190,239,258,265
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-98
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 16,18-21,23-29
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-2,4-6
+packages/cli/src/modules/instance-ai/__tests__/telemetry-redaction.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-138
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 111,116,134,139,235-236
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolRefAdapter.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 434-465
+packages/testing/playwright/expectations/chat-hub/1777445960187-unknown-host-POST-_v1_messages-8c00034c.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,147
+packages/cli/src/public-api/__tests__/public-api-validation-error.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-89
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 46-47,66-67
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupContent.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 2
+packages/testing/playwright/expectations/chat-hub/1777445992350-unknown-host-POST-_v1_messages-95b799cc.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 21,119
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-9,15,30,102-126
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 8,31-36,69,85
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1,4
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_b8cf31d243acdd::t_3d6055aa703aed 40-55
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1,5-15,57-84,93-96,100,118,125-126,132,142-144,147-152
+packages/@n8n/engine/src/serve.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5,18-21,26-30
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 104
+packages/@n8n/instance-ai/evaluations/harness/capture-run-debug.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 54
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 75
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 193,257
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 321-331,343,441
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 201,2628-2630,2632,2649,4147,4324,5490,5672,6511
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-5,80,82
+packages/frontend/editor-ui/src/app/utils/nodeTypesUtils.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-342
+packages/cli/src/webhooks/__tests__/webhook-form-data.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 8,29-30,39-42,53,60,207-449
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 66,134,228-234
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_b8cf31d243acdd::t_3d6055aa703aed 606-608
+packages/@n8n/mcp-browser-extension/src/ui/app.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-75
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5-10,84
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,16-21,31-32,35-37,61
+packages/@n8n/ai-workflow-builder.ee/src/utils/token-usage.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 31-32
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5,25-26,60,84
+packages/@n8n/mcp-browser-extension/src/background.silentConnect.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-295
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 17,383-398,411-416,541-543
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 69
+packages/workflow/src/node-helpers.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 515-585
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  ai_agent 1-1202
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,7,142-166
+packages/cli/src/modules/mcp/__tests__/credential-validation.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 201-214,218-223,230,232,285,289-291,293,304-305,322,326,328,339-375
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 33,142,152,165-166,170,173,203-220,223-224,232,235-236,240,244-245,273-278,286,337-338,352,354-355,374-377
+packages/testing/playwright/expectations/chat-hub/1777445949730-unknown-host-POST-_v1_messages-076c9849.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 30,128
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2328-2506,2577-2587
+packages/@n8n/mcp-browser-extension/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 3
+packages/cli/src/modules/chat-hub/chat-hub.models.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 322-327
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3200-3235
+packages/frontend/editor-ui/src/app/stores/npsStore.store.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 304-316
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 31
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 77-79
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatOpenAi.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 16-17,24-26,33,649-687
+packages/@n8n/engine/src/auth/identity.types.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-20
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 209-219,221-222,225,227-234,236-237,241-251,253-254,256-259,261-276,279-282,284-288,290,292-293,314-318,320,323,330-389,674-676,714-720,759-765
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2,14,22,54-66
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-workflow-code.tool.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2-3,117-118
+packages/cli/src/events/maps/relay.event-map.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 27,1240-1256,1264
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelsSection.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 113
+packages/cli/src/modules/mcp/tools/workflow-builder/credential-validation.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,220-225,228,232,234
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 102
+packages/frontend/editor-ui/src/features/credentials/credentials.utils.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 76,96,106-115,124,136
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 109-111
+packages/testing/playwright/expectations/execution.logs/1777281716392-unknown-host-POST-_v1_messages-3002af3d.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 117
+packages/@n8n/mcp-browser-extension/src/approvedHosts.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-40
+packages/@n8n/engine/src/server/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 122-124,201,223,237-288
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-29
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3264-3265,3283-3284,3302,3319-3321
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 607-704
+packages/cli/src/workflows/workflow-entity-mapper.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 14
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 41
+packages/@n8n/mcp-browser-extension/src/ui/components/RememberedHosts.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-79
+packages/testing/playwright/expectations/chat-hub/1777445949729-unknown-host-POST-_v1_messages-f8dcaa50.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,147
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 1506
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 17,879
+packages/@n8n/api-types/src/dto/workflows/create-workflow-public.dto.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-199
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 9,70-73,77,92-95,99,112-115,119,267-270,275,278,297,308-333,345-348,355,360-361
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 30,174
+packages/@n8n/nodes-langchain/utils/aws/test/listBedrockInferenceProfiles.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-127
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 7-12,79-83,1024,1034-1044,1226
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5,8,14-26,28,33-37,41-42
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 65-70,151-152,208,221,229,234,248,527-691
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 8-9,56,59-60,1326-1332,1344-1354
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,130-132,648-650,691,693,696,700,703,706-708,710,714-717,719,721-797,802,808,815
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 5523-5524,5551,5569,5573,5603-5609,6670-6671,6865,7584-7588
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentModelCredentials.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 29
+packages/testing/playwright/expectations/chat-hub/1777445968121-unknown-host-POST-_v1_messages-75a7d1fd.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,147
+packages/@n8n/api-types/src/dto/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 153,158,162,167
+packages/testing/playwright/expectations/chat-hub/1777445954283-unknown-host-POST-_v1_messages-6fb950ce.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 42,146
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policies.module.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-19
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 685-695,699,702-705,709-713,725-731,755-760,773,775-779,810-814,820-841,878-912
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelsSection.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 9
+packages/nodes-base/nodes/Confluence/test/actions/attachment/getMany.operation.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-251
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1,8,15-31,37-55,133,135,143,145,153-156,158,165-211,230-347
+packages/@n8n/engine/src/runtime/__tests__/create-engine-runtime.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 6,13-16,21,25-28,30-33,38-47,61
+packages/@n8n/nodes-langchain/nodes/chains/ChainLLM/test/promptUtils.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 343
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 36,42,91,786
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 90-96,113,124,136-146,150-151
+packages/@n8n/workflow-sdk/src/index.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 146-150
+packages/@n8n/engine/src/server/error-response.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-3,17-21
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 38,326
+packages/cli/src/commands/start.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 304-309
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useChatCredentials.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 106
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 52-73
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useBrowserUseConnection.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-220
+packages/@n8n/mcp-browser-extension/src/ui/components/rememberedHosts.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-35
+packages/frontend/editor-ui/src/app/stores/npsSurvey.store.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 36
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupState.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 149
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 56-57
+packages/frontend/editor-ui/src/app/utils/nodeTypesUtils.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 22,575-644
+packages/testing/playwright/expectations/chat-hub/1777445968121-unknown-host-POST-_v1_messages-77344463.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 21,119
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 19,72
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useBrowserUseConnection.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-127
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewChangesSection.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 164,181,220-221,223
+packages/@n8n/config/test/engine.config.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-34
+packages/@n8n/engine/src/testing/start-engine-server.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,7-10,14
+packages/testing/playwright/pages/components/WorkflowMenu.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 62-65,82-84
+packages/workflow/test/node-helpers.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 19,5514-5701
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChannelSetup.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 33
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 88,602-664,753-799,852-878,1011
+packages/testing/playwright/expectations/chat-hub/1777445945572-unknown-host-POST-_v1_messages-1755b374.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 34,138
+packages/testing/playwright/expectations/chat-hub/1777446004258-unknown-host-POST-_v1_messages-6827a9e7.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 21,119
+packages/cli/src/workflow-helpers.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 6,10,25,36-37
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 47-50,57
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 29,49,239,577-578
+packages/workflow/test/node-grouping-validation.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 2,4,16,923-1077
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 31-39,329-379
+packages/@n8n/engine/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 31,42
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 344-350,352-357,359,361-365,417-438
+packages/frontend/@n8n/frontend-constants/src/z-indexes.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 17
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupBootstrap.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 19,28,38,47,67
+packages/frontend/editor-ui/src/features/workflow-reviews/components/_activity-card.scss
+  s_b8cf31d243acdd::t_3d6055aa703aed 33
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 195-197,203-205,215,230-232,242,254
+packages/nodes-base/nodes/Confluence/actions/description.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5,37-40,48
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 8,10,27-29,251-257,274-277,292-306,311,455-456,458,491-496,501-502,509,518-520,532-534,558-559
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 36-37,39-40,50,72-75,80,85,93-95,97-113,176-198,293,314-318
+packages/cli/src/eventbus/event-message-classes/event-message-mcp.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4-5,26
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 29,41,61,63,71,101,534-536,554-556,559,633-635
+packages/cli/src/modules/agents/tools/__tests__/infer-input-schema.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-209
+packages/workflow/src/node-grouping-validation.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 16,195-196,213-229,260-289,292,300,381-426
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 402,405-436,647-648,650
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 32-39,1241-1403
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 379-404,408,411-414,467-468,471-472,481-492
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,789,817,822
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 274-282,287-290,296-297,299-307
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 145
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 8,140-154
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 18,102-103
+packages/frontend/editor-ui/src/features/agents/utils/workflowToolInputFields.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-156
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 82
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 169,1411,1507-1510,1512,3487-3501,3508,3552-3566
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 44
+packages/@n8n/ai-utilities/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 153
+packages/@n8n/ai-workflow-builder.ee/src/utils/stream-processor.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5,713
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 105-117,133-137,223,263,283-300,336
+.github/workflows/docker-build-push.yml
+  s_b8cf31d243acdd::t_3d6055aa703aed 214,371,382-384,680
+packages/nodes-base/nodes/Confluence/actions/attachment/getMany.operation.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-138
+packages/frontend/editor-ui/src/app/utils/nodes/nodeTransforms.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 19-33,447-648
+pnpm-workspace.yaml
+  s_b8cf31d243acdd::t_3d6055aa703aed 17,24-25,50,56,58,131,143,191,216,262-265
+packages/cli/src/modules/type-availability-policies/type-availability-policies.module.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-7
+packages/@n8n/engine/src/auth/identity-token.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-67
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/methods/listModels.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3-9,18,21,23,27,65,70
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 250
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,42-46,50-73,122,124-126,128-132,141,357-358,360-369,373-374,376-392,396-407,619-621,650
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 7,9,15-16,49,51,74-83,104-116,153-158
+packages/cli/src/webhooks/webhook-blank-file-inputs.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-55
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 213
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 101
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiInputMenuItems.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 17,34,268-271
+packages/cli/src/webhooks/webhook-form-data.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,6,8-16,19-25,52-58,62-76
+packages/frontend/editor-ui/src/features/workflow-reviews/components/activity-entries/WorkflowReviewActivityEventEntry.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 100,179,259,262-269,272,325-326
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
+  ai_agent 1-18,22-28
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 5-6,200,202-205,209
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-public.dto.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-7,138-163
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 78-81
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 66
+packages/testing/playwright/expectations/chat-hub/1777445982455-unknown-host-POST-_v1_messages-552904fa.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 21,125
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-94
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 428-552
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 13,16-17,31,37-41,63-65,84,172-238,260,301-316,323,472-519,617-647
+packages/testing/playwright/expectations/chat-hub/1777445954282-unknown-host-POST-_v1_messages-c19411fc.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,141
+packages/testing/playwright/tests/e2e/sharing/credential-picker-scope.spec.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-101
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 57-73
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolRefAdapter.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 171,175,183-190
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 61,78-81,343-420
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 10-134,137,141-142,147-151,156,159-160,162,190,194-195,199,201,209,219-222,226,231,233,237,241,246,248,259,266,271,284-423
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 234
+packages/testing/playwright/expectations/chat-hub/1777445960187-unknown-host-POST-_v1_messages-756ab548.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 21,125
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.controller.ee.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 16,216-225,230-234
+packages/testing/playwright/expectations/chat-hub/1777445982456-unknown-host-POST-_v1_messages-dedc7701.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 29,133
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 772-776,782-788,790,793,797-801,803-816,818-822,991-1000,1029,1042-1043,1045
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 317
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 5
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 7,20,36,377-385,394-397,448,483-494,775,780-789
+packages/frontend/editor-ui/data/node-popularity.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 4,12,16,24,28,32,40,44,48,52,60,64,68,72,76,84,88,92,96,100,104,108,112,116,120,124,128,132,136,140,144,148,156,160,164,168,172,176,180,184,188,192,196,200,204,208,212,216,220,224,228,236,240,244,248,252,256,264,268,272,284,288,292,296,300,304,308,312,316,320,324,328,332,336,340,344,348,352,356,360,364,368,376,380,384,388,392,396,400,404,408,412,416,420,424,428,432,436,440,444,448,452,456,460,464,468,472,476,480,484,488,492,496,500,504,508,512,516,520,524,528,532,536,540,544,548,552,556,560,564,568,572,576,580,584,588,592,596,600,604,608,612,620,624,628,636,640,644,648,652,656,660,664,668,672,676,680,684,688,692,696,700,704,708,712,716,720,724,728,732,736,740,744,748,752,756,760,768,776,780,784,788,792,796,800,804,808,812,816,820,824,828,832,836,840,844,848,852,856,864,868,872,876,880,884,888,892,896,900,904,908,912,916,920,924,928,932,936,940,944,948,952,956,960,964,968,976,980,984,988,992,996,1004,1008,1012,1016,1020,1024,1028,1032,1036,1040,1044,1048,1052,1056,1060,1064,1068,1072,1076,1080,1084,1088,1092,1096,1100,1104,1108,1112,1116,1120,1124,1128,1132,1136,1140,1144,1148,1152,1156,1160,1164,1168,1172,1176,1180,1184,1188,1192,1196,1200,1204,1208,1212,1216,1220,1224,1228,1232,1236,1240,1244,1248,1252,1256,1260,1264,1268,1272,1276,1280,1284,1288,1292,1296,1300,1304,1308,1312,1316,1320,1324,1328,1332,1336,1340,1344,1348,1352,1356,1360,1364,1368,1372,1376,1380,1388,1392,1396,1400,1404,1408,1412,1416,1420,1424,1428,1432,1436,1440,1444,1448,1452,1456,1460,1464,1468,1472,1476,1480,1484,1488,1496,1500,1504,1508,1512,1516,1520,1524,1528,1532,1536,1540,1544,1548,1552,1556,1560,1564,1568,1572,1576,1580,1584,1588,1592,1596,1600,1604,1608,1616,1620,1628,1632,1636,1644,1648,1652,1656,1660,1664,1668,1672,1680,1684,1692,1696,1700,1704,1708,1712,1716,1720,1724,1728,1732,1736,1740,1744,1748,1752,1756,1760,1764,1768,1772,1776,1780,1784,1788,1792,1796,1800,1804,1808,1816,1820,1824,1832,1836,1840,1844,1848,1852,1860,1864,1868,1872,1880,1884,1888,1892,1896,1900,1904,1908,1912,1916,1920,1924,1928,1932,1936,1940,1944,1948,1952,1956,1960,1964,1968,1972,1976,1980,1984,1988,1992,1996,2000,2004,2008,2012,2016,2020,2024,2028,2032,2036,2040,2044,2048,2052,2056,2060,2064,2068,2072,2076,2080,2084,2088,2092,2096,2100,2104,2108,2112,2116,2120,2124,2128,2132,2136,2140,2144,2148,2152,2156,2160,2164,2168,2172,2176,2180,2184,2188,2192,2196,2200,2204,2208,2212,2216,2220,2224,2228,2232,2236,2240,2244,2248,2252,2256,2260,2264,2268,2272,2276,2280,2284,2288,2292,2296,2300,2308,2312,2316,2320,2324,2328,2332,2336,2340,2344,2348,2352,2356,2360,2364,2368,2372,2376,2380,2384,2388,2392,2396,2400,2404,2408,2412,2416,2420,2424,2428,2432,2436,2440,2444,2448,2452,2456,2460,2464,2472,2480,2484,2488,2492,2496,2500,2504,2508,2512,2516,2520,2524,2528,2532,2536,2540,2544,2548,2552,2556,2560,2564,2568,2572,2576,2580,2584,2588,2592,2596,2600,2604,2608,2616,2620,2624,2628,2632,2636,2640,2644,2648,2652,2656,2660,2664,2668,2672,2676,2680,2684,2688,2692,2696,2700,2704,2708,2712,2716,2720,2724,2728,2732,2736,2740,2744,2748,2752,2756,2760,2764,2768,2772,2776,2780,2784,2788,2792,2796,2800,2804,2808,2812,2816,2820,2824,2828,2832,2836,2840,2844,2848,2856,2860,2864,2868,2872,2876,2880,2884,2888,2892,2896,2900,2904,2908,2912,2916,2920,2924,2928,2932,2936,2940,2944,2948,2952,2956,2960,2964,2968,2972,2976,2980,2984,2988,2992,2996,3000,3004,3008,3012,3020,3028,3032,3036,3040,3044,3048,3052,3056,3064,3068,3076,3080,3084,3088,3092,3100,3104,3108,3112,3116,3120,3124,3128,3136,3140,3144,3148,3152,3160,3164,3168,3172,3176,3180,3184,3188,3192,3196,3208,3216,3220,3224,3228,3232,3236,3240,3244,3248,3252,3256,3260,3264,3272,3276,3280,3284,3288,3292,3296,3300,3304,3308,3312,3316,3320,3324,3328,3332,3336,3348,3352,3356,3360,3364,3368,3372,3376,3380,3384,3388,3392,3396,3400,3404,3408,3412,3416,3420,3424,3428,3436,3440,3444,3448,3452,3456,3460,3464,3468,3472,3476,3480,3488,3492,3496,3500,3504,3508,3512,3516,3520,3528,3532,3540,3544,3548,3556,3560,3564,3568,3576,3580,3584,3588,3592,3604,3608,3612,3616,3620,3624,3628,3632,3636,3640,3644,3648,3656,3660,3664,3668,3672,3676,3680,3684,3688,3692,3696,3700,3712,3716,3720,3724,3728,3732,3736,3740,3744,3748,3752,3756,3760,3764,3772,3780,3784,3796,3800,3808,3816,3820,3824,3828,3832,3836,3840,3844,3852,3860,3864,3868,3872,3876,3880,3888,3892,3896,3900,3904,3908,3912,3920,3924,3928,3932,3936,3940,3960,3972,3980,3984,3988,3992,3996
+.github/test-metrics/e2e-impact-map.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 1
+packages/@n8n/instance-ai/package.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 75,79,83,85,92,100-101,105
+packages/testing/playwright/expectations/chat-hub/1777445982456-unknown-host-POST-_v1_messages-1cc9eee1.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 29,127
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,14,683,784-785,923,999
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 404
+packages/cli/src/public-api/v1/shared/spec/responses/_index.yml
+  s_b8cf31d243acdd::t_3d6055aa703aed 13-14
+packages/testing/playwright/expectations/chat-hub/1777445982456-unknown-host-POST-_v1_messages-0990c96f.json
+  s_b8cf31d243acdd::t_3d6055aa703aed 20,141
+packages/@n8n/workflow-sdk/src/utils/workflow-json-engine-helpers.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-291
+packages/@n8n/nodes-langchain/utils/aws/resolveBedrockApi.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-24
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupState.nodeGrouping.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 125
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 83-84,92,121-129,132-133,135-140,143,161,168,178,181,183-184,318,327,332,347,374,394,402,408,410-426,435,453-506,516,665,693-735,767,777-778
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,18,40,49,59-71,151-170,172-207,209-220,222-278,280-315,318-351,361-369
+packages/@n8n/engine/src/auth/__tests__/authenticate.test.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 1-82
+packages/@n8n/mcp-browser-extension/src/types.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 80-85
+packages/frontend/editor-ui/src/features/workflow-reviews/components/activity-entries/WorkflowReviewActivityWorkflowLink.vue
+  s_b8cf31d243acdd::t_3d6055aa703aed 3,7,10,12-15,25,30
+packages/frontend/editor-ui/src/features/agents/composables/useAgentModelCredentials.ts
+  s_b8cf31d243acdd::t_3d6055aa703aed 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43a57c42e34cf85724b7353466bcb1de2a37763e",
+  "prompts": {},
+  "sessions": {
+    "s_b8cf31d243acdd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df500102-c9ee-4d60-bd03-71e166d8d868",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

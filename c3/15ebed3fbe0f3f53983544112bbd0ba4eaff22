@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Wordpress/GenericFunctions.ts
+  ae5398de9aee323a 31-35,37
+packages/nodes-base/credentials/test/WordpressOAuth2Api.credentials.test.ts
+  ae5398de9aee323a 24-29,37,42-46
+packages/nodes-base/credentials/WordpressOAuth2Api.credentials.ts
+  ae5398de9aee323a 53-54,58,60
+packages/nodes-base/nodes/Wordpress/__tests__/GenericFunctions.test.ts
+  ae5398de9aee323a 61,76,82,87,89,107-108,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "c315ebed3fbe0f3f53983544112bbd0ba4eaff22",
+  "prompts": {
+    "ae5398de9aee323a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d3a8df4-bd20-4c00-9abe-a0c0d7f2ee1f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 161,
+      "accepted_lines": 31,
+      "overriden_lines": 0
+    }
+  }
+}

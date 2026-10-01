@@ -1,0 +1,42 @@
+packages/testing/code-health/src/packed-consumer/README.md
+  s_f6945ec489dbea::t_ccb67638f04604 111-112
+  s_f6945ec489dbea::t_9d31ad7dc78137 61-83
+packages/testing/code-health/src/packed-consumer/grandfathered.ts
+  s_f6945ec489dbea::t_d75197e1aad206 1-45
+packages/testing/code-health/src/packed-consumer/grandfathered.test.ts
+  s_f6945ec489dbea::t_7bb797f0d964af 1-37
+packages/testing/code-health/src/packed-consumer/consumer-specifiers.test.ts
+  s_f6945ec489dbea::t_089705c1481022 6,8,13-68
+  s_f6945ec489dbea::t_3e45aa32afbb2d 69
+.github/workflows/ci-pull-requests.yml
+  s_f6945ec489dbea::t_81f488d52956fc 262-264,268-270
+packages/testing/code-health/src/packed-consumer/verify-packed-consumer.ts
+  s_f6945ec489dbea::t_2ff271cbf3a746 129-135,137-138
+  s_f6945ec489dbea::t_a513c0ac969128 355
+  s_f6945ec489dbea::t_a994c348c6a0d5 11
+  s_f6945ec489dbea::t_f6290719750a21 76-77,81
+  s_f6945ec489dbea::t_f29a070d209388 15
+  s_f6945ec489dbea::t_55f34311ed3880 84,92,94-97,104-112
+  s_f6945ec489dbea::t_c3574fe5e1b0d7 320-322
+  s_f6945ec489dbea::t_4f90ec1b19c827 267-269
+  s_f6945ec489dbea::t_12a1c6c21873ac 113-115
+packages/testing/code-health/src/packed-consumer/consumer-specifiers.ts
+  s_f6945ec489dbea::t_249e197bac7eac 1,13-19,22-36,38,40-47,49-61
+  s_f6945ec489dbea::t_2330370ccaae5a 103-127,129,133-135,138,141,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ce70a91838541eca8403dc5a375d292a621899ce",
+  "prompts": {},
+  "sessions": {
+    "s_f6945ec489dbea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7866479a-d77a-4173-8879-141c6af75006",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

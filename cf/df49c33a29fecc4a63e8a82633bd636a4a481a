@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Google/Docs/GoogleDocs.node.ts
+  s_21a9612335633d::t_3859e388e6d924 168
+packages/nodes-base/nodes/Google/Docs/test/GoogleDocs.node.test.ts
+  s_21a9612335633d::t_18a30e94a790b2 2-25,29-46,48-57
+  s_21a9612335633d::t_a4bd9b349caee6 26-28
+  s_21a9612335633d::t_96e5ecba71ee7c 58
+  s_21a9612335633d::t_9749174929df34 47
+  s_21a9612335633d::t_d4667318eb4450 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cfdf49c33a29fecc4a63e8a82633bd636a4a481a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_21a9612335633d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c18046e-e918-4feb-ad91-38ef03b44adb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

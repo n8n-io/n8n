@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionsNlFilterHistory.ts
+  s_03d816ea3ae9c9::t_b374c40a9c5407 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "505631542614fca7f9fdb6d6714a7a49d7a4514e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

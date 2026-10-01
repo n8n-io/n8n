@@ -1,0 +1,45 @@
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  s_442b113d88c721::t_0959144ceeba09 504
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_442b113d88c721::t_bf72e6a580c620 1216,1302,1357,1414
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_442b113d88c721::t_7554f2e9ff1825 481
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_442b113d88c721::t_e2eaab598c0e1e 810-811,817
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_442b113d88c721::t_873e76c93cfe63 59,61-63,65-66
+  ai_agent 77-79
+  s_442b113d88c721::t_f47632a771675a 160
+  s_442b113d88c721::t_cdbee50e479dae 182
+  s_442b113d88c721::t_69b88fd779bba3 201,211-212
+  s_442b113d88c721::t_2d7fdb5ed93e41 230,236,244-245
+  s_442b113d88c721::t_e8fd8331e626e9 82
+  s_442b113d88c721::t_cef515fe194fd0 45-49
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_442b113d88c721::t_199e5bfca01fbb 1078
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_442b113d88c721::t_1ed01a36cd7522 2302
+  s_442b113d88c721::t_46758fa9d3cb58 2269
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_442b113d88c721::t_40e09f56a8827a 122-123
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_442b113d88c721::t_9ea5af422f1f88 110
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_442b113d88c721::t_76ed924590122b 225,229,231-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "579eb718851a1133cd40fb534e7b94b20c3ddf38",
+  "prompts": {},
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

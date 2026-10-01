@@ -1,0 +1,77 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_0237a66f4d3f8f::t_b4f34de84c0bba 136
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_0237a66f4d3f8f::t_5ead888b3addc5 47
+  s_0237a66f4d3f8f::t_ae3c4126fc3356 87-89
+  s_0237a66f4d3f8f::t_2f918bf3f0ed0f 19
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_0237a66f4d3f8f::t_04e6aae198defa 196
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_0237a66f4d3f8f::t_25ac684fdab816 26
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_0237a66f4d3f8f::t_2899d13362e693 117-119,127-128,138
+  s_0237a66f4d3f8f::t_8c6f7e1fbfa288 193-194,201-202,223-230
+  s_0237a66f4d3f8f::t_0970f1578270db 75
+  s_0237a66f4d3f8f::t_46562e45e02574 3-4,25-30,38
+  s_0237a66f4d3f8f::t_c84408179fe4a8 156-157,160-166,172
+  s_0237a66f4d3f8f::t_6f1f063e461a1f 91
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_0237a66f4d3f8f::t_d7e70fa8d4a172 249,259-350
+  s_0237a66f4d3f8f::t_abb1e591f11c1a 154
+  s_0237a66f4d3f8f::t_94d772d88890f8 105
+  s_0237a66f4d3f8f::t_ea813a700d3e94 129
+  s_0237a66f4d3f8f::t_d8ffc73700bc2f 216
+  s_0237a66f4d3f8f::t_7c4b0fd648e8e1 192
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_0237a66f4d3f8f::t_e708388e50f8b2 77
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_0237a66f4d3f8f::t_a4835b966ae6e7 68
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_0237a66f4d3f8f::t_328e1c5715ba40 43
+  s_0237a66f4d3f8f::t_586d6a814a4d31 69,84,99
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_0237a66f4d3f8f::t_7467b8d64ea40c 174
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_0237a66f4d3f8f::t_fa70647c624b2c 16-18
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_0237a66f4d3f8f::t_b20e15251a256c 75
+  s_0237a66f4d3f8f::t_7315cb31e5e1e2 126
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_0237a66f4d3f8f::t_34dd7a4c6ae064 85,93-94,102,109
+  s_0237a66f4d3f8f::t_ddbc2065cad1a5 16
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_0237a66f4d3f8f::t_eabac186d180d1 16
+  s_0237a66f4d3f8f::t_a71155453b84ee 42-44
+  s_0237a66f4d3f8f::t_dc56ffbe9aa098 68
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_0237a66f4d3f8f::t_da394f7f6b7f34 32-34
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_0237a66f4d3f8f::t_2e73a745b9f77d 13
+  s_0237a66f4d3f8f::t_fd6860b727fd51 46
+  s_0237a66f4d3f8f::t_d7393ac07b543f 74-76
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_0237a66f4d3f8f::t_d6915a23b18550 2235
+  s_0237a66f4d3f8f::t_9286a63a24852f 2275
+packages/cli/test/integration/shared/utils/index.ts
+  s_0237a66f4d3f8f::t_86f7f5c0c12ada 113-126
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_0237a66f4d3f8f::t_e17faa0dd22eb4 5,14-15
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_0237a66f4d3f8f::t_12033d77a69776 1060
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ab926082eafc3b716335581e3f6974a1b7abdf2",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

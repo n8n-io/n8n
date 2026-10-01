@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_e9d60c6c209ea7::t_e063fbefb8ca10 112-123,129
+  s_e9d60c6c209ea7::t_70facd509cbfe5 6
+  s_e9d60c6c209ea7::t_5195a3cf30b7c1 227-252
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  s_e9d60c6c209ea7::t_37dbf667a51295 491-492
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_e9d60c6c209ea7::t_df6f5713fd8bff 56-64
+  s_e9d60c6c209ea7::t_cd580dbf3a03ac 498-499
+  s_e9d60c6c209ea7::t_f5fb914e3c7245 353-378,380-394,396-411
+  s_dc3bed1aa0cf73::t_343d3b7ab02ed9 379
+  s_e9d60c6c209ea7::t_6b8acf8423bbb8 216,219-220,225
+  s_dc3bed1aa0cf73::t_2f659a1e8d7fcb 395
+  s_c859c06464077e::t_2afa60e7452368 412
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e9d60c6c209ea7::t_6a0e2041647c8e 5351-5353
+  s_dc3bed1aa0cf73::t_5b3a4715c29e87 5354-5355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "439e329e0f53c0ac63ac33b68b2fc5a6c52e2104",
+  "prompts": {},
+  "sessions": {
+    "s_c859c06464077e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa2a3b6f-fb5b-45d0-9ff0-8c293ba959a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_dc3bed1aa0cf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d123d45e-86d5-4cc0-b700-7a312ae8a244",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_e9d60c6c209ea7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf7f89be-73f4-4bd5-a8fa-13d21f08ee08",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

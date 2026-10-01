@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_0b5094e3d365c6::t_122d241ed51672 182
+  s_0b5094e3d365c6::t_8949350c03f9d9 6
+  s_0b5094e3d365c6::t_ff1149c9732596 17
+  s_0b5094e3d365c6::t_e09ec9bd65e192 86
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_0b5094e3d365c6::t_6147574850318f 138,168,193,309
+  s_0b5094e3d365c6::t_8f8c449fcf6f26 17-18
+  s_0b5094e3d365c6::t_bcc450b1dc62a2 27-29
+  s_0b5094e3d365c6::t_6022b55c195089 7,12-16,19-20
+  s_0b5094e3d365c6::t_75551ee6a53d75 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f8dfc7e38a78f1718e1720b5f9310c538cbc8eed",
+  "prompts": {},
+  "sessions": {
+    "s_0b5094e3d365c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe4f8555-fd5a-475e-947d-6eb828536be4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "palette <palette@nightshift.local>"
+    }
+  }
+}

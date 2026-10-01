@@ -1,0 +1,36 @@
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.handler.ts
+  s_633895c6f69b3b::t_249379a7bb1e1e 27
+  s_633895c6f69b3b::t_756133c4e52ce6 40
+  s_633895c6f69b3b::t_bde41b088692bd 33-35
+packages/cli/src/services/project.service.ee.ts
+  s_633895c6f69b3b::t_adebc1b6f3c858 52
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_633895c6f69b3b::t_c527d635dff0e8 114
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_633895c6f69b3b::t_c2566d8efdaf0a 389-403
+  s_633895c6f69b3b::t_8335c20d1e6b78 1746
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
+  s_633895c6f69b3b::t_73883d5465a7ac 14
+  s_633895c6f69b3b::t_b1b326cfa99b63 98-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "955732cd8c08d11eff55e8bd46472bbbb7ec5aa7",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_633895c6f69b3b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ba7ed6f1-43ce-4523-b65f-098c71251e9e",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

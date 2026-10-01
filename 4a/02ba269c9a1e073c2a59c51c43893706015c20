@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_03dfb80e635af0::t_5f8a0dfcad0906 20,25
+packages/frontend/@n8n/composables/src/useClipboard.ts
+  s_03dfb80e635af0::t_15e8ff23aecee4 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4a02ba269c9a1e073c2a59c51c43893706015c20",
+  "prompts": {},
+  "sessions": {
+    "s_03dfb80e635af0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "662cd214-b617-4fb8-ad43-813e190ba458",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

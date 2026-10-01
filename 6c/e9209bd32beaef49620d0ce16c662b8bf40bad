@@ -1,0 +1,34 @@
+.github/workflows/test-e2e-reusable.yml
+  s_a4345fc6593b6d::t_862accb2ba7a06 175-179
+.github/workflows/test-evals-instance-ai.yml
+  s_a4345fc6593b6d::t_a3ec015e448316 261-262
+  s_a4345fc6593b6d::t_f346ff45080ef1 227-228,231-238
+  s_a4345fc6593b6d::t_2adae6ee1633e5 278,286-291,293,301-303,305
+packages/testing/containers/service-stack.ts
+  s_a4345fc6593b6d::t_339ae7bf48938e 51-57
+packages/testing/containers/services/sandbox.ts
+  s_a4345fc6593b6d::t_37eebd6ce7073d 138-151,155-164
+packages/testing/playwright/tests/e2e/instance-ai/README.md
+  s_a4345fc6593b6d::t_3bf95d7143a8c3 7-19
+  s_a4345fc6593b6d::t_21c8b9890642f3 25-26
+packages/testing/containers/services/types.ts
+  s_a4345fc6593b6d::t_26c8f104a42399 112-120
+packages/testing/containers/stack.ts
+  s_a4345fc6593b6d::t_95d8ef5e213bcf 167,170-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ce9209bd32beaef49620d0ce16c662b8bf40bad",
+  "prompts": {},
+  "sessions": {
+    "s_a4345fc6593b6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be031bc6-eb83-425c-980c-ce372e6c43bd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_88f1ce9b846740::t_acf0efe9e2bdeb 183-215
+  s_88f1ce9b846740::t_5c40db72ced881 3451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "70809f6415e416951f3c1adbfba3c7f89c6d8e0b",
+  "prompts": {},
+  "sessions": {
+    "s_88f1ce9b846740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09b9df3b-2732-480e-8fa5-f6d21439cc65",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

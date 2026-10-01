@@ -1,0 +1,46 @@
+packages/cli/src/metrics/prometheus/encryption-metrics.service.ts
+  s_fc46fb8dee3e6b::t_3ebc230151796c 1-28,30-49
+  s_fc46fb8dee3e6b::t_185396d7b03eff 29
+packages/core/src/encryption/__tests__/cipher.test.ts
+  s_fc46fb8dee3e6b::t_2af94f088f1485 344-404
+packages/cli/src/metrics/prometheus/__tests__/encryption-metrics.service.test.ts
+  s_fc46fb8dee3e6b::t_70d2632f722b0d 56
+  s_fc46fb8dee3e6b::t_fe2886d30c9ff5 1-55,57-111
+packages/core/src/encryption/cipher.ts
+  s_fc46fb8dee3e6b::t_ecbf681463b737 1
+  s_fc46fb8dee3e6b::t_24dcaca09d2a9d 22-27,30-32
+  s_fc46fb8dee3e6b::t_981f9bac53f624 125-128
+  s_fc46fb8dee3e6b::t_2b52a27ccf793e 132-135
+  s_fc46fb8dee3e6b::t_45d30653a310ee 114-116
+  s_fc46fb8dee3e6b::t_edd211e3fef681 140,142-155
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_fc46fb8dee3e6b::t_d329562dd13a00 12
+  s_fc46fb8dee3e6b::t_afbc701c46e05b 61
+  s_fc46fb8dee3e6b::t_4fe283659d397d 87
+packages/@n8n/config/test/config.test.ts
+  s_fc46fb8dee3e6b::t_ea1cfa551618a7 275
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_fc46fb8dee3e6b::t_3f56d65c23dd3e 126
+  s_fc46fb8dee3e6b::t_0d1b64f23f771f 13
+  s_fc46fb8dee3e6b::t_c2160080252e68 161
+  s_fc46fb8dee3e6b::t_f1b922848554e1 90
+  s_fc46fb8dee3e6b::t_2947fa7b63e3cc 54
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_fc46fb8dee3e6b::t_1ebe572765ff52 103-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3e82b2073215aaf25c344660b23af33506e06063",
+  "prompts": {},
+  "sessions": {
+    "s_fc46fb8dee3e6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c1cac4e-0d5f-4a1a-ba34-eb3ac20c1cff",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 107
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 332-376
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 101,218,435,452
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 29
+packages/@n8n/engine/src/execution/step-store.ts
+  s_77655ca8fe3a59::t_743511542137d8 16,157-170
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_77655ca8fe3a59::t_7bb4e0590a64f1 50
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_77655ca8fe3a59::t_4f3e820e0746cd 1,43-52,289-291
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_77655ca8fe3a59::t_0f87c376ac02fd 66-68
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_babed0e2a665a4 694,715-719,727,730-733,739-749
+  s_77655ca8fe3a59::t_e54c281708ed21 750-751
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_77655ca8fe3a59::t_743511542137d8 234-238
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_77655ca8fe3a59::t_743511542137d8 82
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_77655ca8fe3a59::t_743511542137d8 33-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0b0d477342269bccc6d0cab86543d08bfcf3b956",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

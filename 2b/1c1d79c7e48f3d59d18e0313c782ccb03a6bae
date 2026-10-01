@@ -1,0 +1,39 @@
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_af62986d6ef75e::t_a3acc1c8e71d94 1875
+  s_af62986d6ef75e::t_6918da84a1a67a 1895
+packages/@n8n/api-types/src/dto/executions/execution-public.openapi.ts
+  s_af62986d6ef75e::t_32904a2ab307f2 69-72
+packages/cli/src/executions/execution-persistence.ts
+  s_af62986d6ef75e::t_15ca6712276edd 622
+packages/@n8n/api-types/src/dto/executions/execution-public.dto.ts
+  s_af62986d6ef75e::t_7463d3a003c9f1 40
+  s_af62986d6ef75e::t_8ad1dd219dbafb 73
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_af62986d6ef75e::t_7c606a4a05d1ff 457
+  s_af62986d6ef75e::t_bc0d563bbf8c54 473
+packages/cli/test/integration/public-api/executions.test.ts
+  s_af62986d6ef75e::t_27dbd06a90f3fb 264-286
+  s_af62986d6ef75e::t_d39b5ad48c7f51 694-718
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/deleteExecution.generated.yml
+  s_af62986d6ef75e::t_0c0e4cca2768f7 135-138,159
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecution.generated.yml
+  s_af62986d6ef75e::t_787026b7058fba 163-166,218
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutions.generated.yml
+  s_af62986d6ef75e::t_b86d464a51b26a 160-163,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2b1c1d79c7e48f3d59d18e0313c782ccb03a6bae",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

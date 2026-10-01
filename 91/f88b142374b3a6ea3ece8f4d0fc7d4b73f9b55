@@ -1,0 +1,25 @@
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_589f8be7454a93::t_d10df2c82de40e 3,29-31,71,112,121-124,134,138-139,145-147,150-151,153,158,165-169
+packages/cli/test/integration/activity-event.repository.test.ts
+  s_589f8be7454a93::t_4e30a5ea37542b 118-134
+docs/generated/postgres-schema/public.activity_event.md
+  ai_agent 7,10
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  s_589f8be7454a93::t_6f33c7071915d9 27,194-195,203,208-211,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "91f88b142374b3a6ea3ece8f4d0fc7d4b73f9b55",
+  "prompts": {},
+  "sessions": {
+    "s_589f8be7454a93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce56a8-933a-450c-a1c0-550bab4f8591",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

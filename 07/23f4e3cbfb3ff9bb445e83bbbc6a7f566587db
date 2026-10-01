@@ -1,0 +1,110 @@
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-3,21,23,38,41-46,48-52,54-70,73,77-80,82,85,90,94-95,97-98,100,102-103,105-108,110,113,116-117,121-123,126,140-143,151-152,160-161
+  ai_agent 4-7,9
+  s_4c46dcfe1ba789::t_f9dae768d9a165 10,40,71-72
+  s_4c46dcfe1ba789::t_08563fce175542 18,47,53,75,83-84,86-89,91,93,96,101,111,114,118,129,139
+  s_4c46dcfe1ba789::t_9317a33118b923 19-20,74,76,104,119-120
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 22,124,144,153-155
+  s_4c46dcfe1ba789::t_f1ea1f245992e5 39
+  s_71c6da2ee47cd3::t_c470b0a9f3961f 92,115
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_4c46dcfe1ba789::t_eeeb14c5513318 29-30,1247-1267,1269-1273,1277
+  s_4c46dcfe1ba789::t_b486633a6977bd 63,87-90
+  s_4c46dcfe1ba789::t_db4bafbbb46980 77
+  s_71c6da2ee47cd3::t_22028249b03956 430,432,436,443,445,448,455,457,476-477
+  s_4c46dcfe1ba789::t_d973a62943d7dd 431,433-435,437-442,444,446-447,449-454,456,458-475
+  s_4c46dcfe1ba789::t_3d863c978088db 1151-1152,1154
+  s_4c46dcfe1ba789::t_36c3453a753a08 1275-1276,1278-1280
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_a3125dfe40640a::t_2e14f226a4206d 62
+  s_4c46dcfe1ba789::t_7dd7b48c8328c2 63,2045-2046,2051-2052
+  s_a3125dfe40640a::t_c1428fe219b94f 1133
+  s_a3125dfe40640a::t_cf1a46269dd29f 2043
+  s_4c46dcfe1ba789::t_e3cd4f920bebf0 2096,2099-2100
+  s_719e037cee4d57::t_0f7522dcd91215 2105-2106
+  s_4c46dcfe1ba789::t_1eddd524b8cecb 2116-2119
+  s_a3125dfe40640a::t_98f95192499fa6 2231-2237,2240-2243
+  ai_agent 2238-2239
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-4,6
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 7
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 37-44,46-47,49
+  s_4c46dcfe1ba789::t_eed36ddb86f263 48
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_4c46dcfe1ba789::t_b9e4aeff30c8cc 41-50
+  s_719e037cee4d57::t_6eb243654129cd 57
+  s_719e037cee4d57::t_ad9e149f2f0240 59,61
+  s_719e037cee4d57::t_4d7b0304b6368f 62
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 3,18-22,24-26,30-31,33,39,41,75,83
+  s_71c6da2ee47cd3::t_4d94f6f753024f 4-5,11-12,14-17,23,27-29,32,34-36,38,42-58,60-62,64-70
+  s_4c46dcfe1ba789::t_e86cea15aea75d 40
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,8-15,17,19-29,31-34,36,41-49,51-53,56-66,88-90,92,96-102,104,107-108
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 7,16,18,30,35,37-40,50,54-55,67-87,91,105,146,148-149,156
+  s_719e037cee4d57::t_1fda68e550b269 93-95
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1-2,4,6,11-18,21-23,26,32-33,35-52,55-67,76,80,90,95-96,100,114-116,118-119,121-126,137,140,153,159-161,168-170,198,200-201,205-206
+  s_4c46dcfe1ba789::t_ab1cf56a8e54a1 7,68-75,113
+  s_4c46dcfe1ba789::t_a519961dfa21ce 8-10,78-79,82-87,89,91,93-94
+  s_4c46dcfe1ba789::t_533d342b8bac27 19-20,24-25,28-31,53-54,109-111,117
+  ai_agent 27,34,202-204
+  s_719e037cee4d57::t_d73bc028dc08bb 98-99,101,103-105,108
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 1-3,10-11,13,15,19-21,26
+  s_71c6da2ee47cd3::t_d67313882bd806 4-9,12,14
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_a3125dfe40640a::t_af24fe60f252a1 20
+  s_71c6da2ee47cd3::t_19b26356a490b4 37-43,110
+  s_a3125dfe40640a::t_f338f3ea3806de 66
+  s_a3125dfe40640a::t_d31a4391a3a76d 90-98
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_4c46dcfe1ba789::t_c0ade72f4ad765 11,14,107-109
+  s_71c6da2ee47cd3::t_11151294bf63cb 86-90
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-3,7-14,23-27,33-34,36
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 4-5,37
+  s_719e037cee4d57::t_4893d08f7d8961 6
+  s_719e037cee4d57::t_421128ee5237f1 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0723f4e3cbfb3ff9bb445e83bbbc6a7f566587db",
+  "prompts": {},
+  "sessions": {
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_719e037cee4d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27f603bd-170c-453c-b9f6-0405967390f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_a3125dfe40640a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "075b8cbd-4b8b-47a1-8eab-be2d73d8c62b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

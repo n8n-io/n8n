@@ -1,0 +1,56 @@
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_66b5f43a0aceeb::t_a66c0a11e303c5 287-327,332,335,338,345
+  s_66b5f43a0aceeb::t_3bcd1fbbc9fe31 328-331
+  s_66b5f43a0aceeb::t_0fdcf4fd6e79a6 333-334
+  s_66b5f43a0aceeb::t_26cd4a54a677fa 336-337
+  s_66b5f43a0aceeb::t_1e586cbbdc03ff 339-344
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_66b5f43a0aceeb::t_16b222d552369b 1158
+  s_66b5f43a0aceeb::t_59f5e7ffedafad 189-197
+  s_66b5f43a0aceeb::t_bb28ef7d735ac2 524,783,917
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_66b5f43a0aceeb::t_94d667e123cf53 1573
+  s_66b5f43a0aceeb::t_50788e4066e0e9 1216
+  s_66b5f43a0aceeb::t_7eb6c9cc91f078 2775
+  s_66b5f43a0aceeb::t_0cb8339cf8d213 481
+  s_66b5f43a0aceeb::t_cf6d8c805c3e7d 321-357
+  s_66b5f43a0aceeb::t_3276f2419d97bd 450
+  s_66b5f43a0aceeb::t_84f7a3ec0a712c 684
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_66b5f43a0aceeb::t_5aacc56ccd418b 478,488
+  s_66b5f43a0aceeb::t_6a651ad58434bf 446,455
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_66b5f43a0aceeb::t_1636904128372c 1391-1417
+  s_66b5f43a0aceeb::t_4f3301cc65d3b6 48-52
+  s_66b5f43a0aceeb::t_3c173126c89826 1418-1419
+packages/frontend/editor-ui/src/Interface.ts
+  s_66b5f43a0aceeb::t_893e6232469c91 699-702
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_66b5f43a0aceeb::t_9c7df7bef13cfb 237
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_66b5f43a0aceeb::t_839eebb4cb404a 866-867
+  s_66b5f43a0aceeb::t_240ca518594ddc 954
+  s_66b5f43a0aceeb::t_8efb22e660ac6a 164-166
+  s_66b5f43a0aceeb::t_defbe2ab930646 891
+  s_66b5f43a0aceeb::t_b9c665fda2e026 635
+  s_66b5f43a0aceeb::t_40ff55a85edfc6 642,671,902,961
+  s_66b5f43a0aceeb::t_af862fb56c1b67 684
+  s_66b5f43a0aceeb::t_db24d76055f7b6 911
+  s_66b5f43a0aceeb::t_c4f59234afa5a8 88-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "67fd0df78696ed5816abbd8071f657255fb134fc",
+  "prompts": {},
+  "sessions": {
+    "s_66b5f43a0aceeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "912770f3-ffc9-4790-a6ca-25a2dd3e1027",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

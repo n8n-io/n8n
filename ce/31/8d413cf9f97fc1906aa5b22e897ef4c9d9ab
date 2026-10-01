@@ -1,0 +1,51 @@
+packages/@n8n/api-types/src/schemas/__tests__/eval-insights.schema.test.ts
+  s_62bddef00d4057::t_5a04eabb80223b 34-47
+packages/@n8n/api-types/src/schemas/eval-insights.schema.ts
+  s_62bddef00d4057::t_2cf06395c931a4 23-29,32-34,40-41,44-45,51-53
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_62bddef00d4057::t_816a99d8b1ea88 112-115,120,123-125,129-130
+  s_62bddef00d4057::t_a46d345b1b5453 49-56
+  s_62bddef00d4057::t_2255a71e66eba4 240,250,256,276-279,289-293
+  ai_agent 297-303,307-323,326-343,347,350,352,354
+  s_62bddef00d4057::t_34d9f52506f608 11
+  s_62bddef00d4057::t_d8017131afd986 182-186
+  s_62bddef00d4057::t_f48f78255197aa 1
+  s_62bddef00d4057::t_1307cc76d76403 158
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.test.ts
+  s_62bddef00d4057::t_a0aab48b6ac145 104-112
+packages/cli/src/evaluation.ee/insights/__tests__/insights-model-resolver.test.ts
+  s_62bddef00d4057::t_8ad34c26babd4b 69-72
+  s_62bddef00d4057::t_36acf196d3f74c 67-68,73-101
+packages/cli/src/evaluation.ee/insights/insights-model-resolver.ts
+  s_62bddef00d4057::t_2602b74fbd212e 2
+  s_62bddef00d4057::t_9f8a83bcd7942e 87-93
+  s_62bddef00d4057::t_259b9f2ac86780 57-58,60-63
+  s_62bddef00d4057::t_790469176d7a6d 26-29
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.vue
+  s_62bddef00d4057::t_e1f435678d839c 84
+  s_62bddef00d4057::t_d44f28682466bd 32-39
+packages/cli/src/evaluation.ee/insights/__tests__/eval-insights.service.test.ts
+  s_62bddef00d4057::t_7f6ff547c26436 411,413-426,431-449
+  s_62bddef00d4057::t_8b826529ae605a 427-430
+  s_62bddef00d4057::t_8ad34c26babd4b 185-191
+  s_62bddef00d4057::t_e593526ed0ca22 650,661-663
+  s_62bddef00d4057::t_b923d8a220386c 234,260-262,265,267-268,281-283,289-311
+  s_62bddef00d4057::t_e511c97fa0032e 367,370-371
+  s_62bddef00d4057::t_b55ed73ced6482 181-184,192,194-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce318d413cf9f97fc1906aa5b22e897ef4c9d9ab",
+  "prompts": {},
+  "sessions": {
+    "s_62bddef00d4057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6396ed9-3aa0-4d3f-8dfd-eea7869f2328",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

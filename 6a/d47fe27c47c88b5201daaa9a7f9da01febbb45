@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_95c07cd59b29d6::t_7157f110f6f041 8-15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_95c07cd59b29d6::t_4733b55c5b428a 35-42
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_95c07cd59b29d6::t_8b6842dc532920 82,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ad47fe27c47c88b5201daaa9a7f9da01febbb45",
+  "prompts": {},
+  "sessions": {
+    "s_95c07cd59b29d6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a09129-2f50-773a-9493-dccda9af467c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

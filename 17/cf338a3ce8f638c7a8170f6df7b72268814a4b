@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-message-context.service.test.ts
+  s_1cc3b657c77322::t_f298b26c7c1880 83-123
+  s_1cc3b657c77322::t_e0212b4f54f519 8
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_1cc3b657c77322::t_1d5ae413007606 7,185-186,192-215
+  s_1cc3b657c77322::t_62fa494808a96a 216
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_1cc3b657c77322::t_1d5ae413007606 10,19,55
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_1cc3b657c77322::t_1d5ae413007606 24,108-109
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_1cc3b657c77322::t_19397e59d73b80 85-88
+packages/cli/src/modules/agents/integrations/platforms/telegram-bridge-behavior.ts
+  s_1cc3b657c77322::t_8334faa97b23f6 22,25
+  s_1cc3b657c77322::t_ca49996942cb2d 1,10-13,33-71
+  s_1cc3b657c77322::t_88ae0b2333cdcb 72
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_1cc3b657c77322::t_19397e59d73b80 62,93-95
+  s_1cc3b657c77322::t_9361c3871565d4 96
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/bridge-behavior.test.ts
+  s_1cc3b657c77322::t_695ee18bca40e6 2,9,31-66
+  s_1cc3b657c77322::t_3eff60070edd53 67-68
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_1cc3b657c77322::t_1d5ae413007606 32-46,54
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/synthetic-integration.test.ts
+  s_1cc3b657c77322::t_c4256c8f133ea3 9,27-30,33-35,54-55,59-61,64-65
+  s_1cc3b657c77322::t_15058f2a8baaeb 26,31-32,36-53,56-58,62-63,66-110
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_1cc3b657c77322::t_fb192a067de5fd 48,69-78,687-689,718-726
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_1cc3b657c77322::t_45d38fab89bb71 98-108
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_1cc3b657c77322::t_695ee18bca40e6 54,56-62
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_1cc3b657c77322::t_19397e59d73b80 218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "17cf338a3ce8f638c7a8170f6df7b72268814a4b",
+  "prompts": {},
+  "sessions": {
+    "s_1cc3b657c77322": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ab29-e690-7123-ac11-e9092792aaf4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

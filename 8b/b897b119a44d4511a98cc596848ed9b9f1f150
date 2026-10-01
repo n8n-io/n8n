@@ -1,0 +1,133 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/GenericFunctions.test.ts
+  s_768f033e6fe33a::t_79c777078291bf 99,125,155,159,177,208,229,261,287,319,359,367,411,442,453,512,562,731,766,805,812
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/actions/router.test.ts
+  s_768f033e6fe33a::t_a8c0652c02b90a 1-53
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/methods/listSearch.test.ts
+  s_768f033e6fe33a::t_379741a790ead4 52,80,107,131,168,207,257,295,338,377,414,420,520,552
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/methods/loadOptions.test.ts
+  s_768f033e6fe33a::t_0070695726100a 40,129,132,227
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/draft/create.test.ts
+  s_768f033e6fe33a::t_5ab719246aa99c 193,247-249,254,303
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/message/sendAndWait.test.ts
+  s_768f033e6fe33a::t_b8594db50ab0b7 67
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/messageAttachment/add.test.ts
+  s_768f033e6fe33a::t_581d1ca94c809e 93,136-138,143,229
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAllPerItem.test.ts
+  s_768f033e6fe33a::t_b8605c403cc9b4 1-62
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAllPerItem.workflow.json
+  s_768f033e6fe33a::t_44535f40dc7556 1-113
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItem.test.ts
+  s_768f033e6fe33a::t_c92ad911a5aead 1-45
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItem.workflow.json
+  s_768f033e6fe33a::t_04b9a5aa829049 1-95
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItemContinueOnFail.test.ts
+  s_768f033e6fe33a::t_41e82898266027 1-37
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItemContinueOnFail.workflow.json
+  s_768f033e6fe33a::t_76ffd1bde2b340 1-105
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_768f033e6fe33a::t_b8ae5c5e64259b 2,7-8,48,67,83,99,115,131,147,163,180,194,218,257,277,290,303,316,329,344,356,359,369,380,384-513,536,557,580,596
+packages/nodes-base/nodes/Microsoft/Outlook/trigger/GenericFunctions.ts
+  s_768f033e6fe33a::t_0efddcf1d5549d 60-61,75-76,90-96
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/calendar/create.operation.ts
+  s_768f033e6fe33a::t_ca88cd1d29d91c 110
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/calendar/delete.operation.ts
+  s_768f033e6fe33a::t_412a4159ad0ca7 24
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/calendar/get.operation.ts
+  s_768f033e6fe33a::t_c0f09f9cb78164 30
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/calendar/getAll.operation.ts
+  s_768f033e6fe33a::t_735e1ef0d5f44c 65,71
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/calendar/update.operation.ts
+  s_768f033e6fe33a::t_a877968f1ab9b4 102
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/contact/create.operation.ts
+  s_768f033e6fe33a::t_f6fe85d38aef0e 56
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/contact/delete.operation.ts
+  s_768f033e6fe33a::t_bf5d5fa6303cc9 23
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/contact/get.operation.ts
+  s_768f033e6fe33a::t_5be6c11ff65ff1 77
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/contact/getAll.operation.ts
+  s_768f033e6fe33a::t_a17a8ae5d07c8e 124,130
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/contact/update.operation.ts
+  s_768f033e6fe33a::t_346f431bf09b79 42
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/draft/create.operation.ts
+  s_768f033e6fe33a::t_93692c2d92614f 247
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/draft/delete.operation.ts
+  s_768f033e6fe33a::t_1aeb82769fe8e3 23
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/draft/get.operation.ts
+  s_768f033e6fe33a::t_80e98b518ac889 110-117,127-132
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/draft/send.operation.ts
+  s_768f033e6fe33a::t_0820d7d96b39ec 40,46
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/draft/update.operation.ts
+  s_768f033e6fe33a::t_5caba16772f570 198
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/event/create.operation.ts
+  s_768f033e6fe33a::t_c27e62da1a7f98 289
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/event/delete.operation.ts
+  s_768f033e6fe33a::t_971cb8b2d00ba5 27
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/event/get.operation.ts
+  s_768f033e6fe33a::t_eae616f9c59247 78
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/event/getAll.operation.ts
+  s_768f033e6fe33a::t_7cfb04dbde043e 169,195,205
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/event/update.operation.ts
+  s_768f033e6fe33a::t_8bfec5a82a86b6 283
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/folder/create.operation.ts
+  s_768f033e6fe33a::t_22329eb21a50e8 59
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/folder/delete.operation.ts
+  s_768f033e6fe33a::t_ef18e1f081a1a8 27
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/folder/get.operation.ts
+  s_768f033e6fe33a::t_c5c149e31b8bec 61
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/folder/getAll.operation.ts
+  s_768f033e6fe33a::t_2330c7d497c17d 96-104,107,112
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/folder/update.operation.ts
+  s_768f033e6fe33a::t_55163a96660157 38-44
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/folderMessage/getAll.operation.ts
+  s_768f033e6fe33a::t_a60217dd9e633e 277,283,295-300
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/delete.operation.ts
+  s_768f033e6fe33a::t_fda8e36c3d3865 23
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/get.operation.ts
+  s_768f033e6fe33a::t_9c85b6c8f8ad57 145,158-163,179
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/getAll.operation.ts
+  s_768f033e6fe33a::t_5cb5b1d00f326d 287,293,305-310
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/move.operation.ts
+  s_768f033e6fe33a::t_72763a827020cf 35
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/reply.operation.ts
+  s_768f033e6fe33a::t_47602b0985b80d 251,287,295
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/send.operation.ts
+  s_768f033e6fe33a::t_b98a21780d0606 261
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/sendAndWait.operation.ts
+  s_768f033e6fe33a::t_df765cf8ccbf76 59
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/message/update.operation.ts
+  s_768f033e6fe33a::t_806b0a37094ac2 197,219-226
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/messageAttachment/add.operation.ts
+  s_768f033e6fe33a::t_1bb1fdf87316f6 94,133
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/messageAttachment/download.operation.ts
+  s_768f033e6fe33a::t_2e9399078df324 46,61
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/messageAttachment/get.operation.ts
+  s_768f033e6fe33a::t_65a36ecb30c259 86
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/messageAttachment/getAll.operation.ts
+  s_768f033e6fe33a::t_8a2b241878847f 87,93
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/router.ts
+  s_768f033e6fe33a::t_0250f9f57d9e43 2,14,94-95
+packages/nodes-base/nodes/Microsoft/Outlook/v2/descriptions/mailbox.description.ts
+  s_768f033e6fe33a::t_86e8887be024c0 20-21,23
+packages/nodes-base/nodes/Microsoft/Outlook/v2/methods/listSearch.ts
+  s_768f033e6fe33a::t_30c2f398a2a896 6-8,23,39,81,98,125,141,172,192,222,232,235,271,286
+packages/nodes-base/nodes/Microsoft/Outlook/v2/methods/loadOptions.ts
+  s_768f033e6fe33a::t_a1da3d46907874 5-7,17,30-38,57
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_768f033e6fe33a::t_6efe791880f224 43-46,51,54-55,58,61-62,68-71,76,92,137,155,171,188,205,213,241,248,276,287,300-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8bb897b119a44d4511a98cc596848ed9b9f1f150",
+  "prompts": {},
+  "sessions": {
+    "s_768f033e6fe33a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da0be38a-3d09-4b8c-91c9-2a290c191b69",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

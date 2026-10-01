@@ -1,0 +1,32 @@
+packages/frontend/@n8n/rest-api-client/src/api/cloudPlans.ts
+  s_93bfa2eb2d7de3::t_867611ffc52ded 104-109
+  s_93bfa2eb2d7de3::t_7705c15a7c44e5 2
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.ts
+  s_93bfa2eb2d7de3::t_280c5cc9a85b00 74-85,91
+  s_93bfa2eb2d7de3::t_0d2a2a33588657 22-27
+  s_93bfa2eb2d7de3::t_db0d5a77437867 119
+  s_93bfa2eb2d7de3::t_1a4edf9bbeec47 9-10,15
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.test.ts
+  s_93bfa2eb2d7de3::t_d2500a3d93a484 273-326,334,343,346,350
+  s_93bfa2eb2d7de3::t_34f8ebf9be952c 355,368-375
+  s_93bfa2eb2d7de3::t_8d681f0980fcd8 3
+  s_93bfa2eb2d7de3::t_2c6c278ae4d906 117-118
+  s_93bfa2eb2d7de3::t_e4c4ab7f3218e9 208-216,232-240
+  s_93bfa2eb2d7de3::t_76fbad39d78bf0 35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea29b1de49260be3281b8d9a07e9fd8ce7b123ab",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

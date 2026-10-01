@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_5afa8602a98d1b::t_b164d7d8ecdf60 740-745
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5afa8602a98d1b::t_32c86804ff1451 1509-1513,1596
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5afa8602a98d1b::t_f2df396bd48607 2679,2705
+  s_5afa8602a98d1b::t_aa79c6ea6e2a61 2669,2671-2672,2675-2677,2715,2737,2742,2744-2757,2760,2789,2794,2805-2808,2818,2835-2836,3367,3394
+packages/frontend/@n8n/design-system/src/components/N8nStepper/Stepper.vue
+  s_5afa8602a98d1b::t_b164d7d8ecdf60 107
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_5afa8602a98d1b::t_b164d7d8ecdf60 381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c2a71eb9450b2bc07a8edb5b7f5cd28265b0b85e",
+  "prompts": {},
+  "sessions": {
+    "s_5afa8602a98d1b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af9d-f115-7803-a3d4-41baa2b29ada",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

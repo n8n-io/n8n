@@ -1,0 +1,43 @@
+packages/@n8n/permissions/src/utilities/__tests__/parse-removed-personal-space-scopes.test.ts
+  s_f1266713df58a8::t_aa3ffefa4d4d71 1-28
+packages/cli/test/integration/public-api/roles-canvas-only.test.ts
+  s_f1266713df58a8::t_fb274a8f1b4e89 88
+  s_f1266713df58a8::t_2dfc1d5da6bbbd 119-120
+  s_f1266713df58a8::t_2c110fee7bdf63 5
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_f1266713df58a8::t_9d3fb21485b83a 2,13,16
+  s_f1266713df58a8::t_b2d2087494667b 31
+  s_f1266713df58a8::t_f2371f3cc414d0 151-159
+  s_f1266713df58a8::t_1a6facd0b0d4fe 188-189,200
+packages/@n8n/permissions/src/utilities/parse-removed-personal-space-scopes.ee.ts
+  s_f1266713df58a8::t_dc197b5b57caee 1-18
+packages/@n8n/permissions/src/index.ts
+  s_f1266713df58a8::t_282ff635f8be35 28
+packages/cli/src/services/canvas-only-personal-space-role.service.ts
+  s_f1266713df58a8::t_da43efc5a1ffb8 2,6,13,20,30-32,39-40,51-54,102,107-108,110-114
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f1266713df58a8::t_b796b3e9c07d4a 142-149
+packages/cli/src/services/__tests__/canvas-only-personal-space-role.service.test.ts
+  s_f1266713df58a8::t_1513e0235635fc 2,4-9,16,20,25-26,33-34,39,53-54,66,79-80,82-84,118,135-136,144-160,197,206,216,247
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  s_f1266713df58a8::t_3020486fb32403 631-746
+  s_f1266713df58a8::t_d00a809864b296 3,16
+  s_f1266713df58a8::t_3b227ec076f747 48-50
+  s_f1266713df58a8::t_75b874848ae510 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7b8d8b67263cb97ab5ff115d1adde05ed8482a22",
+  "prompts": {},
+  "sessions": {
+    "s_f1266713df58a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3428c8d-74f6-45fc-a258-95ef749c700a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

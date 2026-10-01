@@ -1,0 +1,35 @@
+packages/@n8n/instance-ai/evaluations/__tests__/prior-runs.test.ts
+  s_d7dc19b022f345::t_c4a019808a1a99 1-19,28-35,37-44,46-63,65-78,80-92,94-105,107,114-128,130-140,142-151
+  s_d7dc19b022f345::t_6d44145aaf14b7 20-27,36,45,64,79,93,106,129,141
+  s_d7dc19b022f345::t_55970c29268c5b 108-113
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_d7dc19b022f345::t_9d30e444d7326b 332-350
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_d7dc19b022f345::t_37d635aff14378 365-377
+  s_d7dc19b022f345::t_9d30e444d7326b 114-131
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_d7dc19b022f345::t_0e2feb40a2643f 244-247,1046,1067,1109,1131
+  s_d7dc19b022f345::t_43852355050c8b 512-519,806-818
+  s_d7dc19b022f345::t_6d44145aaf14b7 47
+packages/@n8n/instance-ai/evaluations/__tests__/session-boundary.test.ts
+  s_d7dc19b022f345::t_87d8be87d27ea1 122-192
+packages/@n8n/instance-ai/evaluations/harness/prior-runs.ts
+  s_d7dc19b022f345::t_43852355050c8b 2,4,6
+  s_d7dc19b022f345::t_47308b4100d1b6 1,3,5,7-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e9f3e4f7d39d655c921380d6488b46d68a02ae3d",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

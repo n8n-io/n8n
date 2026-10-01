@@ -1,0 +1,43 @@
+packages/n8n-test/src/run-workflow.ts
+  s_157f08ca3b0299::t_927b5d0869c43d 100-104,112-129
+packages/n8n-test/.gitignore
+  s_157f08ca3b0299::t_2cad5d9346d306 1-2
+pnpm-lock.yaml
+  ai_agent 6310-6312
+packages/n8n-test/demo/workflow.json
+  s_157f08ca3b0299::t_5d9ca7fcd7057c 18,50
+packages/n8n-test/package.json
+  s_157f08ca3b0299::t_d337adf48ca0a4 30
+  s_157f08ca3b0299::t_0313ad15303bc8 36
+  s_157f08ca3b0299::t_f7013bdd10b86f 15
+packages/n8n-test/scripts/bundle.mjs
+  s_157f08ca3b0299::t_7172e9c5444830 3
+  s_157f08ca3b0299::t_ff9a3a40097281 1-2,4-27,30-33,36-128,130
+  s_157f08ca3b0299::t_6830f7ac992f0b 129
+  s_157f08ca3b0299::t_2000004cd799f3 28-29,34-35
+packages/n8n-test/demo/workflow-with-subworkflow.json
+  s_157f08ca3b0299::t_5d9ca7fcd7057c 18,38
+packages/n8n-test/eslint.config.mjs
+  s_157f08ca3b0299::t_51cc156ec993e3 4-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f88a797fd73f11b190520654d269ee33669cbac",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

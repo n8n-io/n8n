@@ -1,0 +1,14 @@
+packages/cli/eslint.config.mjs
+  h_ed1b2d65e81e8e 48-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1295abefc5cb746b8e15739c81ed789925d25713",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

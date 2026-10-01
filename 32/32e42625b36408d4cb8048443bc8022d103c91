@@ -1,0 +1,19 @@
+packages/cli/src/workflows/publication/heal-node-ids.ts
+  s_f0e6264a74d006::t_e95f5e7659b216 21,23-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3232e42625b36408d4cb8048443bc8022d103c91",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 64-67,70,313-325,329,333,343-351,354-355
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_c0774ee5e7f69b::t_fd04f16280584c 10-11,16-17,22-23,77-78
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 268-293
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 3-4,147-162
+  s_c0774ee5e7f69b::t_a7557a008f663d 163
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 192-217
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_c0774ee5e7f69b::t_fd04f16280584c 168-169
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-test-trigger-resource.resolver.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 4,23,153
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 171-172,283,292
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_c0774ee5e7f69b::t_e7f5755d9c9763 6,186
+  s_c0774ee5e7f69b::t_26e01b218d3402 183-185,187-206,208
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_c0774ee5e7f69b::t_fd04f16280584c 266-267
+packages/workflow/test/n8n-browser-oauth2-flow.test.ts
+  s_c0774ee5e7f69b::t_85a6cd4915ee3f 71-79
+  s_c0774ee5e7f69b::t_26e01b218d3402 80,82-92,95,102-107,109
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_c0774ee5e7f69b::t_26e01b218d3402 5,22,177
+packages/workflow/src/n8n-browser-oauth2-flow.ts
+  s_c0774ee5e7f69b::t_fd04f16280584c 31-33,36-37,62-64,76-80,92-94,112-114,116,121-123,133-136,160-161
+packages/nodes-base/nodes/Webhook/description.ts
+  s_c0774ee5e7f69b::t_fd04f16280584c 408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f402a270268893ca82e0aa5d3655518d7e721f4",
+  "prompts": {},
+  "sessions": {
+    "s_c0774ee5e7f69b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61d81be0-7d0d-4f5d-88aa-941ff9613c6a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

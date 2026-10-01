@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigValidation.test.ts
+  s_809056f125beb2::t_6bd85652d566e9 93-105
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_285e28faec177b::t_2361802b304a3e 1087-1090
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigValidation.ts
+  s_809056f125beb2::t_0e9b8c7aef0057 52-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "477e17faf3d67f630640ffc5bb60c374bf28bfda",
+  "prompts": {},
+  "sessions": {
+    "s_285e28faec177b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0bbd4c9f-6b7a-42bc-8ee2-c2bbefb253f4",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_809056f125beb2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3c4b6f25-efe0-4835-a454-9904706f9708",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_1898563af1e1ac::t_2468f40673e86d 852-860
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  s_1898563af1e1ac::t_2468f40673e86d 541
+  s_1898563af1e1ac::t_58621bb91b886b 516-540,542-544
+packages/@n8n/instance-ai/evaluations/README.md
+  s_1898563af1e1ac::t_daeb8009719548 1006,1015-1020
+  s_1898563af1e1ac::t_5a8f975a7b812f 1021
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f4ce949d140a41ab5a21e7fec4ac5cb2b615c60d",
+  "prompts": {},
+  "sessions": {
+    "s_1898563af1e1ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa46-de73-7d21-a1c0-00a174d6481a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+AGENTS.md
+  h_89e664b3be09ae 279
+  s_a9fc446718712b::t_a3d5c24848af9a 268-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "a7c3144c20f4a0e52e92c33f5ba6000706c0fdee",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a9fc446718712b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be999b89-c0e6-4180-aaf5-ee5cd3a6c542",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

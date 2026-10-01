@@ -1,0 +1,43 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_da76d9a372587f::t_77b5c96e8e795b 188-189,191
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_da76d9a372587f::t_bcaf7c54ccb3d6 358,372,374-375,377-382
+  s_da76d9a372587f::t_abef19ba9a8e1e 373
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da76d9a372587f::t_e88c312331054c 190-194,196
+  s_da76d9a372587f::t_05f2487aaf426f 224
+  s_da76d9a372587f::t_125ad45b513136 825
+  s_da76d9a372587f::t_148d1b50bdd640 811-824,826-833
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_da76d9a372587f::t_b058f0c280129d 54
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_da76d9a372587f::t_7667255cb9b239 327-329
+  s_da76d9a372587f::t_b058f0c280129d 174
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_da76d9a372587f::t_b058f0c280129d 102
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_da76d9a372587f::t_dbf00f4b95a429 374-375
+  s_da76d9a372587f::t_f637f5517b679f 581-585,593
+  s_da76d9a372587f::t_fe15063166c096 611,617
+  s_da76d9a372587f::t_0492950a2fb18f 592
+  s_da76d9a372587f::t_ee7a211ca109c1 497
+  s_da76d9a372587f::t_7687f3d16f44b3 190-193
+packages/cli/src/modules/agents/tools/workflow-tool-unavailable-error.ts
+  s_da76d9a372587f::t_bc43ab8bc0a423 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d10e6e7aeb4bca748955e553a1c32c6952337297",
+  "prompts": {},
+  "sessions": {
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

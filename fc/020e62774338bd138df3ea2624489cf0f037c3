@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_11a83649651c0a::t_04eba3a51db004 12
+packages/@n8n/ai-workflow-builder.ee/src/tools/get-resource-locator-options.tool.ts
+  s_11a83649651c0a::t_646eb21ac3e3e6 2-9,11,98-100,112,114-118,129,136-137,148-151,169
+packages/@n8n/ai-utilities/src/node-catalog/index.ts
+  s_11a83649651c0a::t_58fdb606fd1613 62-79
+packages/@n8n/ai-utilities/src/node-catalog/dynamic-node-parameters.ts
+  s_11a83649651c0a::t_9a147fe24de87c 203-204,208
+  s_11a83649651c0a::t_58fdb606fd1613 1-64,66-74,76-202,205-207,209-243
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/dynamic-node-parameters.test.ts
+  s_11a83649651c0a::t_1605ae9a8855b7 1-172
+packages/cli/src/modules/agents/builder/get-resource-locator-options.tool.ts
+  s_11a83649651c0a::t_b26109b650cea4 3-13,15,91-94,100,106,112,118,122
+  s_11a83649651c0a::t_04eba3a51db004 1-2,14,16-17,20-46,48-90,95-99,101-105,107-111,113-117,119-121,123-229
+  s_11a83649651c0a::t_a6ebb41600d8ea 18-19
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_11a83649651c0a::t_3f12221b566dd9 21-22,34,197-198,209,490,704-709
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_11a83649651c0a::t_8e4e5c72bd3875 36-41,83-88
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_11a83649651c0a::t_ffa36c9975e059 14-15,43-44,61-62
+packages/cli/src/modules/agents/builder/__tests__/get-resource-locator-options.tool.test.ts
+  s_11a83649651c0a::t_d0633d2cbfe733 1-227
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_11a83649651c0a::t_7c720d03277335 130-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "fc020e62774338bd138df3ea2624489cf0f037c3",
+  "prompts": {},
+  "sessions": {
+    "s_11a83649651c0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9383-13d9-7601-80f7-8ae04b01bd59",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

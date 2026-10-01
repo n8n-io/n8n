@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_f390f8e5699a64::t_e44b439282d72d 546,1133-1135,1139-1140,1143,1145-1146,1149,1154-1156,1163-1164,1166-1167,1169-1170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "dad842af4717866dae29c435550616d7a86bd09a",
+  "prompts": {},
+  "sessions": {
+    "s_f390f8e5699a64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f390f8e5699a64",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

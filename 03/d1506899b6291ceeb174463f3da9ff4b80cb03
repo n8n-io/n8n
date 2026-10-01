@@ -1,0 +1,28 @@
+packages/cli/test/integration/services/role.service.test.ts
+  s_58712f6c4bd3bb::t_e8a1afd264765c 1011-1072
+  s_58712f6c4bd3bb::t_ac24a4d0d4062b 823-861
+  s_58712f6c4bd3bb::t_c41f72d477c0d2 1206-1232
+packages/@n8n/api-types/src/dto/roles/create-role.dto.ts
+  s_58712f6c4bd3bb::t_3fb39a21541a5c 9
+packages/cli/src/services/role.service.ts
+  s_58712f6c4bd3bb::t_0d29ba378a63bd 24
+  s_58712f6c4bd3bb::t_24c1c74fd8c95c 356
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_58712f6c4bd3bb::t_01c0a72b1bf1b5 812-846
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "03d1506899b6291ceeb174463f3da9ff4b80cb03",
+  "prompts": {},
+  "sessions": {
+    "s_58712f6c4bd3bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e0ebcf9-8ad0-49c1-9898-4917d282b0be",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

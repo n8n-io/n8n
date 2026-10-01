@@ -1,0 +1,43 @@
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_988a5e0f59cdb0::t_0550f4af6adf43 619-624
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_988a5e0f59cdb0::t_d5a3f28d9616a3 259-266
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_988a5e0f59cdb0::t_888326b4e7a1f7 4337,4353
+  s_988a5e0f59cdb0::t_d5db0b99ad82e8 4345,4347-4349,4351-4352
+packages/@n8n/instance-ai/src/types.ts
+  s_988a5e0f59cdb0::t_888326b4e7a1f7 610-611
+packages/cli/src/node-execution/__tests__/execute-node.service.test.ts
+  s_988a5e0f59cdb0::t_a8738c70d9c918 286-300
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_988a5e0f59cdb0::t_f44e0c5d51c3dd 658,661-665,680-682,690
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_988a5e0f59cdb0::t_41434fda04195e 60-62,68-71,76,90-91
+packages/@n8n/instance-ai/docs/tools.md
+  s_988a5e0f59cdb0::t_80a076bf63d278 872-881,895-902
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_988a5e0f59cdb0::t_a65734efcec3a9 589-591,606
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_988a5e0f59cdb0::t_9389283a6e111d 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3f7404bd8a11ae94f1dc1965362e567ef3db94a9",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_988a5e0f59cdb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf349829-8374-4c71-9ec2-094de61ed6a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

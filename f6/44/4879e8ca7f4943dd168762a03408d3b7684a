@@ -1,0 +1,19 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_729d7ae0c0b1bf::t_1104a4eedb2b12 2659-2676
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "f6444879e8ca7f4943dd168762a03408d3b7684a",
+  "prompts": {},
+  "sessions": {
+    "s_729d7ae0c0b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f1728e2-404d-4a8d-bdcd-c2ed8b68255f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

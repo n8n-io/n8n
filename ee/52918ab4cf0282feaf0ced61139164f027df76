@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_109f6edacd6e91::t_1c40aa5ddd7999 230-233,241
+  s_109f6edacd6e91::t_000e41f41652c3 255,257
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_109f6edacd6e91::t_c202cf0e9e9135 535,555-559,571-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ee52918ab4cf0282feaf0ced61139164f027df76",
+  "prompts": {},
+  "sessions": {
+    "s_109f6edacd6e91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90123c0f-d96c-40f3-aaa9-ea9842ae92a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

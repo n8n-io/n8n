@@ -1,0 +1,23 @@
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  ai_agent 126
+  s_71c6da2ee47cd3::t_5c1e14cb63f617 14,78,116,132-142,144-177
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_4cc2e97c7b36da 3,6,42,48,51,76,78,85,98-99,107-132,147
+  ai_agent 79-84,86-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2152b42dc395bb8661c3042b85c60197ca49fb4",
+  "prompts": {},
+  "sessions": {
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_096d0e76036a11::t_7c1d08c179a1fd 2438
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_096d0e76036a11::t_ab7a74a57a4dbe 68,73,79-97
+  s_096d0e76036a11::t_824a4f868065ea 100-110
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_096d0e76036a11::t_dbb4b5d0469232 159,161,163,165,167-188
+  s_096d0e76036a11::t_9506086d2e2ab7 52-57
+  s_096d0e76036a11::t_a65c5b4a237ff2 91-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "1f63418e21a086a9cd3db766954d085fe4f7a7a9",
+  "prompts": {},
+  "sessions": {
+    "s_096d0e76036a11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2eb22d8-8139-4bfa-b2bd-ffccb31b0ace",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

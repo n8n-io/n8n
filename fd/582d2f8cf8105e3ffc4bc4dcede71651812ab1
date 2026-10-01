@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_45e2f6fac3868c::t_dfa2da4f596e92 1,121
+  s_45e2f6fac3868c::t_6b60775ae8671a 60-67,77,111,291
+  s_45e2f6fac3868c::t_8b24a71a726123 304-320,323-326
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_45e2f6fac3868c::t_e44395d13898aa 2
+  ai_agent 92-94,97
+  s_45e2f6fac3868c::t_b58df8722e7c46 98-145
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45e2f6fac3868c::t_4ec4f6b06c0ad0 662,709,714,3963,4000,5194,5293,5311,5364,5372,5441,5809
+  ai_agent 3883-3885,3932-3934,4025-4027,4076-4078
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd582d2f8cf8105e3ffc4bc4dcede71651812ab1",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/test-utils/turn-queue.ts
+  s_b04c58447561ba::t_dce829df20950c 130
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_b04c58447561ba::t_ddb1dde2c46128 340-345
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_b385cf8708bc1a 105
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b04c58447561ba::t_5030223802684c 213-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8c8d13bdd146b3cbc06b23f87cd595b0fd3d6409",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

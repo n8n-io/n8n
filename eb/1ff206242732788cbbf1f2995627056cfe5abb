@@ -1,0 +1,43 @@
+packages/@n8n/instance-ai/evaluations/harness/redact.ts
+  s_704a1a6a42be24::t_50c10f8fe8f38d 39-41,44-50,54,59
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_704a1a6a42be24::t_8c3fa0dd865af9 190-201
+packages/@n8n/workflow-sdk/src/prompts/node-guidance/parameter-guides/http-request.ts
+  s_704a1a6a42be24::t_7e4d2e759d4f45 155
+  s_704a1a6a42be24::t_1bc8f4e2a3913c 128
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_704a1a6a42be24::t_b0760a443f989e 1082-1101,1103-1104,1106-1145
+  s_704a1a6a42be24::t_103ca77283fff0 1102,1105
+  s_704a1a6a42be24::t_f9589870f68a3b 1146-1149
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_704a1a6a42be24::t_fb021fe85dad9f 110-112
+  s_704a1a6a42be24::t_7090cfc8e16be2 133
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_704a1a6a42be24::t_6014f2384601a3 50-53,57
+  s_704a1a6a42be24::t_0676c12ef06c79 406-409
+  s_704a1a6a42be24::t_c07653049b6419 454
+  s_704a1a6a42be24::t_cfc25e2ae44334 401,410-417
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_704a1a6a42be24::t_6a15eae4757136 927-958
+packages/@n8n/instance-ai/evaluations/__tests__/redact.test.ts
+  s_704a1a6a42be24::t_f153fefb5edb7e 296-320
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_704a1a6a42be24::t_3e5cc2c462a55d 20-23
+  s_704a1a6a42be24::t_7594e2b46e82a6 163-165,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "eb1ff206242732788cbbf1f2995627056cfe5abb",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

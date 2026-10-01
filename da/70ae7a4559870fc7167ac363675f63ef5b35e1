@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/package.json
+  s_656385cceea8b2::t_df2b9ddf400766 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "da70ae7a4559870fc7167ac363675f63ef5b35e1",
+  "prompts": {},
+  "sessions": {
+    "s_656385cceea8b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5db1560-35e4-4a2a-aa74-f57f6be8a039",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

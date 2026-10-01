@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Confluence/actions/space/get.operation.ts
+  s_191915fa365329::t_12a2a6e4ccc433 1-4,6-7,9-12,19-20,22-31,33-38
+  s_191915fa365329::t_2555aeb50f8a80 21
+  s_191915fa365329::t_f6f0bfda32edb3 32
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_191915fa365329::t_3297d8fd4bad37 158-168,170-174,176-178,180-206
+packages/nodes-base/nodes/Confluence/test/actions/space/get.operation.test.ts
+  s_191915fa365329::t_92de706574b1cb 1-51,53-61,63-72
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_191915fa365329::t_98dd54339ec630 7
+  s_191915fa365329::t_3a9eb13e887524 61-63,66
+packages/nodes-base/nodes/Confluence/actions/description.ts
+  s_191915fa365329::t_f1c20e1a3ba5f8 8
+  s_191915fa365329::t_c280daafc9fbae 47,52-54,61
+packages/nodes-base/nodes/Confluence/actions/space/index.ts
+  s_191915fa365329::t_76e6b96fb0ee91 1-3,5,7-27,29-32,34-35,37
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_191915fa365329::t_2696b71fc15e89 22,24,26-27,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a0596c2fad1e8e5d1f928f57daf6d52d38e6990",
+  "prompts": {},
+  "sessions": {
+    "s_191915fa365329": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec7521cb-da41-4e8c-b551-2af94061e15e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_6c87ec0dcdd6f8::t_9652b274337f14 34,38-39,63,114-115,127
+  s_6c87ec0dcdd6f8::t_672cab6a05e845 2-3,9,11,14-19,22,26-31,35-37,40-47,64-113
+  s_6c87ec0dcdd6f8::t_b26e8ad313ca96 48
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_6c87ec0dcdd6f8::t_a3519f10f7ad79 33,86-90,118,155,386,395-396
+  s_6c87ec0dcdd6f8::t_a658031b7af3ad 402
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_6c87ec0dcdd6f8::t_a3519f10f7ad79 21-22,110-112,179
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 72-86,94-97,106-108
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 784
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_6c87ec0dcdd6f8::t_d5b63bb07b9e7d 15
+  s_6c87ec0dcdd6f8::t_a3519f10f7ad79 76-78,181
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 64
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 27,106,324-327
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_6c87ec0dcdd6f8::t_672cab6a05e845 45-49,74-78,88-90,93-98
+packages/@n8n/api-types/src/agents/slack/types.ts
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 11-13
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_6c87ec0dcdd6f8::t_672cab6a05e845 13,21-37
+  s_6c87ec0dcdd6f8::t_a96e6a5ccd23af 38
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/bridge-behavior.test.ts
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 134-138
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 173,221
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelSlackSetup.test.ts
+  s_6c87ec0dcdd6f8::t_3a63adcf2d1763 2,40-47
+pnpm-workspace.yaml
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 32-36,137
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  s_6c87ec0dcdd6f8::t_a3519f10f7ad79 15,17
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 41-45
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_6c87ec0dcdd6f8::t_2c4b3b77a1a184 1353-1396
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackSetupView.vue
+  s_6c87ec0dcdd6f8::t_a3519f10f7ad79 18,30
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 504
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_6c87ec0dcdd6f8::t_a3519f10f7ad79 114-120,168-172,228-229,231-235
+  s_6c87ec0dcdd6f8::t_a658031b7af3ad 230
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 2
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 46
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_6c87ec0dcdd6f8::t_3466d5ac6134b5 89
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_6c87ec0dcdd6f8::t_e12d8ef101389a 19
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_6c87ec0dcdd6f8::t_4dfa3949e9c4b5 408-411
+pnpm-lock.yaml
+  s_6c87ec0dcdd6f8::t_7e087d1a026d6e 58-59,61-62,64-65,67-68,70-71,343-344,4125,4128,4131,4134,4137,4320,8465-8467,8469-8471,8473-8475,8477-8479,8481-8483,8485-8487,11901-11902,11905-11906,14842-14855,25751,25753-25754,25759,25763-25764,25766,25768,25770,25772,25775-25776,25778,25780,25782,25784-25785,25787,25789,25791-25792,25794,25799-25800,25802,25804,25806,25808-25809,25811,25813-25814,25816,25818-25819,29370,29381,29383,29386,33023,33032-33034
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a4e3c8235c0398461ea81173f8fc646f2dfd3bb3",
+  "prompts": {},
+  "sessions": {
+    "s_6c87ec0dcdd6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a000ce-fde1-7460-ae0d-af65b325e101",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

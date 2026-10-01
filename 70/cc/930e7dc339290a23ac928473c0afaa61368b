@@ -1,0 +1,95 @@
+packages/@n8n/db/src/migrations/common/1788171777128-AddCreateBranchOnPromotionToGitConnection.ts
+  s_cf478dbb68f525::t_cf2645f6d3fff8 8-13,24-26
+  s_cf478dbb68f525::t_cfacda6f96b51b 5,14-18,20-23,28-35
+  s_28d74431bb8f04::t_372bc6608b093e 1-3,6,27,36-39
+  s_40db296c425fc2::t_70f94811f5b3ca 7
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_28d74431bb8f04::t_372bc6608b093e 167
+  s_28d74431bb8f04::t_9cf0087532d52b 266,269-270,274-286
+  s_28d74431bb8f04::t_fde9aec80dd10b 52
+  s_28d74431bb8f04::t_8156b2ec09a19f 221-225
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_28d74431bb8f04::t_372bc6608b093e 3704
+  s_40db296c425fc2::t_7a79bb6e039253 3705
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_28d74431bb8f04::t_1adeb78c965d12 64-68,70-71,74-76
+  s_40db296c425fc2::t_fb9c47b72a5374 63,69,72-73
+  s_28d74431bb8f04::t_95ce71aad51866 103-116
+  s_28d74431bb8f04::t_9f4a486b77d0db 3
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_28d74431bb8f04::t_372bc6608b093e 42-44
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_28d74431bb8f04::t_372bc6608b093e 175-179,181-187,189,191-194,270,272,274,276-277,279
+  s_28d74431bb8f04::t_8a48f413a62c11 486-521
+  s_28d74431bb8f04::t_a0c9bae0573698 381
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_28d74431bb8f04::t_372bc6608b093e 76-84,86-89,91,93-94,96-97
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/components/GitConnectionDialog.vue
+  s_40db296c425fc2::t_6a9e5eb39ae5ab 61,162,463-464,466
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.utils.ts
+  s_40db296c425fc2::t_6a9e5eb39ae5ab 18,26,71-72
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.utils.test.ts
+  s_40db296c425fc2::t_6a9e5eb39ae5ab 16,29,42,62,66-68,122,125-126,128,131-132
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_40db296c425fc2::t_6b7c76fddfc126 29,40,69
+  s_28d74431bb8f04::t_3b8815ca8c2ebb 94-98
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.test.ts
+  s_40db296c425fc2::t_6a9e5eb39ae5ab 56,139
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_28d74431bb8f04::t_1ed38777ea9d6c 46,51
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_28d74431bb8f04::t_9eccef99692506 135-138,151
+  s_28d74431bb8f04::t_38f68d04f4821c 204,211-238,242
+  s_28d74431bb8f04::t_a0ee04f0ef2b8d 239-241
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_28d74431bb8f04::t_33f337b99bf3b4 211
+packages/@n8n/cli/src/client.ts
+  s_28d74431bb8f04::t_259996b10db097 68-69
+packages/@n8n/cli/src/commands/git-connections/push.ts
+  s_28d74431bb8f04::t_f1de1a79182a09 7
+  s_28d74431bb8f04::t_b2acc5f32138dc 31,33
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_28d74431bb8f04::t_e9d724c786312b 7-9
+packages/cli/src/modules/git-connections.ee/git-connections-git.utils.ts
+  s_28d74431bb8f04::t_aab23b087e249e 8,14-20
+  s_28d74431bb8f04::t_9b56db6582683a 21
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_28d74431bb8f04::t_e12e7c92c29e61 195,205-206,224-231,235,243,247-280
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_28d74431bb8f04::t_dabf6219c2282b 288-310
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.utils.test.ts
+  s_28d74431bb8f04::t_2bf010a57200b4 149-156
+  s_28d74431bb8f04::t_12846b4def34bf 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "70cc930e7dc339290a23ac928473c0afaa61368b",
+  "prompts": {},
+  "sessions": {
+    "s_28d74431bb8f04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d590bb89-3aa1-4fed-b9cb-d9baddf33b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_40db296c425fc2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "be28ef2d-11a5-497b-bdc6-b0f85ca099de",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_cf478dbb68f525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a085901d-23a6-4264-9a5a-8b9b83f78780",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

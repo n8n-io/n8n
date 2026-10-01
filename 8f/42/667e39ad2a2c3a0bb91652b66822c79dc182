@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_278cbb65f99049::t_7c31e0b4aac9eb 232-234
+  s_278cbb65f99049::t_a9f09c4d7ee747 243,245
+  s_278cbb65f99049::t_01a8a07f6a1040 229-231
+  s_278cbb65f99049::t_2c9a35b6a57a23 265
+  s_278cbb65f99049::t_090fa7384d09c9 509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8f42667e39ad2a2c3a0bb91652b66822c79dc182",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_278cbb65f99049": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1063cccb-da60-401d-8e97-8afd031e235c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

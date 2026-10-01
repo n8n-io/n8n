@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  s_45ce9cb16ccecf::t_b4c4dee643fedc 65-66,68-70,72-112
+  s_45ce9cb16ccecf::t_7fc64c65b58ab4 67,71
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_45ce9cb16ccecf::t_c96854fecb8358 139,142-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0a789330a76c0a47dad2c59a9a9ed4adb58e9f8b",
+  "prompts": {},
+  "sessions": {
+    "s_45ce9cb16ccecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90446ded-fd85-4e9b-87d5-c5d0dfbdc7b0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_32ec3da1be2f93::t_f6b9ca9fbb22d6 99
+  s_32ec3da1be2f93::t_09f35dc1b5ceb3 100-102
+docs/generated/postgres-schema/README.md
+  s_32ec3da1be2f93::t_b3ba32cbbe8dd4 65,822
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_32ec3da1be2f93::t_a10f4c879f55cc 9,49
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_32ec3da1be2f93::t_3dc2994092e4cc 73
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_32ec3da1be2f93::t_3025159ef59a7f 73
+docs/generated/sqlite-schema/README.md
+  s_32ec3da1be2f93::t_432df2f2ec0f09 65,809
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_32ec3da1be2f93::t_dcaefe9688913e 9,20,57
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_32ec3da1be2f93::t_c270f9d78af2fd 78
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_32ec3da1be2f93::t_27b5542b103c5b 79
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_32ec3da1be2f93::t_e767c3bf2c7fb8 389-395
+packages/@n8n/db/src/migrations/common/1784000000049-AddHostRunIdToInstanceAiCheckpoints.ts
+  s_32ec3da1be2f93::t_46b59b34549564 1-24
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_32ec3da1be2f93::t_8cfc4a0af86fcd 225,453
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_32ec3da1be2f93::t_408282e50e93c8 217,435
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_32ec3da1be2f93::t_d87f0a1fc5e0c8 33-37
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  s_32ec3da1be2f93::t_5a30cc2dd44395 133-140,164-166
+packages/cli/src/modules/instance-ai/entities/instance-ai-checkpoint.entity.ts
+  s_32ec3da1be2f93::t_8430ad2fccc8ab 16-24
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_32ec3da1be2f93::t_4642905cc79e51 1-288
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_32ec3da1be2f93::t_a4c9d59bfeb41e 1-192
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_32ec3da1be2f93::t_bb3a45af0e1e3c 29-42
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_32ec3da1be2f93::t_d30685a7ecf520 742-753,832-834,860
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_32ec3da1be2f93::t_3411d83c3d3d69 71
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts
+  s_32ec3da1be2f93::t_91e69a19948fff 26,38
+packages/cli/src/modules/instance-ai/event-bus/durable-log-metrics.ts
+  s_32ec3da1be2f93::t_17a00d9291280c 54-61,114-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bcb4b27b56e5ad8b2b6182a1d165003da6cfb404",
+  "prompts": {},
+  "sessions": {
+    "s_32ec3da1be2f93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "786c6ff8-b58f-460d-857d-6b6be5e5937e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

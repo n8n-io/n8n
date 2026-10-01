@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Box/BoxTrigger.node.ts
+  7d04abfe514c20a5 308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "f2dc49e2abb88187c4218c99958e90019032d9f7",
+  "prompts": {
+    "7d04abfe514c20a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8462a10e-71a9-4ed7-ac86-4bcf3272f11d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

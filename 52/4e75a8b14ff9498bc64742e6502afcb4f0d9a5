@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_f8cf71bf7dff8b::t_5f830579bdc21b 67,98-117,130-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "524e75a8b14ff9498bc64742e6502afcb4f0d9a5",
+  "prompts": {},
+  "sessions": {
+    "s_f8cf71bf7dff8b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e6989-7599-7b91-a168-c4cac09a1c33",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_57c3811f2e5b52::t_f6bd2ddd08e9a4 14
+  s_57c3811f2e5b52::t_1c6dcd7d000b02 12-13
+packages/cli/test/integration/public-api/roles.test.ts
+  h_5d40c27a8fdfd1 299,388
+  s_57c3811f2e5b52::t_b20629e1502f62 295-298,300-301,305
+  s_57c3811f2e5b52::t_eb2d1b7a6d35c9 5
+  s_57c3811f2e5b52::t_15e64ed6a318bd 293-294,302-304,306-387,389-535
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_57c3811f2e5b52::t_e4cf11194b0575 139-145
+  s_57c3811f2e5b52::t_55aaf0243b172b 114-138,146-147
+  s_57c3811f2e5b52::t_07d3fc3520c5da 77
+  s_57c3811f2e5b52::t_449f8cef546f54 6,12,20-21,29,38-47
+  s_57c3811f2e5b52::t_ea4ab6aa31368b 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "86338cc5863edbec4ec4765b5135c7e1912b3924",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57c3811f2e5b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c36cba-8c8b-42fb-b560-44173f55ef20",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

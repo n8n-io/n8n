@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useKeyboardNavigation.ts
+  s_865eb29d23ac97::t_12dbcd3578f60c 49-50,55-56,62
+  s_865eb29d23ac97::t_d6d7979a71afe3 156-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ddc20e4ec228a4409b3aec6cbb213b450d0b2d17",
+  "prompts": {},
+  "sessions": {
+    "s_865eb29d23ac97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7341d9a4-8f83-4d85-acd9-9288c5b8765e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

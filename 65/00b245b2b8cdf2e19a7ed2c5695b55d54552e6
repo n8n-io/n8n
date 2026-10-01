@@ -1,0 +1,25 @@
+packages/cli/src/services/engine-v2-push-session.ts
+  s_2e5845897e3f1b::t_7a3839e954462d 1-39
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  s_2e5845897e3f1b::t_73d58a8f70d2d1 9-11
+packages/cli/src/services/engine-v2-push-registry.service.ts
+  s_2e5845897e3f1b::t_7a3839e954462d 4,35,52,56-61
+packages/cli/src/services/__tests__/engine-v2-push-registry.service.test.ts
+  s_2e5845897e3f1b::t_921e064c2a0bc5 109,113-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6500b245b2b8cdf2e19a7ed2c5695b55d54552e6",
+  "prompts": {},
+  "sessions": {
+    "s_2e5845897e3f1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18ac67c2-c03a-418b-b993-5b13a2c7da0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

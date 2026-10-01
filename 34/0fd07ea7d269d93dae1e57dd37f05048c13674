@@ -1,0 +1,24 @@
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  s_d809d8b1d19f4f::t_09a9c3ac682b72 1
+  s_d809d8b1d19f4f::t_55b73eb8c7f9c0 224-238
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_d809d8b1d19f4f::t_2b3780e94e90b5 18
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  s_d809d8b1d19f4f::t_7510381a3fe228 26-35,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "340fd07ea7d269d93dae1e57dd37f05048c13674",
+  "prompts": {},
+  "sessions": {
+    "s_d809d8b1d19f4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d52fdae-77b8-4890-9494-7412268e6e89",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_0ea06607e37c93::t_af2c05f826b4f6 277-279
+  s_0ea06607e37c93::t_4c58c00d572092 285
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_0ea06607e37c93::t_e36e5cc1b6b127 84
+  s_0ea06607e37c93::t_d65acc9c695ede 72
+  s_0ea06607e37c93::t_217d94e495bd05 512,522
+  s_0ea06607e37c93::t_638c23f2411a4c 61
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.ts
+  s_0ea06607e37c93::t_c3a91e51474287 36
+  s_0ea06607e37c93::t_1373916bba226f 179
+  s_0ea06607e37c93::t_f3f4f2e8264057 35
+  s_0ea06607e37c93::t_2f560ef8bad30d 182
+packages/@n8n/workflow-sdk/src/node-groups.test.ts
+  s_0ea06607e37c93::t_4dce8360b1a6e2 110,133,139-140,142
+  s_0ea06607e37c93::t_9b69ffc7b71497 239-264
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_0ea06607e37c93::t_d9761c3ad59390 357-358
+  s_0ea06607e37c93::t_9d9ff8b0858b37 360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0049daa05ae35ddef7d1eb45196d184e06361b4",
+  "prompts": {},
+  "sessions": {
+    "s_0ea06607e37c93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d19578d-6e39-4af6-860b-134625fd9a81",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

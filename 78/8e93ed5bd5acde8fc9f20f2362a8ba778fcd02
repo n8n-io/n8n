@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/readRows.operation.ts
+  s_b0dff49d146f43::t_af9fd13429a4a0 187-191,203
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_b0dff49d146f43::t_58fad3807fd6ef 31-34,39-40,52,79,84,102-104,106-110
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_b0dff49d146f43::t_16cfc64fd642e9 177,186-190,195,204
+  s_b0dff49d146f43::t_757ef078d78b97 327,333-337,342,348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "788e93ed5bd5acde8fc9f20f2362a8ba778fcd02",
+  "prompts": {},
+  "sessions": {
+    "s_b0dff49d146f43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28763c9d-81fb-4290-8c04-449238bcc961",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

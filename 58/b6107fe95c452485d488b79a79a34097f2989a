@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_b8f823bc996164::t_6922b7eff29794 236-354
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_b8f823bc996164::t_a3958a3b2efb9e 20,25-31,104-109,111-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "58b6107fe95c452485d488b79a79a34097f2989a",
+  "prompts": {},
+  "sessions": {
+    "s_b8f823bc996164": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3947b1dd-3fa6-4086-8d76-1fdb5a78f989",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_705c713dfc7e5d::t_f64fbbd07fa94a 4199-4201,5443-5445
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_705c713dfc7e5d::t_304df527d54090 3358-3427
+packages/cli/src/modules/instance-ai/suspended-thread-persistence.service.ts
+  s_705c713dfc7e5d::t_dcfe3d1fc5c542 76-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5272b1f0aa4613291f693dbfe1c3f0db0e2309c3",
+  "prompts": {},
+  "sessions": {
+    "s_705c713dfc7e5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52698a3c-ddf4-455c-a886-25322b5474c4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

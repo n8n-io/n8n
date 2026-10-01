@@ -1,0 +1,152 @@
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_805dfaf49a4974::t_422d31eb1f36e1 104-105,125-128
+  s_805dfaf49a4974::t_78c32bbaa3a7ca 35-43,45-57
+  s_805dfaf49a4974::t_06429dd1e968d0 30-33
+  s_805dfaf49a4974::t_2a3917e4d5fca3 85-86,107-109,113-120
+  s_805dfaf49a4974::t_7d7ae74170fc7d 4-8,20-25,28-29,70
+  s_805dfaf49a4974::t_edaac49069ed5c 64-69
+  s_805dfaf49a4974::t_a302fcba5d2b2a 83-84
+  s_805dfaf49a4974::t_7634afd16538ae 129-130
+  s_805dfaf49a4974::t_9e2ba8c794a014 1-3,9-10,16-19,26-27,34,62-63,121-124,131-132
+  s_805dfaf49a4974::t_cf7c8cc3e6297e 44,91-103,110-112
+  s_805dfaf49a4974::t_de30728123bcbe 71-82,87-90
+  s_805dfaf49a4974::t_581f88e0a9bb7b 58-61
+  s_805dfaf49a4974::t_db4f7b9508c4e0 11-15
+  s_805dfaf49a4974::t_538a0918c1dea1 106
+packages/@n8n/instance-ai/knowledge-base/use-cases/engineering.md
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,6-9,11,13-15,17-18,20,22-27,29,31-36,38,40-45,47,49-54,56,58-63,65,67-72,74,76-77
+  s_805dfaf49a4974::t_cf7c8cc3e6297e 5,10,37,46,73
+  s_805dfaf49a4974::t_c51d206cafafbc 4,16,19,28,55,64
+  s_805dfaf49a4974::t_d31abfae491eff 12,21,30,39,48,57,66,75
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-standup-summary.workflow.ts
+  s_805dfaf49a4974::t_c69c933c7c8086 1,5-14,22-76,80-96,99-114,116-120,122,124-125,127,130-133,227-232
+  s_805dfaf49a4974::t_e5a4fb07bce9e6 2-4,97-98,115,121,123,126,128-129,134-160,162-226,233
+  s_805dfaf49a4974::t_555976263dc6e0 15-21,77-79,161
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_805dfaf49a4974::t_c891d5ef944b54 14,17,39-43,46,48-52,54-56,58-62
+  s_805dfaf49a4974::t_b1f5a01871b26c 114-119
+  s_805dfaf49a4974::t_e170a8cc623100 28-29
+  s_805dfaf49a4974::t_2c008ab478fa2f 1-6,8-13,15-16,19-26,31,34,63-103,105-113,120-140,143-147,149-168,170-186,196-204,206
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 7,18,27,30,47,53,57,207
+  s_805dfaf49a4974::t_ef490aeaf98cef 44-45
+  s_805dfaf49a4974::t_315dcc65b7de41 36-37,187-195,205
+  s_805dfaf49a4974::t_91512771bdf991 32-33
+  s_805dfaf49a4974::t_d439b1084de18e 35
+  s_805dfaf49a4974::t_b56728aa213911 38
+  s_805dfaf49a4974::t_3475a54be1dda5 104
+  s_805dfaf49a4974::t_e8b144cb32bb0f 141-142
+  s_805dfaf49a4974::t_8e57e1809820b9 148
+  s_805dfaf49a4974::t_624e3a7771f613 169
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_2befc5b848a61f::t_09faf5eb873c57 19,35,382,387,395,397-401,404-409,411-416
+  s_805dfaf49a4974::t_2c008ab478fa2f 383-386,388-394,396,402-403,410,417
+  s_805dfaf49a4974::t_d8bbe5f0884e64 418-419
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 707-714,751
+  s_2befc5b848a61f::t_09faf5eb873c57 1442,1460
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-flaky-test-tracker.workflow.ts
+  s_805dfaf49a4974::t_555976263dc6e0 56-57,59-61,106-110,113-115
+  s_805dfaf49a4974::t_c69c933c7c8086 1-55,58,62-105,111-112,116-126
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_805dfaf49a4974::t_b1f5a01871b26c 93
+  s_805dfaf49a4974::t_2c008ab478fa2f 149,2245
+packages/@n8n/instance-ai/skills/probe-user/SKILL.md
+  s_805dfaf49a4974::t_7d7ae74170fc7d 4-8,50,54-84,87-101,105-106
+  s_805dfaf49a4974::t_ca2a1af3ca263a 36-47
+  s_805dfaf49a4974::t_9e2ba8c794a014 1-3,9-35,48-49,51-53,85-86,102-104,107-109
+packages/@n8n/instance-ai/knowledge-base/use-cases/customer-support.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,17,25,33,41,49,57,65
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-16,18-24,26-32,34-40,42-48,50-56,58-64,66-68
+packages/@n8n/instance-ai/knowledge-base/use-cases/it.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,17,22,25,33,41,49,57,65
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-16,18-21,23-24,26-32,34-40,42-48,50-56,58-64,66-68
+packages/@n8n/instance-ai/knowledge-base/use-cases/devops.md
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-16,18-24,26-32,34-40,42-48,50-56,58-61,63-64,66-68
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,17,25,33,41,49,57,62,65
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-release-notes-draft.workflow.ts
+  s_805dfaf49a4974::t_555976263dc6e0 107-109,118-122
+  s_805dfaf49a4974::t_fcf34ad80d9c7d 1-106,110-117,123-157
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_805dfaf49a4974::t_2c008ab478fa2f 112,187-195
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 111,181-186,196-197
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_805dfaf49a4974::t_c4d2b6b27fbc3d 193,4034,4138-4139,4143-4145
+  s_805dfaf49a4974::t_c891d5ef944b54 199,4035-4038,4042-4044,4140-4141
+packages/@n8n/instance-ai/knowledge-base/use-cases/product-design.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,6,9,17,22,25,33,41,49,57,65
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5,7-8,10-16,18-21,23-24,26-32,34-40,42-48,50-56,58-64,66-68
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-pull-request-review-reminders.workflow.ts
+  s_805dfaf49a4974::t_fcf34ad80d9c7d 1,5-65,67-82,84,88-91,185-189
+  s_805dfaf49a4974::t_ff58e7ec065967 2-4,66,83,85-87,92-118,120-184,190
+  s_805dfaf49a4974::t_555976263dc6e0 119
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-third-party-api-change-alerts.workflow.ts
+  s_805dfaf49a4974::t_34f2cacd74f89c 2-4,59-60,90-92,97-123,125-189,248
+  s_805dfaf49a4974::t_555976263dc6e0 13-15,45-49,124,200-204,206-210,219-236
+  s_805dfaf49a4974::t_fcf34ad80d9c7d 1,5-12,16-44,50-58,61-89,93-96,190-199,205,211-218,237-247,249
+packages/@n8n/instance-ai/eslint.config.mjs
+  s_805dfaf49a4974::t_2a4e0cf679f243 26-27
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_2befc5b848a61f::t_09faf5eb873c57 9,690-709,847-855,883-887
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_805dfaf49a4974::t_2c008ab478fa2f 77,102,573-574,580-588,875-876
+  s_805dfaf49a4974::t_b1f5a01871b26c 575-579,877-888
+packages/@n8n/instance-ai/knowledge-base/use-cases/data-science.md
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-13,15-16,18-24,26-32,34-40,42-48,50-56,58-64,66-68
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,14,17,25,33,41,49,57,65
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-ticket-from-a-chat-message.workflow.ts
+  s_805dfaf49a4974::t_fcf34ad80d9c7d 1-91,97-99,103-117,123,127-128,132-142
+  s_805dfaf49a4974::t_555976263dc6e0 92-96,100-102,118-122,124-126,129-131
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2befc5b848a61f::t_09faf5eb873c57 7303
+packages/@n8n/api-types/src/index.ts
+  s_805dfaf49a4974::t_4e703c120c5b6e 349
+packages/@n8n/instance-ai/knowledge-base/use-cases/business-owner.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,17,25,33,41,49,57,65
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-16,18-24,26-32,34-40,42-48,50-56,58-64,66-68
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-developer-onboarding-checklist.workflow.ts
+  s_805dfaf49a4974::t_c69c933c7c8086 1-15,21-57,63-66,85-87,95-110,116-129
+  s_805dfaf49a4974::t_555976263dc6e0 16-20,58-62,67-84,88-94,111-115
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-dependency-vulnerability-digest.workflow.ts
+  s_805dfaf49a4974::t_555976263dc6e0 13-23,43-46,146
+  s_805dfaf49a4974::t_2c620d5670cf24 1,5-12,24-42,47-85,88-97,99-107,109,111-112,115-118,212-217
+  s_805dfaf49a4974::t_a508f08cdd06cc 2-4,86-87,98,108,110,113-114,119-145,147-211,218
+packages/@n8n/instance-ai/knowledge-base/use-cases/other.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,6,9,17,25,33,41,49,57,62,65
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5,7-8,10-16,18-24,26-32,34-40,42-48,50-56,58-61,63-64,66-68
+packages/@n8n/instance-ai/knowledge-base/use-cases/sales-and-marketing.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,17,25,33,41,49,57,65,73
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-16,18-24,26-32,34-40,42-48,50-56,58-64,66-72,74-76
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_805dfaf49a4974::t_d084f7e9d5220e 35,251,257
+  s_805dfaf49a4974::t_2a4e0cf679f243 266-271
+  s_805dfaf49a4974::t_d31abfae491eff 37,241-245,258-265,272-273
+  s_805dfaf49a4974::t_e170a8cc623100 36,70-78,91-93,246-250,252-256,274-282,322,337-339
+  s_805dfaf49a4974::t_82cb0dcbd0a3d7 94,340
+packages/@n8n/instance-ai/knowledge-base/use-cases/security.md
+  s_805dfaf49a4974::t_c51d206cafafbc 4,9,17,25,33,41,49,57,65
+  s_805dfaf49a4974::t_cce4950ca67d55 1-3,5-8,10-16,18-24,26-32,34-40,42-48,50-56,58-64,66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a50b8818bcfa056343dc36029d035001caf4f126",
+  "prompts": {},
+  "sessions": {
+    "s_2befc5b848a61f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd4a7712-be19-4f96-8a57-1fa2c72164a3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

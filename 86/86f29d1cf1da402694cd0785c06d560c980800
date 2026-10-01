@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Confluence/actions/page/bodyEnvelope.ts
+  s_5b8c5abdc7edbe::t_bbb65b2907e57c 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8686f29d1cf1da402694cd0785c06d560c980800",
+  "prompts": {},
+  "sessions": {
+    "s_5b8c5abdc7edbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d677c73-6143-4e48-b5a8-0b9a8953ccc4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

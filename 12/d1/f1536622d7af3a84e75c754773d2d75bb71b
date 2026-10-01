@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_874a0c5affc5fe::t_eadbdbbb2005c3 251,290,354,400,457
+  s_874a0c5affc5fe::t_987186db0c7348 149,159,177,214-229,236,485,511,532
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_874a0c5affc5fe::t_38a78f7ced3098 717-719
+  s_874a0c5affc5fe::t_81e8166e521225 36
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_874a0c5affc5fe::t_2970f2926a016a 83-85,116-118
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_874a0c5affc5fe::t_38a78f7ced3098 224
+  s_874a0c5affc5fe::t_7f57d496cf0aef 26-27,42-48,181,259,271,293
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_874a0c5affc5fe::t_2970f2926a016a 107-111,117,133,157,168,194,221,248,271,299,336,356-360,382,392-395
+  s_874a0c5affc5fe::t_eadbdbbb2005c3 76,97,366,404
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_874a0c5affc5fe::t_4edfc265e63d3a 673,690-699
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "12d1f1536622d7af3a84e75c754773d2d75bb71b",
+  "prompts": {},
+  "sessions": {
+    "s_874a0c5affc5fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3d8-256c-7972-b467-0a43adf82ffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

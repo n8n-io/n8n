@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_cb7576682e8116::t_b2ff1b23471b81 506-510,533-535,560-564
+  s_cb7576682e8116::t_a5aa3bddc79b66 6
+  s_cb7576682e8116::t_581503eab39ec8 565
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_cb7576682e8116::t_3365925e41b78c 215-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "15e997a85a3bf4b7a7673693bba46230750b723f",
+  "prompts": {},
+  "sessions": {
+    "s_cb7576682e8116": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b9fa07c-dcc4-403d-970c-3ef912a25a95",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

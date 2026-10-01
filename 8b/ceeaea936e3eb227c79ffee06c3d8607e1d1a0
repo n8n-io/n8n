@@ -1,0 +1,82 @@
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_d20909b0237a08::t_cf4c225ce7e8e2 79,95,100,114,122,127
+  s_d20909b0237a08::t_42febc05ac2976 80-94,96-99,101-113,115-121,123-126,128-135
+  s_7c1c7ec71930c9::t_7365e0fc315aee 271,283,285,300-374,376-421
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 36
+packages/@n8n/api-types/src/push/workflow.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 21-34,69
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/index.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 19
+packages/cli/src/workflows/publication/publication-result.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 1-2,29-31,33
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 10,14-16,99-103,113-136
+  s_2f83ef0d3e33ed::t_d9c295ccba7829 11-13,24-30,59-61,64-68,78,80-98,104-112,139-174
+  s_d20909b0237a08::t_bb0eaa5b4f4509 17-23,34-58
+  s_2f83ef0d3e33ed::t_1efbe79465da62 31-33
+  s_2f83ef0d3e33ed::t_dee33ac224ec45 62-63
+  s_d20909b0237a08::t_42febc05ac2976 69-70,77,79
+  h_8fb27e0cdf6d1e 71-73
+  s_d20909b0237a08::t_2bda04ebf3b612 74-76
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 7,17,24,46,48,88-114,116
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 12,104,248,280,296-329
+  s_d20909b0237a08::t_cf4c225ce7e8e2 103,175,187,199,202
+  s_2f83ef0d3e33ed::t_39e0c5e9194b7e 119-122
+  s_d20909b0237a08::t_42febc05ac2976 176-179,181-186,191-198,200-201,203-208
+  ai_agent 180,188-190
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 181-192
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7c1c7ec71930c9::t_7365e0fc315aee 3882
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowPartiallyActivated.ts
+  s_7c1c7ec71930c9::t_fab851d8e35823 1-26
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 19,95-96
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 29-48,144-148,154,163-164,168,178,190-191,270-276,281,283-301,306-317,323-333,400-406,413,429-445,447
+  s_d20909b0237a08::t_a4cd72970b0089 97-101,104-105,107,114,122-124,126
+  s_d20909b0237a08::t_42febc05ac2976 102-103,106,108-113,115-121,125,127-138
+  ai_agent 318-322
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_7c1c7ec71930c9::t_7365e0fc315aee 7,12,27,62-63,68-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bceeaea936e3eb227c79ffee06c3d8607e1d1a0",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_2f83ef0d3e33ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "173765c5-38e5-4034-a7cd-a7997e9647c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_7c1c7ec71930c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d7fc7e7-0e7e-49e9-aae9-8f8e45f4cb6b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d20909b0237a08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce15469-7e3b-47c9-81ba-0d5287f2fa22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

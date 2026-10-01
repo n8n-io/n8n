@@ -1,0 +1,60 @@
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_41df6966a3c9ce::t_d8d3ed2c3073a5 274,460-461
+  s_41df6966a3c9ce::t_d46c85635548c5 275
+  s_41df6966a3c9ce::t_d9a6e166730351 587
+  s_41df6966a3c9ce::t_e4fc70b8490edf 13,19,38,40,50-53,263-273,316-321,371-372,379-380,405,425,432,447,453-459,487,512-520,573-586,588-614,676,781,823,887
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  s_41df6966a3c9ce::t_506772297472db 293-332,334-336,338-342,344-349,354-355,358-362,381-426,429-433,435-437,439,443-453,455-457,459,462,464-467,469-471,473-480,482-528,530-536,540-542,544-557,559-574,576-584,587-605,608-609,613-625
+  s_41df6966a3c9ce::t_ed9a2bbbb067fe 363-377,379-380
+  s_41df6966a3c9ce::t_dd4d080d5bb7c6 23-29,31,40,117,150,159,172,186,271,275,279-280,333,343,350-353,378,440,460,529,539,558,575,585-586,612
+  s_41df6966a3c9ce::t_c3938de5769655 87-89
+  s_41df6966a3c9ce::t_84095bbb7ee1a3 458
+  s_41df6966a3c9ce::t_173a852ed92954 3-8,10-11,13,38-39,41-45,47,49-86,90-116,118-120,139-140
+  s_41df6966a3c9ce::t_83972555010940 537-538,543
+  s_41df6966a3c9ce::t_e1dc7a0a969d54 33-37,147,337
+  s_41df6966a3c9ce::t_ff700b256155b7 46,48,216
+  s_41df6966a3c9ce::t_bbc812cb72cae1 356-357
+  s_41df6966a3c9ce::t_439a44448b8fc2 472,481
+  s_41df6966a3c9ce::t_b2cfd7f96a8133 606-607,610-611
+  s_41df6966a3c9ce::t_1ee09f41722096 143
+  s_41df6966a3c9ce::t_e848394ff56b4b 427,461
+  s_41df6966a3c9ce::t_451a57432e5acc 438,441
+  s_41df6966a3c9ce::t_9ec943070bb4ef 32,428,434,442,454,463,468
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_41df6966a3c9ce::t_d76d301f202605 265-322
+  s_41df6966a3c9ce::t_f95a5ce231b90f 1-2,7,12-23
+  s_93c0126193f42d::t_17c2c30d37bf75 24
+packages/nodes-base/nodes/Git/test/Git.node.test.ts
+  s_41df6966a3c9ce::t_d781eedaba31db 114-115,123-124
+  s_41df6966a3c9ce::t_2e878e7cf78404 131
+  s_41df6966a3c9ce::t_57043d1bf92389 570-571,1820,1848,1868,1879,1898,1915
+  s_41df6966a3c9ce::t_ff700b256155b7 308-312
+  s_41df6966a3c9ce::t_429c6d49cc0ca2 59-61,67-77
+  s_41df6966a3c9ce::t_5617f468c8881e 287-307,313-395
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_41df6966a3c9ce::t_7e10a7e955ccf7 2-3,138-140,143-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6c3b7d2d926b54266a6400268345b668f68054ed",
+  "prompts": {},
+  "sessions": {
+    "s_41df6966a3c9ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "993ad4b4-b06f-4d08-b0a7-4c7de28ec904",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_93c0126193f42d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fb9674f-1f49-4b71-aa19-064d4c683e90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/entities/package-serialization.types.ts
+  s_56eaf6c16ffff6::t_afe22afe2f19e1 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed0aaf619f5b7d90e54b325e199ab00bb81a15cd",
+  "prompts": {},
+  "sessions": {
+    "s_56eaf6c16ffff6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "76ead4fb-3548-491e-b966-5aad3a95a875",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

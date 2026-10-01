@@ -1,0 +1,33 @@
+packages/cli/src/webhooks/__tests__/webhook-execution-context.test.ts
+  s_5e9da6818c6a0b::t_64b60cf435bf71 6-8,10-13,19-29,31,34-35,37,39,41-42,44,48,51-66,68,70-71
+packages/cli/src/webhooks/__tests__/webhook.service.test.ts
+  s_5e9da6818c6a0b::t_6803d3be392788 31
+packages/cli/src/webhooks/live-webhooks.ts
+  s_5e9da6818c6a0b::t_14f4939cdfc7cb 142,219,231-236
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_5e9da6818c6a0b::t_cadc5b170ecc3c 12-14,37,39,44-45,56,58,63-65
+packages/cli/src/webhooks/webhook.service.ts
+  s_5e9da6818c6a0b::t_519a5a0aec107a 335,337,339,357,359,365,367,381,383
+packages/workflow/src/workflow-expression.ts
+  s_5e9da6818c6a0b::t_563ba2df4b6215 10,15-16,189-210,221,227-229,259,265-267
+packages/workflow/src/workflow.ts
+  s_5e9da6818c6a0b::t_5dd9c4bd187b65 56-57,89-97,100
+packages/workflow/test/node-parameters/native-parameter-resolution-parity.test.ts
+  s_5e9da6818c6a0b::t_3b438551b69cb0 333-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "4ed0b77fd9bdafb48bc8e747c71066b60e9bd38c",
+  "prompts": {},
+  "sessions": {
+    "s_5e9da6818c6a0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_5e9da6818c6a0b",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

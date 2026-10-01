@@ -1,0 +1,37 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_e414677a6d992f::t_5a34420c515446 725-730,740-842
+  s_e414677a6d992f::t_c60044df51142e 188-189
+  s_e414677a6d992f::t_eb06cb848c3d4f 149,152
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_e414677a6d992f::t_754c4b290d9a4f 44-45
+  s_e414677a6d992f::t_9315de1ed642a0 69-75
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_e414677a6d992f::t_432ac326be5b51 92-102
+  s_e414677a6d992f::t_d4f05776ea2ee3 103-124
+  s_e414677a6d992f::t_b166d07c6d1e4f 125-130
+  s_e414677a6d992f::t_1e8bab0bf10b8f 322-323
+  s_e414677a6d992f::t_60950b821a21fc 391,396-397,406-417
+  s_e414677a6d992f::t_78d9012a28069b 570,575-576,585-607,609-680,682-686
+  s_e414677a6d992f::t_7ed1d3c4fd25ea 916-962
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_e414677a6d992f::t_cf9656dc63256d 239-261
+  s_e414677a6d992f::t_28dba4f169f9df 18,20
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_e414677a6d992f::t_7d941939859d60 377-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40479ab9b43c6c94ff71d9553f23739521a36392",
+  "prompts": {},
+  "sessions": {
+    "s_e414677a6d992f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c56ed550-9fc6-4491-b874-c335e8c94087",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

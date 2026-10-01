@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/workflow-review-activity.ts
+  h_760178ed151f13 6-10,24,152
+packages/@n8n/db/src/repositories/workflow-review-activity.repository.ts
+  s_8d4d8c0bb8e0a6::t_4ca9ea1eb7f331 7
+  h_760178ed151f13 39
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-lifecycle.service.ts
+  s_8d4d8c0bb8e0a6::t_aa572ef52391e4 35
+  s_8d4d8c0bb8e0a6::t_1ad43d6ef5be73 33
+  s_8d4d8c0bb8e0a6::t_4a7751e68b9262 241
+  s_8d4d8c0bb8e0a6::t_299746b269150e 326
+  s_8d4d8c0bb8e0a6::t_261e299ad5c0d8 338
+  h_760178ed151f13 27-32,34
+  s_8d4d8c0bb8e0a6::t_ff7725228245ba 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6aab835c16ae9a98da98c9f1dedd6146df9bed1",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8d4d8c0bb8e0a6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a423ceff-4018-4c6f-b981-6b33275030a4",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

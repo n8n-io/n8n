@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/credentials.ts
+  s_c10e563f7c2f73::t_b071e6f2ad4922 1-22
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.test.ts
+  s_c10e563f7c2f73::t_625bf8d4b81526 1-28
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.explicitDrive.workflow.json
+  s_c10e563f7c2f73::t_50ec7279b5e6a3 1-71
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.oauth2.workflow.json
+  s_c10e563f7c2f73::t_53ab7d34d31b94 1-63
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.workflow.json
+  s_c10e563f7c2f73::t_34b90cb3fc8b8d 1-66
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.sp.workflow.json
+  s_c10e563f7c2f73::t_9e53855d701c26 1-66
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.resolveDrive.workflow.json
+  s_c10e563f7c2f73::t_2e9099a0c5ae0e 1-70
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.sp.test.ts
+  s_c10e563f7c2f73::t_42a4f97671f8d8 1-23
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.test.ts
+  s_c10e563f7c2f73::t_2832456c0cf097 1-40
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.oauth2.test.ts
+  s_c10e563f7c2f73::t_61764f157a514d 1-22
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.test.ts
+  s_c10e563f7c2f73::t_428db7b7eaa673 1-50
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.resolveDrive.workflow.json
+  s_c10e563f7c2f73::t_b134e177e80118 1-66
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.copy.sp.explicitDrive.workflow.json
+  s_c10e563f7c2f73::t_30895f0061bb24 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "92a1e1c5039abe7b651cef8faf6a05510384e75f",
+  "prompts": {},
+  "sessions": {
+    "s_c10e563f7c2f73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db403f6c-3898-4d9e-af22-6e4e17cbd6c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

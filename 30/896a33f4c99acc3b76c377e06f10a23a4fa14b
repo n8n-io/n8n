@@ -1,0 +1,43 @@
+packages/cli/src/modules/otel/otel.service.ts
+  s_e6e46c0663c897::t_03ad6d8296b31e 81-82
+  s_e6e46c0663c897::t_3d025c694a3bce 143-144,153,158-218
+  s_e6e46c0663c897::t_18efb8f93928f1 268-271,273-277,283,288-324
+  s_e6e46c0663c897::t_824e877f193934 13,18,24,31-36,46
+  s_e6e46c0663c897::t_2bdeb64467f7d3 37-45
+  s_e6e46c0663c897::t_8055aa8da9ddee 1
+  s_e6e46c0663c897::t_e77fae38c425ca 63,69
+  s_e6e46c0663c897::t_1a027d508070ea 76-78
+  s_e6e46c0663c897::t_c34d9b14d1239b 19
+  s_e6e46c0663c897::t_a95277ba5196eb 121,126-127
+packages/cli/src/modules/otel/README.md
+  s_e6e46c0663c897::t_8c7359e7ef9e27 138-143,148-173
+  s_e6e46c0663c897::t_f71ece0aab4661 144-147
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_e6e46c0663c897::t_ca44f24e247dc8 25,28-51,55,63-64,68,72
+  s_e6e46c0663c897::t_f043ff73778ce3 239-337,339-340,342-350,352-355
+  s_e6e46c0663c897::t_38a9de92d45a71 176,180,185-186
+  s_e6e46c0663c897::t_08ee587093df16 26-27
+  s_e6e46c0663c897::t_09f7e87de921ed 4
+  s_e6e46c0663c897::t_668eb0436b392e 161-166
+  s_e6e46c0663c897::t_aec0f08cd72ddf 207-223
+  s_e6e46c0663c897::t_1679d47aacf428 97-110
+  s_e6e46c0663c897::t_44f442a624c4ce 52-54,56-62,65-67
+  s_e6e46c0663c897::t_6afc3f1eaddffb 338,341,351
+  s_e6e46c0663c897::t_d76d243c541bfd 578-623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30896a33f4c99acc3b76c377e06f10a23a4fa14b",
+  "prompts": {},
+  "sessions": {
+    "s_e6e46c0663c897": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a309780b-11f9-45a7-9027-d04b51797bac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <ocdejong@Oliviers-MacBook-Pro.local>"
+    }
+  }
+}

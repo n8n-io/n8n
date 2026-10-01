@@ -1,0 +1,49 @@
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_13d0f2e1be0144::t_cdd853adfd2cea 138-144
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_13d0f2e1be0144::t_a179618a45f3f1 240,271-273
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_13d0f2e1be0144::t_cdd853adfd2cea 31
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_13d0f2e1be0144::t_6f3010a5418613 7,181,208-217,219-236,238,240-271
+  s_13d0f2e1be0144::t_d38611fa02ad6e 182-191,193-207,272
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_13d0f2e1be0144::t_df0f5e16e8857e 42-43
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_df0f5e16e8857e 58-59,62-63,67,71-72,75-76
+  s_13d0f2e1be0144::t_3aaf073c2059b7 64-66,68-70,73-74
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_13d0f2e1be0144::t_eb99e1a25a7073 478-488
+  s_13d0f2e1be0144::t_cdd853adfd2cea 68
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_13d0f2e1be0144::t_cdd853adfd2cea 82-85
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_6ece8161e72289 86
+  s_13d0f2e1be0144::t_9b3dcd66135298 1,18-20,55-56,58,63-64,68-84,87-89
+  s_13d0f2e1be0144::t_29b8f928d326a9 85
+  s_13d0f2e1be0144::t_ab0e9a439ea0c4 90
+  s_13d0f2e1be0144::t_9f0e14296bd2d4 65-67
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_13d0f2e1be0144::t_eb99e1a25a7073 755-756,768-769
+  s_13d0f2e1be0144::t_cdd853adfd2cea 86
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_13d0f2e1be0144::t_cdd853adfd2cea 32
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_32ab422dc18b83 88-90,192-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5947733edf56193031609bffcd903826905aea1e",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

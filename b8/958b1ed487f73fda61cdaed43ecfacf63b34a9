@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/builder-interaction-mapping.test.ts
+  s_dd8f226d4368c9::t_8c61f8b1ca6aae 98,110-111,116-126,138-148,151-152,154-156,159-188,195,198-201
+  s_dd8f226d4368c9::t_3c7b0013938f44 9
+  s_dd8f226d4368c9::t_a194f2a0bc3053 202-208
+packages/@n8n/instance-ai/src/tools/orchestration/builder-interaction-mapping.ts
+  s_dd8f226d4368c9::t_843b2b9962a7e4 97-101,105,114-115,127,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b8958b1ed487f73fda61cdaed43ecfacf63b34a9",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/@n8n/agents/src/sdk/__tests__/telemetry.test.ts
+  s_474fe0e36cbf49::t_3b62af3e030e9e 132
+  s_474fe0e36cbf49::t_8d8fc1d95b0589 129-131,133-164
+  s_474fe0e36cbf49::t_93ef0aba00513c 96-128,185
+  s_474fe0e36cbf49::t_650ac0ffa4bf44 165-184,186-189,191-199,201-215
+  s_474fe0e36cbf49::t_40517da8e85d6f 190,200
+packages/@n8n/agents/src/sdk/telemetry.ts
+  s_474fe0e36cbf49::t_c88b4bd0c3e7e1 2
+  s_474fe0e36cbf49::t_1a3d638f8e5129 5
+  s_474fe0e36cbf49::t_fff7781bf31a17 1,14,16-23,66-70,72-82,87-90,96,105-111,113-120
+  s_474fe0e36cbf49::t_650ac0ffa4bf44 15
+  s_474fe0e36cbf49::t_3193f02ddca53a 38,57,83-86,100-104,112
+  s_474fe0e36cbf49::t_2707246d888fb1 71,99
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_474fe0e36cbf49::t_650ac0ffa4bf44 27
+packages/@n8n/agents/src/sdk/metadata-enriched-tracer.ts
+  s_474fe0e36cbf49::t_1a3d638f8e5129 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5d80ad459aeb45768870e1035fc9954eaf59f0fe",
+  "prompts": {},
+  "sessions": {
+    "s_474fe0e36cbf49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa5e6-a1de-7801-b0cc-c470a0c5fffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

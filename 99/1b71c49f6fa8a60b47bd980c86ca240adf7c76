@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_657a31a402f36f::t_1fa5b5a7c6164f 184-191
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_657a31a402f36f::t_b7898fa14f3ae8 385-388
+  s_657a31a402f36f::t_5d5ff3c7936fa6 389
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_657a31a402f36f::t_b7898fa14f3ae8 253-260
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_657a31a402f36f::t_5d5ff3c7936fa6 22-28,52-53,61-74
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_657a31a402f36f::t_5d5ff3c7936fa6 345-346,349-354
+packages/cli/src/modules/agents/agents.service.ts
+  s_657a31a402f36f::t_5d5ff3c7936fa6 121
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_657a31a402f36f::t_5d5ff3c7936fa6 139-141
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_657a31a402f36f::t_2b3ab244d7fb02 46-47
+  s_657a31a402f36f::t_5d5ff3c7936fa6 94-98,100
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_657a31a402f36f::t_7f7efe4fdc3fee 40,51-58,61,64
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_657a31a402f36f::t_64d75bd905dbce 9
+  s_657a31a402f36f::t_08559d3cbf665d 4305-4342
+  s_657a31a402f36f::t_248c5b3762503f 4343-4359
+  s_657a31a402f36f::t_68185f8432c3e5 1424-1445,1448-1449,1452,1454,1457-1458,1461,1463,1465-1468
+  s_657a31a402f36f::t_381600fbf4addd 1446-1447,1450-1451,1453,1455-1456,1459-1460,1462,1464
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_657a31a402f36f::t_5d5ff3c7936fa6 88-91,322-323,325-331,341
+  s_657a31a402f36f::t_c4808cdfad1756 342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "991b71c49f6fa8a60b47bd980c86ca240adf7c76",
+  "prompts": {},
+  "sessions": {
+    "s_657a31a402f36f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13ea-d4c1-7d03-bc30-fcfd579f01c6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

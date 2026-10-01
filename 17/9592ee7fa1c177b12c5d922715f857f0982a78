@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_7383ee4106ddca::t_027775de4fe0d3 224-225
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsDatabricks/EmbeddingsDatabricks.node.ts
+  s_7383ee4106ddca::t_027775de4fe0d3 12,154-155
+packages/@n8n/nodes-langchain/utils/databricks/gateway-config.ts
+  s_7383ee4106ddca::t_027775de4fe0d3 9,20-21,27,73-74,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "179592ee7fa1c177b12c5d922715f857f0982a78",
+  "prompts": {},
+  "sessions": {
+    "s_7383ee4106ddca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f219b89b-3ec7-4972-9e54-e4dac4de28f2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

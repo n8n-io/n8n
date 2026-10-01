@@ -1,0 +1,92 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_e8596a764fed53::t_1fdea77aa3c48e 21
+  s_e8596a764fed53::t_45ec371cc30791 80-82
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e8596a764fed53::t_722490c8ad5d5a 2146-2152
+  s_56bde62e56d3b1::t_5aef6b3bccc01f 2419-2421,2426-2433,2435,2440-2445,2452,2496-2511,2760-2761,2768,2809-2810,2879,2893-2901,3433,3965,6126-6127,6202-6203,6765-6766
+packages/frontend/editor-ui/src/features/agents/composables/useAgentProjectNameResolver.ts
+  s_e8596a764fed53::t_d011a4c7a2f222 1-27
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Renderers/ItemsRenderer.vue
+  s_e8596a764fed53::t_f37658f83ed9af 10
+  s_e8596a764fed53::t_4fee1c69e2acf4 207-208
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  ai_agent 57-59,114-116,141-143,170-172,281-283
+  s_e8596a764fed53::t_2aaeed2c08dec0 286-302
+packages/frontend/editor-ui/src/Interface.ts
+  s_e8596a764fed53::t_43c9a2933ab384 3
+  s_56bde62e56d3b1::t_5aef6b3bccc01f 14,664-666
+  s_e8596a764fed53::t_cf6caaee88887c 517-524
+  s_e8596a764fed53::t_ab632d6fb067bd 611-615,624
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_e8596a764fed53::t_f590b793d89774 84
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_e8596a764fed53::t_f6743471779d1a 31
+  s_e8596a764fed53::t_98d80b2456f7d7 60-61,75-76
+  s_e8596a764fed53::t_8c2474a656cc69 285-287
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_e8596a764fed53::t_0afb4a3480a6f2 20-23,27
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_e8596a764fed53::t_10539a0c0fb205 3,13-17
+  s_e8596a764fed53::t_972b2335878a24 31
+  s_e8596a764fed53::t_e675a54db6386e 50,53
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/AgentItem.vue
+  s_e8596a764fed53::t_b0f95a03d14e8c 1-43,47-50
+  s_e8596a764fed53::t_c8b49d14d26437 44-46
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useViewStacks.ts
+  s_e8596a764fed53::t_f1e980786b223b 97
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.vue
+  s_e8596a764fed53::t_0090647df5a5fa 1-245
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_e8596a764fed53::t_979cefe8a9ef82 1-63
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.vue
+  s_e8596a764fed53::t_18466173710a62 19
+  s_e8596a764fed53::t_791e3100aa23b6 159-174
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  s_e8596a764fed53::t_9e6d6429760070 455-458
+  s_e8596a764fed53::t_3b2cb8bb550792 513
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_e8596a764fed53::t_859e7d992dece7 659-667
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_e8596a764fed53::t_712bd6c9601e54 1-35,37-110
+  s_e8596a764fed53::t_ce8dc859657e93 36
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.vue
+  s_e8596a764fed53::t_5d59c6d754d501 9
+  s_e8596a764fed53::t_03b8e83a57c152 84-89,92-93
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_e8596a764fed53::t_1dc960e42c4826 1,84,95,114,142,170,181,190
+  s_e8596a764fed53::t_dbd590b496306f 2,13,18,21,25,30-31,39,52,64-65,68-69,83,94,113,141,155,169,180,189
+  s_e8596a764fed53::t_11f8f2cdfeb375 3-12,14-17,19-20,22-24,26-29,32-38,40-51,53-63,66-67,70-76,78-82,85-93,96-112,115-140,143-154,157-166,168,171-175,177-179,182-188,191-198
+  s_e8596a764fed53::t_014a27c87d5124 77
+  s_e8596a764fed53::t_a560b5e7f4c761 156
+  s_e8596a764fed53::t_4e72e49488953e 167
+  s_e8596a764fed53::t_f3f3e51af32751 176
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_e8596a764fed53::t_f20cfe3a3fa718 19
+  s_e8596a764fed53::t_c0567c2e7c9d03 34-37
+packages/frontend/editor-ui/src/features/agents/components/AgentPersonalisationIcon.vue
+  s_e8596a764fed53::t_4ac62316edf7f5 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e7ff22f361b67b657b7136d81858cf11ffe210a",
+  "prompts": {},
+  "sessions": {
+    "s_56bde62e56d3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47f70e36-dfda-42d7-823e-0114e1b2de01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_e8596a764fed53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "579e3553-9680-4b38-8d21-5fff0a053271",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  ai_agent 2-7,9,12-15,18,45,102,168-174,179,203,287-289,293-298,306-307,309-323,335,337-338,343,346,351,356-363,375-463
+.github/CLAUDE.md
+  ai_agent 33-38
+packages/cli/src/controllers/e2e.controller.ts
+  ai_agent 268-281
+pnpm-lock.yaml
+  ai_agent 3981-3983,4297-4299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df68098a2c9c1c3181b0740102850d1c1d50713f",
+  "prompts": {}
+}

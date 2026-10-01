@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_61e9a8042cb6ca::t_ab25768810b872 8,260-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42dca040ce44857bc4d9a0149b290fa803bc05f4",
+  "prompts": {},
+  "sessions": {
+    "s_61e9a8042cb6ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d53bf96-ca9f-4ff2-8ba4-e5920c97ca99",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/evaluations/run/persist.ts
+  s_d7dc19b022f345::t_e860837a4996bb 70-85,488-491
+  s_d7dc19b022f345::t_0be3c2f826d965 13
+packages/@n8n/instance-ai/evaluations/__tests__/context-outcome.test.ts
+  ai_agent 23
+  s_d7dc19b022f345::t_d2fc8bca7eb326 1-22,24-80
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  s_d7dc19b022f345::t_8f868b4f780330 16
+  s_d7dc19b022f345::t_a486170878c451 1265-1282,1492
+  s_d7dc19b022f345::t_76bc06cc0dac56 1638
+packages/@n8n/instance-ai/evaluations/run/context-outcome.ts
+  s_d7dc19b022f345::t_4123b5ea5e444c 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ad93dbf403a0726b0bad7530243e4ab4723b189",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

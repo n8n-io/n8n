@@ -1,0 +1,21 @@
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_aa40f315c412bf::t_420f8125f302f8 171-172
+  s_aa40f315c412bf::t_e8a99a2b8d42e4 182,184-192
+  s_aa40f315c412bf::t_27aa76b90e2f97 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "473992dc19a790ffc2b9beba6ab83c455c65a687",
+  "prompts": {},
+  "sessions": {
+    "s_aa40f315c412bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d1db2c7-ef71-408d-a28c-9f53a28738b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

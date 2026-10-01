@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_f076c670c90238::t_31a7d87d2da2b1 11,19
+  s_f076c670c90238::t_4fb40c380203fb 35-58
+  s_f076c670c90238::t_d82c87622405be 179-193
+  s_f076c670c90238::t_3088ba9add5c0a 300-316
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f076c670c90238::t_4348d4cd2fd345 6973-6976
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiProactive.test.ts
+  s_f076c670c90238::t_4dde2946500fea 1-235
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_f076c670c90238::t_361c7a7566f6a2 298-349
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiProactive.ts
+  s_f076c670c90238::t_82e5770398ec04 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "09f5b35768ec5d722e949512c932f3961bddd0d6",
+  "prompts": {},
+  "sessions": {
+    "s_f076c670c90238": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce50b67d-826e-4198-888d-724210193f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

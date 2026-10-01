@@ -1,0 +1,71 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 221,260,272
+  s_d27d09d94cc9ff::t_37a36a2c239f71 273
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 29
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 49-140
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 45
+packages/@n8n/api-types/src/agents/types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 369-389
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 4-6,16-25,45-46,121,125,128,130,134,136-151,153,161-163,167-170,175,177-181,183,187,189-193,197,201,204,206-215,217-226,228-263,265-317,332-341,348
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 6,9,11-13,22-23,27-30,32-34,41-48,51-52,56,74-75,99-102,104-155,157-241,243,246,248-259,282-287,289-318,348-349,385-386,389-392,395-396,407,413-414,421-422,429,431,435,437-440,442-444,446-465,467,469-476,479-484,486-502,504-523,528-549,552-591,601,627-638,640
+  s_d27d09d94cc9ff::t_ffa3533c0fddaa 639
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 76,388,410,425-427,430,441,468,485,503,550-551,600
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 1-5,25-26,31,242,244-245
+packages/cli/src/modules/agents/agent-message-queue.types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 2,11-23,83-86
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 7,17-18,42-76
+  s_d27d09d94cc9ff::t_9410136a88c552 77
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 136-140
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-resume.dto.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5-9
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 174
+packages/@n8n/api-types/src/push/agents.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 1-3,31-51
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 63,113
+packages/cli/src/scaling/constants.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 40
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 35-46,101-104,315-385,387-391,393-399,401,403-417,422-429,465-469,472-473,475-479,481-485,488-489,491-499,501,504,506-507,509-512
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 7,46,66-67,74-103,137-138,147-148
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 21,71,135-136,155,173,175,187-188
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 104-105
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 289
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 394-395
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 10,25-26,36,65,109,126-130,160-162,167-176,192-193,197,320,363,502-503,505-507,515-584,586-649,651,663,675,677,679-690,692-693,698-699,705-709,712-725,727-728,732-812,830-832,951-955,957-958,960-987,992-996,1045,1084-1129,1181,1184,1196
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 3-4,132,153,194,956,959
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 136-138
+  s_d27d09d94cc9ff::t_23250bcc27e576 585,710-711,726,729-731
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5,14,22-26,30-36,38-42,47,56,69,76
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 193,197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "abb1d61e038ceef74e3f1b23ad517f1f42309f45",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

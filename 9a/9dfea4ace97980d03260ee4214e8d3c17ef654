@@ -1,0 +1,24 @@
+packages/cli/test/integration/promotions/promote-selection.controller.test.ts
+  s_3aaf75d65cfa68::t_d040e7e70b3ab2 27,33
+  s_3aaf75d65cfa68::t_4bc07d47e842f0 44
+  s_3aaf75d65cfa68::t_f9c7cdc715b984 55
+packages/cli/src/modules/promotions.ee/promotions.controller.ts
+  s_3aaf75d65cfa68::t_b3536bbb8ab045 4
+  s_3aaf75d65cfa68::t_5d5a2b935237f8 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a9dfea4ace97980d03260ee4214e8d3c17ef654",
+  "prompts": {},
+  "sessions": {
+    "s_3aaf75d65cfa68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e485ec0-5fa8-4517-a43d-cd714b64b738",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

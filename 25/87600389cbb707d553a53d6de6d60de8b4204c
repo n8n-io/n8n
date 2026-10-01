@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.node-agent.test.ts
+  s_6222493fb0dff6::t_f45ac162ccb90f 80-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2587600389cbb707d553a53d6de6d60de8b4204c",
+  "prompts": {},
+  "sessions": {
+    "s_6222493fb0dff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9f9c809-b837-4968-8ec0-fddb417f3105",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

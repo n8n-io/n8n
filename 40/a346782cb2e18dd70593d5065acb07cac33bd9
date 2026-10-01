@@ -1,0 +1,24 @@
+packages/cli/src/controllers/ai.controller.ts
+  s_03d816ea3ae9c9::t_bf108dba738ea5 46
+  s_03d816ea3ae9c9::t_ec2117c2ef4548 13
+  s_03d816ea3ae9c9::t_2f246884f79066 33
+  s_03d816ea3ae9c9::t_9e1362e409034e 222-232
+  s_03d816ea3ae9c9::t_58e6dab0d07217 19
+  s_03d816ea3ae9c9::t_e6902c80bc2e7d 233-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "40a346782cb2e18dd70593d5065acb07cac33bd9",
+  "prompts": {},
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

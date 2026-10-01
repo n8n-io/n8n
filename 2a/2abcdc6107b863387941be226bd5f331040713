@@ -1,0 +1,24 @@
+packages/@n8n/config/test/config.test.ts
+  s_f62ce817f68981::t_538d3543005c26 217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a2abcdc6107b863387941be226bd5f331040713",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_f62ce817f68981": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5375f81a-00e9-4f44-a66b-9260f3748ec7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

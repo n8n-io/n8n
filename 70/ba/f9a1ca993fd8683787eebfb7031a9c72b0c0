@@ -1,0 +1,37 @@
+docs/generated/postgres-schema/public.agent_plan.md
+  ai_agent 1-89
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 22,62,125-133
+docs/generated/sqlite-schema/agent_plan.md
+  ai_agent 1-94
+docs/generated/postgres-schema/README.md
+  ai_agent 26-27,200-201,584-600
+docs/generated/sqlite-schema/agent_plan_history.md
+  ai_agent 1-71
+.agents/specs/agent-plan-storage.md
+  s_14bbae78eb49a2::t_9905962be206eb 69-72
+packages/@n8n/db/src/migrations/common/1790243938988-CreateAgentPlanTables.ts
+  s_14bbae78eb49a2::t_5168c399e416ee 1-4,59-60,64-65
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 11,61,124-132
+docs/generated/postgres-schema/public.agent_plan_history.md
+  ai_agent 1-63
+docs/generated/sqlite-schema/README.md
+  ai_agent 26-27,183-184,571-587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "70baf9a1ca993fd8683787eebfb7031a9c72b0c0",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

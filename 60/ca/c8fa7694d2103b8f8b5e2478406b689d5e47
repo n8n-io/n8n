@@ -1,0 +1,65 @@
+packages/nodes-base/nodes/Slack/Slack.node.ts
+  s_558da949c3ee4b::t_6dbe6857e31582 16,28
+  s_558da949c3ee4b::t_5e9ba524046cdc 27
+packages/nodes-base/nodes/Slack/test/v2/Slack.node.test.ts
+  s_558da949c3ee4b::t_dee75db5102690 6,2393,2395-2400,2402-2406,2418
+  s_558da949c3ee4b::t_4780bc599ce0af 10,2384-2392,2401,2407-2408,2412-2413,2416,2419-2420
+  s_558da949c3ee4b::t_057d86140d8fdc 5,2394
+  s_558da949c3ee4b::t_1073f8df31ded9 2409-2411,2414-2415,2417
+  s_558da949c3ee4b::t_d7e07291430386 2421
+packages/nodes-base/credentials/SlackOAuth2Api.credentials.ts
+  s_558da949c3ee4b::t_e0f6cebd90aee7 28,34
+  s_558da949c3ee4b::t_e580cc815ed2bb 29,35-36
+  s_558da949c3ee4b::t_57b5fc56fd5ff4 30-33
+packages/nodes-base/nodes/Slack/test/v2/node/message/searchV27.test.ts
+  s_558da949c3ee4b::t_1073f8df31ded9 1-90
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_558da949c3ee4b::t_23818a42b92e83 91-106
+  s_558da949c3ee4b::t_f9fdf6651fbafc 1006-1017,1019-1036,1038-1048,1074-1078,1080-1085
+  s_558da949c3ee4b::t_540f44a0a5d507 1049-1054,1056-1066,1068-1073
+  s_558da949c3ee4b::t_4c14026622659d 9,1005,1018,1037,1055,1067,1079
+packages/nodes-base/nodes/Slack/test/v2/node/message/searchV27.workflow.json
+  s_558da949c3ee4b::t_1073f8df31ded9 1-143
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  s_558da949c3ee4b::t_6606916af544bc 1357,1391-1398,1400-1410,1412-1422,1424-1453,1455-1457
+  s_558da949c3ee4b::t_6dbe6857e31582 1313,1323,1338,1356,1376,1399,1411,1423,1454
+  s_558da949c3ee4b::t_6031f978423cef 1361
+  s_558da949c3ee4b::t_05fc308828b2bb 1314,1348-1355,1366
+  s_558da949c3ee4b::t_16ac03c3ffd1de 1368
+  s_558da949c3ee4b::t_5c1585afd4a38d 1358,1362,1365,1367,1369-1375,1377-1379
+  s_558da949c3ee4b::t_31ef863753332d 1359-1360,1363-1364
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_558da949c3ee4b::t_634a4692acfc82 1087,1093-1095,1097-1102,1110-1124,1131-1155
+  s_558da949c3ee4b::t_6031f978423cef 1125,1127-1128
+  s_558da949c3ee4b::t_6dbe6857e31582 68,1096
+  s_558da949c3ee4b::t_4c14026622659d 35
+  s_558da949c3ee4b::t_67b96f3fe8267f 1091
+  s_558da949c3ee4b::t_b340c35cb53a43 1103-1108
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_558da949c3ee4b::t_68458cfc663bf9 326-329,332-333,335-336,338-342,366-372,374-377
+  s_558da949c3ee4b::t_50125c1dd1a1db 349
+  s_558da949c3ee4b::t_b813b3e77fe0ac 172
+  s_558da949c3ee4b::t_3a9122bd1b66a6 358-360
+  s_558da949c3ee4b::t_3413cd79b71d6c 330-331,334,337
+  s_558da949c3ee4b::t_c9456f7b29d0e9 343-348,350-357,361-365
+  s_558da949c3ee4b::t_bb0bb4fb0fbedb 373
+  s_558da949c3ee4b::t_4c988249001e09 65-122
+packages/nodes-base/nodes/Slack/__schema__/v2.7.0/message/search.json
+  s_558da949c3ee4b::t_4d220b9ee633a8 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "60cac8fa7694d2103b8f8b5e2478406b689d5e47",
+  "prompts": {},
+  "sessions": {
+    "s_558da949c3ee4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7593febb-f1db-4d1b-b072-abcbeed8e6b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

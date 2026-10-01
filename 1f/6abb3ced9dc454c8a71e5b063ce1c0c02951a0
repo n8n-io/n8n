@@ -1,0 +1,34 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_faa6d2a756ce5f::t_cca819d4763769 1331
+  s_faa6d2a756ce5f::t_6f6c460ea04161 1423
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_faa6d2a756ce5f::t_e5767af6eb562a 76
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_faa6d2a756ce5f::t_5b310e7f8c6beb 126-127
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_faa6d2a756ce5f::t_08ff2d6cc86ef8 103-104
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_faa6d2a756ce5f::t_9d5820e0b1bae2 174
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_faa6d2a756ce5f::t_30560a2c98dadb 103,105,107
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_faa6d2a756ce5f::t_568f6f69df7de1 1425
+  s_faa6d2a756ce5f::t_d1fe4eea4e7240 753
+  s_faa6d2a756ce5f::t_e1bfbf638adb45 1329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f6abb3ced9dc454c8a71e5b063ce1c0c02951a0",
+  "prompts": {},
+  "sessions": {
+    "s_faa6d2a756ce5f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "49fc79e1-478c-4dfb-b50b-9931f6a3683f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

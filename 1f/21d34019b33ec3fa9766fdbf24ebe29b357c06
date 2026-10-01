@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/instance-ai-sample-data.service.ts
+  s_90002f1fe023d1::t_b30bd0320dea50 1-30,32-102,107-149
+  s_90002f1fe023d1::t_5d642f4c95c44f 103-106
+  ai_agent 31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sample-data.service.test.ts
+  s_90002f1fe023d1::t_5c9d32a7a6883a 118-120,124
+  s_90002f1fe023d1::t_0b57eb99c9d153 70-73
+  s_90002f1fe023d1::t_f43b552486ce98 1-18,20-69,74-75,84-117,121-123,125-218
+  ai_agent 19,76-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f21d34019b33ec3fa9766fdbf24ebe29b357c06",
+  "prompts": {},
+  "sessions": {
+    "s_90002f1fe023d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9dd1c3f-0c3e-4ea6-9f03-3f9ec6951428",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

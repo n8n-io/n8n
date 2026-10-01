@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_c3f63bfec03d56::t_be9450a351c2ec 1043
+packages/@n8n/backend-network/src/http/node-agents.ts
+  s_c3f63bfec03d56::t_be9450a351c2ec 40-42
+packages/workflow/src/interfaces.ts
+  s_c3f63bfec03d56::t_be9450a351c2ec 943-944
+packages/@n8n/backend-network/src/http/undici/transport.ts
+  s_c3f63bfec03d56::t_be9450a351c2ec 1,5,12-33,70,110,125,152,160,187,247-249,336-339,341
+packages/@n8n/backend-network/src/transport.ts
+  s_c3f63bfec03d56::t_be9450a351c2ec 29
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_c3f63bfec03d56::t_be9450a351c2ec 813,847
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "674e96676a8c838cc8f11bad6f0164f404c77a1b",
+  "prompts": {}
+}

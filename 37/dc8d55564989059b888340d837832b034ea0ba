@@ -1,0 +1,21 @@
+packages/cli/test/integration/instance-context.service.test.ts
+  s_5be157f6e91b85::t_8fd757931133dd 807-831
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_5be157f6e91b85::t_c0b28c77062647 420-521,774-778,1572-1573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37dc8d55564989059b888340d837832b034ea0ba",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

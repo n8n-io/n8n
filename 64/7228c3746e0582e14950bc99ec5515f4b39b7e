@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_e5d1e3f565ab47::t_791b7b7ec1d301 340-376
+  s_e5d1e3f565ab47::t_7ec01d74b8e47e 12
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_e5d1e3f565ab47::t_6998fbc125dc3e 15
+  s_e5d1e3f565ab47::t_4b44bfd339314a 67-78
+packages/nodes-base/nodes/RabbitMQ/test/RabbitMQ.node.test.ts
+  s_e5d1e3f565ab47::t_b05d2e713dcd72 33
+  s_e5d1e3f565ab47::t_1dd7c4bcc26a12 3
+  s_e5d1e3f565ab47::t_bd11b5cf7ff1d4 15
+  s_e5d1e3f565ab47::t_a4744b74f1540b 131-149
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_e5d1e3f565ab47::t_d4dfcea3c0834e 4-9
+  s_e5d1e3f565ab47::t_8656cefa4f3b9f 111-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "647228c3746e0582e14950bc99ec5515f4b39b7e",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_326dd039c6d306::t_d9686a0f3bd2fb 8
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_326dd039c6d306::t_d9686a0f3bd2fb 2428-2429
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePanel.test.ts
+  s_326dd039c6d306::t_8eb0fb71bd0291 7,9,22,30-31,38
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_326dd039c6d306::t_d9686a0f3bd2fb 328-329,331,334-335,344
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_326dd039c6d306::t_d9686a0f3bd2fb 39,719-726,728
+  s_326dd039c6d306::t_f5de4fd5f673a2 697,702
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePanel.vue
+  s_326dd039c6d306::t_97c13bed6ae53d 2,36-65,83-84,86-97,100-102,108
+packages/modules/type-availability-policies/frontend/README.md
+  s_326dd039c6d306::t_d9686a0f3bd2fb 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c7d0ed95e9eee75c0fab28c045590983791ff0b5",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

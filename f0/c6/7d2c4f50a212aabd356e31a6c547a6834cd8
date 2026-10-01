@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_c0a38871297572::t_b0d7762d9273ac 32
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_c0a38871297572::t_a28d63a8101734 256
+  s_c0a38871297572::t_b9c035ff4c4982 45
+  s_c0a38871297572::t_5aa5fe1412f897 300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "f0c67d2c4f50a212aabd356e31a6c547a6834cd8",
+  "prompts": {},
+  "sessions": {
+    "s_c0a38871297572": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "45c32643-5bb4-4449-9cbe-d8e6e1594097",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_d039c4d9371ecf::t_965695d1b2a542 358-363,367-373
+  s_d039c4d9371ecf::t_bd25855389694c 347-354
+packages/frontend/editor-ui/src/app/router.ts
+  s_e451b03ada1186::t_289c5c45b9bc39 882-887,890,894-900
+  s_d039c4d9371ecf::t_72fc9626cc6616 852
+  s_d039c4d9371ecf::t_e7e57da9c099e9 853-881,891,901
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_78adce0f64c626::t_64e5ac8f658d4b 257-295
+  s_78adce0f64c626::t_132e65d6e358cf 7-14
+  s_78adce0f64c626::t_9de5bd6731da4a 30-40,45,91
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.vue
+  s_e451b03ada1186::t_0ae09a8464ad21 2,7,11,13-16
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_d039c4d9371ecf::t_1963a8bbcb84b3 59-61
+packages/frontend/editor-ui/src/features/roles/composables/useRolesListActions.ts
+  s_e451b03ada1186::t_9fec43f32c76ad 1-131
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.vue
+  s_e451b03ada1186::t_e7fae175983f9b 15,22,51-53,55-60,62-69,73,78-82,85,88-92
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_d039c4d9371ecf::t_1bb7b085c9ab9d 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "1c8addda8e39646df63cfa819073ff07a4fd33bc",
+  "prompts": {},
+  "sessions": {
+    "s_78adce0f64c626": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50247200-f127-49ae-a230-f839ff215225",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_d039c4d9371ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d6af74f-0c62-4f40-a23b-841141b3e9c4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_e451b03ada1186": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e6ddda45-fd01-4e73-b225-ab6576a89fb1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

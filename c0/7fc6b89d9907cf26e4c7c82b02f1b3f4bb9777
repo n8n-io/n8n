@@ -1,0 +1,32 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.test.ts
+  s_310898ca29d655::t_687e027b2b2d90 1069-1072
+  s_310898ca29d655::t_6591b1f02cb157 989-992
+  s_310898ca29d655::t_53b7b850d5e53a 1027-1030
+  s_310898ca29d655::t_9e019659f84356 623-630
+  s_310898ca29d655::t_9ad63761109f25 726-733
+  s_310898ca29d655::t_a1f36795104557 769-862
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_310898ca29d655::t_54935cbf682a0c 148-153,158,161-163,166-173,175-183,185-198,202
+  s_310898ca29d655::t_2621b50341136f 174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c07fc6b89d9907cf26e4c7c82b02f1b3f4bb9777",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_310898ca29d655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ee3532-6ecf-4a19-98d5-dbaebd013a10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

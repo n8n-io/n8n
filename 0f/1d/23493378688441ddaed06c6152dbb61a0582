@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalVoteButtons.vue
+  s_9c25df37a9054c::t_b04c73f80e5fbf 73-81,83,87
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_9c25df37a9054c::t_1abc18e236a87b 588-591,593,599,602,606-607,610,615
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_9c25df37a9054c::t_23135d0c28e0da 469-479
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultsPanel.test.ts
+  s_9c25df37a9054c::t_ec121c2c1288df 118,133
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalVoteButtons.test.ts
+  s_9c25df37a9054c::t_6dc4255828db72 1-65
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9c25df37a9054c::t_bdf994889075a1 7782
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f1d23493378688441ddaed06c6152dbb61a0582",
+  "prompts": {},
+  "sessions": {
+    "s_9c25df37a9054c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f128968-9989-4751-bf80-3aa4ad58d755",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

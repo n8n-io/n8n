@@ -1,0 +1,24 @@
+packages/@n8n/decorators/src/multi-main/multi-main-metadata.ts
+  s_a210c1160ac692::t_1d881d9406dcd8 14-19
+  s_a210c1160ac692::t_9c7f9538f8db09 3
+packages/@n8n/decorators/src/replayable-registry.ts
+  s_a210c1160ac692::t_5e645206206be5 1-63
+packages/@n8n/decorators/src/system-task/system-task-metadata.ts
+  s_a210c1160ac692::t_07da43add546e7 3,7-9,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2806f5b4729dd80ef59a2af207db9b37f82271c3",
+  "prompts": {},
+  "sessions": {
+    "s_a210c1160ac692": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e0abdc3-655e-4132-9192-fc8b1430caac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

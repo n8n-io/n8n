@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_72cda7930d2255::t_cd15b69d5378b8 18
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_72cda7930d2255::t_cd15b69d5378b8 48,722,829,855
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_72cda7930d2255::t_cd15b69d5378b8 53
+packages/frontend/editor-ui/src/features/workflow-reviews/constants.ts
+  s_72cda7930d2255::t_cd15b69d5378b8 26
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_72cda7930d2255::t_cd15b69d5378b8 45,113,175,186,197,210,228,244,260,270,276,290,301,305,329,338,346,371,393,416,431,441,450,483,607,624,638,642,653,721,746,752
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
+  s_72cda7930d2255::t_cd15b69d5378b8 15,47
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_72cda7930d2255::t_ae34a343d30d8d 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0eae593bd2d3d894e1124a55d30feb38503a3c9f",
+  "prompts": {},
+  "sessions": {
+    "s_72cda7930d2255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ca7e586-ca64-4c57-ba8b-a8cdb3f1d5cd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

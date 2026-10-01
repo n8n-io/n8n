@@ -1,0 +1,35 @@
+packages/cli/src/services/canvas-only-personal-space-role.service.ts
+  h_c63dce324dfc7b 92
+  s_fa9aee632bdcc1::t_dd1adad3087ef3 53
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_fa9aee632bdcc1::t_5fd93918b79d34 184
+packages/@n8n/telemetry/src/events/roles.ts
+  s_fa9aee632bdcc1::t_53615cd5da3d30 5-11,13-28
+  s_fa9aee632bdcc1::t_a1b66daa03446d 33
+  h_c63dce324dfc7b 32
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_fa9aee632bdcc1::t_392e8b752b2405 2412,2420,2428
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_fa9aee632bdcc1::t_392e8b752b2405 1203,1219,1234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e596fce43ff41c470de5eb3ed802d85a730250d5",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fa9aee632bdcc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "839f7e69-e3de-4cec-ae5d-0a19810f21fe",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

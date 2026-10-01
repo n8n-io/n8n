@@ -1,0 +1,30 @@
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_af7a4e8964d154::t_451244044f944b 300,321,340
+  s_af7a4e8964d154::t_c6fbab59a7b156 335-336,341-358
+  s_af7a4e8964d154::t_85a6e2ccb5bc4c 9
+  s_af7a4e8964d154::t_3d6a44ca8456eb 317
+  s_af7a4e8964d154::t_67c35c3a9a60b2 337-339
+packages/cli/src/workflow-helpers.ts
+  s_af7a4e8964d154::t_fada0168030316 300-301,310,341-342,350,354-355,360,363,366,376-378,387-388,395,399-400,417,419-420,431
+  s_af7a4e8964d154::t_75c0c24d02edb9 302-303,340,373,379,418
+  s_af7a4e8964d154::t_2e79b295588f13 381-383
+  s_af7a4e8964d154::t_66930abdebddbe 374-375,380,416,426
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_af7a4e8964d154::t_ff01ae02294940 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a102c93ab4160b7e9e4eb6a34c4c5fa0d2a2d519",
+  "prompts": {},
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

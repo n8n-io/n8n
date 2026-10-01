@@ -1,0 +1,19 @@
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_9c30e64d236bdf::t_a12d83d4ee6ae2 65-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3e5fbc82713e468ce1916fd78d6970488036768",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

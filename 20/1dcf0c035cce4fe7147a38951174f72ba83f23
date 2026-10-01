@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_f67394133527a7::t_f884cd639d9bd6 24,65-67
+  h_9b272a633435fb 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "201dcf0c035cce4fe7147a38951174f72ba83f23",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f67394133527a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64db-ac5c-7c31-8392-8711f9c4f952",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

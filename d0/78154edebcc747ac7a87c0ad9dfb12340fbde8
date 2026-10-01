@@ -1,0 +1,39 @@
+packages/testing/containers/services/load-balancer.ts
+  s_6bcac0c195ec58::t_6874a5c383b3f8 23-27
+packages/testing/playwright/tests/infrastructure/webhook-proc/chat-send-and-wait.spec.ts
+  s_6bcac0c195ec58::t_139d9dc163d410 118
+  s_6bcac0c195ec58::t_fbcfa5e676993d 1,3-22,36-117,119-136
+  s_6bcac0c195ec58::t_b50882d6c4aee3 2
+  s_6bcac0c195ec58::t_ab5ab6b80f69f3 23-35
+  s_6bcac0c195ec58::t_544f1f6c28cb5b 137-138
+packages/cli/src/webhooks/__tests__/webhook-server.test.ts
+  s_6bcac0c195ec58::t_ed15192c409607 1-54
+packages/cli/src/webhooks/webhook-server.ts
+  s_6bcac0c195ec58::t_03ae334fe5a6d5 4,15,17-18
+  h_44f8d1c0f2f8c4 16
+  s_6bcac0c195ec58::t_5982e60c083cee 19
+packages/testing/playwright/workflows/chat-send-and-wait.json
+  s_6bcac0c195ec58::t_6e6a96f6b25ac7 39
+  s_6bcac0c195ec58::t_9bd73d52f7133b 1-38,40-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d078154edebcc747ac7a87c0ad9dfb12340fbde8",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6bcac0c195ec58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10b100ad-8246-477e-a1da-7ed3faa8753a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

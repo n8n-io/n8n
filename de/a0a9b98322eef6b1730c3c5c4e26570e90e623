@@ -1,0 +1,29 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_c49a2c9eccdc63::t_0fb0a482b6e41d 42-43
+packages/cli/test/integration/shared/types.ts
+  s_909fa6f565ea9a::t_0fd020292f5d35 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dea0a9b98322eef6b1730c3c5c4e26570e90e623",
+  "prompts": {},
+  "sessions": {
+    "s_909fa6f565ea9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff7411a-ff0e-4742-bbd8-41ee448e0c30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c49a2c9eccdc63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4438d6f2-9586-4cae-a94e-42a967f048af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

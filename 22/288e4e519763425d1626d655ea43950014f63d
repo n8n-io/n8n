@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_80d185abd37303::t_5e0bee0cba3edf 402-404,730-735
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_80d185abd37303::t_42c61441fa223c 113
+  s_80d185abd37303::t_a8a97a1db9fd9f 141,159
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_80d185abd37303::t_7eecadf1ef0ec2 270,301-302
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_80d185abd37303::t_3ed969cfeff9c9 71,183,199,208,217
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_80d185abd37303::t_9e7ce212a82306 758,763-766,768
+  s_80d185abd37303::t_a18452c52d32ec 747-757,759-762,767,769-771
+  s_80d185abd37303::t_dfb2b717f2c72e 703-704,722,1371,1373,1416-1419
+  s_80d185abd37303::t_6ab1317fbc266f 746
+  s_80d185abd37303::t_404c471bd37d38 787-791
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderTabPanel.vue
+  s_80d185abd37303::t_edf1a5bf3426eb 2
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentIdentityHeader.spec.ts
+  s_80d185abd37303::t_fc8e753062ee6c 23
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_80d185abd37303::t_4ccc365bbdb4c1 3
+  s_80d185abd37303::t_cc2a57476c47fc 43-48,81
+  s_80d185abd37303::t_a8584d113e9599 62-63,65-70,72
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_80d185abd37303::t_3e1fc23b7ef481 128-134
+  s_80d185abd37303::t_eeb74e779dd5d7 135
+packages/frontend/editor-ui/src/features/agents/utils/agentPersonalisation.ts
+  s_80d185abd37303::t_6ba07557a28aef 32
+  s_80d185abd37303::t_4810ab253d6b17 10
+  s_80d185abd37303::t_29660c39250d8c 17,19-23,25,40
+  s_80d185abd37303::t_5bb34dd2723a20 33
+  s_80d185abd37303::t_24f33db49708c2 6,12-13,15
+  s_80d185abd37303::t_3c60293fdd2c19 1,7-8
+  s_80d185abd37303::t_8af9a2c2a3970c 9
+  s_80d185abd37303::t_b3be6744fa2528 11
+  s_80d185abd37303::t_6296d6e5a536ba 34
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_80d185abd37303::t_d0afe5322a606b 380,392,396
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonImportModal.vue
+  s_80d185abd37303::t_c5c3285c10e4d4 104,106,110
+  s_80d185abd37303::t_d3b81f6c3d6430 4,23,32,46,73
+  s_80d185abd37303::t_66b53040c84e89 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "22288e4e519763425d1626d655ea43950014f63d",
+  "prompts": {},
+  "sessions": {
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

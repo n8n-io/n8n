@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/executions/__tests__/compare-execution-list-items.test.ts
+  s_dc96b1dfb92588::t_a9ddb0c29c7b11 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63fa2f0e541a255cee62e8ce6d684b73b02baff7",
+  "prompts": {},
+  "sessions": {
+    "s_dc96b1dfb92588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "273476c1-1684-4a27-847a-00fe8ca41be4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

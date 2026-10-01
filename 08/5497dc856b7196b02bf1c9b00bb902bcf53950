@@ -1,0 +1,89 @@
+packages/nodes-base/nodes/Microsoft/Outlook/v2/methods/listSearch.ts
+  s_622e6646e7b730::t_1a0eaa75773087 6-8
+  s_622e6646e7b730::t_4237d7b7e83677 41-51
+  s_622e6646e7b730::t_7fef1a6b939c95 112-122,167-177
+  s_622e6646e7b730::t_3658b1ce4d8ea2 26-28,96-98,152-154,211-213,266-268,327-329
+  s_622e6646e7b730::t_102aecce0f4cf0 232-235
+  s_622e6646e7b730::t_f286d5b5bbdbfa 275-285,288
+  s_622e6646e7b730::t_2a2df3078086a4 343-346
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/actions/router.test.ts
+  s_622e6646e7b730::t_865807fdc1ffd4 30-40
+  s_622e6646e7b730::t_a0488091b256bb 1-29,41-53
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_622e6646e7b730::t_d0bf48690735d2 756,777,816
+  s_622e6646e7b730::t_d1288ebf38d69f 514-524
+  s_622e6646e7b730::t_0cb8a840e14f99 721
+  s_622e6646e7b730::t_abd3361400a175 536-546,549-559,569-579,590-600
+  s_622e6646e7b730::t_20502759a73934 800
+  s_622e6646e7b730::t_0ba75e8eb714a4 48-58,77-87,103-113,129-139,155-165,181-191,207-217,233-243,260-270,284-294,318-328,367-377,397-407,420-430,443-453,466-476,489-499
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_622e6646e7b730::t_b446bc2b1f3bbb 13
+  s_622e6646e7b730::t_0ad2cc40b6bc83 60-66,80
+  s_622e6646e7b730::t_a423c2b33d13f1 155
+  s_622e6646e7b730::t_0248ca2ee1d592 143-144
+  s_622e6646e7b730::t_2ce5a7c756bbde 106-109
+  s_622e6646e7b730::t_50881f4fedfdf1 83-85,92,95
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/methods/loadOptions.test.ts
+  s_622e6646e7b730::t_dd6dd7521ff771 233-235
+  s_622e6646e7b730::t_a8432275f71057 133-135,137
+  s_622e6646e7b730::t_9358f564c3fd3c 40-43
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/methods/listSearch.test.ts
+  s_622e6646e7b730::t_faf3542b9a16d4 89-92
+  s_622e6646e7b730::t_7c1adeb98a72ac 447-450,452
+  s_622e6646e7b730::t_77dd6629e10c67 57-60
+  s_622e6646e7b730::t_fb2addee6fcdbc 144-147
+  s_622e6646e7b730::t_739ff12c979871 557-560
+  s_622e6646e7b730::t_b57917af50dc06 279-282
+  s_622e6646e7b730::t_d0c807279344fc 366-369
+  s_622e6646e7b730::t_caecd6bd938337 409-412
+  s_622e6646e7b730::t_892aaf20f09597 185-188
+  s_622e6646e7b730::t_3c63080cc9d16a 227-230
+  s_622e6646e7b730::t_c8b4716dbe57e7 116-118,590-592
+  s_622e6646e7b730::t_31732d04fd9fa6 321-324
+packages/nodes-base/nodes/Microsoft/Outlook/trigger/GenericFunctions.ts
+  s_622e6646e7b730::t_45e5094a20cec6 82-93
+  s_622e6646e7b730::t_33251377635e7b 60-70
+packages/nodes-base/nodes/Microsoft/Outlook/test/trigger/GenericFunctions.test.ts
+  s_622e6646e7b730::t_54c96d6d286950 99-112,134-146,173-185,210-211,241-242,264-265,355-356,392-393,401-402,446-447,482-485,496-499,552-563,611-623,789-801,838-839,878-879
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_622e6646e7b730::t_dbab43b578c49d 669
+packages/nodes-base/nodes/Microsoft/Outlook/v2/methods/loadOptions.ts
+  s_622e6646e7b730::t_ec96ca3105c4c7 63-65
+  s_622e6646e7b730::t_03d765d3ed52ad 5-7,17-20
+  s_622e6646e7b730::t_411184d8ef6b0a 33-43
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_622e6646e7b730::t_5904cceb0427d7 157
+  s_622e6646e7b730::t_8f9d7b39325ec8 43-46,61-62,64
+  s_622e6646e7b730::t_4508b99d50a01c 279
+  s_622e6646e7b730::t_ffce6a3546c225 68-70,77,80
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/router.ts
+  s_622e6646e7b730::t_3dd05a3e26cb5e 14
+packages/nodes-base/nodes/Microsoft/ToDo/MicrosoftToDo.node.ts
+  s_622e6646e7b730::t_def268eb9ff0b2 13
+  s_622e6646e7b730::t_d5efbe5347d10e 128-137
+  s_622e6646e7b730::t_cb5163efca7cad 553-554
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_7e219dea67bacd 61,93,124,156,188,220,252,284,319-329,338-348,357-367,376-386,394-404,467-477,490-500,513-523,536-546,559-569
+  s_622e6646e7b730::t_7ecae85ae4b34c 62-71,94-103,125-134,157-166,189-198,221-230,253-262,285-294
+  s_622e6646e7b730::t_efba9ab012a1e5 620-622,625-626,636-637
+  s_622e6646e7b730::t_9216368bd0f67a 605-615
+  s_622e6646e7b730::t_552afb08fb720f 694-744,748,754-755
+  s_622e6646e7b730::t_9cd8dfb47f51bc 583-593
+  s_622e6646e7b730::t_e9a86da0b76559 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "085497dc856b7196b02bf1c9b00bb902bcf53950",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

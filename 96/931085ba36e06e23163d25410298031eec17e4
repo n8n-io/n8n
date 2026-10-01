@@ -1,0 +1,35 @@
+packages/testing/playwright/config/intercepts.ts
+  s_6f28304d279527::t_fbd2735dfe7ca2 6,19-27
+  s_6f28304d279527::t_913dcf4cd44e2a 61-88
+packages/testing/playwright/config/ai-builder-wizard-fixtures.ts
+  s_6f28304d279527::t_9db8008ac3126c 445
+  s_6f28304d279527::t_dbcb5fbd7393b5 1
+packages/testing/playwright/Types.ts
+  s_6f28304d279527::t_5b95738507d108 1-7
+  s_6f28304d279527::t_71b13f80d03c68 57-59
+packages/testing/playwright/config/ai-builder-fixtures.ts
+  s_6f28304d279527::t_9fc369400a8a85 15
+  s_6f28304d279527::t_b95504c1d9a937 1
+packages/testing/playwright/config/ai-assistant-fixtures.ts
+  s_6f28304d279527::t_aa80a731a8afc2 110-119,125
+  s_6f28304d279527::t_2d09005eb25ec6 135,145,164,202,236,259,275,291
+packages/testing/playwright/utils/requirements.ts
+  s_6f28304d279527::t_8d206adb84788d 3
+  s_6f28304d279527::t_1f69ab945e7c50 28-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96931085ba36e06e23163d25410298031eec17e4",
+  "prompts": {},
+  "sessions": {
+    "s_6f28304d279527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c4cc17d7-7be6-4f00-8d0b-ab721f0a6cf2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

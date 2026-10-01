@@ -1,0 +1,33 @@
+packages/cli/src/modules/n8n-packages/io/entity-file-format.ts
+  s_7042435b4384cd::t_b6254eb8c40fcd 1-8
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_7042435b4384cd::t_1db0754a3b9a82 345
+  s_7042435b4384cd::t_64cdd1e9c0e13a 38
+packages/cli/src/modules/n8n-packages/io/__tests__/entity-file-format.test.ts
+  s_7042435b4384cd::t_5734b36ae6ba81 1-13
+packages/cli/src/modules/n8n-packages/__tests__/entity-file-format-fence.test.ts
+  s_7042435b4384cd::t_a0b298c9e3a425 1-25
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_7042435b4384cd::t_ef42164310868e 1
+  s_7042435b4384cd::t_44602979994a32 120
+packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
+  s_7042435b4384cd::t_cefa5bfa9b9656 5
+  s_7042435b4384cd::t_cd7007e73ae62c 135
+  s_7042435b4384cd::t_fcf1b63a466c0f 1-4,6-134,136-147,149-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "822a12250c85ed450e3a7be6f7a1c5ebcfdbda1e",
+  "prompts": {},
+  "sessions": {
+    "s_7042435b4384cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa05707c-0497-4ef5-b091-c6e3c26588ca",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

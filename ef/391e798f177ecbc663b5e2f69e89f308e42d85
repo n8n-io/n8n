@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/css/dialog.scss
+  s_45f660d92935ba::t_0c3651b1adf019 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ef391e798f177ecbc663b5e2f69e89f308e42d85",
+  "prompts": {},
+  "sessions": {
+    "s_45f660d92935ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a7352fe7-b6a1-4de6-9969-8e8ef1914ea1",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

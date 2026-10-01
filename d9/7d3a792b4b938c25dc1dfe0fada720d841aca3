@@ -1,0 +1,32 @@
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_0caa833f1ff183::t_33195eb07d9acc 199-245
+packages/@n8n/mcp-browser-extension/src/types.ts
+  s_0caa833f1ff183::t_3ae7f7e27f16d7 20-21,99,128
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  h_44f8d1c0f2f8c4 69
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_0caa833f1ff183::t_3ae7f7e27f16d7 104,499-500
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_0caa833f1ff183::t_a1f7b472a082b8 6-11,22-24,58,63-69,139,157,192,199,201,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d97d3a792b4b938c25dc1dfe0fada720d841aca3",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0caa833f1ff183": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc298244-08df-4b3a-82d4-257993a0b5cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

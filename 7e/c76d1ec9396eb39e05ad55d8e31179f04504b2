@@ -1,0 +1,45 @@
+packages/cli/src/executions/executions.controller.ts
+  s_61c25f16a88895::t_4b9f154a38065b 1,135-140
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_61c25f16a88895::t_4b9f154a38065b 224,299-301,359-364,402,416,431,444,457
+packages/cli/src/executions/execution.service.ts
+  s_61c25f16a88895::t_4b9f154a38065b 261-262,264,275,299,301,322,356,385-389,416-417
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_61c25f16a88895::t_4b9f154a38065b 122
+packages/@n8n/api-types/src/dto/executions/retry-execution-public.dto.ts
+  s_61c25f16a88895::t_7b3e364dbe0d11 1-11
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/retryExecution.generated.yml
+  ai_agent 1-27,33-60,62-173
+packages/@n8n/api-types/src/dto/executions/retried-execution-public.dto.ts
+  s_61c25f16a88895::t_7b3e364dbe0d11 1-10,13-31,34-50
+  s_61c25f16a88895::t_d6efb31822dac4 11-12,32-33
+packages/@n8n/api-types/src/dto/executions/retried-execution-public.openapi.ts
+  s_61c25f16a88895::t_d6efb31822dac4 3-8,14-23
+  s_61c25f16a88895::t_dcdcbb13b2c20a 1-2,9-13,24-57
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 16-18
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_61c25f16a88895::t_88c42862ccb4a1 227
+  s_61c25f16a88895::t_abf15aa7648a20 240,246-252
+  s_61c25f16a88895::t_4b9f154a38065b 6-7,23,31-32,34,212-226,228-239,241-245,253-263,324-348
+packages/@n8n/api-types/src/dto/index.ts
+  s_61c25f16a88895::t_4b9f154a38065b 376-383
+packages/cli/test/integration/public-api/executions.test.ts
+  s_61c25f16a88895::t_4b9f154a38065b 10,340-374,382-390,394-410,418-442,524,535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ec76d1ec9396eb39e05ad55d8e31179f04504b2",
+  "prompts": {},
+  "sessions": {
+    "s_61c25f16a88895": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c430397-0614-49ec-84bc-eadc10ba77d5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

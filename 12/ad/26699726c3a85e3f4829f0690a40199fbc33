@@ -1,0 +1,42 @@
+packages/cli/src/modules/n8n-packages/engine/package-contents.ts
+  s_5ddf40544fde37::t_018ca5294756f1 4-5,8,10,12,14,16,19-20,25,27-33,35-36,38-43,47-64,81-82,84,86-89,91-95,98,106-146,148-160,165-202,208-213,215-218,226,233,239,247,254-260,269,273
+  ai_agent 161-164
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_96caa54d1608b8 21
+  s_5ddf40544fde37::t_7430de8faf4a8b 20,45,96,315,583,880
+  s_5ddf40544fde37::t_5fb1f352a67b94 38-44,329,541
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_7430de8faf4a8b 23,54,122
+  ai_agent 634
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_5ddf40544fde37::t_36cab2974775bd 50,124
+  s_5ddf40544fde37::t_ba81a86c1987ab 68,128,354
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-contents.test.ts
+  s_5ddf40544fde37::t_bebb86c929dfdf 1,10,19-20,31-32,35,45,48,62,65,72-77,79-94,97-103,105-111,114-119,121,124-129,131-133,136-141,143-147,150-151,153-155,158-163,165-173,175-176,179-266,269-286
+  ai_agent 78
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5ddf40544fde37::t_36cab2974775bd 12,417-424
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_99032423de68c7 322,339
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_09649505fc3ae4 151-157,481,483,488-494,518-519,523
+  s_5ddf40544fde37::t_7430de8faf4a8b 11,111
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_1307b7237544dd 11,40,85-87,98-100,105-106,148-149,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12ad26699726c3a85e3f4829f0690a40199fbc33",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

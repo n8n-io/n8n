@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_45efc9376a27dc::t_efb4b4918eb1b9 1249-1250,1252-1253,1263,1266-1267
+  s_45efc9376a27dc::t_cded2e391d8c40 1251
+packages/cli/test/migration/1789736885838-add-agent-thread-ownership.test.ts
+  s_45efc9376a27dc::t_efb4b4918eb1b9 31
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_45efc9376a27dc::t_efb4b4918eb1b9 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2a32a4247a96c772c6274f0fdec210b407b7f213",
+  "prompts": {},
+  "sessions": {
+    "s_45efc9376a27dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c368-1509-7711-a0ae-191fe3ae961e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

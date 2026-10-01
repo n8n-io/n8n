@@ -1,0 +1,21 @@
+packages/cli/src/modules/identity/LEARNINGS.md
+  s_16453cac85f858::t_185292254e7f51 1
+  s_16453cac85f858::t_c046874c0b0608 2-30,32-58
+  s_16453cac85f858::t_7436a027af0b6d 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "46d922c3a07ba117be5f9c053db8487ce564165d",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

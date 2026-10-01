@@ -1,0 +1,19 @@
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_e1e4b3d27a43c7::t_7811fa4e69b322 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fe7869c6d7775d716dc88aa258838f18cb28b7d2",
+  "prompts": {},
+  "sessions": {
+    "s_e1e4b3d27a43c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5077ca3-5832-47d5-aa3e-d844ee003686",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/core/src/execution-engine/declarative-poll.ts
+  s_2a1c69d003515b::t_c5a4f2a8e1efcb 67
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_2a1c69d003515b::t_d01abb4cdf874a 504
+  s_2a1c69d003515b::t_466ade353e217d 505
+packages/workflow/src/interfaces.ts
+  s_2a1c69d003515b::t_cf57bbdf364ca7 2826-2829
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  s_2a1c69d003515b::t_338e90abc020ac 801-802,804-810,812-820,822
+  s_2a1c69d003515b::t_61178f1bf9dbd3 803,811,821
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "105534ba6a015837ec47098cc5f22c24fdebefc1",
+  "prompts": {},
+  "sessions": {
+    "s_2a1c69d003515b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d877d31-e0fb-4643-abbc-d84c31b962b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

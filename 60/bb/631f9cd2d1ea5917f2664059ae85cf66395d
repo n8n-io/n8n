@@ -1,0 +1,146 @@
+packages/cli/src/modules/agents/agents-skills.controller.ts
+  s_b9f888da8064a4::t_8e0e6f07f49c55 49-52,65-68,80-83
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_31ec04319a70d6::t_4848fe5189cc76 993,1006-1035
+  s_b9f888da8064a4::t_0ff30de7e0dd50 823-842
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_31ec04319a70d6::t_6f5e939b2451dd 632-689
+packages/cli/src/modules/agents/agent-tasks.controller.ts
+  s_b9f888da8064a4::t_6d13a7766b4251 53-58,70-75,86-91
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_b9f888da8064a4::t_2a3491144d05c2 248-249,259,265
+  s_31ec04319a70d6::t_2d366cc33d7d39 282
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_b9f888da8064a4::t_0f71bf6edff71f 789
+  s_b9f888da8064a4::t_ca2b3000381398 844-847
+  s_b9f888da8064a4::t_e1597e7783d570 929
+packages/cli/src/modules/agents/__tests__/agent-tasks.controller.test.ts
+  s_b9f888da8064a4::t_db7d8743bfc8f9 46
+  s_b9f888da8064a4::t_09dc0edf1cb8aa 84-87,106-115,125-128
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_b9f888da8064a4::t_a9997cdb294af0 10
+  s_b9f888da8064a4::t_19d396c434bcf4 160,162-166,171-190,192,195-214,217,220-225
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_b9f888da8064a4::t_49e7b331121235 366,382
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.test.ts
+  s_b9f888da8064a4::t_8d51b2bbd8d118 12,15-16
+packages/@n8n/telemetry/src/events/agents.ts
+  s_31ec04319a70d6::t_ae5b07d9d59484 87
+  s_31ec04319a70d6::t_6cb5ef576dfafb 134
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_b9f888da8064a4::t_151dd807d1d122 115-118
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.ts
+  s_b9f888da8064a4::t_b55700e7c9462e 3,15
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_31ec04319a70d6::t_92fa96cfb11d45 79-80
+  s_31ec04319a70d6::t_d687b4f9755e9e 206
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_31ec04319a70d6::t_b26dbae398abf4 680-698,722
+  s_31ec04319a70d6::t_711bdcf8c59815 13
+  s_31ec04319a70d6::t_c125b7ca2d27a3 436-437,439,451,455-459,478-479,481,502,506-510,524,532,540-545
+  s_b9f888da8064a4::t_28502cf435fd85 526,533
+  s_105436d80ea964::t_02e722affab6c8 546,670,676,723
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_31ec04319a70d6::t_f77f6ae1cb08c4 363-364
+  s_31ec04319a70d6::t_6740e196c94a44 427-428
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_b9f888da8064a4::t_18e27ac1e8d03e 39,63-64,77-92
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_b9f888da8064a4::t_40198d557bec2d 84-87
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_31ec04319a70d6::t_a6f38d12e18073 37,54,66-68,75,77-83
+  s_b9f888da8064a4::t_0c66bfe167b5b6 14,18-19,23-28,121-122,125
+  s_a10cc2a004af64::t_b8596ac11fb74e 123-124
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_b9f888da8064a4::t_edfaa35ceac3db 10,43-47
+packages/cli/src/modules/agents/agents.service.ts
+  s_b9f888da8064a4::t_0ce8c6e5602e44 55-57,69,73,105-107,109-111
+  s_b9f888da8064a4::t_35dc17ffdd002e 16,33
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_31ec04319a70d6::t_6fd16ee7d5e6af 309-310,425-426
+  s_31ec04319a70d6::t_e66e913ec29306 637
+  s_31ec04319a70d6::t_e40bda94f7f9aa 682
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_31ec04319a70d6::t_521a065369591e 261-262
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_31ec04319a70d6::t_988664dc0b3cff 5
+  s_a10cc2a004af64::t_6af257166494f8 62
+  s_31ec04319a70d6::t_4f3805941f653c 1-3,7,10,18-32,37,40,52,68,117-121,138,160,190-198,216,226,231,234-236,239,243,246-248,251,263,275-330
+  s_105436d80ea964::t_182992dd15af56 6
+packages/cli/src/modules/agents/utils/agent-capabilities.ts
+  s_b9f888da8064a4::t_878387a25ca1d8 57-72
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_b9f888da8064a4::t_7619af6b99d2f7 9,14-18,22,33,46,58-65,69,74-88,98-103,106-110,124-138
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_b9f888da8064a4::t_74d2bb8c1316cb 144,161,167-168
+  s_31ec04319a70d6::t_ad5d67b4a3c4c9 169-180
+  s_b9f888da8064a4::t_2be32adc12f09b 103
+  s_31ec04319a70d6::t_2c95af3fbc4ba1 7,12-17,24-26,37,67,80-83,87,104-110,127,134-138,145-151,160,162-166
+  s_105436d80ea964::t_0d3c1e0f8d70f1 181
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_b9f888da8064a4::t_db65589945c78b 8-11,13
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_31ec04319a70d6::t_b2848902fd347b 1501
+  s_b9f888da8064a4::t_496b3aa05e439e 1121,1129,1134-1139,1145,1148,1163-1171,1175,1184,1200-1205
+  s_31ec04319a70d6::t_ab2274b69bd0bc 1429,1433,1457
+  s_b9f888da8064a4::t_f7802f6e5f9ca6 1070
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_b9f888da8064a4::t_f0c66bc3d84d3c 9,14-18,22,30,52,54,68,70,77,79,93,108-111,120-133,149,161-168,177-190,197-202,209-212,221,223-236
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_b9f888da8064a4::t_65fbcfdc0db2a4 645-646
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_b9f888da8064a4::t_1973e8fecf0266 17-21,33
+  s_b9f888da8064a4::t_643ca28a7290de 71,86-92,106,108,120,122,132,136-139,164-178,193-199,222-227,231-232,236-250,255-260,262-267,269,276-291
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_105436d80ea964::t_b76e351f6634c1 8,16,53,56-61,63,76-82,100,134,200-215
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_105436d80ea964::t_e37872c61f33bf 9,15,36,52-53,67,91-104,139-144,163,178,189-194,205-210,229,264-272,310-318,342-344,358-364,381,388-447
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_105436d80ea964::t_a28e97139a1800 13,27-28,144,165,201,211,213-223,244-254,260,266-276,302-307,325-327,336-341,352-354,365-367,400-408,420-430,433,439-441,448-450,465,467,476,478,484-518
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_b9f888da8064a4::t_337a1aee272100 1393,1523-1528,1681-1689,1754-1759
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_105436d80ea964::t_7608214404f48c 277
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_105436d80ea964::t_a1851a481259af 520-528,552,570-580,611,665,671-675,685,1382,1477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "60bb631f9cd2d1ea5917f2664059ae85cf66395d",
+  "prompts": {},
+  "sessions": {
+    "s_105436d80ea964": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cc5b121b-fd72-43b0-8602-1a6817de87b8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_31ec04319a70d6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "301f7b41-357b-4380-8984-b1907707a7e4",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a10cc2a004af64": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce3d2068-f4e6-47c2-b16f-36b62c0c8bda",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b9f888da8064a4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4c3b6c5f-4862-411a-a723-72b7b9cdeb6c",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

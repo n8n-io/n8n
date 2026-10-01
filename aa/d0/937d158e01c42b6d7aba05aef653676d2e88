@@ -1,0 +1,53 @@
+packages/@n8n/errors/oxlint.config.mts
+  s_aeae5940919df8::t_8f9c88c38d160d 1-7
+pnpm-lock.yaml
+  ai_agent 2201-2203,2210-2215,2394-2396,2406-2411,2498-2500,2507-2512,3704-3730
+packages/@n8n/oxlint-config/tsconfig.json
+  s_aeae5940919df8::t_e372e2fc891774 1-14
+packages/@n8n/oxlint-config/package.json
+  s_aeae5940919df8::t_ec0c42ccdaee88 1-37
+packages/@n8n/di/package.json
+  s_aeae5940919df8::t_c108d7078b093b 12-13,29-30,33-34,37
+packages/@n8n/errors/package.json
+  s_aeae5940919df8::t_c108d7078b093b 12-13
+  s_aeae5940919df8::t_ef415f766cfa2d 25,28-29
+packages/@n8n/eslint-config/src/plugin.ts
+  s_aeae5940919df8::t_689f8e0b1e2b7b 40-42
+packages/@n8n/di/oxlint.config.mts
+  s_aeae5940919df8::t_c108d7078b093b 1-7
+scripts/lint-parity/oxlint-gap.json
+  s_aeae5940919df8::t_db89cd4f687908 1-52
+scripts/lint-parity/oxlint-parity.mjs
+  s_aeae5940919df8::t_344563dad44c70 18-19,41,162-167,217-218
+  s_aeae5940919df8::t_5d7d68d7c25613 136,148-150,159,175,179,187-190,192-194
+  s_aeae5940919df8::t_c1638aa23b5a6c 1-17,20-40,42-135,137-147,151-158,160-161,168-174,176-178,180-186,191,195-216,219-232
+packages/@n8n/crdt/package.json
+  s_aeae5940919df8::t_c108d7078b093b 13-14,38,41-42
+packages/@n8n/crdt/oxlint.config.mts
+  s_aeae5940919df8::t_c108d7078b093b 1-7
+packages/@n8n/oxlint-config/src/configs/base.ts
+  s_aeae5940919df8::t_d0cb5b33582126 3-17,19-30,32-38,40,42-44,46-208,210-223
+  ai_agent 39
+  s_aeae5940919df8::t_c108d7078b093b 31
+  s_aeae5940919df8::t_22d5ef1719d5f9 1-2,18,41,45,209,224
+packages/@n8n/eslint-config/package.json
+  s_aeae5940919df8::t_689f8e0b1e2b7b 22-25
+turbo.json
+  s_aeae5940919df8::t_5572188e47ebbf 60-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aad0937d158e01c42b6d7aba05aef653676d2e88",
+  "prompts": {},
+  "sessions": {
+    "s_aeae5940919df8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59328d06-cada-4319-b271-ac4e29634236",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

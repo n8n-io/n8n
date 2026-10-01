@@ -1,0 +1,27 @@
+.github/workflows/ci-master.yml
+  s_0b37b2df1cd389::t_d094342a8add9f 36
+package.json
+  s_0b37b2df1cd389::t_0c2f61bcccfbb9 6
+packages/@n8n/agents/package.json
+  s_0b37b2df1cd389::t_0c2f61bcccfbb9 6
+packages/cli/package.json
+  s_0b37b2df1cd389::t_0c2f61bcccfbb9 60
+packages/@n8n/benchmark/package.json
+  s_0b37b2df1cd389::t_0c2f61bcccfbb9 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4726018c1cba0499ccc6cf4cad7bdd5e45ee52e5",
+  "prompts": {},
+  "sessions": {
+    "s_0b37b2df1cd389": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e6993b4-4899-4349-ad82-ceb8443d0a81",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

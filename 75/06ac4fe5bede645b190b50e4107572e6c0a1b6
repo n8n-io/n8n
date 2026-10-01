@@ -1,0 +1,35 @@
+packages/nodes-base/credentials/MicrosoftSharePointOAuth2Api.credentials.ts
+  s_28d43d3741c173::t_30e180c71516cd 27-33,43
+  s_28d43d3741c173::t_be97da91fbd453 26
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_28d43d3741c173::t_398615dbf4b93c 270-277
+  s_28d43d3741c173::t_5de18131193a1a 89-95
+  s_28d43d3741c173::t_804d0d6ad7562c 268-269
+  s_797de692a77477::t_a68f8a0f4586ab 115
+packages/nodes-base/credentials/test/MicrosoftSharePointOAuth2Api.credentials.test.ts
+  s_28d43d3741c173::t_de2ccb409696eb 85,89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7506ac4fe5bede645b190b50e4107572e6c0a1b6",
+  "prompts": {},
+  "sessions": {
+    "s_28d43d3741c173": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db8e5adf-ba6f-40fb-87ca-e03c2570a9d8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_797de692a77477": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5f700f4ea5e1984c",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

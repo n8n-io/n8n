@@ -1,0 +1,30 @@
+.claude/plugins/n8n/agents/autodev-implementer.md
+  s_030c506d89bf51::t_d13b06e51de4e9 10-13
+.claude/plugins/n8n/skills/dev-flow/SKILL.md
+  s_030c506d89bf51::t_995a6d46253762 268-269
+  s_030c506d89bf51::t_0a1f9bf33fac6d 253-254
+  s_030c506d89bf51::t_fafa369aff17d9 157
+  s_030c506d89bf51::t_fd5405a94ff1ef 172-173,179
+  s_030c506d89bf51::t_222c37a91e8cf8 264
+  s_030c506d89bf51::t_b2478d5d8f8a49 95-97
+  s_030c506d89bf51::t_b71c0a84584c74 225-227,229
+  s_030c506d89bf51::t_9296f0c749fe53 261,263
+.claude/plugins/n8n/agents/autodev-planner.md
+  s_030c506d89bf51::t_525ef9d3ddc799 12-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "48af7f54f30e318eb01122c09f8b44a6a7d3c62a",
+  "prompts": {},
+  "sessions": {
+    "s_030c506d89bf51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4744dcb3-4c1c-4883-aaa3-c47574d68f18",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

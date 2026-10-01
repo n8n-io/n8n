@@ -1,0 +1,21 @@
+packages/cli/src/webhooks/live-webhooks.ts
+  s_ae19f5079d0036::t_8298972caf4c00 214-218
+packages/workflow/src/index.ts
+  s_ae19f5079d0036::t_c5b80455497422 97-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "fcb855cfb100e2efd84524f0929d8d6c388f5556",
+  "prompts": {},
+  "sessions": {
+    "s_ae19f5079d0036": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_ae19f5079d0036",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/testing/containers/services/__tests__/engine.test.ts
+  s_6292f7a6ebb209::t_a4b35d7d1da965 57-64
+packages/testing/containers/services/engine.ts
+  s_6292f7a6ebb209::t_a752550385ca30 54
+  s_6292f7a6ebb209::t_a4b35d7d1da965 15-22,48-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e37a5ca364244722039d895399f5f8cc33db5dd4",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

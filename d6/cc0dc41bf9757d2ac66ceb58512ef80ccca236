@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_94b196e318908d::t_c073af7a5f9101 165-166,177-178,190,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d6cc0dc41bf9757d2ac66ceb58512ef80ccca236",
+  "prompts": {},
+  "sessions": {
+    "s_94b196e318908d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7f1b1936-d0b1-4968-a926-856e92cf98b4",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/experiments/instanceAiComputerUse/useInstanceAiComputerUseExperiment.ts
+  s_53c8de4ace3cfc::t_a36ab25f822b04 1-16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_53c8de4ace3cfc::t_65081db1997b3d 5937
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_53c8de4ace3cfc::t_cba4f8280e9486 1-134
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_53c8de4ace3cfc::t_1f5234df90efc6 275-289
+  s_53c8de4ace3cfc::t_bb0b54fbf52b54 114
+  s_53c8de4ace3cfc::t_5b0a7827f95f34 53,55,62-63
+  s_53c8de4ace3cfc::t_2fb84bd7c9dfc2 64-65
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_53c8de4ace3cfc::t_d78ecc4ca3feab 13
+  s_53c8de4ace3cfc::t_9c244dee8cb9e0 34
+  s_53c8de4ace3cfc::t_35365f8d675c9a 41-45
+  s_53c8de4ace3cfc::t_be710f3f642e91 246-252,254
+  s_53c8de4ace3cfc::t_49a1739bac10ff 71-74,78-79
+packages/frontend/editor-ui/src/experiments/instanceAiComputerUse/index.ts
+  s_53c8de4ace3cfc::t_c3f20726a001d2 1
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_53c8de4ace3cfc::t_c8123f0c657d02 169
+  s_53c8de4ace3cfc::t_3d2a5700a9b293 134-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_53c8de4ace3cfc::t_a1ab967ac829ad 8
+  h_44f8d1c0f2f8c4 25,153
+packages/frontend/editor-ui/src/experiments/instanceAiComputerUse/useInstanceAiComputerUseExperiment.test.ts
+  s_53c8de4ace3cfc::t_eacea6fe1702d4 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "6946ee6877b66382f0e2d486a483ad2b3277f433",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53c8de4ace3cfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccee9d50-3da4-4b03-9909-29276bbd0483",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

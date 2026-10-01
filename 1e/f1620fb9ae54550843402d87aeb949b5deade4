@@ -1,0 +1,11 @@
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry.module.test.ts
+  ai_agent 1-31
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  ai_agent 21-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ef1620fb9ae54550843402d87aeb949b5deade4",
+  "prompts": {}
+}

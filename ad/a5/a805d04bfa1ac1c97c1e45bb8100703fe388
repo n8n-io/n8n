@@ -1,0 +1,126 @@
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/reply.json
+  s_cf57910070a84e::t_f0c1bfba34575e 40-41,88
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/webhook/sendLegacy.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9,19,42
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10,44
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3,7-11,37-42,49,53,57-58,77
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-11,24-25,32-35,59-61
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-11,15,22-23,30-34,55-56
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 68
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3,16
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6-7,11,15,23,36
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 29-30,71-72,81
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,19
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3,7-11,22,37-42,49,59-60,70,77
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.ts
+  s_cf57910070a84e::t_b2361e6c02a84d 317-321,381-382,384-386,390-392,395,406-407,409,411-412
+  s_cf57910070a84e::t_e9a8d823524cf0 15-20
+  s_cf57910070a84e::t_9addc1c338bf61 26,70-71
+  s_cf57910070a84e::t_867e15f253089e 322,358-362,368,408,410
+  s_cf57910070a84e::t_444309f079a123 207-307
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9,13-15,25,39-43,53,63-64,83
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,10-11,15,26,33,40,50
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,10-11,15,26,33,40,50
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 26-28,69-70,79
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,10,17,33-37,53-54,61
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.test.ts
+  s_cf57910070a84e::t_361f6a9b2dc550 219-386
+  s_cf57910070a84e::t_71633eb860830a 387
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-11,24-25,32-33,37,61-63
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,19
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/channel/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 12
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6-7,11,15,23,36
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,10-11,15,26,33,40,50
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10,44
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/lead/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,10-11,15,26,33,40,50
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 68
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/activity/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-11,24-25,32-35,59-61
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 30,39,67-69,74,83,123
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 26-28,69-70,79
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6-7,11,15,23,36
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/note/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 26-28,69-70,79
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/search.json
+  s_cf57910070a84e::t_f0c1bfba34575e 7
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/enable.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,19
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/duplicate.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3,19,29-31,47-49,53,69-78,85-91,107,126,130-134,150,166
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 45,66
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/contact/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 35,74,93-94,101,105-106,117,127-129
+packages/nodes-base/nodes/Slack/__schema__/v2.3.0/userGroup/disable.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/file/update.json
+  s_cf57910070a84e::t_f0c1bfba34575e 6,10,17,33-37,53-54,61
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 40-41,85-86
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/onlineMeeting/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3-8,15-28,32-60
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/search.json
+  s_cf57910070a84e::t_f0c1bfba34575e 7,23
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/deal/getAll.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3,7-11,37-42,49,59-60,79
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channelMessage/getAllReplies.json
+  s_cf57910070a84e::t_f0c1bfba34575e 3-6,16-56,62-71,75-78
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/dealProduct/add.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10,44
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/product/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 9-10
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/onlineMeeting/get.json
+  s_cf57910070a84e::t_f0c1bfba34575e 20
+packages/nodes-base/nodes/Microsoft/OneDrive/__schema__/v1.1.0/file/move.json
+  s_cf57910070a84e::t_f0c1bfba34575e 11-13
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/create.json
+  s_cf57910070a84e::t_f0c1bfba34575e 68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ada5a805d04bfa1ac1c97c1e45bb8100703fe388",
+  "prompts": {},
+  "sessions": {
+    "s_cf57910070a84e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ba5b66-cd0c-4f03-94e4-21a6750a8e46",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

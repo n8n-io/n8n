@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.ts
+  s_83cb2052564bbc::t_013de68e6547ae 1,41,43,45
+  s_83cb2052564bbc::t_cdac0e482349b7 19,42,44
+  s_83cb2052564bbc::t_661076455c37b9 12-13
+  s_83cb2052564bbc::t_f3cbb364068d20 3
+  s_83cb2052564bbc::t_865e510d215cbe 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e526b7c6fb998db5ff02c545ad34a962b5850c0e",
+  "prompts": {},
+  "sessions": {
+    "s_83cb2052564bbc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b073199b-9d91-4a02-bb84-810c10f25870",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

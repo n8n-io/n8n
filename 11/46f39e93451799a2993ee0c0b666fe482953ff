@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_e71b5cafbbe06f::t_3e82749c8a8c0f 4978-4979,4988-4989,5030-5034,5037
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1146f39e93451799a2993ee0c0b666fe482953ff",
+  "prompts": {},
+  "sessions": {
+    "s_e71b5cafbbe06f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e1fbaf6-37c5-4b77-883a-b616e8141e81",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

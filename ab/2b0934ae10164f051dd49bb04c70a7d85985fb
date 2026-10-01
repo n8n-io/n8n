@@ -1,0 +1,47 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/index.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 1-92
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/get.operation.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 6,46
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/getAll.operation.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 1-64
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/node.type.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 4
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/index.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 4,6,26-31,37
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/methods/index.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 1,6
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/site/index.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 10,62,130-131,134
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 31-34,210-244
+  s_dd6b1476a89205::t_420c64cfb93e26 245
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/transport/index.test.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 9,153-369,383-390,392-393
+  s_dd6b1476a89205::t_8c081e5d1d35fd 391,394
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 1,33-35,50
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/index.test.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 1-134
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 4-9
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/get.test.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 231,238
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/getAll.test.ts
+  s_dd6b1476a89205::t_d98b24bb9de3ab 1-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ab2b0934ae10164f051dd49bb04c70a7d85985fb",
+  "prompts": {},
+  "sessions": {
+    "s_dd6b1476a89205": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "169c121b-d3d9-4449-aa90-c5e0821e1c16",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_2d04851238a17a::t_86bbd27c1b921b 639-642
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_2d04851238a17a::t_625400e44a1503 1064,1066-1067
+  s_2d04851238a17a::t_c7cce36b9d71a6 1147,1149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0aa3a77d951c5813e834d80782c166e5942eb7a",
+  "prompts": {},
+  "sessions": {
+    "s_2d04851238a17a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9252a64-f754-4337-bc15-80363e43c3a2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

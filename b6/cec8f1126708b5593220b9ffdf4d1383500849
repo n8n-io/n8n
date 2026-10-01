@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_fcf2e1340bc1ee::t_7085981a99ac5b 53-56
+  s_fcf2e1340bc1ee::t_692152032c0dd1 33
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/channelMessage/create.operation.ts
+  s_fcf2e1340bc1ee::t_3769de4f93c862 105-108,114,116-117,123-137
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_fcf2e1340bc1ee::t_3fdf8e01ffcd00 170-173,181
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_fcf2e1340bc1ee::t_73a797fb6ccc64 121,126
+  s_fcf2e1340bc1ee::t_2d0595626ea069 144-146
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_fcf2e1340bc1ee::t_6050ebf6dbf97d 46,49-57,65,82,85-97,103,106-118
+  s_fcf2e1340bc1ee::t_6317ded7357b21 98-102,104
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_fcf2e1340bc1ee::t_11a8c180dea43c 327-328
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_fcf2e1340bc1ee::t_65697008ff2993 26-29,31-33,36
+  s_fcf2e1340bc1ee::t_4c1e48fca326f7 123-129
+  s_fcf2e1340bc1ee::t_17c4624619216e 165,170-172
+  s_fcf2e1340bc1ee::t_e80691603e2c6c 82-99,109-113
+  s_fcf2e1340bc1ee::t_78a3e2c52775c4 58-61
+  s_fcf2e1340bc1ee::t_7eaef1ab2c1130 114
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/chatMessage/create.mentions.test.ts
+  s_fcf2e1340bc1ee::t_a5faa80a3269f5 35-40
+  s_fcf2e1340bc1ee::t_a0b27602a3d494 2
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chatMessage/create.operation.ts
+  s_fcf2e1340bc1ee::t_af4bea0d364877 54
+  s_fcf2e1340bc1ee::t_f9cc7f425b131c 5-10
+  s_fcf2e1340bc1ee::t_d0edd12fcbf9cc 83-86,96,99
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_fcf2e1340bc1ee::t_e923f4f5d89896 339-340
+  s_fcf2e1340bc1ee::t_8d4b44b9c69ead 365-367
+  s_fcf2e1340bc1ee::t_dd2b7f10d562c5 322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b6cec8f1126708b5593220b9ffdf4d1383500849",
+  "prompts": {},
+  "sessions": {
+    "s_fcf2e1340bc1ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7379727-0b3b-431d-ac2f-3bc7aa457f68",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

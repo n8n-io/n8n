@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  h_a348dde7c02e89 410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e083dd2fc873b7cbf7491d5ef5f0eaa2688adba0",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

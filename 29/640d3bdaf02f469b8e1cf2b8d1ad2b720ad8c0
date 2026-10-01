@@ -1,0 +1,47 @@
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_2fc564e3187e71::t_40efaaf7a6475e 171-174
+  s_8b86eb076521e6::t_b12b642dc00445 1-99,102-170,178-263,270-282,284-285,287-300,302-346
+  s_8b86eb076521e6::t_bd1c1d4166fb7f 100-101,264-269
+  s_2fc564e3187e71::t_d59c9ebb920408 283,286,301
+packages/cli/src/metrics/prometheus/constant.ts
+  s_2fc564e3187e71::t_40efaaf7a6475e 6-8
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_8b86eb076521e6::t_2262bf27071b5a 24,65,93
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_8b86eb076521e6::t_bd1c1d4166fb7f 171
+  s_8b86eb076521e6::t_f79dab789b2876 26,65,96,134
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_8b86eb076521e6::t_16a72b9de31691 75-78
+packages/@n8n/config/test/config.test.ts
+  s_8b86eb076521e6::t_16a72b9de31691 272
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_2fc564e3187e71::t_d59c9ebb920408 53-54,154-155
+  s_8b86eb076521e6::t_63fb3b99961b77 1-52,55-104,120-123,140-147,149,151-153,156-170,172-174
+  s_2fc564e3187e71::t_6df222acea97cc 115-119,134-139
+  s_2fc564e3187e71::t_835c46f3731418 126-129
+  s_8b86eb076521e6::t_566ea3a748b429 148,150,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29640d3bdaf02f469b8e1cf2b8d1ad2b720ad8c0",
+  "prompts": {},
+  "sessions": {
+    "s_2fc564e3187e71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43cbfc44-a81b-4873-b6bf-317bdcb62056",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_8b86eb076521e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f155d013-6503-4c9b-bdf2-af0961d3e187",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

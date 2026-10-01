@@ -1,0 +1,263 @@
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 4
+packages/nodes-base/nodes/Splunk/v2/transport/index.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 10,12
+packages/nodes-base/nodes/Simulate/SimulateTrigger.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1,11
+packages/core/src/execution-engine/routing-node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 6
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 24-25
+packages/nodes-base/nodes/Discord/v1/DiscordV1.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9-11
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/transport/index.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7-8
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.service.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 4
+packages/testing/containers/pull-test-images.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 30,54
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1,4
+packages/@n8n/utils/src/sleep.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-30
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.vue
+  s_8c0bb2d06aee91::t_ff99aca9f63392 179,188,193
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_8c0bb2d06aee91::t_ff99aca9f63392 188-191,198
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-48
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 12-13,32-34
+packages/cli/src/services/cache/__tests__/cache.service.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 3
+packages/nodes-base/nodes/Discord/v2/transport/helpers.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9
+packages/testing/playwright/package.json
+  s_8c0bb2d06aee91::t_ff99aca9f63392 64
+packages/@n8n/nodes-langchain/nodes/chains/ChainLLM/ChainLlm.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7-8
+packages/@n8n/instance-ai/evaluations/harness/redact.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 66-76,87-106
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 123-135
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/transport.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7-9
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 26
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 94,160-224,281-358
+packages/cli/src/scaling/scaling.service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9-10
+packages/@n8n/instance-ai/src/workspace/sandbox-fs.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 60,99
+packages/cli/src/crash-journal.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 5
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9-10
+packages/cli/src/active-executions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 15-16
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 20,28,72-129,148-150,300-887,1266-1297
+packages/cli/src/executions/execution-recovery.service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 14,16
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 23-25
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9
+packages/@n8n/instance-ai/src/workspace/builder-templates-service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 48
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2340-2341
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 5,7
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 6,10
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 16-17
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7131
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/test/TextClassifier.node.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2,14-16,157-158
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/transport.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7-9
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 18
+packages/cli/test/integration/database/services/db-lock.service.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 12-13
+packages/frontend/editor-ui/src/app/components/Banner.vue
+  s_8c0bb2d06aee91::t_ff99aca9f63392 82-89,118,137,208-213,220-224
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 30,126
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 10-15,47-61,66,87,124-125,191-207
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1,136,157,167,491-528,584,593,600-604,621-692
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  ai_agent 124-141,143-156,182,191-192,198-204,220-222,238,246-252,254,256-273
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 5,7
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-32
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 220-248,594,600,606,611-643,660
+packages/nodes-base/nodes/Google/BigQuery/v2/actions/database/executeQuery.operation.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7,9
+packages/cli/src/modules/chat-hub/chat-hub-execution.service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 11
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-definition.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-43
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-2,33-35
+packages/cli/src/modules/agents/integrations/platforms/slack-bridge-behavior.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2,222-226
+pnpm-lock.yaml
+  ai_agent 6826-6828
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 6-7
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-input-connection-data.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 3,43-47,49,880,903-904,955,980,983,1028,1041,1043,1068,1080,1082
+packages/cli/src/modules/insights/insights-compaction.service.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 4
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 19
+packages/@n8n/instance-ai/evaluations/checklist/verifier.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2
+packages/nodes-base/nodes/HttpRequest/V1/HttpRequestV1.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 20
+packages/frontend/@n8n/rest-api-client/src/api/nodeTypes.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 10
+packages/cli/src/utils/ai-service-retry.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1
+packages/core/src/execution-engine/node-execution-context/utils/get-input-connection-data.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 3,278
+packages/@n8n/nodes-langchain/nodes/chains/ChainSummarization/V2/ChainSummarizationV2.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 10-11
+packages/cli/src/commands/base-command.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 28-29
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 4-7
+packages/nodes-base/nodes/RabbitMQ/GenericFunctions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 12,14
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 3,95-181
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9-10
+packages/@n8n/api-types/src/agents/types.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 220-221
+packages/nodes-base/nodes/Zoom/GenericFunctions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1,69
+packages/nodes-base/nodes/Discord/test/v2/transport/discord.api.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 3,9
+packages/@n8n/utils/src/sleep.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-68
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 12,90-91,116-118,151-158,178-180,215-218
+packages/nodes-base/nodes/Simulate/Simulate.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1,10
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-durable.spec.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-2
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/transport/index.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7-8
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 555-567
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 13,15
+packages/workflow/src/utils.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 244-247
+packages/core/src/execution-engine/workflow-execute.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 8
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-definition.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-51
+packages/nodes-base/nodes/Splunk/v1/GenericFunctions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9,12
+packages/cli/src/task-runners/task-runner-module.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 6
+packages/cli/src/commands/start.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 17-18
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  ai_agent 7-10,156
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 35-36,110-133
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 26-27,57-58
+packages/nodes-base/nodes/Twitter/V1/GenericFunctions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 10-12
+packages/@n8n/instance-ai/evaluations/__tests__/fixtures/eval-results.partial-abort.json
+  s_8c0bb2d06aee91::t_ff99aca9f63392 41-43,74-76
+packages/nodes-base/nodes/Google/Calendar/GenericFunctions.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 15,18
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 14,36-41,71,104,192-206,264-298
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 29-30
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  ai_agent 161-186
+packages/@n8n/instance-ai/evaluations/run/persist.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 432-436
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/TextClassifier.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 3-4
+packages/cli/src/concurrency/__tests__/concurrency-queue.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/ToolWorkflowV2.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2-3,15-16,20,764-765,805,880,906,937,964,968,992
+packages/cli/src/wait-tracker.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 7
+packages/@n8n/nodes-langchain/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-2
+packages/cli/src/__tests__/active-executions.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 14,32
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewCanvas.vue
+  s_8c0bb2d06aee91::t_ff99aca9f63392 122,134
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2,4,18-20
+packages/@n8n/instance-ai/evaluations/__tests__/redact.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-7,113-144,155-202
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2,41-58
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2,25-33
+packages/cli/src/workflows/triggers/__tests__/trigger-activation-retry.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 8
+packages/cli/test/integration/workflow-history-compaction.service.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 6,9
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 17-18
+packages/nodes-base/nodes/HttpRequest/V2/HttpRequestV2.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 21
+packages/@n8n/nodes-langchain/nodes/chains/InformationExtractor/InformationExtractor.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 4-5
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-multimain.spec.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1-2
+packages/@n8n/eslint-config/src/plugin.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 31-32
+.github/test-metrics/e2e-impact-map.json
+  s_8c0bb2d06aee91::t_ff99aca9f63392 1
+packages/cli/src/workflows/triggers/trigger-activation-retry.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2-3
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  ai_agent 12,16,48,91,146,162-169,208-230,247,311,326,351-352,385,514,535,562
+packages/@n8n/nodes-langchain/nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 5-6
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 9
+packages/cli/test/integration/scheduling/scheduler-benchmarks.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 13
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_8c0bb2d06aee91::t_ff99aca9f63392 2,67-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5968a972d422845a86037a85fa670feda4e4b2b1",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

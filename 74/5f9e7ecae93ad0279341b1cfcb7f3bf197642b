@@ -1,0 +1,21 @@
+packages/cli/src/commands/import/credentials.ts
+  s_736cafcf249461::t_e6c2084bfeac0a 176
+packages/cli/test/integration/commands/credentials.cmd.test.ts
+  s_736cafcf249461::t_bd7244673d7743 1,227-236,238-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "745f9e7ecae93ad0279341b1cfcb7f3bf197642b",
+  "prompts": {},
+  "sessions": {
+    "s_736cafcf249461": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "202136a6-c3f7-4896-86e1-b17c7270ea67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

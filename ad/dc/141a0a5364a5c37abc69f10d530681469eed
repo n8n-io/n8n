@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_5ccc5241cb7dcd::t_c9d06de197c70b 1-2,6
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_5ccc5241cb7dcd::t_0d9b4e2da8205a 1-4
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.test.ts
+  s_5ccc5241cb7dcd::t_3d7f2dc430b8ad 48-50,54,63,72,225,230-244,257
+  s_5ccc5241cb7dcd::t_872c8402f06b97 119-224
+  s_5ccc5241cb7dcd::t_a252ce6b858064 11
+  s_5ccc5241cb7dcd::t_825797cc0249db 30,34
+  s_5ccc5241cb7dcd::t_89c9925fb8131e 1-10,12-29,31-33,35,40,73,258
+  s_5ccc5241cb7dcd::t_a7a4ca729d033a 36
+packages/frontend/@n8n/frontend-constants/src/urls.ts
+  s_5ccc5241cb7dcd::t_68c423afcc0386 1-2
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.ts
+  s_5ccc5241cb7dcd::t_1a3dd940e37069 1-2,5,11-13
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  s_5ccc5241cb7dcd::t_ad6b079e546ae3 1-8
+  s_5ccc5241cb7dcd::t_37aa4c85f69e00 19-25
+packages/frontend/@n8n/stores/src/composables/pageRedirection.types.ts
+  s_5ccc5241cb7dcd::t_47372cd1362c85 1-73
+packages/frontend/editor-ui/src/Interface.ts
+  s_5ccc5241cb7dcd::t_d4812a29b03208 889-895
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "addc141a0a5364a5c37abc69f10d530681469eed",
+  "prompts": {},
+  "sessions": {
+    "s_5ccc5241cb7dcd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e9bc627-e7d4-4b33-8e7c-165585c5e028",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

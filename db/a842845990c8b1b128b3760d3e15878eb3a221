@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_9c25df37a9054c::t_a8691911d49505 61
+  s_9c25df37a9054c::t_24e333affa133f 34-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dba842845990c8b1b128b3760d3e15878eb3a221",
+  "prompts": {},
+  "sessions": {
+    "s_9c25df37a9054c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f128968-9989-4751-bf80-3aa4ad58d755",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

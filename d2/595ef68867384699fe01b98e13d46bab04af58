@@ -1,0 +1,34 @@
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_756ebbbb3c4efb::t_499ecd7bf3da99 44
+  s_756ebbbb3c4efb::t_6452e3eb6ba244 299-300,303,305,311-314,319-320
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.ts
+  s_756ebbbb3c4efb::t_beff843d008210 1-35
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_756ebbbb3c4efb::t_7d3813b8afbf7d 38
+  s_756ebbbb3c4efb::t_77c84002337fd0 165
+  s_756ebbbb3c4efb::t_6d69bfc5c8dd4f 150-151
+  s_756ebbbb3c4efb::t_a5236a684abf60 178
+  s_756ebbbb3c4efb::t_7437787652184a 310
+  s_756ebbbb3c4efb::t_6296813fbb9f40 260-264
+  s_756ebbbb3c4efb::t_ba65464c318f38 51
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_756ebbbb3c4efb::t_6415fd005c12c2 90
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue
+  s_756ebbbb3c4efb::t_05be6751548086 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2595ef68867384699fe01b98e13d46bab04af58",
+  "prompts": {},
+  "sessions": {
+    "s_756ebbbb3c4efb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3b5ecd6-773a-4c8c-8635-ad1831ecd5b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  s_418a585878115f::t_1005825f279fbc 8
+  s_418a585878115f::t_38a131ce14dd39 25,38-39,71
+packages/cli/src/modules/engine-v2/engine-status-push-relay.ts
+  s_418a585878115f::t_c23a6427be26d6 1-2,4-8,11-13,15-28,30-43,46-65,67-100,104-114,116-133,135-249
+  s_418a585878115f::t_90e94e44b459fe 9,101-103,115
+  s_418a585878115f::t_729f03f79b175f 10,134
+packages/@n8n/node-engine-compatibility/src/index.ts
+  s_418a585878115f::t_623419f9ad0a55 4
+packages/cli/src/services/__tests__/engine-v2-push-registry.service.test.ts
+  s_418a585878115f::t_29e7c0edc30a84 1-92
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_418a585878115f::t_1b59106606f1d1 13,37,69,74,78-79,83-109,187,198-205
+packages/cli/src/services/engine-v2-push-registry.service.ts
+  s_418a585878115f::t_90e94e44b459fe 1,10-19,43
+  s_418a585878115f::t_9620a41bee2780 2-9,20-42,44-92
+packages/cli/src/modules/engine-v2/engine-status.controller.ts
+  s_eda1948fcdabb8::t_cd5f9caea43aaf 3-6,9,11-17,19,22-24,26,33,37-39
+  s_418a585878115f::t_aff2f201d0fa86 7-8,27-30,34-36
+  s_418a585878115f::t_4615e5da030b88 18,31
+packages/cli/src/modules/engine-v2/__tests__/engine-status-push-relay.test.ts
+  s_418a585878115f::t_84c1678b6479f2 1,3-23,25-31,33-37,39-44,46-57,59-269,276-299,301-310,319-366
+  s_418a585878115f::t_b3bbf2bc7ecf8e 58,300
+  s_418a585878115f::t_eab16644d6bb74 270-275,311-318
+packages/cli/src/modules/engine-v2/__tests__/engine-status.controller.test.ts
+  s_418a585878115f::t_e03155682a8813 8,32,49,63,80-81
+  s_418a585878115f::t_a00bff8dab7342 50
+  s_eda1948fcdabb8::t_3d97815fd2f6a0 54-56,58-62,65
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_418a585878115f::t_ea3f2258ef4c8c 20
+  s_418a585878115f::t_1005825f279fbc 76,84
+  s_418a585878115f::t_ac3e228ea05ea2 322-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f1feec161d3e0104488d00ee5c982861d7ff6b6",
+  "prompts": {},
+  "sessions": {
+    "s_418a585878115f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc9cce59-9af8-424d-b051-abdf3c7acaab",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

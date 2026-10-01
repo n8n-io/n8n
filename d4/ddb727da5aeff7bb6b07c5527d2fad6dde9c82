@@ -1,0 +1,91 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_81f9da72a79c26::t_3ce0b91373a914 64,182
+  s_81f9da72a79c26::t_b794424e669586 70
+  s_81f9da72a79c26::t_28d64b596773d3 84
+  s_81f9da72a79c26::t_e90f777beb2d91 96,117
+  s_81f9da72a79c26::t_f4f1dddaef104f 107
+  s_81f9da72a79c26::t_ddf54f52cf6614 132
+  s_81f9da72a79c26::t_bc5bde77bb7741 153
+  s_81f9da72a79c26::t_d9eae3515ffb5c 208
+  s_81f9da72a79c26::t_3e1ffb0e48f59f 224-229
+  s_81f9da72a79c26::t_f931aa55b26769 260,294,318,346
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_81f9da72a79c26::t_c31c950b3bd974 24
+  s_81f9da72a79c26::t_7ed8416ab54e28 50
+  s_81f9da72a79c26::t_48cc8aa87b2dca 65
+  s_81f9da72a79c26::t_8f6d038db3b31a 97
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_81f9da72a79c26::t_297bda4ec158aa 2316,2329
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_81f9da72a79c26::t_8b0f47df757a35 1090
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_81f9da72a79c26::t_9299830dcc58df 52
+  s_81f9da72a79c26::t_8cb53be7a1b7f1 75
+  s_81f9da72a79c26::t_6115706898c8da 84
+  s_81f9da72a79c26::t_9bd941494d4f8d 112-117
+packages/cli/src/modules/n8n-packages/entities/tag/tag.exporter.ts
+  s_81f9da72a79c26::t_499fb87f9aae2a 1-7,9-22,24-25,29,31-32,36-39,46-50
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_81f9da72a79c26::t_9eeef136424b83 21
+  s_81f9da72a79c26::t_d98f01ce057f97 185
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_81f9da72a79c26::t_6d46fb2bd5ab8e 24
+  s_81f9da72a79c26::t_97949faefa0baf 113
+  s_81f9da72a79c26::t_20d3e3e808718d 132
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_81f9da72a79c26::t_f8397264d8c6d5 168,175-177
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_81f9da72a79c26::t_58385e624f8a2f 100
+  ai_agent 114-116,144-149,209-214
+  s_81f9da72a79c26::t_0f7608c4423c6f 124-126
+  s_81f9da72a79c26::t_9ec20e6a0237f0 135
+  s_81f9da72a79c26::t_c4d797ffad49af 187
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_81f9da72a79c26::t_d429a362c25567 15,26
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_81f9da72a79c26::t_239c436b2d8596 43
+  s_81f9da72a79c26::t_3f15fd9f2b2012 62
+  s_81f9da72a79c26::t_5334f4653a330b 150,154-158
+  s_81f9da72a79c26::t_efbdf6906a4e41 231,237
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_81f9da72a79c26::t_2525d93293844e 25,36
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow-resolver.test.ts
+  s_81f9da72a79c26::t_b198806214d9b2 107
+  s_81f9da72a79c26::t_0537791d8acdcb 337
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_81f9da72a79c26::t_62dd9e0e2c4894 1
+  s_81f9da72a79c26::t_51c95b038937dd 19
+  s_81f9da72a79c26::t_4fad501b9d6fab 59-60
+  s_81f9da72a79c26::t_40dba2cbb2bcd1 86,94
+  s_81f9da72a79c26::t_18760d8d589b02 109,119
+  s_81f9da72a79c26::t_ec43c091e943bb 148
+  s_81f9da72a79c26::t_cdc7428faf72c7 231-235,241
+  s_81f9da72a79c26::t_be9af380913439 259
+  s_81f9da72a79c26::t_25a437d54bb956 326,329,336
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_81f9da72a79c26::t_af6dbeca3bd7d6 135
+  s_81f9da72a79c26::t_cafeb2b7064977 239
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_81f9da72a79c26::t_2bca5fb25c9eba 96
+  s_81f9da72a79c26::t_718f12101de8bf 139
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_81f9da72a79c26::t_b00afdef0592e2 171
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_81f9da72a79c26::t_7a7c90d700c2cc 25-28,40,47,55,66,75,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4ddb727da5aeff7bb6b07c5527d2fad6dde9c82",
+  "prompts": {},
+  "sessions": {
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

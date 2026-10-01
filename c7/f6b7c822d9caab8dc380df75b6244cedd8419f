@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  s_63043f956bbc51::t_9de5be1384e671 1-2,56,62-68
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  s_63043f956bbc51::t_15b724b7a1a96f 70-71,75-80,89-102
+packages/frontend/editor-ui/src/features/agents/__tests__/agentTelemetry.utils.test.ts
+  s_63043f956bbc51::t_c9ec15b44ab824 40-43,67-82
+  s_3f7c203a92c7cd::t_e6dfcdcdd43a9a 83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c7f6b7c822d9caab8dc380df75b6244cedd8419f",
+  "prompts": {},
+  "sessions": {
+    "s_3f7c203a92c7cd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2e06657-b349-4871-86f4-fefad9ee30ed",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_63043f956bbc51": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "df99d9d4-0fa7-4426-a8c6-047fc3b32c94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

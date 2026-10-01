@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_85629be8996a13::t_194931f0913282 1,14,55-79,163,191
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_85629be8996a13::t_c5c5a0130e5da7 58
+  s_85629be8996a13::t_6fedf57febb1e9 5,23-42,47-56,73-74,87
+  s_85629be8996a13::t_d8b1486853015a 75-86
+  s_85629be8996a13::t_2dbb76ec9a967a 43-46,57,59-72
+  s_85629be8996a13::t_ceb7eae6a7fb5e 149-193
+  s_85629be8996a13::t_58b5fc7c233472 88
+  s_85629be8996a13::t_70d3b522727c96 3
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_85629be8996a13::t_59acb465565bf4 137-170
+  s_85629be8996a13::t_df6749cd45c87a 49-69,269-300
+  s_85629be8996a13::t_5d32c06691e745 317-336
+  s_85629be8996a13::t_32ca794b1a7572 251-268,301-316
+  s_85629be8996a13::t_53d5b97ec43efa 592-614
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85629be8996a13::t_2bea77cbf091a5 7103
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_85629be8996a13::t_289ca992694ab7 24,28-32
+  s_85629be8996a13::t_ade699d1b2e97f 197,274,277-278,280
+  s_85629be8996a13::t_06912e8abdbcf1 13-14,33-40
+  s_85629be8996a13::t_611c2469de744d 41-43
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_85629be8996a13::t_09bfa0c8199f43 214
+  s_85629be8996a13::t_2103ddcb6fb175 562-563,570-575
+  s_85629be8996a13::t_3003a176778846 221,235-239,446
+  s_85629be8996a13::t_c5c5a0130e5da7 426,461,470
+  s_85629be8996a13::t_2bea77cbf091a5 155-156,222-234,240-251,524,556-560
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1995e421d24e1ceae8f263716d61fc35cc5cdbf3",
+  "prompts": {},
+  "sessions": {
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

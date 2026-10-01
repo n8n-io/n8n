@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_7b00f24a2c361f::t_10476c0dcdbde7 19,22-23,374-376,380-420
+packages/nodes-base/nodes/Kafka/test/schema-registry-agent.test.ts
+  s_7b00f24a2c361f::t_10476c0dcdbde7 1-73
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_7b00f24a2c361f::t_10476c0dcdbde7 10,12-15,20,612,617,626-629,637-659,774-941,1084-1117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "804e86419c6d0df34f04b800900986a37516d472",
+  "prompts": {},
+  "sessions": {
+    "s_7b00f24a2c361f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd528b76-9b06-411f-bab0-e52ce73257e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

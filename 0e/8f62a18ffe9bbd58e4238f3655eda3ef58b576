@@ -1,0 +1,148 @@
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_ecdf2f2961dcf9::t_eefc0892c73519 12,73,290,299-313,315-317
+  s_ecdf2f2961dcf9::t_9ae120238cd6d2 314
+  s_ecdf2f2961dcf9::t_80ab47982794ec 275
+  s_ecdf2f2961dcf9::t_4c175a79766e48 318-319
+packages/cli/src/scaling/constants.ts
+  s_ecdf2f2961dcf9::t_4bce4e24478718 40
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_ecdf2f2961dcf9::t_0e894ee8462561 57-60,140,161-163,193,251
+packages/cli/src/modules/agents/agent-runnable-state.service.ts
+  s_ecdf2f2961dcf9::t_fe8984e23d18f4 13,37-46,52,74
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_ecdf2f2961dcf9::t_ad0cb8d2333048 194-200,229
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_ecdf2f2961dcf9::t_becb94454a40bb 12,31-32,73,75
+  s_ecdf2f2961dcf9::t_5e4afa961bb799 80
+  s_ecdf2f2961dcf9::t_891082545cbd59 9,24,74,78-79,81-82,101
+  s_ecdf2f2961dcf9::t_7f68a0a7a8af33 76-77
+  s_ecdf2f2961dcf9::t_b7be760959c228 83-85
+packages/@n8n/api-types/src/push/agents.ts
+  s_ecdf2f2961dcf9::t_54381c4fb7a348 11-19
+packages/@n8n/api-types/src/agents/types.ts
+  s_ecdf2f2961dcf9::t_ee9de0fee6aa32 187-196
+  s_ecdf2f2961dcf9::t_e66b0c3b59b735 200
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_ecdf2f2961dcf9::t_d6b21b3696375f 480,486
+  s_ecdf2f2961dcf9::t_27de321a7487b0 4-5,407-408,450-452,456
+packages/cli/src/push/index.ts
+  s_ecdf2f2961dcf9::t_f8be7e56d4e4a5 190-195
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_ecdf2f2961dcf9::t_ea6a46b5912ec4 13,20,38,44-45,47-48,64,69-70,72-73,89,94-95,97-98,116,121-122,124-125
+  s_ecdf2f2961dcf9::t_0dd844afa6c232 46,71,96,123
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_ecdf2f2961dcf9::t_840f897a97cf13 133-138
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_ecdf2f2961dcf9::t_05e0e78fab82b4 57,83
+  s_ecdf2f2961dcf9::t_f02aa438e622da 13,33,55-56,58-59,81-82,84
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_ecdf2f2961dcf9::t_fcae20aaee00b5 9,32-36
+packages/@n8n/api-types/src/agents/dto.ts
+  s_ecdf2f2961dcf9::t_3d458bc1cbadac 134
+  s_ecdf2f2961dcf9::t_a99534739f124d 160
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_ecdf2f2961dcf9::t_df8225125f09f7 8,49
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_ecdf2f2961dcf9::t_b1a2983b8ee24c 174
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_ecdf2f2961dcf9::t_0057ab6b9fe443 19
+  s_ecdf2f2961dcf9::t_485a91f95fd63c 1,14,16,22-26,28
+  s_ecdf2f2961dcf9::t_091b15b31b773b 20-21
+  s_ecdf2f2961dcf9::t_89dc5a652a5afc 27
+  s_ecdf2f2961dcf9::t_95a6d2857fc2f8 29-30
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_ecdf2f2961dcf9::t_f92ee539291ea0 341,467,539,580,621,654,788,838,882,926,1033,1130,1215,1254,1301,1350,1562-1573,1819,1856
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_ecdf2f2961dcf9::t_36b1dc4348bf28 7,18,40,149-154,157-164,344,346-347
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_ecdf2f2961dcf9::t_74c13eb860ff10 45
+packages/cli/src/push/abstract.push.ts
+  s_ecdf2f2961dcf9::t_fadce849aff476 115-119,122-124
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_ecdf2f2961dcf9::t_e00aef5de9caa1 24,225-249,253-266
+  s_ecdf2f2961dcf9::t_c1f532ced4ddd2 20,250-252
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_ecdf2f2961dcf9::t_e656bdb85ecf12 12,23,143-147,156,163-165,174-179,211-216
+packages/cli/src/push/__tests__/websocket.push.test.ts
+  s_ecdf2f2961dcf9::t_412332e14f46d1 111-119
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_ecdf2f2961dcf9::t_5be461b3bd5483 6,21,45,71-77,79-80,102,106-107,109-114,141-144,146,163-165,181
+  s_ecdf2f2961dcf9::t_958dc53835025d 18-19
+  s_ecdf2f2961dcf9::t_b78b1e36a651f4 54,56-57,78,81-84,103-105,108,145,153-154,174-175,185,205,208,212,219,225,243-244
+  s_ecdf2f2961dcf9::t_62d5bedaa95be5 152
+  s_ecdf2f2961dcf9::t_c0ef1eae5b1ff2 162
+  s_ecdf2f2961dcf9::t_f94b9373b124e8 173
+  s_ecdf2f2961dcf9::t_a9a7b5f516a4c2 180
+  s_ecdf2f2961dcf9::t_43832a85fa7c93 184
+  s_ecdf2f2961dcf9::t_376b0cc80a038d 157,267
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfig.ts
+  s_ecdf2f2961dcf9::t_7428eb3d32448f 9,34,44-47,59-65,67-70,74
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ecdf2f2961dcf9::t_94ad540dc18b53 15,26,138
+  s_ecdf2f2961dcf9::t_7adb274901376a 19,892-896,898-900
+  s_ecdf2f2961dcf9::t_20fd8825449fd6 870-875,883-886,897,920,922-923,925-940,946-949
+  s_ecdf2f2961dcf9::t_3d20f89201d24d 876-882
+  s_ecdf2f2961dcf9::t_a3e2f999f9137c 58,887
+  s_ecdf2f2961dcf9::t_b512cb5b80e9b5 1271-1278,1281,1295-1306
+  s_ecdf2f2961dcf9::t_28feb989fc756c 1269-1270
+  s_ecdf2f2961dcf9::t_a34ce4c3d8a041 1307
+  s_ecdf2f2961dcf9::t_8c9fe4023f9004 1317-1318,1766
+packages/cli/src/modules/agents/__tests__/agents-config.controller.test.ts
+  s_ecdf2f2961dcf9::t_29925676763316 7,42
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ecdf2f2961dcf9::t_3899fbc0348414 3341,3347,3416,3422,3456,3478,3488,3510
+  s_ecdf2f2961dcf9::t_72f8caba7ec090 2047-2079
+  s_ecdf2f2961dcf9::t_21ce75a3e0cad8 2570-2613
+  s_ecdf2f2961dcf9::t_9beed04c1794ef 6-7,33-34,127-136,291,712-714
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfig.test.ts
+  s_ecdf2f2961dcf9::t_827658c1f62ee3 2
+  s_ecdf2f2961dcf9::t_ce06b84ecbae2c 1,3-49,51-52,54-55
+  s_ecdf2f2961dcf9::t_9d4a1e8fa98399 50,53
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_ecdf2f2961dcf9::t_cf357b1da16440 507,542,828,1865
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ecdf2f2961dcf9::t_d6de59067b041a 7517-7518
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_ecdf2f2961dcf9::t_610d4dda108f9e 445,458,468-471
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_ecdf2f2961dcf9::t_0f84c660fac8a1 29
+packages/cli/src/modules/agents/agent-tasks.controller.ts
+  s_ecdf2f2961dcf9::t_d472a33b4ba1c5 61,80,98
+  s_ecdf2f2961dcf9::t_99166e7d51e2a3 18,27,57,62,76,81
+packages/cli/src/modules/agents/agent-update-broadcaster.ts
+  s_ecdf2f2961dcf9::t_51fca569b89c72 1-53
+packages/cli/src/modules/agents/agents-skills.controller.ts
+  s_ecdf2f2961dcf9::t_dac61db67934ac 16,20-23,53,58,72,84
+  s_ecdf2f2961dcf9::t_cac5effc39c287 57,83,100
+  s_ecdf2f2961dcf9::t_5f0961b1bcf94a 71,73-82
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_ecdf2f2961dcf9::t_88580253c384af 63
+  s_ecdf2f2961dcf9::t_e30d761b073c02 109
+packages/cli/src/modules/agents/__tests__/agent-tasks.controller.test.ts
+  s_ecdf2f2961dcf9::t_3bf9541af474f5 8,18,22,25
+packages/cli/src/modules/agents/__tests__/agent-update-broadcaster.test.ts
+  s_ecdf2f2961dcf9::t_9e8ff9d4cb7a69 1-72
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_ecdf2f2961dcf9::t_e1ae2b31ccf513 147-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0e8f62a18ffe9bbd58e4238f3655eda3ef58b576",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

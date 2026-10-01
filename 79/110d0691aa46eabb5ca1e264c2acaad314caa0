@@ -1,0 +1,23 @@
+packages/nodes-base/package.json
+  s_7204f0f57c3631::t_5f1326a804083d 949
+packages/@n8n/agents/package.json
+  s_7204f0f57c3631::t_28499ac85f5e5c 111
+packages/cli/package.json
+  s_7204f0f57c3631::t_87dea182d9c826 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79110d0691aa46eabb5ca1e264c2acaad314caa0",
+  "prompts": {},
+  "sessions": {
+    "s_7204f0f57c3631": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41b094fe-a23e-4efb-9f46-8bce6faf2c60",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

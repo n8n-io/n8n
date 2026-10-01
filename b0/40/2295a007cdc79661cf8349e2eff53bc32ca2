@@ -1,0 +1,22 @@
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 79
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
+  ai_agent 1-45
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/getGitConnectionProjects.generated.yml
+  ai_agent 1-34
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 27-34
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/removeProjectFromGitConnection.generated.yml
+  ai_agent 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0402295a007cdc79661cf8349e2eff53bc32ca2",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

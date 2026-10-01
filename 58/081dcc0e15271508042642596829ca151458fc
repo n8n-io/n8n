@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_9908eed9fb5918 1984-1986,1988-1989,2010
+  s_b04c58447561ba::t_f19764c2f37779 1270,1275-1278,1301-1309
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b04c58447561ba::t_ebe21dbe9aa899 108,113
+packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
+  s_b04c58447561ba::t_6f96ba7aa947ac 262,268-275,278,295-300
+  s_b04c58447561ba::t_4d45929089517e 67-83
+  s_b04c58447561ba::t_2889f2462fac4a 301-303
+  s_b04c58447561ba::t_5087193a942f29 304-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "58081dcc0e15271508042642596829ca151458fc",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

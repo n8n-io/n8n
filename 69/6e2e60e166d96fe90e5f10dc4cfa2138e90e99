@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_4af91ea8a019b5::t_89a4ebee2c2f10 306-317,578-580
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_4af91ea8a019b5::t_89a4ebee2c2f10 336,347-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "696e2e60e166d96fe90e5f10dc4cfa2138e90e99",
+  "prompts": {},
+  "sessions": {
+    "s_4af91ea8a019b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa2b-c854-7983-b417-6c061b664b19",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_0237a66f4d3f8f::t_51431006fb4de8 88-99
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_0237a66f4d3f8f::t_26eafa2e11a57e 22,29,36,41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f97b0a0e7ce73fef035dc9f33c276f9636c510a",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

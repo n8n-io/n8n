@@ -1,0 +1,60 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_de807c7b884146::t_6e57f26585c2cb 418,420-425
+  s_d3f6ecf4ef182f::t_2b34de54b9b805 541-547
+  s_de807c7b884146::t_e8b273e80b3b3b 412
+  s_d3f6ecf4ef182f::t_bf896125291a51 461-463
+  s_de807c7b884146::t_7773acb85ae7d7 1,4-5,7-8
+  s_d3f6ecf4ef182f::t_1e2ae9e5f8cab4 407-408,413,415-417,426-428,460,466-467,480-482,484-488,490-492,507-509,511-512,520-525,531-540
+  s_de807c7b884146::t_3d556abbd11d50 456-459
+  s_de807c7b884146::t_a40e5ac0587ecf 343-347
+  s_d3f6ecf4ef182f::t_98d3157c6dadfd 469-470
+  s_de807c7b884146::t_0feb8307ebf686 409-411,414,419
+  s_de807c7b884146::t_4d979d5aed93bd 513-519,529-530
+  s_de807c7b884146::t_4346f52387be1e 64-70
+  s_de807c7b884146::t_9b23016469829e 429-431,437,443,449,451-455,464-465,468,471-476,478-479,483,489,493,495-506,510
+  s_d3f6ecf4ef182f::t_5c7dd19fa5258f 477,526-528
+  s_de807c7b884146::t_c7991e084beff1 548
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_d3f6ecf4ef182f::t_fc2eea215c0920 99
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_de807c7b884146::t_19af50f472fe11 1-4,89-119,121-134,136-138,162
+  s_de807c7b884146::t_7031fc2c9e9970 120,135
+  s_de807c7b884146::t_74f7b74efc682b 139-140,144-145,148,152,160-161
+  s_de807c7b884146::t_fd71b222c0b8b5 5-88,141-143,146-147,149-151,153-159
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_d3f6ecf4ef182f::t_831745b60f8492 160
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d3f6ecf4ef182f::t_844aa7f0581432 6-16,26
+  s_de807c7b884146::t_6dc11a6ddbd9c8 308-323
+  s_de807c7b884146::t_2bc9073f87ae74 292-307,324-337
+  s_d3f6ecf4ef182f::t_bf11626046d3ef 5
+  s_d3f6ecf4ef182f::t_9104a414e71005 75-85,99-101,103,115-119,133-135,137,174,177,179-181,202-204,206,229-233,245-246,258,260,263-265,280,282,284-286
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_66c7db5c66188c 7-19,26-29,58,85,91-93
+  s_d3f6ecf4ef182f::t_f06eb715a74185 94-95
+  s_d3f6ecf4ef182f::t_c6bdecaa76807e 83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "dd787ec167a00e2efdf01a8d326cd8090118392d",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_de807c7b884146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "289bcd83-7b99-424b-939a-8908368bbadf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

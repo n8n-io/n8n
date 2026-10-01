@@ -1,0 +1,64 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_57c3811f2e5b52::t_f6bd2ddd08e9a4 17
+  s_57c3811f2e5b52::t_1c6dcd7d000b02 15-16
+packages/cli/test/integration/public-api/roles.test.ts
+  h_5d40c27a8fdfd1 416,505
+  s_57c3811f2e5b52::t_b20629e1502f62 412-415,417-418,422
+  s_57c3811f2e5b52::t_eb2d1b7a6d35c9 5
+  s_57c3811f2e5b52::t_15e64ed6a318bd 410-411,419-421,423-504,506-652
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_57c3811f2e5b52::t_e4cf11194b0575 171,172
+  s_57c3811f2e5b52::t_55aaf0243b172b 143-167,173-174
+  s_57c3811f2e5b52::t_449f8cef546f54 7,13,21-22,30,39-48
+  s_57c3811f2e5b52::t_ea4ab6aa31368b 49
+  s_57c3811f2e5b52::t_17015a1651ae95 168-172
+  s_57c3811f2e5b52::t_d23414f2419c78 87
+  h_5d40c27a8fdfd1 50-57,116
+  s_57c3811f2e5b52::t_4d2c8b690f654e 86
+packages/cli/test/integration/services/role.service.test.ts
+  s_57c3811f2e5b52::t_c11b6808b2f184 1122,1128-1129,1135
+  s_57c3811f2e5b52::t_e34e1f3e8da3c5 1208,1214
+  s_57c3811f2e5b52::t_1146d3859f2741 1229,1235
+  s_57c3811f2e5b52::t_45e9996a0bb752 1041,1043-1045,1084,1086-1088,1123,1125-1127,1130,1132-1134,1155,1157-1159,1184,1186-1188,1209,1211-1213,1230,1232-1234,1253,1255-1257
+  s_57c3811f2e5b52::t_a3cb3e862ab1c8 1042,1085,1124,1131,1156,1185,1210,1231,1254
+packages/cli/src/services/__tests__/role.service.customRoles.test.ts
+  s_57c3811f2e5b52::t_314b3719e31551 10,22,31
+  s_57c3811f2e5b52::t_55d3798ccac43b 102,108
+  s_57c3811f2e5b52::t_4431ac1b0c8992 103-107
+  s_57c3811f2e5b52::t_4ade08a487d046 116-120
+packages/cli/src/services/role.service.ts
+  s_57c3811f2e5b52::t_f8e7a6f8c9ee59 249-257
+  s_57c3811f2e5b52::t_95d17212fc2f3e 45,60
+  s_57c3811f2e5b52::t_9b52fc57b8c4d6 226-234
+packages/cli/src/controllers/role.controller.ts
+  s_57c3811f2e5b52::t_266535fdf2cb18 131-135
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/createRole.generated.yml
+  h_5d40c27a8fdfd1 42
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  h_5d40c27a8fdfd1 1-47
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  h_5d40c27a8fdfd1 14,17-18
+packages/cli/src/public-api/v1/shared/spec/schemas/rolePublicDto.generated.yml
+  h_5d40c27a8fdfd1 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "76a79ceb9666a971cfda734773da04cc31da019e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57c3811f2e5b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c36cba-8c8b-42fb-b560-44173f55ef20",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

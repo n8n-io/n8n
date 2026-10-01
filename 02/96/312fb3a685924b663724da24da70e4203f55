@@ -1,0 +1,87 @@
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_0fa6ec0e54a067::t_4d412e83f30d98 13,175-176,180-182
+  s_0fa6ec0e54a067::t_4e2a4d7c34a815 15
+  s_79f1e27c3b98cf::t_50ca1bf5d40889 14
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_0fa6ec0e54a067::t_63860a31474392 158-159
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_0fa6ec0e54a067::t_4841657b688891 1693-1696
+packages/@n8n/instance-ai/src/stream/work-summary-accumulator.ts
+  s_0fa6ec0e54a067::t_feb16977ed27ff 10,23-31,65-69
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_0fa6ec0e54a067::t_4841657b688891 7-13,109
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_0fa6ec0e54a067::t_b6b7a36c89ea19 765-771
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_0fa6ec0e54a067::t_f40c0935a42a8b 705-748
+  s_0fa6ec0e54a067::t_727219d1c9ec00 749
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_0fa6ec0e54a067::t_7c6892121ce853 294,299,316,322-323,327
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_0fa6ec0e54a067::t_0518b31b9aaf47 23
+  s_0fa6ec0e54a067::t_59554c9ad2bbe8 24
+  s_0fa6ec0e54a067::t_c7c26c9291b875 25
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_0fa6ec0e54a067::t_d13e9c576f8846 23,127-141,1038,1043-1044,1047-1071,1073,1075-1077
+  s_0fa6ec0e54a067::t_49e61fe054893a 1045-1046,1078-1083
+  s_0fa6ec0e54a067::t_c7c26c9291b875 142-147,153-169,1103-1109,1113-1115,1117,1122-1137,1242
+  s_0fa6ec0e54a067::t_faf5d9941b5184 1116,1118-1120
+  s_0fa6ec0e54a067::t_a6fb5c4101b3c8 148-152
+  s_0fa6ec0e54a067::t_0518b31b9aaf47 1087-1089,1092-1102,1121,1138-1140,1240
+  s_0fa6ec0e54a067::t_59554c9ad2bbe8 1036-1037,1042,1084-1086,1241
+  s_0fa6ec0e54a067::t_45374109ef8b4e 1039-1041,1072,1074,1090-1091,1110-1112
+packages/frontend/editor-ui/src/features/agents/utils/toolDisplayName.ts
+  s_0fa6ec0e54a067::t_c796f49415e3a5 19-21
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_0fa6ec0e54a067::t_e28399c20f7069 1679-1692,1736-1737
+  s_0fa6ec0e54a067::t_45374109ef8b4e 1824-1826
+  s_0fa6ec0e54a067::t_652e3f42d6a831 68,77,86,1693-1735
+  s_0fa6ec0e54a067::t_31961e7ecb759c 76,85,87,1597,1599-1604,1606-1621
+  s_0fa6ec0e54a067::t_91e2da559f5b5f 1598,1622-1629,1631-1677,1778-1790,1792-1823,1827-1847
+  s_0fa6ec0e54a067::t_c7cbbedcab8eee 1605,1630
+  s_0fa6ec0e54a067::t_ba9f7bf6ad1d93 1678,1738,1740-1777,1791,1848-1850
+  s_0fa6ec0e54a067::t_c3b0a8afdb9252 1739
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_0fa6ec0e54a067::t_520872dba5ca71 159
+  s_0fa6ec0e54a067::t_3779ba7b708448 150-157,160-186
+  s_0fa6ec0e54a067::t_4523e646b43949 158
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0fa6ec0e54a067::t_c796f49415e3a5 7170-7171
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_0fa6ec0e54a067::t_d2615a761a0419 45-47
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_0fa6ec0e54a067::t_b6b7a36c89ea19 117,119-120
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_0fa6ec0e54a067::t_7ba88e82a2a60e 81-100,105,111-112,131,141-142,147
+  s_0fa6ec0e54a067::t_ee471316264212 14-33,37-39,43-48,52-55,69-70
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_0fa6ec0e54a067::t_feb16977ed27ff 98-99
+packages/@n8n/instance-ai/src/stream/__tests__/work-summary-accumulator.test.ts
+  s_0fa6ec0e54a067::t_4523e646b43949 60-65
+  s_0fa6ec0e54a067::t_f40c0935a42a8b 14,19,54-59
+  s_0fa6ec0e54a067::t_0b76f0eeaad0ce 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0296312fb3a685924b663724da24da70e4203f55",
+  "prompts": {},
+  "sessions": {
+    "s_0fa6ec0e54a067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019feaef-e753-7822-a73f-a401a4d32bb6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_79f1e27c3b98cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fec11-c089-7793-ae8c-3a1f4d026383",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

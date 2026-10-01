@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1788425788714-CreateActivityEventTable.ts
+  s_589f8be7454a93::t_91759a69e4f2b4 11
+packages/cli/test/migration/1788425788714-create-activity-event-table.test.ts
+  s_589f8be7454a93::t_91759a69e4f2b4 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11b6af4214d399190e5ef3e20979c4c92bb0ad25",
+  "prompts": {},
+  "sessions": {
+    "s_589f8be7454a93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce56a8-933a-450c-a1c0-550bab4f8591",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.test.ts
+  ai_agent 7,39-79
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  ai_agent 9,16,245-253
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  ai_agent 1,90-91
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  ai_agent 221,223-234,246-250
+packages/@n8n/backend-network/src/http/use-default-ssrf-policy.ts
+  ai_agent 1
+packages/workflow/src/interfaces.ts
+  ai_agent 936-950,1025-1028,1030
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d66c1a203d5f73147cde09ffe394026913211828",
+  "prompts": {}
+}

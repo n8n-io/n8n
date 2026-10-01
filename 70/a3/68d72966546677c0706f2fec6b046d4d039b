@@ -1,0 +1,25 @@
+packages/cli/test/integration/saml/saml.api.test.ts
+  s_0990e06268d89b::t_178c6b46e44b86 101,103,107-108
+  s_0990e06268d89b::t_00f507783d747f 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "70a368d72966546677c0706f2fec6b046d4d039b",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0990e06268d89b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fab127da-d600-430b-b385-5c5b5a437d66",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

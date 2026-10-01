@@ -1,0 +1,56 @@
+packages/@n8n/db/src/migrations/common/1787756564283-CreateAgentBackgroundJobTable.ts
+  s_f2be74e4f2dda6::t_f16ca3f370668c 47-49
+  s_f2be74e4f2dda6::t_c135a8b9c821eb 58
+  s_f2be74e4f2dda6::t_bd5d3734250e3b 68
+  h_7555c3ee6524cf 55
+  s_2e3e9edbfb4381::t_2429a7b7eed965 56
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_f2be74e4f2dda6::t_c0448e7f4af828 15-16
+  s_f2be74e4f2dda6::t_33d17477bbe0d9 17
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_f2be74e4f2dda6::t_9805713739c601 18
+  s_f2be74e4f2dda6::t_542935cc807598 2
+  h_7555c3ee6524cf 17
+  s_f2be74e4f2dda6::t_a01d19959ee7fa 163-164
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,41,49,52-53
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_f2be74e4f2dda6::t_1ef2b12b433508 13
+  s_f2be74e4f2dda6::t_3fe96569a6a226 239-249
+docs/generated/sqlite-schema/project.md
+  ai_agent 23
+docs/generated/sqlite-schema/README.md
+  ai_agent 11
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_f2be74e4f2dda6::t_a52420b7de4fd6 2
+  s_f2be74e4f2dda6::t_365fa7cd5df4e6 93-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6175b7c6755799f8f94c6cfc0a842f356af1bc2",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2e3e9edbfb4381": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1787576726021",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f2be74e4f2dda6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45d015dc-b15d-4645-9885-38ba98f92a11",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

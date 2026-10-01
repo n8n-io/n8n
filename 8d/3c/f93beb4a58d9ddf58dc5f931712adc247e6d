@@ -1,0 +1,45 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_81f9da72a79c26::t_8832729411fb62 1,12,20-21,26
+  s_81f9da72a79c26::t_0131cd5a54461f 2-6,9-11,13-15,17-19,22-25,27-65,69,71,73,83,86,93,98,100-111,113-125,127-130,132-133,138-149,151-169,171-191,193-216,218-228
+  s_81f9da72a79c26::t_f4a82771c0f03a 7-8
+  s_66be2eb681ad3c::t_00a3ea8645f02b 16
+  s_81f9da72a79c26::t_4511112127a1ed 66,68,70,75-82,84-85,87-92,94-97,99
+  s_81f9da72a79c26::t_0d2424a300342b 72,112,131,150,170,192,217
+  s_66be2eb681ad3c::t_7ab258e004da89 126,137
+  s_66be2eb681ad3c::t_ef0ebfa908e729 134-136
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_66be2eb681ad3c::t_e1a00cea9ee374 69-97
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_66be2eb681ad3c::t_093c3184be9b17 22,24-29
+  s_66be2eb681ad3c::t_9ee6b4187bcc54 23
+packages/cli/src/services/tag.service.ts
+  s_66be2eb681ad3c::t_26c0b8ccc8ed77 123-130,132-133
+  s_66be2eb681ad3c::t_9ee6b4187bcc54 131
+packages/@n8n/cli/src/commands/package/shared.ts
+  s_66be2eb681ad3c::t_f4ddba32b39e66 17-24
+  s_66be2eb681ad3c::t_252a4339857ff6 45-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d3cf93beb4a58d9ddf58dc5f931712adc247e6d",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

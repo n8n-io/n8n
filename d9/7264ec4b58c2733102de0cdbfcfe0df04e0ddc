@@ -1,0 +1,27 @@
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_9652c1be065c5e::t_f45f406af8658b 103,113,123-125,135,150,160
+  h_5d40c27a8fdfd1 4,58-60
+  s_9652c1be065c5e::t_d60cb8252dd708 161-162
+  h_5d40c27a8fdfd1 61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d97264ec4b58c2733102de0cdbfcfe0df04e0ddc",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9652c1be065c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c62bff4-9c24-45c8-b497-92d6c3bca492",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

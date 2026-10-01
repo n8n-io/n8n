@@ -1,0 +1,87 @@
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_e6454ae550915c::t_fefc0d21475ba2 116
+  s_e6454ae550915c::t_286e29f454b68d 235
+  s_e6454ae550915c::t_e68aee3faedde9 26-27
+  h_5d40c27a8fdfd1 60-61,63-64,194-200,203
+  s_e6454ae550915c::t_1b93407e6c279a 16-25
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_e6454ae550915c::t_de5cfbd517216e 266
+  s_e6454ae550915c::t_ba76d13a4e70a6 10-11
+  h_5d40c27a8fdfd1 186
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_e6454ae550915c::t_5c72b3962eb1ee 1-179
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  h_5d40c27a8fdfd1 105,119,314,323,350
+  s_e6454ae550915c::t_9785c577d18bc0 19-24
+  s_e6454ae550915c::t_effd5c5b3dbd4e 18
+packages/@n8n/decorators/src/controller/api-tags.ts
+  h_5d40c27a8fdfd1 7,16
+packages/cli/src/public-api/v1/handlers/decorator-routed.handler.ts
+  h_5d40c27a8fdfd1 4
+packages/@n8n/decorators/src/controller/__tests__/api-tags.test.ts
+  h_5d40c27a8fdfd1 33,44
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_e6454ae550915c::t_d1d158c40fc418 76
+  s_e6454ae550915c::t_c92d08f99f7179 75
+  s_e6454ae550915c::t_73b0d3c132fcb0 7,10-13
+  s_e6454ae550915c::t_952db611b17eba 8
+  s_e6454ae550915c::t_c33191f9b93f11 9
+  s_e6454ae550915c::t_3c466f82d9dc7f 30
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_e6454ae550915c::t_1767f1f4da4b8f 9
+  s_e6454ae550915c::t_9fa7e8c679a953 150
+  h_5d40c27a8fdfd1 78
+  s_e6454ae550915c::t_7e3f8bde173cf9 13
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  h_5d40c27a8fdfd1 33,36-37,39,186,188,190,257
+  s_e6454ae550915c::t_0f50c1174e7e41 229
+  s_e6454ae550915c::t_0602311e2b8dfb 17
+packages/cli/src/public-api/__tests__/public-api-controller-test-utils.ts
+  s_e6454ae550915c::t_5d544913bbf0d2 2-4,6-15
+  s_e6454ae550915c::t_51d7fc04e74c86 1,5,16-21
+packages/cli/src/public-api/public-api-controller.registry.ts
+  h_5d40c27a8fdfd1 50
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_e6454ae550915c::t_456a49cbcc899e 218-219,222,224,226-227,231
+  s_e6454ae550915c::t_fd4c4727abd52e 2,4,34,48,88,90,92,99,102,112,115,119,124-126,129,132,139,142,145-146,152-154,157,159-161,167,170,172,174,180-182,184,188,201,203-205,211-213,215-217
+  h_5d40c27a8fdfd1 38,45,58
+  s_e6454ae550915c::t_ab87c21b420e52 20-25
+  s_e6454ae550915c::t_0ca9edd4108541 232
+packages/@n8n/decorators/src/controller/__tests__/api-error-response.test.ts
+  h_5d40c27a8fdfd1 33,45
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  h_5d40c27a8fdfd1 26,38,53
+  s_e6454ae550915c::t_032ee533b9fed7 41-50
+packages/@n8n/decorators/src/controller/api-error-response.ts
+  h_5d40c27a8fdfd1 7,17
+packages/@n8n/decorators/src/controller/types.ts
+  h_5d40c27a8fdfd1 58,66
+packages/@n8n/decorators/src/controller/api-response.ts
+  h_5d40c27a8fdfd1 8,10-12,18-31
+packages/cli/scripts/build.mjs
+  s_e6454ae550915c::t_90b5fbdbdca67a 78,83-84,88
+  h_5d40c27a8fdfd1 67-68,74,77,80-81,85-87,89-90,92,95-97
+  s_e6454ae550915c::t_5917e83a1105b1 82
+  s_e6454ae550915c::t_ce30e9b3849f3b 128-130,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "e18abb447e8df744195cb820e4236feda96a3067",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

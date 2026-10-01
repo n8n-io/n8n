@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/static-workflow-dependency-resolver.test.ts
+  s_b3f2adee1f0a3e::t_0af6820f766362 68-71
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_b3f2adee1f0a3e::t_e91046041301c5 45-54
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_b3f2adee1f0a3e::t_3805766c7efca7 2,12
+  s_b3f2adee1f0a3e::t_dc1585a626340c 70,73
+  s_b3f2adee1f0a3e::t_438361dac8ae53 93
+  s_b3f2adee1f0a3e::t_ff29cd19d8e0f3 65-69,71-72,74-92,94-99
+  s_b3f2adee1f0a3e::t_6eb01af7b4e59d 6
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency-resolver.ts
+  s_b3f2adee1f0a3e::t_02b44fa18ac3c7 153-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3dea73316150fefa958decc5e04cb367f41a459b",
+  "prompts": {},
+  "sessions": {
+    "s_b3f2adee1f0a3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24570cc3-4393-4f18-a4f7-c2e2bd967738",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

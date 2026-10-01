@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/features/core/auth/components/ChangePasswordModal.vue
+  s_61c084afce2bbf::t_10070fcf76bf9f 15
+packages/frontend/editor-ui/src/features/core/auth/modals.ts
+  s_61c084afce2bbf::t_10070fcf76bf9f 10
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_61c084afce2bbf::t_10070fcf76bf9f 389-393
+packages/frontend/editor-ui/src/app/components/ModalRoot.test.ts
+  s_61c084afce2bbf::t_10070fcf76bf9f 18
+packages/frontend/editor-ui/src/features/core/dataTable/module.descriptor.ts
+  s_61c084afce2bbf::t_e4dcb8388a086e 8-11,26
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_61c084afce2bbf::t_299fbf65ad237b 91-93
+packages/frontend/editor-ui/src/features/core/dataTable/modals.ts
+  s_61c084afce2bbf::t_fad727532d34d3 1,18-21,23-26
+packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
+  s_61c084afce2bbf::t_2418adf94be1d8 34,37-38
+  s_61c084afce2bbf::t_4711a3cd228969 35-36
+packages/frontend/editor-ui/src/features/core/auth/components/MfaSetupModal.vue
+  s_61c084afce2bbf::t_10070fcf76bf9f 22
+packages/frontend/editor-ui/src/features/core/auth/components/PromptMfaCodeModal.vue
+  s_61c084afce2bbf::t_10070fcf76bf9f 13
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.test.ts
+  s_61c084afce2bbf::t_d772a127b5ad43 1-37
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.ts
+  s_61c084afce2bbf::t_4711a3cd228969 13
+packages/frontend/editor-ui/src/features/ai/instanceAi/modals.ts
+  s_61c084afce2bbf::t_e4dcb8388a086e 13,18
+packages/frontend/editor-ui/src/app/modals.manifest.test.ts
+  s_61c084afce2bbf::t_10070fcf76bf9f 13
+packages/frontend/editor-ui/src/features/core/auth/components/ConfirmPasswordModal.vue
+  s_61c084afce2bbf::t_10070fcf76bf9f 12
+packages/frontend/editor-ui/src/main.ts
+  s_61c084afce2bbf::t_10070fcf76bf9f 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b36729ab4e4641b683e5fad3131b23a36b1e8f56",
+  "prompts": {},
+  "sessions": {
+    "s_61c084afce2bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046a1647-ab2e-475f-9acc-1298a6d4400a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

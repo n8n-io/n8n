@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/chat/create.operation.ts
+  s_6a7d5f1a01d9ec::t_d523ab1459c4b7 8,246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "36b1d9bba9ff2f580055cdaad4dde9300b1c8ea1",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

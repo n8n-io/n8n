@@ -1,0 +1,59 @@
+pnpm-lock.yaml
+  ai_agent 2293-2295,2537-2539,3196-3198,9957-9971,21457-21463,28945-28962,42441-42451
+docs/generated/sqlite-schema/type_availability_policy_attachment.md
+  ai_agent 1-82
+docs/generated/postgres-schema/public.type_availability_policy.md
+  ai_agent 1-62
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 1-631
+docs/generated/sqlite-schema/type_availability_policy_scope.md
+  ai_agent 1-85
+packages/@n8n/config/src/schemas.ts
+  s_973b463afe42a2::t_bb5d34e869df1c 4
+docs/generated/sqlite-schema/README.md
+  ai_agent 96,120-122,273,303-305,1209,1428-1453
+docs/generated/sqlite-schema/oauth_clients.md
+  ai_agent 88
+docs/generated/postgres-schema/public.type_availability_policy_attachment.md
+  ai_agent 1-75
+docs/generated/sqlite-schema/user.md
+  ai_agent 275
+docs/generated/postgres-schema/public.type_availability_policy_scope.md
+  ai_agent 1-80
+docs/generated/postgres-schema/public.user.md
+  ai_agent 269
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 1-1129
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  ai_agent 9,21,31-32,54
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 71-74
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,61,211-219
+docs/generated/postgres-schema/public.oauth_clients.md
+  ai_agent 84
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  ai_agent 10,26,50
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,55,205-213
+docs/generated/postgres-schema/README.md
+  ai_agent 96,120-122,318-320,1222,1439-1464
+docs/generated/sqlite-schema/type_availability_policy.md
+  ai_agent 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b39a2d938b7f8838db86e1df95ca32741525b54f",
+  "prompts": {},
+  "sessions": {
+    "s_973b463afe42a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fca40b86-fc05-4bef-a2e6-8395f321d651",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/@n8n/api-types/src/index.ts
+  s_e2203a10d11968::t_d32e9826ce29a1 163
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_ded7d7c94191cb 6,11
+  s_e2203a10d11968::t_a0cf3707b474e0 51
+  s_e2203a10d11968::t_8ada91a16ff503 90,94
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_e2203a10d11968::t_b81a7d981f7a24 23
+packages/cli/src/public-api/v1/controllers/__tests__/users.public.controller.test.ts
+  s_e2203a10d11968::t_92859f354d0959 129-133,135-137
+  s_e2203a10d11968::t_7291d07b8864c3 61-65,67-69
+  s_e2203a10d11968::t_6cdbef2be36d0d 31-33
+packages/@n8n/api-types/src/dto/user/__tests__/list-users-query.dto.test.ts
+  s_e2203a10d11968::t_4839e9b0f1e888 26-33
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUser.generated.yml
+  s_e2203a10d11968::t_d4308d40090f09 14,88-89
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUsers.generated.yml
+  s_e2203a10d11968::t_2b8c61bfb27bca 102-103
+packages/@n8n/decorators/src/controller/__tests__/scoped.test.ts
+  s_e2203a10d11968::t_6437b0d3b4c4b7 5
+packages/@n8n/decorators/src/controller/__tests__/requires-user-quota.test.ts
+  s_e2203a10d11968::t_aba641855ef2dc 5
+packages/@n8n/decorators/src/controller/__tests__/license.test.ts
+  s_e2203a10d11968::t_b02b5a9013ae6e 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bda117784eea46d2775d6288d4b6f777a0624268",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

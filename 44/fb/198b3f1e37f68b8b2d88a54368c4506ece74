@@ -1,0 +1,23 @@
+packages/cli/src/modules/mcp-registry/mcp-registry.controller.ts
+  s_3f16b3c7dbea10::t_2d6cf0b8ee0af4 4
+  s_3f16b3c7dbea10::t_e46004ced78a61 13-17,21-23
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry.controller.test.ts
+  s_3f16b3c7dbea10::t_10b89c57c9b811 42-51
+  s_3f16b3c7dbea10::t_90180bf23cd684 5-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "44fb198b3f1e37f68b8b2d88a54368c4506ece74",
+  "prompts": {},
+  "sessions": {
+    "s_3f16b3c7dbea10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce04b445-967b-4c3a-a64d-270eb52dcd7e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

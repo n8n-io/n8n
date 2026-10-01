@@ -1,0 +1,86 @@
+packages/frontend/@n8n/design-system/src/components/N8nSuggestedActions/SuggestedActions.vue
+  s_23ac9e46ab1748::t_df8728ffcc8296 163-168
+  s_23ac9e46ab1748::t_adfc61e3611234 79,81
+  s_23ac9e46ab1748::t_2897b15e7c17f7 28-29
+packages/frontend/editor-ui/src/app/components/WorkflowDescriptionModal.vue
+  s_23ac9e46ab1748::t_83006dc18ee6ef 17
+  s_23ac9e46ab1748::t_48f5cc97d4f01e 249-253
+  s_23ac9e46ab1748::t_43935b59834574 46-52,56-63
+  s_23ac9e46ab1748::t_9311503472481c 196-214
+  s_23ac9e46ab1748::t_6e04784b2e341d 24,26-27
+  s_23ac9e46ab1748::t_c5362e70b2e7f9 64
+  s_23ac9e46ab1748::t_d4080743b880ea 193-195
+  s_23ac9e46ab1748::t_67b0243a739971 248
+  s_704a1a6a42be24::t_41ec1729cea85d 100,108,115-117,182,244
+packages/testing/playwright/tests/e2e/workflows/editor/tags.spec.ts
+  s_23ac9e46ab1748::t_ba02ca77d14fa5 110-112
+  s_23ac9e46ab1748::t_96eeec57a7c3fd 34-35
+  s_23ac9e46ab1748::t_0ecb1864f021af 138-139
+  s_23ac9e46ab1748::t_c67a52995c83b6 193
+  s_23ac9e46ab1748::t_0bd7bcccd804b5 75-77
+  s_23ac9e46ab1748::t_612c1d24d36354 167-169
+  s_23ac9e46ab1748::t_95c1afe8b025ee 221
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_23ac9e46ab1748::t_9929b372f6337b 68-81
+  s_704a1a6a42be24::t_376391d400d6b1 83
+packages/testing/playwright/pages/CanvasPage.ts
+  s_23ac9e46ab1748::t_c92078c257da82 338-341,344-352
+  s_23ac9e46ab1748::t_c27ec15bebfe0a 264
+  s_23ac9e46ab1748::t_bfb68ec5eb344d 288
+  s_23ac9e46ab1748::t_ef46d2154c051f 388
+  s_23ac9e46ab1748::t_56a05db05df085 461-467
+  s_23ac9e46ab1748::t_0970ac118f9690 368
+packages/frontend/editor-ui/src/app/constants/actions.ts
+  s_23ac9e46ab1748::t_e0a34b87206a05 4,15
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.vue
+  s_23ac9e46ab1748::t_042c9bece8c771 361
+  s_23ac9e46ab1748::t_ffe314e5246023 32-35
+  s_23ac9e46ab1748::t_6b1640c5e3d567 347-354
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_23ac9e46ab1748::t_f1816551b9f92a 269
+  s_23ac9e46ab1748::t_641a0dcc432a3a 286
+  s_23ac9e46ab1748::t_0b925a9f5f8618 301-302
+packages/testing/playwright/tests/e2e/workflows/checklist/production-checklist.spec.ts
+  s_23ac9e46ab1748::t_f9f2c1c57d5fc1 20-22,31-35
+  s_23ac9e46ab1748::t_67ae0c657416b2 147
+  s_23ac9e46ab1748::t_52e442f1fddae6 108
+  s_23ac9e46ab1748::t_bd412ae03d035b 165-166
+packages/frontend/@n8n/design-system/src/types/action-dropdown.ts
+  s_23ac9e46ab1748::t_ae95f2d6756e48 20-21
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_23ac9e46ab1748::t_98810f925c96ef 1866-1867,1869-1870
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_23ac9e46ab1748::t_5ec22bdfb7d89e 137
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_23ac9e46ab1748::t_36dd6c225d090a 2,4
+  s_23ac9e46ab1748::t_bfbf167c4152ff 162-166
+  s_23ac9e46ab1748::t_f662983f5efd5d 314-315
+  s_23ac9e46ab1748::t_13eeb96cb557ab 56-57
+  s_23ac9e46ab1748::t_8fee0c1461e535 475
+  s_23ac9e46ab1748::t_6f69830d9a0626 118-123,125,132,137,139-144,147,155-161,171-176,178,180-204,208,218-229,231-238,247,252,259,268-275
+  s_23ac9e46ab1748::t_93ad7a1395e7c9 291,293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b2e62709bb1d27c15ced80c90506be5e7735b5db",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

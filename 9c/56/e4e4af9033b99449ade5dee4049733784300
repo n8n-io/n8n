@@ -1,0 +1,11 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  ai_agent 83,465-466,474-477
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  ai_agent 323-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c56e4e4af9033b99449ade5dee4049733784300",
+  "prompts": {}
+}

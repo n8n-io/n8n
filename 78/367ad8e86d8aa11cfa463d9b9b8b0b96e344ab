@@ -1,0 +1,22 @@
+packages/cli/src/modules/dynamic-credentials.ee/constants.ts
+  s_3366bcfee02760::t_6dd4a60262c7f4 6
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/credential-resolvers.controller.test.ts
+  s_3366bcfee02760::t_daca50d9170869 164,189
+  s_3366bcfee02760::t_7e895331e3ec45 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "78367ad8e86d8aa11cfa463d9b9b8b0b96e344ab",
+  "prompts": {},
+  "sessions": {
+    "s_3366bcfee02760": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "969f6a0c-1fa9-40fa-92a6-99b9550d1f35",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

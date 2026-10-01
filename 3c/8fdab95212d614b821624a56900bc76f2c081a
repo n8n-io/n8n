@@ -1,0 +1,35 @@
+packages/testing/playwright/services/api-helper.ts
+  s_2ed5bf6b8e1b12::t_65ef37ab5928c0 71
+  s_2ed5bf6b8e1b12::t_9bf30ed2b9e10f 89
+  s_2ed5bf6b8e1b12::t_8a03e795b36f3a 23
+packages/testing/playwright/pages/OAuthConsentPage.ts
+  s_2ed5bf6b8e1b12::t_23e69601f0e80c 1-8,11-21
+  s_2ed5bf6b8e1b12::t_05019aa5196de5 9-10
+packages/testing/playwright/pages/n8nPage.ts
+  s_2ed5bf6b8e1b12::t_40d1e14952690c 31
+  s_2ed5bf6b8e1b12::t_c0340c488009ee 91
+  s_2ed5bf6b8e1b12::t_7d90a0dd8f0d32 172
+packages/testing/playwright/tests/e2e/mcp/mcp-oauth.spec.ts
+  s_2ed5bf6b8e1b12::t_5128c5d3719122 1-332,334,336,361,364-389,391-425
+  s_2ed5bf6b8e1b12::t_8156342b9bdb2a 333,335,337-360,362-363
+  s_2ed5bf6b8e1b12::t_eade8af721e5a1 390
+packages/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_2ed5bf6b8e1b12::t_045fd535fdc93b 71-73
+  s_2ed5bf6b8e1b12::t_fc60d6956a6be3 1-70,74-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "3c8fdab95212d614b821624a56900bc76f2c081a",
+  "prompts": {},
+  "sessions": {
+    "s_2ed5bf6b8e1b12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c8307d8-eeeb-4c3e-bcc7-5fc7e6ad73d5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

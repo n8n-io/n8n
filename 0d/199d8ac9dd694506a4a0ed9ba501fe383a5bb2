@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/bindings.fixtures.ts
+  s_e119f4a041ed36::t_d2856d8071e6ea 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d199d8ac9dd694506a4a0ed9ba501fe383a5bb2",
+  "prompts": {},
+  "sessions": {
+    "s_e119f4a041ed36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c960-8f83-7942-9390-94d55512f1a1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

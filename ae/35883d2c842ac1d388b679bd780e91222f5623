@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_85629be8996a13::t_ced2e65f8933af 35-36,110-114,116-133
+  s_85629be8996a13::t_6f67412abde3fb 115
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_85629be8996a13::t_83193e4de1a37a 188-191,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ae35883d2c842ac1d388b679bd780e91222f5623",
+  "prompts": {},
+  "sessions": {
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

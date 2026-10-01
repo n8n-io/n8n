@@ -1,0 +1,25 @@
+.agents/skills/public-api/SKILL.md
+  s_26a6847aa6eff7::t_44420a2254850e 19-23
+  h_ed1b2d65e81e8e 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "96639457352afc07101e7de0422ee8f9e7b03b43",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_26a6847aa6eff7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "828eecd5-b3a7-4589-9028-0833feaada31",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

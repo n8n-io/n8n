@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_664aee80751cb4::t_ab01bf62d40102 83-84,89-94
+  s_664aee80751cb4::t_d4b40c8aaf5794 209-238,244-246
+  s_664aee80751cb4::t_a63b6ff96fec0b 400-438,441-510
+  s_664aee80751cb4::t_d98feee21cefbe 58
+  s_664aee80751cb4::t_df11b893bd6f9f 18,20-22
+  s_664aee80751cb4::t_ea1da65c16bdb4 439-440
+  s_664aee80751cb4::t_9e3e6f09d582de 40-42
+  s_664aee80751cb4::t_818d3c174022a0 16-17,19,23-24
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_664aee80751cb4::t_130d28811d5d2a 371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "083f152cd96245befd3e43044be1d4d8f4adfd07",
+  "prompts": {},
+  "sessions": {
+    "s_664aee80751cb4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44208da5-d4c9-4d23-8dbc-a8d218aee786",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

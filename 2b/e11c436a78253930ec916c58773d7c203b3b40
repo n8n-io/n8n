@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_2ed659fa6b1ae7::t_025bd29e4e1c19 440-468
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_2ed659fa6b1ae7::t_025bd29e4e1c19 34,649,651-657
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_2ed659fa6b1ae7::t_025bd29e4e1c19 11,16-17,28,52-64,141-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2be11c436a78253930ec916c58773d7c203b3b40",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

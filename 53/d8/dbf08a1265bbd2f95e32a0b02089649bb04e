@@ -1,0 +1,18 @@
+single-instance-promotion-prototype/grill-me/1_GRILL_ME.md
+  h_c63dce324dfc7b 1-83
+single-instance-promotion-prototype/grill-me/1_PROMPT.md
+  h_c63dce324dfc7b 1-5
+single-instance-promotion-prototype/ponytail/1_PROMPT.md
+  h_c63dce324dfc7b 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "53d8dbf08a1265bbd2f95e32a0b02089649bb04e",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

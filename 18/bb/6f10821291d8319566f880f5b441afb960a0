@@ -1,0 +1,25 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_74c2aec9bd4605::t_4d2bd3a59a1077 158-207
+  s_74c2aec9bd4605::t_fbc689c26d92cd 260-262,268
+  s_74c2aec9bd4605::t_1bfd3623aa4e9b 1068
+  s_74c2aec9bd4605::t_fe63ed256f5c60 873-906
+  s_74c2aec9bd4605::t_d6261c4b089dbe 804-806
+packages/@n8n/expression-runtime/src/__tests__/typed-rpc.test.ts
+  s_74c2aec9bd4605::t_c8fc529d9ecf2c 839-901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "18bb6f10821291d8319566f880f5b441afb960a0",
+  "prompts": {},
+  "sessions": {
+    "s_74c2aec9bd4605": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "463b8362-726a-4b2b-bb94-60e03f5814ba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

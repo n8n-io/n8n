@@ -1,0 +1,92 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_a2967ec392b10a::t_b031b793a8bee3 18-19
+  s_a2967ec392b10a::t_961a0a9ab4c24e 128-136
+  s_a2967ec392b10a::t_82ece97e48d11c 195-200
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestTitle.vue
+  s_a2967ec392b10a::t_887a2ceb110e40 1-2,4,6-8,13-14
+  s_a2967ec392b10a::t_29252c753e2ce7 3,10,12
+  s_a2967ec392b10a::t_73af9e76bd1c15 5,11
+  s_a2967ec392b10a::t_56dfc41495e177 9
+packages/frontend/editor-ui/src/features/workflowReviews/composables/useWorkflowReviewsAvailable.ts
+  s_a2967ec392b10a::t_2ebc28ac0e156a 1-20
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_a2967ec392b10a::t_3b27c7eb220695 9
+  s_a2967ec392b10a::t_084485454ba674 22
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_a2967ec392b10a::t_1410fd161d5d54 11
+  s_a2967ec392b10a::t_58d282352e3c60 81-86
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_a2967ec392b10a::t_3eb5c16bb18e27 1-4,14-49,58-72,74-77,83-90,106-107,109-118,120-121,123-125,132-144,147-150,158-161,163-164,174-177,179,181-182,184,188,191-193,196-197,208-210,215-222
+  s_a2967ec392b10a::t_985e91b5d04987 5-13
+  s_a2967ec392b10a::t_b4b8badcfc6456 50-54
+  s_a2967ec392b10a::t_34658fdd81cbb7 55-57
+  s_a2967ec392b10a::t_cdfbd2b564bfde 73,205-206,211
+  s_a2967ec392b10a::t_556ae846d43f40 78-82
+  s_a2967ec392b10a::t_7f56b2544c0ac2 91-105
+  s_a2967ec392b10a::t_6f2c1528c839db 119,122,131
+  s_a2967ec392b10a::t_3ddb3d43b9d453 126,130
+  s_a2967ec392b10a::t_bce32d9f18d1a0 145
+  h_760178ed151f13 146
+  s_a2967ec392b10a::t_c92232d1a62fec 151-157
+  s_a2967ec392b10a::t_dfc3f0a7c26a8d 162,178,180
+  s_a2967ec392b10a::t_e9c64cc71ce165 165-173
+  s_a2967ec392b10a::t_b2ff309e427456 183,185-186,194,207
+  s_a2967ec392b10a::t_070fadca37d7a5 189
+  s_a2967ec392b10a::t_636a115b00a003 190
+  s_a2967ec392b10a::t_78400792448667 195
+  s_a2967ec392b10a::t_b2778185595ec4 198-204
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  s_a2967ec392b10a::t_2d1201cc0f307b 1-4,7-48,64,96-98,100,103-109,111,127-129
+  s_a2967ec392b10a::t_0d36d9030364ce 5,67-92,110,112-113,115-126
+  s_a2967ec392b10a::t_738a0e00e69032 6,49-63,65-66,93-95,99,102
+  s_a2967ec392b10a::t_6e63d8a8e715bc 101
+  s_a2967ec392b10a::t_659688df32f186 114
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.api.ts
+  s_a2967ec392b10a::t_1812e3df603a47 1-27
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.ts
+  s_a2967ec392b10a::t_d2a2dc28915220 1-31,33-128,133-167,169-171
+  h_760178ed151f13 32
+  s_a2967ec392b10a::t_53e7605ca905a2 129-132
+  s_a2967ec392b10a::t_d6b11c7ded6dfc 168
+packages/frontend/editor-ui/src/features/workflowReviews/constants.ts
+  s_a2967ec392b10a::t_85c6962b61e166 1
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useProjectPages.ts
+  s_a2967ec392b10a::t_002dc175cd42c3 4-5,26-27,32
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_a2967ec392b10a::t_b5e630ce341d6b 330-334
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.test.ts
+  s_a2967ec392b10a::t_933bc2a55db17c 1-3,6,8-24,28-59
+  s_a2967ec392b10a::t_cf18e2b38f3e1c 4-5,7
+  s_a2967ec392b10a::t_aa4a3f88ccf281 25
+  s_a2967ec392b10a::t_b64f47d7f31c37 26-27
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsDisclaimer.vue
+  s_a2967ec392b10a::t_207b24b9b21b29 1-2,6-10,12-20
+  s_a2967ec392b10a::t_6573e2b6a6e8ae 3
+  s_a2967ec392b10a::t_8a833ef767102e 4-5,11
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a2967ec392b10a::t_03b27420633611 5016,5018-5026
+  s_a2967ec392b10a::t_8284d13733e462 5017
+packages/frontend/editor-ui/src/features/workflowReviews/module.descriptor.ts
+  s_a2967ec392b10a::t_43b3ee6c9f31ab 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37c81337bf9fd0d0021bcfadb54b2dbe99f2d3fa",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

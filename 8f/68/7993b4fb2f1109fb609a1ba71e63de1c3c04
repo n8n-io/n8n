@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/core/dataTable/modals.ts
+  s_61c084afce2bbf::t_b6375f239f8778 1-25
+packages/frontend/editor-ui/src/features/core/dataTable/module.descriptor.ts
+  s_61c084afce2bbf::t_b6375f239f8778 8,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8f687993b4fb2f1109fb609a1ba71e63de1c3c04",
+  "prompts": {},
+  "sessions": {
+    "s_61c084afce2bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046a1647-ab2e-475f-9acc-1298a6d4400a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

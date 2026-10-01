@@ -1,0 +1,19 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_d080cd0071e0f4::t_5a02d10e5c7efc 537,547,638,902
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "36c94f1816920f954dcc612dc33c7c08c4a5f9c0",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

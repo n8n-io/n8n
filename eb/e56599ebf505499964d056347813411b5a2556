@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_ef8734a1a9d434::t_724db1a8a813ce 636
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_ef8734a1a9d434::t_3bad9db5cb7a8c 338
+  s_ef8734a1a9d434::t_c15f56c6dcdd82 315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "ebe56599ebf505499964d056347813411b5a2556",
+  "prompts": {},
+  "sessions": {
+    "s_ef8734a1a9d434": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2384e80-02bf-49f2-bb42-c49c34374e77",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

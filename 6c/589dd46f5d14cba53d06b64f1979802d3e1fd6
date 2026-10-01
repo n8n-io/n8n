@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_467ede6818687a::t_986a22bc0f9e60 1-2
+  s_467ede6818687a::t_d2228f98900365 383,385,389,396-408
+packages/nodes-base/credentials/OAuth2OidcBearer.credentials.ts
+  s_467ede6818687a::t_d12c25dc50eada 72-110
+pnpm-lock.yaml
+  ai_agent 4727-4729
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_467ede6818687a::t_bd8488e706a3ee 370-373
+  s_467ede6818687a::t_69c293bad90fbc 1
+  s_467ede6818687a::t_0d3c2d412f0bf8 430-490
+  s_467ede6818687a::t_ed1b8864876410 37-42,44
+tasks/plan.md
+  s_467ede6818687a::t_fd78d92ce15083 134-135,139-141,146-155
+packages/nodes-base/package.json
+  s_467ede6818687a::t_a707b1a7dadd9e 914
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c589dd46f5d14cba53d06b64f1979802d3e1fd6",
+  "prompts": {},
+  "sessions": {
+    "s_467ede6818687a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ee96959-2d33-4d77-9268-45e16a4f8ac8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

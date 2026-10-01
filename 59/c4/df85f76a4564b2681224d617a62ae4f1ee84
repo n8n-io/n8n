@@ -1,0 +1,21 @@
+packages/cli/src/encryption/key-manager.service.ts
+  s_020022cd4688c9::t_ca1f3e51760bd7 139-144
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_020022cd4688c9::t_f82a81ab0580d3 739-750
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "59c4df85f76a4564b2681224d617a62ae4f1ee84",
+  "prompts": {},
+  "sessions": {
+    "s_020022cd4688c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d34c9b5e-3efb-43fb-8512-d6c8fb0b25ee",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

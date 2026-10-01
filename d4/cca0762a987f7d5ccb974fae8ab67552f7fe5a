@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_6dfd36f255425e::t_710e2dc2297751 42-56,77-78
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_6dfd36f255425e::t_92cba75282d0c9 11,112-129
+  s_6dfd36f255425e::t_fcfe89ad3fd881 130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "d4cca0762a987f7d5ccb974fae8ab67552f7fe5a",
+  "prompts": {},
+  "sessions": {
+    "s_6dfd36f255425e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eff14-917d-7bc3-89cf-0582aae9df99",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

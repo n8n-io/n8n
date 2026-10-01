@@ -1,0 +1,24 @@
+pnpm-lock.yaml
+  ai_agent 166-167,1263,1363,4209,10160-10161,27675
+packages/cli/src/services/ai.service.ts
+  s_602a3b182a34ac::t_48d22522ea7e03 106-108
+  s_602a3b182a34ac::t_64c49f62805f6d 11
+pnpm-workspace.yaml
+  s_602a3b182a34ac::t_b0b87c90df0b6c 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "897dc94bef47ad0019bd3fabaa129c92997b0167",
+  "prompts": {},
+  "sessions": {
+    "s_602a3b182a34ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97601b8f-6173-4856-9e57-5368d6791be1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

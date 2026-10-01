@@ -1,0 +1,57 @@
+packages/@n8n/instance-ai/evaluations/harness/scenario-execution.ts
+  s_b370a35485f958::t_bac52950e80f0e 435,461,468
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_b370a35485f958::t_27acaa19de542d 1,9,23,25,35-36
+packages/cli/src/modules/instance-ai/__tests__/drop-rejected-attachments.test.ts
+  s_b370a35485f958::t_9c8643d321f62f 2
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_b370a35485f958::t_45439bc47fc94c 7-12
+packages/cli/src/modules/instance-ai/drop-rejected-attachments.ts
+  s_b370a35485f958::t_f5d9a8bdd8bf9b 2
+packages/cli/src/modules/instance-ai/entities/instance-ai-checkpoint.entity.ts
+  s_b370a35485f958::t_7ec6b8f9b8fa13 2
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-completion-mock.test.ts
+  s_b370a35485f958::t_7836b24f100c10 8,55-57,66,68
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  s_b370a35485f958::t_a8e1963fe69360 71-73,110,112
+packages/cli/src/modules/instance-ai/eval/llm-completion-mock.ts
+  s_b370a35485f958::t_fdcaa7d7cb76dd 8,11-12
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_b370a35485f958::t_e40b319ef7eb28 11,14
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_b370a35485f958::t_c10724557136a3 1
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_b370a35485f958::t_936c29699cf102 9
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_b370a35485f958::t_39b0466f99b80f 1,8
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-checkpoint.repository.integration.test.ts
+  s_b370a35485f958::t_47dbec8af37dcf 6
+packages/cli/src/modules/instance-ai/repositories/instance-ai-checkpoint.repository.ts
+  s_b370a35485f958::t_c7cc1167be8c14 4
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_b370a35485f958::t_7bf21198019399 1
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_b370a35485f958::t_6d504def8adcbb 2
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts
+  s_b370a35485f958::t_733f6799ff9025 2
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_b370a35485f958::t_ea3424d4453e1d 2-4,19
+packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts
+  s_b370a35485f958::t_2351e85d522a3f 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6438e8c5383f1180b54c80656d5262b56f3aedad",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

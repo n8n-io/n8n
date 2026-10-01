@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_e3e7ed038654fc::t_94885a52ebc42a 103,110-111,116,132-133,206-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6305719558e17fcc7a4994ad4078292787876d3d",
+  "prompts": {},
+  "sessions": {
+    "s_e3e7ed038654fc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c3bc-5110-7620-b7fb-4d3561119e4f",
+        "model": "unknown"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

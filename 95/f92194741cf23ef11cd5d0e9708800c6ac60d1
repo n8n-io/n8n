@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_6769ca839e8567::t_a7595284dbe68c 958-1086
+packages/frontend/editor-ui/src/app/utils/nodeTypeUtils.test.ts
+  s_6769ca839e8567::t_add48e9a9e1745 2,7-8,11,18
+  s_6769ca839e8567::t_bcd7e4cd01acc0 245-370
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_6769ca839e8567::t_d3d1e7ca909c19 70-82,88-89
+  s_6769ca839e8567::t_ad7857c66d2538 221-302
+  s_6769ca839e8567::t_04d7e4e32d1a64 4,7
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_6769ca839e8567::t_a6bbd990f8b186 112-113,119-121
+  s_6769ca839e8567::t_63ad4e3ee4168a 122
+packages/frontend/editor-ui/src/app/utils/nodeTypesUtils.ts
+  s_6769ca839e8567::t_f2d50b2286c796 329-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "95f92194741cf23ef11cd5d0e9708800c6ac60d1",
+  "prompts": {},
+  "sessions": {
+    "s_6769ca839e8567": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7deb64a3-b389-4439-914d-7e9b01eae171",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

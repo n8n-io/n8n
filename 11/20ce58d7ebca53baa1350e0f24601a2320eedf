@@ -1,0 +1,181 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SplitButton.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/TableHeaderControlsButton.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 8
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 11
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/@n8n/design-system/src/index.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 14
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/helpers.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 7
+packages/frontend/editor-ui/src/features/ai/assistant/builder.store.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6-7
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusMark.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/editor-ui/src/features/ai/assistant/composables/useCodeDiff.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/FormBox.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 2
+packages/frontend/@n8n/design-system/src/locale/index.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 15
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useFavoriteNavItems.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 11
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/TextMessage.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 8
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.stories.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/@n8n/design-system/src/__tests__/setup.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.store.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 27
+packages/frontend/editor-ui/src/features/shared/commandBar/components/CommandBarItemTitle.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/features/settings/sso/views/SettingsLdapView.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 17
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 22
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/ChatVersionCard.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/@n8n/design-system/src/types/action-dropdown.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 1
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.types.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 13
+packages/frontend/@n8n/design-system/src/components/N8nFormInputs/FormInputs.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatAgentCard.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 7
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 21
+packages/frontend/editor-ui/src/features/settings/users/components/PersonalizationModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 91
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/editor-ui/src/Interface.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 71-95
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebarLink.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 8
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/routerUtil.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 11
+packages/frontend/@n8n/design-system/src/components/N8nNotice/Notice.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/@n8n/design-system/src/types/form.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 1
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 10
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/WebFetchApprovalMessage.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/@n8n/design-system/src/__tests__/render.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/app/constants/parameters.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 2
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 40
+packages/frontend/editor-ui/src/features/core/auth/components/ConfirmPasswordModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/MessageRating.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 10
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.store.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 7
+packages/frontend/@n8n/design-system/src/utils/valueByPath.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 1
+packages/frontend/editor-ui/src/features/execution/logs/composables/usePopOutWindow.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 15
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/RestoreVersionConfirm.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 7
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/messages/ToolMessage.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 9
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSessionMenuItem.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 9
+packages/frontend/editor-ui/src/features/ai/assistant/composables/useBuilderMessages.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/@n8n/design-system/src/types/icon.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 1
+packages/frontend/@n8n/design-system/src/components/N8nUsersList/UsersList.stories.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.constants.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/GatewayResourceDecision.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 3
+packages/frontend/editor-ui/src/features/ai/assistant/chatPanel.store.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 22
+packages/frontend/editor-ui/src/features/core/auth/components/ChangePasswordModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 7
+packages/frontend/editor-ui/src/features/core/folders/components/FolderBreadcrumbs.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 2
+packages/frontend/editor-ui/src/features/ai/assistant/builder.store.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 26
+packages/frontend/@n8n/design-system/src/components/N8nNavigationDropdown/NavigationDropdown.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 6
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/AskAssistantBuild.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 19-20
+packages/frontend/@n8n/design-system/src/components/N8nInlineTextEdit/InlineTextEdit.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/editor-ui/src/features/core/auth/components/PromptMfaCodeModal.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 8
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4
+packages/frontend/editor-ui/src/features/ai/assistant/composables/useBuilderMessages.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 1
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 12
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.test.ts
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 7
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CollapsedMessagesGroup.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 4-5
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorToolbar.vue
+  s_8ee3299331a9a9::t_2cfc126fbf67e4 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1120ce58d7ebca53baa1350e0f24601a2320eedf",
+  "prompts": {},
+  "sessions": {
+    "s_8ee3299331a9a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89fdee52-e42b-482b-9965-cb3a0d48d140",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

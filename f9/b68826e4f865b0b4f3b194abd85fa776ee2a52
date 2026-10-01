@@ -1,0 +1,21 @@
+.agents/specs/2026-07-09-instance-ai-agent-builder-sub-agent.md
+  s_dd8f226d4368c9::t_0523b5e5188fda 65-80
+.agents/plans/2026-07-09-instance-ai-builder-sub-agent-followups.md
+  s_dd8f226d4368c9::t_c2bd2acc414dad 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f9b68826e4f865b0b4f3b194abd85fa776ee2a52",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

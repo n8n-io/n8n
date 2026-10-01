@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_dd8f226d4368c9::t_15d11f27a2a568 54-59
+  s_dd8f226d4368c9::t_eac1b39fe27360 215-222
+  s_dd8f226d4368c9::t_4a89413d7b5b8e 4
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_dd8f226d4368c9::t_57444690172c8f 113-115
+  s_dd8f226d4368c9::t_f298edaeb3897e 149
+  s_dd8f226d4368c9::t_5b51e1c93b9c07 264
+  s_dd8f226d4368c9::t_089635ccb1bfd0 527,805,834,858
+  s_dd8f226d4368c9::t_a6fa40916a7126 436
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_dd8f226d4368c9::t_40fed4b675cece 195
+  s_dd8f226d4368c9::t_8edb823aa95562 101
+  s_dd8f226d4368c9::t_cebd3d2928cc28 180-187
+  s_dd8f226d4368c9::t_c2bb9c0c4daa16 292-314
+  s_dd8f226d4368c9::t_0cb9d954dad1b9 41,53-54
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_dd8f226d4368c9::t_9c9edd0c49455d 438-441
+  s_dd8f226d4368c9::t_d1f11b71d9a2a5 506-509
+packages/@n8n/instance-ai/src/types.ts
+  s_dd8f226d4368c9::t_4c72799e252c76 816-821
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_dd8f226d4368c9::t_34711a0d0c2397 116-131
+  s_dd8f226d4368c9::t_e810a969be37ad 188-204
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_dd8f226d4368c9::t_ce18fe12c43cfe 87,102,106
+  s_dd8f226d4368c9::t_33e39d0944cbd4 2-6
+  s_dd8f226d4368c9::t_5c70fc21047f8b 141
+  s_dd8f226d4368c9::t_cd64ef185be3ca 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "f4133c3ddaf1f5ed610ea55a23cd14366ed93be8",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_e5d1e3f565ab47::t_791b7b7ec1d301 337-338
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_1d360ad69afd30::t_1187fa13dbd32a 534
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_1d360ad69afd30::t_a5112b3e7bfd68 394
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_1d360ad69afd30::t_09a0ec6819777a 473
+packages/workflow/src/interfaces.ts
+  s_1d360ad69afd30::t_7399bc11ca2a34 1247
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_1d360ad69afd30::t_3312f8c6fc1736 577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc3a9168536b63122fc25ada8146d0a624a97ca9",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

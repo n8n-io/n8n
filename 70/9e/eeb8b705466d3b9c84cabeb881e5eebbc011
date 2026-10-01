@@ -1,0 +1,34 @@
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_78602881b5db05::t_7e607a0af54601 392-401
+packages/workflow/src/errors/abstract/execution-base.error.ts
+  s_78602881b5db05::t_03b4898ed8b9c2 58-59
+  s_78602881b5db05::t_fa768766130f64 10-13
+  s_78602881b5db05::t_fc1bb1e1e0db13 60-63
+  s_78602881b5db05::t_e8215a4ed8650a 16
+  s_78602881b5db05::t_fbf9693cb3a172 40-41
+packages/workflow/test/errors/execution-base.error.test.ts
+  s_78602881b5db05::t_4ac2905b2779ae 36-39
+  s_78602881b5db05::t_9d19e11c2733b1 52
+  s_78602881b5db05::t_ae738113c93fe8 10,12-16,23
+  s_78602881b5db05::t_b749529c2734d4 1-9,11,17-20,22,26-27,34-35,40-51,53-83
+  s_78602881b5db05::t_dc0c6a5803b1d6 21
+packages/core/src/errors/error-reporter.ts
+  s_78602881b5db05::t_750c8a6d825a6b 155
+  s_78602881b5db05::t_2e660b607af850 133-136,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "709eeeb8b705466d3b9c84cabeb881e5eebbc011",
+  "prompts": {},
+  "sessions": {
+    "s_78602881b5db05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "822e6334-842b-476e-bd02-5eae8e793133",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

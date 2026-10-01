@@ -1,0 +1,26 @@
+packages/cli/src/executions/pre-execution-checks/__tests__/workflow-pre-execute.test.ts
+  s_48874ebba5611f::t_5113a465e51c5d 16
+packages/cli/src/deprecation/__tests__/deprecation.service.test.ts
+  s_48874ebba5611f::t_3aedd246b7782c 73-76
+packages/cli/BREAKING-CHANGES.md
+  s_48874ebba5611f::t_66fe12518433fd 9-16
+packages/cli/src/deprecation/deprecation.service.ts
+  s_48874ebba5611f::t_1f8f98bf2ae97f 100-103
+  s_48874ebba5611f::t_2a299b0eb1d0d4 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dfa07c26d0d8d140be467c8f721a009758126f3b",
+  "prompts": {},
+  "sessions": {
+    "s_48874ebba5611f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "90eddcc4-a0fb-4511-bb77-47e26f2d2992",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

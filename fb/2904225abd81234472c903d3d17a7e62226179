@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_f89e0603529616::t_3f78b2690fcec5 233-258
+  s_f89e0603529616::t_4d47cd137acc5e 47,53
+  s_f89e0603529616::t_05ad0174cd8215 68,78
+  s_f89e0603529616::t_1bfca8bc646646 4
+  s_f89e0603529616::t_d0c43bd5eb47ef 259-261
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_f89e0603529616::t_d8630730a4d1e3 28
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_f89e0603529616::t_32b297da513f76 249
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-resolver.ts
+  s_f89e0603529616::t_7496fb4739f38d 1
+  s_f89e0603529616::t_3842a935e2bfb0 31-67
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_f89e0603529616::t_55805a27ebaab0 110
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_f89e0603529616::t_449b5c79773114 440
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_f89e0603529616::t_377f592dc3fd79 40
+  s_f89e0603529616::t_d0e6f0e693f538 131-134
+  s_f89e0603529616::t_85a8a755daedaf 10,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "fb2904225abd81234472c903d3d17a7e62226179",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f89e0603529616": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff957d73-b86f-43ac-9e8d-c9cf542a9b79",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+.claude/plugins/n8n/skills/community-pr-readiness-check
+  ai_agent 1
+.agents/skills/human-like-code-review/SKILL.md
+  s_f0c4a529fe8ba9::t_62054943dd7f1f 2
+.claude/plugins/n8n/skills/human-like-code-review
+  ai_agent 1
+.claude/plugins/n8n/skills/experiments
+  ai_agent 1
+.agents/skills/experiments/SKILL.md
+  s_f0c4a529fe8ba9::t_632a602cfa47b6 2
+.agents/skills/community-pr-readiness-check/reference/checks.md
+  s_f0c4a529fe8ba9::t_a5f0251d295f93 21,57,83
+.claude/plugins/n8n/skills/db-migrations
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6c5d0927985c97e7d17992431783232b214e787",
+  "prompts": {},
+  "sessions": {
+    "s_f0c4a529fe8ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "312e64de-5dd8-4b50-8492-85ca9ac80b69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

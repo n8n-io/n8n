@@ -1,0 +1,21 @@
+packages/cli/src/expression-observability/expression-observability.provider.ts
+  s_b37613d166d184::t_fbe9a98c531150 13,28-29,52,170,197
+packages/cli/src/expression-observability/__tests__/expression-observability.provider.test.ts
+  s_b37613d166d184::t_8f92175ebafdb6 7,13-14,16-22,44,54,71,87,102,115,134,159,178,192,214,236,252,267,297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f1e0f5354a7131c03d8102bc0a85f2960f5db46",
+  "prompts": {},
+  "sessions": {
+    "s_b37613d166d184": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4b624e2-8631-4d19-baf5-4df3db2ba8e8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

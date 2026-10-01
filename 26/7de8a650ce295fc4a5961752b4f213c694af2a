@@ -1,0 +1,31 @@
+.agents/specs/n8n-test-poc-v2.md
+  s_157f08ca3b0299::t_f264e05a0c8c16 110-112
+  s_157f08ca3b0299::t_66f2a07b986284 36-48,54-55
+  s_157f08ca3b0299::t_7f2facd039d4d5 1-35,49-53,56-71,75-109,113-147
+  s_157f08ca3b0299::t_9a7222c97a4b88 72-74
+tasks/todo.md
+  s_157f08ca3b0299::t_99ef21b18d1ed4 1,3,5,7-15,18-21,24-25,30-31,33-34,36,38,40-43,46-47,50-51,56,58-60,62,64-73,76-77,80,82,85-86,88-103,105-108,110-112,114,116-119,122-123,126,128-153,157
+tasks/plan.md
+  s_157f08ca3b0299::t_2ee05cf9e5b114 1,3-4,8-12,16-44,48-50,52-54,56-59,61-62,64-65,71-74,78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "267de8a650ce295fc4a5961752b4f213c694af2a",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_157f08ca3b0299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8158bab5-b092-4dee-bd6c-3fef6d0146f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_973b463afe42a2::t_c65e1b0dc5c587 246,1406-1473,1499,1501-1505,1521
+  s_973b463afe42a2::t_5fcff18f014553 1498,1500,1506-1520
+  s_973b463afe42a2::t_9d5507d6df5740 464,490
+  s_973b463afe42a2::t_9560e2db55f160 459-460,462-463,482-483,488-489
+  s_973b463afe42a2::t_132ac7f1990015 485-487
+  s_973b463afe42a2::t_ca5871fbd20a86 1474-1497
+packages/@n8n/api-types/src/index.ts
+  s_973b463afe42a2::t_c2e12d7aeded61 426,441-442
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_973b463afe42a2::t_943aceb069a3b7 4,225-226,238,248
+  s_973b463afe42a2::t_489d808b6dda04 213-216,218,228-232,234-237,240-245,247
+  s_973b463afe42a2::t_8e35e505b691f3 217,219-224,227,233,239,246,249
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_973b463afe42a2::t_c843c6a36beb61 59,742-749
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_973b463afe42a2::t_2d2bad1a0cfa88 1-2,35-41
+packages/@n8n/config/src/schemas.ts
+  s_973b463afe42a2::t_23b2cf7c7fbd9a 7-8
+  s_973b463afe42a2::t_943aceb069a3b7 4-6,11-17
+  s_973b463afe42a2::t_8e35e505b691f3 9-10
+packages/cli/src/modules/instance-ai/instance-ai-run-limit.error.ts
+  s_973b463afe42a2::t_b45697223a9f13 1-20
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_973b463afe42a2::t_4ed1ab0f0e4e60 1190-1202
+  s_973b463afe42a2::t_2abe7d2931f2a2 25
+packages/@n8n/instance-ai/src/runtime/__tests__/background-task-manager.test.ts
+  s_973b463afe42a2::t_a3bee57cd909b1 157-175,178-206
+  s_973b463afe42a2::t_5fcff18f014553 176-177
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_973b463afe42a2::t_c843c6a36beb61 498-503
+  s_973b463afe42a2::t_1652efba258419 32
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_973b463afe42a2::t_1147566b8d8117 661-663,1361-1364,1371,1387
+  s_973b463afe42a2::t_542edcef24c289 156,700,702,849-852,1349-1360,1365-1370,1372-1378,1380-1386,1388-1394,1396-1403,1413
+  s_973b463afe42a2::t_9d5507d6df5740 1379,1395
+packages/@n8n/config/test/config.test.ts
+  s_973b463afe42a2::t_8e35e505b691f3 372-374
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_973b463afe42a2::t_28f6af01d3752a 1384,1387
+  s_973b463afe42a2::t_c2e12d7aeded61 1374-1383,1385-1386,1388
+packages/@n8n/instance-ai/src/runtime/__tests__/run-state-registry.test.ts
+  s_973b463afe42a2::t_f4b0e189e52995 1258-1264,1266-1291,1296-1306,1308-1320
+  s_973b463afe42a2::t_190e0ee4cdef68 69
+  ai_agent 1265,1292-1295,1307
+packages/@n8n/instance-ai/src/runtime/background-task-manager.ts
+  s_973b463afe42a2::t_1147566b8d8117 130,132,301
+  s_973b463afe42a2::t_fa97bebde316c1 125-129,131,133,176-184,302-303
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_973b463afe42a2::t_2185e787711918 6859-6862
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_973b463afe42a2::t_450a1749f19a82 24-25,166,272-287,325,369
+  s_973b463afe42a2::t_76b03925b773d7 146-151
+packages/@n8n/config/src/configs/__tests__/instance-ai.config.test.ts
+  s_973b463afe42a2::t_23b2cf7c7fbd9a 1-14,18-19,23-42,46-48,50-54
+  s_973b463afe42a2::t_bf75927bb8f48d 15-17,20-22,43-45,49
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  s_973b463afe42a2::t_2d2bad1a0cfa88 68-79
+packages/@n8n/instance-ai/src/runtime/liveness-policy.ts
+  s_973b463afe42a2::t_55493fc3d8258c 26
+  s_973b463afe42a2::t_5ff5f937f75c03 24-25
+  s_973b463afe42a2::t_cb6957893986e7 28-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3302165d18019f2c1aa4b195f6a9e3e07b2e927",
+  "prompts": {},
+  "sessions": {
+    "s_973b463afe42a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fca40b86-fc05-4bef-a2e6-8395f321d651",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

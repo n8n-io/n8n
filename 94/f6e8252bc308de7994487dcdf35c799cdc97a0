@@ -1,0 +1,74 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_894c4e86d9aaa6::t_dc9dd8878e6dc0 301,304-323
+  s_894c4e86d9aaa6::t_5bcf714e7056f8 3
+  s_894c4e86d9aaa6::t_d2822a18ac55d4 20,23
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_894c4e86d9aaa6::t_96491f6944c0aa 8-12
+  s_894c4e86d9aaa6::t_9e221a2cfeff05 79
+  s_894c4e86d9aaa6::t_69368ef13d4b88 131,141-181
+  s_894c4e86d9aaa6::t_2f9f58b0c1dc0c 206-229
+  s_894c4e86d9aaa6::t_3bbfa78f07d91e 30
+  s_894c4e86d9aaa6::t_41bbbe21ae7ff4 32-36
+  s_894c4e86d9aaa6::t_d2822a18ac55d4 18,20
+packages/@n8n/ai-utilities/src/utils/refreshing-auth-fetch.ts
+  s_894c4e86d9aaa6::t_86260e5c0b01fd 48,50-52
+  s_894c4e86d9aaa6::t_66c24cc7d939eb 26-39
+  s_894c4e86d9aaa6::t_66b7a8932438fb 94,103-110,113-115
+  s_894c4e86d9aaa6::t_efad3cf3f25e3e 45
+  s_894c4e86d9aaa6::t_c4ad57a94dc54a 99
+  s_894c4e86d9aaa6::t_589e77966f9a4b 6-10,13-17
+  s_894c4e86d9aaa6::t_2efcc21064aa75 88-89,91,95
+  s_894c4e86d9aaa6::t_db77600262b464 100
+  s_894c4e86d9aaa6::t_36896a463d63af 73-77
+  s_894c4e86d9aaa6::t_ae1c425e81fca1 78
+  s_894c4e86d9aaa6::t_267f5e898b824a 120-123,125-134,139
+  s_894c4e86d9aaa6::t_29718425b41352 135-138,142
+packages/@n8n/nodes-langchain/utils/tests/oauth2-token-provider.test.ts
+  s_894c4e86d9aaa6::t_6817638102f9e6 32
+  s_894c4e86d9aaa6::t_ca6a286bf9169f 61
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/error-handling.ts
+  s_894c4e86d9aaa6::t_dbcdf04a9e7d24 8-9,11
+packages/@n8n/nodes-langchain/utils/oauth2-token-provider.ts
+  s_894c4e86d9aaa6::t_e0553f65072fa5 1,8-12
+  s_894c4e86d9aaa6::t_70cd24f446fe9c 66-71,73
+  ai_agent 65
+  s_894c4e86d9aaa6::t_d0661a4ed88262 63-64
+  s_894c4e86d9aaa6::t_1d5aaa1ee25b1d 2
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_894c4e86d9aaa6::t_0003ef2daa255d 350,354
+  s_894c4e86d9aaa6::t_f3b1ed95800269 32
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_894c4e86d9aaa6::t_d2822a18ac55d4 10
+  s_894c4e86d9aaa6::t_ac1f33d9d56aef 57-60
+  s_894c4e86d9aaa6::t_ba27f8406ff3d0 88
+packages/@n8n/ai-utilities/src/__tests__/utils/refreshing-auth-fetch.test.ts
+  s_894c4e86d9aaa6::t_04ebd55abd6d05 282-386,438-446,454-462
+  s_894c4e86d9aaa6::t_f2a7c101f4662c 388-393,395-398,403-405,408-411,414-418
+  s_894c4e86d9aaa6::t_c8c8fed8bf6edf 452-453
+  s_894c4e86d9aaa6::t_5e57c74d05d245 387,394,399-402,406-407,412-413,419-437
+  s_894c4e86d9aaa6::t_e19eef9188caa4 447-451
+  s_894c4e86d9aaa6::t_b04f5fbb7c08e0 12,26-31,35-53
+packages/cli/src/utils/auth-fetch.ts
+  s_894c4e86d9aaa6::t_b6a9ababa47817 64-65
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/constants.ts
+  s_894c4e86d9aaa6::t_bd70479428299c 1-11
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_894c4e86d9aaa6::t_60a5afcf99241f 1
+  s_894c4e86d9aaa6::t_d2822a18ac55d4 4,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94f6e8252bc308de7994487dcdf35c799cdc97a0",
+  "prompts": {},
+  "sessions": {
+    "s_894c4e86d9aaa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56ec0584-63f8-42b4-aa55-e67df50c5303",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

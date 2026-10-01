@@ -1,0 +1,30 @@
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-resource.resolver.ts
+  s_115f6ec23b69d2::t_e774a837f8fa38 8-11
+  s_115f6ec23b69d2::t_3e2ac77a64da70 7
+  s_115f6ec23b69d2::t_622ca8d463701a 12
+packages/cli/src/constants/oauth2-triggers.ts
+  s_115f6ec23b69d2::t_ecd0827b844394 13-15
+  s_115f6ec23b69d2::t_4077a35bdcf6d8 1-12,16-19
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-test-resource.resolver.ts
+  s_115f6ec23b69d2::t_66d878557abcb2 7
+  s_115f6ec23b69d2::t_f6f22eaaf409d6 8-10
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_115f6ec23b69d2::t_e774a837f8fa38 1-5
+  s_115f6ec23b69d2::t_2abc9680d7d815 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "509aa9af63ad3b91fd1d1019584a36d4161e3d48",
+  "prompts": {},
+  "sessions": {
+    "s_115f6ec23b69d2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3413004a-74c8-4a69-9466-5ade04ed33f5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

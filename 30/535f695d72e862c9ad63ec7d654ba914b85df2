@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/composables/useNodeTypeRestriction.test.ts
+  s_326dd039c6d306::t_96c181414542d4 7,32-34
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_326dd039c6d306::t_96c181414542d4 1040-1041
+packages/frontend/editor-ui/src/app/composables/useNodeTypeRestriction.ts
+  s_326dd039c6d306::t_7ddb3b6b8abc5b 2,5-13,15,17,20-21
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_326dd039c6d306::t_96c181414542d4 70,3498
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_326dd039c6d306::t_96c181414542d4 25,148
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_326dd039c6d306::t_96c181414542d4 257-259,4672-4673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30535f695d72e862c9ad63ec7d654ba914b85df2",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

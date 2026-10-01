@@ -1,0 +1,52 @@
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_6bb95555bf4ece::t_b8d79153b13781 24-57
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.ts
+  s_6bb95555bf4ece::t_16f1fc964e5b43 29-31,34
+  s_6bb95555bf4ece::t_58d670437253c0 9-14
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.ts
+  s_6bb95555bf4ece::t_b8b3bd36f288cf 31-33,36
+  s_6bb95555bf4ece::t_852701908341c2 10-15
+  s_6bb95555bf4ece::t_e71adfcf2a226d 49-52,60-61
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_6bb95555bf4ece::t_8951b3bceb0e2c 41,865
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-resource.resolver.api.test.ts
+  s_6bb95555bf4ece::t_729fcfd8c1b0a5 229-230
+  s_6bb95555bf4ece::t_5781af169c0e1b 189-201
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_6bb95555bf4ece::t_e245818a10b003 31,502
+packages/cli/src/services/protected-resource.registry.ts
+  s_6bb95555bf4ece::t_92c6a0fa22bfb1 113-118
+  s_6bb95555bf4ece::t_ec3663951dc35c 137-142,147-157
+  s_6bb95555bf4ece::t_6e535334ec59fe 1,3
+  s_6bb95555bf4ece::t_72db2e35db9c90 92-93
+  s_6bb95555bf4ece::t_d87d115c289108 50-51
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/__tests__/utils.test.ts
+  s_6bb95555bf4ece::t_7f536e4c11685a 1-53
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-test-trigger-resource.resolver.api.test.ts
+  s_6bb95555bf4ece::t_89cc1fac732179 139-163
+packages/cli/src/webhooks/webhook.service.ts
+  s_6bb95555bf4ece::t_22477c39c1168f 53-64,79,89,95,99-105
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_6bb95555bf4ece::t_4c37bd8c78ef96 64
+  s_6bb95555bf4ece::t_e88dec0b9993ef 102-106,110-111,113-120
+  s_6bb95555bf4ece::t_a6cf26d5bd9132 2-3
+  s_6bb95555bf4ece::t_cdb36723d5f633 1
+  s_6bb95555bf4ece::t_54054b9c801908 107-109
+  s_6bb95555bf4ece::t_8a5abb36b296bd 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "19d034dffa7a01750e43a0884035f2fd756c3323",
+  "prompts": {},
+  "sessions": {
+    "s_6bb95555bf4ece": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70e8d959-1dd8-409d-86f7-6dfee2a42e0b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

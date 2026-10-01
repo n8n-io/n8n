@@ -1,0 +1,77 @@
+packages/cli/src/modules/instance-registry/__tests__/cluster-info.controller.test.ts
+  s_0e46e9447c8b2b::t_e0fc89a15fb801 1,4,21,27
+  s_0e46e9447c8b2b::t_a9198d9a0543de 58-72
+packages/cli/src/scaling/__tests__/hypervisor-message-router.test.ts
+  s_0e46e9447c8b2b::t_f4a83083f5c823 62-72
+packages/cli/src/commands/hypervisor.ts
+  s_0e46e9447c8b2b::t_7f67c81c356d36 1
+  s_0e46e9447c8b2b::t_41e38fb2351e4d 58,74
+  s_0e46e9447c8b2b::t_a87ce3fbefa46e 91-98
+  s_0e46e9447c8b2b::t_aef2d26e3454ae 162
+  s_0e46e9447c8b2b::t_e6b9c36caf79f6 176
+  s_0e46e9447c8b2b::t_4475b7c5557b4a 159-161,163-165
+  s_0e46e9447c8b2b::t_1a30628b3e2433 44-48
+  s_0e46e9447c8b2b::t_efad509d216549 112-115
+packages/@n8n/api-types/src/cluster-info-types.ts
+  s_0e46e9447c8b2b::t_573d7bbd424029 23-38,42-44,49-50
+  s_0e46e9447c8b2b::t_7dac4dec9dff73 22
+packages/frontend/editor-ui/src/features/instanceRegistry/views/SettingsClusterView.vue
+  s_0e46e9447c8b2b::t_a596b2a1544840 275-316
+  s_3e2de9c50fdafd::t_d6f8f62c8e7ddf 42-52,54-66,68-72,79-82,84-88,90-94,98
+  s_0e46e9447c8b2b::t_d5a46c36c33bb2 26-41
+packages/cli/src/scaling/hypervisor-supervisor-info.ts
+  s_0e46e9447c8b2b::t_f4817cdbd1fae2 39-48
+  s_0e46e9447c8b2b::t_260ce51973b46b 139-147,295
+  s_0e46e9447c8b2b::t_48de915d051edb 290-294
+  s_0e46e9447c8b2b::t_c83755fb8747c1 1,8
+  s_0e46e9447c8b2b::t_e7dfc0036b2528 71-80
+  s_0e46e9447c8b2b::t_d423dc304f8778 93-95,100-103,108-111
+  s_0e46e9447c8b2b::t_f871ea5faa12c9 112,212-226
+  s_0e46e9447c8b2b::t_5c0a7f4c475ed6 173-177
+  s_0e46e9447c8b2b::t_eafa2aa32d0aa1 113
+  s_0e46e9447c8b2b::t_fd0c35dc441048 227-229
+  s_0e46e9447c8b2b::t_91ed687431c623 296-297
+packages/cli/src/scaling/hypervisor-message-router.ts
+  s_0e46e9447c8b2b::t_366d10544ddc19 41-43,48-56,59
+packages/cli/src/scaling/__tests__/hypervisor-supervisor-info.test.ts
+  s_0e46e9447c8b2b::t_2fcbb7366131ed 5
+  s_0e46e9447c8b2b::t_eb5508e3097220 104,174-191
+  s_0e46e9447c8b2b::t_83e2603ccab89b 81-82
+  s_0e46e9447c8b2b::t_1d6c6d73a9e7fb 63,75-80,83-96,99-103
+  s_0e46e9447c8b2b::t_8fe21758f3d88a 22-27,29
+  s_0e46e9447c8b2b::t_6b2ec258294d4b 97-98
+  s_0e46e9447c8b2b::t_ea271e700525b1 47
+packages/cli/src/modules/instance-registry/cluster-info.controller.ts
+  s_0e46e9447c8b2b::t_60060396c995c7 25,27-31
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3e2de9c50fdafd::t_34cdca5ed8705f 3667-3668
+  s_0e46e9447c8b2b::t_d3678969ad5314 3670-3672
+packages/cli/src/commands/__tests__/hypervisor.test.ts
+  s_0e46e9447c8b2b::t_e48feaf110411d 183-185
+  s_0e46e9447c8b2b::t_ab567408f8cc6e 258-301
+  s_0e46e9447c8b2b::t_35b67a8499ce71 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b2fda63c6c56378900d07d9368e876251021278c",
+  "prompts": {},
+  "sessions": {
+    "s_0e46e9447c8b2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b017c42-bb08-4d50-8677-25cf24bcd298",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

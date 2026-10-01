@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_03e31bd3d32fb7::t_79dc0022ea6b99 1
+  s_03e31bd3d32fb7::t_d59f68749c5452 84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a236270bdb00fedec63ff875c5b02c0cb9e344a5",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

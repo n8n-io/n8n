@@ -1,0 +1,60 @@
+packages/@n8n/config/test/config.test.ts
+  s_1d360ad69afd30::t_046667bab76c1c 284
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_1d360ad69afd30::t_70be280f223726 142-155
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_292b6c129134e4 8
+  s_1d360ad69afd30::t_1dd5856ed2a10e 22-24
+  s_1d360ad69afd30::t_292de58faa4a2f 10
+  h_32d8cd6a0d6aad 32-33
+  s_1d360ad69afd30::t_fe391421dc472c 9,11,16-21,25-31,34-67
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  s_1d360ad69afd30::t_7d866277f060a5 44
+  s_1d360ad69afd30::t_524ca027d9974f 1-43,45-52,61-66,71-76,81-94,108-158,160-166,177-178
+  s_1d360ad69afd30::t_3f97653071dbc6 167-176
+  s_1d360ad69afd30::t_d5d6ab5882cc91 159
+  s_1d360ad69afd30::t_716c564dbe6667 67-70,77-80,95-107
+  s_1d360ad69afd30::t_56aaad55b6b69c 53-60
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_1d360ad69afd30::t_ff135600d0ee04 1
+  s_1d360ad69afd30::t_cd05175f25739a 6,15
+packages/cli/src/scaling/job-processor.ts
+  s_1d360ad69afd30::t_b21767d8284a2b 200-201
+  s_1d360ad69afd30::t_4d4c603d958ce9 202-203
+  s_1d360ad69afd30::t_8c7f378d3e45f0 79
+  s_1d360ad69afd30::t_7e25f32b693a62 4
+  s_1d360ad69afd30::t_2a3c0c0b376715 60
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  s_1d360ad69afd30::t_a635c8f30588e5 1-175,178-182
+  h_32d8cd6a0d6aad 176-177
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_17408fde97cdd8 42
+  s_1d360ad69afd30::t_f63957c0e8165d 2076-2079
+  s_1d360ad69afd30::t_066cd2d6817d48 2
+  s_1d360ad69afd30::t_a0f37bc03d5221 2064,2072
+  s_1d360ad69afd30::t_a10d52bab04666 2032-2039
+  s_1d360ad69afd30::t_d48af9a3741af3 2002-2005
+  s_1d360ad69afd30::t_decaa96e95905c 2080,2086
+  s_1d360ad69afd30::t_d2b5de3f16b25e 1999-2001,2006-2031,2040-2063,2065-2071,2073-2075,2081-2085,2087-2088
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b12864eab6efd922402225e23bf1737675cfc720",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

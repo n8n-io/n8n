@@ -1,0 +1,23 @@
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_07b03e0f2ea206::t_1d0e282e06d411 152-169
+packages/frontend/editor-ui/eslint/module-entry-patterns.mjs
+  s_07b03e0f2ea206::t_29cc4748acd29c 24-25,28-41,43-50,57,60-64,67
+packages/frontend/editor-ui/src/app/moduleEntries.test.ts
+  s_07b03e0f2ea206::t_2ef43d24c22098 90-98,102-114,118-168,170-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "84652890e4d8ace42d539aa9343a26651d40892a",
+  "prompts": {},
+  "sessions": {
+    "s_07b03e0f2ea206": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2537e5ec-597f-424e-8b62-6dc9f1d69c5f",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

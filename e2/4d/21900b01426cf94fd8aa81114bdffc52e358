@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2.node.ts
+  s_bc83fb448b2fad::t_60d23ae84d8169 52-56,59-63
+  s_bc83fb448b2fad::t_e47e6db6a175e1 95-98
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_bc83fb448b2fad::t_a87a19e4a97407 824-844
+  s_bc83fb448b2fad::t_80aeb66bba0351 9
+  s_bc83fb448b2fad::t_d4c2612245dfce 99-101,198,203,207-225,845
+  s_bc83fb448b2fad::t_cc55136e5e2eb7 226
+  s_bc83fb448b2fad::t_ead6abc2baeb1b 846
+packages/nodes-base/nodes/Kafka/v2/consumer/index.ts
+  s_bc83fb448b2fad::t_6ccb3ac1ba38bf 7
+packages/nodes-base/nodes/Kafka/v2/consumer/DataEmitter.ts
+  s_bc83fb448b2fad::t_f4fe17c23757c6 43-49
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2Description.ts
+  s_bc83fb448b2fad::t_0ea952a2315d8a 275
+  s_bc83fb448b2fad::t_d48152e0cd4fb7 274,276
+packages/nodes-base/nodes/Kafka/v2/TriggerSettings.ts
+  s_bc83fb448b2fad::t_351ab4b7e66962 5
+  s_bc83fb448b2fad::t_490ee2656dca5e 276-277,279,283,286-295
+  s_bc83fb448b2fad::t_9d7b81911731bd 281-282,284-285
+  s_bc83fb448b2fad::t_03d4c8dedbe42b 278,280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e24d21900b01426cf94fd8aa81114bdffc52e358",
+  "prompts": {},
+  "sessions": {
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

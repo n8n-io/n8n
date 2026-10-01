@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_a52facf53351c5::t_6821ce8ea0e521 12-15,111-114,117,651,653,659-672,679
+packages/@n8n/db/src/migrations/common/1789736885838-AddAgentThreadOwnership.ts
+  s_a52facf53351c5::t_040958b806d154 11-12,20-41,87-104,106-118,120,122-124,126-128,130-135,137,139-170,172-175,178-210,212-222,224-260,262-326,330-373,377
+packages/cli/test/migration/1789736885838-add-agent-thread-ownership.test.ts
+  s_a52facf53351c5::t_1cd2e45934145c 26,37-38,42,45-52,64-98,125,144,155-164,171,174,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4bc1db96e13f8b7f40e04030a3efe3ae63adf690",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

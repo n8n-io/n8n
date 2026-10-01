@@ -1,0 +1,94 @@
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-2,5,9-13,16-17,20-40,42-50,53-59,62-87,90-96,98-99,101-124,128-135,137-140,142,144-145,147-175
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 26-32
+packages/cli/src/executions/execution-list-v1.service.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 8,24,38-46,49,55,93,97-99,112-120
+packages/@n8n/db/src/repositories/index.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 35
+packages/cli/src/executions/parse-range-query.middleware.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 50,63
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 5018-5022
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 71-75
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 16-33,41,46,50,55,61,71-72,83,92,101-102,114-115,124,133,141-142,146,151-155,159-175,180
+packages/cli/src/executions/__tests__/execution-cursor.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1,3,7-30
+packages/cli/src/executions/execution-cursor.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 6,14-31,36,42-44,47-48
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 53
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-247
+packages/cli/src/executions/__tests__/merge-execution-pages.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-60
+packages/cli/src/executions/execution.types.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1,5-6,10,35
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 65-86
+packages/cli/test/integration/executions.controller.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 22,100-179,232-236
+packages/cli/src/executions/execution-list-v2.service.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-231
+packages/cli/src/executions/executions.controller.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 29,38,49
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 121,127-128,138
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 8,26-27,98-137
+packages/cli/src/executions/merge-execution-pages.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-72
+packages/workflow/src/interfaces.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 4205
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 54-71
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 2-8,20,54-56
+packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 2,6-7,10,14-34,36-38,42-67,69-70,72,74-79,82-83,85,90-92,95-97,99-104,106,108-110,112-114,117-122,124-126,131-132,134-137,145-148,150-154,156-159
+packages/cli/src/executions/execution-list.service.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 2,5,9,15,17,22,28-51,56,58-64,92-99
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-311
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 3-16,20-21,25-52,62-137
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 12-13,110-122
+packages/@n8n/db/src/repositories/execution-list.repository.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 1-76
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 29-30,37-41,169-176,178,180-183,185,206
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 19,24
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 27
+packages/cli/test/integration/engine-v2-active-triggers.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 36,91-95
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 14,20,28-29
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_2725a696667b9d::t_e7a6d5772b9c3c 7-10,59-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "963d00471240d8fc23d1a89e47e411bfcd58c285",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_2725a696667b9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1636a30-5e65-49b1-8820-7dfdb03b0e5e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

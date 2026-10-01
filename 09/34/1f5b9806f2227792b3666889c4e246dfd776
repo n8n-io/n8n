@@ -1,0 +1,16 @@
+packages/cli/src/auth/auth.service.ts
+  h_52a137d26d774c 7
+packages/cli/src/modules/sso-saml/errors/saml-email-not-verified.error.ts
+  h_52a137d26d774c 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09341f5b9806f2227792b3666889c4e246dfd776",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

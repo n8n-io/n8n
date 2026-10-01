@@ -1,0 +1,16 @@
+single-instance-promotion-prototype/implementation-phase/PLAN_FOR_TASK_3_BINDING_SCOPED_PER_WORKFLOW.md
+  h_c63dce324dfc7b 1-133
+single-instance-promotion-prototype/implementation-phase/PLAN_FOR_TASK_3_CREDENTIAL_BINDING_IN_NODE_SETTINGS.md
+  h_c63dce324dfc7b 1-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "fe3d15c10ce7c02e8ee8d183b38e02cd8b5323bb",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_29e52139945f33::t_de21c6d1928528 83
+  s_29e52139945f33::t_6a24e78db214c5 1206
+  s_29e52139945f33::t_b42276da7c55c7 29
+packages/core/src/execution-engine/poll-trigger-executor.ts
+  s_29e52139945f33::t_3dc4951b7f5483 1-134
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_29e52139945f33::t_71b0effeb4cb9a 51
+  s_29e52139945f33::t_664f9494f0ac84 24
+  s_29e52139945f33::t_3be4582eb762a0 358-363,367
+packages/@n8n/config/src/configs/logging.config.ts
+  s_29e52139945f33::t_dbb0509791e67b 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ece3770b6870f64c2f2e77efdc6342db77b54ccd",
+  "prompts": {},
+  "sessions": {
+    "s_29e52139945f33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cf6dbd6-1db3-4d69-9cda-0e0844bacfef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

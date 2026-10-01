@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_47e8338e5d5470::t_4943f443c19d52 3-4
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/credentials.test.ts
+  s_47e8338e5d5470::t_92138b8996d3ee 6
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/converters.ts
+  s_47e8338e5d5470::t_7507a9ccfcc4d1 4-11
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/errorHandler.ts
+  s_47e8338e5d5470::t_ee5dd99127e68f 11
+  s_47e8338e5d5470::t_c0bd84278cd0fb 5-10
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/errorMappers.ts
+  s_47e8338e5d5470::t_f8b02fb39470f0 1-2,4,6-10
+  s_47e8338e5d5470::t_c14eb5bf5b0794 3
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/interfaces.ts
+  s_47e8338e5d5470::t_0e21c64cd76569 1,3-5
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  s_47e8338e5d5470::t_156adedae42b7a 3,8-9,11-14
+  s_47e8338e5d5470::t_ad6730207fadf4 10
+  s_47e8338e5d5470::t_1814a3e1f78f9d 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9ce975fbf696d3aa631afcac393c77878d6d9bf7",
+  "prompts": {},
+  "sessions": {
+    "s_47e8338e5d5470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae9e344f-ab5b-4003-bb2c-b3736203937c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

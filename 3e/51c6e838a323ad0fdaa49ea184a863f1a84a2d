@@ -1,0 +1,53 @@
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_de807c7b884146::t_74f7b74efc682b 61-80
+  s_de807c7b884146::t_19af50f472fe11 1-4,6-41,43-56,58-60,81
+  s_de807c7b884146::t_d04a56350166d9 5
+  s_de807c7b884146::t_7031fc2c9e9970 42,57
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d3f6ecf4ef182f::t_9104a414e71005 75-85,99-101,103,115-119,133-135,137,174,177,179-181,202-204,206,229-233,245-246,258,260,263-265,280,282,284-286
+  s_d3f6ecf4ef182f::t_bf11626046d3ef 5
+  s_d3f6ecf4ef182f::t_844aa7f0581432 6-16,26
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_d3f6ecf4ef182f::t_831745b60f8492 160
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_d3f6ecf4ef182f::t_fc2eea215c0920 99
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_de807c7b884146::t_e8b273e80b3b3b 401
+  s_d3f6ecf4ef182f::t_2b34de54b9b805 512,514,518
+  s_d3f6ecf4ef182f::t_98d3157c6dadfd 452-454,458
+  s_de807c7b884146::t_4d979d5aed93bd 484-490,500-501
+  s_de807c7b884146::t_7773acb85ae7d7 1,4-5,7-8
+  s_de807c7b884146::t_d54401d78eb36e 424-426
+  s_d3f6ecf4ef182f::t_5c7dd19fa5258f 455-457,459-464,497-499
+  s_de807c7b884146::t_0feb8307ebf686 398-400,403,407,409-412
+  s_d3f6ecf4ef182f::t_bf896125291a51 444-446
+  s_d3f6ecf4ef182f::t_1e2ae9e5f8cab4 396-397,402,404-406,408,413-417,423,427-443,447-451,465-483,491-496,502-504,506,509,511
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_c6bdecaa76807e 83-84
+  s_d3f6ecf4ef182f::t_f06eb715a74185 94-95
+  s_d3f6ecf4ef182f::t_66c7db5c66188c 7-19,26-29,58,85,91-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "3e51c6e838a323ad0fdaa49ea184a863f1a84a2d",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_de807c7b884146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "289bcd83-7b99-424b-939a-8908368bbadf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

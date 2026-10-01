@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/delegateTool.ts
+  s_6e06771097abf4::t_47e48d79ab6eb4 42-44
+  s_6e06771097abf4::t_92fb6480326565 2
+packages/frontend/editor-ui/src/features/agents/utils/write-todos-tool.ts
+  s_6e06771097abf4::t_1cb53c3bd36658 126
+  s_6e06771097abf4::t_07461946552713 98
+  s_6e06771097abf4::t_36da9a4a3e54a8 2,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "dbb90d4830058a06ec1bec62aad2b7596e9c6cfd",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

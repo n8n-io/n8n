@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_038625bfc0ef6f::t_f73c1d10646d36 150-156
+  s_038625bfc0ef6f::t_8cf30a2d60271b 166-175,182
+  s_038625bfc0ef6f::t_9d175523c9650c 204
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/McpConnectPopover.vue
+  s_038625bfc0ef6f::t_1b8c90674c1def 17
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_038625bfc0ef6f::t_1f39a7653feba9 238,251-253,269-271,291
+  s_038625bfc0ef6f::t_8c763d81243f6e 237
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/McpConnectPopover.test.ts
+  s_038625bfc0ef6f::t_6e059479a8131e 95-102
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_038625bfc0ef6f::t_d068386fa097a2 3230
+  s_038625bfc0ef6f::t_4edb0470a47ed3 3173
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.ts
+  s_038625bfc0ef6f::t_773ce055c906e9 15-16,18-20,22,27,30,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "162d342868ca5f99f12395a91336d784bd6f1cdc",
+  "prompts": {},
+  "sessions": {
+    "s_038625bfc0ef6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df0f0230-ad55-418b-87c8-5157e2987ed6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

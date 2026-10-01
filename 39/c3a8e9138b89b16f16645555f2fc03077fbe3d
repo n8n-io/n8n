@@ -1,0 +1,32 @@
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_13d0f2e1be0144::t_f4633eb4fd41e4 227
+  s_13d0f2e1be0144::t_bd8411abd131c2 75,78-79
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_13d0f2e1be0144::t_c84775ec085a38 16,76-80
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_13d0f2e1be0144::t_6897146310a011 468-484
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_13d0f2e1be0144::t_31b2fd535b9251 3-21
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_13d0f2e1be0144::t_c84775ec085a38 7,48-50
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_13d0f2e1be0144::t_6897146310a011 519-539
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_13d0f2e1be0144::t_a226b3b74fbf42 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "39c3a8e9138b89b16f16645555f2fc03077fbe3d",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

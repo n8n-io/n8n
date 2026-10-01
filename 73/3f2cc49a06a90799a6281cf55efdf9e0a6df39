@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_dd8f226d4368c9::t_a8782172eaa7a8 646
+  s_dd8f226d4368c9::t_056b63a9ef78c7 83,98,118-122
+  s_dd8f226d4368c9::t_d85c0743d443d6 638-645,647-660
+  s_dd8f226d4368c9::t_b9bcda13c9244e 123,661
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_dd8f226d4368c9::t_8ec73c70cf5678 342-343,369
+  s_dd8f226d4368c9::t_c7476712a8189a 44-50,55
+  s_dd8f226d4368c9::t_040d1a165382b4 141-144
+  s_dd8f226d4368c9::t_85dad1c254fa64 260
+  s_dd8f226d4368c9::t_15267e93e74376 395
+  s_dd8f226d4368c9::t_b2430f605e9320 80-89,94
+  s_dd8f226d4368c9::t_f039b4bf6bc695 201
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_dd8f226d4368c9::t_285840b569b648 50-56,62
+  s_dd8f226d4368c9::t_27c6a0054c2609 713
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dd8f226d4368c9::t_ad6d2a5b229ffc 113
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_dd8f226d4368c9::t_7f6ed5a36b6cea 68-75
+  s_dd8f226d4368c9::t_406acad4dd8d22 82,84,87-89,92,94
+  s_dd8f226d4368c9::t_bc6414a9ab2035 127-128,134-135
+  s_dd8f226d4368c9::t_5ed238e35774fe 1-67,76-81,83,85-86,90-91,93,95-105,107-126,129-133,136-137
+  s_dd8f226d4368c9::t_484cd68b4f4d09 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "733f2cc49a06a90799a6281cf55efdf9e0a6df39",
+  "prompts": {},
+  "sessions": {
+    "s_dd8f226d4368c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f76700ff-f605-49d5-95e7-0bdc353261f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

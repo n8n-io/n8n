@@ -1,0 +1,64 @@
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_f3e0cf8bc1e610::t_3bd5b76811943d 192
+  s_f3e0cf8bc1e610::t_e4d8bef8eb3bf5 51-52
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_f3e0cf8bc1e610::t_155e18548aac54 199-200,203-206
+  s_f3e0cf8bc1e610::t_0dcab7944c34ee 1099-1101
+  s_f3e0cf8bc1e610::t_b2286c5bcf0381 207
+packages/cli/src/utils/__tests__/ttl-map.test.ts
+  s_f3e0cf8bc1e610::t_674c45484d8891 1-47
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_f3e0cf8bc1e610::t_8d6ce97a6a75be 137-171
+packages/cli/src/utils/ttl-map.ts
+  s_f3e0cf8bc1e610::t_1d554736d7552a 61-72
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_f3e0cf8bc1e610::t_6a0efe74d0653d 39,46-48,59-60
+  s_f3e0cf8bc1e610::t_e4d9b79df47ded 40-41,49-58
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_f3e0cf8bc1e610::t_cbb1e002da1b66 53-62,64-65,73,76-77,88-104,114-115,126,132-133
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f3e0cf8bc1e610::t_21219f7ed9c14b 8084-8091,8096-8118
+  s_f3e0cf8bc1e610::t_a197621f93f9e5 8119-8120
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_f3e0cf8bc1e610::t_249b555ffe7192 9
+  s_f3e0cf8bc1e610::t_0e46b4b9716da3 73-77,80,85,89
+packages/@n8n/agents/src/workspace/filesystem/n8n-sandbox-filesystem.ts
+  s_f3e0cf8bc1e610::t_10bc28c99d5536 4
+  s_f3e0cf8bc1e610::t_9c133b6e0c04f9 37-41
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_f3e0cf8bc1e610::t_e8152c88af97f0 66-68
+  s_f3e0cf8bc1e610::t_c1045fc3b6b531 224-227
+packages/@n8n/agents/src/workspace/filesystem/daytona-filesystem.ts
+  s_f3e0cf8bc1e610::t_759b0de2c3b7ce 24
+  s_f3e0cf8bc1e610::t_955c765fa7373b 39-43
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_f3e0cf8bc1e610::t_900d38001e63b9 1140-1144
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_f3e0cf8bc1e610::t_6aeddaa57be2d8 24-26
+  s_f3e0cf8bc1e610::t_ce595222c3f000 23
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_f3e0cf8bc1e610::t_747da028fce55c 45-46,56-60
+  s_f3e0cf8bc1e610::t_e54fd7fc01582b 182,200-201,203-207
+  s_f3e0cf8bc1e610::t_c971431cb60f19 208,379-384
+  s_f3e0cf8bc1e610::t_eeddcedf75a41b 8
+  s_f3e0cf8bc1e610::t_a7b29b6c17a8f5 61,209,237-238,251,265,353,364,372,385,387,392
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_f3e0cf8bc1e610::t_18e5c7bda94272 200-216
+  s_f3e0cf8bc1e610::t_ba554964be0e1a 271-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3274b9cfb7aa0313e46d4628bfcc2747aa7b8109",
+  "prompts": {},
+  "sessions": {
+    "s_f3e0cf8bc1e610": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d29ad06f-d820-4c0a-a6df-11974076db34",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

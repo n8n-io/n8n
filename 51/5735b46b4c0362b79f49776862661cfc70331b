@@ -1,0 +1,29 @@
+packages/@n8n/mcp-browser/src/tools/response-envelope.test.ts
+  s_14325c8d38891c::t_a1e8d3717963a4 1-267
+  s_14325c8d38891c::t_ac97cc7c1b8bbb 268-270
+  s_be3053d6eb937a::t_dc9a05557dafbe 271-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "515735b46b4c0362b79f49776862661cfc70331b",
+  "prompts": {},
+  "sessions": {
+    "s_14325c8d38891c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3064c342-e5e8-42bd-a277-7854bf577fbe",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_be3053d6eb937a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1538c797-8fda-4ad5-8dfd-6897b2da5082",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

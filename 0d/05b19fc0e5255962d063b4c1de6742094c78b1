@@ -1,0 +1,39 @@
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_4c6c236098f392::t_e1ff2cc6b74551 19-22
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 33,2023-2026,2028,2031-2035,2037-2039
+packages/cli/eslint.config.mjs
+  s_d0acb9a890c95a::t_8cff3359da301a 58-60
+  s_d0acb9a890c95a::t_aef2cd8a9cb7f3 388-425,430
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  ai_agent 56-65
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_4c6c236098f392::t_644b2d31fc550e 2,36
+  s_4c6c236098f392::t_780fbac9a0fe46 3-35,37-38
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 510,1547,1552,1570,1573,1577,1579,1581-1583,1585,1588,1590,1592,1594-1597
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d05b19fc0e5255962d063b4c1de6742094c78b1",
+  "prompts": {},
+  "sessions": {
+    "s_4c6c236098f392": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d07b440-3bba-46b2-9b67-d43e408010d0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_d0acb9a890c95a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "becbda50-7e9b-4312-a9b1-20c68808bcfc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

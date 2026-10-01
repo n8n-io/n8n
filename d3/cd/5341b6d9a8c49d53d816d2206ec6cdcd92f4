@@ -1,0 +1,21 @@
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_c6542a835c36e8::t_fd52362cb4b073 221-235
+packages/@n8n/config/test/config.test.ts
+  s_c6542a835c36e8::t_fd52362cb4b073 378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3cd5341b6d9a8c49d53d816d2206ec6cdcd92f4",
+  "prompts": {},
+  "sessions": {
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Slack/test/v2/MessageDescription.test.ts
+  s_558da949c3ee4b::t_a0c8d56e4a2a43 47-58,61,64-65
+  s_558da949c3ee4b::t_25015c46b09554 59-60,62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "575a894f0ba6fa43e976dc555d0b2467e9e59ea7",
+  "prompts": {},
+  "sessions": {
+    "s_558da949c3ee4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7593febb-f1db-4d1b-b072-abcbeed8e6b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

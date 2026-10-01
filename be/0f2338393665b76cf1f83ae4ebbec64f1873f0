@@ -1,0 +1,24 @@
+.gitignore
+  s_85f681cc750ec7::t_becbae7fb1ca77 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "be0f2338393665b76cf1f83ae4ebbec64f1873f0",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_85f681cc750ec7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c73f1053-f4b6-4435-901f-c35e0a2487c8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

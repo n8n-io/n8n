@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_550c7bf33f188f::t_5878c82a1b5abe 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "261844129174b5b4daebbf2a75ba3ae51d922774",
+  "prompts": {},
+  "sessions": {
+    "s_550c7bf33f188f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d3978c2-1e01-4195-bc9f-6de514a8cfd4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

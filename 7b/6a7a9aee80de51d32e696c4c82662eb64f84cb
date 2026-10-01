@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_2043a30c565bee::t_8886aef985f129 238
+  s_2043a30c565bee::t_6b8653ee99af63 229,231
+  s_2043a30c565bee::t_c88e84c4aa297e 30,38,51,58,106-108,132-139,163-165,210-217,221-228,230,232-237,239-253
+  s_2043a30c565bee::t_2b277eb2bf4ae8 254-255
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_2043a30c565bee::t_136df9ffa5f857 61,72,85,94,121,158,227
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_2043a30c565bee::t_b7a0f16f385d6d 54-58,80-84
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_2043a30c565bee::t_ce6a6e8b10a0cb 444,461,465,468,504,515,519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7b6a7a9aee80de51d32e696c4c82662eb64f84cb",
+  "prompts": {},
+  "sessions": {
+    "s_2043a30c565bee": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b85d663d-393f-4f15-b383-3a1656895dc4",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

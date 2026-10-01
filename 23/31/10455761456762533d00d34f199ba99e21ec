@@ -1,0 +1,19 @@
+.code-health-baseline.json
+  s_6eb3add10e67c1::t_9aac59173e09d2 1318-2209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "233110455761456762533d00d34f199ba99e21ec",
+  "prompts": {},
+  "sessions": {
+    "s_6eb3add10e67c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "416647ba-ceb9-4ddb-9008-a0e34a4b1157",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

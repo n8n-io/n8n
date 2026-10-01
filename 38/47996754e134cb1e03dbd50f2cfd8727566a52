@@ -1,0 +1,23 @@
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_8c747cd04faaa6::t_59c0b9705539f4 7
+  s_8c747cd04faaa6::t_39b32fc5d4ebe6 244-246
+  s_8c747cd04faaa6::t_529e2e632f4799 307
+  s_8c747cd04faaa6::t_07bf1552eb8686 321
+  s_8c747cd04faaa6::t_dc27cfa415babc 261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3847996754e134cb1e03dbd50f2cfd8727566a52",
+  "prompts": {},
+  "sessions": {
+    "s_8c747cd04faaa6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fe1a3e41-b10c-4c7c-8618-4b454877e646",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

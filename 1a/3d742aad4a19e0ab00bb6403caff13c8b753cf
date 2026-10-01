@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_23884e240cefcc::t_674c083b0f3411 35
+  s_23884e240cefcc::t_df39a2a83ebdf5 263
+  s_23884e240cefcc::t_b32ad7bb5d10ae 101
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_23884e240cefcc::t_3587eeb5b41173 245-271
+  s_23884e240cefcc::t_3c2ebce3662a85 24
+  s_23884e240cefcc::t_194325a5378821 201-203
+  s_23884e240cefcc::t_6b7939df2a51a3 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "1a3d742aad4a19e0ab00bb6403caff13c8b753cf",
+  "prompts": {},
+  "sessions": {
+    "s_23884e240cefcc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "616e2d38-2771-44ba-a708-5da3eda13dc4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

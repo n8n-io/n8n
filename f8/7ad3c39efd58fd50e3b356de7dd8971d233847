@@ -1,0 +1,183 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_91fba154ed2e0d::t_55ba891a5ff7c3 130,151-153,157
+  s_25aaf9277d2ad5::t_a2bef06885372d 147
+  s_91fba154ed2e0d::t_614874e403c078 171
+  s_b635bbbba7df02::t_1161100a9d6343 141-146,148-150
+  s_b70fd2ef685710::t_93473128640c78 60
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_91fba154ed2e0d::t_e915924d300dda 209
+  s_91fba154ed2e0d::t_ac6c9a9af6b00e 97-101,103-104
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_91fba154ed2e0d::t_ac7f7d5cd18111 98
+  s_91fba154ed2e0d::t_8b824355a81802 287-307
+  s_91fba154ed2e0d::t_ed55d3825e0085 16-20,28
+packages/@n8n/api-types/src/agents/index.ts
+  s_5fa144d5bef111::t_3acd9a692ee03b 18
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_dd66cebaa073cb::t_5e3dbd2887e5de 8-9
+  s_91fba154ed2e0d::t_28f3568fdd828e 80
+  s_dd66cebaa073cb::t_91dc1deb705e05 346,354
+  s_91fba154ed2e0d::t_eb501c27b50587 146-157
+  s_91fba154ed2e0d::t_f13847f9e15adb 35
+  s_91fba154ed2e0d::t_e4288031bc57e6 335-345,347-353,355-357
+  s_dd66cebaa073cb::t_df082660d702db 30-32
+  s_91fba154ed2e0d::t_1e0ba1c5503f31 7
+  s_dd66cebaa073cb::t_b0f029d99a1493 81
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_91fba154ed2e0d::t_553f80cf004b22 54
+  s_91fba154ed2e0d::t_e9f082a2809714 423
+  s_b70fd2ef685710::t_03f1814b5e6a83 325-333
+  s_91fba154ed2e0d::t_13f2ceb3dbce5f 452
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_91fba154ed2e0d::t_a7ae8639dca3fc 41
+  s_91fba154ed2e0d::t_c0e4a3bcd92363 43
+packages/@n8n/api-types/src/agent-builder-tool-node-types.ts
+  s_25aaf9277d2ad5::t_8590bd511e63b7 8-18,24-26
+  s_b70fd2ef685710::t_f235b3bc9fb003 27
+  s_5fa144d5bef111::t_e0046692d6762a 7
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_25aaf9277d2ad5::t_245095c7eaa00c 4
+  s_25aaf9277d2ad5::t_4d347996e631d8 40-42,55
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_91fba154ed2e0d::t_0dfffd210e4dea 129
+  s_dd66cebaa073cb::t_570fc90036b9cd 96
+  s_91fba154ed2e0d::t_fd71c0b2116e81 371
+  s_91fba154ed2e0d::t_ef6d86e5490156 84-91,94-95,97,99-101
+  s_91fba154ed2e0d::t_1ce1d6cd8b9e09 189
+  s_e51d1b5c436276::t_8a1346767c9947 160
+  s_e51d1b5c436276::t_fe86ec38087403 374-376
+  s_91fba154ed2e0d::t_384fe08848bd20 382-384,389
+  s_91fba154ed2e0d::t_0a967ba4d30a02 321
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_91fba154ed2e0d::t_960b1ba760bce4 7720
+  s_b70fd2ef685710::t_ab15640625176c 7735
+  s_b70fd2ef685710::t_17e3f2c2394bc5 7240-7241
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.test.ts
+  s_e51d1b5c436276::t_2233e6587f1676 62-89,95-104
+  s_e51d1b5c436276::t_99681b10af7355 90-94
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_91fba154ed2e0d::t_4d500fb5045409 111
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_91fba154ed2e0d::t_867a4979739350 62-66,69
+  s_91fba154ed2e0d::t_9b0449c2ab2beb 80
+  s_91fba154ed2e0d::t_c0908606da2b27 115-116,118
+  s_91fba154ed2e0d::t_978b712f2fde0a 122
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_91fba154ed2e0d::t_a882da996baa5f 390
+  s_91fba154ed2e0d::t_04366f473a54fb 457-471
+  s_91fba154ed2e0d::t_9bb847791d970e 272
+  s_1550e9201d689b::t_5bee180e8f2908 513-529,531-559,561-610,635-683
+  s_1550e9201d689b::t_9fe7595597134b 16
+  s_b70fd2ef685710::t_8281d7cd3a0c49 611-634
+  s_1550e9201d689b::t_895f86ba5f1f1b 106-114
+  s_1550e9201d689b::t_28af5ff987e55f 560
+  s_1550e9201d689b::t_a3e20ad41bf742 209-213,217
+  s_9af80955adedd4::t_14413bcdbd61fc 530
+  s_1550e9201d689b::t_9afff8b3cfdd1b 9-10,19,22,25,35
+  s_91fba154ed2e0d::t_78c72c82d89986 321
+  s_1550e9201d689b::t_f56cb45554e329 36
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_5fa144d5bef111::t_85661bd0c933aa 103-107
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_91fba154ed2e0d::t_1f53b1983fb52b 495
+packages/cli/src/modules/agents/__tests__/agents-tools.service.test.ts
+  s_5fa144d5bef111::t_bed9cc9cd9c6ff 3
+  s_5fa144d5bef111::t_a60efa7519465d 160
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.vue
+  s_e51d1b5c436276::t_d7a077232dd760 199
+  s_e51d1b5c436276::t_bd14b9d0660ed1 99-101
+  s_e51d1b5c436276::t_2c326aba9f1d3a 36-38
+  s_e51d1b5c436276::t_25afc5bc2d11a4 65
+  s_dd66cebaa073cb::t_ff2336ce5e6e6b 163-166,168-170
+  s_91fba154ed2e0d::t_8d1534b1cf71d6 193,198,200-202,208,211
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_b70fd2ef685710::t_9538287cc93eec 135-136
+  s_91fba154ed2e0d::t_61165532a3e808 176
+  s_b70fd2ef685710::t_c2cfaf3b567251 179
+  s_91fba154ed2e0d::t_1e2aaae5973890 72-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f87ad3c39efd58fd50e3b356de7dd8971d233847",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1550e9201d689b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7cdecc48-765e-4711-a34c-7297a8b399c1",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_25aaf9277d2ad5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ab05f60c-7a57-4a95-9971-ad12de4c1540",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5fa144d5bef111": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c19039ab-6a42-42d7-94bf-1cf4a90cdfbc",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_91fba154ed2e0d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dc7803ed-02bf-4dc6-afd3-523b25347757",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9af80955adedd4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b910e617-8e38-4812-b4f6-9ed92a2c29df",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b635bbbba7df02": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "73b5c479-b041-45d8-bc00-2e338ffc57ff",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b70fd2ef685710": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "398cb54e-fe13-4295-86f2-9ffad28b0ac5",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_dd66cebaa073cb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "25a16419-c5e2-4813-a057-d238381f9eaf",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e51d1b5c436276": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "99c87ea2-f779-4a1f-be59-0c30e2f17c8c",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

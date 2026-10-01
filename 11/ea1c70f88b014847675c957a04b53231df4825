@@ -1,0 +1,32 @@
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_ba2c08370cc1ad::t_f3cd6bcefd1852 1
+  s_ba2c08370cc1ad::t_2fc0a3a1e3becf 108-118,124
+packages/cli/src/modules/agent-evals/agent-eval-rating.service.ts
+  s_ba2c08370cc1ad::t_8c7c0d820e926e 166-175
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-rating.service.test.ts
+  s_ba2c08370cc1ad::t_ab2559767bb218 242-248
+  ai_agent 223-225
+  s_ba2c08370cc1ad::t_303419153a51e8 1
+  s_ba2c08370cc1ad::t_19868c6fce199b 221-222,226,233-241,249-259
+packages/@n8n/api-types/src/index.ts
+  s_ba2c08370cc1ad::t_d52823a91d39c5 586
+  s_ba2c08370cc1ad::t_7eab9cc1447803 598
+packages/@n8n/api-types/src/schemas/__tests__/agent-evals.schema.test.ts
+  s_ba2c08370cc1ad::t_8f949926c41801 161,166-177,184,189-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11ea1c70f88b014847675c957a04b53231df4825",
+  "prompts": {},
+  "sessions": {
+    "s_ba2c08370cc1ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b3cfd64-e892-41a6-b76a-a817fa394a03",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

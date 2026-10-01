@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  h_df158766ffbd97 186,188-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0527bd2b8e31e17d64f8a05e2818c8654bbc345d",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

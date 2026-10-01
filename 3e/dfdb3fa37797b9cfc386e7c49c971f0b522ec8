@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_8d9c7bdfac2622::t_d5de705adcf737 320-330
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  h_c63dce324dfc7b 143-144,147,149
+  s_8d9c7bdfac2622::t_1cd6e9b2ddf585 142,145-146,148
+  h_c63dce324dfc7b 150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3edfdb3fa37797b9cfc386e7c49c971f0b522ec8",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8d9c7bdfac2622": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6fde05d-6f99-43cc-a5ed-a6b065925c61",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

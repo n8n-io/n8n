@@ -1,0 +1,57 @@
+packages/@n8n/cli/src/client.ts
+  s_51e97a3598d15d::t_f23404e234347f 275-276,279
+packages/@n8n/cli/src/index.ts
+  s_51e97a3598d15d::t_33a0aa6a460384 31-32
+  s_51e97a3598d15d::t_78fadd79b5961d 106-107
+packages/@n8n/cli/src/commands/git-connections/instance/set.ts
+  s_51e97a3598d15d::t_e55772236f7297 1-5,7-8,14-19,21-23
+  ai_agent 10,12-13
+packages/@n8n/cli/src/commands/git-connections/instance/get.ts
+  s_51e97a3598d15d::t_df4d4404545f56 1-3,5-9,11-13
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_51e97a3598d15d::t_03fcc658349fcc 4-6
+packages/@n8n/api-types/src/dto/index.ts
+  s_51e97a3598d15d::t_659bc507263383 116
+packages/cli/src/modules/git-connections.ee/__tests__/instance-git-connection.service.test.ts
+  s_51e97a3598d15d::t_5b12157d09eaa9 2-23,26-33,37-41,44-51,53,55-66,68-72,74-80,82,84-86,89-91,93-102,109-115,117-122,124-141,143-146,148,150-154,156-157,159-176,180-183,185-192,194-205,207-215,217,219-229,239-241
+  s_51e97a3598d15d::t_7961a6e19ffd4a 104-108
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 36,38
+packages/cli/src/modules/git-connections.ee/instance-git-connection.service.ts
+  s_8e346c093bf521::t_faefb9b50ea373 1,6
+  s_51e97a3598d15d::t_12e1909a955243 7-9,11-20,22,24-26,33-46,48-50,52-56,59-61,68,70-78,153-164,169-192,199-206,214-215,217-221,223-235
+  s_cb485bb7079c13::t_cb862b7e7a36b4 57
+  ai_agent 165-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad87882ca5c5ba4d79777a2c2659543805d9bf06",
+  "prompts": {},
+  "sessions": {
+    "s_51e97a3598d15d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b64c2e73-9bc3-48b2-97fe-09862c0ec3e8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8e346c093bf521": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea8fcf4-6783-4ed8-a2ec-9576e70b2748",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cb485bb7079c13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91156476-ac48-448c-8bed-29ff6c905297",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

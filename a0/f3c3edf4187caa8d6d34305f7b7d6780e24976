@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_315872e6073010::t_c27926b7a2ee50 8007
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilder.readonly.test.ts
+  s_315872e6073010::t_c27926b7a2ee50 31,129
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_315872e6073010::t_c27926b7a2ee50 161,213,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a0f3c3edf4187caa8d6d34305f7b7d6780e24976",
+  "prompts": {},
+  "sessions": {
+    "s_315872e6073010": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a08568-9a13-7720-9191-d2621a91aeee",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

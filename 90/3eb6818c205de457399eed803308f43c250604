@@ -1,0 +1,153 @@
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_cab9521e352431::t_5e6da39b454eb0 728,739,742-744
+  s_cab9521e352431::t_78d9eea7a0584e 630
+  s_cab9521e352431::t_0f305e4bd83811 687
+  s_cab9521e352431::t_59e88cd226e887 790-795,798-804
+  s_cab9521e352431::t_f9c863d20ff2f2 710,719
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_cab9521e352431::t_af8b326e0bbdb2 228
+  s_cab9521e352431::t_8472cb6aebecd5 1996,1998-1999,2001-2002,2019-2026,2028-2029,2057,2059-2060,2062-2064,2090-2098,2118-2126,2156-2163,2170-2206
+  s_cab9521e352431::t_06e93af486e4a3 1997,2000
+  s_89a2df1d57b37e::t_c58fd4e8438658 2027,2058,2061,2089,2117
+  s_89a2df1d57b37e::t_6d8c463abd136f 2207
+packages/cli/src/modules/agents/builder/__tests__/builder-config-telemetry.test.ts
+  s_cab9521e352431::t_57921db2207d74 1-24,30-118
+  s_89a2df1d57b37e::t_61d8189d6ae0da 25-29
+  s_89a2df1d57b37e::t_7158171fb4bdcf 119-127
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_cab9521e352431::t_15e88dd76442bd 3,21-26,32
+  s_cab9521e352431::t_d0821934ada2d3 111-113,116,125
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_cab9521e352431::t_8867dab37c2e9d 36-37
+  s_cab9521e352431::t_a322a6db7d027d 164-165
+  s_cab9521e352431::t_8f5bd40ff5e94e 166-170,172-173
+  s_cab9521e352431::t_d4d699e721750b 171
+  s_cab9521e352431::t_d825318d446985 253-258,274-279
+  s_cab9521e352431::t_fabcf7afd69f91 11,20
+  s_cab9521e352431::t_8ea639d7e1bbf2 88,95
+  s_cab9521e352431::t_2ee6bd2bff0d72 280
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_cab9521e352431::t_be8adaa2b9469f 33
+  s_cab9521e352431::t_446ba1557d2517 51-56
+packages/@n8n/telemetry/src/events/agents.ts
+  s_13306d17e7daa5::t_5ec6f6a2876096 161-395
+  s_13306d17e7daa5::t_bf50517f228d8b 16-43
+  s_cab9521e352431::t_b83c0f44dffa01 1-8,10-15,44-160
+  s_cab9521e352431::t_337ccaee10040f 9
+packages/cli/src/modules/agents/builder/builder-config-telemetry.ts
+  s_cab9521e352431::t_14b4c185677d4d 1-94
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-questions.tool.test.ts
+  s_cab9521e352431::t_3349b05477e7b5 64-67
+  s_cab9521e352431::t_4c87cef81a1b45 166-170,182-186,191-196,205-209
+  s_cab9521e352431::t_805bb019a4c9f6 244-248
+  s_cab9521e352431::t_f871bd4328376c 2,20-25
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_cab9521e352431::t_682bb9a0cf8242 316,430
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_cab9521e352431::t_6847499f6a015a 370,432
+packages/cli/package.json
+  s_89a2df1d57b37e::t_c56ecf8417e1eb 170
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_cab9521e352431::t_8032880f692abb 234
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_cab9521e352431::t_a227c53f20f4af 31-32,36-37
+  s_cab9521e352431::t_19a9965c00084e 2,5-10,28-30,33-35,38-43,45,50,57
+  s_cab9521e352431::t_57d4b53b0c5de7 71
+  s_cab9521e352431::t_6a32a0f62d858c 115-118
+  s_cab9521e352431::t_a2fa25be2fca46 165-167,176-178
+  s_cab9521e352431::t_e3285c41e19666 220-223
+  s_cab9521e352431::t_24d5ac12a40ac7 96
+  s_cab9521e352431::t_a87148ccc1a911 302-305
+  s_cab9521e352431::t_cb44b5fd42462e 312,339,362
+  s_cab9521e352431::t_53793c0be601d3 123,143,172,183,197,212,231,256,272,293
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_cab9521e352431::t_4b890e9779eca1 72,74,79-80,83,88-89,109
+  s_cab9521e352431::t_e3c25a19a243c4 14
+  s_cab9521e352431::t_b0bc78c59641e9 17-18,28
+  s_cab9521e352431::t_2320b7b3a907a8 141-143
+  s_cab9521e352431::t_3a3cfbd674dba3 75-78,84-87,96-99
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolTelemetry.ts
+  s_13306d17e7daa5::t_8776dbf17444bb 43-47,52-57,62-68,73-77,82-85
+  s_13306d17e7daa5::t_79d7668c1227a5 20-24
+  s_13306d17e7daa5::t_648fd60cfe3184 1
+  s_89a2df1d57b37e::t_8c4afec3d534d3 37-38,86
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_cab9521e352431::t_ee61b502e6341e 987,992-1022
+  s_cab9521e352431::t_015e701c1eecaa 341,386-392
+  s_cab9521e352431::t_0c653e52118d4f 113-122
+  s_cab9521e352431::t_181484cf6478f4 271,274-275,284,286-293
+  s_cab9521e352431::t_927e2036fa7d03 55
+  s_cab9521e352431::t_415dfa2abb3e7b 908-910,919-928
+  s_cab9521e352431::t_542c78cbc14315 509-515
+  s_cab9521e352431::t_45e2068f5f13d1 629
+  s_cab9521e352431::t_dd7f13714686e6 594
+  s_cab9521e352431::t_c4d0cd55d20aee 683,689,691,700
+  s_cab9521e352431::t_019746dc56326e 442
+  s_cab9521e352431::t_8e9c05102cbd76 768
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_cab9521e352431::t_0d0c6525a145d1 54-58
+  s_cab9521e352431::t_01bcb94e396e43 10,14-15,27
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_cab9521e352431::t_b9bb90b0893e01 266
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_cab9521e352431::t_9edc42cc05b98d 85
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_89a2df1d57b37e::t_208d428ef43cc6 293
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_cab9521e352431::t_a9b1ee3559643c 2,7
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_cab9521e352431::t_24a6dde8083faf 337,383,385,400-405,410,417-421
+  s_cab9521e352431::t_26a8dff77b71a6 5,9
+  s_cab9521e352431::t_87ff3c8f795d29 192,331,350
+  s_cab9521e352431::t_e83ed1dbcca248 312-316
+  s_cab9521e352431::t_f09a55aa2dca9a 109
+  s_cab9521e352431::t_f6ad1cab35ed07 228
+  s_cab9521e352431::t_efc3806bee626d 147,163
+  s_89a2df1d57b37e::t_1ee4652e9a3d1d 254,283,317-318,322,366,376,382,422-423,434,528
+packages/cli/src/modules/agents/builder/interactive/ask-questions.tool.ts
+  s_cab9521e352431::t_9deb1646525eeb 12,17
+  s_cab9521e352431::t_436403b987d5b2 93,114-117,129-136
+  s_cab9521e352431::t_7b3d533ca057a4 18
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_13306d17e7daa5::t_f7f4afc8d82ec6 22
+  s_89a2df1d57b37e::t_40d080bffab4ab 492,673
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_89a2df1d57b37e::t_c58d41c16bbe7d 299,1583-1584,1635-1636,1645-1646,1687,1715,1767-1772
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "903eb6818c205de457399eed803308f43c250604",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_13306d17e7daa5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "56986ec2-32c0-4ee4-b183-b97edf4baf7a",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_89a2df1d57b37e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "30bc8031-26bd-445e-afea-85b0c994c8f1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cab9521e352431": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "61d1e53e-d8c4-46cb-b3ae-19cbd0c7ba47",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

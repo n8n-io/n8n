@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-id.ts
+  s_d5e93f8549b777::t_4068720f68d88b 14,17-20,22-25
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/static-sub-workflow-id.test.ts
+  s_d5e93f8549b777::t_455a38dc9028f4 3,27,30,37,48,57,64,74,80,92,98,105,111,119
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirements.extractor.ts
+  s_d5e93f8549b777::t_455a38dc9028f4 5,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ecb55071887d0b8d2df16b6423ee4dd2833f47b",
+  "prompts": {},
+  "sessions": {
+    "s_d5e93f8549b777": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d179412c-f564-418c-97c7-9bbdd2da813e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

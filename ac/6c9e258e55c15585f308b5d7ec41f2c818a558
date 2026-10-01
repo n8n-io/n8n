@@ -1,0 +1,57 @@
+packages/@n8n/db/src/repositories/agent-eval-dataset.repository.ee.ts
+  s_b44949bdc256c1::t_b3b5645daf1aa0 61-62,68-72,74-78,80-82
+  s_b44949bdc256c1::t_fa45b6c86e3cce 19-20
+  s_b44949bdc256c1::t_119244e9ac8aad 55-56
+  s_b44949bdc256c1::t_43ec72e4b4ce15 4
+packages/cli/src/modules/agent-evals/agent-eval-record-mappers.ts
+  s_b44949bdc256c1::t_d5eb27da65c2de 13-15,20,28-31
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_b44949bdc256c1::t_9268460b4768c9 99-100
+  s_b44949bdc256c1::t_e1e25ee1cb3f3c 183-184
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_b44949bdc256c1::t_f945e624898515 79-80
+  s_b44949bdc256c1::t_a9e2c56c3667ec 189-190
+  s_b44949bdc256c1::t_2f0ef9ab965da6 102-103
+packages/@n8n/db/src/repositories/__tests__/agent-eval-dataset.repository.test.ts
+  s_b44949bdc256c1::t_a13641411f7ece 105,107-109,113-117,121-122,126,132-141
+packages/cli/src/modules/agent-evals/agent-evals-flag-gate.ts
+  s_b44949bdc256c1::t_3d32c7f61e9427 9-10,12,14-15,26
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_b44949bdc256c1::t_8178bf6bd0b4e7 67-68
+  s_b44949bdc256c1::t_d572dad903d1a8 206-207
+  s_b44949bdc256c1::t_9fc1afe3a19fed 32,34-37
+  s_b44949bdc256c1::t_07a4e189695b20 108-109
+  s_b44949bdc256c1::t_be23ea9b5d927f 130-131
+  s_b44949bdc256c1::t_e5465d8603dcd5 142
+  s_b44949bdc256c1::t_cdf3cf22cfdabc 188-189
+  s_b44949bdc256c1::t_da85ba83bcd329 177-178
+packages/cli/src/modules/agent-evals/agent-evals.module.ts
+  s_b44949bdc256c1::t_86d92e6f959054 6-10
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_b44949bdc256c1::t_62072fb51f0189 83-84
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_b44949bdc256c1::t_4b3fd7b36e807e 55-56
+  s_b44949bdc256c1::t_0130a16c79d62c 95-96
+  s_b44949bdc256c1::t_21f0d6ff7787c6 25-26,28-31
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_b44949bdc256c1::t_c27e63e8ee0d7d 94
+  s_b44949bdc256c1::t_c226da1c795dbd 149
+  s_b44949bdc256c1::t_1c87c398ec2bc4 13-16
+  s_b44949bdc256c1::t_15e83fe9a0c838 111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac6c9e258e55c15585f308b5d7ec41f2c818a558",
+  "prompts": {},
+  "sessions": {
+    "s_b44949bdc256c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad69f842-54e5-4f99-8d2a-6c5fc09592ad",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

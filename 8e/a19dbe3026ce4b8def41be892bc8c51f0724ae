@@ -1,0 +1,21 @@
+packages/testing/playwright/tests/e2e/app-config/demo-modal-registration.spec.ts
+  s_786048a446178c::t_58bd59e6cf1446 1-43,50,52-53,55-59,63-69,71-96,102-117
+  s_786048a446178c::t_c152ec6dc7bc30 44-49,51,54,60-62,70
+  s_786048a446178c::t_5fab0625f2d043 97-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8ea19dbe3026ce4b8def41be892bc8c51f0724ae",
+  "prompts": {},
+  "sessions": {
+    "s_786048a446178c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb280d9f-b71a-47f7-99a1-1871ab551afc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

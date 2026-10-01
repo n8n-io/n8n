@@ -1,0 +1,21 @@
+docs/adrs/001-generated-frontend-source-resolution-mapping.md
+  s_49c4fe6e04b9aa::t_f8dd42ea7789d6 1-131
+docs/adrs/README.md
+  s_49c4fe6e04b9aa::t_3e9afe454dd73c 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aa1796bfc988ab56fff6f48e8fe7eb5e3ae1e1eb",
+  "prompts": {},
+  "sessions": {
+    "s_49c4fe6e04b9aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23f4ab1f-aa92-401b-9caa-dab13ee15cde",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

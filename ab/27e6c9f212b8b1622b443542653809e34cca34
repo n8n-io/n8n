@@ -1,0 +1,26 @@
+packages/@n8n/api-types/src/dto/ai/executions-nl-filter-response.dto.ts
+  s_03d816ea3ae9c9::t_4376c5104d3dad 19,24-25,29-30
+packages/cli/src/services/executions-filter-ai.service.ts
+  s_03d816ea3ae9c9::t_3d082962b2623e 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ab27e6c9f212b8b1622b443542653809e34cca34",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

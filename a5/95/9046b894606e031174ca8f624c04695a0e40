@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_191915fa365329::t_fc8cdba45b28ab 177-197
+packages/nodes-base/nodes/Confluence/test/actions/space/get.operation.test.ts
+  s_191915fa365329::t_dc36753c55eb16 52-57,67-89
+packages/nodes-base/nodes/Confluence/actions/space/index.ts
+  ai_agent 4,6,28,33,36
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_191915fa365329::t_103acc5761cc3d 160-165
+  s_191915fa365329::t_28c3a065676360 178-183
+packages/nodes-base/nodes/Confluence/actions/space/getMany.operation.ts
+  s_191915fa365329::t_ece497d3a993d2 20
+  s_191915fa365329::t_ca114b39b0344e 7-12,15
+  s_191915fa365329::t_f4a7785c6e4fae 40-41,46-49
+packages/nodes-base/nodes/Confluence/actions/space/get.operation.ts
+  s_191915fa365329::t_149ba506517477 7,16
+  s_191915fa365329::t_f6f0bfda32edb3 39-40,45-46
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  ai_agent 60-61
+packages/nodes-base/nodes/Confluence/test/actions/space/getMany.operation.test.ts
+  s_191915fa365329::t_f04cc92010b335 86,103,115,202
+  s_191915fa365329::t_f9d98a52fadd2d 38
+  s_191915fa365329::t_a0c2f1ba93b7f2 5
+  s_191915fa365329::t_6bc218ff409ea7 207-220
+  s_191915fa365329::t_5f79818c7d701e 163-201,203-206
+  s_191915fa365329::t_976b9e8a0a898c 50-55,74-80,104-109,126-131
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  ai_agent 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a5959046b894606e031174ca8f624c04695a0e40",
+  "prompts": {},
+  "sessions": {
+    "s_191915fa365329": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec7521cb-da41-4e8c-b551-2af94061e15e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

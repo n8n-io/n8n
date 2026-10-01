@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_a55786a50e57d3::t_aa275cce398dc3 9,170-173
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_a55786a50e57d3::t_4198e9889d318a 266,270,274-275,277-278
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_a55786a50e57d3::t_a66bd42e82c3da 4,10,17,21,25,47-48,50-52,54-55
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_a55786a50e57d3::t_f2b3f41944a210 303
+  s_a55786a50e57d3::t_37947b26cededb 297-302,304-306,309,311,380
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a55786a50e57d3::t_9d76268e2f416b 29,48,59,114-148
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_a55786a50e57d3::t_b518674238943d 311-315
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_a55786a50e57d3::t_251be14c29ae9c 4,20,38,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2e31692aec3278c40edda31884b0057f3a8c3f8e",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a55786a50e57d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "db696bc5-00ab-49ae-be41-4a4e7ee9fd89",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

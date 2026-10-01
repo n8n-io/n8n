@@ -1,0 +1,22 @@
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_0e720ce3e9500c::t_477e8d4ab839ad 342,349,351-353,360,368-369
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_0e720ce3e9500c::t_d4f641334fb414 388-389
+  s_0e720ce3e9500c::t_21116b4a5038aa 385-387,390-410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10ea0c8b64245a87e39fcd3d4b81b8136a62f4da",
+  "prompts": {},
+  "sessions": {
+    "s_0e720ce3e9500c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5556c9a4-9204-4b76-a29c-3ae5bdfcf229",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

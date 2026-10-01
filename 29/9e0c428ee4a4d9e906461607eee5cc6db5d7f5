@@ -1,0 +1,77 @@
+packages/@n8n/api-types/src/index.ts
+  s_8832d87f2ff522::t_753d5681febb35 339,341-342,443,445
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_8832d87f2ff522::t_6908700e28956d 1414-1427,1438-1441,1446-1455,1469-1472,1495
+packages/@n8n/db/src/migrations/common/1784000000053-AddInstanceCredentials.ts
+  s_8832d87f2ff522::t_e763afd646af7f 1-45
+packages/@n8n/instance-ai/docs/configuration.md
+  s_8832d87f2ff522::t_114acde845c255 5-8,69,129-139
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_8832d87f2ff522::t_dce706a1fe27c2 106,115,123,480-649
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  s_8832d87f2ff522::t_2960b56dc534b0 21-27,55,65,68,72-74,82-85,90-108,114,133-136,154,156,159,170-912,919-958,1049-1157,1159-1163,1166,1172,1189-1195,1203-1206,1215-1220,1223,1232-1381,1384-1398,1402-1427,1429-1432,1453-1456,1464-1739,1808-1818,1889-1894,1905-1907
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_8832d87f2ff522::t_d6bfe22c57b238 99,126,990-1012,1014-1026,1028-1051,1099-1102,1108,1110
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_8832d87f2ff522::t_6cc7b3de6ebfc8 1-7,9,12,15,23,26-27,29,33-39,51-63,85,94-237,252,257-282,289-292,302,317-318,362-394,396-397,403-421,429,437-467,469-507,510-552,558-564,567-599,602-651,658-668,674-907,966,978-983,985-1000,1002-1012,1014,1017,1019-1025,1027,1029,1032-1048,1051-1059,1061-1064,1066-1067,1069-1107,1145-1147,1169-1171,1176,1178,1200-1201,1205,1208-1210,1212-1215,1217-1228,1254-1256,1262-1264,1271-1274,1278-1280,1313,1321-1323,1326-1329,1333,1390-1397,1400,1419,1422,1446-1464,1467-1474,1476-1478,1486-1498
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_8832d87f2ff522::t_d801372600e7ee 2163
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_8832d87f2ff522::t_69cbda36477bcf 677,681-692,700-704,707-717,719,722-749,776-777
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_8832d87f2ff522::t_90b4ab8abcbc60 22-28,30-34
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8832d87f2ff522::t_511cbad82ab812 699-700,702
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_8832d87f2ff522::t_429788ccecda26 1-2,32,39-44,119-120,166-171,201-203,278,285,297-301,304-307,316,318-320,322-331,333-335,370,372-375,399,407-428
+packages/cli/test/integration/instance-ai-settings.service.test.ts
+  s_8832d87f2ff522::t_8ee9b2d884e5eb 1-190
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.test.ts
+  s_8832d87f2ff522::t_141bc0c169fade 14-26
+packages/frontend/@n8n/design-system/src/components/N8nSettingsPageHeader/SettingsPageHeader.vue
+  s_8832d87f2ff522::t_050c09efe35983 58-64,113-118
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8832d87f2ff522::t_f496022aaeb755 4031,4521,5007-5008,5035,5037-5038,5043-5044,5046,5048,5053-5103,5105-5123,5247,5249,5955,6922,7077-7078,7284,7607,7609-7610
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_8832d87f2ff522::t_214fe469ca1ce2 2-3,7,9,12-14,16,22-26,34-54,73,85-95,99,115-121,145,149-150,156-198,212-216,222-257,260-285,288-866,868-1065,1069-1082,1084-1111,1114-1124,1133-1207,1248,1257-1262,1265,1268,1270-1271,1281-1323
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_8832d87f2ff522::t_8f4071533be6b2 38,48,60,101,107-128,285,294-338
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/settings/ConnectionDialog.vue
+  s_8832d87f2ff522::t_123d95dc760259 1-3,5-15,18-20,23-32,34-38,40,42-43,46,48-59,61-76,78-142,144,147-154,156-162,164-185,187-214,216-233,235-240,242-249,252-262,265-268,271-278,281-349,351-363,365,368-378,380-389,391-501,503-510,512-518,520,522-525,529-535,537,539-542,545-548,551-559,562-573,576-611,613-614,616-634,636-664,668,671-675,678-679,682-683,686-689
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/settings/ConnectionFields.vue
+  s_8832d87f2ff522::t_218e043a37c574 1,3-6,8,10-14,16-27,32-39,42-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/settings/__tests__/ConnectionDialog.test.ts
+  s_8832d87f2ff522::t_0f2f92b9e54ea2 1-312
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiSetupSteps.ts
+  s_8832d87f2ff522::t_abb62e936ce0cc 1,3,5-8,10-18,20
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceCredentialTest.ts
+  s_8832d87f2ff522::t_d907db61d44f05 1-9,11,13-17,19-36,38-39,42-58,61-96,99-102,105-111
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_8832d87f2ff522::t_a2811f698da234 10-17
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.settings.api.ts
+  s_8832d87f2ff522::t_c616696dd50b94 8,39,45
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_8832d87f2ff522::t_5751634a956227 29,51-52,152-157,172-176,182-185,191-196,199-202,204-214,221,228-233,235-239,252-255,349-350,572,601-602
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_8832d87f2ff522::t_530bb672bb1772 163-172
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_8832d87f2ff522::t_9770d09b2ccf0e 2,4,11,20,27,31,35,37-38,45,47,54-55,60,62-74,76-130,132-134,136-140,173-174,176-208,210-212,215-217,221-317,321,325-370,406-409,417-423,428,433,436-445,448-449,452-460,462,476-487,508-512,514-565,572,577-614,617,624,634,641,648-649,651-656,658,665,672-673,675-679,681-689,691-718,725-726,730-735,737-738,744-768,783-785,789-792,797-821
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_8832d87f2ff522::t_530bb72eb283da 4,263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "299e0c428ee4a4d9e906461607eee5cc6db5d7f5",
+  "prompts": {},
+  "sessions": {
+    "s_8832d87f2ff522": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03871da1-9ba7-4b3f-b1cc-e221f31a960e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue
+  ai_agent 23
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  ai_agent 760,779
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3b1a1d05327d7a2cecf4cf0a41b959cc73d8a96",
+  "prompts": {}
+}

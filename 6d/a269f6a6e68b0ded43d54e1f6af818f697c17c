@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_59804710ac246a::t_24bb20ed52e83f 103,112-113
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  s_59804710ac246a::t_4aad1f7968d7c5 7-22,37-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6da269f6a6e68b0ded43d54e1f6af818f697c17c",
+  "prompts": {},
+  "sessions": {
+    "s_59804710ac246a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630a9d8b-7a73-4d8a-96ac-3588b471e46f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

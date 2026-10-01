@@ -1,0 +1,54 @@
+packages/cli/src/scaling/__tests__/redis-lock.service.test.ts
+  s_3314ba47b0ec9a::t_22769d8b4f728a 79-83,85
+  h_435b1d7d3e52c0 49,55,77,84,92,103,108,117,137,139,145
+  s_3314ba47b0ec9a::t_3b3785eba4260e 1
+  s_3314ba47b0ec9a::t_7b0cfff6bdc181 2-13,15-48,50-54,56-76,78,86-91,93-102,104-107,109-116,118-136,138,140-144,146-158
+  s_3314ba47b0ec9a::t_22da1a42daf842 14
+packages/@n8n/backend-common/src/index.ts
+  h_435b1d7d3e52c0 15-17
+packages/@n8n/backend-common/src/locking/__tests__/in-process-lock.service.test.ts
+  s_3314ba47b0ec9a::t_65a45fdc9c9fee 209,212
+  s_3314ba47b0ec9a::t_36cde6005d1b7b 19
+  s_3314ba47b0ec9a::t_6a9a858dd8a6a4 32,34-35
+  h_435b1d7d3e52c0 38-39,65-66,88-89,113-114,130,132,162-164,195-196,204
+  s_3314ba47b0ec9a::t_07c88cc8e22c6d 63,86
+  s_3314ba47b0ec9a::t_bfa1c642bb2e0b 156,158-159
+  s_3314ba47b0ec9a::t_cd911e668c17c7 1-18,20-31,33,36-37,40-62,64,67-85,87,90-112,115-129,131,133-155,157,160-161,165-194,197-203,205-208,210-211,213-216
+packages/cli/src/commands/base-command.ts
+  h_435b1d7d3e52c0 6,135-142
+packages/cli/src/scaling/redis-lock.service.ts
+  h_435b1d7d3e52c0 1-115,118-168
+packages/@n8n/backend-common/src/locking/lock-service.interface.ts
+  h_435b1d7d3e52c0 12-44
+  s_3314ba47b0ec9a::t_37b99b1f0cdb49 1-11
+packages/@n8n/backend-common/src/locking/lock.service.ts
+  h_435b1d7d3e52c0 1-26
+packages/@n8n/backend-common/src/locking/in-process-lock.service.ts
+  h_435b1d7d3e52c0 1-111
+packages/cli/src/scaling/redis/redis.types.ts
+  h_435b1d7d3e52c0 16
+packages/@n8n/backend-common/src/locking/__tests__/lock.service.test.ts
+  h_435b1d7d3e52c0 24-25,35,38,43,46
+  s_3314ba47b0ec9a::t_4509a60753b921 1-23,26-34,36-37,39-42,44-45,47-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "4a2721a4642298363394d3e6f8dc08db7dec53ac",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3314ba47b0ec9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbe4910e-4583-49f6-9b59-80b0cb8fe485",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

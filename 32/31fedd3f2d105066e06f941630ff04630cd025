@@ -1,0 +1,22 @@
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_dc50b872f0e093::t_de38dfa84ca938 596-604
+  s_dc50b872f0e093::t_25a2e68e800285 63
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_dc50b872f0e093::t_095c4e8078507b 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3231fedd3f2d105066e06f941630ff04630cd025",
+  "prompts": {},
+  "sessions": {
+    "s_dc50b872f0e093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96054988-a1bb-43e7-90c8-d8ada7fc9bcd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_e0ccb55aeeda45::t_f69df4de45b5aa 620-630,633-639
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_e0ccb55aeeda45::t_f99df9883c62a0 726-729,731-732
+  s_e0ccb55aeeda45::t_2fec8f6e2eb18a 730
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a6035b2bd2a72f29e690b4cfc9fd99cd39cc7e3",
+  "prompts": {},
+  "sessions": {
+    "s_e0ccb55aeeda45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77db665c-97bd-4150-8540-c46119eec423",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

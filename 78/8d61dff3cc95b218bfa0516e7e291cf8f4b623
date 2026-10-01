@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_47f805384a8bc4::t_bc10befb52819d 1354-1387
+  s_47f805384a8bc4::t_60da42e1f566ed 145-160,162
+  s_47f805384a8bc4::t_a37b4a444435cc 538
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_46885cefc3235f::t_062a57eb3f3841 909-919,924,935-956
+  s_46885cefc3235f::t_1e4455a3789ee5 1028-1043
+  s_46885cefc3235f::t_c47ce484f94f44 304-306
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_46885cefc3235f::t_aaa8b89ffe2fab 125
+  s_46885cefc3235f::t_bc9850bb5f6b7b 139
+  s_46885cefc3235f::t_0ced2efa784f9d 83
+  s_46885cefc3235f::t_4671f614126a67 2
+  s_46885cefc3235f::t_43caa66b38dcbd 596-628
+  s_46885cefc3235f::t_8198210f29a667 303,1689-1716
+packages/@n8n/telemetry/src/events/agents.ts
+  s_cab9521e352431::t_31183face3b6fa 107
+  s_cab9521e352431::t_3ec52f4b403e20 96
+  s_cab9521e352431::t_0eb93d5659b602 18-26
+  s_cab9521e352431::t_cef3785baf6aea 118
+  s_cab9521e352431::t_1750dbf83da3c0 85
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_47f805384a8bc4::t_113d18fd129ba5 1416
+  s_47f805384a8bc4::t_7d165166da1306 855,871-882,887
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "788d61dff3cc95b218bfa0516e7e291cf8f4b623",
+  "prompts": {},
+  "sessions": {
+    "s_46885cefc3235f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6fee95ca-6801-4a3b-b0d9-0a08636c5d58",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_47f805384a8bc4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1c6e60b5-1d01-4ea0-84ff-8fe252b3e077",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cab9521e352431": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "61d1e53e-d8c4-46cb-b3ae-19cbd0c7ba47",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

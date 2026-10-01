@@ -1,0 +1,30 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_6d370183fdbddb::t_41757990e677fa 380,385-386,388,351,357,366,393,395-396
+  s_9cc081b56f7606::t_4bc2f0675dadc4 424,427
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_9cc081b56f7606::t_2a3eb9b6d869d4 635-640,715,720-721
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05f4208c854ddc8d1fa4bfe3468db193bb698186",
+  "prompts": {},
+  "sessions": {
+    "s_6d370183fdbddb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6c096f15-88e1-4340-88ec-210800329683",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_9cc081b56f7606": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f176fdd5-9bd1-4f58-871d-7646374982a4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

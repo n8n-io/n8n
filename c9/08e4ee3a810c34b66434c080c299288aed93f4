@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/__snapshots__/CanvasNodeDefault.test.ts.snap
+  s_ccec85ec2bb9da::t_3ff0195e9501ce 40,75,110,153,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c908e4ee3a810c34b66434c080c299288aed93f4",
+  "prompts": {},
+  "sessions": {
+    "s_ccec85ec2bb9da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69be5006-a611-47c9-ae9f-7c51c628fdce",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f1a28caf2584dd25225b14f898b5acb55301ad0b",
+  "prompts": {},
+  "sessions": {
+    "s_7e863ca4a1ca8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93a49309-83d5-499d-bb59-d980de662a71",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

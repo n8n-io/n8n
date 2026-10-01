@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency.exporter.ts
+  s_f1fd9f5ebf594e::t_084eaafe868741 92
+  s_f1fd9f5ebf594e::t_92ce6ccd2ec259 128
+  s_f1fd9f5ebf594e::t_74f7c7d34f7897 5
+  s_f1fd9f5ebf594e::t_19203b0750c676 3
+  s_f1fd9f5ebf594e::t_8d033f8279b21c 118-119,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e8937f4ae7375a9f902fcbd8d15b49d11d002ca",
+  "prompts": {},
+  "sessions": {
+    "s_f1fd9f5ebf594e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa80172-7d75-4f55-87bd-ff8903dbe69c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

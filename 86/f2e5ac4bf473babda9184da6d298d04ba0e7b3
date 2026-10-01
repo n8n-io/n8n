@@ -1,0 +1,64 @@
+packages/cli/test/migration/1787741452169-create-activity-event-table.test.ts
+  s_589f8be7454a93::t_3c4859fdd56981 1-12,15-121,132,140-213
+  s_589f8be7454a93::t_5aa435d5f62428 13-14,122-131,133-137
+packages/@n8n/db/src/entities/index.ts
+  s_589f8be7454a93::t_c694cde5943f34 1-7,100-104,193
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,48,93-104
+packages/@n8n/db/src/entities/__tests__/entities-collection.test.ts
+  s_589f8be7454a93::t_64f0d831866724 68
+  s_589f8be7454a93::t_3c4859fdd56981 1-67,69-71
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,56,106-117
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_589f8be7454a93::t_3c4859fdd56981 1-173
+docs/generated/postgres-schema/README.md
+  ai_agent 11,165-166,355-367
+packages/@n8n/db/src/migrations/common/1787744205058-AddActivityEventResourceIndex.ts
+  s_589f8be7454a93::t_3c4859fdd56981 1-27
+packages/@n8n/db/src/entities/activity-event.ts
+  s_589f8be7454a93::t_3c4859fdd56981 1-95
+docs/generated/postgres-schema/public.activity_event.md
+  ai_agent 1-94
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  ai_agent 111-132
+  s_589f8be7454a93::t_3c4859fdd56981 1-110,133-159
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,50,100-111
+packages/cli/test/migration/1787744205058-add-activity-event-resource-index.test.ts
+  s_589f8be7454a93::t_3c4859fdd56981 1-11,14,16-29,31-69
+  s_589f8be7454a93::t_ca9b8f5ad2224d 15
+  s_589f8be7454a93::t_5aa435d5f62428 12-13,30
+docs/generated/sqlite-schema/README.md
+  ai_agent 11,148-149,342-354
+docs/generated/sqlite-schema/activity_event.md
+  ai_agent 1-99
+packages/@n8n/db/src/migrations/common/1787741452169-CreateActivityEventTable.ts
+  s_589f8be7454a93::t_3c4859fdd56981 1-101
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_589f8be7454a93::t_89abc731c610a4 23-26
+packages/cli/test/migration/shared/index-columns.ts
+  s_589f8be7454a93::t_29664d25ac4d3a 1-39
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,42,87-98
+packages/@n8n/db/src/repositories/index.ts
+  s_589f8be7454a93::t_c694cde5943f34 1-7
+packages/cli/test/integration/activity-event.repository.test.ts
+  s_589f8be7454a93::t_5f6559ba39e10d 1-82,85-87,89-90,92-96,98-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "86f2e5ac4bf473babda9184da6d298d04ba0e7b3",
+  "prompts": {},
+  "sessions": {
+    "s_589f8be7454a93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cce56a8-933a-450c-a1c0-550bab4f8591",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

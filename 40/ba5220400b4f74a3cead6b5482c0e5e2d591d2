@@ -1,0 +1,20 @@
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_0607e661fb7835::t_732d29b5f3423d 232-240,244-245
+  s_0607e661fb7835::t_02862894c86c6a 213-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "40ba5220400b4f74a3cead6b5482c0e5e2d591d2",
+  "prompts": {},
+  "sessions": {
+    "s_0607e661fb7835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "830f0844-9f81-4a6a-bb3d-8a1f2786d064",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

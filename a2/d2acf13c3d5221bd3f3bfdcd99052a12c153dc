@@ -1,0 +1,47 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  ai_agent 1-45
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  ai_agent 1-20
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_574de801a499a2::t_17c5c1c04c2500 27-28
+  s_574de801a499a2::t_be89eae221563e 30-33,36-37
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 152-159,237
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  ai_agent 156,291-317
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_574de801a499a2::t_b228c8aec2a110 41
+  ai_agent 25-29
+  s_574de801a499a2::t_da739c27b829e3 9
+  s_574de801a499a2::t_ed85897d47e76c 153-158
+  s_574de801a499a2::t_ab8102bff2e823 166-170
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  ai_agent 222
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  ai_agent 11,18,64-74,119-133
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_574de801a499a2::t_17c5c1c04c2500 1-29,31-207
+  s_574de801a499a2::t_0c97cad513a658 30
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  ai_agent 8,29,46
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  ai_agent 1-112
+packages/cli/src/services/project.service.ee.ts
+  ai_agent 67-73,363,375-380,389-398,402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a2d2acf13c3d5221bd3f3bfdcd99052a12c153dc",
+  "prompts": {},
+  "sessions": {
+    "s_574de801a499a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce9e9826-ea55-4907-9c77-610e1d7f982f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

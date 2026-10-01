@@ -1,0 +1,48 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_1d360ad69afd30::t_066cd2d6817d48 2
+  s_1d360ad69afd30::t_17408fde97cdd8 42
+  s_1d360ad69afd30::t_d2b5de3f16b25e 1999-2000,2005-2030,2039-2062,2064-2070,2072-2074,2080-2084,2086-2087
+  s_1d360ad69afd30::t_d48af9a3741af3 2001-2004
+  s_1d360ad69afd30::t_a10d52bab04666 2031-2038
+  s_1d360ad69afd30::t_a0f37bc03d5221 2063,2071
+  s_1d360ad69afd30::t_f63957c0e8165d 2075-2078
+  s_1d360ad69afd30::t_decaa96e95905c 2079,2085
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_e5d1e3f565ab47::t_d4dfcea3c0834e 4-9
+  s_e5d1e3f565ab47::t_8656cefa4f3b9f 111-129
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_e5d1e3f565ab47::t_791b7b7ec1d301 338-339,340-376
+  s_e5d1e3f565ab47::t_7ec01d74b8e47e 12
+packages/nodes-base/nodes/RabbitMQ/test/RabbitMQ.node.test.ts
+  s_e5d1e3f565ab47::t_1dd7c4bcc26a12 3
+  s_e5d1e3f565ab47::t_bd11b5cf7ff1d4 15
+  s_e5d1e3f565ab47::t_b05d2e713dcd72 33
+  s_e5d1e3f565ab47::t_a4744b74f1540b 131-149
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_e5d1e3f565ab47::t_6998fbc125dc3e 15
+  s_e5d1e3f565ab47::t_4b44bfd339314a 67-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "158120a159850908f0be928afc832df52eda231c",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_442b113d88c721::t_269d98f5b24c45 48,53-64,71,77-100
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_442b113d88c721::t_d0d5da75001054 8-9
+  s_442b113d88c721::t_275e0e1396c1a3 161
+  s_442b113d88c721::t_87344459337b2a 63,70-71,73,75,78-79
+  s_442b113d88c721::t_3a7d15db2883ba 124-125,127-134
+  s_442b113d88c721::t_1d34ffb7e0961b 151
+  s_442b113d88c721::t_765618f14cba40 172,178-181,184
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_442b113d88c721::t_c2cb81795fbc46 31
+  s_442b113d88c721::t_4b1e60e4c2b0d2 99,102
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_442b113d88c721::t_7cb14c37921704 22
+  s_442b113d88c721::t_ad381ebe655fa3 180,183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a7336851e75a708f26819c359a5a1ca5519ba945",
+  "prompts": {},
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

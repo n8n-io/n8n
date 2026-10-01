@@ -1,0 +1,19 @@
+packages/nodes-base/package.json
+  s_b8d0273386475c::t_7ae24a8b09e690 920
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "8830d57b7fcf3dcca7e453251058c564bf5e6313",
+  "prompts": {},
+  "sessions": {
+    "s_b8d0273386475c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fafbcaa6-e0cd-4eee-8ba9-496bd316ad65",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

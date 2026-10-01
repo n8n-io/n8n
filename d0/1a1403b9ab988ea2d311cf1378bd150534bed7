@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_937bd8ce9e138f::t_d96cbc096d77b6 807
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d01a1403b9ab988ea2d311cf1378bd150534bed7",
+  "prompts": {},
+  "sessions": {
+    "s_937bd8ce9e138f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9272a2-405b-45ab-ad9f-1a9507db97af",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

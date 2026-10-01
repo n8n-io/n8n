@@ -1,0 +1,14 @@
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  h_435b1d7d3e52c0 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f7d39c06e1612394bda3c36d5ac482db12f17e92",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

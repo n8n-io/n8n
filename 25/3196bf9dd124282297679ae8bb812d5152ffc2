@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_285cbc731c20fc::t_5953fe077c00bc 208-228
+  s_285cbc731c20fc::t_b028ef5e648f77 4
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  h_9c8f56e3400786 121-122
+  s_285cbc731c20fc::t_bc3664aa85f202 123-126,146,149,209,224,238,253
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_285cbc731c20fc::t_1866852b4fac4c 77,163
+  h_9c8f56e3400786 75-76
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_285cbc731c20fc::t_ac4aa9fb99684f 4
+  s_285cbc731c20fc::t_d2b68c104de8b6 279-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "253196bf9dd124282297679ae8bb812d5152ffc2",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_285cbc731c20fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91af607a-88fb-4199-bc7a-e43e4524c88f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

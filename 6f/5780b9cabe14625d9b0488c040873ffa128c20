@@ -1,0 +1,31 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_aeecfe178a9b3d::t_e8d218d4a78e36 820-834
+  s_5ddf40544fde37::t_b9934254bfaa0b 15,17,24,26-27,56,65-73,219-220,286-403,731-817
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_b9934254bfaa0b 152-166,282-493
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_df2f92c0fab6eb 509-512
+  s_5ddf40544fde37::t_b9934254bfaa0b 21,456-501,503-508,513-686,688-689,711,724-853
+  s_5ddf40544fde37::t_7e33da95c1b48f 687,690-710,712-723
+  s_5ddf40544fde37::t_0b805b18aa19ad 502
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_b9934254bfaa0b 1-135
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_5ddf40544fde37::t_b9934254bfaa0b 1-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f5780b9cabe14625d9b0488c040873ffa128c20",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_19c108ca02ed6d::t_b81565e4b99239 295,311,1713-1718,1720-1722
+  s_19c108ca02ed6d::t_197af9e8f3ca49 299-301,349
+  s_19c108ca02ed6d::t_c9f64b95a8589a 302,345-348,350-351,1719
+  s_19c108ca02ed6d::t_bac4135b0f4e5a 352
+  s_19c108ca02ed6d::t_9b91177af2ed2b 1723-1724
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_19c108ca02ed6d::t_fa970e70afb9ea 221,352-353,379-380,393-394,401
+  s_19c108ca02ed6d::t_9f2d6026c885cf 3,222,226,233,239-258,344-349,358
+  s_19c108ca02ed6d::t_197af9e8f3ca49 40-43,395,397
+  s_19c108ca02ed6d::t_2ca37da6e564a2 314
+  s_19c108ca02ed6d::t_e69d7de06ea0ba 402
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_19c108ca02ed6d::t_25fc525616c8d1 1169
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_19c108ca02ed6d::t_b6425fc966c7ec 38,95,104,124,140,158
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_19c108ca02ed6d::t_6b534f0e31f878 293-294,296-300,1441
+  s_19c108ca02ed6d::t_197af9e8f3ca49 295,317
+  s_19c108ca02ed6d::t_dd17c9074b0a54 461-469
+packages/frontend/editor-ui/src/features/agents/__tests__/constants.test.ts
+  s_19c108ca02ed6d::t_808f1e42abfe59 5,14
+  s_19c108ca02ed6d::t_e74d1715a701cc 30
+  s_19c108ca02ed6d::t_ad6d9381bd9992 26-27,29,31
+  s_19c108ca02ed6d::t_757a675ad88cae 28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_19c108ca02ed6d::t_fff5882f752ec2 16,799-808
+  s_19c108ca02ed6d::t_b076ae9d4075de 57
+  s_19c108ca02ed6d::t_e74d1715a701cc 1685-1687,1723-1725,1737-1739
+  s_19c108ca02ed6d::t_97f3724c8dd8f6 809,1322-1341
+  s_19c108ca02ed6d::t_8ff37cdce4861e 1638,1643,1669,1691,1716,1743,1746,1749,1770,1782
+  s_19c108ca02ed6d::t_b48ac14a3f6a46 864,874
+  s_19c108ca02ed6d::t_89033e0c0c71ea 810
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_19c108ca02ed6d::t_a578c662e40434 12
+  s_19c108ca02ed6d::t_8d0a2cdf4f14f6 13,143,183
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_19c108ca02ed6d::t_b8559906e38746 14
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_19c108ca02ed6d::t_6b534f0e31f878 23,103
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_19c108ca02ed6d::t_83f27f2fd0116c 73,618-619,1554-1558
+  s_19c108ca02ed6d::t_256940b52f7d5c 95-96,108,181-182,206-210,1805,1807,1917
+  s_19c108ca02ed6d::t_ae0d65b4a64196 211-213
+  s_19c108ca02ed6d::t_5d6888438e4b14 214
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_19c108ca02ed6d::t_4318ddc0738287 207,211,316-317,319-330,332
+  s_19c108ca02ed6d::t_221e97a3a1ec0e 204-206,208-210,212-213,312-314,333-334
+  s_19c108ca02ed6d::t_197af9e8f3ca49 315,318,331
+packages/cli/src/modules/agents/builder/agent-builder-preview-path.ts
+  s_19c108ca02ed6d::t_25fc525616c8d1 5
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_19c108ca02ed6d::t_25fc525616c8d1 2381
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_19c108ca02ed6d::t_4318ddc0738287 1343
+  s_19c108ca02ed6d::t_25fc525616c8d1 1378
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_19c108ca02ed6d::t_83f27f2fd0116c 50
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_19c108ca02ed6d::t_a76f9db398147c 8,69,186,264,280,285,291,312
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_19c108ca02ed6d::t_fa541eec4891a6 17,27,31,33-36,38-41,43
+  s_19c108ca02ed6d::t_197af9e8f3ca49 32,37,42
+  s_19c108ca02ed6d::t_38f647d8caa951 53-55
+  s_19c108ca02ed6d::t_afb812c1a46d19 44-45
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_19c108ca02ed6d::t_e7f449d31e61d0 12-15
+  s_19c108ca02ed6d::t_197af9e8f3ca49 59,61
+  s_19c108ca02ed6d::t_fa541eec4891a6 3,5,16-48,51,55-58,60,62-63,65,67
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_19c108ca02ed6d::t_003b547e33f099 13-24
+  s_19c108ca02ed6d::t_a578c662e40434 43,64,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "52243b89572299b4d05190e3957d3bf4ec567ebc",
+  "prompts": {},
+  "sessions": {
+    "s_19c108ca02ed6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c92-b5f8-7720-8bf6-29b2466e189a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/utils/src/index.ts
+  s_729d7ae0c0b1bf::t_3b63b47f121647 16
+packages/@n8n/utils/src/types.ts
+  s_729d7ae0c0b1bf::t_9d785d3b316494 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "04788526c45e936ca2e7fef84a14ccd87ec51d98",
+  "prompts": {},
+  "sessions": {
+    "s_729d7ae0c0b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f1728e2-404d-4a8d-bdcd-c2ed8b68255f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,138 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/test/LmChatAlibabaCloud.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 5,17,170,190
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/test/LmChatNvidia.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 6,18
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_9f0401eb251769::t_9e39146cea29c1 1
+  s_9f0401eb251769::t_ceeb0b8285fe40 27
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_9f0401eb251769::t_d219b932c79ae1 28,205
+packages/@n8n/ai-utilities/src/index.ts
+  s_9f0401eb251769::t_c7b9eaace6d217 54,57,59
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,293
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_9f0401eb251769::t_ba61e8370e2314 124-163
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/LmChatOllama.node.ts
+  s_9f0401eb251769::t_5b050c1e8b7b11 6
+  s_9f0401eb251769::t_08736583d70215 71
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/test/LmChatMinimax.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 22,197,217
+  s_9f0401eb251769::t_5518b4f9ff2520 5-9
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_9f0401eb251769::t_5518b4f9ff2520 2-6
+  s_9f0401eb251769::t_d219b932c79ae1 272
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_9f0401eb251769::t_04e59ec32dbf7d 1,8,51-52
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_9f0401eb251769::t_c3934c5770ebf5 4
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_9f0401eb251769::t_5518b4f9ff2520 2-6
+  s_9f0401eb251769::t_d219b932c79ae1 124
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 4,674
+packages/@n8n/nodes-langchain/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,278
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_9f0401eb251769::t_dd0dafb393d9a1 365
+  s_9f0401eb251769::t_bb9c75471490e6 381
+  s_9f0401eb251769::t_9a95ff78b515bc 563
+  s_9f0401eb251769::t_321b34400c7ed6 42
+  s_9f0401eb251769::t_cc4581b461b079 226,232
+packages/@n8n/nodes-langchain/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,236
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGroq/test/LmChatGroq.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 7,22,61-62
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,238
+packages/@n8n/nodes-langchain/nodes/llms/test/LmOpenAi.test.ts
+  s_9f0401eb251769::t_5518b4f9ff2520 3-7
+  s_9f0401eb251769::t_c45a584c23d629 19
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,399
+packages/@n8n/nodes-langchain/eslint.config.mjs
+  s_9f0401eb251769::t_beaa30d8b2eb04 13-26
+  s_9f0401eb251769::t_5ee6a0f7f0a5a2 187
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_9f0401eb251769::t_04e59ec32dbf7d 1,8,59-60
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsOpenAi.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 19
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/EmbeddingsNvidia.node.ts
+  s_9f0401eb251769::t_5518b4f9ff2520 2-6
+  s_9f0401eb251769::t_d219b932c79ae1 159
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,250
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 17
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsNvidia.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 21
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.ts
+  s_9f0401eb251769::t_5b050c1e8b7b11 7
+  s_9f0401eb251769::t_914a72913b6569 197
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_9f0401eb251769::t_5518b4f9ff2520 6-10
+  s_9f0401eb251769::t_c45a584c23d629 27,32
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_9f0401eb251769::t_5518b4f9ff2520 16-20,272-276
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/LmChatMinimax.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,177
+packages/@n8n/ai-utilities/eslint.config.mjs
+  s_9f0401eb251769::t_b117652f1ec959 4-8,10-24,26
+  s_9f0401eb251769::t_da15ba6be6d81f 9
+  s_9f0401eb251769::t_52983dd0c7da80 27-39
+packages/@n8n/ai-utilities/src/__tests__/suppliers/supplyModel.test.ts
+  s_9f0401eb251769::t_bf7627a078e4b8 22,43
+  s_9f0401eb251769::t_5518b4f9ff2520 193-200
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 24
+  s_9f0401eb251769::t_5518b4f9ff2520 788-795
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/test/LmChatOpenRouter.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 7,19
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_9f0401eb251769::t_13f39f366c2015 685
+  s_9f0401eb251769::t_bdbfd7fcc98c0e 87-88,90
+  s_9f0401eb251769::t_5518b4f9ff2520 705-711,751-757,801-807,843-849,889-895,1142-1148,1171-1177,1197-1203
+  s_9f0401eb251769::t_647f5bac83242b 648,773,809,830,932,969,1003,1037,1078,1108,1258,1284,1323,1350,1386
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/test/LmChatMoonshot.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 5,17,169,189
+packages/@n8n/ai-utilities/src/suppliers/supplyModel.ts
+  s_9f0401eb251769::t_9aa454f5b0657c 10
+  s_9f0401eb251769::t_57f2069cf33d7c 33
+packages/@n8n/nodes-langchain/nodes/llms/LmChatNvidia/LmChatNvidia.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,252
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_9f0401eb251769::t_594dfb64468059 1
+  s_9f0401eb251769::t_88b736982165ff 22
+packages/@n8n/nodes-langchain/nodes/llms/LMChatLemonade/LmChatLemonade.node.ts
+  s_9f0401eb251769::t_d219b932c79ae1 3,107
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatOpenAi.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 36
+  s_9f0401eb251769::t_5518b4f9ff2520 4-8
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_9f0401eb251769::t_c45a584c23d629 7,24
+  s_9f0401eb251769::t_04e59ec32dbf7d 8,433-434
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_9f0401eb251769::t_654b3801ed9e22 160-161
+  s_9f0401eb251769::t_5518b4f9ff2520 2-6
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_9f0401eb251769::t_65ccab2ce1107c 1
+  s_9f0401eb251769::t_8a5658d5323046 5-12
+  s_9f0401eb251769::t_e28dae0d8aeca3 562-566,568-648
+  s_9f0401eb251769::t_fc3f0645b24433 567
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca3ad384629e0d705057772fcc80e345e9289610",
+  "prompts": {},
+  "sessions": {
+    "s_9f0401eb251769": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4765317c-6d2a-41c5-8adf-fa94ba01aba6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

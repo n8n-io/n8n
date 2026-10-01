@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Google/Sheet/test/v2/transport/index.test.ts
+  s_88ca00a986dc30::t_c2f18ac06adbce 66-67,69,93-94,96
+  s_88ca00a986dc30::t_d6657d6328f8cc 68,83,95,100-101
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.test.ts
+  s_88ca00a986dc30::t_98488a9bc85679 32-33,333,450
+  s_88ca00a986dc30::t_104952fdac5e53 14-15
+packages/nodes-base/nodes/Google/Sheet/test/v2/methods/credentialTest.test.ts
+  s_88ca00a986dc30::t_31078693767a31 18
+  s_88ca00a986dc30::t_97c8396bff93b9 7-8
+  s_88ca00a986dc30::t_570f2a3df722f4 22,30,41,52
+  s_88ca00a986dc30::t_9017b5138767d9 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "0bfd7aceed9e4fdefabc4a230074d53c90dd40ce",
+  "prompts": {},
+  "sessions": {
+    "s_88ca00a986dc30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86e4073c-e3f7-4347-b37a-6b31f92de827",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

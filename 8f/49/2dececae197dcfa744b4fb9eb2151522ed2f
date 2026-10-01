@@ -1,0 +1,387 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.utils.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-148
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 305-307,310
+packages/@n8n/workflow-sdk/src/mock-data/parse.ts
+  s_6ac325b7317f74::t_90ff822f601d69 97-98
+packages/@n8n/mcp-browser/src/redaction/token-span.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-55
+packages/cli/src/modules/git-connections.ee/git-connections-git.utils.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-69
+packages/cli/src/commands/ldap/reset.ts
+  s_6ac325b7317f74::t_90ff822f601d69 62-64
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_6ac325b7317f74::t_90ff822f601d69 18-21,136,139,146-149
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_6ac325b7317f74::t_90ff822f601d69 14-18,202-204
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_6ac325b7317f74::t_90ff822f601d69 17,24-25,33,55-58,80-85,108-116,123,127-135,193,201,205,210,225,228-229,269,287-310,329,339-345
+.github/workflows/docker-build-push.yml
+  s_6ac325b7317f74::t_90ff822f601d69 11
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-196
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_6ac325b7317f74::t_90ff822f601d69 80-81,93,108,115,158-173,175,267-274,290,378-382
+packages/cli/src/controllers/e2e.controller.ts
+  ai_agent 108
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 13,21-36
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 253-283
+packages/@n8n/mcp-browser/src/adapters/playwright.get-element-value.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/bridge-behavior.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 134-138
+packages/@n8n/mcp-browser/src/sensitivity/analyze-html.ts
+  s_6ac325b7317f74::t_90ff822f601d69 21,42-52,65,77,88,96,111,130
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 41-45
+packages/@n8n/mcp-browser-extension/src/documentPreparation.script.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-181
+packages/@n8n/instance-ai/package.json
+  s_6ac325b7317f74::t_90ff822f601d69 48-52,59-61
+packages/cli/src/workflows/workflow.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 28-34,77-79,886,1118-1211,1671,1678-1684,1686,1688-1727,1729,1733-1735,1739,1741-1742,1744-1749,1751-1758
+packages/@n8n/mcp-browser/src/redaction/redaction-applier.ts
+  s_6ac325b7317f74::t_90ff822f601d69 2,9
+packages/frontend/editor-ui/package.json
+  s_6ac325b7317f74::t_90ff822f601d69 95
+packages/testing/playwright/tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts
+  s_6ac325b7317f74::t_90ff822f601d69 161
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1,13,15,46,55-56,67-86,142-255
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_6ac325b7317f74::t_90ff822f601d69 20,61,120-131
+packages/@n8n/instance-ai/src/runtime/confirmation-payload.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-94
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/synthetic-integration.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 110,113
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-5,251-390
+pnpm-lock.yaml
+  ai_agent 61-62,64-65,67-68,70-71,73-74,346-347,748,4133,4136,4139,4142,4145,4334,6061-6062,8579-8581,8583-8585,8587-8589,8591-8593,8595-8597,8599-8601,12015-12016,12019-12020,14953-14966,18083-18084,25865,25867-25868,25873,25877-25878,25880,25882,25884,25886,25889-25890,25892,25894,25896,25898-25899,25901,25903,25905-25906,25908,25913-25914,25916,25918,25920,25922-25923,25925,25927-25928,25930,25932-25933,29484,29495,29497,29500,31754,33135,33144-33146,36860
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-249
+packages/nodes-base/credentials/TypeformOAuth2Api.credentials.ts
+  s_6ac325b7317f74::t_90ff822f601d69 3,39-71
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1541-1546,1569-1715,1762-1764,1766-1792,1818,1848,1850,1853,1855-1858,1862,1865-1866,1879-1934,1946-1947,1964-1965,1982-1983,1994-1995,2003-2004,2012-2013,2019
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_6ac325b7317f74::t_90ff822f601d69 518
+packages/cli/src/commands/import/workflow.ts
+  s_6ac325b7317f74::t_90ff822f601d69 104-106
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1
+packages/@n8n/mcp-browser/src/redaction/redact.ts
+  s_6ac325b7317f74::t_90ff822f601d69 3,8-13,15-22,37-42,72-75,81-150,152,156-161,181,183-184,188,195-199,203,207,212-220
+packages/cli/src/commands/execute-batch.ts
+  s_6ac325b7317f74::t_90ff822f601d69 136-137
+packages/@n8n/api-types/src/agents/types.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5,8,30-109
+packages/cli/src/commands/start.ts
+  s_6ac325b7317f74::t_90ff822f601d69 72-73
+packages/testing/playwright/composables/WorkflowComposer.ts
+  s_6ac325b7317f74::t_90ff822f601d69 28
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_6ac325b7317f74::t_90ff822f601d69 135-143,148-154,267-270
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 819,855-864
+packages/@n8n/mcp-browser/src/redaction/__tests__/token-span.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-82
+packages/@n8n/mcp-browser/src/tools/credential.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5-9,75,77-78,81-88,95-104
+packages/cli/src/modules/git-connections.ee/git-connections.module.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-21
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 286-287,429-433,488-492,526-530
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5,988-1127
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 902-975
+packages/@n8n/mcp-browser/src/sensitivity/dom-matchers.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-3,152-167
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 11-12,258-274
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 24-27,359-379
+packages/@n8n/mcp-browser/src/errors.ts
+  s_6ac325b7317f74::t_90ff822f601d69 85-107
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_6ac325b7317f74::t_90ff822f601d69 4,419-423,426
+packages/@n8n/mcp-browser/src/sensitivity/key-shape-corpus.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-146
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 2-3,9,11,14-19,22,26-31,34-48,63-115,127
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_6ac325b7317f74::t_90ff822f601d69 267-271
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_6ac325b7317f74::t_90ff822f601d69 4,127-138,140-141,144-149
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-sidebar.spec.ts
+  s_6ac325b7317f74::t_90ff822f601d69 2,105
+packages/@n8n/mcp-browser/src/sensitivity/analyze-html.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 24-77
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_6ac325b7317f74::t_90ff822f601d69 55-56,166,174-176,411
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_6ac325b7317f74::t_90ff822f601d69 49-52
+packages/@n8n/mcp-browser/src/adapters/test-helpers.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-28
+packages/@n8n/mcp-browser/src/redaction/patterns.ts
+  s_6ac325b7317f74::t_90ff822f601d69 34,45-47,50-54
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_6ac325b7317f74::t_90ff822f601d69 144,465-466,469-472,474-477,480-483,485-490,492-495,501-543,546-547,549-553,559-563,565-581,583,585-588,590-591,594-610
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 219-233,237,239,242,244-256,279,301,305-357
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_6ac325b7317f74::t_90ff822f601d69 23,46-55,72-76,80-90,115-116,180-207,223-228,257-266,271-291,297,300,302,304,309-310,313,315-329,332-333,335,359-362,364-365,373-397,586-587,593,596-600,608-613,628-678,682,685,688,691-721,727-734,773-777
+packages/@n8n/mcp-browser/src/adapters/playwright.ts
+  s_6ac325b7317f74::t_90ff822f601d69 17,21,50-77,430,446,462,950-1001
+packages/cli/src/commands/__tests__/start.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 375-378
+packages/cli/src/modules/policy-infrastructure/policy-infrastructure.module.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-19
+packages/@n8n/api-types/src/agents/slack/types.ts
+  s_6ac325b7317f74::t_90ff822f601d69 69-71
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection.repository.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-26
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_6ac325b7317f74::t_90ff822f601d69 408-411
+packages/workflow/src/expression.ts
+  s_6ac325b7317f74::t_90ff822f601d69 323-325
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 64
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_6ac325b7317f74::t_90ff822f601d69 21
+packages/cli/src/commands/base-command.ts
+  s_6ac325b7317f74::t_90ff822f601d69 91-93,232-256,290-292
+packages/@n8n/mcp-browser/src/__tests__/errors.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5,90-104
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-213
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_6ac325b7317f74::t_90ff822f601d69 32,119,345-348
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-194
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigNodeContent.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 6-9,17-24,27,54,61-72
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_6ac325b7317f74::t_90ff822f601d69 6-9,30,60
+packages/cli/src/commands/execute.ts
+  s_6ac325b7317f74::t_90ff822f601d69 33-34
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1356-1399
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  s_6ac325b7317f74::t_90ff822f601d69 18,35
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-execution.spec.ts
+  s_6ac325b7317f74::t_90ff822f601d69 162-175
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 9,66,68,572-574
+packages/cli/src/commands/import/__tests__/workflow.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 77-80
+packages/@n8n/engine/src/execution/__tests__/iteration-mapping.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-148
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1017,1041-1064,1098,1105-1109
+packages/@n8n/api-types/src/agents/__tests__/workflow-tool-incompatibility.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-151
+packages/cli/src/constants.ts
+  s_6ac325b7317f74::t_90ff822f601d69 143
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-250
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_6ac325b7317f74::t_90ff822f601d69 64,103-109,644-668,716-720,726-728
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ac325b7317f74::t_90ff822f601d69 1454-1457,1469-1480,7548-7549,7932-7933
+packages/@n8n/instance-ai/src/tools/evals/evals.tool.ts
+  s_6ac325b7317f74::t_90ff822f601d69 143-146,334
+packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1129-1163
+packages/cli/test/integration/commands/ldap/reset.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 366-369
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/TypeSelect.vue
+  s_6ac325b7317f74::t_90ff822f601d69 100,102
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_6ac325b7317f74::t_90ff822f601d69 447,454,774
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackSetupView.vue
+  s_6ac325b7317f74::t_90ff822f601d69 24,70
+packages/@n8n/config/src/configs/logging.config.ts
+  s_6ac325b7317f74::t_90ff822f601d69 35
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_6ac325b7317f74::t_90ff822f601d69 49-56
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-104
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 306,312-339,342-383
+packages/@n8n/mcp-browser-extension/src/relayConnection.ts
+  s_6ac325b7317f74::t_90ff822f601d69 10,96,318,374
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 46
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelSlackSetup.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 2,40-47
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 181-184
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_6ac325b7317f74::t_90ff822f601d69 72-86,94-97,106-107
+packages/cli/src/modules/instance-ai/sandbox/instance-ai-sandbox.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 3,422-429
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 50,372-373
+packages/@n8n/api-types/src/dto/index.ts
+  s_6ac325b7317f74::t_90ff822f601d69 101-112
+pnpm-workspace.yaml
+  s_6ac325b7317f74::t_90ff822f601d69 33-37,138
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/FilterConditions.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 343-345,348-352
+packages/@n8n/agents/src/workspace/sandbox/errors.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-38
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_6ac325b7317f74::t_90ff822f601d69 15,76-78,181
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 35-36,124-126,216
+docker/images/n8n/Dockerfile
+  s_6ac325b7317f74::t_90ff822f601d69 1,5-6,43,45
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_6ac325b7317f74::t_90ff822f601d69 277,282,1649
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-5,125-131,179-183,239-245
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_6ac325b7317f74::t_90ff822f601d69 21,289-290
+packages/@n8n/instance-ai/evaluations/system-prompts/mock-execution-verify.ts
+  s_6ac325b7317f74::t_90ff822f601d69 13
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_6ac325b7317f74::t_90ff822f601d69 171-184,188
+packages/@n8n/mcp-browser-extension/src/documentPreparation.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-140
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_6ac325b7317f74::t_90ff822f601d69 19
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 440,442,449-471,474-479,483,489-515,522,526,579-581,583,590,593-596,599,601-605,612,615-619,687-861
+packages/nodes-base/credentials/test/TypeformOAuth2Api.credentials.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-47
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1,79,507,514,536,616,619,621-622
+packages/frontend/@n8n/design-system/src/css/_primitives.scss
+  s_6ac325b7317f74::t_90ff822f601d69 312,314,322-327,330-340
+packages/testing/playwright/utils/retry-utils.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-24
+.github/scripts/sync-bundle-branch.mjs
+  s_6ac325b7317f74::t_90ff822f601d69 63-75,85-93
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-57
+packages/@n8n/mcp-browser/src/tools/test-helpers.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5-6,36-42
+packages/cli/src/commands/worker.ts
+  s_6ac325b7317f74::t_90ff822f601d69 50-51
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 168,172
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 335-340,367-372,395,627,631,643,668-669,672,676-717
+packages/@n8n/api-types/src/agents/dto.ts
+  s_6ac325b7317f74::t_90ff822f601d69 26-49,90-102
+packages/cli/src/commands/__tests__/execute-batch.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 113-116
+packages/@n8n/constants/src/index.ts
+  s_6ac325b7317f74::t_90ff822f601d69 20
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 2,412-457
+packages/cli/src/commands/webhook.ts
+  s_6ac325b7317f74::t_90ff822f601d69 28-29
+packages/cli/src/webhooks/test-webhooks.ts
+  s_6ac325b7317f74::t_90ff822f601d69 149-152,216-227
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsFilter.spec.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-72
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 114,5166
+packages/@n8n/mcp-browser/src/tools/credential.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 262-349
+packages/@n8n/mcp-browser/src/adapters/playwright.actionability.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-221
+package.json
+  s_6ac325b7317f74::t_90ff822f601d69 150
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 89
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-23
+.github/scripts/sync-bundle-branch.test.mjs
+  s_6ac325b7317f74::t_90ff822f601d69 53,192-239
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-5,31,37-48,119,121-131
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_6ac325b7317f74::t_90ff822f601d69 9-10,45,128-144,147-150,153,163
+packages/@n8n/mcp-browser-extension/src/documentPreparation.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-108
+packages/@n8n/mcp-browser/src/redaction/__tests__/redact.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 128-208,237-241,265-274
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 784
+packages/@n8n/engine/src/execution/iteration-mapping.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-86
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 15,19,38,69,107,1173-1325
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 51-58,111-117,232,281-284,308,312,791-806,809-819,821-828,835-837,842-843,848-866,874-879,881-888,891-900
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_6ac325b7317f74::t_90ff822f601d69 1-242
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 145-148
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 49-53,82-86,96-98,101-106
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1816-1841
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_6ac325b7317f74::t_90ff822f601d69 11-12,14,19-26,60-63,70,111-112,118,122-123,125,246-258,263-271,278-279,350-354,430-435,535,542-543,546,549-556
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 47-52,435-518
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1,3,5,108,110-115,117-146,149,160-214
+packages/@n8n/mcp-browser/src/sensitivity/dom-matchers.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 8,12-43
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_6ac325b7317f74::t_90ff822f601d69 480-492,495-506,541,590-596,601-602,607-610,613-614
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_6ac325b7317f74::t_90ff822f601d69 173,221
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_6ac325b7317f74::t_90ff822f601d69 118-120
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_6ac325b7317f74::t_90ff822f601d69 51-57
+packages/@n8n/agents/src/workspace/sandbox/base-sandbox.ts
+  s_6ac325b7317f74::t_90ff822f601d69 50-58
+.github/workflows/sec-sync-public-to-private.yml
+  s_6ac325b7317f74::t_90ff822f601d69 30,96-116
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 34
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_6ac325b7317f74::t_90ff822f601d69 33,86-90,118,155,386,395-396,402
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 585-634
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5-10,27-31,41-58
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_6ac325b7317f74::t_90ff822f601d69 5,11,23,29,31,35-36,40-44,47-48,53-56,70-71,74-75,77-79,82-98,100-103,111,118-122,167-174,209,217,225
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1,3-4,21-23,25-27,32-33
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_6ac325b7317f74::t_90ff822f601d69 85
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_6ac325b7317f74::t_90ff822f601d69 1-66
+packages/@n8n/agents/src/workspace/types.ts
+  s_6ac325b7317f74::t_90ff822f601d69 152-153
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  s_6ac325b7317f74::t_90ff822f601d69 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f492dececae197dcfa744b4fb9eb2151522ed2f",
+  "prompts": {},
+  "sessions": {
+    "s_6ac325b7317f74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f803f13-07cb-4d77-a441-4c9789cf3763",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

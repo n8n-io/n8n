@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_578c591731c26a::t_49059cd7e316c5 7739-7743,7745
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_578c591731c26a::t_ca13ae274b1265 36-37,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4a8746d050ba47fcff0ea60d16df09cffbae966e",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_578c591731c26a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0beb087-0899-47b2-bb3e-38ff260bc0ec",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

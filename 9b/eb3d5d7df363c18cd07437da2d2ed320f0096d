@@ -1,0 +1,30 @@
+packages/workflow/test/execution-context.test.ts
+  s_af62986d6ef75e::t_3637564888344f 79-112
+  s_af62986d6ef75e::t_e8f239885f5778 1-5
+packages/workflow/src/trigger-identity.ts
+  s_af62986d6ef75e::t_a7376d179d70e2 64-67,72,74-79
+  s_af62986d6ef75e::t_b01e20523467a6 7
+packages/workflow/src/interfaces.ts
+  s_af62986d6ef75e::t_9860049b18ed79 3961-3966
+packages/workflow/test/trigger-identity.test.ts
+  s_af62986d6ef75e::t_a006d01f2f6618 171-191
+packages/workflow/src/execution-context.ts
+  s_af62986d6ef75e::t_c2337e8cf7287f 296-318
+  s_af62986d6ef75e::t_3279088e6277e2 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9beb3d5d7df363c18cd07437da2d2ed320f0096d",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

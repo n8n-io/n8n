@@ -1,0 +1,29 @@
+packages/testing/playwright/pages/WorkflowSettingsModal.ts
+  s_aaabdf4fe381cc::t_89fea315475b73 114-117
+  s_aaabdf4fe381cc::t_507cc6f0487fb2 159-161,164
+packages/testing/playwright/pages/SecuritySettingsPage.ts
+  s_aaabdf4fe381cc::t_2554f9d5bf3f16 28-29
+  s_aaabdf4fe381cc::t_150f4f43ca3a3e 21-22
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_aaabdf4fe381cc::t_aa804aed154308 61-72
+  s_aaabdf4fe381cc::t_12449c4d888b22 110
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement-disabled.spec.ts
+  s_aaabdf4fe381cc::t_3413c3d6dadb3b 20
+  s_aaabdf4fe381cc::t_f79d7ad157998a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "653573807ae859cfe0f26513fdf6955000d74f01",
+  "prompts": {},
+  "sessions": {
+    "s_aaabdf4fe381cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "add461e2-273a-4b06-8479-f725428c479c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

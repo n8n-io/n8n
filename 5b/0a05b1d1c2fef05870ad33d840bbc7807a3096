@@ -1,0 +1,194 @@
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_b04c58447561ba::t_0eefba749ef3f0 17
+  s_b04c58447561ba::t_a4c3e2f323431b 169-172,174-175
+  s_b04c58447561ba::t_ab2d36d783b627 226,228-230
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_b04c58447561ba::t_0545f38609dc6b 272
+  s_b04c58447561ba::t_0f11354e23b1bf 26
+  s_b04c58447561ba::t_a975d57fdbb93e 79-101
+  s_b04c58447561ba::t_39eb83eb32afb3 244-252
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_b04c58447561ba::t_382eddcb11ec3b 400-403
+packages/@n8n/db/src/migrations/common/1789138249046-AddActiveThreadClaimToAgentExecution.ts
+  s_b04c58447561ba::t_b713ea43322a77 3-56
+  s_b04c58447561ba::t_b4179534681cd8 1-2
+  s_b04c58447561ba::t_9921e3f7d3b9a4 57-59
+  s_b04c58447561ba::t_3287d3de4e0672 60-63
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_b04c58447561ba::t_dfb214c9a41217 68-73
+  s_b04c58447561ba::t_0d3b991937e75a 11
+  s_b04c58447561ba::t_2c10e509bc560d 131,133-161,163-184
+  s_b04c58447561ba::t_18f9e6c0c05e48 307-321,323-336
+  s_b04c58447561ba::t_8f24d14f8b09f8 104-106
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_b04c58447561ba::t_fbe8810e3012f6 216
+packages/cli/src/modules/agents/agent-thread-turn-coordinator.ts
+  s_b04c58447561ba::t_04a2ab2af7ccbd 3
+  s_b04c58447561ba::t_113eba60bdcf49 111
+  s_b04c58447561ba::t_fb428c08ac471f 1-2,4-76,78-90,92-103,105,107-109,112-130,132-136,139-141,143,145-148,150-193
+  s_b04c58447561ba::t_89abf254d76513 91
+  s_b04c58447561ba::t_7099c1c1c0a891 104,106,110
+  s_b04c58447561ba::t_b9d651800d6101 131,137-138,142,144
+  s_b04c58447561ba::t_63bd8a12c195fd 77
+  s_b04c58447561ba::t_b33c24c1f2bed1 149
+packages/cli/src/modules/agents/__tests__/test-utils/turn-coordinator.ts
+  s_b04c58447561ba::t_110e1b4a27fed3 1-27,29-31,33,35
+  s_b04c58447561ba::t_994a326c4eb8bc 28,32,34
+packages/cli/test/migration/1789138249046-add-active-thread-claim-to-agent-execution.test.ts
+  s_b04c58447561ba::t_e2c4df4611b32d 138
+  s_b04c58447561ba::t_68f465161435fa 1-122,124,126,128-137,139-148
+  s_b04c58447561ba::t_b651072568db81 123,125,127
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_f87cc027594a0f 5
+  s_b04c58447561ba::t_7e6c56c09bdf73 143-144,146
+  s_b04c58447561ba::t_173be43cd956d6 193
+  s_b04c58447561ba::t_2ec623ae83e1da 384-386,461-463,537-539,569-571,599-601,621-623,687-689,734-736,776-778
+  s_b04c58447561ba::t_d9ac01f55d9a90 500-502
+  s_b04c58447561ba::t_8a0c7e30ae102f 165-192,194-243
+  s_b04c58447561ba::t_f696cf7335f78b 119,122
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_b04c58447561ba::t_54265fc4e7ee56 225
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b04c58447561ba::t_8aea6c0b4da508 105-110
+  s_b04c58447561ba::t_76ab166aa42fce 152-158
+  s_b04c58447561ba::t_b1dd8518ae04b5 455-479,551-562,564-565
+  s_b04c58447561ba::t_61451f2ec07bad 727,733-769
+  s_b04c58447561ba::t_946b6548bbb1bf 689
+  s_b04c58447561ba::t_f6672b94102be6 411
+  s_b04c58447561ba::t_d72150efa617a6 343
+  s_b04c58447561ba::t_da33a61295f614 1195,1205,1207-1208,1210,1212-1213,1222-1233
+  s_b04c58447561ba::t_605969aacbfb49 15,26-29
+  s_b04c58447561ba::t_288c75ffc9e58f 785-806,821-823
+  s_b04c58447561ba::t_2d21b0c5b59094 238-239
+  s_b04c58447561ba::t_2269231d69fbaa 1038,1049
+  s_b04c58447561ba::t_ec63c4721dba1c 1196-1204,1206,1209,1211,1214-1221
+  s_b04c58447561ba::t_ef8b27dd7ea9fc 48
+  s_b04c58447561ba::t_7037b7eac395a5 636-649,657-659,677-688,690-703
+  s_b04c58447561ba::t_597153db44a8dc 550,563
+  s_b04c58447561ba::t_1cdf209e1e8a60 650-656,886-920,938
+  s_b04c58447561ba::t_feaa2d82226b62 840-851,866-868,871-876
+  s_b04c58447561ba::t_f43b3e54110ba7 885
+  s_b04c58447561ba::t_dd72fa781b8c69 454
+  s_b04c58447561ba::t_c175df7de9783a 992,995-997,1037,1039-1048,1050
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b04c58447561ba::t_7e25319c2ddaf3 662
+  s_b04c58447561ba::t_c7e687343ee7fd 526
+  s_b04c58447561ba::t_6588bcd01047af 788
+  s_b04c58447561ba::t_a37dfe0807e2bb 520-525,527-529,534-535
+  s_b04c58447561ba::t_ac593a26fccb86 536,659-661,663-699
+  s_b04c58447561ba::t_7c30ae056fdeae 438
+  s_b04c58447561ba::t_ee9c1be60cd60a 1107-1111
+  s_b04c58447561ba::t_791ba3931b10ba 26-29
+  s_b04c58447561ba::t_134d98341b3e2c 109,119
+  s_b04c58447561ba::t_4e78aa5d0573e2 268,286
+  s_b04c58447561ba::t_14ed96cd773eb8 25
+  s_b04c58447561ba::t_69a2241ca3e4d6 537
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_81c437f2ec4a29 116-125,134
+  s_b04c58447561ba::t_3daa4380bf2329 1529
+  s_b04c58447561ba::t_74af734c047488 12-16
+  s_b04c58447561ba::t_3b7fca2f51482f 1421-1528,1530-1557
+  s_b04c58447561ba::t_09593a269d1090 1382-1383,1402
+  s_b04c58447561ba::t_df7631ac90b0aa 286
+  s_b04c58447561ba::t_b15be7fb111cca 2597-2602
+  s_b04c58447561ba::t_62fd9ab95a65a3 2595-2596
+  s_b04c58447561ba::t_0ac88f07f45b34 3364
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_2b14dea7f4218f 222-272
+  s_b04c58447561ba::t_da2cea2d23fa75 14-17
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_b04c58447561ba::t_e1d143198b9c2c 358-359,363-364,373-384
+  s_b04c58447561ba::t_86ec030af3d83f 308
+  s_b04c58447561ba::t_3ae42c09127a3f 13
+  s_b04c58447561ba::t_54b9dc588e712e 83-92
+  s_b04c58447561ba::t_cd0642b2f2380b 385-386
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_9505693dfc6a92 1,5,15-24
+  s_b04c58447561ba::t_3d5b5471c0dab1 60-85
+  s_b04c58447561ba::t_ee19869242f2d2 99,104-107
+  s_b04c58447561ba::t_4c616b06a090d0 25-26
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_b04c58447561ba::t_7c86a6c19e0610 3-8,11-12,33-34,37,45-55,57-97
+  s_b04c58447561ba::t_dfdaecd59779cd 98-100
+  s_b04c58447561ba::t_685bac077a5ef4 101-111
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/recorded-integration.test.ts
+  s_b04c58447561ba::t_d51d6bb964fc39 212-214,218,222
+  s_b04c58447561ba::t_5c68f627c04dca 175-211,215-217,219-221,223-250
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_b04c58447561ba::t_e8a99754f562da 8-9
+  s_b04c58447561ba::t_ae48fb123af829 201
+  s_b04c58447561ba::t_61978fb7d3584b 202
+  s_b04c58447561ba::t_f4020c66689c1d 226-232
+  s_b04c58447561ba::t_512f94b7d10bc1 217-218
+  s_b04c58447561ba::t_2d49f5352be6c5 263
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_b04c58447561ba::t_ade5a3644c4b9e 266
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b04c58447561ba::t_8eb38a034b00ff 1711
+  s_b04c58447561ba::t_3f0b7a5089d63e 156,159-162,178,195-196
+  s_b04c58447561ba::t_3603a955e7d810 37
+  s_b04c58447561ba::t_3cac3780c648e3 488
+  s_b04c58447561ba::t_bb55b19be13e0a 483,691,779,990,1767,1877-1947,1949-1950,1952-2017
+  s_b04c58447561ba::t_c210574236b585 298,303-438,489,529
+  s_b04c58447561ba::t_90cb7a0aa8376e 21
+  s_b04c58447561ba::t_3aba6a800fe2c5 246-251,269,273,277-283
+  s_b04c58447561ba::t_f9bd5278d1e250 1948,1951
+  s_b04c58447561ba::t_f91a127cbc76af 439
+  s_b04c58447561ba::t_b6af5a4efd09c8 490-491
+  s_b04c58447561ba::t_91d00eb4cd6b65 778
+  s_b04c58447561ba::t_a8b8ec531e9fd9 2018-2020
+  s_b04c58447561ba::t_35ab6012575f23 441,466,504,520,543,617,663,706,722,750-751,773,822,988,1141,1154,1177,1193,1214,1233,1337,1682,1703,1714,2021-2026
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_b04c58447561ba::t_e1e6a22ba0d2d6 6
+  s_b04c58447561ba::t_a0b3dbf16b1625 194
+  s_b04c58447561ba::t_30fe6b4b772440 40-47
+  s_b04c58447561ba::t_8f12ce74305909 242
+  s_b04c58447561ba::t_34252398b4979b 30
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_b04c58447561ba::t_9fb57c3077cea5 12
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_b04c58447561ba::t_1a66e0b23190ad 31-34
+  s_b04c58447561ba::t_4b53afe78e23a6 49-56
+packages/cli/src/modules/agents/__tests__/agent-thread-turn-coordinator.test.ts
+  s_b04c58447561ba::t_48ff1a751eeb9e 1-14,16-44,46-49,51,53-69,71-72,74-75,78,80-82,84-86,88-91,93-96,98-99,101-102,104-109,111-125,127-133,135-140,142-156,158-162,164-165
+  s_b04c58447561ba::t_11a03c6234ad62 15,45,52,141,157
+  s_b04c58447561ba::t_ce68d5053454cd 50,126
+  s_b04c58447561ba::t_ffab8a561b1e76 76-77,79,83,87,92,97,100,103,110
+  s_b04c58447561ba::t_1cdf209e1e8a60 70,73,134,163
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_b04c58447561ba::t_06b43d45a536d2 331-361
+  s_b04c58447561ba::t_4905d899c10aa8 16-19
+docs/generated/postgres-schema/README.md
+  s_b04c58447561ba::t_6ab1b9eacac6dd 22,515
+docs/generated/postgres-schema/public.agent_execution.md
+  s_b04c58447561ba::t_306a1658a61cc7 7,53,65
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_b04c58447561ba::t_fb0e5b36e8d71e 100
+docs/generated/sqlite-schema/README.md
+  s_b04c58447561ba::t_834fb79a398c75 22,502
+docs/generated/sqlite-schema/agent_execution.md
+  s_b04c58447561ba::t_e40c903d2570c7 9,18,58,70
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_b04c58447561ba::t_312d56fb4ea50c 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5b0a05b1d1c2fef05870ad33d840bbc7807a3096",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

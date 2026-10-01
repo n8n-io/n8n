@@ -1,0 +1,40 @@
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_d0acb9a890c95a::t_a7e6fbc315af7e 1-35
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  s_d0acb9a890c95a::t_d506656c23ebec 41-49
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  ai_agent 31
+  s_d0acb9a890c95a::t_1b1030ff23492f 30,32-37
+packages/cli/src/modules/agents/agents.module.ts
+  ai_agent 159
+  s_d0acb9a890c95a::t_ec14cb4b4ffefa 158,160-162
+packages/cli/src/modules/insights/insights.module.ts
+  ai_agent 17
+  s_d0acb9a890c95a::t_f4cad2756afee7 16,18-21
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  s_d0acb9a890c95a::t_5b5193e3097fea 21-28,30
+packages/cli/src/commands/start.ts
+  ai_agent 433
+  s_d0acb9a890c95a::t_0352f16e59c20a 10
+  s_d0acb9a890c95a::t_f8019a2d41124f 40
+  s_d0acb9a890c95a::t_fb5570350b0a03 429,431-432
+  s_d0acb9a890c95a::t_c1fccde16a8185 430
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_d0acb9a890c95a::t_e5b5643525ab76 56-63,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "afbd918cb19251fe232b81a69a004881e259ad60",
+  "prompts": {},
+  "sessions": {
+    "s_d0acb9a890c95a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "becbda50-7e9b-4312-a9b1-20c68808bcfc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

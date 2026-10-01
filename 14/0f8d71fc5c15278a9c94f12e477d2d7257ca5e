@@ -1,0 +1,493 @@
+.github/scripts/bump-versions.mjs
+  s_91c597c7193a8c::t_9f396d6b9f211f 8,188,288-293
+.github/scripts/detect-new-packages.mjs
+  s_91c597c7193a8c::t_60811f29e271cf 18,20
+.github/scripts/ensure-provenance-fields.mjs
+  s_91c597c7193a8c::t_9b575b43cc55fc 4,9
+.github/scripts/pnpm-utils.mjs
+  s_91c597c7193a8c::t_d1fbb1f9045b9a 4,18-41
+.github/workflows/release-create-pr.yml
+  s_91c597c7193a8c::t_ad5a1ec5d36e5b 87-89,91-96
+CHANGELOG.md
+  s_91c597c7193a8c::t_ae138fea58eb66 1-163
+docs/generated/postgres-schema/README.md
+  s_91c597c7193a8c::t_74d449bc56aa94 26,537
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_91c597c7193a8c::t_ad799f7579d5a1 76
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_91c597c7193a8c::t_010ba1b247e889 57
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_91c597c7193a8c::t_a30a92e3bda251 55
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_91c597c7193a8c::t_343be1a3486f87 50
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_91c597c7193a8c::t_e3ce81e5dc091c 70
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_91c597c7193a8c::t_c0fd725425bba0 91
+docs/generated/postgres-schema/public.agent_files.md
+  s_91c597c7193a8c::t_af4b4d8d29f07e 71
+docs/generated/postgres-schema/public.agent_history.md
+  s_91c597c7193a8c::t_425aa5fad7e44a 67
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_91c597c7193a8c::t_97e62c13675b24 60
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_91c597c7193a8c::t_f0e7e6177d8f28 56
+docs/generated/postgres-schema/public.agents.md
+  s_91c597c7193a8c::t_c7087953bce3b1 14,35,81
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_91c597c7193a8c::t_df595037a8280f 83
+docs/generated/postgres-schema/public.agents_memory_entry_cursors.md
+  s_91c597c7193a8c::t_00dc94028bc714 59
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_91c597c7193a8c::t_e384dbf3014091 59
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_91c597c7193a8c::t_fd75ad9b19d525 75
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_91c597c7193a8c::t_68596c22046c57 59
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_91c597c7193a8c::t_d3bfa05bcec33d 63
+docs/generated/postgres-schema/public.agents_observations.md
+  s_91c597c7193a8c::t_99d917576e52bf 82
+docs/generated/postgres-schema/public.project.md
+  s_91c597c7193a8c::t_40582262b4b609 126
+docs/generated/sqlite-schema/README.md
+  s_91c597c7193a8c::t_6693d140c25914 26,524
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_91c597c7193a8c::t_bfbb9404280f57 78
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_91c597c7193a8c::t_b1854084eb4121 66
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_91c597c7193a8c::t_89d2def14f5057 63
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_91c597c7193a8c::t_7dc733f5cca788 60
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_91c597c7193a8c::t_f1d1770938fafa 75
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_91c597c7193a8c::t_bdf52f030d1495 92
+docs/generated/sqlite-schema/agent_files.md
+  s_91c597c7193a8c::t_cf54643dced288 74
+docs/generated/sqlite-schema/agent_history.md
+  s_91c597c7193a8c::t_a75f74e82f4a9b 74
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_91c597c7193a8c::t_d9de5a6b828b04 65
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_91c597c7193a8c::t_7c0619293742b1 63
+docs/generated/sqlite-schema/agents.md
+  s_91c597c7193a8c::t_56a054af12106c 9,25,83
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_91c597c7193a8c::t_4673bf530a8a8d 86
+docs/generated/sqlite-schema/agents_memory_entry_cursors.md
+  s_91c597c7193a8c::t_3cd80ecf343bfe 66
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_91c597c7193a8c::t_bd55cc1373508b 66
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_91c597c7193a8c::t_909bad1c41468d 78
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_91c597c7193a8c::t_e7e9218c4021ed 66
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_91c597c7193a8c::t_58595bffc6671e 70
+docs/generated/sqlite-schema/agents_observations.md
+  s_91c597c7193a8c::t_6c622ce2559bf2 85
+docs/generated/sqlite-schema/project.md
+  s_91c597c7193a8c::t_067ae020d2f54f 132
+package.json
+  s_91c597c7193a8c::t_e8b63fde355625 3
+packages/@n8n/agents/package.json
+  s_91c597c7193a8c::t_73704470b3f713 3
+packages/@n8n/ai-node-sdk/package.json
+  s_91c597c7193a8c::t_7dd48b2c637827 3
+packages/@n8n/ai-utilities/package.json
+  s_91c597c7193a8c::t_9b5bc6902d659a 3
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_91c597c7193a8c::t_b8174bf53afd86 76-77
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/openai.test.ts
+  s_91c597c7193a8c::t_13c8fb9d8653ae 1,3,18-26,30-32,43,54
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_91c597c7193a8c::t_58389d4f22bc22 64-65
+packages/@n8n/ai-utilities/src/model-discovery/providers/openai.ts
+  s_91c597c7193a8c::t_327782ff3a6858 4,17-21,30-36
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/deleteRole.generated.yml
+  s_91c597c7193a8c::t_d8cfe26f8fb38b 1-42
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_91c597c7193a8c::t_53aa70afd759d8 19-20
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_91c597c7193a8c::t_2a2176c63cae6f 3
+packages/@n8n/api-types/package.json
+  s_91c597c7193a8c::t_1d84abd2838161 3
+packages/@n8n/api-types/src/index.ts
+  s_91c597c7193a8c::t_c45d8e79f5d1e1 503,506
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_91c597c7193a8c::t_41034a71f229ff 1999-2016
+packages/@n8n/backend-common/package.json
+  s_91c597c7193a8c::t_2f8b61ee5d4a4a 3
+packages/@n8n/backend-network/package.json
+  s_91c597c7193a8c::t_ec5af7536cda60 3
+packages/@n8n/backend-test-utils/package.json
+  s_91c597c7193a8c::t_d2938f92ee956b 3
+packages/@n8n/benchmark/package.json
+  s_91c597c7193a8c::t_33a81f7de043f0 3
+packages/@n8n/blob-storage/package.json
+  s_91c597c7193a8c::t_4b093e36b8304e 3
+packages/@n8n/chat-hub/package.json
+  s_91c597c7193a8c::t_0e9e83674e47c2 3
+packages/@n8n/cli/package.json
+  s_91c597c7193a8c::t_4154bd29745a58 3
+packages/@n8n/client-oauth2/package.json
+  s_91c597c7193a8c::t_2d19076751a06f 3
+packages/@n8n/computer-use/package.json
+  s_91c597c7193a8c::t_c000688ab8595d 3
+packages/@n8n/config/package.json
+  s_91c597c7193a8c::t_16633bb74ff3b1 3
+packages/@n8n/constants/package.json
+  s_91c597c7193a8c::t_afc140dab46b94 3
+packages/@n8n/create-node/package.json
+  s_91c597c7193a8c::t_0ada2e22afa67f 3
+packages/@n8n/db/package.json
+  s_91c597c7193a8c::t_7fd81d71e37655 3
+packages/@n8n/db/src/migrations/common/1786666615644-AddAgentRevisionColumn.ts
+  s_91c597c7193a8c::t_eba6b0b976a231 1-19
+packages/@n8n/decorators/package.json
+  s_91c597c7193a8c::t_7cdde84429d168 3
+packages/@n8n/engine/package.json
+  s_91c597c7193a8c::t_9f2767d58354c6 3
+packages/@n8n/expression-runtime/package.json
+  s_91c597c7193a8c::t_1dc1a3731025c4 3
+packages/@n8n/instance-ai/package.json
+  s_91c597c7193a8c::t_e75d9487570edf 3
+packages/@n8n/mcp-apps/package.json
+  s_91c597c7193a8c::t_8ada2824bbbeb8 3
+packages/@n8n/mcp-browser/package.json
+  s_91c597c7193a8c::t_789896fa9a6f80 3
+packages/@n8n/node-cli/package.json
+  s_91c597c7193a8c::t_27ff60401e18a6 3
+packages/@n8n/node-engine-compatibility/package.json
+  s_91c597c7193a8c::t_c041c5aaebc637 3
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/__tests__/listSearch.test.ts
+  s_91c597c7193a8c::t_e931fc521b3fa7 33-34
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/listSearch.ts
+  s_91c597c7193a8c::t_104145fd33b9f9 1-4,84-88
+packages/@n8n/nodes-langchain/package.json
+  s_91c597c7193a8c::t_4e8c74147b961e 3
+packages/@n8n/permissions/package.json
+  s_91c597c7193a8c::t_0889d9bb0fd034 3
+packages/@n8n/scheduler/package.json
+  s_91c597c7193a8c::t_5009a712750fee 3
+packages/@n8n/task-runner/package.json
+  s_91c597c7193a8c::t_775cb1faee4384 3
+packages/@n8n/telemetry/package.json
+  s_91c597c7193a8c::t_3488d4af38c6ce 3
+packages/@n8n/typeorm/package.json
+  s_91c597c7193a8c::t_8fbfa3a1823a8a 3
+packages/@n8n/typescript-config/package.json
+  s_91c597c7193a8c::t_31004f76bdcb70 3
+packages/@n8n/utils/package.json
+  s_91c597c7193a8c::t_db1414de1fd157 4
+packages/@n8n/utils/src/number/bytes.test.ts
+  s_91c597c7193a8c::t_8f60efeb0005fc 1-30
+packages/@n8n/vitest-config/package.json
+  s_91c597c7193a8c::t_5f46cfc17cf8f3 3
+packages/@n8n/workflow-sdk/package.json
+  s_91c597c7193a8c::t_1baa21b0f074b8 3
+packages/cli/package.json
+  s_91c597c7193a8c::t_63211766e50b0b 3
+packages/cli/src/controllers/__tests__/role.controller.test.ts
+  s_91c597c7193a8c::t_ae167eb0b61123 64-68,88-92,115-119,142-146
+packages/cli/src/controllers/role.controller.ts
+  s_91c597c7193a8c::t_a40e6f99fa5a8c 17,30,33,66-69,81-84,119-122,139-143,146-148,160-163
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_91c597c7193a8c::t_2dde90049b4013 72,283,340,359,385,412,450,519,576,628,668,711,748,810,828-842,1000
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_91c597c7193a8c::t_3da9734c02023c 54,92,151
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_91c597c7193a8c::t_4e20e7dd0166e0 6,57,128-129,513-519,766-879
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_91c597c7193a8c::t_b554a2e080080d 51,74,112,118,154-155,169,182,198,214,232,289,325,331,388,432
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_91c597c7193a8c::t_268be190f87344 183,240-241,321,323-324
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_91c597c7193a8c::t_1233af52c473eb 37,292
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_91c597c7193a8c::t_ab30dba48566b3 23,75,127
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_91c597c7193a8c::t_8fdeed68c28d21 8,49,121-122,158-161,163-165,167-206,209-215,299-303,305-319,322-323,475,527
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_91c597c7193a8c::t_367aa861ee2752 19,118,177,223
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_91c597c7193a8c::t_da995afc4f06b0 34,161,232,276
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_91c597c7193a8c::t_0bab3855a44ab9 60-70
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_91c597c7193a8c::t_01e52aa2daf882 3-10,332-396
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-cleanup.service.test.ts
+  s_91c597c7193a8c::t_8e59ab5a65d5e5 30,72,91,111-161,189
+packages/cli/src/modules/agents/sub-agents/sub-agent-cleanup.service.ts
+  s_91c597c7193a8c::t_17439de4de8788 5,29-31,33-41,44,55-63,65,67-71
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_91c597c7193a8c::t_204c34dc0fdcef 3-4,6-9,21-38
+packages/cli/src/modules/data-table/data-table-size-validator.service.ts
+  s_91c597c7193a8c::t_b61916e34150ae 3
+packages/cli/src/modules/data-table/multer-upload-middleware.ts
+  s_91c597c7193a8c::t_7fc60d7e76dee3 5
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-connection.controller.test.ts
+  s_91c597c7193a8c::t_9965e52a0bdec5 171-191
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_91c597c7193a8c::t_3ec6231a534cb1 27-32,35,44,141-142,500,534-538,570-578,598-611,643,656-661,670,684-689,702-798
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-connection.controller.ts
+  s_91c597c7193a8c::t_3b80ffc1ca3917 3,99-104,111
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_91c597c7193a8c::t_4790236e7e4a70 3,5,142-148,263,269-293,306,319-335,343,349-353
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_91c597c7193a8c::t_1318fbb2366903 210
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_91c597c7193a8c::t_a44bce35170afc 3,20,34,136-140,173-178,188-229
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_91c597c7193a8c::t_bdffd37401793c 197-209
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_91c597c7193a8c::t_2f8be31d308d45 15,155
+packages/cli/src/public-api/v1/openapi-gen/__tests__/request-body-schema-parity.test.ts
+  s_91c597c7193a8c::t_b19c10ec9d874c 1-41
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_91c597c7193a8c::t_d11e177bd126cd 8,11,22-23,144-162
+packages/cli/src/push/index.ts
+  s_91c597c7193a8c::t_01f36cae1fd71d 6
+packages/cli/src/services/__tests__/role-authorization.test.ts
+  s_91c597c7193a8c::t_4ab6de6563821d 12-14,16-21,23-25,27-32,35,38-74
+packages/cli/src/services/role-authorization.ts
+  s_91c597c7193a8c::t_cf13c6a934293a 2,8-9,11-49
+packages/cli/src/services/role.service.ts
+  s_91c597c7193a8c::t_52f0678bd8d820 144-152,183-190
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_91c597c7193a8c::t_99306fe4eb6a9c 18,25,1165-1169,1206-1210
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_91c597c7193a8c::t_2217ce73752f34 9,19,30-40,62-151
+packages/cli/test/integration/public-api/roles.test.ts
+  s_91c597c7193a8c::t_5a2b4e2f9411ef 6-11,32-48,345-362,597-611,739-981
+packages/cli/test/integration/services/role.service.test.ts
+  s_91c597c7193a8c::t_cb79e98b1203c8 1275-1278,1307-1310,1335-1340,1354-1359,1385-1390,1418-1423,1448-1452,1478-1482,1504-1508,1522-1528,1543-1547,1590-1595,1609-1612
+packages/core/package.json
+  s_91c597c7193a8c::t_71c5a9d5f9ca32 3
+packages/frontend/@n8n/chat/package.json
+  s_91c597c7193a8c::t_d98f61432d1140 3
+packages/frontend/@n8n/composables/package.json
+  s_91c597c7193a8c::t_881858e44cd0d9 4
+packages/frontend/@n8n/design-system/package.json
+  s_91c597c7193a8c::t_05da1124256128 4
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_91c597c7193a8c::t_fec2fd26bce3d9 4
+packages/frontend/@n8n/frontend-utils/package.json
+  s_91c597c7193a8c::t_5dfd755a895731 4
+packages/frontend/@n8n/i18n/package.json
+  s_91c597c7193a8c::t_25b99c8cff94f3 4
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_91c597c7193a8c::t_2a320c7c7baeb3 1533-1534,2273-2292,3003,5170,6795,6805-6809,8164-8165
+packages/frontend/@n8n/rest-api-client/package.json
+  s_91c597c7193a8c::t_540a58d60d59b0 4
+packages/frontend/@n8n/stores/package.json
+  s_91c597c7193a8c::t_26474de94459ff 4
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.test.ts
+  s_91c597c7193a8c::t_c5a678cc97f80a 8,249-346
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  s_91c597c7193a8c::t_803cf131aceb78 34-75,82-83,87,91,133,153
+packages/frontend/@n8n/stores/src/types/pageRedirection.ts
+  s_91c597c7193a8c::t_b7805d262ecab3 43-44,75-76
+packages/frontend/editor-ui/package.json
+  s_91c597c7193a8c::t_53ae2a10913cf7 3
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_91c597c7193a8c::t_d2bf5ea3c7a8c3 17-18,27-30,54,215-233
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_91c597c7193a8c::t_fdff66a5f3d9b8 73,300-303
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_91c597c7193a8c::t_842290f26f6a12 130,496-498
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.test.ts
+  s_91c597c7193a8c::t_86f1227547abd1 1-38
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  s_91c597c7193a8c::t_22ad2efa179a8b 20,37-42
+packages/frontend/editor-ui/src/app/composables/useAiGatewayTopUp.test.ts
+  s_91c597c7193a8c::t_3695c6bca96b50 1-127
+packages/frontend/editor-ui/src/app/composables/useAiGatewayTopUp.ts
+  s_91c597c7193a8c::t_f5b1707364318a 1-57
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.test.ts
+  s_91c597c7193a8c::t_e06814a21ffe86 1-105
+packages/frontend/editor-ui/src/app/composables/useCanvasOnlyExternalLinks.ts
+  s_91c597c7193a8c::t_8b3ae6b137d6fb 1-10,12-13,15-45
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.test.ts
+  s_91c597c7193a8c::t_038b9016ff53a4 868-879
+packages/frontend/editor-ui/src/app/composables/useNodeExecution.ts
+  s_91c597c7193a8c::t_8d7d20b9a91f63 442-443,445
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_91c597c7193a8c::t_0058ccebe3919d 8,32
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.test.ts
+  s_91c597c7193a8c::t_c096a7afb90a42 20-23,1436-1460
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.ts
+  s_91c597c7193a8c::t_4454375ca1e8ad 25,565,568-576
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  s_91c597c7193a8c::t_3a74152e0e9aef 4,7-9,16-19,26-31,43-48,50,55-98
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_91c597c7193a8c::t_34f94814f7bf49 4,22,63-65,69-73,216-222
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_91c597c7193a8c::t_c7d1e7d51d4074 28-29
+packages/frontend/editor-ui/src/app/utils/typesUtils.test.ts
+  s_91c597c7193a8c::t_2c3d0ee06d1419 1
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_91c597c7193a8c::t_629ce599ba62d9 471,482,2120-2279
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_91c597c7193a8c::t_42c70a5e76f9a8 431,433-434,496,511
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_91c597c7193a8c::t_f0fe165961fd9e 139-156,317-375,406,425
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_91c597c7193a8c::t_bd1132c51fbf3c 135-176
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_91c597c7193a8c::t_eb06d100929ae4 1-106
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_91c597c7193a8c::t_b0a163fc77d9b9 13,15,702-886
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_91c597c7193a8c::t_b1c89a150979f2 79-110,146-208
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_91c597c7193a8c::t_6c470e93821861 7
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_91c597c7193a8c::t_2e595a9ef0cda0 36-42,557,578,598,615,633,690-691
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_91c597c7193a8c::t_c4b1731b6b6c3e 30,33,206-216,218-221,315-322,362-369,388-389,458-461
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_91c597c7193a8c::t_2f344d1ba7769b 53-59,66,78-83,85,89,92-95,100,102-106,157,165-173,195-220
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_91c597c7193a8c::t_3a16b6f0bdf23b 31-69,71-80,82-87,95-102
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_91c597c7193a8c::t_06218f27b8f4c8 1345-1359,1379-1385,1393-1396,1400-1414
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.test.ts
+  s_91c597c7193a8c::t_f8032393c7a773 1-61
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.vue
+  s_91c597c7193a8c::t_23c9a8a57a5056 47,99-104
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/alibaba.svg
+  s_91c597c7193a8c::t_2f83f462693afb 1
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/anthropic.svg
+  s_91c597c7193a8c::t_223c8529268a54 1
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/brave-search.svg
+  s_91c597c7193a8c::t_d370a423e18946 1
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/browserbase.svg
+  s_91c597c7193a8c::t_9c355de2be6a57 1-6
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/firecrawl.svg
+  s_91c597c7193a8c::t_34e681f54ceca7 1-33
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/gemini.svg
+  s_91c597c7193a8c::t_5335176694276e 1
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/llamaindex.svg
+  s_91c597c7193a8c::t_a36e5c94f904b5 1-12
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/minimax.svg
+  s_91c597c7193a8c::t_2a1af2253ab678 1-10
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/moonshot.svg
+  s_91c597c7193a8c::t_1f4a86f890f15c 1-4
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/openai.svg
+  s_91c597c7193a8c::t_3abbf3b5c2cff2 1-3
+packages/frontend/editor-ui/src/features/ai/gateway/assets/service-icons/pdfco.svg
+  s_91c597c7193a8c::t_958dd3f1595dfd 1-12
+packages/frontend/editor-ui/src/features/ai/gateway/components/AiGatewayTopUpModal.test.ts
+  s_91c597c7193a8c::t_2456a1d80f5cd4 2,4,7-8,10-17,19-22,25-47,50-58,61-68,72-73,76-137,140-146,149-155,158-208
+packages/frontend/editor-ui/src/features/ai/gateway/components/AiGatewayTopUpModal.vue
+  s_91c597c7193a8c::t_96bb1711b3af90 2-6,8-164,168-175,177-178,180-200,203-204,208,211-212,215-218,221-228,231-238,241,243,246-249
+packages/frontend/editor-ui/src/features/ai/gateway/views/SettingsAiGatewayView.test.ts
+  s_91c597c7193a8c::t_86ad1710efa6c2 100-104
+packages/frontend/editor-ui/src/features/ai/gateway/views/SettingsAiGatewayView.vue
+  s_91c597c7193a8c::t_82486b116ce589 19-20,26,189
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_91c597c7193a8c::t_964f8b1943dba3 751,772-808,887,905-908
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiMcp.store.test.ts
+  s_91c597c7193a8c::t_72690e8714a40a 3-7,16,20,50,56,108-120,127-128,130,134-173,192,205-207,209-211,216-243,281-349,351-359,373-377,381-385,387,395,397,401-404,428
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_91c597c7193a8c::t_2b05f7eb040c6e 562-578
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionRow.vue
+  s_91c597c7193a8c::t_ea410479235089 3,7,10-11,69,99-104,106
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_91c597c7193a8c::t_bd05ff7873aff1 18,69,193
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_91c597c7193a8c::t_0b550cfd68f8f4 509-512,517,524-527,533
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMcpConnectCard.vue
+  s_91c597c7193a8c::t_0af3ae28a08790 12,46,86,97-101,107,116-119,128,168,201
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionRow.test.ts
+  s_91c597c7193a8c::t_13de8154e9abbb 51-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_91c597c7193a8c::t_6dcec611bf5496 102,112,114-118,240,254-278
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMcpConnectCard.test.ts
+  s_91c597c7193a8c::t_6a41238f8bd4a6 107,115
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_91c597c7193a8c::t_317c9203407ae7 14,24,106-108,122,159,181,192,201,256,287-291
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_91c597c7193a8c::t_f02713ca4dcc1b 36-42,58,147,155,166,171-172,174,222,281-303
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.test.ts
+  s_91c597c7193a8c::t_050ed2288cc4c0 10,55,62
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.mcp.api.ts
+  s_91c597c7193a8c::t_200585c48e5baa 5,36,44-49
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.store.ts
+  s_91c597c7193a8c::t_f24ae72e7064bf 6,8,20,29-32,38,45,48,50,53,67-71,75-78,109-133,135-165,172,177,179-182,184,186-188,197-204,207-210,220,223-228,231,233,272-273,284
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_91c597c7193a8c::t_1d0c87c3730502 292,310-323,332-333
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_91c597c7193a8c::t_f5626ee4e7c7ba 3,28,1773-1778
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_91c597c7193a8c::t_b771d77c5b7f62 32,61,166,896,898
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_91c597c7193a8c::t_79b486a96e98d5 14
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHeader.vue
+  s_91c597c7193a8c::t_99f6a5d14e581a 2-4,10-11,25-30,51-60,96-99
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.vue
+  s_91c597c7193a8c::t_c34804690d7c39 46,110-111
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.test.ts
+  s_91c597c7193a8c::t_2738199bdcaca9 120-126
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_91c597c7193a8c::t_6cfb105a46102a 215-224
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_91c597c7193a8c::t_ffe4f4d95f75bb 269-272,274,276-294,302-303
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  s_91c597c7193a8c::t_abf6c7b5639176 3,6,55-64,110-117,119,130-139,141,143-144,147,237-238,242,245-248,262-265
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_91c597c7193a8c::t_b0f38d939ea310 3,8-12,32-33,36-38,69-73,91,112,169-170,176-183,209-216,218-227,262-265,333,350-353
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_91c597c7193a8c::t_239b12adf949ae 14,124,210,251,286,312
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_91c597c7193a8c::t_a57d1b0371ec26 22,136,138-140
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/DefaultDetailBody.test.ts
+  s_91c597c7193a8c::t_28354ef75ce28d 23,31,39
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_91c597c7193a8c::t_fbe2330b79fbef 32,39,66-68,75-102
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_91c597c7193a8c::t_d557ac614cbc70 45,54,60,68,113-120,132-143
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_91c597c7193a8c::t_774faed18c63da 152-170,216-220,293,404-408
+packages/frontend/editor-ui/src/features/shared/toolsConnection/fixtures.ts
+  s_91c597c7193a8c::t_742177556a6cfc 30,112,132,152,166,180,190,202,214,229,240,256,268,277,286,295,303,313,369
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_91c597c7193a8c::t_96d9145362f307 21-31,37
+packages/nodes-base/nodes/Files/ExtractFromFile/actions/moveTo.operation.ts
+  s_91c597c7193a8c::t_b9718168f8a910 22-23,156
+packages/nodes-base/nodes/Files/ExtractFromFile/actions/parseIcsCalendar.ts
+  s_91c597c7193a8c::t_2e5308dbd037a9 1-11
+packages/nodes-base/nodes/Files/ExtractFromFile/test/parseIcsCalendar.test.ts
+  s_91c597c7193a8c::t_803f6e74320d2a 1-45
+packages/nodes-base/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.ts
+  s_91c597c7193a8c::t_ec7d76d727daab 5,18,23
+packages/nodes-base/nodes/Microsoft/SharePoint/test/MicrosoftSharePoint.node.test.ts
+  s_91c597c7193a8c::t_57ef347a0a20ec 5,8-9,20-29,40,43
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_91c597c7193a8c::t_c133ca556f017f 18-20
+packages/nodes-base/package.json
+  s_91c597c7193a8c::t_e9fdb0a1e17c31 3
+packages/workflow/package.json
+  s_91c597c7193a8c::t_6b6a7557c29533 3
+scripts/licenses/license-overrides.json
+  s_91c597c7193a8c::t_4d5928d1166cef 74,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "140f8d71fc5c15278a9c94f12e477d2d7257ca5e",
+  "prompts": {},
+  "sessions": {
+    "s_91c597c7193a8c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7122e3e1-00de-42c5-8307-a90549fc03e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

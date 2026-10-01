@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_02fa5a53ff6b07::t_07aa330e903e3b 208,267-271,273-284,560
+  s_02fa5a53ff6b07::t_3e7106238c37ae 562
+  s_02fa5a53ff6b07::t_238b57286dbde5 425-432,436-437,439,445-454
+  s_02fa5a53ff6b07::t_616a176c081bd9 559,561
+packages/cli/src/modules/agents/agent-knowledge-sandbox.service.ts
+  s_02fa5a53ff6b07::t_2b461b1533f87d 20,69,118-121
+  s_02fa5a53ff6b07::t_143649ec2ecd92 411-414,421-422,428,440,444,459,497-499
+  s_02fa5a53ff6b07::t_ca6b44ccd388a9 214-222,224-225,234,239
+  s_02fa5a53ff6b07::t_0e7b677800d90d 703-707,787-788
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_02fa5a53ff6b07::t_a6a49432d8d3a7 181
+packages/@n8n/agents/src/workspace/sandbox/n8n-sandbox-sandbox.ts
+  s_02fa5a53ff6b07::t_5b7d9e79ce000b 63,73,160-162,166-168
+docs/generated/postgres-schema/public.agents.md
+  s_02fa5a53ff6b07::t_c8b6d0dc2ca459 10
+packages/@n8n/agents/src/__tests__/workspace/sandbox/n8n-sandbox-sandbox.test.ts
+  s_02fa5a53ff6b07::t_ad8daee72baf15 121,144-147,150,155-157,160-167,170-171,174-178
+docs/generated/sqlite-schema/agents.md
+  s_02fa5a53ff6b07::t_fcfcc06f312f41 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2ce77ed3794c312e11f13472358b659e03c98f17",
+  "prompts": {},
+  "sessions": {
+    "s_02fa5a53ff6b07": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4b9ea011-0576-4291-8fcc-58ead87cde9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ce38e707b3774d::t_a1e9dcb9056a31 10-15,18-21,24,32-38,52,54-55,57,63-69,74,79-80,83-86,92,100-105,107-110,121-135,141-142,144-152,48
+  s_ce38e707b3774d::t_eff4d0a2ab64cc 39,40-41,46-47
+  s_ce38e707b3774d::t_eeadd538247e7f 7
+  s_ce38e707b3774d::t_4ab77befd0a255 42-45
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_ce38e707b3774d::t_7a7747a7bd8c23 1,7-9,13-18,21-34,12
+  s_ce38e707b3774d::t_31c08b88ffda7f 2-6,10-11,19-20
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ce38e707b3774d::t_96e5e17b7c9139 180
+  s_ce38e707b3774d::t_71591bb210a311 280,282
+  s_ce38e707b3774d::t_4910991a43c4fa 338
+  s_ce38e707b3774d::t_b9bb95fc8a6699 85,287,337
+  s_ce38e707b3774d::t_7759a3586913cf 279
+  s_ce38e707b3774d::t_d1c12a9b0b8240 45-46,59,281
+  s_ce38e707b3774d::t_677d8d91eb70b2 104,122,196,210,307,319,336
+  s_ce38e707b3774d::t_eeadd538247e7f 172-179
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ce38e707b3774d::t_ea4d57aaf5cdf6 9,11,18,24,48,50,54,62,68,72,79,81,86,94,99,103,110,112-114,116-117,124,129-131,133-134,178,180-182,184-185,187,193,196-197,203,205,215,217,228,231,237,240,244,246-250,148,150-153,158,165,167-169,171,175
+  s_ce38e707b3774d::t_677d8d91eb70b2 10,46,192
+  s_ce38e707b3774d::t_4ab77befd0a255 53,71,85,102,115,132,143-147,149,154-157,159-164,166,170,172-174,176,183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97fe951001b8939c4c45914e69deeea33389eb4d",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

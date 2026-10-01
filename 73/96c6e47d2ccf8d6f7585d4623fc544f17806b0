@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_e959c0f919a097::t_a7e774ff7a7abe 90
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_e959c0f919a097::t_a7e774ff7a7abe 1063
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_e959c0f919a097::t_6f41cf43069623 520-521
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7396c6e47d2ccf8d6f7585d4623fc544f17806b0",
+  "prompts": {},
+  "sessions": {
+    "s_e959c0f919a097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "455dded0-7286-47cb-8206-f337fa2786c0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

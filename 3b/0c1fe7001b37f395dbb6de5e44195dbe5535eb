@@ -1,0 +1,25 @@
+packages/@n8n/db/src/migrations/common/1785843640527-CreateWorkflowReviewActivityTablesAndBaseline.ts
+  s_cc18b3a8e9e1de::t_2c096aeec58eac 151-156
+  s_cc18b3a8e9e1de::t_7e6f2398cc3e61 12-14
+  s_cc18b3a8e9e1de::t_79c5322cc9e6f9 143
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables-and-baseline.test.ts
+  s_cc18b3a8e9e1de::t_9ee471ad6af008 20
+  s_cc18b3a8e9e1de::t_28926f21ec3ccd 58-83
+  s_cc18b3a8e9e1de::t_9a895e2cf62331 400-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b0c1fe7001b37f395dbb6de5e44195dbe5535eb",
+  "prompts": {},
+  "sessions": {
+    "s_cc18b3a8e9e1de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fcc2b1b0-d1c8-445a-b611-e870d0582ea1",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

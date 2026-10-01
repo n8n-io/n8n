@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9537b4b5347bce::t_1e21d2c8df53d7 515-517,530-535
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9537b4b5347bce::t_6586fb52cbf0d8 196-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f96c75db0912216642e48606118090c2d7a9d68c",
+  "prompts": {},
+  "sessions": {
+    "s_9537b4b5347bce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8348ce0-c711-476f-8dc5-fcb69cfde379",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

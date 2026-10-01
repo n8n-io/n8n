@@ -1,0 +1,32 @@
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  s_5317178a6d1ce4::t_8ee28f9df2d058 10-14,19-20,26-32
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry.service.test.ts
+  s_5317178a6d1ce4::t_8ee28f9df2d058 187-188,193,196,212,220,233,252,276,287,290,296-304
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry.module.test.ts
+  s_5317178a6d1ce4::t_8ee28f9df2d058 1-31
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_5317178a6d1ce4::t_434fafcb954b4d 9-10,28-33,37
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_5317178a6d1ce4::t_434fafcb954b4d 2,99-101,103-113,115,118-121,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f336447786257d53a0f4a2de4f738660a509b935",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5317178a6d1ce4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b96bef0-e5ad-4052-b5ac-3210f52ea6e2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

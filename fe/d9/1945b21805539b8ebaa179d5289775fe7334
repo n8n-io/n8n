@@ -1,0 +1,43 @@
+packages/cli/src/modules/promotions/models/github-api.ts
+  s_ebfc1258ee8a9b::t_5cc3dc81550e28 44,121,153,159,161,189,191,207,210,223,228-229,234-235
+  s_ebfc1258ee8a9b::t_b674895dc7dec9 177
+  s_ebfc1258ee8a9b::t_487e3367ddcf52 1-43,45-57,59-107,112-120,122-151,154-158,160,162-176,178-188,190,192-206,208-209,211-222,224-227,230-233,236-248
+  ai_agent 58,108-111,152
+packages/cli/src/modules/promotions/models/package-files.ts
+  s_ebfc1258ee8a9b::t_0e4da786d8e361 1-3,8-58
+  ai_agent 4-7
+packages/cli/src/modules/promotions/trackers/github-pr.tracker.ts
+  s_ebfc1258ee8a9b::t_4b2c6456bc526e 1-45,47-49,51-72,74-79,81-84,86-120
+  s_ebfc1258ee8a9b::t_65eaa5acbad279 46,50
+  s_ebfc1258ee8a9b::t_b7d3c64aa21f28 73,80,85
+packages/cli/src/modules/promotions/models/github-review.model.ts
+  s_ebfc1258ee8a9b::t_cb8fc97d8bd0ae 304
+  s_ebfc1258ee8a9b::t_ff77071a78252c 1-144,146-166,168-303,305-403
+  ai_agent 167
+  s_ebfc1258ee8a9b::t_d3edf080860841 145
+packages/cli/src/modules/promotions/promotions.module.ts
+  s_ebfc1258ee8a9b::t_f026694cf50e68 12,18,22-24
+packages/cli/src/modules/promotions/promotions.config.ts
+  s_ebfc1258ee8a9b::t_69d3760a6babba 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fed91945b21805539b8ebaa179d5289775fe7334",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ebfc1258ee8a9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "956a969f-1d36-4952-b1e0-0fd3faee1e7c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/cli/src/modules/instance-reporting/database/entities/instance-monitoring-report.ts
+  s_cf6a84827c1adc::t_4d3d8f5e3b4681 34-37
+  s_cf6a84827c1adc::t_b4d5a0ce414bc5 1-2
+packages/cli/src/modules/instance-reporting/database/repositories/instance-monitoring-report.repository.ts
+  s_cf6a84827c1adc::t_52eedd49063c40 3
+  s_cf6a84827c1adc::t_83a2bd1d2f7b15 60-62
+docs/generated/postgres-schema/README.md
+  s_cf6a84827c1adc::t_7eb8a4487d4a1f 1194
+docs/generated/postgres-schema/public.instance_monitoring_report.md
+  s_cf6a84827c1adc::t_57ec6195038bff 11,47
+docs/generated/sqlite-schema/README.md
+  s_cf6a84827c1adc::t_d86c41c6616880 1181
+docs/generated/sqlite-schema/instance_monitoring_report.md
+  s_cf6a84827c1adc::t_b03221db2c1594 9,22,53
+packages/@n8n/db/src/migrations/common/1788445119184-CreateInstanceMonitoringReportTable.ts
+  s_cf6a84827c1adc::t_9f2486f53e1b2a 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3a80076889d0d49a81b9937e02de9f21810829fc",
+  "prompts": {},
+  "sessions": {
+    "s_cf6a84827c1adc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda02558-b539-497d-92c6-7b0ddb426b82",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_b546d99301cc3f::t_5592923909fef9 50-54
+  s_b546d99301cc3f::t_100c32b118ce83 4-5,42-49,55,63-67,115,120-121,124-126,129-130,134,140,145,149-150,153-154,158,161,163-164,167,169,172-174,177-184,188
+  s_b546d99301cc3f::t_390128cd32fe06 194,197,201,206
+packages/@n8n/instance-ai/src/types.ts
+  s_b546d99301cc3f::t_cb04515c575452 983
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_b546d99301cc3f::t_31a93bf7e3eab0 358-359
+  s_b546d99301cc3f::t_2e287dd63d1965 23,37,47
+  s_b546d99301cc3f::t_cebd7bd276f63c 600
+  s_b546d99301cc3f::t_713d8be5d08559 267
+  s_b546d99301cc3f::t_87864e9e07a303 640,648-649,654-655,675,701,715-716
+  s_b546d99301cc3f::t_5c4b3ba1393797 839-844,869-874,880-881,884,889-893,895,897,899-986,988-992,994,997,999-1004,1011,1013-1015,1017-1019,1023,1025,1029,1035,1037,1046-1054,1058,1064,1067,1071-1072,1086,1088,1092,1099-1103,1109,1115-1119,1123-1124,1150-1154,1157,1159-1160,1162,1165-1168,1170-1171,1174-1177,1179-1188,1190,1192-1197
+  s_b546d99301cc3f::t_61bf585608cd5a 739-744,758,785-790,808
+  s_b546d99301cc3f::t_86ab7c472c6fdf 1169
+  s_b546d99301cc3f::t_9d79c3c1fbd911 386
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_b546d99301cc3f::t_38c77dd4cff028 166,170-175,177-178,181-182,188-192,209-215
+  s_b546d99301cc3f::t_a831ea4b69925e 564
+  s_b546d99301cc3f::t_fec4fc2c2f7e04 236-241
+  s_b546d99301cc3f::t_7cf9cc3175e27e 744-749,754-776
+  s_b546d99301cc3f::t_d787d632a01830 860-865,872-873
+  s_b546d99301cc3f::t_00401dbe2e959f 681-684,701-704,710-713,716-717,725-743,750-753,777-787,790,792-818,836
+  s_b546d99301cc3f::t_b40f82cc607263 374-384
+  s_b546d99301cc3f::t_55d63b2d7ca7a1 688-691,693-696,699-700
+  s_b546d99301cc3f::t_2b7dff296ea45a 705
+  s_b546d99301cc3f::t_e6fe0180d93854 788-789,791
+  s_b546d99301cc3f::t_3b1ac2b2100348 821-822,830
+  s_b546d99301cc3f::t_7d8d8d390a88f4 42-43
+  s_b546d99301cc3f::t_5bbb44db34578f 706
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_b546d99301cc3f::t_495f9ab1040b39 114-125,128-134
+  s_b546d99301cc3f::t_6ed37e9ae82d40 39-40
+  s_b546d99301cc3f::t_362bbd64766720 55-56
+  s_b546d99301cc3f::t_c63dfe76aa021b 3-7,26,30-31,36-38,41-44,46-47,54,57,110-113,126-127,135,151,153,155,157,166-167
+  s_b546d99301cc3f::t_b5db036605131c 27-29
+  s_b546d99301cc3f::t_e92fcbf2b45e5f 45
+  s_b546d99301cc3f::t_fca283739b5156 58
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_b546d99301cc3f::t_7bf54593dd8eca 441-442
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.target-registry.test.ts
+  s_b546d99301cc3f::t_7008bfa7cb7df9 1-46,48-50,54-56,61-68,70-222
+  s_b546d99301cc3f::t_0d2e022804bcd9 47,51-53,57-60,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4b5be49cad6803f6e56a7ffe1c01739f196784a1",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b546d99301cc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ee68d24-2003-4fd5-9ff6-1b4cc25f1099",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

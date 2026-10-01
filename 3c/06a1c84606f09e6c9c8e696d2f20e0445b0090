@@ -1,0 +1,34 @@
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_20c4b2269a28ff::t_d0eaf52ec68024 843-854,856-859,862-865,867
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_20c4b2269a28ff::t_bd1514a4d04cbc 209
+  s_20c4b2269a28ff::t_b49fe4616e7ca1 217,249
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_20c4b2269a28ff::t_6893844b6a4c7d 228,270,290
+packages/cli/test/integration/public-api/insights.test.ts
+  s_20c4b2269a28ff::t_c8b94a9e0504ce 129
+  s_20c4b2269a28ff::t_4bb3648ce815b0 209,228,246
+  s_20c4b2269a28ff::t_22cdfd33a43560 285
+  s_20c4b2269a28ff::t_39ff59fae84cad 177
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsSummary.vue
+  s_20c4b2269a28ff::t_a7fa3d2d98caba 10
+  s_20c4b2269a28ff::t_4976c76db2e43e 66
+  s_20c4b2269a28ff::t_8bbcf4a767b848 46
+  s_20c4b2269a28ff::t_dfe48109fb1799 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3c06a1c84606f09e6c9c8e696d2f20e0445b0090",
+  "prompts": {},
+  "sessions": {
+    "s_20c4b2269a28ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d2a59125-6a44-4d0f-a534-02f3effb3120",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

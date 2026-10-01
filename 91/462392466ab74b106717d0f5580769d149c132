@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 16,885,1035
+packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 317-319
+  s_6ce85d4a1f6067::t_187c7d9a645839 282,309,316
+  s_6ce85d4a1f6067::t_6e2074061bcbf1 320-321
+packages/frontend/editor-ui/src/app/utils/fileUtils.test.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 30,60-65
+  s_6ce85d4a1f6067::t_c6c67eafc12ab2 66-67
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 19-24,29,32,36
+packages/frontend/editor-ui/src/features/ai/shared/composables/useFileDrop.test.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 7-33
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-workflow.service.test.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 1092-1110
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.utils.test.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 5,11,13,15-17,51-54
+  s_6ce85d4a1f6067::t_4e1705f4f207b3 55-57
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.attachment.service.test.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 43-53
+packages/cli/src/modules/chat-hub/chat-hub.attachment.service.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 39,199
+packages/frontend/editor-ui/src/features/ai/shared/utils/fileAccept.ts
+  s_6ce85d4a1f6067::t_25b0fe737858f5 5-8,23,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "91462392466ab74b106717d0f5580769d149c132",
+  "prompts": {},
+  "sessions": {
+    "s_6ce85d4a1f6067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4c4-d4ab-7d52-b983-c70679bb264f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

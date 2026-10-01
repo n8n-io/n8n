@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_8c0bb2d06aee91::t_00c5fd68630905 39
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_8c0bb2d06aee91::t_44bbb0319e702b 28-37
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_8c0bb2d06aee91::t_c0d45febb4b2fc 289
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_8c0bb2d06aee91::t_070b99e546e153 136-143
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_8c0bb2d06aee91::t_6a8b5cf723ed8d 202,204,209,211-213,222-223
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_8c0bb2d06aee91::t_abc82d2876b987 643-645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3bbe3c06c6823c35df4c6275529141588404568",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

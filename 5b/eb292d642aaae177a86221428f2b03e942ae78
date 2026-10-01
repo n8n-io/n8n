@@ -1,0 +1,24 @@
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.test.ts
+  s_cf57910070a84e::t_215a763604d67c 349-409
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/task/get.json
+  s_cf57910070a84e::t_327525e8d17ddd 20-32,34,36-44,46-49,51-55
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.ts
+  s_cf57910070a84e::t_5651bf2d1575c3 229-234,250-252,254,257-266,268-269,285-288,293-298
+  s_cf57910070a84e::t_40a52b34c7296d 228,299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5beb292d642aaae177a86221428f2b03e942ae78",
+  "prompts": {},
+  "sessions": {
+    "s_cf57910070a84e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ba5b66-cd0c-4f03-94e4-21a6750a8e46",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

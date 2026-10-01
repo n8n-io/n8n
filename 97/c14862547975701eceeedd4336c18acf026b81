@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/utils/fix-with-assistant.ts
+  s_a3a1bb25f6cdb8::t_78890bb2be713d 191
+  s_a3a1bb25f6cdb8::t_a8ce45c46d8c17 143,156
+  s_a3a1bb25f6cdb8::t_7f2c40d9d3e0f8 13,188-189
+  s_a3a1bb25f6cdb8::t_65ca1dba2f5fac 38-72,74-77,88-90,121,124,133-140,146,148-150,154,157-182,190,203-204,208,210-214,217,221,224-231
+  s_a3a1bb25f6cdb8::t_dd3c2dbc453f4a 147,151-153
+  s_a3a1bb25f6cdb8::t_6dbcd437a6ba26 183-186
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a3a1bb25f6cdb8::t_a8ce45c46d8c17 327
+  s_a3a1bb25f6cdb8::t_6dbcd437a6ba26 337
+  s_a3a1bb25f6cdb8::t_84fff55f08f237 333-336
+  s_a3a1bb25f6cdb8::t_aee288e33d13b3 888
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/fix-with-assistant.test.ts
+  s_a3a1bb25f6cdb8::t_8d861e7aafb63a 1,59-74
+  s_a3a1bb25f6cdb8::t_a8ce45c46d8c17 19-20,306-308
+  s_a3a1bb25f6cdb8::t_6dbcd437a6ba26 331-336
+  s_a3a1bb25f6cdb8::t_cfae77e8b2c035 10-16,23-53,104-105,141,143-170,192,195-196,202,221,223-228,280,282-283,302,304-305,329,337-338,342,358,361-363
+  s_a3a1bb25f6cdb8::t_78890bb2be713d 232-254
+  s_a3a1bb25f6cdb8::t_7f2c40d9d3e0f8 2,75-103
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a3a1bb25f6cdb8::t_6dbcd437a6ba26 641
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "97c14862547975701eceeedd4336c18acf026b81",
+  "prompts": {},
+  "sessions": {
+    "s_a3a1bb25f6cdb8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fec4d-56b4-7281-b272-8e642a1691f9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.config.ts
+  s_7fdbd72f30016f::t_65de2019cf880c 1
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_7fdbd72f30016f::t_8e8d640ebdc130 25
+  s_7fdbd72f30016f::t_4172cc296e0f99 46,52,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3a373ce7595897df654d567ced3de572d3d9b97",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_7fdbd72f30016f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28864c62-85a9-4dda-8cc8-bfa466845d08",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

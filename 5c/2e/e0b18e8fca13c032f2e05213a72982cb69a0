@@ -1,0 +1,155 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_17f95be7845aae::t_a81608aea36bf8 214,431
+packages/frontend/editor-ui/src/features/shared/editors/components/InlineExpressionEditor/theme.ts
+  s_17f95be7845aae::t_a81608aea36bf8 24
+packages/@n8n/api-types/src/chat-hub.ts
+  s_17f95be7845aae::t_a81608aea36bf8 598-601
+packages/nodes-base/nodes/Salesforce/TaskDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 186,188-217,552,554-583
+packages/testing/playwright/tests/e2e/chat-hub/fixtures.ts
+  s_17f95be7845aae::t_a81608aea36bf8 4,18,47-54,78-100
+packages/@n8n/instance-ai/evaluations/__tests__/ci-metadata.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 94-104,139-150
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-123
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_17f95be7845aae::t_a81608aea36bf8 134-135,171
+packages/nodes-base/nodes/Salesforce/__test__/Salesforce.node.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 124-132,134-153,155,157-158,160-162,166-168,170-171,173-197,201-203,206-207,209-212,214,221,224,228-230,232-233,235,240-244,246-249,251-252,255-265,267-268,270-297,305,308,1375-1399,3397-3429
+packages/nodes-base/nodes/Salesforce/AccountDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 275,277-306,579,581-610,924,926-955
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_17f95be7845aae::t_a81608aea36bf8 149
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 289-312
+packages/@n8n/nodes-langchain/credentials/AnthropicApi.credentials.ts
+  s_17f95be7845aae::t_a81608aea36bf8 42-44,57
+.github/workflows/build-windows.yml
+  s_17f95be7845aae::t_a81608aea36bf8 40-44
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/TypeSelect.vue
+  s_17f95be7845aae::t_a81608aea36bf8 83-87
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_17f95be7845aae::t_a81608aea36bf8 8,26,174
+packages/@n8n/nodes-langchain/credentials/test/AnthropicApi.credentials.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 17-36
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.store.ts
+  s_17f95be7845aae::t_a81608aea36bf8 32,1127-1132,1595
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_17f95be7845aae::t_a81608aea36bf8 883
+packages/frontend/editor-ui/src/features/ndv/parameters/components/MultipleParameter.vue
+  s_17f95be7845aae::t_a81608aea36bf8 169
+packages/frontend/editor-ui/src/features/ndv/parameters/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue
+  s_17f95be7845aae::t_a81608aea36bf8 61
+packages/nodes-base/credentials/OpenAiApi.credentials.ts
+  s_17f95be7845aae::t_a81608aea36bf8 51-53,66
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_17f95be7845aae::t_a81608aea36bf8 207,415
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/ParameterOverrideSelectableList.vue
+  s_17f95be7845aae::t_a81608aea36bf8 72
+packages/nodes-base/nodes/Postgres/transport/index.ts
+  s_17f95be7845aae::t_a81608aea36bf8 43-62,135,141
+packages/nodes-base/nodes/Salesforce/AttachmentDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 132,134-163,230,232-261
+packages/nodes-base/nodes/Salesforce/CaseDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 174,176-205,407,409-438
+packages/nodes-base/utils/__tests__/connection-pool-manager.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 334-362
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.settings.controller.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-51
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.controller.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-54
+packages/nodes-base/nodes/Salesforce/__test__/GenericFunctions.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 14,843-873
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_17f95be7845aae::t_a81608aea36bf8 3195-3200
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_17f95be7845aae::t_a81608aea36bf8 383,499
+packages/frontend/editor-ui/src/features/ndv/parameters/components/InputTriple/InputTriple.vue
+  s_17f95be7845aae::t_a81608aea36bf8 15-16,91,170
+packages/nodes-base/nodes/Salesforce/GenericFunctions.ts
+  s_17f95be7845aae::t_a81608aea36bf8 54-67,101,123,180-194
+packages/testing/containers/services/proxy.ts
+  s_17f95be7845aae::t_a81608aea36bf8 262-298
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/index.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1
+packages/nodes-base/nodes/Postgres/test/transport/receive.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1,79-119
+packages/nodes-base/nodes/Salesforce/DocumentDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 89,91-120
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 105-232
+packages/core/src/observability/tracing/span-sampling.ts
+  s_17f95be7845aae::t_a81608aea36bf8 57-61,63,66-71
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.api.ts
+  s_17f95be7845aae::t_a81608aea36bf8 333-341
+.github/scripts/retry.mjs
+  s_17f95be7845aae::t_a81608aea36bf8 63-68,77-78
+packages/@n8n/db/src/migrations/common/1784000000038-SetChatHubEnabledFromUsage.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-62
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 15-21,27-30,71-77,80,84,113,117-121,127-143,154-156,173-198
+packages/cli/src/modules/chat-hub/chat-hub.settings.controller.ts
+  s_17f95be7845aae::t_a81608aea36bf8 5,8-11,14-15,26-36,68,73-85,94
+packages/@n8n/api-types/src/index.ts
+  s_17f95be7845aae::t_a81608aea36bf8 68
+packages/nodes-base/nodes/Salesforce/Salesforce.node.ts
+  s_17f95be7845aae::t_a81608aea36bf8 6-7,31,46-114,997-1022,1086-1090,1207-1211,1352-1356,1390-1394,1538-1542,1735-1739,1868-1872,1927-1931,1999-2003,2114-2118,2146-2150,2257-2261,2411-2415,2440-2444,2511-2515,2661-2665,2756-2760,2917-2921,2957-2961
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 21-35,39,43-64
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.store.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 4,428-461
+packages/nodes-base/credentials/test/OpenAiApi.credentials.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 17-35
+packages/nodes-base/nodes/Salesforce/ContactDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 386,388-417,751,753-782,1110,1112-1141
+packages/cli/src/credentials-helper.ts
+  s_17f95be7845aae::t_a81608aea36bf8 373-444,638-641,644
+packages/workflow/src/interfaces.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1724
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/TypeSelect.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 21-27
+packages/@n8n/instance-ai/evaluations/cli/ci-metadata.ts
+  s_17f95be7845aae::t_a81608aea36bf8 7-11,22-27,41-45
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/useInstanceAiBrowserUseExperiment.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-39
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_17f95be7845aae::t_a81608aea36bf8 13,35,43-47,49-51,55-57
+packages/nodes-base/utils/connection-pool-manager.ts
+  s_17f95be7845aae::t_a81608aea36bf8 104
+packages/nodes-base/nodes/Salesforce/OpportunityDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 270,272-301,495,497-526,802,804-833
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_17f95be7845aae::t_a81608aea36bf8 174
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocator.vue
+  s_17f95be7845aae::t_a81608aea36bf8 122
+packages/cli/test/migration/1784000000038-set-chat-hub-enabled-from-usage.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-140
+packages/cli/src/modules/chat-hub/chat-hub.settings.service.ts
+  s_17f95be7845aae::t_a81608aea36bf8 39-42
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.vue
+  s_17f95be7845aae::t_a81608aea36bf8 16,46-70,123,131-168,179-191
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_17f95be7845aae::t_a81608aea36bf8 53-58,64-67,120,282-293
+packages/nodes-base/nodes/Salesforce/LeadDescription.ts
+  s_17f95be7845aae::t_a81608aea36bf8 310,312-341,624,626-655,1014,1016-1045
+.github/workflows/test-evals-instance-ai.yml
+  s_17f95be7845aae::t_a81608aea36bf8 251-252
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/useInstanceAiBrowserUseExperiment.ts
+  s_17f95be7845aae::t_a81608aea36bf8 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c2ee0b18e8fca13c032f2e05213a72982cb69a0",
+  "prompts": {},
+  "sessions": {
+    "s_17f95be7845aae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be842455-fb42-4a82-b874-9558a3113383",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/settings/otel/otel.store.ts
+  s_e6e46c0663c897::t_5ed892835b825e 108
+  s_e6e46c0663c897::t_f1179907e74c65 31
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e6e46c0663c897::t_36b0ae10ff86c3 3294
+  s_e6e46c0663c897::t_536e6b7c19ecb3 3280-3283,3287-3288
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.ts
+  s_e6e46c0663c897::t_40b8b80d9165c3 37
+  s_e6e46c0663c897::t_ea66834d7cb176 4-5,8
+packages/frontend/editor-ui/src/features/settings/otel/SettingsOpenTelemetryView.vue
+  s_e6e46c0663c897::t_c383998e845df8 27
+  s_e6e46c0663c897::t_94b2b5d9d7858e 81-119
+  s_e6e46c0663c897::t_aac8283dc08aab 149
+  s_e6e46c0663c897::t_4f53f7df24b1fb 13-14
+  s_e6e46c0663c897::t_ba1bfa8d65554c 362
+  s_e6e46c0663c897::t_6ce30ebb49461a 480
+  s_e6e46c0663c897::t_7f29c1b0dc9cb8 414-441,444,452
+  s_e6e46c0663c897::t_70156cadf56124 555
+  s_e6e46c0663c897::t_0eecf6277c0de4 138
+packages/frontend/editor-ui/src/features/settings/otel/otel.utils.test.ts
+  s_e6e46c0663c897::t_f2780660e6f7f2 1-14
+packages/frontend/editor-ui/src/features/settings/otel/otel.api.test.ts
+  s_e6e46c0663c897::t_bba44950eb6b92 62
+  s_e6e46c0663c897::t_63fcf1e7015017 16
+packages/frontend/editor-ui/src/features/settings/otel/otel.store.test.ts
+  s_e6e46c0663c897::t_410ee0107f12f2 121-127
+  s_e6e46c0663c897::t_4be7bba76a023b 25
+  s_e6e46c0663c897::t_64c337b724a783 312,321-332
+packages/frontend/editor-ui/src/features/settings/otel/SettingsOpenTelemetryView.test.ts
+  s_e6e46c0663c897::t_9afbdd87fe50c9 53
+  s_e6e46c0663c897::t_2c2d79a24a2632 482-489,493-508,510-511,513-520,522-523,525-546,548-552,554-559
+  s_e6e46c0663c897::t_254580dca7f20b 88-94,96
+  s_e6e46c0663c897::t_0783f2916b63fb 315-319
+  s_e6e46c0663c897::t_4abec2c3c2221b 127
+  s_e6e46c0663c897::t_9aae2d993f984a 2,509,512,521,524,547,553
+  s_e6e46c0663c897::t_e4a600f4dad09d 95,97-98
+  s_e6e46c0663c897::t_bfd7c066341ba9 490-492
+packages/frontend/editor-ui/src/features/settings/otel/otel.constants.ts
+  s_e6e46c0663c897::t_6f1f13fbe28f31 14-21,25
+packages/frontend/editor-ui/src/features/settings/otel/otel.utils.ts
+  s_e6e46c0663c897::t_45ac391766bdf8 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42fe6d50a786ed1c510d347f0d8360e6e636e02c",
+  "prompts": {},
+  "sessions": {
+    "s_e6e46c0663c897": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a309780b-11f9-45a7-9027-d04b51797bac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Olivier de Jong <ocdejong@Oliviers-MacBook-Pro.local>"
+    }
+  }
+}

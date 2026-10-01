@@ -1,0 +1,23 @@
+packages/testing/playwright/README.md
+  s_2f8eada33084f0::t_e7fd35135845c9 215-218
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_2f8eada33084f0::t_476be9f8069fa4 146-148,162-176
+packages/testing/playwright/tests/e2e/workflows/editor/execution/execution.spec.ts
+  s_2f8eada33084f0::t_1cfa0143d970db 54,89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "526e7f78bffeb001cd4ce837259f5ea8bd2a8810",
+  "prompts": {},
+  "sessions": {
+    "s_2f8eada33084f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e77b7309-b373-4986-b2d3-46ff8c1ab10e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

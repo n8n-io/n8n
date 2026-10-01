@@ -1,0 +1,26 @@
+packages/cli/src/controllers/ai.controller.ts
+  s_01f3c9d813b042::t_b7773981b5b154 31,52-66,185-187,217
+packages/cli/src/controllers/__tests__/ai.controller.test.ts
+  s_01f3c9d813b042::t_5afd32de9b9da6 8,14,83,86
+  s_01f3c9d813b042::t_7b296f99849108 81-82,84-85
+packages/frontend/editor-ui/src/app/plugins/sentry.test.ts
+  s_01f3c9d813b042::t_a2876e3b45faeb 29-34
+packages/frontend/editor-ui/src/app/plugins/sentry.ts
+  s_01f3c9d813b042::t_6555376f0064de 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "144b652d291aa6fb8658ee8dac468f5c8c50ded3",
+  "prompts": {},
+  "sessions": {
+    "s_01f3c9d813b042": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eff4a-27d6-77e3-934d-57a5e6d59dea",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

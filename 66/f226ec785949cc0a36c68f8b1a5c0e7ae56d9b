@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11-13,16-31,33-35,37,53-77,80-107,125,129-144,146-153,157-162,168-170,187,224-235,244,254-255,303-338,341-343,350,354-367,370-371,397,415
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_f3c9e6db456d8f::t_2a2c426e89a273 14
+  s_f3c9e6db456d8f::t_41d81852c0cb47 15
+  s_f3c9e6db456d8f::t_8e341613919eae 32
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 36
+  s_f3c9e6db456d8f::t_546f61ee1155e0 38-40
+  s_f3c9e6db456d8f::t_489963625ad545 42-52,171-176,256-257
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 108-110,112-115
+  s_f3c9e6db456d8f::t_715b40c294a666 118-124,126-128
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 177-186,188-199
+  ai_agent 207,209
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 242,247
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 248-250,270-278,296-297
+  s_f3c9e6db456d8f::t_495bf9bc203fff 251,263-267
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 339-340
+  s_f3c9e6db456d8f::t_1e453de502744e 351,353
+  s_05cd7ab5f956cf::t_35616ad850b841 352
+  s_f3c9e6db456d8f::t_40d80601d668de 368-369
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 403
+  h_7555c3ee6524cf 279,281,285,287,291-295,298-299
+  s_05cd7ab5f956cf::t_d576ddf1e82633 280,286,290
+  s_05cd7ab5f956cf::t_a89fd654b5e082 282-283,288-289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66f226ec785949cc0a36c68f8b1a5c0e7ae56d9b",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

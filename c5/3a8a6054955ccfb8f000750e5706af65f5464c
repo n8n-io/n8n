@@ -1,0 +1,19 @@
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_d080cd0071e0f4::t_8a3e3e8b54a3d6 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c53a8a6054955ccfb8f000750e5706af65f5464c",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

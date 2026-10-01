@@ -1,0 +1,21 @@
+packages/@n8n/db/src/entities/workflow-run-as-binding.ts
+  s_af62986d6ef75e::t_38cf2e6a2bab3e 24-26
+packages/cli/test/integration/workflows/workflow-run-as-binding.repository.test.ts
+  s_af62986d6ef75e::t_644a204cb2f644 75-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f801e86f93136b0c0624d61a8724ecb5132968e5",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

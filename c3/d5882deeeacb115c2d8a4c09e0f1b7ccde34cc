@@ -1,0 +1,20 @@
+packages/@n8n/engine/docs/adr/ADR-001-trigger-settlement-before-execution.md
+  s_eb1c853295c945::t_6ea17c19f16c6b 9-12,22,24,26-29,34-39,45
+  s_eb1c853295c945::t_b2d7f4b08f13da 1-8,13-16,20-21,23,30-33,40-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3d5882deeeacb115c2d8a4c09e0f1b7ccde34cc",
+  "prompts": {},
+  "sessions": {
+    "s_eb1c853295c945": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eef4d5ae-79be-4098-88c4-0c269808c8af",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

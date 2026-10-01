@@ -1,0 +1,32 @@
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_71a9050357a4e8::t_1c765140aac2b1 94-101
+packages/@n8n/config/test/config.test.ts
+  s_71a9050357a4e8::t_ae1a516d7d4424 243-244
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_71a9050357a4e8::t_3eaea982ae7d81 46
+  s_71a9050357a4e8::t_12832dab004850 22
+  s_71a9050357a4e8::t_211ded8657ce0d 97
+  s_71a9050357a4e8::t_e172fb7c8e59ed 68
+  s_71a9050357a4e8::t_8cd5a38d4eeaf5 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "36e0ee0ffa0fd189aefb86de3d19ebfe5fc9d353",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_71a9050357a4e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ce73914-c531-4d9b-91c9-a27434a0bc43",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

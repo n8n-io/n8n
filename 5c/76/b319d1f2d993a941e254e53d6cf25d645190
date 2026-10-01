@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  h_89e664b3be09ae 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5c76b319d1f2d993a941e254e53d6cf25d645190",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

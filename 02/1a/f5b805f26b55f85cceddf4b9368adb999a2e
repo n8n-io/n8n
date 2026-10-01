@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_9f941c28d7508a::t_db13b45a944812 31-32,126-129,155-179
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_9f941c28d7508a::t_e849cd14b93aba 3,7,160,567-586,724-726
+  s_9f941c28d7508a::t_009fa21d53fc65 149-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "021af5b805f26b55f85cceddf4b9368adb999a2e",
+  "prompts": {},
+  "sessions": {
+    "s_9f941c28d7508a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bdb18f-23b3-4cc5-9f30-0cd317430f8d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

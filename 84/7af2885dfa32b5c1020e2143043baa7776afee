@@ -1,0 +1,75 @@
+packages/@n8n/agents/src/sdk/agent.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 12-16,229-230,290-295,1142-1144
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 65,111
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 2,5-19
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 1-36
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 929-930,1002,1026-1027
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 7,19,71-75
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 1,3-4,6,8,10-15,18-19,21,24-25,135-220
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 8,16,25,28,79-86
+packages/cli/src/modules/agents/agents.module.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 119
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 148-152
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 2,127,182-184,192-195,245-261,264-272,276-289
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 47,86-93,150-151,885-889,893,1004-1012
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 36,42-56
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 48
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 7,23
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 227-240
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 1-263
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 42-45
+packages/cli/src/scaling/constants.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 44
+packages/@n8n/agents/src/index.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 175-178
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 1-525
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 4,27,32-39
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 177-180
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 2,23,63,69-71,89,131-164,242,247-255
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 801-802,830,838-839
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 768-839
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 890-897
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 12,14,148-162,185-188,536-538,745-797,819-820,862,909,919-928
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_ab136783d4b7cd::t_981d7115a4317c 10-11,27,130-132,160,206-209,639-777,922-929,976-977
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "847af2885dfa32b5c1020e2143043baa7776afee",
+  "prompts": {},
+  "sessions": {
+    "s_ab136783d4b7cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dba9ea80-23c4-4773-97c9-b0c0d10f8293",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

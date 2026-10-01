@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_d0adc6b7a0ea33::t_f67666626abd85 2-3
+  h_9c8f56e3400786 34,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cc9402c88af4743ead26a7cc5cdee2b19dcd1b49",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d0adc6b7a0ea33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a0b8ffc-fd8f-493e-bf79-1eaaf6d10149",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

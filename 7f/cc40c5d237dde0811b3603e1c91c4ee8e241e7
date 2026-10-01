@@ -1,0 +1,9 @@
+packages/cli/src/__tests__/workflow-runner.test.ts
+  ai_agent 498-504
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7fcc40c5d237dde0811b3603e1c91c4ee8e241e7",
+  "prompts": {}
+}

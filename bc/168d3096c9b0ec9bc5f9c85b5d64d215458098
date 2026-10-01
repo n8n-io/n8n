@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Compression/decompress/BoundedUnzip.ts
+  s_782856eb327a21::t_737d97a3cd82bb 22-25
+  s_782856eb327a21::t_9bf2501f6296c5 5,7-21,26-103,109-114,121-125,127-142
+packages/nodes-base/nodes/Compression/decompress/ZipCentralDirectory.ts
+  s_782856eb327a21::t_69aa7fb910e785 1-205
+packages/nodes-base/nodes/Compression/decompress/BoundedGunzip.ts
+  s_782856eb327a21::t_ce519d5ff59f80 14
+  s_782856eb327a21::t_8fb1d48c1327c5 6
+packages/nodes-base/nodes/Compression/decompress/BoundedOutputAccumulator.ts
+  s_782856eb327a21::t_9279b9cb8bf178 6
+packages/nodes-base/nodes/Compression/test/node/BoundedUnzip.test.ts
+  s_782856eb327a21::t_4fa49b7f600a50 97-107
+  s_782856eb327a21::t_80b98bcdfe1e1d 129-136
+  s_782856eb327a21::t_ada00768d11037 343-346,348-351
+  s_782856eb327a21::t_66e09c9d4fbd54 323-324
+  s_782856eb327a21::t_927e65b35fec17 342,357
+  s_782856eb327a21::t_24644b1e176eb1 61-64
+  s_782856eb327a21::t_f370fc68906751 311-320,322,325-331,333-341
+  s_782856eb327a21::t_5e0f74db5fcfaa 275-310,347,352-356,358-359
+  s_782856eb327a21::t_27fe24e655bdc6 137-138
+  s_782856eb327a21::t_c6fa749d407852 321
+  s_782856eb327a21::t_976a742afac72c 332
+  s_782856eb327a21::t_d568718829aea7 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bc168d3096c9b0ec9bc5f9c85b5d64d215458098",
+  "prompts": {},
+  "sessions": {
+    "s_782856eb327a21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c14a3d5-b84f-4afd-8416-b6cfe6267607",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

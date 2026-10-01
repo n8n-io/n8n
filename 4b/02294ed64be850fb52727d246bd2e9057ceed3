@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.vue
+  s_0990e06268d89b::t_3667f2c3f0fe28 43-47,49-53,55-58,61-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4b02294ed64be850fb52727d246bd2e9057ceed3",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0990e06268d89b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fab127da-d600-430b-b385-5c5b5a437d66",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

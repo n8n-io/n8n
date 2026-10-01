@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_b873c4cf3bf7dd::t_1090932c5541e7 8
+  s_b873c4cf3bf7dd::t_9bc5cc96cfe004 270-275
+packages/nodes-base/nodes/Confluence/test/actions/page/getManyByLabel.operation.test.ts
+  s_b873c4cf3bf7dd::t_291a2263b586f4 185-205
+packages/nodes-base/nodes/Confluence/actions/page/getManyByLabel.operation.ts
+  s_b873c4cf3bf7dd::t_edfb6bc2642ea7 111-113
+  s_b873c4cf3bf7dd::t_1693f6e5b5f6b7 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41e6409121e8f2368d2c6bc216d2d92ae98b4bf5",
+  "prompts": {},
+  "sessions": {
+    "s_b873c4cf3bf7dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa5c5a1f-8752-4be0-aeed-4afa7970b64b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

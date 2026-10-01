@@ -1,0 +1,20 @@
+packages/workflow/src/interfaces.ts
+  s_7f4926b30475aa::t_a4757f8563515a 1463-1486,1488-1494,1496-1502,1504-1510
+  s_7f4926b30475aa::t_b2576a26fa4f0b 3600-3605
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cf6ea2ac6a6f816cde85c99585d2dfe994354c16",
+  "prompts": {},
+  "sessions": {
+    "s_7f4926b30475aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c04de74e-1077-45a2-8601-77f8a3d5667f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/src/composables/useIconBodyLoader.ts
+  s_3a07eaa53870a8::t_8710f8002a5e97 14
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_3a07eaa53870a8::t_8710f8002a5e97 5
+packages/frontend/@n8n/design-system/package.json
+  s_3a07eaa53870a8::t_5e3f18865bbd98 17-20,23
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_3a07eaa53870a8::t_b4cb5d8826173e 48-57
+  s_3a07eaa53870a8::t_9f3ae197927359 87-95
+packages/frontend/@n8n/design-system/vite.config.styles.mts
+  s_3a07eaa53870a8::t_28a2472a72e2e8 9-10,12-15,22-23
+packages/frontend/editor-ui/src/main.ts
+  s_3a07eaa53870a8::t_8710f8002a5e97 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ec0603fe50f8a403c660522c892fb4ed4c6c018a",
+  "prompts": {},
+  "sessions": {
+    "s_3a07eaa53870a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eba7fcd0-9d36-42ec-b03b-8f451af49650",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

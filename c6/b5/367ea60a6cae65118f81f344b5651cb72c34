@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ProjectSelect.vue
+  s_79d1e5f24419be::t_b4cf740f4ecec3 78-80,97-112,114-121
+  s_79d1e5f24419be::t_b659b7f6dda222 127-129
+  s_79d1e5f24419be::t_3e9172e250693f 4-11,38-45,85-96,122-126,130
+  s_79d1e5f24419be::t_817c21cf245977 46
+  s_79d1e5f24419be::t_3c2b567903d1a9 81
+  s_79d1e5f24419be::t_0b86e53303f3ef 131-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6b5367ea60a6cae65118f81f344b5651cb72c34",
+  "prompts": {},
+  "sessions": {
+    "s_79d1e5f24419be": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d390-3384-7524-8e4b-fa4fdefd0022",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

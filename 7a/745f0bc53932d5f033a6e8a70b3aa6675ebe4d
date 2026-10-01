@@ -1,0 +1,31 @@
+pnpm-workspace.yaml
+  s_85185a50bbdc9a::t_bfbfdbd9afdbd0 349-351
+packages/cli/src/chat/chat-service.ts
+  s_85185a50bbdc9a::t_067f1ee6390a22 288
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_85185a50bbdc9a::t_9c3c525cd4db03 2370-2371
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_85185a50bbdc9a::t_514fdbda6b5255 255,293
+packages/cli/test/integration/public-api/workflow-update-republish-scope.test.ts
+  s_85185a50bbdc9a::t_9c3c525cd4db03 51-52
+packages/core/src/execution-engine/workflow-execute.ts
+  s_85185a50bbdc9a::t_ed78f12df671ba 1930-1932
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_85185a50bbdc9a::t_6dd023ff43f961 565-568,570,572-573,575,606-608,635,645,655-656,744,755,769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a745f0bc53932d5f033a6e8a70b3aa6675ebe4d",
+  "prompts": {},
+  "sessions": {
+    "s_85185a50bbdc9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf84099-366c-4ae8-b636-b1f0355e2eb0",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

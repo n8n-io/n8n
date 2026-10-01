@@ -1,0 +1,28 @@
+packages/cli/src/posthog/index.ts
+  s_75d4b883e37547::t_542fe2f7c53eea 141-142
+  s_75d4b883e37547::t_21d996fe017de4 14-15
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_75d4b883e37547::t_73bde4155caaa2 9
+  s_75d4b883e37547::t_157239c86d5f25 165-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2075a17d09ecd4a13e920814fdfa72c67e1c0d6c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_75d4b883e37547": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2d102c8-f4ed-4d73-af45-43e476cfaf90",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

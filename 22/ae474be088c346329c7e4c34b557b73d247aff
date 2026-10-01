@@ -1,0 +1,269 @@
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-156
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 7-8,10,21,28,63,112,116-214
+  s_184d2a55bf0bd3::t_5cf643506bb243 215
+packages/testing/playwright/composables/CanvasComposer.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 79-99,105-112
+packages/cli/src/modules/agent-evals/agent-eval-rating.service.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-182
+packages/@n8n/db/src/repositories/index.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 82
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-rating.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-293
+packages/workflow/test/node-grouping-validation.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 740,788,816,835,840-856
+  s_184d2a55bf0bd3::t_3f18deea4a0995 857-858
+packages/@n8n/db/src/repositories/agent-eval-dataset.repository.ee.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 4,19-26,54-89
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 78-97,242-267,345-357
+  s_184d2a55bf0bd3::t_eab0b777a99ba1 358-359
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 33,152-155,376-388,400,442,445-449
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 48-58
+packages/frontend/editor-ui/src/app/composables/useExternalHooks.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-61
+packages/@n8n/api-types/src/schemas/__tests__/agent-evals.schema.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 161,166-177,184,189-195
+  s_184d2a55bf0bd3::t_61fe26ae691652 196
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 2-6,16-49
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 14,24,105,132,161,178-185,533-545,549-551,556
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 20,84,100
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 8
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 35,37,106,116-120,146
+packages/@n8n/db/src/repositories/agent-eval-result.repository.ee.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 109-112
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-54
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 7-10,12-13,15,28-29
+packages/cli/src/controllers/api-keys.controller.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 64-66,79-80,128-129
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 10,46,66
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 29,146,149,151-153,254-275,502-1301
+  s_184d2a55bf0bd3::t_49f56da17e9314 1302
+packages/@n8n/api-types/src/dto/index.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 311-316
+packages/cli/test/integration/api-keys.api.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 23,847-931
+  s_184d2a55bf0bd3::t_aa7bc7d2c2a3d5 932
+packages/frontend/@n8n/stores/src/types/pageRedirection.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-73
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 77,79,86-87,102
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 6-10
+packages/frontend/editor-ui/src/Interface.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 878-881
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1398-1423,1444-1666
+  s_184d2a55bf0bd3::t_abdba5fcc7e75d 1667
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 10,48,68
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 6,43-51,59,66,70,72-74,79-107,115,121,129-228
+  s_184d2a55bf0bd3::t_191a6f8d178f02 229
+packages/frontend/editor-ui/src/app/init/toastNotifier.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-95
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-2,5,11-13
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 15,19,60,80,419-446,457-609
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusDot.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 48,52
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 31-35,46-50,147-155,304-314,423
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 24,58-62,149,212
+packages/workflow/src/node-grouping-validation.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 341
+packages/frontend/editor-ui/src/app/init/toastNotifier.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-29
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-309
+packages/@n8n/db/src/repositories/__tests__/agent-eval-rating.repository.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 69-115
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 20,476-485,487,595-596,621,690,697-778
+  s_184d2a55bf0bd3::t_453422d636ebc7 779-780
+packages/cli/src/modules/agent-evals/agent-evals-flag-gate.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-30
+packages/cli/src/modules/mcp/__tests__/mcp-instructions.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 72-73
+packages/@n8n/engine/src/execution/index.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 9-10
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 83-96
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-283
+packages/@n8n/engine/src/execution/execution-start-handler.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 38,40-42,45-50
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 367-378,392-403,415-429,630-636,642-644,649,772-778,956,975-978,982,998,1003-1004,1008,1021,1024,1029,1043-1046,1052,1055-1065,1079,1130-1131,1139-1144,1149,1151-1152,1160-1162,1172,1174-1177,1192-1193
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 16-28,43-49
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 12
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-2,6
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 11,27-31
+packages/cli/src/modules/mcp/__tests__/create-workflow-from-code.tool.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 56,128,131,133-135,984-990,1015-1038,1041-1045,1047-1275
+packages/@n8n/db/src/repositories/__tests__/workflow-publish-history.repository.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-78
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1,14-16,23-28,30,48,54,59,64-130,137,183,199,205,218,250
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 29,33,35,49-53,292-325,329-338,348-350,371-376,407-426,626,702,709-754,763,775-778,791,802,826,834,866,885-887,889,1030-1034,1040,1046-1047
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_184d2a55bf0bd3::t_d887b357a5177a 2896,2918,3673,3717,4594-4614
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_184d2a55bf0bd3::t_8459db8e7e06b4 37
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-36,38-426
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 12-17,24-27
+packages/cli/src/modules/agent-evals/agent-evals.module.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 6-10,15-16
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 6-7
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-4
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 17,77,87,97,109,115
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 13,53,131,133-141,288-294,461
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1,3,6,43-111
+  s_184d2a55bf0bd3::t_5ecbf98eaff4c1 112-113
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 130-133
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-224
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-308
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 59,64-67,89-91,116,120-124,132,226-235,307-344,535-552,776-788,858,873,932-941
+  s_184d2a55bf0bd3::t_5725883db1b1fc 942-943
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-125
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 155-181
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 14,70,75-76,80,497-540
+  s_184d2a55bf0bd3::t_c8eb800e85f0a5 541
+packages/@n8n/db/src/repositories/agent-eval-rating.repository.ee.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 2,5,8-10,40-77
+  s_184d2a55bf0bd3::t_0520bf6ebefd5d 78
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 14,57,69,1276-1413
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-2,34,42-44,53,65,78,239-242,568-569,1169-1357
+  s_184d2a55bf0bd3::t_9dab599fe8fa43 1358-1359
+packages/cli/test/integration/database/repositories/workflow-publish-history.repository.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 209-324
+packages/@n8n/engine/src/index.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 38-43,51-52
+packages/@n8n/api-types/src/index.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 588,600,610
+packages/@n8n/engine/src/execution/step-store.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1,11-43,46-90
+packages/nodes-base/nodes/Notion/v3/actions/databasePage/DatabasePage.resource.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 411
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-216
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 24
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 117-118
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 104-111,322-329,382-462
+  s_184d2a55bf0bd3::t_89918a09c72085 463-464
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-161
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 170-174
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 21,112-116
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 2,195-200
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 34-35
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 11,13,17,31-35
+  s_184d2a55bf0bd3::t_35554ffc14c357 36
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 79-82,122-123,125,130,144,166,168-171,368-373
+  s_184d2a55bf0bd3::t_7d498cb9379b4a 374-376
+packages/frontend/@n8n/frontend-constants/src/urls.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-2
+packages/frontend/editor-ui/src/features/shared/banners/components/BannersStack.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 15,54-58
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyTable.vue
+  s_184d2a55bf0bd3::t_d887b357a5177a 24-25,30,71,88-89
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 168,175-176,181-182
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 22-33,61,63-64,71-77,95,102,111,118,130-131,140-143
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1,4-12,18-75
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 6,77,80,82-83,87-100
+  s_184d2a55bf0bd3::t_c776c3341b1018 101-102
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-259
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-rating.repository.integration.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-151
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-4,13-15,20,24-34,51-52,58,66,75-79,82-86,92-93
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 12-13
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-408
+packages/cli/src/modules/agent-evals/agent-eval-record-mappers.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1-97
+packages/frontend/editor-ui/src/app/router.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 947
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 95,103,110,142-169
+  s_184d2a55bf0bd3::t_3fd67a7ac036c5 170-171
+packages/@n8n/db/src/repositories/__tests__/agent-eval-dataset.repository.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 90-165
+packages/cli/src/modules/mcp/__tests__/validate-workflow-code.tool.test.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 384,388
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 104
+packages/cli/src/workflow-helpers.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 25,200-239
+  s_184d2a55bf0bd3::t_2c9593f84c1961 240-241
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1,4,33-34,85,99-101,183-186
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_184d2a55bf0bd3::t_d887b357a5177a 1,78-79,101-102,110-120,126,199-204
+  s_184d2a55bf0bd3::t_bbaae0845a0fe1 205-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "22ae474be088c346329c7e4c34b557b73d247aff",
+  "prompts": {},
+  "sessions": {
+    "s_184d2a55bf0bd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd27ace9-6235-4b0e-8556-4cdeb59250df",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

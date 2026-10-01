@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_82029241289295::t_3515f8a8701194 448
+  s_82029241289295::t_8131d44d1ac7cc 437
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodePlaceholder.vue
+  s_82029241289295::t_6913f8921c2eb2 91-98
+  s_82029241289295::t_8a748f395490b9 12-19,24-25,28
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasVirtualization.test.ts
+  s_82029241289295::t_e28c901836a01c 6
+  s_82029241289295::t_f18df2fd55a912 73
+  s_82029241289295::t_5bc608cb17ad23 63
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.test.ts
+  s_82029241289295::t_c755565ea3627f 284-285
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.test.ts
+  s_82029241289295::t_72addc61cbdbde 225-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "430565ccfa70065c058d1620a9ebfb51b8497f06",
+  "prompts": {},
+  "sessions": {
+    "s_82029241289295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff8bef7-44df-43fc-b7fe-52a1f3a099b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

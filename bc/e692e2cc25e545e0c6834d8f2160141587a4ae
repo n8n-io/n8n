@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/evaluations/CONTEXT-EVALS.md
+  s_d7dc19b022f345::t_5de3b8920e265f 36-38,41
+  s_d7dc19b022f345::t_ddcf55c747f8e9 1-35,39-40,42-156
+packages/@n8n/instance-ai/evaluations/AGENTS.md
+  s_d7dc19b022f345::t_beea62e9d35a5b 1-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bce692e2cc25e545e0c6834d8f2160141587a4ae",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

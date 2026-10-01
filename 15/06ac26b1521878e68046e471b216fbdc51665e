@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/workbook/addWorksheet.operation.ts
+  s_dcea52ad05f3e5::t_c9a16edb8d3ebc 87,91
+  s_dcea52ad05f3e5::t_13db63cc80cc13 8-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1506ac26b1521878e68046e471b216fbdc51665e",
+  "prompts": {},
+  "sessions": {
+    "s_dcea52ad05f3e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa86040e-4be6-4812-92fc-f4f87bbbe2ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

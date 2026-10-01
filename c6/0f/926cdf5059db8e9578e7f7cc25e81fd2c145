@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useUserExecutions.ts
+  ai_agent 1-44
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.ts
+  ai_agent 18,20,40-45,48-63,68,71-72,76-77,91,98-99,107,111-113,165-169,171-175,182-183,187,191,198-199,202
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useEvaluationPersistenceHelpers.ts
+  ai_agent 1-306
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.api.ts
+  ai_agent 100
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useRunEvalWorkflow.ts
+  ai_agent 6,10-13,20,23-30,32,35-43,52
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/buildEvaluationConfigDto.ts
+  ai_agent 10,64
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.constants.ts
+  ai_agent 10-19,67-71,79-84,140,159,178,237
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.api.test.ts
+  ai_agent 1-82
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.test.ts
+  ai_agent 11,26,113,142-179,462-526
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.ts
+  ai_agent 1-456
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCreateCaseFromExecution.ts
+  ai_agent 1-86
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/wizardSidepanel.store.ts
+  ai_agent 10,49-78,90-94,108-115,222-225,234-286,308-316,321,341,344-351
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.test.ts
+  ai_agent 1-750
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useRunEvalWorkflow.test.ts
+  ai_agent 29-34,84-115
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/wizardSidepanel.store.test.ts
+  ai_agent 213-368
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useSliceInputs.ts
+  ai_agent 51-53,139,144-148
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  ai_agent 4,33-51,99-109,359-374
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardPersistence.ts
+  ai_agent 18,21-24,26-31,42-43,100,103
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.store.test.ts
+  ai_agent 118-146
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCreateCaseFromExecution.test.ts
+  ai_agent 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c60f926cdf5059db8e9578e7f7cc25e81fd2c145",
+  "prompts": {}
+}

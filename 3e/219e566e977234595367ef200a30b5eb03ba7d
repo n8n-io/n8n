@@ -1,0 +1,36 @@
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_5ecaefedce388e::t_ac461324b97a57 132,157,200,319,384,406,431,454
+packages/testing/playwright/tests/e2e/settings/log-streaming/log-streaming-observability.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 62
+packages/testing/playwright/tests/e2e/api/workflow-publication-service.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 21,75
+packages/testing/playwright/tests/e2e/api/webhook-external.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 9
+  s_5ecaefedce388e::t_5f0b6670243e6e 32-34
+packages/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_5ecaefedce388e::t_5f0b6670243e6e 275-277
+packages/testing/playwright/tests/e2e/api/form-endpoint-isolation.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 78-80
+packages/testing/playwright/tests/e2e/api/webhook-isolation.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 33-37,43-44
+packages/testing/playwright/tests/e2e/building-blocks/workflow-entry-points.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 31
+packages/testing/playwright/tests/e2e/api/webhook-isolate-skip.spec.ts
+  s_5ecaefedce388e::t_af54a34e2b8378 89,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e219e566e977234595367ef200a30b5eb03ba7d",
+  "prompts": {},
+  "sessions": {
+    "s_5ecaefedce388e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c3cf-b397-74e0-bc27-eb0b63cf5de3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Kafka/test/v2/consumer/ConsumeTopic.test.ts
+  s_79c0473179aa3d::t_e3651ca6c905f8 362-365,369,371
+  s_79c0473179aa3d::t_5f98b454fc8f01 325
+  s_79c0473179aa3d::t_327c5fe19b4cbc 330-356
+packages/nodes-base/nodes/Kafka/v2/consumer/ConsumeTopic.ts
+  s_79c0473179aa3d::t_82721073e367e8 3
+  s_79c0473179aa3d::t_693d161e9368b3 37-39
+  s_79c0473179aa3d::t_8f7286b334ce81 175-196,199-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2ab6f0a15239957eb397d7f106f6f410ead1d06f",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

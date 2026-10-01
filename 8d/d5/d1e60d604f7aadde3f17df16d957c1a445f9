@@ -1,0 +1,39 @@
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_ee9fc015d564ff::t_d24ae7d78c7cc1 1121,1136
+  s_ee9fc015d564ff::t_f31ad836accd92 884,1204
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_ee9fc015d564ff::t_8760381959db0b 1063,1098,1338,1370
+packages/workflow/src/trigger-identity.ts
+  s_ee9fc015d564ff::t_b97f4fe2f9ff3c 64-65,67
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_ee9fc015d564ff::t_c7c1e195820f52 429,446,469,471-473
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_ee9fc015d564ff::t_eeb19afad23c68 422,425
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_ee9fc015d564ff::t_a868fc8e2ea8f9 858,883,1128-1171,3705-3718
+  s_ee9fc015d564ff::t_7254edb46830d0 838
+  s_ee9fc015d564ff::t_cb63c263e0c85d 3719-3720
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_ee9fc015d564ff::t_378c68239ce232 779,783,1111,1203,1233-1234
+  s_ee9fc015d564ff::t_0c6d4f89cf317d 1235
+packages/workflow/test/trigger-identity.test.ts
+  s_ee9fc015d564ff::t_55090ae9d48311 65-67,70,74,76-79,85-88
+packages/nodes-base/nodes/Form/interfaces.ts
+  s_ee9fc015d564ff::t_7254edb46830d0 59-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8dd5d1e60d604f7aadde3f17df16d957c1a445f9",
+  "prompts": {},
+  "sessions": {
+    "s_ee9fc015d564ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b47fb4fb-51d9-41ea-a0b7-2953db20f37d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

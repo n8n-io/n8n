@@ -1,0 +1,32 @@
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_071700288320b3 310-330,341-350
+packages/@n8n/instance-ai/evaluations/__tests__/context-assertions.test.ts
+  s_d7dc19b022f345::t_5a6daff59aeadd 125-211
+packages/@n8n/instance-ai/evaluations/harness/memory-context.ts
+  s_d7dc19b022f345::t_ef0557365e3133 124-129,196-200
+  s_d7dc19b022f345::t_aa58a9a11c33cd 250,254,258,261,266,268,278-280
+  s_d7dc19b022f345::t_0a3a7616bc5049 30-48,130-151,167-169,172-175,181-190,195,201
+packages/@n8n/instance-ai/evaluations/data/workflows/recalls-write-step-rules-locked-in-at-thread-start.json
+  s_d7dc19b022f345::t_8a4b0d30a2eff6 159-168
+packages/@n8n/instance-ai/evaluations/system-prompts/memory-expectations-verify.ts
+  s_d7dc19b022f345::t_aa58a9a11c33cd 5-7
+packages/@n8n/instance-ai/evaluations/harness/context-assertions.ts
+  s_d7dc19b022f345::t_43b0853558347c 52-61,66-67,71-72,75-80,83-94
+  s_d7dc19b022f345::t_60d4dc374ddecc 81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8634c16ca2f83b65642b11effc9fa76b27d1867c",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

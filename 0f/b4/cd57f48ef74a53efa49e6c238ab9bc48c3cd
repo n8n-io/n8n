@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Schedule/GenericFunctions.ts
+  s_5d979c39823da9::t_9d664ea26d52dc 58-59,268-269
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_5d979c39823da9::t_563ab9b470afdf 184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0fb4cd57f48ef74a53efa49e6c238ab9bc48c3cd",
+  "prompts": {},
+  "sessions": {
+    "s_5d979c39823da9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_5d979c39823da9",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

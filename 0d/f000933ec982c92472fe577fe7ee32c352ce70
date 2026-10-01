@@ -1,0 +1,29 @@
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_f4348d95023aa0::t_dacf65f6f132cb 1-22
+  s_d0e9b43a636764::t_b82baddf44eb73 23-139
+  ai_agent 140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0df000933ec982c92472fe577fe7ee32c352ce70",
+  "prompts": {},
+  "sessions": {
+    "s_d0e9b43a636764": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dae7824-17ea-4f33-8099-6a9b1af82418",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_f4348d95023aa0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad94c5e6-773e-45b1-8edb-c8faa2523af2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

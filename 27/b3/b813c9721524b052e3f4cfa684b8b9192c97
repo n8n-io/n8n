@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Aws/SQS/AwsSqs.node.ts
+  s_ae2c82daae5495::t_8263dcf17c2b89 319,324,334-339,352-357,366-371
+packages/nodes-base/nodes/Aws/SES/test/AwsSes.node.test.ts
+  s_ae2c82daae5495::t_8522ecede0f893 203-205
+  s_ae2c82daae5495::t_37544c318efdb9 2,11-15,19-59,143,145,164,174,182-202,206-279
+  s_ae2c82daae5495::t_aa6088b5b4f669 146-154,156,158-163
+packages/nodes-base/nodes/Aws/SES/AwsSes.node.ts
+  s_ae2c82daae5495::t_f84807f1c115cf 870,887,928,936-937,941-943,964,968-970,974,978-980,984-986,990-992,1044-1046,1050-1052,1056-1058,1062,1102-1105,1118-1120,1124-1126,1130-1131,1136
+  s_ae2c82daae5495::t_b298d31f69051d 1132,1221,1236
+packages/nodes-base/nodes/Aws/SQS/test/AwsSqs.node.test.ts
+  s_ae2c82daae5495::t_a91d6a713758fd 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "27b3b813c9721524b052e3f4cfa684b8b9192c97",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ae2c82daae5495": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f0e1ff23-bf9d-4122-9bcf-0fe76dfb0c97",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

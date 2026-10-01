@@ -1,0 +1,21 @@
+.claude/plugins/n8n/agents/autodev-implementer.md
+  s_d1de77b7288458::t_d9af2806277923 16
+.claude/plugins/n8n/agents/autodev-planner.md
+  s_d1de77b7288458::t_c706a364371285 16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "1632e13d2209361ee1355645de47d2b6ea948110",
+  "prompts": {},
+  "sessions": {
+    "s_d1de77b7288458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9925897c-5b49-4cc7-ac39-22fb669dbac3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

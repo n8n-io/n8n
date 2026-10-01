@@ -1,0 +1,22 @@
+packages/@n8n/client-oauth2/test/format-private-key.test.ts
+  s_863ef8b0566038::t_32a2dbf3af9050 1-29,31-43
+packages/@n8n/client-oauth2/src/format-private-key.ts
+  s_863ef8b0566038::t_a5ae9af8795a54 1-3,5-62
+  s_863ef8b0566038::t_6795f7548d11e3 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87bf554a8d4c21592f8d1a5b17710864f8f5583b",
+  "prompts": {},
+  "sessions": {
+    "s_863ef8b0566038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96074e9a-5fc0-4251-ad73-6755b86613cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

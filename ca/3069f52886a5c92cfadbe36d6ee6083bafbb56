@@ -1,0 +1,19 @@
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_af7a4e8964d154::t_c6fbab59a7b156 298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca3069f52886a5c92cfadbe36d6ee6083bafbb56",
+  "prompts": {},
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

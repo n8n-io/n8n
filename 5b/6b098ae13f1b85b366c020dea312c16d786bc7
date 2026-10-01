@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_1d360ad69afd30::t_50b78c9a1448cb 3-9,13
+  s_1d360ad69afd30::t_e4b7fd13110393 107-160
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_1d360ad69afd30::t_76f301a84181b2 385-386,391
+  s_1d360ad69afd30::t_ed9d6dd59fcd4a 387-388
+  s_1d360ad69afd30::t_e016995dada6d6 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b6b098ae13f1b85b366c020dea312c16d786bc7",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

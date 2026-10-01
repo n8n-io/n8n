@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8fb27e0cdf6d1e 1618
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/expressionDeprecations.ts
+  s_da16d27fdbc50c::t_62d6cd7e743286 1-26
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/expressionDeprecations.test.ts
+  s_da16d27fdbc50c::t_431edf3ca1b5f3 1-19
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  s_da16d27fdbc50c::t_4392bf5f2de370 145-169
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.ts
+  s_da16d27fdbc50c::t_f91018e2070f2a 388-393
+  s_da16d27fdbc50c::t_7aefc59b931415 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "149ed1593233cd3c5dc6afb202b3dd63ceef055b",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_da16d27fdbc50c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6539e871-7d8b-4491-bffe-9496311199dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

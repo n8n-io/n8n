@@ -1,0 +1,44 @@
+packages/cli/src/modules/node-dry-run/__tests__/node-dry-run.service.test.ts
+  s_be6d12de03f718::t_602598c329379a 1-4,12-25,45-194,196-239,241-248
+  s_be6d12de03f718::t_f553547a41f2ab 5-11,27-38,41-44
+  s_be6d12de03f718::t_62e1cc58f2ffe8 26,39-40
+  s_be6d12de03f718::t_d5e361e6ec006e 240
+  s_be6d12de03f718::t_c2062b174585de 195
+packages/cli/src/modules/node-dry-run/node-dry-run.service.ts
+  s_be6d12de03f718::t_a9c45747778f78 7
+  s_be6d12de03f718::t_77fa963a31b80e 84-91
+  s_be6d12de03f718::t_bad6f03569b373 12,14,17-18,20,26-27,29-40,58,61,120,123-128,130-147,149,153-155,158-159,166-173
+  s_be6d12de03f718::t_51d6d664a4fb6d 194
+  s_be6d12de03f718::t_52b9627f6f0e15 1-6,8-11,13,15-16,19,21-25,28,41-57,59-60,62-83,92-119,121-122,129,148,150-152,157,174-175,178-193,195-202,204-208
+  s_be6d12de03f718::t_ea8123a08dc002 203
+  s_be6d12de03f718::t_47631cb9aa761b 160-165
+  s_be6d12de03f718::t_c40c244ae24c24 176-177
+  s_be6d12de03f718::t_95ac0b8b41395c 156
+packages/cli/src/modules/node-dry-run/node-dry-run.controller.ts
+  s_be6d12de03f718::t_aa1322689f2eb2 1-16
+packages/cli/src/modules/node-dry-run/node-dry-run.module.ts
+  s_be6d12de03f718::t_444dceaf87b3e3 1-9
+packages/cli/src/modules/node-dry-run/README.md
+  s_be6d12de03f718::t_a04a9a24bd2de0 58-65
+  s_be6d12de03f718::t_bf93ed9c124e85 1-57,66-68,75,86,89-91,101-111
+  s_be6d12de03f718::t_9f7d9c53f666ea 69-74,76-85,87-88,92-100
+  s_be6d12de03f718::t_52b9ea98d4f39f 112-122
+packages/cli/src/modules/node-dry-run/__tests__/node-dry-run.controller.test.ts
+  s_be6d12de03f718::t_c9d27c583fc305 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "1fcab1c333fdd0a703470bfb66b7a02c2ca5c282",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

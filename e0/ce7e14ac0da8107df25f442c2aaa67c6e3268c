@@ -1,0 +1,76 @@
+packages/cli/src/modules/agents/tools/__tests__/own-sessions.tool.test.ts
+  s_ee87e41b1299a3::t_b80314e6926278 1-11,13-40,42-50,58-70,72-77,79-81,83-90,92-96,98-107,109-116,118-122,198,239
+  s_b086c3b848d291::t_24dbac7d0e509f 12,51-57,71,78,82,97,108,117,124-187,192-197
+  s_bb4953aea6920b::t_c34f199184ed53 41
+  s_bb4953aea6920b::t_a0baba546306df 91
+  s_b086c3b848d291::t_fc61c0e8d334bd 188-191
+  s_bb4953aea6920b::t_4ae4cc692c2e0c 123
+  s_bb4953aea6920b::t_014f3fcdb8923e 199-238
+  s_952408b69cfb5a::t_7a79a334a14574 240
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_b086c3b848d291::t_d43487c9a026ee 12
+  s_952408b69cfb5a::t_e8e46b0b103f32 13,33,69,88,166,227,240,253
+packages/cli/src/modules/agents/tools/own-sessions.tool.ts
+  s_bb4953aea6920b::t_b47a9b3a177f79 151,153,157,159-160
+  s_bb4953aea6920b::t_f8c75ca7098c9d 85
+  s_b086c3b848d291::t_278ef0a6a8ef60 14,16-19,25-37,82,87-91,99,128,135,152,154-155,158,161,170
+  s_ee87e41b1299a3::t_4b8da7f0811ecd 1,4-13,15,20,38-39,46-81,83-84,86,92-98,100-101,105-108,114-127,129-134,136-150,162-168,171-173
+  s_bb4953aea6920b::t_232e573311a4f4 169
+  s_bb4953aea6920b::t_15852f99e972db 3
+  s_b086c3b848d291::t_6f99b9349e439b 2
+  s_bb4953aea6920b::t_dfbd78e5bb6184 40-45
+  s_bb4953aea6920b::t_5d87de4b6357d7 102-104,109-113
+  s_bb4953aea6920b::t_4ec17a1079c8c7 21-24
+  s_bb4953aea6920b::t_128bfca5407937 156
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_b086c3b848d291::t_62fdceadadb1cb 549
+  s_ee87e41b1299a3::t_c2704ac19b362a 79
+  s_ee87e41b1299a3::t_b96cdaa13f8cc8 49
+  s_ee87e41b1299a3::t_b788361b945a12 550-558
+packages/@n8n/config/src/configs/agents.config.ts
+  s_ee87e41b1299a3::t_765d1db1bde072 11
+  s_b086c3b848d291::t_5bf3eb2186274b 23
+packages/cli/src/modules/agents/tools/tool-error.ts
+  s_b086c3b848d291::t_a1a747a700d277 1-5,7-22
+  s_bb4953aea6920b::t_634204f1d2bac2 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e0ce7e14ac0da8107df25f442c2aaa67c6e3268c",
+  "prompts": {},
+  "sessions": {
+    "s_952408b69cfb5a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5a6e5d52-b195-4257-b064-c3de8f6d82ee",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b086c3b848d291": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "50b3838e-052d-4034-9158-68183dea0159",
+        "model": "claude-opus-5-thinking-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_bb4953aea6920b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70eb4213-ae58-4e28-8df9-040fc717331d",
+        "model": "claude-opus-5-thinking-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ee87e41b1299a3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "20e189c3-a4e6-4d0b-afc3-1be8237fab81",
+        "model": "claude-opus-5-thinking-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

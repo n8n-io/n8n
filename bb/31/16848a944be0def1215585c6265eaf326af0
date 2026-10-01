@@ -1,0 +1,58 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency-resolver.ts
+  s_f67394133527a7::t_47d6dd71816d37 10-13,246-248
+  s_f67394133527a7::t_c64a30a1fcd978 196-199
+  s_f67394133527a7::t_671beedcbf9214 1-9,15-46,48-49,51,54-57,59-61,63-76,89,92,119-127,130-138,140-157,159-195,221-245,249-272
+  s_f2807a2f300bd4::t_13dd827349d909 52-53,58,62
+  s_f2807a2f300bd4::t_b3232a0a9875d5 14,47,50,77-88,90-91,93-118,128-129,139,158,200-220
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_f67394133527a7::t_79179b84eb8200 153-245
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_f2807a2f300bd4::t_664e84a6c56cec 13-14,349-381
+  s_f67394133527a7::t_5c1d6d540c7f19 16,22-25,268-348,382-418
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_f67394133527a7::t_f884cd639d9bd6 24,64-66
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_f67394133527a7::t_746cbfb39e9e67 22-25,186-208,210-215
+  s_f67394133527a7::t_9410bfa23d9f57 209
+packages/cli/src/services/folder-finder.service.ts
+  s_f67394133527a7::t_c5fa5227ead634 68-108
+packages/cli/src/modules/n8n-packages/io/unique-filename-allocator.ts
+  s_f67394133527a7::t_180706c9382c9e 15-20
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_f67394133527a7::t_1c9260e554fe52 18-20,57-58,99,103-104,110-111,134-162,176-177,185-186,211,254-282
+  s_f2807a2f300bd4::t_8ea642a28805f3 112-117,120,123-133,163-165,220-221
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_f67394133527a7::t_e437e6e95710b9 155-196,228-264
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency.exporter.ts
+  s_f67394133527a7::t_e12f6b0be8677d 2-263
+  s_f67394133527a7::t_2484b6dbb48215 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb3116848a944be0def1215585c6265eaf326af0",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2807a2f300bd4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f69fb-2760-73d1-9cf3-e2bbea46faf5",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    },
+    "s_f67394133527a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64db-ac5c-7c31-8392-8711f9c4f952",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

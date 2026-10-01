@@ -1,0 +1,65 @@
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_716c5144ea2746::t_9c5f5a4920fc72 72,91,109,141-142,155,169,192,228-229,239-240,250-251,261-262,289,324,342,360
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_716c5144ea2746::t_946dcb4a4d86b1 114
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_716c5144ea2746::t_41773476e0bf1d 42-47,51
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_716c5144ea2746::t_73ac81032a3db4 23
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.test.ts
+  s_716c5144ea2746::t_3ebc6f5d28ddc0 1-24,30-50
+  s_716c5144ea2746::t_cd58cf17fd331f 25-29
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.ts
+  s_716c5144ea2746::t_82b4967be9bc66 10-13,17-20,22-25,27-55,65,71,74-95
+  s_716c5144ea2746::t_52771414189c57 1-9,14-16,21,26,56-64,66-70,72-73,96-98
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_716c5144ea2746::t_dd250e8113e3c3 8
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_716c5144ea2746::t_1ab2d2b7a4de80 192,208
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts
+  s_716c5144ea2746::t_6b146b0623c4cf 486-488
+packages/nodes-base/test/oauth-scopes.json
+  s_716c5144ea2746::t_634f6f2c02dffe 2-399
+  s_716c5144ea2746::t_74b440614ab19d 1,400
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_716c5144ea2746::t_946dcb4a4d86b1 408
+  s_716c5144ea2746::t_a0fbe73a54e2ed 172-174,179
+packages/nodes-base/eslint.config.mjs
+  s_716c5144ea2746::t_1763617dcdbf61 24
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/GenericFunctions.ts
+  s_716c5144ea2746::t_a50c17434025dd 10
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_716c5144ea2746::t_444cf0021b91aa 957,972,987
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/loadOptions.ts
+  s_716c5144ea2746::t_1ab2d2b7a4de80 9,54
+packages/nodes-base/test/oauth-scopes.test.ts
+  s_716c5144ea2746::t_a028dfbfc51407 34-36,53-54,56-57,69-73,75-78
+  s_716c5144ea2746::t_e43eb550690e7b 14-15
+  s_716c5144ea2746::t_5ef6febde7b31b 22
+  s_716c5144ea2746::t_8cc02ac9abbb6a 1-13,16-21,23-33,37-52,55,58-68,74,79-95
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_716c5144ea2746::t_0f0f9235a968fa 25
+  s_716c5144ea2746::t_e679d49e32acb8 58
+packages/nodes-base/nodes/Jwt/Jwt.node.ts
+  s_716c5144ea2746::t_a38787d445f160 30
+packages/@n8n/nodes-langchain/eslint.config.mjs
+  s_716c5144ea2746::t_ccb43d136cf645 13-14
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_716c5144ea2746::t_9c5982544426b6 9,39,93,123,217,274,335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c3ce92a8b3067f009e1d974ceee82fb210df7231",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

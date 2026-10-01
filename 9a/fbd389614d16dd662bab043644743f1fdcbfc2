@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-ordering.ts
+  s_3969ea2ea64fa2::t_6cb7fb94daae05 18
+  s_3969ea2ea64fa2::t_e93da078b3594a 4-6
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_3969ea2ea64fa2::t_78829e93124c2c 233
+  s_3969ea2ea64fa2::t_0dea953b93bbc5 272
+  s_3969ea2ea64fa2::t_9266ef994cc7db 291-292,296
+  s_3969ea2ea64fa2::t_931821e8963801 149-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9afbd389614d16dd662bab043644743f1fdcbfc2",
+  "prompts": {},
+  "sessions": {
+    "s_3969ea2ea64fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4880f48c-229a-4f13-a1b3-a8fc31beb14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Confluence/Confluence.node.ts
+  s_f2e30eb9e84aed::t_dd85b1c9531351 1-17
+packages/nodes-base/nodes/Confluence/actions/description.ts
+  s_f2e30eb9e84aed::t_b585b3dc78361e 1-28
+packages/nodes-base/nodes/Confluence/actions/node.type.ts
+  s_f2e30eb9e84aed::t_244b6080cf1e36 1-7
+packages/nodes-base/package.json
+  s_f2e30eb9e84aed::t_5c1004db3ebaa3 507
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_f2e30eb9e84aed::t_174885311cabce 1-17
+packages/nodes-base/nodes/Confluence/Confluence.node.json
+  s_f2e30eb9e84aed::t_18bdc2d7f56d56 1-18
+packages/nodes-base/nodes/Confluence/confluence.svg
+  s_f2e30eb9e84aed::t_2fa4a925b1b6f4 1
+packages/nodes-base/nodes/Confluence/methods/index.ts
+  s_f2e30eb9e84aed::t_c90a4bd69c3b49 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "70c1812ee9bab49cf5d41f2e4d99989fc308572a",
+  "prompts": {},
+  "sessions": {
+    "s_f2e30eb9e84aed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d89c397-6369-476a-9de1-470fd441b3f5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

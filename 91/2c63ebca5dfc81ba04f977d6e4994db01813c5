@@ -1,0 +1,116 @@
+packages/@n8n/api-types/src/index.ts
+  ai_agent 183-186
+docs/generated/sqlite-schema/chat_hub_agents.md
+  ai_agent 76
+docs/generated/sqlite-schema/credentials_entity.md
+  ai_agent 9,20,68
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  ai_agent 95
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  ai_agent 58
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  ai_agent 59
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_e0b2e76affaaa5::t_afef30df79b7c8 1
+  s_e0b2e76affaaa5::t_362a39372cecfb 318-333,335-370,377-386
+  s_736cafcf249461::t_7ab56e9d0e62a5 334
+  s_736cafcf249461::t_81cf24f1975efd 376
+  s_736cafcf249461::t_867526e0bb8b6a 371-375
+  s_e0b2e76affaaa5::t_4fe00f139d7957 3122-3128,3132-3136,3138-3139
+  s_736cafcf249461::t_361d7352c3b490 3129-3131,3137
+packages/cli/test/migration/1789558029357-add-description-to-credentials.test.ts
+  ai_agent 1-162
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  ai_agent 61
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  ai_agent 91
+docs/generated/postgres-schema/public.instance_credential_assignment.md
+  ai_agent 46
+packages/@n8n/db/src/migrations/common/1789558029357-AddDescriptionToCredentials.ts
+  s_736cafcf249461::t_34b21a3d334ee8 4
+docs/generated/postgres-schema/public.credentials_entity.md
+  ai_agent 9,68
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  ai_agent 63
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_736cafcf249461::t_47e2c6b241375f 10
+  s_736cafcf249461::t_23facac4927207 1664-1686,1688-1689,1704-1761
+  s_736cafcf249461::t_5846e478fbfdc7 1690-1703
+  ai_agent 1687
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  ai_agent 53
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  ai_agent 57
+packages/cli/src/commands/import/credentials.ts
+  ai_agent 456
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  ai_agent 16-17
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_736cafcf249461::t_c82d20b1ff2d86 547-549
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  ai_agent 54
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_736cafcf249461::t_a6617e03559988 22
+docs/generated/postgres-schema/public.shared_credentials.md
+  ai_agent 50
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  ai_agent 55
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  ai_agent 71
+packages/cli/src/credentials/credentials.service.ts
+  s_736cafcf249461::t_f4b090eb4ac78d 201
+docs/generated/sqlite-schema/shared_credentials.md
+  ai_agent 58
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  ai_agent 64
+packages/@n8n/api-types/src/dto/credentials/create-credential.dto.ts
+  ai_agent 3,8
+packages/cli/src/requests.ts
+  ai_agent 77
+docs/generated/sqlite-schema/credential_dependency.md
+  ai_agent 56
+docs/generated/postgres-schema/public.credential_dependency.md
+  ai_agent 51
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  ai_agent 74
+docs/generated/sqlite-schema/README.md
+  ai_agent 54,852
+packages/@n8n/api-types/src/dto/credentials/__tests__/create-credential.dto.test.ts
+  ai_agent 1,49-66,92-103,177-195
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  ai_agent 32
+packages/cli/src/credentials/credentials.controller.ts
+  s_736cafcf249461::t_dab38a1e76ed83 323-328
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  ai_agent 228,399,572
+docs/generated/postgres-schema/README.md
+  ai_agent 54,865
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  ai_agent 65
+packages/@n8n/api-types/src/schemas/credential-description.schema.ts
+  s_736cafcf249461::t_1e7a7934b04317 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "912c63ebca5dfc81ba04f977d6e4994db01813c5",
+  "prompts": {},
+  "sessions": {
+    "s_736cafcf249461": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "202136a6-c3f7-4896-86e1-b17c7270ea67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    },
+    "s_e0b2e76affaaa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ecc7e0-95f5-4024-8c33-383525c6937a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

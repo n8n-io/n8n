@@ -1,0 +1,27 @@
+packages/testing/playwright/pages/components/NodeCredentials.ts
+  s_51fb24ac2ded64::t_a0e011ed53b451 76-89
+  s_51fb24ac2ded64::t_df57b04a13b9a8 1
+packages/testing/playwright/tests/e2e/building-blocks/credential-mismatch.spec.ts
+  s_51fb24ac2ded64::t_53a8043fd3f081 174
+packages/testing/playwright/tests/e2e/nodes/webhook.spec.ts
+  s_51fb24ac2ded64::t_788934063d754e 172
+  s_51fb24ac2ded64::t_a5996d484f3945 173
+  s_51fb24ac2ded64::t_7ccfc738118ac5 216
+  s_51fb24ac2ded64::t_ee2cc15da822a6 215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c33a18af011726524b172034a26d3acb318ddd7b",
+  "prompts": {},
+  "sessions": {
+    "s_51fb24ac2ded64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb12c281-29ab-42c5-a2ea-365c326c4667",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

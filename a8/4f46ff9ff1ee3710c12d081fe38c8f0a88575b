@@ -1,0 +1,80 @@
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  h_435b1d7d3e52c0 11-12,14,84
+packages/@n8n/api-types/src/dto/roles/__tests__/update-role.dto.test.ts
+  s_f76d5384d236b1::t_969f0834324db2 403
+  s_f76d5384d236b1::t_95001bf35239ee 41
+  s_f76d5384d236b1::t_7128b2e599d069 254-267
+  s_f76d5384d236b1::t_ba49e2f52601f0 417
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_f76d5384d236b1::t_cdeb5ea74a30e6 242,264,281,293,311
+packages/@n8n/permissions/src/__tests__/scope-information.test.ts
+  s_f76d5384d236b1::t_b6bace3c5401b1 7-11
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_f76d5384d236b1::t_e811e3e7c42724 107-122
+packages/@n8n/permissions/src/index.ts
+  h_435b1d7d3e52c0 23
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_3a5561e9e0a545::t_b7b575c3a75291 112-113,115,133
+  s_3a5561e9e0a545::t_264fd8e9d9c97f 33-34
+  s_3a5561e9e0a545::t_b0ec21ef397e6b 114
+  s_3a5561e9e0a545::t_4e9e0d1a4728be 130,132
+  h_435b1d7d3e52c0 1-32,35-111,116-129,131,134-140
+packages/@n8n/permissions/src/types.ee.ts
+  h_435b1d7d3e52c0 41
+packages/@n8n/api-types/src/dto/roles/__tests__/create-role.dto.test.ts
+  s_f76d5384d236b1::t_ca692c36ea8747 230-247
+packages/cli/src/controllers/users.controller.ts
+  h_435b1d7d3e52c0 86,381,384-386
+  s_ebdfaac6b05f5d::t_14df5bd4fc8bf6 387
+packages/cli/src/services/__tests__/role.service.rolesWithScope.test.ts
+  s_f76d5384d236b1::t_f81ba0da01738e 174
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_f76d5384d236b1::t_7957bb71d284cf 1-39
+packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts
+  h_435b1d7d3e52c0 6,10,12,14,16,34
+packages/cli/src/services/role.service.ts
+  h_435b1d7d3e52c0 33,173-174,184-191,205-206,211,241
+packages/cli/src/permissions.ee/__tests__/check-access.test.ts
+  s_f76d5384d236b1::t_9d18c9d646cd8d 372
+packages/cli/src/services/__tests__/role.service.customRoles.test.ts
+  s_f76d5384d236b1::t_e4d5022110a116 39-46
+  s_f76d5384d236b1::t_a826327d5d60e0 1-36,38,47-114
+  s_f76d5384d236b1::t_2597976786b100 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a84f46ff9ff1ee3710c12d081fe38c8f0a88575b",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3a5561e9e0a545": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd5034c9-14ea-4385-ba0d-d0f7a3b11fac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ebdfaac6b05f5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5dac705e-d216-4c3f-86e9-1805fa119563",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_f76d5384d236b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afb7fbb2-5840-493a-a894-b30042001f22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

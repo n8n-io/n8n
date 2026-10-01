@@ -1,0 +1,38 @@
+packages/workflow/src/execution-context.ts
+  s_3b26111227cd5e::t_275268c405ba96 204
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_3b26111227cd5e::t_36169a1b1363db 277
+  s_3b26111227cd5e::t_6c33f73cd913e6 15-16
+  ai_agent 289
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_3b26111227cd5e::t_2908b1d0ef8943 1041,1069-1096
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_3b26111227cd5e::t_9dadb6bde1f074 84
+packages/cli/test/integration/execution-redaction.test.ts
+  s_3b26111227cd5e::t_f61578a4a43bad 108,119,121-122,125
+packages/cli/src/controllers/security-settings.controller.ts
+  ai_agent 14
+packages/cli/src/modules/redaction/instance-redaction-enforcement.service.ts
+  s_3b26111227cd5e::t_ea97088acf03fe 45-46
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_3b26111227cd5e::t_32062ddf82ac97 88
+  s_3b26111227cd5e::t_4a426e56a4208c 576-614
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  s_3b26111227cd5e::t_00f60fd0e729db 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "64e8108621e38801618676ea7952d03cbae86b30",
+  "prompts": {},
+  "sessions": {
+    "s_3b26111227cd5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0613424a-5ed5-4a10-b22b-52e849c87637",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

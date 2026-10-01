@@ -1,0 +1,20 @@
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/azure.test.ts
+  s_372f6a63a6bc45::t_5cb0f04ed58945 113-126
+  s_372f6a63a6bc45::t_5157c16e5ec1f8 182-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "556b777264eed531f32073beda5a5c35c2e24b15",
+  "prompts": {},
+  "sessions": {
+    "s_372f6a63a6bc45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ea706e-9686-44d7-9d78-c62f691855ad",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

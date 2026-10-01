@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_e414677a6d992f::t_666ae5d8018c93 1,10,19-59,97-99,114-116,118,125,129-136,142-143
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_e414677a6d992f::t_12098a9bdd6785 217-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "897c57f38423fb4ca0d2cd745ae729ee51099201",
+  "prompts": {},
+  "sessions": {
+    "s_e414677a6d992f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c56ed550-9fc6-4491-b874-c335e8c94087",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

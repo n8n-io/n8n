@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_9422c6a7a8d3b5::t_f41214f559992a 242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3a43d57870fd0fc9e602d1c7fdfd31ae6e36ebd",
+  "prompts": {},
+  "sessions": {
+    "s_9422c6a7a8d3b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b1942f0-84d2-475a-83d5-2bbe6bc42dc1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

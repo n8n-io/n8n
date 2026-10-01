@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_5b586951f97f35::t_d78c2703fc0460 6647-6682
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_5b586951f97f35::t_7ceec51ec3c493 852-854
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f2f931f8e84316af9d094f686a0908425f9e6d94",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b586951f97f35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad32431c-0f56-4daf-ada3-eaaac2bebeb5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/@n8n/stores/src/notifications.store.ts
+  s_b7645babf66668::t_37d8cf19fb4d79 2,7-9,11-16,21-35,40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "50a1549061cd4b905e38db5df1e2461c509a2e40",
+  "prompts": {},
+  "sessions": {
+    "s_b7645babf66668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57f1efb4-9536-4b49-a6b5-91f2daa62b58",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

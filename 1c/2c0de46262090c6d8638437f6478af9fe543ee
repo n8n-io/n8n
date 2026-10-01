@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/scheduling/__tests__/agent-task-job-registrar.test.ts
+  s_8eb3cc8f7c5911::t_fb6c9e4fc83413 220
+  s_8eb3cc8f7c5911::t_4c5542384250e6 211-219,221-223
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_8eb3cc8f7c5911::t_d0541db08f83a1 745-747
+  s_8eb3cc8f7c5911::t_93e7b2e2adcea7 25
+packages/cli/src/modules/agents/scheduling/task-timezone.ts
+  s_8eb3cc8f7c5911::t_5ca2e29c3115c1 1-19
+packages/cli/src/modules/agents/scheduling/agent-task-job-registrar.ts
+  s_8eb3cc8f7c5911::t_0818a71e5e0016 72
+  s_8eb3cc8f7c5911::t_d6a68efcf19649 13
+  s_8eb3cc8f7c5911::t_8e7feb11276cb6 19-21
+  s_8eb3cc8f7c5911::t_e35e5a3bdc5374 190
+  s_8eb3cc8f7c5911::t_ca021e6e8c4037 62-64,66,73-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1c2c0de46262090c6d8638437f6478af9fe543ee",
+  "prompts": {},
+  "sessions": {
+    "s_8eb3cc8f7c5911": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ea6e1bfa-4c4a-4e84-9919-ed26ac6a9d0b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

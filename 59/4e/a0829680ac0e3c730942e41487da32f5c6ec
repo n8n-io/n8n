@@ -1,0 +1,41 @@
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 1-2,5,8-10,20-22,28,32,58-87
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 15-17
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 103-142
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 161-175
+packages/@n8n/engine/src/response-channel/__tests__/execution-response.schema.test.ts
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 22-38,43-46
+  ai_agent 39-42
+  s_9a2a7a8eef9b2d::t_6c772bb6b20afb 60
+pnpm-lock.yaml
+  ai_agent 2431-2433
+packages/cli/src/services/pending-webhook-response.ts
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 12
+packages/@n8n/engine/src/response-channel/index.ts
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 3
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 85-92
+packages/@n8n/engine/package.json
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 31
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_9a2a7a8eef9b2d::t_ec7685c45b1413 15-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "594ea0829680ac0e3c730942e41487da32f5c6ec",
+  "prompts": {},
+  "sessions": {
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

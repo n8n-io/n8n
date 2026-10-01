@@ -1,0 +1,146 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 17
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasConnectionLine.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 5-6
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/HighlightedEdge.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 5
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasControlButtons.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 5
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasEdgeToolbar.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 8
+packages/frontend/editor-ui/src/app/components/FocusPanel.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 46
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 43
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 29
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasEdge.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 4
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentViewport.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 3
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 18
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 11
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 25
+packages/frontend/editor-ui/src/app/components/FocusPanel.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 15
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 5
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 103
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useZoomAdjustedValues.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/background/CanvasBackground.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 4-5
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasTraversal.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 3
+packages/frontend/editor-ui/src/app/composables/canvasConnectionReplacement.utils.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasEdge.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 5-6
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeHover.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+  s_27094d47ec3e92::t_2037dcc52ca921 3-6
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupSelection.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasConnectionLine.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 3-4
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 1-2
+packages/frontend/editor-ui/src/app/components/FocusSidebar.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 12
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 25
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 3
+  s_27094d47ec3e92::t_86279a18c7f61b 4-8
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 1
+  s_27094d47ec3e92::t_f4bbd71888d665 2-5
+packages/frontend/editor-ui/src/app/composables/useNodeConnections.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 9
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 38
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 5
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 6-7
+packages/frontend/editor-ui/src/features/workflows/canvas/vueFlow.adapter.ts
+  s_27094d47ec3e92::t_95b721937ac5f7 1-17
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 1
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useVueFlowTransformPaneTeleport.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 27
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/HighlightedEdge.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 4
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 66
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/handles/CanvasHandleRenderer.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 5-6
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 27-28
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 6-7
+packages/frontend/editor-ui/src/features/workflows/canvas/experimental/experimentalNdv.store.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 11
+packages/frontend/editor-ui/src/app/composables/canvasConnectionReplacement.utils.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 1
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  s_27094d47ec3e92::t_c4e14105dbaa63 6
+  s_27094d47ec3e92::t_32ae103afeb115 7
+packages/frontend/editor-ui/src/app/utils/typeGuards.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 20
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/handles/CanvasHandleRenderer.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 11
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeHover.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 5
+packages/frontend/editor-ui/src/features/workflows/canvas/__tests__/utils.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 28
+  s_27094d47ec3e92::t_07c45523ac2f1c 29-32
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 6
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/utils/getEdgeRenderData.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 1-2
+  s_27094d47ec3e92::t_085f7916efe840 3-6
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_27094d47ec3e92::t_029624ae1db059 1567
+  s_27094d47ec3e92::t_ab199a20ee23d4 53
+  s_27094d47ec3e92::t_6bf00ad14676b2 1555-1560
+  s_27094d47ec3e92::t_acf94a6345878f 52,54-60
+  s_27094d47ec3e92::t_c4e14105dbaa63 51
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useViewportAutoAdjust.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 1
+  s_27094d47ec3e92::t_948521c52175f5 2-5
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 32-33
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasTraversal.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 2
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 101
+packages/frontend/editor-ui/src/app/components/FocusSidebar.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 19
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.test.ts
+  s_27094d47ec3e92::t_c4e14105dbaa63 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ee9af1c1f2c496d4a32093a14b1f971f9d091b42",
+  "prompts": {},
+  "sessions": {
+    "s_27094d47ec3e92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32a856c3-2d32-4610-a0b7-d809afcececd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

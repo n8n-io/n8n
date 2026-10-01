@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_20c4b2269a28ff::t_b95c2edfda6d9d 1
+  s_20c4b2269a28ff::t_b9f6d77619f74e 52,55-62,66-67
+  s_20c4b2269a28ff::t_4f0ca0b05b2ee2 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3b336138bf5869e15a85432fad382fd04e1f4b39",
+  "prompts": {},
+  "sessions": {
+    "s_20c4b2269a28ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d2a59125-6a44-4d0f-a534-02f3effb3120",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

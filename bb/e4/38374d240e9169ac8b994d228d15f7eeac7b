@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAutomationMiningHandoff.ts
+  s_a95b802c63e827::t_79d2b375f65af5 1-25
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_a95b802c63e827::t_21bea8979edb5e 390-392,397-404
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_a95b802c63e827::t_cefda970725ef4 79-81,84-85
+  s_a95b802c63e827::t_d601b7654c286e 68-78
+  s_a95b802c63e827::t_42ac09e5869482 83,154-163
+  s_a95b802c63e827::t_3bf78d9c5ae612 3,29,132-147,461-476
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a95b802c63e827::t_02cc5477fcf9ea 7134-7138
+  s_a95b802c63e827::t_dfcc9d896ad286 7139-7141
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_a95b802c63e827::t_83278ada8cbb1b 21,30,104
+  s_a95b802c63e827::t_895c6df166ddf8 69,508-510,512-525,527-533
+  s_a95b802c63e827::t_a9a57dbd63d60f 68,511,526,534,667-670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bbe438374d240e9169ac8b994d228d15f7eeac7b",
+  "prompts": {},
+  "sessions": {
+    "s_a95b802c63e827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "024b92fa-6679-4dc3-94ec-5e701541da59",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

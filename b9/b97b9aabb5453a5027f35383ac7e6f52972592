@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  s_a2967ec392b10a::t_04420e1e6aec42 61
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_a2967ec392b10a::t_cdfbd2b564bfde 3,7,17-19,33,55-60,86-91,126,145-178,236-238,242,248-253,260,266-273,275-276,283-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9b97b9aabb5453a5027f35383ac7e6f52972592",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

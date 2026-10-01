@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Kafka/v2/TriggerSettings.ts
+  s_bc83fb448b2fad::t_2d42fd8c18b413 305-309
+  s_bc83fb448b2fad::t_c1b169ee9109e7 297-304,310-320
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_bc83fb448b2fad::t_953e416b643faa 242
+  s_bc83fb448b2fad::t_5cb826b5ebb0ac 217-241,243-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6a177cad71e07f94363a665ed73f35b771f47b71",
+  "prompts": {},
+  "sessions": {
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

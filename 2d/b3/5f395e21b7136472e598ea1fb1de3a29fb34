@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/app/components/__tests__/TimeAgo.test.ts
+  ai_agent 12
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  ai_agent 105-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2db35f395e21b7136472e598ea1fb1de3a29fb34",
+  "prompts": {}
+}

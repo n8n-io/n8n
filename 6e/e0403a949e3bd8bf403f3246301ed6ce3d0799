@@ -1,0 +1,19 @@
+packages/@n8n/config/test/config.test.ts
+  s_109e695d957305::t_e9427cbcc913ea 633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "6ee0403a949e3bd8bf403f3246301ed6ce3d0799",
+  "prompts": {},
+  "sessions": {
+    "s_109e695d957305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_109e695d957305",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

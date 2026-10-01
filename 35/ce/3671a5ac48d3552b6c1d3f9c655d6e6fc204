@@ -1,0 +1,37 @@
+packages/@n8n/config/src/configs/roles.config.ts
+  s_ac6e8f8eaaddfa::t_2b16239f1a4365 1-6,8-11
+packages/frontend/editor-ui/src/app/stores/settings.store.ts
+  s_ac6e8f8eaaddfa::t_f0de593bff3178 447
+  s_ac6e8f8eaaddfa::t_18999becbb65c8 204-207
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  s_ac6e8f8eaaddfa::t_05365aa86a1561 179-181
+packages/@n8n/config/test/config.test.ts
+  s_ac6e8f8eaaddfa::t_83845ba80f2b63 600-602
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_ac6e8f8eaaddfa::t_417b875820ba68 38
+packages/@n8n/config/src/configs/__tests__/roles.config.test.ts
+  s_ac6e8f8eaaddfa::t_ded28a9e6ea028 1-28
+packages/frontend/editor-ui/src/app/stores/settings.store.test.ts
+  s_ac6e8f8eaaddfa::t_357ca4066d5058 315-366
+packages/cli/src/services/frontend.service.ts
+  s_ac6e8f8eaaddfa::t_9a7e8df78d98bf 402-404
+packages/@n8n/config/src/index.ts
+  s_ac6e8f8eaaddfa::t_4bc944076c7c8f 37
+  s_ac6e8f8eaaddfa::t_e01911b6235ba6 289-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "35ce3671a5ac48d3552b6c1d3f9c655d6e6fc204",
+  "prompts": {},
+  "sessions": {
+    "s_ac6e8f8eaaddfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90f624e4-fb64-496c-8119-7f0f147f4301",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/cli/src/security-audit/risk-reporters/instance-risk-reporter.ts
+  s_0ebaa117dfac87::t_02bb96de52ac70 12,106
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_0ebaa117dfac87::t_a96009d88059be 8-9
+  s_0ebaa117dfac87::t_3c148645d4fe0f 87-90
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_0ebaa117dfac87::t_f795ff3a335d3e 12
+  s_0ebaa117dfac87::t_3ab2710b29d82c 203-205
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.public-api-disabled.integration.test.ts
+  h_c63dce324dfc7b 11
+packages/cli/src/controllers/api-keys.controller.ts
+  s_0ebaa117dfac87::t_757177dde1fc86 26,42,67,81,96,114,130
+  s_0ebaa117dfac87::t_ebdeb9786b2fe9 23,27
+packages/cli/src/services/frontend.service.ts
+  s_0ebaa117dfac87::t_43536f53d0d7dd 25
+  s_0ebaa117dfac87::t_2b751999523333 303
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_0ebaa117dfac87::t_4c0755e2f26f30 219-233
+  s_0ebaa117dfac87::t_d8ca3f3923a3c4 3
+packages/cli/src/server.ts
+  s_0ebaa117dfac87::t_a29e1c1a23983f 210-213
+  s_0ebaa117dfac87::t_e639bea176a4bf 28
+packages/cli/test/integration/security-audit/instance-risk-reporter.test.ts
+  s_0ebaa117dfac87::t_187bdbeaebca73 258
+packages/cli/src/public-api/index.ts
+  s_0ebaa117dfac87::t_59ebb8e64ab8e3 414-420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "159431f1bcf28893c42521a5a74be7e704b01957",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0ebaa117dfac87": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96c8ad34-d834-4ee4-8208-9b5893da33d3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

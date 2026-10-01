@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/init/expressionEngine.ts
+  s_74c2aec9bd4605::t_114f2fe3091e46 1-39
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_74c2aec9bd4605::t_0154944b20739e 39
+  s_74c2aec9bd4605::t_f009469ea8fd7b 83-90
+packages/frontend/editor-ui/src/app/init/expressionEngine.test.ts
+  s_74c2aec9bd4605::t_d0b2eb3c3f53df 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e15b04de3bf33280634b44ae45eb8dc80f499896",
+  "prompts": {},
+  "sessions": {
+    "s_74c2aec9bd4605": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "463b8362-726a-4b2b-bb94-60e03f5814ba",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

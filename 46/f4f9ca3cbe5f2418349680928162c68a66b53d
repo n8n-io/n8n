@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/components/CharacterCount.vue
+  s_285b8731aa4005::t_7cc5eb7e1b4acd 8,15-20
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInfo.vue
+  s_285b8731aa4005::t_7cc5eb7e1b4acd 4,24,39,42,53-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46f4f9ca3cbe5f2418349680928162c68a66b53d",
+  "prompts": {},
+  "sessions": {
+    "s_285b8731aa4005": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c372-fd5f-7790-91b4-047011134a19",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

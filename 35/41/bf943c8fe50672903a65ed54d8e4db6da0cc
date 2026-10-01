@@ -1,0 +1,311 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 17,125,151
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 5954,5983,6132-6139,9587
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-manifest.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-430
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowPublishModal.vue
+  s_90a5cf9fc8ca4b::t_1426339d09e365 140
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 16,18-19,46-47,111,121-125,131,151-156,281,298,310,348-356,366-367,369-370,381-383,385,398-399,419-433,443
+  s_90a5cf9fc8ca4b::t_f70ca7e9e4feb7 444
+.devcontainer/codespaces/opencode-server.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 135-138,146,148
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 76-77,726,741,746-747,757-759,768,780-909,960,965,980-994
+packages/cli/src/public-api/v1/controllers/community-packages.public.controller.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-39
+packages/@n8n/api-types/src/dto/community-packages/community-package-public.dto.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-39
+packages/cli/src/public-api/v1/handlers/community-packages/community-packages.handler.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 6,40,58
+packages/frontend/editor-ui/src/features/agents/channels/registry.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 26-28
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1,13,22,28,39,1399-1483,1491
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1292,1299,1401-1443
+  s_90a5cf9fc8ca4b::t_f382f3533a32ad 1444
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 26,63,120,127,215-223,267-281,2273-2276,2286,2289-2379,2413,2440-2442,2498-2503,2537-2539,4547-4589,4602-4606,4633,4641-4649,4688-4691,4943-4964,4968-4969,4972-4973,4975-4991,4993-4995,4998-5001,5008
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 108-170
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 2-5,19,32,42,57,65,71-72
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 618-619
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 116-137
+packages/@n8n/api-types/src/agents/teams/index.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1
+packages/cli/package.json
+  s_90a5cf9fc8ca4b::t_1426339d09e365 108-109
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-arm-template.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-248
+packages/cli/src/modules/agents/__tests__/agent-teams-integrations.controller.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-110
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 27,112
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.vue
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-251
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 4,48-60,67-72,89-90,92-98
+packages/cli/src/modules/agents/agent-turn-already-running.error.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-7
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 27-30,92
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 384-385
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-47
+.agents/skills/create-instance-ai-eval/case-shapes.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 665-682
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-206
+packages/cli/test/migration/1790241069212-create-agent-message-queue.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-48
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 332,334,382
+.devcontainer/codespaces/opencode-server.test.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 43-44,155-171
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-manifest.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-215
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-54
+packages/cli/src/modules/agents/integrations/CHANNEL_INTEGRATION_TESTS.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 77-111
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-credential-check.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-210
+packages/cli/src/modules/workflow-reviews.ee/__tests__/support/workflow-review-test-data.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 59
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-449
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 18,446-449
+packages/cli/src/scaling/job-processor.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 324
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 89-92,149-196
+  s_90a5cf9fc8ca4b::t_790384ab8855eb 197
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 45-51,118,141-153,169,171-180,185-187,195,364,437-452,455-459,462,464,484-489,491-493,849,857-858,862,1016-1336
+  s_90a5cf9fc8ca4b::t_b47c6a90ffd275 1337-1338
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 145
+.agents/skills/create-instance-ai-eval/running-evals.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 221-258
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 4-7,38,43-46,73,93-104,121,151,182,338-343
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 37,221,286
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1,3,8-10,13-14,17-22,25-32,37-40,58,61,68-75,83-92
+packages/cli/scripts/build.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 139-143,151-155,157-158,160-178
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-step-run.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-10,15,17-19,22,26,30,59-70,75-85,205-211,276-279,286-604,622-658,695-1138
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 146
+packages/cli/src/modules/agents/integrations/__tests__/helpers/teams/replay-test-context.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 12
+packages/cli/src/modules/agents/integrations/__tests__/teams-integration.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 15
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 32-33,35-36,50-53
+packages/core/src/execution-engine/node-execution-context/utils/binary-helper-functions.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 239-246
+packages/cli/src/active-workflow-manager.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 47,604-608
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/fixtures/MicrosoftTeams.schema.v1.16.json
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-904
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-634
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsEditView.vue
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-30
+packages/@n8n/instance-ai/docs/tools.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 644,673-762,813,819-832
+  s_90a5cf9fc8ca4b::t_18792286daab67 833
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 22,136,147
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_90a5cf9fc8ca4b::t_55e3344a63649d 9031
+  s_90a5cf9fc8ca4b::t_1426339d09e365 8753-8793,9032-9063
+  s_90a5cf9fc8ca4b::t_c81665e9fe2f55 9021
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 65,86-87,208,475,486-487,489-499,717-718,776,778,784-790,795,857,1067,1096,1098-1104,1128,1131-1132
+packages/core/src/execution-engine/partial-execution-utils/__tests__/rewire-graph.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1,230-264
+  s_90a5cf9fc8ca4b::t_f637e27d340626 265
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 998,1011,1018-1033
+  s_90a5cf9fc8ca4b::t_fa219c5a183cdd 1034-1035
+packages/cli/src/policy/__tests__/enforce-workflow-publish.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-53
+packages/@n8n/api-types/src/agents/dto.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 11,291-298
+  s_90a5cf9fc8ca4b::t_8a82aa01a602e7 299-300
+packages/cli/src/modules/agents/agent-teams-integrations.controller.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-120
+packages/cli/src/public-api/v1/handlers/community-packages/__tests__/community-packages.handler.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 14,76-78,169
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 503-505
+packages/@n8n/api-types/src/agents/index.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 16
+packages/testing/playwright/utils/a11y-landmark-check.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-243
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 6-7,53,56-59,113,119-121
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-161
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 24,82,88-92,96,121,186,204,218-219,234,242,245-246,275-312,519,611,1077,1083-1092,1119-1120
+packages/cli/src/policy/enforce-workflow-publish.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-29
+packages/testing/playwright/AGENTS.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 246-273
+packages/cli/test/integration/public-api/executions.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 22,46
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 476,888,1237
+packages/cli/src/workflows/workflow.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 61,990-992,1028-1032,1823-1836,1838
+  s_90a5cf9fc8ca4b::t_fc02ef6ee5d7fa 1837,1839-1840
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1,29,63,389-420
+  s_90a5cf9fc8ca4b::t_8ee9aaff7a536e 421-422
+.devcontainer/codespaces/README.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 49-50,88,91-93,430
+packages/@n8n/api-types/src/agents/teams/types.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-88
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-credential-check.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-101
+packages/cli/src/modules/agents/integrations/__tests__/agent-credential-lookup.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-77
+packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-47
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 76-134,142,145-149,151-152,154-159,161-169
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 23-25,90-98,134,158,162-197,199-256,261,263-266,328-331,338-359,388-397,404-410,415,441
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 6,18-20,44-55,62,157-163,175,180,182,190-192,194-198
+packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 8-38
+packages/@n8n/api-types/src/dto/index.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 263-269
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 6
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 45-53
+packages/cli/src/public-api/v1/handlers/community-packages/community-packages.mapper.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1,22-23
+.agents/skills/create-agent-builder-eval/SKILL.md
+  s_90a5cf9fc8ca4b::t_1426339d09e365 94
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 112-113,117-118
+scripts/cloud-session.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 66-67,123-124
+packages/cli/test/integration/public-api/community-packages.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 25,94-106,121-124,126-135,140-158,178-179,189-190
+.devcontainer/codespaces/opencode-client.test.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 204-208
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 116-118,143-152,534
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.vue
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-632
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 42-47
+.devcontainer/codespaces/cloud-session.test.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 104-107
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 52-92
+packages/cli/src/modules/instance-ai/instance-ai-step-run.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 2-3,12-20,50-67,132-251,268-269,272,284-286,320-321,326-332,337-408,414-505,512-513,518-522,530-531,535-542,549,555-578,585,590-594,596-608,615,620-627,632-642,670-748
+  s_90a5cf9fc8ca4b::t_d768d7a512735d 749
+packages/testing/playwright/tests/e2e/a11y/a11y-landmark-structure.spec.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-222
+scripts/cloud-session-opencode.mjs
+  s_90a5cf9fc8ca4b::t_1426339d09e365 223
+packages/cli/src/modules/agents/agents.module.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 30,91-93,237,279
+packages/core/src/execution-engine/partial-execution-utils/rewire-graph.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 6-45,52,54-55
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 84-86
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-arm-template.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-205
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-62
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 156-193
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 107-164,172-174
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 11
+packages/@n8n/instance-ai/src/types.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 218-227,243-249,256-260,656-658,678-686
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 356-379
+  s_90a5cf9fc8ca4b::t_b2cdf16db75e87 355
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/binary-helper-functions.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 27,1164-1182
+  s_90a5cf9fc8ca4b::t_9703414b3a2c00 1183-1184
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-setup.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-232
+.github/workflows/test-evals-instance-ai.yml
+  s_90a5cf9fc8ca4b::t_1426339d09e365 459
+packages/frontend/editor-ui/src/features/agents/channels/teams/api.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-64
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 52,169,188,1338-1567,4881-4905,4915,4966-4968,5784,5963-5966,5983-5986,6134-6712
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1,29
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 38,180,238-243,392-396,400,441-443,469,476,639-643,1150,1575,1929,2331
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 9,11,18-21,55-58,69-74,107-109,113,120-151,159-163,186,196-214,226,228-233,276-285,289-290
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 14-15,111-114
+  s_90a5cf9fc8ca4b::t_fe7b129a27f750 115-116
+packages/cli/src/modules/agents/integrations/agent-credential-lookup.service.ts
+  s_90a5cf9fc8ca4b::t_1426339d09e365 1-59
+docs/generated/postgres-schema/README.md
+  s_90a5cf9fc8ca4b::t_5297d187a5c3da 26,202-203,590-598
+docs/generated/postgres-schema/public.agent_execution.md
+  s_90a5cf9fc8ca4b::t_fa9a58a7da0303 16,60,87-95
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_90a5cf9fc8ca4b::t_9745255a84ef2b 12,67,133-141
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_90a5cf9fc8ca4b::t_993b1443fa5351 1-104
+docs/generated/sqlite-schema/README.md
+  s_90a5cf9fc8ca4b::t_f53076ddef804c 26,184-185,576-584
+docs/generated/sqlite-schema/agent_execution.md
+  s_90a5cf9fc8ca4b::t_6717ed9eecc3dc 27,65,92-100
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_90a5cf9fc8ca4b::t_2febd8c1733892 23,67,133-141
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_90a5cf9fc8ca4b::t_222ea0948ebae8 1-108
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
+  s_90a5cf9fc8ca4b::t_e5ddcdb55c4121 1-67
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_90a5cf9fc8ca4b::t_b8b643c74350d7 6-8
+pnpm-lock.yaml
+  s_90a5cf9fc8ca4b::t_732af82195d5eb 4955-4960
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3541bf943c8fe50672903a65ed54d8e4db6da0cc",
+  "prompts": {},
+  "sessions": {
+    "s_90a5cf9fc8ca4b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d349-6f44-7e91-8c8b-56ac3a6b937a",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

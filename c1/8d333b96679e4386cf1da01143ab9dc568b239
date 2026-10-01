@@ -1,0 +1,17 @@
+docs/generated/sqlite-schema/workflow_history.md
+  s_cc18b3a8e9e1de::t_7a955663ab7d15 56,120
+docs/generated/sqlite-schema/README.md
+  s_cc18b3a8e9e1de::t_7a955663ab7d15 133,321,323-324,1539
+docs/generated/sqlite-schema/workflow_entity.md
+  s_cc18b3a8e9e1de::t_7a955663ab7d15 296
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_cc18b3a8e9e1de::t_7a955663ab7d15 114
+docs/generated/sqlite-schema/workflow_review_request_workflow.md
+  s_cc18b3a8e9e1de::t_7a955663ab7d15 9,18,28-31,39-40,48,54,60-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c18d333b96679e4386cf1da01143ab9dc568b239",
+  "prompts": {}
+}

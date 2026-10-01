@@ -1,0 +1,26 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_4f484cebd2507c::t_873b50de3f2241 155,157,166-176
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  s_4f484cebd2507c::t_90b838b416ccec 7,10-15,24-25,32-52
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/data-table.schema.test.ts
+  s_4f484cebd2507c::t_cfc1893274840c 1-48
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_4f484cebd2507c::t_02d7edb0735d21 583-584,586-589,591-595,597-611
+  s_4f484cebd2507c::t_a708c69fe9768f 585,590,596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f9c671781f8452dd1becb743ca4534955efac2e4",
+  "prompts": {},
+  "sessions": {
+    "s_4f484cebd2507c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ce06b02-5fda-45ed-a633-e5af29754e23",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

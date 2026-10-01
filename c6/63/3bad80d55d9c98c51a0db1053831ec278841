@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_9920dbe33b2b42::t_76dafe1a9bc5a3 5-12,197,1945,1996,2034,2036-2065,2099-2111
+  s_9920dbe33b2b42::t_1f72adfdb4182d 658-661
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_9920dbe33b2b42::t_0f5163737cd2b5 52,98,309-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6633bad80d55d9c98c51a0db1053831ec278841",
+  "prompts": {},
+  "sessions": {
+    "s_9920dbe33b2b42": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0867c-8ebc-79da-a691-a5e60c1136ba",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

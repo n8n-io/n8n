@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/helpers/workbookSource.ts
+  s_37e451fff42af7::t_bffcd753028bb9 137-225
+  s_37e451fff42af7::t_6fb47d641236ae 2-4
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.test.ts
+  s_37e451fff42af7::t_fcd3e9620a5486 7-9
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_37e451fff42af7::t_0d4a06ed2a73f9 8
+  s_37e451fff42af7::t_4c07797e1f789a 40-50
+  s_37e451fff42af7::t_e9e22691fe9d19 7
+  s_37e451fff42af7::t_ebfa6d9ffb2ea9 18-19
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_37e451fff42af7::t_136f6cf24cba20 25-36,60,89-90,92,95-96
+  s_37e451fff42af7::t_c1b32f425f1516 10-14,91,93,97-98
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.everything.workflow.json
+  s_37e451fff42af7::t_43ae371babf858 1-59
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.everything.test.ts
+  s_37e451fff42af7::t_1e0d02662b483d 1-38
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/common.descriptions.test.ts
+  s_37e451fff42af7::t_1e55204f70aede 12-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "0f66b966df1c2f0f3cca71b404893085c02a24e1",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

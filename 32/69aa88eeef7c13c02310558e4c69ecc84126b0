@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_5eaebbe993605c::t_0c2034c36ec406 203,215-227,281-300
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_5eaebbe993605c::t_658557e3642a54 35-38,48-49,57,211,214,265,292-294,370-375
+  s_5eaebbe993605c::t_5137ca3fd65e9c 376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3269aa88eeef7c13c02310558e4c69ecc84126b0",
+  "prompts": {},
+  "sessions": {
+    "s_5eaebbe993605c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4353-00a9-78b3-a770-05fc06ad05f3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

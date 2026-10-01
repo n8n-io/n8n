@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.test.ts
+  s_8c8657d666774a::t_316e89414120af 25-36,38-41,140,211-251
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.ts
+  s_8c8657d666774a::t_ae578e1aac0fe8 111-117,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cebb83c99f17200ed3a3950ba996dd2206098e6e",
+  "prompts": {},
+  "sessions": {
+    "s_8c8657d666774a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc1c18f0-2123-4ebd-85f4-36a201937980",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

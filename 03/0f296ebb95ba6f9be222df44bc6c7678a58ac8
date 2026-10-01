@@ -1,0 +1,69 @@
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_4aa50c08d4840d::t_f166669d68d172 162-169
+packages/@n8n/local-gateway/src/main/thread-service.ts
+  s_4aa50c08d4840d::t_96bd7522b8b6cc 83-92
+packages/@n8n/local-gateway/src/main/thread-service.test.ts
+  s_4aa50c08d4840d::t_483d784f24c9ae 266-289
+  s_4aa50c08d4840d::t_e199a6e92b5ff2 50,53,56
+packages/@n8n/local-gateway/src/main/instance-api.test.ts
+  s_4aa50c08d4840d::t_d47e9ae90f5a3a 147-155,162-165
+  s_4aa50c08d4840d::t_877bf944db6124 156-161
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_4aa50c08d4840d::t_5975b99aa21fd9 90-92
+packages/@n8n/local-gateway/src/renderer/components/ChatMessages.vue
+  s_4aa50c08d4840d::t_55528a4d03fbff 183-190
+  s_4aa50c08d4840d::t_4a8e27493ebdac 1-50,53-182,191-218
+  s_4aa50c08d4840d::t_b220db5615c94b 51-52
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.test.ts
+  s_4aa50c08d4840d::t_535105b8e5165f 1-24,26-35,37-134
+packages/@n8n/local-gateway/src/renderer/services/thread-client.ts
+  s_4aa50c08d4840d::t_bb52510763cf79 9
+  s_4aa50c08d4840d::t_5ac3509edebc88 44-48
+packages/@n8n/local-gateway/src/renderer/views/HomeView.vue
+  s_4aa50c08d4840d::t_7ccd462c79c48b 109,115
+  s_4aa50c08d4840d::t_2d87b869450bb2 212-217
+  s_4aa50c08d4840d::t_439a15a7762506 6,11,18-21,25
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_4aa50c08d4840d::t_99d630aeeaed2c 107-108
+  s_4aa50c08d4840d::t_88f86281dbc1fa 39
+packages/@n8n/local-gateway/src/renderer/components/ComposerField.vue
+  s_4aa50c08d4840d::t_902019089fb5aa 1-118
+packages/@n8n/local-gateway/src/renderer/services/thread-client.test.ts
+  s_4aa50c08d4840d::t_bbe2922cea5bdc 12
+  s_4aa50c08d4840d::t_2f829385178c92 132-142
+packages/@n8n/local-gateway/src/renderer/components/TaskComposer.vue
+  s_4aa50c08d4840d::t_270fe5c4234e37 29
+  s_4aa50c08d4840d::t_b2704fca8918f3 6
+  s_4aa50c08d4840d::t_2eb1c0655ad54e 171-180
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4aa50c08d4840d::t_2481f8d16c9bd5 42-50
+packages/@n8n/local-gateway/src/renderer/views/ChatView.vue
+  s_4aa50c08d4840d::t_70a9b879e2897e 30
+  s_4aa50c08d4840d::t_678d7c5bf2b729 1-29,31-56
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_4aa50c08d4840d::t_8f41456577fe87 72
+  s_4aa50c08d4840d::t_843bf894a5bb04 280-295,299
+packages/@n8n/local-gateway/eslint.config.mjs
+  s_4aa50c08d4840d::t_bd1701b678dcac 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "030f296ebb95ba6f9be222df44bc6c7678a58ac8",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4aa50c08d4840d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca3ec3e5-c3e7-4e8a-bc04-705d68d7b331",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_db4e4ca9649dbd::t_1677a5d286a03d 5084-5088,5092
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_db4e4ca9649dbd::t_f01f926a16f6f7 88,96
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_db4e4ca9649dbd::t_f01f926a16f6f7 111-114,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c8638684f6464a61fa9b49bde2b83a105f67fdbf",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_db4e4ca9649dbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d2532f3-e59d-4759-b709-81da45ae514d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

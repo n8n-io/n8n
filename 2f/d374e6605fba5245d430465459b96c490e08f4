@@ -1,0 +1,19 @@
+packages/workflow/src/execution-context.ts
+  s_729d7ae0c0b1bf::t_96c3b6ea9a0ce6 123-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "2fd374e6605fba5245d430465459b96c490e08f4",
+  "prompts": {},
+  "sessions": {
+    "s_729d7ae0c0b1bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f1728e2-404d-4a8d-bdcd-c2ed8b68255f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

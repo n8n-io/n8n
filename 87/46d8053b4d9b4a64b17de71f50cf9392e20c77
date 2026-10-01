@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/src/components/N8nFormInputs/FormInputs.vue
+  s_0096792cbfee5e::t_311e79a9a0e99e 174
+  s_0096792cbfee5e::t_707653d4f42562 17
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.stories.ts
+  s_0096792cbfee5e::t_669e556ac1a91f 121-150
+packages/frontend/@n8n/design-system/src/components/N8nFormInputs/FormInputs.test.ts
+  s_0096792cbfee5e::t_b95cf22704a950 7
+  s_0096792cbfee5e::t_3ab447a6370e06 442-492
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8746d8053b4d9b4a64b17de71f50cf9392e20c77",
+  "prompts": {},
+  "sessions": {
+    "s_0096792cbfee5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e160b82d-7dff-4a60-beb8-b3806eeb5fd1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

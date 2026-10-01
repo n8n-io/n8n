@@ -1,0 +1,47 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_b3c886953457ff::t_2a1884589be258 4380
+  s_b3c886953457ff::t_25ac23363a31df 4576-4582,4585,4602,4617
+  s_b3c886953457ff::t_b6706fdf0ee644 4502
+  s_b3c886953457ff::t_38a65cba2e435d 4439-4444,4457-4461
+  s_b3c886953457ff::t_22ffa8a7f9c6e8 3555
+  s_b3c886953457ff::t_29b7fc0d777048 4647
+  s_b3c886953457ff::t_8e0d025fc60fb2 4730
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_b3c886953457ff::t_0a4c311fc26e12 27-30
+  s_b3c886953457ff::t_285c89c346b0cc 4
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_d5085429ca2918::t_1273efa348da1a 200-204,206-209
+  s_d5085429ca2918::t_c46a4ad1712477 205
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_b3c886953457ff::t_b7981f97ccd8f5 2572
+  s_b3c886953457ff::t_14db22ff61557e 2395-2433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b3a8970d2b9fd7c717218a49436da745d425076f",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3c886953457ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3f7661c9-7c9e-449c-830c-72fd46b41859",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d5085429ca2918": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "43495560-3482-48fc-8554-c847021626cf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

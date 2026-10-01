@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  h_7555c3ee6524cf 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6d1c832c64299558436f672e99452c77819e73d",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

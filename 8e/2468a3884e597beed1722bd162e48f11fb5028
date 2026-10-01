@@ -1,0 +1,21 @@
+packages/modules/instance-registry/frontend/package.json
+  s_947572853387c8::t_f25320df661d91 43
+pnpm-lock.yaml
+  s_947572853387c8::t_04a9d96cbf507b 6365-6367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8e2468a3884e597beed1722bd162e48f11fb5028",
+  "prompts": {},
+  "sessions": {
+    "s_947572853387c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c588b82d-fc84-4bf6-b4b1-e4ead7ee534b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

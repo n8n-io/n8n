@@ -1,0 +1,491 @@
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-39
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.ts
+  s_6d27884ffc85e2::t_d322697c26500d 7-9,12-19,24-28,37-39,42-47,57-59,72,82
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskCredentialCard.vue
+  s_6d27884ffc85e2::t_d322697c26500d 2-12,14-15,17,19-20,23,26-28,30,34,42-50,52-62,65-76,78-79,84-86,88,90,92-93,96-104,107-108,111-152,158-180,183-209,220-223,227,258-263,276-277,282-286
+  s_6d27884ffc85e2::t_c82c00a389030f 287
+packages/@n8n/instance-ai/src/tools/templates.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-30
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_6d27884ffc85e2::t_d322697c26500d 150-153,190,194
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 18,27-32,50,66,70-86,132,154
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_6d27884ffc85e2::t_d322697c26500d 17,277
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_6d27884ffc85e2::t_d322697c26500d 53,61
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_6d27884ffc85e2::t_d322697c26500d 252-255,453-454
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_6d27884ffc85e2::t_d322697c26500d 20-22,53-56
+packages/cli/src/workflows/workflows.controller.ts
+  s_6d27884ffc85e2::t_d322697c26500d 8,504-512,528
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-239
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_6d27884ffc85e2::t_d322697c26500d 119-146
+packages/cli/src/modules/agents/builder/prompts/memory.prompt.ts
+  s_6d27884ffc85e2::t_d322697c26500d 34
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupSelection.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-229
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_6d27884ffc85e2::t_d322697c26500d 44-50,55,80-89,94,141-144,201,260,342-343,369,395
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4-5,21,28,32-37,40,43-48,64,66-77
+packages/cli/test/integration/credentials/credentials.resolvable.api.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 29,53-57,558-720
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 97-154
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1013-1014,1018-1020,1026-1031,1041-1043,1053,1057-1075
+  s_6d27884ffc85e2::t_62f243fd40dbcc 1076-1077
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 151-197
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-137
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_6d27884ffc85e2::t_d322697c26500d 233,244-245
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-146
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 55-56,516-524,634-635
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_6d27884ffc85e2::t_d322697c26500d 55,81,387,400,411-415,419,449-460,523-526,568,630-654,676-679,688,690,694,696-698,706-707,709-711,743-807,840-842,1172-1180,1183-1186,1201,1206-1230,1232-1237,1240,1278-1304,1553,1599,1608,1666,1729-1742
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_6d27884ffc85e2::t_d322697c26500d 113
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-8,14-43,147-250
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-8,13,69-84,100-133,152-156,163-170,172-177,182-189,193
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_6d27884ffc85e2::t_d322697c26500d 178-205,212,217-242,245-251,258,260-264,267-303,359,385-396
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-16
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1,11-20,22-31,57-58,63,69,71-72,75,77,81,83-84,96,108,115-129,135-137
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 364,366,441-470
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1
+packages/cli/src/workflows/workflow.request.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2-8,32-34,36-38,40,69
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_6d27884ffc85e2::t_d322697c26500d 15,60,136-143
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 36-39,83-85,108,137,184-187
+  s_6d27884ffc85e2::t_51f4035dbcd2b1 188-190
+packages/@n8n/api-types/src/dto/workflows/manual-run.dto.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-89
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-2,4,6-12,617-663,780-1078
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2,11-18,32-34
+  s_6d27884ffc85e2::t_ecfd6017e50e2a 35
+packages/@n8n/nodes-langchain/utils/aws/createBedrockRuntimeClient.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_6d27884ffc85e2::t_d322697c26500d 11,267-291
+  s_6d27884ffc85e2::t_ce2cf1ef349097 292-296
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 242,258,271,735
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_6d27884ffc85e2::t_d322697c26500d 19,599-608,614
+packages/frontend/editor-ui/src/features/agents/__tests__/AskQuestionsCard.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-99
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 248,250
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3,262-276,926-969
+  s_6d27884ffc85e2::t_4bfd3bdea7ad2c 970
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_6d27884ffc85e2::t_d322697c26500d 425
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_6d27884ffc85e2::t_d322697c26500d 2-12,29-34,37-38,41,50-58
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-124
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_6d27884ffc85e2::t_d322697c26500d 529,531
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskQuestionsCard.vue
+  s_6d27884ffc85e2::t_d322697c26500d 1-122
+packages/frontend/editor-ui/src/features/workflows/templates/templates.store.ts
+  s_6d27884ffc85e2::t_d322697c26500d 21,179-190,201-203
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_6d27884ffc85e2::t_d322697c26500d 31-33,51,71-77,82-89
+  s_6d27884ffc85e2::t_ab113bb85beb95 90-91
+packages/cli/src/modules/agents/builder/errors.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1,8-10,12
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 21,25,43-46,60-65,70,73-74,80,82-86,88-143,148-154,156,168-169,193,220-250
+  s_6d27884ffc85e2::t_af45bf3b63f42c 251
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-5,24,26,36,48,50-53,65,67,69-70,75-165
+packages/nodes-base/credentials/common/aws/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 65-67
+packages/cli/src/modules/agents/builder/agents-builder-model-recommendations.ts
+  s_6d27884ffc85e2::t_d322697c26500d 85-86,89
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1299,1572,1898,2652,2914
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4,11-25
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 234-245
+packages/@n8n/api-types/src/dto/workflows/__tests__/manual-run.dto.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-97
+packages/frontend/editor-ui/src/features/agents/__tests__/tool-call-details.spec.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2,75
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 7,81,88-89,106,120-128,162-163,170-171,358,362-363,369,377-378,936,938-948,955-956,963,980
+packages/cli/src/credentials/credentials.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 936-941,1453-1471,1475-1477
+  s_6d27884ffc85e2::t_06a74fb013b224 1478
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry.ts
+  s_6d27884ffc85e2::t_d322697c26500d 10
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_6d27884ffc85e2::t_d322697c26500d 214-219
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 76-78
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3,47,137-140
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_6d27884ffc85e2::t_d322697c26500d 172-177
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_6d27884ffc85e2::t_d322697c26500d 5,7-11,29,176-180,183,186-197
+  s_6d27884ffc85e2::t_43189b03bc1133 198
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2,29,106
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_6d27884ffc85e2::t_d322697c26500d 33
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-277
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1,9,21,315-319,350
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-82
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4730,4743,4747-4758
+  s_6d27884ffc85e2::t_949a919dbc07e1 4759
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 453,459-464,489
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-7,21-49,77
+packages/frontend/editor-ui/src/features/agents/components/interactive/ConfigureChannelCard.vue
+  s_6d27884ffc85e2::t_d322697c26500d 1-81
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 790,941,949,959
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_6d27884ffc85e2::t_d322697c26500d 199
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 10-12,348-376
+  s_6d27884ffc85e2::t_3d0c8a14b3f56c 377-378
+packages/@n8n/instance-ai/evaluations/system-prompts/build-expectations-verify.ts
+  s_6d27884ffc85e2::t_d322697c26500d 15
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2,12,106-109,112
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 61,158
+packages/cli/src/modules/instance-ai/__tests__/workflow-templates.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-82
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4,427-475
+  s_6d27884ffc85e2::t_58a9b3d12ede18 476
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_6d27884ffc85e2::t_d322697c26500d 109-139,390-402,404-407,409,411-413,416-420,427-439,443-450
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_6d27884ffc85e2::t_d322697c26500d 1310-1314
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 7-8,35-40,126,145-155
+packages/@n8n/instance-ai/docs/tools.md
+  s_6d27884ffc85e2::t_d322697c26500d 678-711
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 39-42,207-221
+  s_6d27884ffc85e2::t_b14eb6cd5ed0f9 222
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-questions.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-229
+packages/@n8n/permissions/src/roles/__tests__/end-user-credential-scope.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-29
+packages/frontend/editor-ui/src/features/agents/utils/model-string.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-4
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_6d27884ffc85e2::t_d322697c26500d 27-37
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 768,976-977
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-115
+packages/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_6d27884ffc85e2::t_d322697c26500d 111-120
+packages/@n8n/instance-ai/src/types.ts
+  s_6d27884ffc85e2::t_d322697c26500d 828,830-833,836,838-840,845-854,857-860,864-867,869-871,873-875,907,909-910,915
+packages/@n8n/api-types/src/agents/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 17-18,30
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-4
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_6d27884ffc85e2::t_d322697c26500d 31
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_6d27884ffc85e2::t_d322697c26500d 22,24,26-42,44-47,49-67,70,94
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 397-451
+packages/@n8n/api-types/src/agent-builder-interactive.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3-7,18,30-31,55-60,63
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2,5-6,8-14,37,75-102,114-116,119-121,124-126
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_6d27884ffc85e2::t_d322697c26500d 229
+packages/cli/src/modules/agents/builder/interactive/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 2-3
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 30,37-39,88-89,93,103,110-128,215,217,237-238,240,243,260,266,269,285-470,758-1181
+  s_6d27884ffc85e2::t_2e0bad5dbc1a14 1182
+packages/@n8n/api-types/src/agents/agent-interaction.schema.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-119
+packages/@n8n/api-types/src/dto/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 114-120
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 50-68
+packages/@n8n/api-types/src/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 353-359
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_6d27884ffc85e2::t_d322697c26500d 1-334
+packages/@n8n/permissions/src/constants.ee.ts
+  s_6d27884ffc85e2::t_d322697c26500d 17
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1440,1470,1501
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_6d27884ffc85e2::t_d322697c26500d 31-34,37,40
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 134-169
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 17-23,40,92,99,261-273
+  s_6d27884ffc85e2::t_898b66e73b0225 274-275
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_6d27884ffc85e2::t_d322697c26500d 127-131
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-93
+packages/cli/src/modules/agents/builder/skills/__tests__/index.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-23
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_6d27884ffc85e2::t_d322697c26500d 7-8,11,15,17,21-32,34-36,56-82,99-103,105-106,112,114,116-119,121,123-124,126,131-133,135,137-139
+packages/@n8n/api-types/src/agents/dto.ts
+  s_6d27884ffc85e2::t_d322697c26500d 211-217
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 83,98,118-123,638-659
+  s_6d27884ffc85e2::t_8fa625835c4a70 660-661
+packages/@n8n/instance-ai/src/tools/__tests__/templates.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-37
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_6d27884ffc85e2::t_d322697c26500d 50-56,62,713
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 34,63-68,185,1599-1648
+  s_6d27884ffc85e2::t_02c57d803ae89e 1649
+packages/@n8n/instance-ai/evaluations/data/agents/ops-data-table-question.json
+  s_6d27884ffc85e2::t_d322697c26500d 14
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_6d27884ffc85e2::t_d322697c26500d 232-234,240-242,255-257
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_6d27884ffc85e2::t_d322697c26500d 421
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 308,337,366,382-465
+.github/workflows/community-pr-close-stale.yml
+  s_6d27884ffc85e2::t_d322697c26500d 40
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4,6,131-169
+  s_6d27884ffc85e2::t_3759af6ded8e42 170
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4,19-39,41,123-127,139,152,155-161,165,175-179,181-184,446,448,450,472,477,479,481,484-485,507,519,631,639,641,643,646-647,668,670,686,688
+packages/frontend/editor-ui/src/features/agents/__tests__/ConfigureChannelCard.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-102
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 452-547
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4,6,9-15,18-19,21,24,37,40,42,49-50,55-60,150-289,291,299-301,307-311,313-316,354-356,358-362,365-366,371-374,377-379,383-385,388-390,401-404,461
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_6d27884ffc85e2::t_d322697c26500d 58-60,68
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-56
+packages/@n8n/instance-ai/evaluations/data/agents/meta-what-can-you-build.json
+  s_6d27884ffc85e2::t_d322697c26500d 13-14
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3,39-55,58-65,111,113-119,125,149,159-165,195,211-218,239-242,259,269,275,277
+packages/@n8n/api-types/src/agents/__tests__/agent-build-resume.dto.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-45
+packages/frontend/editor-ui/src/app/composables/useEditorContext.ts
+  s_6d27884ffc85e2::t_d322697c26500d 61
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_6d27884ffc85e2::t_d322697c26500d 30,195-199
+packages/frontend/editor-ui/src/features/agents/__tests__/AskCredentialCard.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 9,14,83-87,91-94,104,111,141,152,159,178-182,184-185,188,191,194,203
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_6d27884ffc85e2::t_d322697c26500d 15-16,52-54
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 587,589-600,606-614,647,649-660,666-672
+  s_6d27884ffc85e2::t_442f03639bbf91 673-674
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_6d27884ffc85e2::t_d322697c26500d 12,21-26,30,58-66,70
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_6d27884ffc85e2::t_d322697c26500d 3,164-176,226-234
+  s_6d27884ffc85e2::t_7615334d97d432 235
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4-5,18,28-48,59-63,66-73,77-89
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_6d27884ffc85e2::t_d322697c26500d 17-18,42-46,115-119
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 8-9,11-12,14,35-36,40-41,43,48-58,60-78,80-84,90,94-99,101-114,118-138,150-151,155,158,160
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_6d27884ffc85e2::t_d322697c26500d 159-165,878-907,911-913
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 373,376-386
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-350
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.focusHandoff.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 8-11,19
+packages/testing/playwright/tests/e2e/instance-ai/thread-launcher.spec.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-51
+packages/cli/test/integration/ai/ai.api.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 77
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 136,223,255,333-339,389-395,531-611,613-627
+packages/nodes-base/credentials/common/aws/types.ts
+  s_6d27884ffc85e2::t_d322697c26500d 13-14
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 12
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/apply-workflow-credentials.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 45
+packages/@n8n/instance-ai/src/planned-tasks/__tests__/planned-task-permissions.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 18
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 188-258
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-81
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_6d27884ffc85e2::t_d322697c26500d 44,48,56
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6d27884ffc85e2::t_d322697c26500d 309-317,2060
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.ts
+  s_6d27884ffc85e2::t_d322697c26500d 31,35-39,43,50,56,67-77,81,86-89,91,104,116
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.ts
+  s_6d27884ffc85e2::t_d322697c26500d 78-95,118-123
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 73,106-109,571
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4,15,17-19,25,42-43,50,59
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_6d27884ffc85e2::t_d322697c26500d 14,17,58-60,76-77
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_6d27884ffc85e2::t_d322697c26500d 104-110,112-124,178-182,184-189,230-231,233-234,249-250,263-264,291
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 712-761,769-776,782-789,808-815,821-828,851-853,877-879,890-914
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_6d27884ffc85e2::t_d322697c26500d 90-95
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_6d27884ffc85e2::t_d322697c26500d 9-14,17,67-71,76,84-85
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 6,103,111,113,117-121,124-139,141,297,301-309,362,366-374,387
+packages/@n8n/permissions/src/scope-information.ts
+  s_6d27884ffc85e2::t_d322697c26500d 98,101-104
+  s_6d27884ffc85e2::t_96bce78b141c03 105
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 129-134,600-602,614,620-621,627,630-633
+packages/@n8n/instance-ai/src/index.ts
+  s_6d27884ffc85e2::t_d322697c26500d 625,629-632
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_6d27884ffc85e2::t_d322697c26500d 22,65
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_6d27884ffc85e2::t_d322697c26500d 51,137-138,319-320
+packages/testing/playwright/pages/components/CommandBar.ts
+  s_6d27884ffc85e2::t_d322697c26500d 31-35
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_6d27884ffc85e2::t_d322697c26500d 7-10,68-70,73
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_6d27884ffc85e2::t_d322697c26500d 11-15,33-34,62-83,199-216,276-313
+  s_6d27884ffc85e2::t_83b9ebb7336d7f 314
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_6d27884ffc85e2::t_d322697c26500d 41,101
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 229,232-233,236,239
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 37-53,105,160-548
+  s_6d27884ffc85e2::t_f124a975d0ec98 549
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 30-31
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-agent-builder-leak.json
+  s_6d27884ffc85e2::t_d322697c26500d 13,17
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_6d27884ffc85e2::t_d322697c26500d 15,33,59
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_6d27884ffc85e2::t_d322697c26500d 4-8,12-13
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1,15,1973,2027,2063
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 34
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6d27884ffc85e2::t_d322697c26500d 2116,2196-2197,2202,2206,2412-2414,2419-2426,2428,2433-2438,2445,2737-2738,2745,3932,6095-6096,6743-6745
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-495
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 6,285-333,341-343,360-440
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_6d27884ffc85e2::t_d322697c26500d 7-18,44-87
+packages/cli/src/credentials/credentials.controller.ts
+  s_6d27884ffc85e2::t_d322697c26500d 238-243
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_6d27884ffc85e2::t_d322697c26500d 12-13,16-21,53,59
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 96-122,261-282,387-395,412-432
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_6d27884ffc85e2::t_d322697c26500d 44,58,69,87-93,126-135,185-187,212,283-289,316-322,349-351,418-421,423-425,438-442,491-498
+  s_6d27884ffc85e2::t_56b41cf20f4873 499-500
+packages/cli/templates/form-trigger-completion.handlebars
+  s_6d27884ffc85e2::t_d322697c26500d 204,206,208-211
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/contextMenuGroupView.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-19
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_6d27884ffc85e2::t_d322697c26500d 11,14,59-61
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 17,387-445
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_6d27884ffc85e2::t_d322697c26500d 12-13,61,125-126,260,283,295,315,320,323-331,335-351,401-407
+  s_6d27884ffc85e2::t_b72ecfcfe49e64 408-409
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 69-72,74,94-111,118-137,177,180,186,189,244-249,252-255,260
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_6d27884ffc85e2::t_d322697c26500d 306
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_6d27884ffc85e2::t_d322697c26500d 93-94
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.vue
+  s_6d27884ffc85e2::t_d322697c26500d 10-12,30-31,34-36,90-112,115-128,130-153,156-157
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_6d27884ffc85e2::t_d322697c26500d 136-140,148
+packages/cli/src/modules/agents/builder/interactive/ask-questions.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 1-151
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_6d27884ffc85e2::t_d322697c26500d 100-101
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 266,284,417-420,426,435-438,444,456-459,465,1263
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.test.ts
+  s_6d27884ffc85e2::t_d322697c26500d 316-374
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_6d27884ffc85e2::t_d322697c26500d 20,22,44-50,54-59,61-65,73-77,84-85,99,123-126,176-194,196-202,206-221,242,248-261,269,287-352,368,401,403,415-418
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_6d27884ffc85e2::t_490adc87c22887 33
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__snapshots__/useContextMenu.test.ts.snap
+  s_6d27884ffc85e2::t_6b7fd04e03e5db 106-117,212-223,358-369,504-515,610-621,768-779,926-937,1084-1095,1242-1253,1353-1364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "13166a55f9f270c8d9b5f1d935cae389d79c5347",
+  "prompts": {},
+  "sessions": {
+    "s_6d27884ffc85e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3099e6f-2780-48af-99a8-15d2fd947bf2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/@n8n/agents/src/sdk/__tests__/untrusted-content.test.ts
+  s_97124842b89319::t_bdec0a5735099b 1-36
+packages/@n8n/agents/src/sdk/untrusted-content.ts
+  s_97124842b89319::t_775b367c67f763 19
+  s_97124842b89319::t_be00339403f783 1-18,20-57
+packages/@n8n/instance-ai/src/tools/web-research/sanitize-web-content.ts
+  s_97124842b89319::t_ff4d407c92eabd 9-12,15-17
+  s_97124842b89319::t_a56ac8f922ef97 18
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_97124842b89319::t_3b8a9b0e7fb55c 161-190
+  s_97124842b89319::t_9d92b571c322fb 12
+  s_97124842b89319::t_fad9ac54b5ceb3 50-51,53-55,58-60
+packages/@n8n/agents/src/runtime/__tests__/mcp-tool-resolver.test.ts
+  s_97124842b89319::t_05f86adf3f71cb 17-21,35,42
+  s_97124842b89319::t_7f55d367dc2835 73-138
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_97124842b89319::t_72b6719e42701b 10-11
+  s_97124842b89319::t_021718e6ec9dee 19-20
+packages/@n8n/agents/src/index.ts
+  s_97124842b89319::t_4fbb3983e5568c 139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f7b6ded75bdca91b409457eb58efcc6030ce24e6",
+  "prompts": {},
+  "sessions": {
+    "s_97124842b89319": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e46c036b-ecd2-4706-953f-7e6eb59d5337",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

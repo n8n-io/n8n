@@ -1,0 +1,39 @@
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_934c52d564c9ad::t_c5f2c98470b76f 38
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_934c52d564c9ad::t_0cc16bfe9c8736 151,155-156
+  s_934c52d564c9ad::t_ec8f0d3e833dbb 162-170
+packages/@n8n/mcp-browser-extension/vite.sw.config.mts
+  s_934c52d564c9ad::t_5003d31ddd73e2 18-20
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_934c52d564c9ad::t_f86d7342affee1 221
+  s_934c52d564c9ad::t_82e1d1082f594f 277
+  s_934c52d564c9ad::t_a5de82082b9502 34-68
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_934c52d564c9ad::t_26d0111f11c596 632-647
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_934c52d564c9ad::t_f9b8f5ffa0f14a 34
+  s_934c52d564c9ad::t_7fb6cea00b9220 21
+  s_934c52d564c9ad::t_1eda5b1d3ba78d 339-358
+  s_934c52d564c9ad::t_c5bc9dadedb6ef 63-66
+packages/@n8n/mcp-browser-extension/vite.ui.config.mts
+  s_934c52d564c9ad::t_d88786fd559cba 60
+packages/@n8n/mcp-browser-extension/src/ui/drawer.html
+  s_934c52d564c9ad::t_b9113786b0865c 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5ebfe6dfbd0abaa0ae1fc60a780eba3df1021684",
+  "prompts": {},
+  "sessions": {
+    "s_934c52d564c9ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "490ca0b4-c904-43da-9d07-f2b8bf8bae50",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

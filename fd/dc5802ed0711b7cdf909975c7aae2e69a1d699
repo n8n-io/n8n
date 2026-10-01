@@ -1,0 +1,54 @@
+docs/generated/sqlite-schema/user.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 308
+packages/@n8n/db/src/entities/workflow-review-request.ee.ts
+  s_44a98ba2784a12::t_95a1285ac2a8aa 37
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 1398
+packages/@n8n/db/src/migrations/common/1784000000049-CreateWorkflowReviewRequestTables.ts
+  s_44a98ba2784a12::t_34f2a620d1f09e 67
+docs/generated/sqlite-schema/workflow_review_request_authors.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 78
+docs/generated/sqlite-schema/workflow_review_request_reviewers.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 78
+docs/generated/postgres-schema/public.workflow_review_request_workflow.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 79
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 1420
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 9,27,73
+docs/generated/postgres-schema/public.workflow_review_request_reviewers.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 69
+docs/generated/sqlite-schema/project.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 202
+docs/generated/postgres-schema/public.project.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 196
+docs/generated/postgres-schema/public.workflow_review_request_authors.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 69
+docs/generated/sqlite-schema/workflow_review_request_workflow.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 88
+docs/generated/postgres-schema/public.user.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 302
+docs/generated/postgres-schema/public.workflow_review_request.md
+  s_44a98ba2784a12::t_f4ddd4b6a4b050 16,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fddc5802ed0711b7cdf909975c7aae2e69a1d699",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

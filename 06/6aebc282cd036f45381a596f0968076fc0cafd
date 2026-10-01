@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_57ce23ceeac60f::t_2ddc65be68868d 23
+  s_57ce23ceeac60f::t_64647acb3a8923 32-33
+  s_57ce23ceeac60f::t_120986841bad58 726-849,968-969
+  s_ebee5eee986e75::t_eee59e9d73a634 850-859,861-967
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_57ce23ceeac60f::t_a849a6a86bdcbf 9
+  s_57ce23ceeac60f::t_d11d986b50a072 416-422
+  s_ebee5eee986e75::t_3bf85df769fc28 423-436
+  s_ebee5eee986e75::t_6969117539cecc 470-476,510-518
+  s_ebee5eee986e75::t_e4d773eae4c53c 567-570
+  s_57ce23ceeac60f::t_0b5a05cce8e51c 571
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_57ce23ceeac60f::t_5bddadf117ada0 436-470
+  s_57ce23ceeac60f::t_30280540c52bf3 1489-1530
+packages/workflow/src/constants.ts
+  s_57ce23ceeac60f::t_cc1daeec05ef5e 124-130
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_57ce23ceeac60f::t_ffbed1323aec8a 3709
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_57ce23ceeac60f::t_1843d37b1aa808 486-487,510-513
+  s_57ce23ceeac60f::t_478903ae8ed8ec 915-920
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "066aebc282cd036f45381a596f0968076fc0cafd",
+  "prompts": {},
+  "sessions": {
+    "s_57ce23ceeac60f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cd6249c-c7bd-442c-bd6b-2c3b2f77f72c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ebee5eee986e75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9600e086-95a1-4056-94cf-26f12eb8960c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

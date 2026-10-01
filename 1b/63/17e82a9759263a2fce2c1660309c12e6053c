@@ -1,0 +1,11 @@
+packages/@n8n/nodes-langchain/utils/oauth2-token-provider.ts
+  ai_agent 48-61,97-107,115-116
+packages/@n8n/nodes-langchain/utils/tests/oauth2-token-provider.test.ts
+  ai_agent 130-131,139-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b6317e82a9759263a2fce2c1660309c12e6053c",
+  "prompts": {}
+}

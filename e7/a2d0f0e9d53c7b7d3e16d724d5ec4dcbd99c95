@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/scheduling/agent-task-job-registrar.ts
+  s_8eb3cc8f7c5911::t_c09ed918ce3c45 26-27
+packages/cli/test/integration/scheduling/agent-task-multi-main.test.ts
+  s_8eb3cc8f7c5911::t_5b97a74310bf64 177-178,181-182,185-186
+packages/@n8n/db/src/migrations/common/1788865443826-AddMisfireSettingsToAgentTasks.ts
+  s_8eb3cc8f7c5911::t_2c9267820aac3d 22,24-25
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_8eb3cc8f7c5911::t_2eee9c0a24ccf3 103-106
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_8eb3cc8f7c5911::t_51c7f8613c1120 306-308,311
+  s_8eb3cc8f7c5911::t_a533aa345f8611 31
+packages/cli/test/migration/1788865443826-add-misfire-settings-to-agent-tasks.test.ts
+  s_8eb3cc8f7c5911::t_a87d90cb27c72b 113
+  s_8eb3cc8f7c5911::t_b81518d6c97acc 1-112,114-124
+packages/cli/src/scheduling/misfire-grace.ts
+  s_8eb3cc8f7c5911::t_6d728e1efa1a8f 1-7,15-24,26,29,35,39-42
+  s_8eb3cc8f7c5911::t_bfa36c5dc240f2 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e7a2d0f0e9d53c7b7d3e16d724d5ec4dcbd99c95",
+  "prompts": {},
+  "sessions": {
+    "s_8eb3cc8f7c5911": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ea6e1bfa-4c4a-4e84-9919-ed26ac6a9d0b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+packages/cli/src/__tests__/active-executions.test.ts
+  s_d99f4099828f6d::t_70b0c351fa90a9 195-222
+  s_d99f4099828f6d::t_824dd61fa0a947 93
+  s_d99f4099828f6d::t_cecb348649f2e1 29
+  s_d99f4099828f6d::t_b0c2a833d02d53 53-54
+  s_d99f4099828f6d::t_b605fbda08c7f2 223-225
+packages/@n8n/api-types/src/schemas/banner-name.schema.ts
+  s_d99f4099828f6d::t_2655d05254b831 12-13
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_d99f4099828f6d::t_b8c81f202e9a49 15
+  s_d99f4099828f6d::t_540f86b6443fef 92
+packages/frontend/editor-ui/src/features/settings/usage/usage.test.ts
+  s_d99f4099828f6d::t_109625fc0d364c 51-55,66-86,93,114
+packages/@n8n/backend-common/src/license-state.ts
+  s_d99f4099828f6d::t_bc3f6e12e916e9 229-232
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d99f4099828f6d::t_b24360bf2689e1 4727-4728
+packages/@n8n/api-types/src/dto/owner/__tests__/dismiss-banner-request.dto.test.ts
+  s_d99f4099828f6d::t_2a1304d86d8e4f 96-97
+packages/cli/src/executions/__tests__/production-execution-cap.service.test.ts
+  s_d99f4099828f6d::t_ac9822156f7a2d 19
+  s_d99f4099828f6d::t_6bf9dd1f029e83 41-51
+  s_d99f4099828f6d::t_5add8398ea3975 155-157
+  s_d99f4099828f6d::t_a5df74e967b2d9 1-18,20-40,52-154,158-164
+  s_d99f4099828f6d::t_e4a15780652717 165-167
+packages/@n8n/constants/src/index.ts
+  s_d99f4099828f6d::t_84bf926835e33a 69
+packages/cli/src/executions/__tests__/production-execution-cap.integration.test.ts
+  s_d99f4099828f6d::t_48d75f3958eb8c 1-2,6,10,13-22,24,27-28,34,43-44,47-55,57,63,65-67,69,72-74,76,81-86,88-90,92,95-97,99-102,111-119
+  s_d99f4099828f6d::t_74001255477d44 104-110
+  s_d99f4099828f6d::t_160ea2ee5ce64c 3-5,7-9,11-12,23,25-26,29-33,35-42,45-46,56,58-62,64,68,70-71,75,77-80,87,91,93-94,98,103,120-121
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/ProductionExecutionLimitWarningBanner.vue
+  s_d99f4099828f6d::t_09b2af9dbf089f 1-22
+packages/cli/src/interfaces.ts
+  s_d99f4099828f6d::t_a615f6db315b5b 260-264
+packages/cli/src/license/__tests__/license.service.test.ts
+  s_d99f4099828f6d::t_e2cd348439080f 4,18,29,39,42
+  s_d99f4099828f6d::t_27ce83313117bf 66-70
+packages/frontend/editor-ui/src/app/init.ts
+  s_d99f4099828f6d::t_221b2c89c0a025 33
+  s_d99f4099828f6d::t_772b780aca20a3 126
+  s_d99f4099828f6d::t_b16ea4c3568432 199-211
+packages/cli/src/services/workflow-statistics.service.ts
+  s_d99f4099828f6d::t_684e52fa754848 61-71
+  s_d99f4099828f6d::t_472d597c310303 9
+  s_d99f4099828f6d::t_b767180a1a7ea5 72
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/ProductionExecutionLimitReachedBanner.vue
+  s_d99f4099828f6d::t_9f90280c749008 1-22
+packages/cli/test/integration/license.api.test.ts
+  s_d99f4099828f6d::t_732d02e4356711 121-125,146-150
+packages/cli/src/active-executions.ts
+  s_d99f4099828f6d::t_d760f46a7bd459 26
+  s_d99f4099828f6d::t_0197b490e5d226 53
+  s_d99f4099828f6d::t_6a9ae8bfa2c177 85-90
+packages/cli/src/executions/production-execution-cap.service.ts
+  s_d99f4099828f6d::t_9211db0bce9e69 1-50,58-110
+  s_d99f4099828f6d::t_76de36b98987dd 51-57
+packages/frontend/editor-ui/src/features/shared/banners/components/BannerStack.vue
+  s_d99f4099828f6d::t_766b58deb8dd13 12-13
+  s_d99f4099828f6d::t_d372c308665292 39-46
+packages/cli/src/license/license.service.ts
+  s_d99f4099828f6d::t_37ed68cef9bc50 35
+  s_d99f4099828f6d::t_3a02b4aef41ad9 5
+  s_d99f4099828f6d::t_35ab31fadc6bd5 50-51,65-68
+  s_d99f4099828f6d::t_0b3ef8099a6ac9 69
+packages/frontend/editor-ui/src/features/settings/usage/usage.store.ts
+  s_d99f4099828f6d::t_7e3c66ef35a8e8 60-61
+  s_d99f4099828f6d::t_5772f17b65a9de 144-154
+  s_d99f4099828f6d::t_98f905279eccac 30-34
+  s_d99f4099828f6d::t_ad324eacb27ebe 132-133
+packages/@n8n/db/src/repositories/workflow-statistics.repository.ts
+  s_d99f4099828f6d::t_436af4f8d061bc 233
+  s_d99f4099828f6d::t_95604df771acb6 212-232,234-240
+packages/@n8n/api-types/src/schemas/usage.schema.ts
+  s_d99f4099828f6d::t_da431766ae3bb3 16-20
+packages/cli/src/errors/production-execution-limit-reached.error.ts
+  s_d99f4099828f6d::t_76a0ca4466d7b7 1-3
+packages/cli/src/controllers/e2e.controller.ts
+  s_d99f4099828f6d::t_9c158d070af9cf 157,184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1cb8729ed990351f49a1b2fd856112528ab9a096",
+  "prompts": {},
+  "sessions": {
+    "s_d99f4099828f6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa1468be-da33-4332-8d21-79f895f10bbb",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

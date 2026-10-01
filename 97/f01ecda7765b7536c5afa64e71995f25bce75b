@@ -1,0 +1,38 @@
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1-43,45-49,61-69,71-92
+  s_6df29c531634b9::t_82793919152dcd 44
+  s_6df29c531634b9::t_5260d4751675a4 50-52
+  s_270aabb0735a56::t_b7bcb728e846a6 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97f01ecda7765b7536c5afa64e71995f25bce75b",
+  "prompts": {},
+  "sessions": {
+    "s_270aabb0735a56": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b36c-6205-7aa2-8107-76a9f9bb4d0a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_6df29c531634b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b10b-86db-7ea1-a7e9-8ee96d396f23",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

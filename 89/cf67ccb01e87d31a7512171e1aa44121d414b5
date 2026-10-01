@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseSetupModal.test.ts
+  s_1fb648c429eca3::t_8eccbd51d60ad2 197-210
+  s_1fb648c429eca3::t_cef295445f2900 124,131-132
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseConnectStep.vue
+  s_1fb648c429eca3::t_2ae9bf35593a9d 120
+  s_1fb648c429eca3::t_feda11375f08d5 86
+  s_1fb648c429eca3::t_05163f9a731061 58-70
+  s_1fb648c429eca3::t_64d45a4d3f4ea6 10-11
+  s_1fb648c429eca3::t_a34ca1368cbeaa 55-57,71-72
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupContent.vue
+  s_1fb648c429eca3::t_c488c53023054b 57
+  s_1fb648c429eca3::t_ec401dd0659de5 128-138
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.ts
+  s_1fb648c429eca3::t_8a3982b6974821 55,58-65,67
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseConnectStep.test.ts
+  s_1fb648c429eca3::t_2fcdcf86d163a1 132
+  s_1fb648c429eca3::t_9f24dabbc57d86 121-122,129-131,133-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.test.ts
+  s_1fb648c429eca3::t_2247fac3d373ae 144,147,152,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "89cf67ccb01e87d31a7512171e1aa44121d414b5",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fb648c429eca3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed558d93-ce36-462a-b808-285763bb29a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

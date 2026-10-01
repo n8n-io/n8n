@@ -1,0 +1,55 @@
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  s_8cd0fccda07fbe::t_fb47cde5768c0d 32
+  s_8cd0fccda07fbe::t_d3d53b0d364065 4,10-12,14
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_8cd0fccda07fbe::t_d34b15b507defe 24
+  s_8cd0fccda07fbe::t_d2e3f9f874a1b5 5
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_8cd0fccda07fbe::t_6f25e215d73356 18
+  s_8cd0fccda07fbe::t_1e081b2c36427b 192
+  s_8cd0fccda07fbe::t_50c4732dbb64bd 110,113-114
+  s_8cd0fccda07fbe::t_1a0c7c7126406c 199-200,207
+  s_8cd0fccda07fbe::t_77a88b5c25a4b6 2
+  s_8cd0fccda07fbe::t_58012baba59f2e 109,111
+  s_8cd0fccda07fbe::t_a6eebf3e400e2c 197
+  s_8cd0fccda07fbe::t_1aa3bad3a70aca 154-155
+  s_8cd0fccda07fbe::t_491af14b58d6dd 201
+  s_8cd0fccda07fbe::t_4c3362013158c0 87-93
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_8cd0fccda07fbe::t_4382b5ca51cc7c 254-255,262
+  s_8cd0fccda07fbe::t_be316bd38206b7 9
+  s_8cd0fccda07fbe::t_73a8d7de0ce945 248-252,258
+  s_8cd0fccda07fbe::t_bef87daa688589 290,293
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  s_8cd0fccda07fbe::t_cf3180fb4987ff 140,143,148-150
+  s_8cd0fccda07fbe::t_1f42ef3de3f83e 141,147,153,157,163-177
+  s_8cd0fccda07fbe::t_2ff40c77647772 63
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_8cd0fccda07fbe::t_1c33c4f94733b4 168
+  s_8cd0fccda07fbe::t_584882940ea99b 22
+  s_8cd0fccda07fbe::t_75a0a20d758e45 32
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_8cd0fccda07fbe::t_b2b5da5ba02045 90
+  s_8cd0fccda07fbe::t_56242ea8d9c271 136-138,146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a66560d2de3bf45d38c1bd20771db8ce8bfa312f",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8cd0fccda07fbe": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "221c458b-a4ea-4437-89f0-0e9180a35658",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

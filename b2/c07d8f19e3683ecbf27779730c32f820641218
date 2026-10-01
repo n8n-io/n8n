@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_b2770a9c4c7dcd::t_c727dc887a8ed2 39-66,121,150,323-324,399-425
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/metadata.ts
+  s_b2770a9c4c7dcd::t_d034dcae1b187e 284,291
+  s_b2770a9c4c7dcd::t_93cab0666b624f 2,146-167,244,251,264,274,281,285-287,292-293,299,302,311,314,329-330
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/profileOverride.ts
+  s_b2770a9c4c7dcd::t_f5fde97f1f29ac 1-131
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/spec/instance-ai-personalized-prompt-suggestions.md
+  s_b2770a9c4c7dcd::t_6e1f8ed473dfa0 296
+  s_b2770a9c4c7dcd::t_ec3761b47d41b9 131-144,259,295
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_b2770a9c4c7dcd::t_93cab0666b624f 37,103,127-130,132,145-149,170
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/profileOverride.test.ts
+  s_b2770a9c4c7dcd::t_0cb5d29409d9a6 2,15-28,30-33
+  s_b2770a9c4c7dcd::t_2e56e5663af090 1,3-14,29,34-111
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/types.ts
+  s_b2770a9c4c7dcd::t_93cab0666b624f 66
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/metadata.test.ts
+  s_b2770a9c4c7dcd::t_19f1b9d905135b 8,238-254,259-291
+  s_b2770a9c4c7dcd::t_182439396cd02f 255-258
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/index.ts
+  s_b2770a9c4c7dcd::t_93cab0666b624f 12-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "b2c07d8f19e3683ecbf27779730c32f820641218",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

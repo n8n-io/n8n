@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_8913912ff2f036::t_dce28aa5c53b3f 930-968
+  s_8913912ff2f036::t_7c554033aafb42 1142-1192
+  s_8913912ff2f036::t_4b404593adde74 267
+  s_8913912ff2f036::t_ff3eb1e6cb1aa0 6
+  s_8913912ff2f036::t_7b41fd4e970cd7 1531-1560
+  s_8913912ff2f036::t_28161bc83bd0c3 180-195
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_8913912ff2f036::t_48cc62cb3ee83d 474-481
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionIdleTimeoutField.test.ts
+  s_8913912ff2f036::t_e4737dbc09fa66 1-78,84,86-145
+  s_8913912ff2f036::t_7aa2757dd59930 79-83,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "420aab942e14196b766d0a8da3cc9cc69ae8edba",
+  "prompts": {},
+  "sessions": {
+    "s_8913912ff2f036": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6f30bcd-3f22-491e-baeb-70c056df5bbe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

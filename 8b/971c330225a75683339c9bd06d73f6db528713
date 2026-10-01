@@ -1,0 +1,107 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_f4037ec3e84992::t_1a8f2ac85f0d2b 26-31
+  s_f4037ec3e84992::t_ff3eae9841790a 102-103
+  s_f4037ec3e84992::t_e634d73094f7e8 32
+packages/cli/src/modules/mcp/oauth-session.service.ts
+  s_f4037ec3e84992::t_158355897edbca 13-14
+packages/cli/src/modules/mcp/mcp-oauth-service.ts
+  s_f4037ec3e84992::t_526aa35977bb69 23
+  s_f4037ec3e84992::t_c88939578512ab 27-44
+  s_f4037ec3e84992::t_4bf6bc6fc08c2d 6
+  s_f4037ec3e84992::t_0acaaacf8ac1d2 114-136
+  s_f4037ec3e84992::t_c32e42fadec131 209,217,223-231
+  s_f4037ec3e84992::t_c62377985f0dd4 302,310
+  s_f4037ec3e84992::t_5ca884b598b836 346-361
+  s_f4037ec3e84992::t_3f19d73f5fea83 222
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-token.service.test.ts
+  s_f4037ec3e84992::t_15eb8285cc4b33 128-129,145
+  s_f4037ec3e84992::t_404ee0a6f32c42 192
+  s_f4037ec3e84992::t_48564e2994663f 253-254
+  s_f4037ec3e84992::t_6162cf03ea1fff 300-301
+  s_f4037ec3e84992::t_eeb8b56489c7ec 159
+  s_f4037ec3e84992::t_4c0f4462b14b08 400-405
+packages/cli/src/modules/mcp/database/entities/oauth-refresh-token.entity.ts
+  s_f4037ec3e84992::t_0277820aaca4a1 1
+  s_f4037ec3e84992::t_bb8fe52eb94c22 29-32
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_f4037ec3e84992::t_b6c2d7c9b32b51 1466-1556
+  s_f4037ec3e84992::t_784861f8920690 15-16,20-21,26-29
+packages/@n8n/personal-automation/spec/oauth-e2e.md
+  s_f4037ec3e84992::t_3dd41905e50562 1-162,241-367
+  s_f4037ec3e84992::t_27f7997d70b87f 163-240
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-authorization-code.service.test.ts
+  s_f4037ec3e84992::t_519522af443f8d 68,74
+  s_f4037ec3e84992::t_decccbe63b5b17 28,39,52
+packages/cli/src/auth/auth.service.ts
+  s_f4037ec3e84992::t_8391eb4f28a3f6 155-158,168-208
+  s_f4037ec3e84992::t_9ce296fd68685f 7
+packages/frontend/@n8n/rest-api-client/src/api/consent.ts
+  s_f4037ec3e84992::t_ac3b1c1def7cf0 7
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f4037ec3e84992::t_de05f0b0dc4a37 2430-2437
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_f4037ec3e84992::t_d9437cc675cc24 149-150
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-service.test.ts
+  s_f4037ec3e84992::t_ee57621c1e3e60 412,443,450
+  s_f4037ec3e84992::t_e95498e8b5b752 476,500
+packages/cli/src/modules/mcp/mcp-oauth-consent.service.ts
+  s_f4037ec3e84992::t_7e5e4a5840b457 53-55
+  s_f4037ec3e84992::t_657d993d778a68 37
+  s_f4037ec3e84992::t_68d6ca55156aac 124-125,130-149,151-167
+  s_f4037ec3e84992::t_272b114b6142f6 69,89,95-96,99,108,112
+  s_f4037ec3e84992::t_3fa6d7666c65c1 27
+  s_f4037ec3e84992::t_46e2cb456e5cd0 2-3,5,11
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-consent.service.test.ts
+  s_f4037ec3e84992::t_1294cc64b2bedd 200,206
+  s_f4037ec3e84992::t_05a14b60737602 3-4,19,22-25,37,45
+  s_f4037ec3e84992::t_d9e81bf581c1bc 234
+  s_f4037ec3e84992::t_234c967a6b41e2 75,136
+  s_f4037ec3e84992::t_dc8ecc462a21d2 153,182,224,254,256,276,292
+packages/cli/src/modules/mcp/mcp.module.ts
+  s_f4037ec3e84992::t_3d459d4ccc1f49 19-27
+packages/cli/src/modules/mcp/mcp-oauth-token.service.ts
+  s_f4037ec3e84992::t_14f76dbc01eec4 66,77
+  s_f4037ec3e84992::t_710cfa77063417 93,106
+  s_f4037ec3e84992::t_77ebd199bf942c 236
+  s_f4037ec3e84992::t_9e5367637b0724 30-32
+  s_f4037ec3e84992::t_613860b0645162 319-327
+  s_f4037ec3e84992::t_f0623b85587668 207-208
+  s_f4037ec3e84992::t_0f2dd6d889f025 142-144,149,162
+packages/cli/src/modules/mcp/mcp.auth.consent.controller.ts
+  s_f4037ec3e84992::t_023d66a5f1fe43 35
+  s_f4037ec3e84992::t_c52872c07d0740 57
+packages/cli/src/modules/mcp/database/entities/oauth-authorization-code.entity.ts
+  s_f4037ec3e84992::t_99b3691c53a132 1
+  s_f4037ec3e84992::t_3a94d7c4e69fb8 44-47
+packages/cli/src/modules/mcp/mcp-oauth-authorization-code.service.ts
+  s_f4037ec3e84992::t_5d412e8bbc0c6f 29,42
+packages/cli/src/modules/mcp/mcp-oauth.config.ts
+  s_f4037ec3e84992::t_e57fd693260bd7 1-53
+packages/@n8n/db/src/entities/types-db.ts
+  s_f4037ec3e84992::t_5affeb14a1e08b 427-430
+packages/cli/src/controller.registry.ts
+  s_f4037ec3e84992::t_1559b46cd34b09 211-214
+  s_f4037ec3e84992::t_f75b0b94f6d392 236-248
+  s_f4037ec3e84992::t_0c03e5cbe45803 256-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "8b971c330225a75683339c9bd06d73f6db528713",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f4037ec3e84992": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c047bb52-f9ff-424b-8fe6-ebf66afb06bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

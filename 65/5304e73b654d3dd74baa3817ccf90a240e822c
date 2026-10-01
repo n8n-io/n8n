@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/ProjectFile/README.md
+  s_b239e5ec600a48::t_470c7046786f5f 1-72,75-114,130-168,173-231
+  s_b239e5ec600a48::t_dce5ded76efb1f 169-172
+  s_b239e5ec600a48::t_c1cc881f7886ae 73-74
+  s_b239e5ec600a48::t_e8cf4c290f35a5 115-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "655304e73b654d3dd74baa3817ccf90a240e822c",
+  "prompts": {},
+  "sessions": {
+    "s_b239e5ec600a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb525e80-f251-4a62-9109-617b677b1d8f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

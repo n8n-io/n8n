@@ -1,0 +1,9 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  ai_agent 261-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bcb72e0d4d031d2f812a5b3340084cac6a8347c",
+  "prompts": {}
+}

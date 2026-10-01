@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_583f31bceceb3e::t_7da19acc2c46e6 11-12,30,52-59,62-68
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  ai_agent 386
+  s_583f31bceceb3e::t_338ef4f58a5ecf 355-356,361-385,387-388
+  s_583f31bceceb3e::t_abe9d052fff174 357-360
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_583f31bceceb3e::t_7da19acc2c46e6 283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "838a1814351c5e227778b476e3cfcf3167c18a67",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

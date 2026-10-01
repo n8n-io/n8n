@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/handlers/workflows/workflows.service.ts
+  s_a5409503c848af::t_371a574a6e0ea9 68-75
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_a5409503c848af::t_ff30915306242c 1614-1627,1629,1631-1632
+  s_a5409503c848af::t_ccabed2bcbe777 1628,1630
+  s_a5409503c848af::t_c37f25fb147202 2243-2268
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_a5409503c848af::t_f65b7f91343d36 306-312
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowSettings.yml
+  s_a5409503c848af::t_158cb25af32a06 28-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ec2ccd9d46cdddcbeb2647b82d7a1669943c5099",
+  "prompts": {},
+  "sessions": {
+    "s_a5409503c848af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbf70c02-d532-424d-ae5c-2092247a5d05",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

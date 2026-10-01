@@ -1,0 +1,96 @@
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 79
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_cf1f99101a8423::t_9b6f79a805148f 1-8,15,17,21-24
+  s_cf1f99101a8423::t_4e228dc70dbb76 9-14,16,18-20,25-52,58-71,73-103,108-117
+  s_cf1f99101a8423::t_4533fdea9354ea 53-57,72
+  ai_agent 104-107
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_cf1f99101a8423::t_8c11db76c1734c 206-211,225-228
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_cf1f99101a8423::t_ff1c74cf079a06 69
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_cf1f99101a8423::t_edb89c39d3e1c1 6
+  ai_agent 219-239
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_cf1f99101a8423::t_1c38472607a3bc 20,53
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_cf1f99101a8423::t_64ae0b35520215 241-243
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+  ai_agent 1-152
+packages/cli/src/modules/n8n-packages/io/__tests__/directory-package-reader.test.ts
+  s_cf1f99101a8423::t_5aa8d1fc2021a8 1-95
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 27-29,68-73
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_cf1f99101a8423::t_8d7e1419b5320b 20
+  s_cf1f99101a8423::t_1c38472607a3bc 62,217
+  ai_agent 285
+packages/@n8n/permissions/src/constants.ee.ts
+  s_cf1f99101a8423::t_42396bb4c52bf5 37,111
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  ai_agent 351-445
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_cf1f99101a8423::t_57e72f601ab03c 61-83
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_cf1f99101a8423::t_738479a9146d0c 140-190
+packages/@n8n/permissions/src/scope-information.ts
+  s_cf1f99101a8423::t_e52e96a26c67eb 164-165,168
+  ai_agent 166-167
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_cf1f99101a8423::t_e4c25884098381 83-119
+packages/@n8n/api-types/src/dto/index.ts
+  s_cf1f99101a8423::t_9ffc48d4f208e1 106
+  s_c1a030d93659ad::t_e32e18bb9ec440 157,159,164-171
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_cf1f99101a8423::t_1c38472607a3bc 9,27
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-reader.ts
+  s_cf1f99101a8423::t_c80153bd4e79b7 1-63,65-132,136-158
+  s_cf1f99101a8423::t_6fd53f0be5e511 64
+  ai_agent 133-135
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_cf1f99101a8423::t_f96a6567eb4be6 10
+  s_cf1f99101a8423::t_11a14949b65262 31,33
+  s_cf1f99101a8423::t_78c4b0f84e5772 46,48
+  s_cf1f99101a8423::t_d7a501f9874730 348-372
+  s_cf1f99101a8423::t_d60b6ec92ee3c1 424-437
+packages/@n8n/cli/src/client.ts
+  s_cf1f99101a8423::t_78871821b4b5b0 67-72,80-88
+  ai_agent 73-79
+  s_cf1f99101a8423::t_add3c9fe548127 281-284
+packages/@n8n/cli/src/commands/git-connections/pull.ts
+  s_cf1f99101a8423::t_e51a03d2916456 1-24
+packages/@n8n/cli/src/index.ts
+  s_cf1f99101a8423::t_3ff368a5a9faed 31
+  s_cf1f99101a8423::t_f28afb64ef0b91 113
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_cf1f99101a8423::t_7dde6e912a0885 23
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_cf1f99101a8423::t_51ef9394b2b4a3 4,19-22,24-31,33-34
+  s_cf1f99101a8423::t_cfc21ffd1e2f74 49-72
+  s_cf1f99101a8423::t_937055e88f2250 227-294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "be4f597755e8c8ef7ef3fe52092db7da7e70fbd5",
+  "prompts": {},
+  "sessions": {
+    "s_c1a030d93659ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e82d52f5-14de-4ee5-8cc6-c03277ed746b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cf1f99101a8423": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c271c034-face-4b75-9151-c03412148b81",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

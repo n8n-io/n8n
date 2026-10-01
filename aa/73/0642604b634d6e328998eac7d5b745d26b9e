@@ -1,0 +1,32 @@
+packages/@n8n/engine/src/auth/__tests__/action-token.test.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 1-163
+packages/cli/src/modules/engine-v2/engine-control-plane-auth.middleware.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 3,43
+  s_eda1948fcdabb8::t_e7ae988a7c43da 41
+  s_eda1948fcdabb8::t_82521bf76c06d9 1-2,4-40,42,44-50
+packages/@n8n/engine/src/auth/action-token.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 1-28,30-46,49-50
+  s_eda1948fcdabb8::t_e7ae988a7c43da 29,47-48
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-auth.middleware.test.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 3,54,67,93-95,102,108
+  s_eda1948fcdabb8::t_cdca9821fcecc1 26,45
+  s_eda1948fcdabb8::t_82521bf76c06d9 1-2,4-25,27-44,46-53,55-66,68-92,96-101,103-107,109-118
+packages/@n8n/engine/src/auth/index.ts
+  s_eda1948fcdabb8::t_86aa68358a24eb 3-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa730642604b634d6e328998eac7d5b745d26b9e",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

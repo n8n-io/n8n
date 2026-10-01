@@ -1,0 +1,37 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependencies.test.ts
+  s_c25e263a78aa6f::t_650160070334c1 2,4-5,7,14,16,22,26,29,31,38,43
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c25e263a78aa6f::t_650160070334c1 48,50,52
+packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
+  s_c25e263a78aa6f::t_650160070334c1 153-177
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirements.extractor.test.ts
+  s_c25e263a78aa6f::t_650160070334c1 13-18,77-97
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  ai_agent 19,140
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_c25e263a78aa6f::t_650160070334c1 137,152
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_c25e263a78aa6f::t_650160070334c1 19-22,140,164,220,233-260
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependencies.ts
+  s_c25e263a78aa6f::t_650160070334c1 6,10,14,18,20-22,25,27
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  ai_agent 19,138,155,159-180
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirements.extractor.ts
+  s_c25e263a78aa6f::t_650160070334c1 15-16,22-25,28-29,32-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23f4801b6f02c945ce70c1d1edb8f81de2e0f472",
+  "prompts": {},
+  "sessions": {
+    "s_c25e263a78aa6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11f89fa8-3346-4caa-8d30-20b60220d8dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

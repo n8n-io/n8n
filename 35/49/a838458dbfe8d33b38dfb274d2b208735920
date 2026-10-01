@@ -1,0 +1,23 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_d78c9bcad353a9::t_9699e5ee062b86 1005-1007,1010
+  s_d78c9bcad353a9::t_57c2ed8014e010 1123-1125
+packages/cli/test/integration/execution.repository.test.ts
+  s_d78c9bcad353a9::t_4b0915e9dd1ca5 74
+  s_d78c9bcad353a9::t_6bba49a9f958b5 91,99-102,105-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3549a838458dbfe8d33b38dfb274d2b208735920",
+  "prompts": {},
+  "sessions": {
+    "s_d78c9bcad353a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03879d46-9565-461d-833f-8b25e2a6e97b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

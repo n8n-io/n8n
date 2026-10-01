@@ -1,0 +1,43 @@
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_5d34ca28c1babd 4
+  s_5ddf40544fde37::t_4b643330d28007 13-14
+  s_5ddf40544fde37::t_a02147a2ed3205 319-322,333,335-337
+  s_5ddf40544fde37::t_6c498f53d5169d 244-249
+  s_5ddf40544fde37::t_88e6a0554f1c76 123-124,127
+  s_5ddf40544fde37::t_6f8539fb804fa9 103-104,110,112-113,130-132
+  s_5ddf40544fde37::t_4ebc079fd273fc 57-65,67-70,72,74-77,80-82,85-88
+  s_5ddf40544fde37::t_8dfc4efee73461 260,270,289-290,292,297,302,307
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_4aff424a4ca794 229,240,251-255,257,260,264-265,268,296-297,299-304,320-321,344-345
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_82efcddd0b3c63 277-280
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_bae24e582c3369 675,705,708-711,717,720-721
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_4fa82f0bf29a6b 203-206,208,217,219-223
+  s_5ddf40544fde37::t_a182edef17ea13 146-149,160-164
+  s_5ddf40544fde37::t_85fc65de7be4a1 5
+  s_5ddf40544fde37::t_1617b382e27436 18-19
+  s_5ddf40544fde37::t_2310cc7bdb12a0 166
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_5ddf40544fde37::t_2310cc7bdb12a0 327
+  s_5ddf40544fde37::t_e32a45f0724cd6 3,39,52,57-58,60,63,66,68-69,78,80-81,85,87,90-91,93-98,100
+  s_5ddf40544fde37::t_c493eaf8667d12 61
+  s_5ddf40544fde37::t_21825bf410f708 313,330,335,337-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e0fdc213a8604bca8d7e00b3de54d3d2e2b67f83",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

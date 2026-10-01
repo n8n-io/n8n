@@ -1,0 +1,38 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_f4f3f37a98d31a::t_ea793b5d140015 1048-1049
+packages/@n8n/instance-ai/src/tools/workflows/validate-error-workflow.ts
+  s_f4f3f37a98d31a::t_d31f1ae2e071d3 72-75
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f4f3f37a98d31a::t_b3455f5d5306f6 350
+packages/@n8n/instance-ai/src/tools/workflows/trigger-endpoints.ts
+  s_f4f3f37a98d31a::t_227fa5bbf12e46 3-8
+  s_f4f3f37a98d31a::t_75af65951dbd6b 78,80-88
+  s_f4f3f37a98d31a::t_c279cc57b7ab6a 122
+  s_f4f3f37a98d31a::t_6723ec95340632 158
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_f4f3f37a98d31a::t_251fa44d282dc5 397-459
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-error-workflow.test.ts
+  s_f4f3f37a98d31a::t_12b66d0e8126d9 151-169
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_f4f3f37a98d31a::t_557835a8738484 536-538,548-567
+  s_f4f3f37a98d31a::t_28a97396dfbfcb 568-569
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/trigger-endpoints.test.ts
+  s_f4f3f37a98d31a::t_177cb9f7654715 35-55,57-59
+  s_f4f3f37a98d31a::t_5b2404a147f9fc 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "552367c0cc06ca77515e1afb5e54fce4ea15ee18",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

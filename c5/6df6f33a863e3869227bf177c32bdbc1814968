@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_f4f3f37a98d31a::t_a2bb0cfff17e8e 19-20
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f4f3f37a98d31a::t_fad1e7d8e8b9b6 346-347
+  s_f4f3f37a98d31a::t_79bf9b791eed24 315-318,332-333
+packages/@n8n/instance-ai/src/types.ts
+  s_f4f3f37a98d31a::t_55e684a0cfb996 1001-1004
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_f4f3f37a98d31a::t_817ea2996eaaba 2130-2131
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_f4f3f37a98d31a::t_4bcd46f0a560af 257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c56df6f33a863e3869227bf177c32bdbc1814968",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

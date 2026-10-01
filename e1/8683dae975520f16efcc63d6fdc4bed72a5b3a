@@ -1,0 +1,24 @@
+packages/cli/src/services/canvas-only-personal-space-role.service.ts
+  s_fa9aee632bdcc1::t_0b8bd5e3dbb197 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e18683dae975520f16efcc63d6fdc4bed72a5b3a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fa9aee632bdcc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "839f7e69-e3de-4cec-ae5d-0a19810f21fe",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

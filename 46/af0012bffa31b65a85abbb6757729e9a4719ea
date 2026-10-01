@@ -1,0 +1,60 @@
+packages/@n8n/api-types/src/workflow-review-eligible-reviewer.ts
+  h_9c8f56e3400786 3
+  s_d7309962fc8352::t_3c7c0ceed9ac06 1-2
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_d7309962fc8352::t_fcfb2cb236d936 3,12-13,18
+packages/@n8n/api-types/src/schemas/id.schema.ts
+  s_d7309962fc8352::t_af9ba1008bf831 1-7
+packages/@n8n/api-types/src/index.ts
+  s_d7309962fc8352::t_2e9b7ada686156 124
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_d7309962fc8352::t_9124a8df7396c1 1,9
+packages/@n8n/api-types/src/dto/workflow-reviews/get-eligible-reviewers-query.dto.ts
+  s_d7309962fc8352::t_ad98d6b5818010 1,5
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
+  s_61d0f858e68120::t_cd29dabc499dfb 1-103
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_61d0f858e68120::t_079ea6bc595776 1-19
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_61d0f858e68120::t_8ee72ddb348127 31-34
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/update.test.ts
+  s_61d0f858e68120::t_6437ac651bddfa 1,3-339,342-369,373-376
+  s_61d0f858e68120::t_02a2be6a89d2d1 2
+  s_61d0f858e68120::t_baf62cffa3183e 340-341
+  s_61d0f858e68120::t_05164dd21ec3a3 371
+  s_61d0f858e68120::t_e50551fac11c76 370,372
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/node.type.ts
+  s_61d0f858e68120::t_7afc8f36407828 5
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
+  s_61d0f858e68120::t_a9e362b0b949f3 4
+  s_61d0f858e68120::t_2dd61c7e0830f1 40-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "46af0012bffa31b65a85abbb6757729e9a4719ea",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_61d0f858e68120": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96b55e5-7c8c-408a-8bcb-ef57ed54ec7b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_d7309962fc8352": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cde34fb2-171c-4c0e-ba62-dcc55361bc75",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  ai_agent 46
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  ai_agent 84
+packages/cli/src/workflows/publication/publication-startup-enqueuer.ts
+  ai_agent 6,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12f897c36cdff428d5c54e3dc69920002a4af656",
+  "prompts": {}
+}

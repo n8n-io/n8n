@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_68db95adb588b2::t_889fa4b624f6b7 672-675
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "080da53aa2d6052fff44af682e1e3b3eca7264b4",
+  "prompts": {},
+  "sessions": {
+    "s_68db95adb588b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80f405e3-ceab-4e50-accf-4305b451f9cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

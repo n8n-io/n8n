@@ -1,0 +1,40 @@
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-stall.test.ts
+  s_578c591731c26a::t_a6ee3284d7a4a9 24
+  s_578c591731c26a::t_4293e3d5b3661f 25-27
+  s_8bd971f0249c00::t_8f433640505a25 28,42-46,60,87-91,112-116
+packages/@n8n/agents/src/runtime/streaming/stream-stall.ts
+  s_578c591731c26a::t_a6ee3284d7a4a9 63,73
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_578c591731c26a::t_e3807916da57ff 146-148,159-161
+  s_578c591731c26a::t_bd2cba4daf29ef 185-187
+  s_578c591731c26a::t_a6ee3284d7a4a9 101,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ba65afeacf2ba84c6122a27190043709cd696b3c",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_578c591731c26a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0beb087-0899-47b2-bb3e-38ff260bc0ec",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_8bd971f0249c00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39d0ad99-925e-4b24-a319-649f0cc67103",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

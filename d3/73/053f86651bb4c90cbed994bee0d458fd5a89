@@ -1,0 +1,20 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_bb76a134862e07::t_509967c1839ef3 1308-1309
+  s_bb76a134862e07::t_08daa6e32da095 1310-1311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "d373053f86651bb4c90cbed994bee0d458fd5a89",
+  "prompts": {},
+  "sessions": {
+    "s_bb76a134862e07": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3c38249-836d-4e6e-b3fe-94d0af231845",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

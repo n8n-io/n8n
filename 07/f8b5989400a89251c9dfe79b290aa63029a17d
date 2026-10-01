@@ -1,0 +1,47 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_66be2eb681ad3c::t_a4a69ea288b79e 241-246
+  s_66be2eb681ad3c::t_f3116ffa9374d2 270-271
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_66be2eb681ad3c::t_c066f3784c4d0a 24-25,51-52,80-81,108-109
+  s_66be2eb681ad3c::t_42e4cba24ff488 404-405
+  s_66be2eb681ad3c::t_8c1674b2690b1e 454-519
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_81f9da72a79c26::t_d657c6f62b2e5b 37
+  s_81f9da72a79c26::t_9e190487cb5751 151
+  s_66be2eb681ad3c::t_8ba3ec3d328c76 214-215
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_66be2eb681ad3c::t_73aace70922557 239-248,251-269,271-272
+  s_66be2eb681ad3c::t_c061b5814e25f3 288
+  s_66be2eb681ad3c::t_dc360211046e4b 512-551
+  s_66be2eb681ad3c::t_a42e272181b935 576-578
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_66be2eb681ad3c::t_e1559eaea58a28 192-226,229-230,232-236
+  ai_agent 231
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_66be2eb681ad3c::t_37324c4bcd1e02 22-23
+  s_66be2eb681ad3c::t_d8bae8abd7fd69 109-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07f8b5989400a89251c9dfe79b290aa63029a17d",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

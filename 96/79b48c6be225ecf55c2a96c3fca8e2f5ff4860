@@ -1,0 +1,43 @@
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_fbe2845cd4e7aa::t_56e26456422e5c 133-170
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_fbe2845cd4e7aa::t_9e7ba5ac02a977 22,25,27
+  s_fbe2845cd4e7aa::t_1e51e158e44a34 218-278
+  s_fbe2845cd4e7aa::t_96278f144d3aad 366-385
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_fbe2845cd4e7aa::t_a9f61876ac53c3 24-28
+  s_fbe2845cd4e7aa::t_8710f98d8c772e 2,8,10-11
+  s_fbe2845cd4e7aa::t_46d16e19fa2711 143-144
+  s_fbe2845cd4e7aa::t_da9bc42a1ec226 160
+  s_fbe2845cd4e7aa::t_5eb9a8a2f39c38 171-182
+  s_fbe2845cd4e7aa::t_40ee93ff1c9c65 205-208
+  s_fbe2845cd4e7aa::t_4616cf7e70bdaf 223-228,232-233
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_fbe2845cd4e7aa::t_0c9e7c044c25ea 13
+  s_fbe2845cd4e7aa::t_48d5d4c48198c1 112-116,122,131-138,142-184
+  s_fbe2845cd4e7aa::t_d5ce6d8c9eb25a 242-245
+  s_fbe2845cd4e7aa::t_1df4573a8d0e86 240-241
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_fbe2845cd4e7aa::t_17ddcb37279591 59
+  s_fbe2845cd4e7aa::t_4ae9eba5648de9 11-15
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  s_fbe2845cd4e7aa::t_a0216216a068e6 55-72
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_fbe2845cd4e7aa::t_c0bcdaf604bf99 22-24,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "9679b48c6be225ecf55c2a96c3fca8e2f5ff4860",
+  "prompts": {},
+  "sessions": {
+    "s_fbe2845cd4e7aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641b7fac-100c-416d-9d4a-2fc7e359856a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

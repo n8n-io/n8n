@@ -1,0 +1,35 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_2c3bbc99e1befd::t_739886ed6e11e0 115
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_2c3bbc99e1befd::t_d35376cba4919d 96
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_2c3bbc99e1befd::t_6b02c59337d5d6 3,19,27,53,110-138
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  s_2c3bbc99e1befd::t_6aea7ac354b0db 45
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  s_2c3bbc99e1befd::t_6612e18c19d680 1-41
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_2c3bbc99e1befd::t_7fd58449b11567 11-13
+packages/cli/src/public-api/v1/shared/spec/schemas/roleMappingRulePublicDto.generated.yml
+  s_2c3bbc99e1befd::t_491d5034d11ae6 1-34
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_2c3bbc99e1befd::t_db5747b4b60fa2 355-555
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_2c3bbc99e1befd::t_f6365e924e0132 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "35b6ec837fcf2282d008bc934dee6b9b5c3cb140",
+  "prompts": {},
+  "sessions": {
+    "s_2c3bbc99e1befd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7781d70e-47b1-419d-9f6e-7dfbd87abd5a",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

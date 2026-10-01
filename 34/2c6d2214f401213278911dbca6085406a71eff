@@ -1,0 +1,37 @@
+packages/@n8n/backend-network/src/http/retryability.ts
+  s_daf31791358f0e::t_aad6e5b238a1b9 1
+  s_daf31791358f0e::t_aa8037929f4ac2 90
+  s_daf31791358f0e::t_8dbf8a8ff39496 143
+packages/workflow/test/errors/failure.test.ts
+  s_daf31791358f0e::t_4c257db1a54afd 109-127
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_daf31791358f0e::t_09b186863a2935 502-505,508,510-511
+  s_daf31791358f0e::t_a1d70a831a3771 595-598
+  s_daf31791358f0e::t_93d5b6b227f48b 565,568,571,575,585
+packages/workflow/src/errors/abstract/node.error.ts
+  s_daf31791358f0e::t_ac209cc5c21669 55
+packages/@n8n/utils/src/errors/error-chain.ts
+  s_daf31791358f0e::t_84ed3e99219031 14,27
+  s_daf31791358f0e::t_da6b5b92037c93 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "342c6d2214f401213278911dbca6085406a71eff",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_daf31791358f0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26cf6a0f-cafc-47e5-bce5-395419957f48",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/token-exchange/token-exchange.config.ts
+  s_2191d1ffdc342d::t_59486ac0a17c73 1,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46eee649fce153acd8c961d1406ff3284cefed60",
+  "prompts": {},
+  "sessions": {
+    "s_2191d1ffdc342d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71a98fd2-ab5b-46ec-ab22-227878e90a4d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

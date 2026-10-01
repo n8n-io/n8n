@@ -1,0 +1,33 @@
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_14d296036e0ac5::t_c16ce815958c79 1214
+  s_14d296036e0ac5::t_dcad4d87716c8c 1221-1227
+packages/cli/src/eventbus/event-message-classes/event-message-audit.ts
+  s_14d296036e0ac5::t_c16ce815958c79 27
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-lifecycle.service.ts
+  s_14d296036e0ac5::t_447a0cdf33edbc 246-247,268,285,290,329,336-337,343,352,360-361,365
+packages/cli/src/events/maps/relay.event-map.ts
+  s_14d296036e0ac5::t_c0c65819dae15b 1
+  s_14d296036e0ac5::t_98b2be7b29621f 1127,1140
+packages/@n8n/telemetry/src/events/workflow-reviews.ts
+  s_14d296036e0ac5::t_c0c65819dae15b 50,71
+  s_14d296036e0ac5::t_a26f889a010eb8 14,26,37
+  s_14d296036e0ac5::t_e999a15cac56d6 67
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_14d296036e0ac5::t_8e3baebadc2e98 3105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2887147befcf8aa36313e55c3ca2a20ba1e8e96",
+  "prompts": {},
+  "sessions": {
+    "s_14d296036e0ac5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3baca53-0dc1-4028-ab67-4ccbff152285",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

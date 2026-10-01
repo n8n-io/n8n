@@ -1,0 +1,55 @@
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 5
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 3-11
+  s_c5954c3047b5ed::t_f29f427d80a56f 31
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 36
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 1-96
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 7
+packages/@n8n/agents/src/runtime/model/raw-error.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 5
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_c5954c3047b5ed::t_f29f427d80a56f 17
+  s_c5954c3047b5ed::t_15707b0f9a2684 1-9
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 12,38,49,54,78-82
+  s_c5954c3047b5ed::t_f29f427d80a56f 71-76
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_c5954c3047b5ed::t_f29f427d80a56f 26-30,32-35,37-38,50-58,429,485,509
+  s_c5954c3047b5ed::t_6a74ae04e68e7d 31,36
+  s_c5954c3047b5ed::t_31fd10a9efda77 24
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_c5954c3047b5ed::t_f29f427d80a56f 1-144
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_c5954c3047b5ed::t_0d07ad8fe1787b 37
+  s_c5954c3047b5ed::t_6b8da8b55105f4 3,15-34,45,48-72,607-609
+packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 17
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 5
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 1-12
+packages/@n8n/agents/src/types/runtime/agent-loop.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 1-137
+packages/@n8n/agents/src/types/runtime/delegation.ts
+  s_c5954c3047b5ed::t_391376bd9e1c43 1-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "353f444f7189eda81ec6d2f8d2a8df1ff1734f74",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  ai_agent 693-694,697,701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57bbb287ea8d1987a824b10a7843d294ea7788ff",
+  "prompts": {}
+}

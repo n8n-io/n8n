@@ -1,0 +1,54 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_e709738dce3464::t_bde809b6e61c42 130-131,133-140,144
+  s_e709738dce3464::t_fa8cdb4a16e156 167-170,173
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_e709738dce3464::t_602d4eb3cb8b8c 129,134-138,145-153
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e709738dce3464::t_2c3eba95014435 264
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_e709738dce3464::t_2e4bf06876ae00 27
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_e709738dce3464::t_0ae2f6ed75e904 298,302-310
+  s_e709738dce3464::t_181d43313b619b 258
+  s_e709738dce3464::t_a497d1dd198e4a 283-288
+packages/@n8n/api-types/src/agents/dto.ts
+  s_e709738dce3464::t_6cc365af3d78fa 28
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e709738dce3464::t_64c2e97662962f 18
+  s_e709738dce3464::t_998e40d6c1a279 626,629-634
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e709738dce3464::t_911818fbb94016 1507
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e709738dce3464::t_26408f647f43ae 823
+  s_e709738dce3464::t_40b8f7ae667739 870-871
+  s_e709738dce3464::t_f935fbd7e22276 836,842-845,849-852
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_e709738dce3464::t_e03338a95ecbed 300
+  s_e709738dce3464::t_c195301c0d1865 122-123
+  s_e709738dce3464::t_6c634c62fab671 552
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e709738dce3464::t_cec4aedaceedb6 370
+  s_e709738dce3464::t_cb74b541545939 182
+  s_e709738dce3464::t_5c5d8d19274a0f 355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "61d550f40367d66aace94fce3e2f758d48c07574",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e709738dce3464": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "026ea3e9-01fb-48cb-9f02-6495f17bb8ee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/redaction/instance-redaction-enforcement.service.ts
+  s_8ce68994e328bc::t_949afbf6413721 7,25-27
+packages/cli/src/controllers/security-settings.controller.ts
+  s_8ce68994e328bc::t_949afbf6413721 49,58,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "7babfb7fc80e3429b123ce1b4eed9bf1d379f0dd",
+  "prompts": {},
+  "sessions": {
+    "s_8ce68994e328bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d405f5-0eed-4fee-a11a-893b52a11ea3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

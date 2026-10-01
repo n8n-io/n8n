@@ -1,0 +1,39 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_109f6edacd6e91::t_4ceccc63cd00d0 539,558,565
+  s_109f6edacd6e91::t_6d53686f3ddfec 329-341
+  s_109f6edacd6e91::t_31f29d41a86b4f 488-500
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_109f6edacd6e91::t_34e3a5b19b8cd1 765-766
+  s_109f6edacd6e91::t_1a571951d107d6 767-868
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_109f6edacd6e91::t_e215cf811e2654 12-14
+  s_109f6edacd6e91::t_3abe2e3923b43f 10-11,15,143,252,266
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_109f6edacd6e91::t_3abe2e3923b43f 24-26,201,472
+packages/workflow/src/interfaces.ts
+  s_109f6edacd6e91::t_9e36c2ed4ed53e 96-102
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_109f6edacd6e91::t_cefe7e58dc7cd3 21-26,28-30
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_109f6edacd6e91::t_3b18c5fc11ace5 100-102,107
+  s_109f6edacd6e91::t_34e3a5b19b8cd1 103-104
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_109f6edacd6e91::t_3abe2e3923b43f 21-22,26,251,277,298,359,448,534
+  s_109f6edacd6e91::t_e215cf811e2654 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "300c2e69b803c8208e7b0bf0cf6d0440e5b9cca1",
+  "prompts": {},
+  "sessions": {
+    "s_109f6edacd6e91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90123c0f-d96c-40f3-aaa9-ea9842ae92a4",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

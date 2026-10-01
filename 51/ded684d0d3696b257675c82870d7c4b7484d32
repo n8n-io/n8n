@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_c491120e42f4d5::t_9856f253fef3c2 250-252,267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "51ded684d0d3696b257675c82870d7c4b7484d32",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

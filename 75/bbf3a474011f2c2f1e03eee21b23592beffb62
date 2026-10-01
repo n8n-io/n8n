@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/evaluations/__tests__/session-boundary.test.ts
+  s_a06981f346fe52::t_ae34091c8f1edc 1-97
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_a06981f346fe52::t_ae34091c8f1edc 508,510,518-523,528
+packages/@n8n/instance-ai/evaluations/README.md
+  s_a06981f346fe52::t_ae34091c8f1edc 286-319
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_a06981f346fe52::t_ae34091c8f1edc 396-399
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_a06981f346fe52::t_ae34091c8f1edc 106-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75bbf3a474011f2c2f1e03eee21b23592beffb62",
+  "prompts": {},
+  "sessions": {
+    "s_a06981f346fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b249ebcb-2047-41f9-a28d-fe8e58c3764f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

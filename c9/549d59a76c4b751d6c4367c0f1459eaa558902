@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  s_22e1224efb24cb::t_bee5259cc8033f 105-119,164-166
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_22e1224efb24cb::t_91c93083239fc6 392,394,398
+  s_22e1224efb24cb::t_493d3821a2b920 370-372,386-391
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_22e1224efb24cb::t_476f40935d2174 104-107,113,673-712,730-745
+  s_22e1224efb24cb::t_62eae0a18b04d3 746
+packages/@n8n/instance-ai/src/types.ts
+  s_22e1224efb24cb::t_eb682191f9aae3 13,22,1480-1499,1501-1599,1602
+  s_22e1224efb24cb::t_1529590b55f0fc 1500
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_22e1224efb24cb::t_f3934b4196d50e 2,6,18-19,23-24,32-33,35-41,59-63,73,125-168
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_22e1224efb24cb::t_a51331605014db 96
+  s_22e1224efb24cb::t_f46fbb847ae3a8 5,11,13,91-95,97-100,103-107,132-134
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_22e1224efb24cb::t_45b6dfc2d3e077 877-905
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentSection.test.ts
+  s_22e1224efb24cb::t_c5529ea5caca32 36-39,50,54-57,59,118-129
+packages/@n8n/instance-ai/src/index.ts
+  s_22e1224efb24cb::t_25d9d381fed476 747
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_22e1224efb24cb::t_c48bdf4db045e7 153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c9549d59a76c4b751d6c4367c0f1459eaa558902",
+  "prompts": {},
+  "sessions": {
+    "s_22e1224efb24cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aadb-6625-7102-88f4-ab5ed0c4f71f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

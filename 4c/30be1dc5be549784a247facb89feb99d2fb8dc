@@ -1,0 +1,21 @@
+.claude/plugins/n8n/skills/change-story/SKILL.md
+  s_1d443ee7adf554::t_f75afe2aaed95b 183-189
+.claude/plugins/n8n/skills/change-story/assets/story-template.html
+  s_1d443ee7adf554::t_eb82e8e75a70c8 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4c30be1dc5be549784a247facb89feb99d2fb8dc",
+  "prompts": {},
+  "sessions": {
+    "s_1d443ee7adf554": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37421891-29fe-46a2-8bbd-c6ef59a1fa5b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

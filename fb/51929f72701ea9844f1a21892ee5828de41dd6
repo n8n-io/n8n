@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_45e2f6fac3868c::t_995d8bac56b4b7 478-487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb51929f72701ea9844f1a21892ee5828de41dd6",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

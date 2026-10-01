@@ -1,0 +1,27 @@
+packages/cli/src/services/protected-resource.registry.ts
+  s_8cb13ad4e60c36::t_a76dc5b182ed70 47-84
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_8cb13ad4e60c36::t_f1a09601e548d1 481-482,488-489
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_8cb13ad4e60c36::t_a64a536468fa20 1
+  s_8cb13ad4e60c36::t_bd93043db893fb 35-47,50-53
+  s_8cb13ad4e60c36::t_97962760f16c85 123-216
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_8cb13ad4e60c36::t_b925d485f856c7 893,896,898,902
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "4c301f45a77c00b646f101ca3cd0cd75212488cc",
+  "prompts": {},
+  "sessions": {
+    "s_8cb13ad4e60c36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "350bb63b-105e-4791-9c63-a51aae3526af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

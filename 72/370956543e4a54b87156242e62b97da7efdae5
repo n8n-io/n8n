@@ -1,0 +1,120 @@
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_5e1597e8ea25b2::t_a9009d10476dda 32-43
+docs/generated/sqlite-schema/README.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 102,121,134,295-296,322,1232,1417-1424,1541-1551
+docs/generated/sqlite-schema/scheduled_job.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 9,32,63,89
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 107
+docs/generated/postgres-schema/public.user.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 11,72,325-329
+  s_5e1597e8ea25b2::t_00cd28a2f3e335 330-332
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_5e1597e8ea25b2::t_d6a6e5e515042c 241,484
+  s_5e1597e8ea25b2::t_f31a08238e60dd 242,485
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 12,81,270-273
+  s_5e1597e8ea25b2::t_05136c5491c299 274-277
+docs/generated/postgres-schema/README.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 102,121,135,311-312,335,1245,1428-1435,1560-1570
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 21,63,90
+packages/@n8n/db/src/migrations/common/1785920873647-AddOwnerToScheduledJob.ts
+  s_5e1597e8ea25b2::t_3ddbc5291f7d83 3-18,20-55,58-62
+  s_5e1597e8ea25b2::t_f31a08238e60dd 1-2,19,56-57,63-64
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_5e1597e8ea25b2::t_05264cabfd16a2 133-145,262
+  s_5e1597e8ea25b2::t_02f63e60f556bb 24
+  s_5e1597e8ea25b2::t_5b84ce19bb5ed5 269
+  s_5e1597e8ea25b2::t_9029030b4df716 263-268,270-273
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_5e1597e8ea25b2::t_5b84ce19bb5ed5 154,345-349
+  s_5e1597e8ea25b2::t_d02a377875601b 191-192
+  s_5e1597e8ea25b2::t_54c39df06923b4 202-205
+  s_5e1597e8ea25b2::t_37d6b2a5a8ef5d 343-344,350-359
+  s_5e1597e8ea25b2::t_1e6438b167de3d 140,142-145
+  s_5e1597e8ea25b2::t_a745288fc920a9 24-32,38-40,42-44,48,50-53,55-57
+  s_5e1597e8ea25b2::t_8401539dcffefa 33-37,41
+  s_5e1597e8ea25b2::t_0826589d7c85ec 138-139,141,146-153,155-156,162-165
+  s_5e1597e8ea25b2::t_0d47ae0325e2d7 227-229
+  s_5e1597e8ea25b2::t_67e637cc7692e0 166
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_5e1597e8ea25b2::t_d6a6e5e515042c 232,466
+  s_5e1597e8ea25b2::t_f31a08238e60dd 233,467
+packages/@n8n/db/src/entities/workflow-subscription.ts
+  s_5e1597e8ea25b2::t_d7936fba56bce9 1,3-53
+  s_5e1597e8ea25b2::t_ab9c701a617591 2
+packages/@n8n/db/src/repositories/workflow-credential-binding.repository.ts
+  s_5e1597e8ea25b2::t_24240af506d85f 1-50,55-61
+  s_5e1597e8ea25b2::t_5b84ce19bb5ed5 51-54
+packages/@n8n/db/src/repositories/index.ts
+  s_5e1597e8ea25b2::t_94bbd47974a7ed 63,66-69
+docs/generated/postgres-schema/public.workflow_credential_binding.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 1-107
+docs/generated/postgres-schema/public.workflow_subscription.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 1-71
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_5e1597e8ea25b2::t_7c58978fbd968a 110,523
+docs/generated/sqlite-schema/workflow_entity.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 23,79,261-267
+  s_5e1597e8ea25b2::t_ef876952b756da 268
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_5e1597e8ea25b2::t_0ff9ce59ffc2b3 93
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_5e1597e8ea25b2::t_0ff9ce59ffc2b3 457
+docs/generated/sqlite-schema/workflow_subscription.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 1-74
+packages/@n8n/db/src/migrations/dsl/table.ts
+  s_5e1597e8ea25b2::t_d35ba01ff9e015 96-100,102,105,111,113-119,121,123
+  s_5e1597e8ea25b2::t_5b84ce19bb5ed5 112
+packages/@n8n/db/src/migrations/common/1785920849704-CreateWorkflowCatalogSubscriptionTables.ts
+  s_5e1597e8ea25b2::t_d6a6e5e515042c 1-2,11,70-71,76-77
+  s_5e1597e8ea25b2::t_bc406040a4e8e0 3-10,12-27,29-57,61,63-69,72-75
+  s_5e1597e8ea25b2::t_5b84ce19bb5ed5 28,58-60,62
+packages/@n8n/db/src/entities/index.ts
+  s_5e1597e8ea25b2::t_abd57eb0b7b6f9 60-63,90,141-142,146,209,213
+docs/generated/sqlite-schema/user.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 22,78,332-338
+  s_5e1597e8ea25b2::t_93b9b80e6dedfa 339
+docs/generated/sqlite-schema/workflow_credential_binding.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 1-114
+packages/@n8n/db/src/repositories/workflow-subscription.repository.ts
+  s_5e1597e8ea25b2::t_5b84ce19bb5ed5 56-59
+  s_5e1597e8ea25b2::t_84d1286cf5c71d 1-34,44-55,60-94
+  s_5e1597e8ea25b2::t_acc5bf2c073c29 35-43
+packages/@n8n/db/src/entities/workflow-credential-binding.ts
+  s_5e1597e8ea25b2::t_d634f9779d67d0 1-43
+docs/generated/sqlite-schema/scheduled_task.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 98
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 99
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_5e1597e8ea25b2::t_ffb30db4e7000e 32
+  s_5e1597e8ea25b2::t_d1dea0461bc3e3 64-71
+  s_5e1597e8ea25b2::t_ccf6a3c9b19790 63
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_5e1597e8ea25b2::t_f14edb88f5d252 19
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_5e1597e8ea25b2::t_a13269f4525d4a 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "72370956543e4a54b87156242e62b97da7efdae5",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

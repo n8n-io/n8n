@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 98
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f851863090395b99345f31c89273015a824a678e",
+  "prompts": {},
+  "sessions": {
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

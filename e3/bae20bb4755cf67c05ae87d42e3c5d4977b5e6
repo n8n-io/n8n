@@ -1,0 +1,35 @@
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_b2a47ce29e9014::t_8e0f06666ff693 1177
+  s_b2a47ce29e9014::t_1f773b6ce87c98 1073
+  s_b2a47ce29e9014::t_82b8a587b4f6a8 1378
+  s_b2a47ce29e9014::t_050908e365f035 1409
+  s_b2a47ce29e9014::t_9bad5dceb06730 1102
+  s_b2a47ce29e9014::t_eeb7078ccaa40e 1394
+  s_b2a47ce29e9014::t_968de3754f1a10 1363
+  s_b2a47ce29e9014::t_37b8e8ba3191dd 1131
+  s_b2a47ce29e9014::t_3433d7bc105a82 1527
+  s_b2a47ce29e9014::t_77bc0b0e54bc54 1455
+  s_b2a47ce29e9014::t_16bee88eb018a7 1433
+packages/core/src/execution-engine/execution-context.ts
+  s_b2a47ce29e9014::t_63960cd914a252 37,40,43
+  s_b2a47ce29e9014::t_3d2820db442c9a 6
+  s_b2a47ce29e9014::t_85b82e380e22da 166
+packages/workflow/src/execution-context.ts
+  s_b2a47ce29e9014::t_a183b80a6b3b6f 116-119,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "e3bae20bb4755cf67c05ae87d42e3c5d4977b5e6",
+  "prompts": {},
+  "sessions": {
+    "s_b2a47ce29e9014": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c1856d4-c29a-430f-8b76-22f3138bb903",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

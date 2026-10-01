@@ -1,0 +1,22 @@
+packages/cli/src/tool-generation/ai-tools.ts
+  s_0bf6d2ccb779ff::t_a682408792767b 8
+packages/cli/src/tool-generation/__tests__/ai-tools.test.ts
+  s_0bf6d2ccb779ff::t_629d57ad33be1e 163-165,167-169
+  s_0bf6d2ccb779ff::t_14fe51e212c807 139-142,145,153,158,162,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6245ec456c6887851b2ff40f2bb8136cfde05cb3",
+  "prompts": {},
+  "sessions": {
+    "s_0bf6d2ccb779ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d96b4f2b-f082-42a2-bd81-8d59d0458b78",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

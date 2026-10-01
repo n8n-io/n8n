@@ -1,0 +1,51 @@
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-explicit-agent-fixed-duty.json
+  s_a2999f6753c62b::t_75b8bc3bfce600 13-17
+  s_a2999f6753c62b::t_25c636086ddc48 1-12,18-22
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-fixed-scheduled-market-summary.json
+  s_a2999f6753c62b::t_25c636086ddc48 1-26
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_a2999f6753c62b::t_a4b747491f6c15 231-232
+  s_a2999f6753c62b::t_ad4dafaca50f58 63-66,159-164,166,168,190-194,226-230,294,297-300,339-350,389-391,426-428
+  s_a2999f6753c62b::t_e4db197ecae052 139
+  s_a2999f6753c62b::t_614f906f1b9dcb 233-234
+  s_a2999f6753c62b::t_eb337e8680d513 13-15
+  s_a2999f6753c62b::t_1a20b02376e9e1 48-51,134-138,144-148,290-292,445
+  s_a2999f6753c62b::t_43ca623fc95906 140-143
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-explicit-agent-creative-publisher.json
+  s_a2999f6753c62b::t_25c636086ddc48 1-2,4-12,18-19,21-22
+  s_a2999f6753c62b::t_75b8bc3bfce600 13-17
+  s_a2999f6753c62b::t_a8aa325e0717da 3,20
+.github/workflows/test-evals-discovery.yml
+  s_a2999f6753c62b::t_ad4dafaca50f58 67
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_a2999f6753c62b::t_e4db197ecae052 276-277
+  s_a2999f6753c62b::t_a5e325a1e0b26a 275,285-286,291-297,306
+  s_a2999f6753c62b::t_d28abb7b2d94d2 50,52,58,128,272-274,278-284,287-290,298-305,307-308
+  s_a2999f6753c62b::t_964eb99a52680f 309-314
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-ambiguous-alert-response-clarifies.json
+  s_a2999f6753c62b::t_25c636086ddc48 1-17
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_a2999f6753c62b::t_eb337e8680d513 4-8,25-29
+  s_a2999f6753c62b::t_0fb88ba7f8b2ca 30
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-role-shaped-scheduled-analyst.json
+  s_a2999f6753c62b::t_75b8bc3bfce600 17-21
+  s_a2999f6753c62b::t_25c636086ddc48 1-16,22-26
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_a2999f6753c62b::t_916a3db113d17c 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8cac3671bc7376b40b14d7c950060513009be3fe",
+  "prompts": {},
+  "sessions": {
+    "s_a2999f6753c62b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a080bf-405e-70f0-8af9-fbce616d04c3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

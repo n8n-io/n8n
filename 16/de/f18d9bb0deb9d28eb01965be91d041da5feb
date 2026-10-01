@@ -1,0 +1,23 @@
+packages/@n8n/config/src/configs/engine.config.ts
+  s_73b88526956889::t_9188556c87730d 65-75
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_73b88526956889::t_19bb7b4ecbd0ce 1,78,86-92,109-122
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_73b88526956889::t_2235e429cc2fc2 1,37,44-46,52-54,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "16def18d9bb0deb9d28eb01965be91d041da5feb",
+  "prompts": {},
+  "sessions": {
+    "s_73b88526956889": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe7185e0-13fb-46c8-b126-369875904740",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

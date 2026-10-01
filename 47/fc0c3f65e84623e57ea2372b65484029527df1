@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_8f0638df9beaf3::t_9823eb550ec928 7,23,36,65-66,141,169
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_8f0638df9beaf3::t_9823eb550ec928 7,55,131-132,241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "47fc0c3f65e84623e57ea2372b65484029527df1",
+  "prompts": {},
+  "sessions": {
+    "s_8f0638df9beaf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af20-9e0e-70f1-b1e1-d44c39cb3ff5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_7153fc25a42002::t_189cf19b874ef8 49
+  s_7153fc25a42002::t_abf8d6fdc14285 147
+  s_7153fc25a42002::t_4ad4002f1006d0 230-236
+  s_7153fc25a42002::t_477661c466e18e 266,269
+  s_7153fc25a42002::t_3914d3e01f7394 335-357
+  s_7153fc25a42002::t_86a6406ee9763c 92-93
+  s_7153fc25a42002::t_cd9b62b64d6f83 69-73,76
+  s_7153fc25a42002::t_1729a4058d6283 14-19
+  s_7153fc25a42002::t_947cc875438b49 21
+  s_7153fc25a42002::t_884e418693c251 1
+  s_7153fc25a42002::t_82c7bcf63b23ce 20
+  s_7153fc25a42002::t_59178f15d8dd85 294-298,300,304
+packages/nodes-base/nodes/Kafka/configConverter.ts
+  s_7153fc25a42002::t_ee475f0e1820a0 29-62
+  s_7153fc25a42002::t_60f47e2ae4d47c 81
+  s_7153fc25a42002::t_8bd1a96513994b 1-28,63-80,82-138,140-156,161-174
+  s_7153fc25a42002::t_d21254840377f1 139
+  s_7153fc25a42002::t_a95f9db12e5b2f 157-160
+pnpm-lock.yaml
+  s_df9d426b770a50::t_a004c55adcc589 4737-4739,6920-6923,8395-8399,11956-11959,13185-13188,17354-17356,17616-17620,20918-20919,24418-24426,25946-25958,28278,30043-30044,31459-31460,36758-36759,37038-37041,40869
+packages/nodes-base/nodes/Kafka/Kafka.node.ts
+  s_7153fc25a42002::t_2209d9d017b88f 17-18
+  s_df9d426b770a50::t_a004c55adcc589 278
+  s_7153fc25a42002::t_7d33f612c5a56d 1,19-21
+  s_7153fc25a42002::t_3f7ae47abf3b2d 279-282,285,288-292
+  s_7153fc25a42002::t_d35e232d7b3eb9 221-227,230-232
+  s_7153fc25a42002::t_07d96731060521 287
+packages/nodes-base/package.json
+  s_7153fc25a42002::t_ebde97a2e6da35 908
+package.json
+  s_7153fc25a42002::t_9b2a268273daaf 98
+docker/images/n8n/Dockerfile
+  s_7153fc25a42002::t_001d2d48d859e8 20
+  s_7153fc25a42002::t_165c7f482eb6e7 12-19
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_7153fc25a42002::t_7a0cd0face0516 487
+  s_7153fc25a42002::t_72e4be4379006c 1,28-29
+  s_7153fc25a42002::t_964da345f6fa2d 407-411
+  s_7153fc25a42002::t_1079e67f6e038a 24-25
+  s_7153fc25a42002::t_8dc0fc361dc282 419-420
+  s_7153fc25a42002::t_8b0050fd175f6d 460
+  s_7153fc25a42002::t_3e5491b1f2ab97 488-495,497-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "774792b63847a32a50e505c49ed724e126e51ef1",
+  "prompts": {},
+  "sessions": {
+    "s_7153fc25a42002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3fea42-c399-4e04-a01d-178e65e8af86",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_df9d426b770a50": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbf8e2d4-eb24-4534-89dc-f4370df273bb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

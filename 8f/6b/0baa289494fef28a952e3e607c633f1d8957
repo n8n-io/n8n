@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_2dd11acf1bf19d::t_f000cc93a7bfc2 101-106,113,116,119-120
+packages/nodes-base/utils/__tests__/atlassian.test.ts
+  s_2dd11acf1bf19d::t_e0170d4903ce98 1-4,6,43-48,53-60,63,65-77,82,88-90,93,105-110,112,114,118,121-128,130-141,145,147,151-153,156-176,178-182,189,198,201-222,224-242,244,247-267,269-270
+packages/nodes-base/utils/atlassian.ts
+  s_2dd11acf1bf19d::t_9c76c941e6934a 31-33
+  s_2dd11acf1bf19d::t_2a680ae667c363 103
+  s_2dd11acf1bf19d::t_f96de40be0dd48 7,9,25-30,52,75-78,81-92,104-108,111-112,117
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_2dd11acf1bf19d::t_56816a9d746503 38-40
+  s_2dd11acf1bf19d::t_d12e904e677f06 11,13,31-37,43
+  s_2dd11acf1bf19d::t_d72e73291e78bb 23
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_2dd11acf1bf19d::t_79a74085def930 188,202-205,211-212,218,221-222,225,228
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_2dd11acf1bf19d::t_1ec491f3ea1c6c 6,8-10,15,22,39-57,60-70,73-75,77,79-83,86-87,89-94,96-99,101-104,106-109,111-112,114-117,119-120,122,124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f6b0baa289494fef28a952e3e607c633f1d8957",
+  "prompts": {},
+  "sessions": {
+    "s_2dd11acf1bf19d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e4031ed-9151-4cc4-abed-6d95597b73f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

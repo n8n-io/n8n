@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.vue
+  s_6769ca839e8567::t_4445d6942dfde2 60-62
+packages/frontend/editor-ui/src/app/utils/nodeTypeUtils.test.ts
+  s_6769ca839e8567::t_39329563762a8c 342-346
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_6769ca839e8567::t_5b94b17a15a58d 848-872,874-876,919-920,927-942,956,966,999
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.test.ts
+  s_6769ca839e8567::t_21af3c38972659 496,516-521
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1e8aec6cb7fda74d19b66aaad04917f81518b7fd",
+  "prompts": {},
+  "sessions": {
+    "s_6769ca839e8567": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7deb64a3-b389-4439-914d-7e9b01eae171",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

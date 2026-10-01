@@ -1,0 +1,161 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 221,260,272
+  s_d27d09d94cc9ff::t_37a36a2c239f71 273
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 29
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 50-87,89,98,105,110-111,113-115,117-118,130-131,135-136,153-177
+  s_d27d09d94cc9ff::t_93abef1f6b83bd 34
+  s_d27d09d94cc9ff::t_2ced8289039e37 96
+  s_d27d09d94cc9ff::t_27ac0db6c8c56b 90-94,99-100,102,104,107,109
+  s_d27d09d94cc9ff::t_e8d14e87cc40ed 137-152
+  s_d27d09d94cc9ff::t_dc524361bbab9a 88,95,97,101,103,106,108
+  s_d27d09d94cc9ff::t_0c0c2e271076ba 112,116,119-129,132-134
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 45
+packages/@n8n/api-types/src/agents/types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 369-389
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 4-6,16-25,45-46,121,125,128,130,134,136-151,154,162-164,168-171,176,178-181,183,190,197,201,205,208,210-219,221-230,232-249,250-266,268-320,349,351,355
+  s_d27d09d94cc9ff::t_3e50cd9e707603 335,337-346,354
+  s_d27d09d94cc9ff::t_955b8ec3a3d8ee 152,186-188,192-196
+  s_4af91ea8a019b5::t_89a4ebee2c2f10 336,347-353
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 2,6,8-10,19-20,24-27,29-31,38-42,43,48,52,70-71,95-97,99,101,128-132,133,134-149,151-235,237,240,242-253,276-277,286-288,290-302,315-317,347-348,384-385,388-391,394-395,406,415-416,423-424,438,443,445-448,454-456,458-463,464-474,476,478,481-483,485-487,490-491,504-515,521-529,530-538,542,547-568,574-602,606,608-611,617,627,653-664,666
+  s_d27d09d94cc9ff::t_ffa3533c0fddaa 665
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 72,387,439,569,626
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 22-23,28,236,238-239
+  s_d27d09d94cc9ff::t_eac241ec0f33c5 102-126
+  s_d27d09d94cc9ff::t_ec78dee24f460f 47
+  s_d27d09d94cc9ff::t_955b8ec3a3d8ee 98,127
+  s_d27d09d94cc9ff::t_fb65def2c5fc6a 278-285
+  s_d27d09d94cc9ff::t_0af911286dd233 5,484
+  s_4af91ea8a019b5::t_89a4ebee2c2f10 303-314,603-605
+  s_5e086fee025135::t_ffb45fd573a8d8 427-428,433,436-437,520,539,541,612-616
+  s_5e086fee025135::t_4ae1c21cb844e8 492,499-503
+  s_d27d09d94cc9ff::t_c40a6f85291d6f 429-432,434-435
+  s_d27d09d94cc9ff::t_aa52c52ca01324 44,449,477,479-480,540,607
+  s_d27d09d94cc9ff::t_b9ebb014e5b639 1,409-412,450-453,493-498,516-519,570-573
+  s_d27d09d94cc9ff::t_0ce413e6eb86ac 679-686
+packages/cli/src/modules/agents/agent-message-queue.types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 2,11-12,13-22,82-85
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 41-48,64-70
+  s_d27d09d94cc9ff::t_9410136a88c552 71
+  s_d27d09d94cc9ff::t_93abef1f6b83bd 50-51
+  s_d27d09d94cc9ff::t_db405d3937cbc3 49
+  s_d27d09d94cc9ff::t_d2d1c2018307a9 18,53-54,59,61
+  s_d27d09d94cc9ff::t_7f6f312a556a3e 19,52,55-58,60,62-63
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 136-140
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-resume.dto.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5-9
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 174
+packages/@n8n/api-types/src/push/agents.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 1-3,31-51
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 63,113
+packages/cli/src/scaling/constants.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 40
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 35-46,101-104,315-354,355-384,386-390,392-398,400,402-416,421-428,486-490,493-494,496-500,502-506,529-530,532-540,542,545,547-548,550-553
+  s_d27d09d94cc9ff::t_955b8ec3a3d8ee 509-526,528
+  s_d27d09d94cc9ff::t_5f829fd95d20e1 462-483
+  s_d27d09d94cc9ff::t_b033bdcfc69634 527
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 7,46,66-67,74-103,140-141,150-151
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 21,71,135,158,170,172,184-185
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 104-105
+  s_d27d09d94cc9ff::t_b9ebb014e5b639 136-139
+  s_5e086fee025135::t_a73ac9ba456f9c 162
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 289
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 394-395
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 10,25-26,36,65,109,126-130,160-162,167-176,192-193,197,320,363,502-503,505-507,549-618,620-683,685,697,709,711,713-724,726-727,732-733,739-743,746-759,761-762,767-768,770-771,772-777,786-787,790-798,827-857,909-922,940-942,1061-1065,1067-1068,1070-1097,1195-1199,1248,1292-1293,1295-1311,1313-1337,1389,1392,1404
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 3-4,132,153,194,1066,1069
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 136-138
+  s_d27d09d94cc9ff::t_723f2964dbf001 906
+  s_d27d09d94cc9ff::t_eac241ec0f33c5 545
+  s_d27d09d94cc9ff::t_f6b2c829be763f 862-863,870-873,875,877
+  s_d27d09d94cc9ff::t_fae834f6585120 515-544,546-548
+  s_d27d09d94cc9ff::t_5f7cd1deaf5da6 858-861,864-869,874,876,878-887
+  s_d27d09d94cc9ff::t_80bd04bb9f9f85 888-905,907-908
+  s_5e086fee025135::t_023417e72f42ef 766,769,778-785,799-826,1099-1119
+  s_5e086fee025135::t_24655bbe51c231 1120-1122
+  s_d27d09d94cc9ff::t_c247ce7f3adbac 788-789,1098
+  s_d27d09d94cc9ff::t_ad67bc2cab28a9 1312
+  s_d27d09d94cc9ff::t_e368a71c9c5846 1128-1152,1164-1167,1175-1177,1180-1182
+  s_d27d09d94cc9ff::t_19d1377634a5ce 1123-1127,1153-1163,1168-1174,1178,1185-1190
+  s_d27d09d94cc9ff::t_26d2efb79fc207 1179,1183-1184
+  s_d27d09d94cc9ff::t_0ce413e6eb86ac 1263-1265,1267-1269
+  s_d27d09d94cc9ff::t_f89eb02b09df62 1294
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5,14,22-26,30-36,38-42,47,56,69,76
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 193,197
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatQueue.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1-406
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 7,21,26,31-33,84,152,183-185,191,199-201,226-227,232,283-307,440,476,644,646-655,686,731-775,831,858,862-877,880,882-894,897,899-900,902-904,906-907,910,912-917,919-920,922-923,955-956,993,999,1004,1010
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 15-16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 7719-7726
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1994-1999,2010
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatQueue.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1-117
+packages/frontend/editor-ui/src/features/agents/components/AgentChatQueue.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 1-225
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 10-11,54-56,65-103,105,108-118,125-128,136,182,204-205,225-235,247-252,260-262,265-267,273,275-276,278,281-282,301-316,318,320,322-325,327,329,331-332,344,349,366,405,456,481,507,526,533,545,567,573,579,600-601,621,641,661,680,705,729,764,799,829,866,895,923,960,1000,1046,1108,1191,1218-1227,1310,1352,1393,1423,1457,1502,1610,1632,1638-1639,1655,1663,1729,1820-1821,1825,1854
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 12-13,23-28,70,73-77,94-113,154,184,186,193-198,216-218,220,222-303,307,309-310,327-338,343,350-355,361,379,383-388,415,467-469,530,561,770-779,790,814-901,903-906,911,913-919,921,923-928,930-934,936,940-964,966-968,974-995,997-1009,1011-1012,1016-1032,1035-1049,1066-1070,1072-1087,1090-1091,1093-1095,1101,1113-1115
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 12,1835,1837-1842,1870,1872-1877,1888-1924
+  s_d27d09d94cc9ff::t_63991af7e6dd6b 1925
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 69-70
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 3-4,32-35,84-94
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 34,101-104,111,113-118,367,371-377,399-401,432-435,539,544,550,552,619-624,640,642
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_d27d09d94cc9ff::t_d03ba9dcb60182 5-9,599-681
+  s_d27d09d94cc9ff::t_7eb15091298a74 682
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bbd506385689020d1b108e8da9b7d67b7496b327",
+  "prompts": {},
+  "sessions": {
+    "s_4af91ea8a019b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa2b-c854-7983-b417-6c061b664b19",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5e086fee025135": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa2b-2f7f-7372-94a6-218b9a368b72",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_6b07085b0b3cf5::t_dbc3c409eec77c 465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "15f85d883e200d8809313d8ca5b26bc13fdbc1fc",
+  "prompts": {},
+  "sessions": {
+    "s_6b07085b0b3cf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5de281e2-fca1-43bf-8ec5-9b8f5176673e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_3cf72d411caad0::t_1e92a8979be3b7 898-976
+packages/cli/src/modules/agents/integrations/integration-tools.ts
+  s_3cf72d411caad0::t_68650de7f43b2b 1395-1407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "88d834303d9e912c40c775a36ad7ebbbfd41346f",
+  "prompts": {},
+  "sessions": {
+    "s_3cf72d411caad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9749-aea2-7951-bfc8-5671d8e5b8e3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

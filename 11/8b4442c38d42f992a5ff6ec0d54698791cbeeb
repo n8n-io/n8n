@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.vue
+  s_93bfa2eb2d7de3::t_70e377be7a77bd 3
+  s_93bfa2eb2d7de3::t_e1d2f7425380e2 28
+  s_93bfa2eb2d7de3::t_fc6e699f99b89c 65-73
+  s_93bfa2eb2d7de3::t_994608129bc78d 126-133
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_93bfa2eb2d7de3::t_03cfb677847036 3441
+  s_93bfa2eb2d7de3::t_ecaf0abda245ab 3438
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.test.ts
+  s_93bfa2eb2d7de3::t_2702f9d1ce0ccd 87
+  s_93bfa2eb2d7de3::t_34ffdc5ea49e6c 17-21
+  s_93bfa2eb2d7de3::t_4dddec4ac2996b 215-230
+  s_93bfa2eb2d7de3::t_6eca6cb8dc3030 280-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "118b4442c38d42f992a5ff6ec0d54698791cbeeb",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_13d0f2e1be0144::t_38d2c5e49a10b9 228,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7650bc5ab6f2af3699efc8e79d59d008b120bc1c",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/user-requests-post-build-change.json
+  s_49774f0fb0b969::t_a0c91e00cb7357 18-19,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "598b3db66b349e3712e389bd2cf96ec90cb5d557",
+  "prompts": {},
+  "sessions": {
+    "s_49774f0fb0b969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058ef848-ef42-44ad-bc5c-fa740d82f66f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 29,31
+packages/cli/src/public-api/v1/services/git-connections-public-api.service.ts
+  ai_agent 39-40,43-44
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  ai_agent 191,207,209,215,221,228,232,238
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/getGitConnectionProjects.generated.yml
+  ai_agent 4
+packages/cli/test/integration/public-api/git-connections.test.ts
+  ai_agent 143,156,159,161-163,169-170,176,179,188,192,220,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1df0a2e14195976f1a635f3199fa36622cf4a534",
+  "prompts": {}
+}

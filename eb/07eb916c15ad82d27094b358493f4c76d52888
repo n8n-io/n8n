@@ -1,0 +1,59 @@
+packages/frontend/@n8n/stores/src/views.ts
+  s_b7645babf66668::t_47d2570adb3fca 1-88
+packages/frontend/editor-ui/src/Interface.ts
+  s_b7645babf66668::t_59b680c8d7eae7 699-701
+packages/frontend/@n8n/stores/package.json
+  s_b7645babf66668::t_d5b3d7d9fd8be0 45
+packages/frontend/@n8n/stores/src/constants.ts
+  s_b7645babf66668::t_2aaa66e25d30a6 5
+packages/frontend/@n8n/stores/src/notifications.store.test.ts
+  s_b7645babf66668::t_90f6752ca7c854 1-56
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_b7645babf66668::t_07e7ee1b554fce 4-5
+  s_b7645babf66668::t_5532b644e76a7d 1-3
+packages/frontend/@n8n/stores/src/notifications.store.ts
+  s_b7645babf66668::t_14c9aabccb9057 1-2,4-19,33-35,38-57
+  s_b7645babf66668::t_e06beca7d3a1c5 3,20-32,36-37
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_b7645babf66668::t_cb38001f1f14e6 6
+  s_f6a779fcbf947f::t_fc4b4f203a403d 219-221,238-240,260-262,280-282
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.test.ts
+  s_b7645babf66668::t_6e6fb3642e63d9 8
+  s_b7645babf66668::t_29923c28c7a5e6 225,246-247,254-255,276-277,284-285,304-305,553,570-571,738,755-756
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.ts
+  s_b7645babf66668::t_27b95275b173dc 51
+  s_b7645babf66668::t_88cdc159e147a8 95
+  s_b7645babf66668::t_ee266d5641f288 12
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_b7645babf66668::t_9b312fc8e85bbd 24-25
+  s_b7645babf66668::t_7bfca9613d37ad 7
+  s_b7645babf66668::t_e6719f19a16ea2 206
+  s_b7645babf66668::t_1b33673b294961 18
+  s_b7645babf66668::t_db9fea1a2e64d4 216
+pnpm-lock.yaml
+  s_b7645babf66668::t_bfd7b9f06ca262 5395-5397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "eb07eb916c15ad82d27094b358493f4c76d52888",
+  "prompts": {},
+  "sessions": {
+    "s_b7645babf66668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57f1efb4-9536-4b49-a6b5-91f2daa62b58",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_f6a779fcbf947f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc19ae7e-ddd5-47c9-9718-f3eff1fc75be",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

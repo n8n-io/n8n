@@ -1,0 +1,65 @@
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_b657e90b8812af::t_24024f9cbf7415 188-193
+  s_b657e90b8812af::t_2e1bd15f8ee565 151
+  s_b657e90b8812af::t_99d71c90580e53 242
+  s_b657e90b8812af::t_a025c650b9740a 78
+  s_b657e90b8812af::t_fe377e10046ed7 9
+  s_b657e90b8812af::t_c1e516349f705f 111
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_b657e90b8812af::t_e2977f7a033d2b 57
+  s_b657e90b8812af::t_fbc00ccdb1f39b 113
+  s_b657e90b8812af::t_16690492859717 84-97
+packages/cli/src/executions/__tests__/merge-execution-pages.test.ts
+  s_b657e90b8812af::t_7f2ed65e763a92 3-80
+packages/cli/src/executions/execution-list.service.ts
+  s_b657e90b8812af::t_3393bba273894d 65
+  s_b657e90b8812af::t_e7893c2d882fd4 133
+  s_b657e90b8812af::t_7f2ed65e763a92 12-21,23-27,59-64,66-75,77-79,88-89,91-93,111-112,115-117,119-126
+  s_b657e90b8812af::t_6d3fff024d799f 163-166
+  s_b657e90b8812af::t_a485b9f1fd3fdf 134,147-149,155-158,172
+  s_b657e90b8812af::t_3a811844b98634 103
+  s_b657e90b8812af::t_2f33897e6dd9de 146
+  s_b657e90b8812af::t_9387783f943a44 28-29
+  s_b657e90b8812af::t_3874838264c6ab 1
+  s_b657e90b8812af::t_4e39626601eca2 37
+  s_b657e90b8812af::t_a7da2ab25a34fa 3,22,30-36,38-58,76,80-87,90,94-102,104-110,113-114,118
+  s_b657e90b8812af::t_ac3febd355c2f2 150-154
+packages/cli/src/executions/merge-execution-pages.ts
+  s_b657e90b8812af::t_7f2ed65e763a92 4-30
+packages/cli/src/executions/execution-cursor.ts
+  s_b657e90b8812af::t_d9829beaad626b 73
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_b657e90b8812af::t_e85eeb49acd75a 87
+  s_b657e90b8812af::t_f6930a0ebcfd68 98,100
+  s_b657e90b8812af::t_7f2ed65e763a92 21,40-42,52-54,60,62-86,88-97,99,101-109
+  s_b657e90b8812af::t_1a4474e75dff7d 17
+  s_b657e90b8812af::t_d4d0b6ec410613 55-59,61
+packages/@n8n/db/src/repositories/index.ts
+  s_b657e90b8812af::t_13ce37b5f8f3c6 35
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_b657e90b8812af::t_2e7c315adfc4de 179
+  s_b657e90b8812af::t_7f2ed65e763a92 12-17,19-49,51-121,123-142
+  s_b657e90b8812af::t_130e0c72dd46a4 122
+  s_b657e90b8812af::t_d0881af89de063 18
+  s_b657e90b8812af::t_ee9e8b20ad0fcc 50
+  s_b657e90b8812af::t_6f08bdc369ab57 150
+  s_b657e90b8812af::t_7804d79547a523 1-6
+packages/@n8n/db/src/repositories/execution-list.repository.ts
+  s_b657e90b8812af::t_4e46ac94a6d28c 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e2d30528175afc14a6bac90f9a6c5f705a94ad1",
+  "prompts": {},
+  "sessions": {
+    "s_b657e90b8812af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "426da0c5-5c8d-43c8-834f-b42cae6044b9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

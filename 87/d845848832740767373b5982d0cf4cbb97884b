@@ -1,0 +1,42 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_5be157f6e91b85::t_516032026c5cc3 87,115,118-122,124,138,169,201,218,236,256,274,292,309,327,344,376,402,429,448,464,490,529,539,549,574,607,634,665,678,702,719,740,756,772,797,817,837,855,1023-1027,1029,1051,1073,1085-1086,1093,1100-1106
+packages/cli/src/modules/mcp/__tests__/get-instance-context.tool.test.ts
+  s_5be157f6e91b85::t_25364f9976954c 49
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_5be157f6e91b85::t_61865033b57b4b 2673
+  s_5be157f6e91b85::t_0c2f7d925c607f 2513,2676,2840,3901
+  s_5be157f6e91b85::t_4786f6b74ab1a5 2539,4077
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_5be157f6e91b85::t_b3827e770f4e59 265-266
+  s_5be157f6e91b85::t_4786f6b74ab1a5 269
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_5be157f6e91b85::t_61865033b57b4b 93,5191,5241,5247-5257
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5be157f6e91b85::t_61865033b57b4b 700-702,4778
+  s_5be157f6e91b85::t_342de99dd45544 712,804,884-888,4780
+  s_5be157f6e91b85::t_0e6196ad1ca297 703-704,4789,4791,4803,4843
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5be157f6e91b85::t_4786f6b74ab1a5 508
+  s_5be157f6e91b85::t_b3827e770f4e59 442-443,467,507
+packages/cli/src/modules/mcp/tools/get-instance-context.tool.ts
+  s_5be157f6e91b85::t_4786f6b74ab1a5 92
+  s_5be157f6e91b85::t_0c2f7d925c607f 91
+packages/cli/test/integration/instance-context.service.test.ts
+  s_5be157f6e91b85::t_b6b2cc29cac319 61,76-78,98,156,186-189,191,196,224,255,271,286,294,312,326,370-373,375,461,472,488,493,788,809,829,850
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "87d845848832740767373b5982d0cf4cbb97884b",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

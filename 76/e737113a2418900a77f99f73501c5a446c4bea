@@ -1,0 +1,11 @@
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  ai_agent 16-19,212-214,216
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-scheduler.service.test.ts
+  ai_agent 42,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76e737113a2418900a77f99f73501c5a446c4bea",
+  "prompts": {}
+}

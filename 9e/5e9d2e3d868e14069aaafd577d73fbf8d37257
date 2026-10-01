@@ -1,0 +1,83 @@
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_f67faa38fc0e31::t_3ce3aa43ba2506 23
+  s_f67faa38fc0e31::t_4b628cf89d0777 47
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_f67faa38fc0e31::t_c6e802bac84701 27
+  s_f67faa38fc0e31::t_9a53e0652a3cc1 2283
+packages/core/test/helpers/index.ts
+  s_f67faa38fc0e31::t_bf488a35a4125f 15
+  s_f67faa38fc0e31::t_933631dd4e2bbb 142
+packages/workflow/src/errors/node-operation.error.ts
+  s_f67faa38fc0e31::t_5cbb6f26de58e2 2
+  s_f67faa38fc0e31::t_40788c83c6d805 22-25
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_f67faa38fc0e31::t_1b331300a50018 514
+  s_f67faa38fc0e31::t_a6ba419157511f 3
+packages/@n8n/eslint-config/src/plugin.ts
+  s_f67faa38fc0e31::t_f1e36962f1bf64 30
+packages/workflow/src/errors/workflow-activation.error.ts
+  s_f67faa38fc0e31::t_fe0adf575d7ee0 2
+  s_f67faa38fc0e31::t_e0b4165a497b05 8
+  s_f67faa38fc0e31::t_50316797504db8 38
+packages/@n8n/ai-utilities/src/__tests__/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.test.ts
+  s_f67faa38fc0e31::t_7e8950b60d758c 2
+  s_f67faa38fc0e31::t_402439b5d293df 28
+packages/@n8n/eslint-config/src/rules/no-plain-errors.ts
+  s_f67faa38fc0e31::t_74f4192660304c 8,11-12
+  s_f67faa38fc0e31::t_fcac98aa95315b 35,40
+packages/workflow/test/application-error.test.ts
+  s_f67faa38fc0e31::t_d56e6b2612876a 1-10
+packages/core/src/errors/error-reporter.ts
+  s_f67faa38fc0e31::t_0d92119f174665 361
+  ai_agent 8-13
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_f67faa38fc0e31::t_4e689d9c391746 345
+  s_f67faa38fc0e31::t_3bed7dc0ad7033 8
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_f67faa38fc0e31::t_59a462295cb542 28
+  s_f67faa38fc0e31::t_c2658a469a36b6 2616
+packages/@n8n/eslint-config/src/rules/no-application-error.ts
+  s_f67faa38fc0e31::t_c3b8babf33b66c 17
+  s_f67faa38fc0e31::t_70eab7df30db84 1-2,4-5,10-11,19-25,27-29,31-40,53-57
+  s_f67faa38fc0e31::t_fc35ccb1973755 3,6-9,12-16,26,30,41-52
+  ai_agent 18
+packages/@n8n/eslint-config/src/rules/no-application-error.test.ts
+  s_f67faa38fc0e31::t_2d4e0e37e602ac 8,10-11,13,15-16,18,20,24,30,35,37-41,45-46
+  s_f67faa38fc0e31::t_b32309c133951c 25
+  s_f67faa38fc0e31::t_bcd982ae166c75 21,36
+  s_f67faa38fc0e31::t_a9bbbefc45f76a 1-7,9,12,14,17,19,22-23,26-29,31-34,42-44,47-50
+AGENTS.md
+  s_f67faa38fc0e31::t_e3acc5f0b2a6d2 179
+  s_f67faa38fc0e31::t_68882acc994aef 176-178
+packages/workflow/test/utils.test.ts
+  s_f67faa38fc0e31::t_8a036cae779c12 82
+  s_f67faa38fc0e31::t_bc16e173da5248 2
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.download.test.ts
+  s_f67faa38fc0e31::t_3f47109d8cb400 4
+  s_f67faa38fc0e31::t_f4efde07bebc6e 23
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_f67faa38fc0e31::t_065bc18ea21ffd 37
+  s_f67faa38fc0e31::t_d617595411bc1e 148,221
+packages/workflow/test/telemetry-helpers.test.ts
+  s_f67faa38fc0e31::t_3ca3e329b5592e 1359
+  s_f67faa38fc0e31::t_9d42761b89ad04 11
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_f67faa38fc0e31::t_061598578bd492 931
+  s_f67faa38fc0e31::t_ee7ad495d99960 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e5e9d2e3d868e14069aaafd577d73fbf8d37257",
+  "prompts": {},
+  "sessions": {
+    "s_f67faa38fc0e31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "431427fc-b0cf-4236-b633-78ff77b13c2f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/instance-ai/evaluations/build-expectations/select.ts
+  s_d7dc19b022f345::t_55c7972abc8484 4-9,23-28,69-71,110,115-121,138-140,142,147,149,153-168
+packages/@n8n/instance-ai/evaluations/cli/mcp-builder.ts
+  s_d7dc19b022f345::t_0eb6b70e81a030 192-195
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_d7dc19b022f345::t_0eb6b70e81a030 146-166,303-304,309
+packages/@n8n/instance-ai/evaluations/harness/context-assertions.ts
+  s_d7dc19b022f345::t_cee8cbe625fede 1-81
+packages/@n8n/instance-ai/evaluations/__tests__/context-assertions.test.ts
+  s_d7dc19b022f345::t_0711759a2632d3 1-34,39-124
+  ai_agent 35-38
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_d7dc19b022f345::t_0eb6b70e81a030 254-257,310-315
+packages/@n8n/instance-ai/evaluations/run/build-orchestrator.ts
+  ai_agent 448-453
+  s_d7dc19b022f345::t_093ed5a103856a 46
+  s_d7dc19b022f345::t_303ccc3e656562 446-447,470-475,505-509,535,538,540
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_15e9cc87a21154 286-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "245bc86bb4eb97e350b78a2f949f3b7334bbcf69",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

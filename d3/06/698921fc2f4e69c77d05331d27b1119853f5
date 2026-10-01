@@ -1,0 +1,25 @@
+packages/testing/playwright/tests/e2e/chat-hub/chat-hub-chat-user.spec.ts
+  s_911891c1f5efa8::t_71a57446f95ecc 25-26
+packages/testing/playwright/tests/e2e/auth/signin.spec.ts
+  s_911891c1f5efa8::t_e692957f730ff2 11
+packages/testing/playwright/pages/n8nPage.ts
+  s_911891c1f5efa8::t_69caae4e2336ef 242-246,248-254
+packages/testing/playwright/tests/e2e/auth/authenticated.spec.ts
+  s_911891c1f5efa8::t_063d05251cf5dd 9-10,12-15,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d306698921fc2f4e69c77d05331d27b1119853f5",
+  "prompts": {},
+  "sessions": {
+    "s_911891c1f5efa8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6838289-f841-44a2-a9f3-1e760ab6ce9c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

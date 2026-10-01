@@ -1,0 +1,24 @@
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_daa5baaa049e3d::t_2b7724c33c81dc 46-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "90d1813cd8e58695f182042f667f1d82491f2768",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_daa5baaa049e3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f4c89d8-e0cb-484c-a4d2-bfe056591537",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+packages/cli/src/modules/identity/services/jwt-verifier-driver.service.ts
+  s_16453cac85f858::t_8c66e05856d715 169
+packages/cli/src/modules/identity/database/repositories/identity-binding.repository.ts
+  s_16453cac85f858::t_86324dc3507ea1 1-71
+packages/cli/src/modules/identity/services/__tests__/identity-resolver.service.test.ts
+  s_16453cac85f858::t_2b045a2c5d4dbe 69
+  s_16453cac85f858::t_4ddb8080f1e713 1-19,22-27,42-68,70-233
+  s_16453cac85f858::t_654687a8b6201f 20-21,28-41
+packages/cli/src/modules/token-exchange/token-exchange.types.ts
+  s_16453cac85f858::t_6284b8b4f4e5d0 16
+packages/cli/src/modules/identity/identity.config.ts
+  s_16453cac85f858::t_81d0cdb452bc2d 21-24
+packages/@n8n/db/src/migrations/common/1786628338632-CreateIdentityBindingTable.ts
+  s_16453cac85f858::t_edb5b608101b80 3-8,10-38,41-42
+  s_16453cac85f858::t_bc0fc5ad50f682 1-2,9,39-40,43-44
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_16453cac85f858::t_2789c4bfa73e96 11
+packages/cli/src/modules/token-exchange/services/__tests__/token-exchange.service.test.ts
+  s_16453cac85f858::t_2789c4bfa73e96 12
+packages/cli/src/modules/identity/identity.types.ts
+  s_16453cac85f858::t_99faeba4f7463f 40-41
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_16453cac85f858::t_2789c4bfa73e96 20
+packages/cli/src/modules/identity/services/identity-resolution.service.ts
+  s_16453cac85f858::t_3d857c1c9a92e9 17-21,53,55,101,103,137-146
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_16453cac85f858::t_2789c4bfa73e96 15
+  s_16453cac85f858::t_df77aa201a6962 17,299
+packages/cli/src/modules/identity/identity.module.ts
+  s_16453cac85f858::t_14ef80c3268228 23-25
+  s_16453cac85f858::t_c0a0914e648e93 26-31
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_16453cac85f858::t_2789c4bfa73e96 8
+packages/cli/src/modules/identity/services/identity-resolver.service.ts
+  s_16453cac85f858::t_b56f2749039c25 1-147
+packages/cli/src/modules/identity/database/entities/identity-binding.entity.ts
+  s_16453cac85f858::t_bf41b396089e92 1-44
+docs/generated/postgres-schema/README.md
+  s_16453cac85f858::t_55704977cb00b2 66,909-920
+docs/generated/sqlite-schema/README.md
+  s_16453cac85f858::t_cfeb23c45aa5a4 66,896-907
+packages/cli/src/modules/identity/services/__tests__/identity-resolution.service.test.ts
+  s_16453cac85f858::t_3c4c2f8112d378 16-19,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "dd3ff948cf7aaeb93476d3874a75884de37d2138",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

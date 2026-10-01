@@ -1,0 +1,103 @@
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.test.ts
+  ai_agent 1-38
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useCyclingExamples.test.ts
+  s_0ecd32d98e3b48::t_5b7aa3ab6bd773 77-93
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/index.ts
+  ai_agent 1-9
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/SuggestionList.vue
+  s_0ecd32d98e3b48::t_1db0e3aba5aa3e 178
+  s_0ecd32d98e3b48::t_ca7ebe50a2a250 211-214,220-234
+  ai_agent 81-85
+  s_0ecd32d98e3b48::t_3d42f748fe1ddc 206-208,218
+  s_0ecd32d98e3b48::t_d03ff83973a014 163-175,189-202
+  s_0ecd32d98e3b48::t_ee17b0aa522a25 121
+  s_0ecd32d98e3b48::t_e183c9fa9c8a03 20-22
+  s_0ecd32d98e3b48::t_96983b3f8b173c 67-70
+  s_0ecd32d98e3b48::t_e4d8b5cf1eabfd 29
+  s_0ecd32d98e3b48::t_8e54633858e108 101-110
+  s_0ecd32d98e3b48::t_14a444ac4ee5ce 219
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.test.ts
+  s_0ecd32d98e3b48::t_bb30e0f3348cad 142
+  s_0ecd32d98e3b48::t_ddb2cae878ee77 147-180
+  s_0ecd32d98e3b48::t_b333b04fc69eba 48
+  s_0ecd32d98e3b48::t_b197d93fb57ef5 42-43
+  s_0ecd32d98e3b48::t_cb3aa2c90c53da 7-10
+  s_0ecd32d98e3b48::t_cbdf87137c8b17 118-141,143-146
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.ts
+  ai_agent 1-28
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.vue
+  s_0ecd32d98e3b48::t_effb32ff9b096f 259
+  s_0ecd32d98e3b48::t_ef6dfb10f551de 201-202
+  s_0ecd32d98e3b48::t_645724d11f7dbc 209
+  s_0ecd32d98e3b48::t_6c881d99f2724a 270
+  s_0ecd32d98e3b48::t_0abd3fd582f650 112-115,120-122
+  s_0ecd32d98e3b48::t_0d46738c3d6df9 236
+  s_0ecd32d98e3b48::t_ac0fc34d0c4cd1 2-25,138-172,203-207,210-231
+  s_0ecd32d98e3b48::t_365ad58078406d 29-63
+  s_0ecd32d98e3b48::t_e8003220b427c6 116-119
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useCyclingExamples.ts
+  s_0ecd32d98e3b48::t_dd698f1cdac910 59-64
+  s_0ecd32d98e3b48::t_b28fa7eada4ad7 14-15
+  s_0ecd32d98e3b48::t_302f54bdc04d6f 5
+  s_0ecd32d98e3b48::t_5d1fae919dcc7e 31
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/examples.ts
+  s_0ecd32d98e3b48::t_8429b919b06b7a 19-21
+  s_0ecd32d98e3b48::t_5488fd3b808cd2 22-23
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/SuggestionList.test.ts
+  ai_agent 1-171
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useInstanceAiSplitEmptyStateExperiment.ts
+  s_0ecd32d98e3b48::t_cd1b0d9611276a 10-14
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.vue
+  s_0ecd32d98e3b48::t_0f32140cc5eaa5 78-79
+  s_0ecd32d98e3b48::t_de5a6e6c610483 2-12,14-33,38-39,43-55,85-89
+  s_0ecd32d98e3b48::t_4311fa68eb6e3e 13,34-35,40-42,71-75,77,80-83,114,134-138,156-168
+  s_0ecd32d98e3b48::t_654815fd0d41b5 65-70
+  s_0ecd32d98e3b48::t_6ddf4fab02851d 76
+  s_0ecd32d98e3b48::t_abb87dd95c4936 102,122
+  s_0ecd32d98e3b48::t_116198f12defc1 117-118,123,139-150
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_0ecd32d98e3b48::t_e2627928ecc9fe 74-78
+  s_0ecd32d98e3b48::t_3cd59a526b413e 188-193
+  s_0ecd32d98e3b48::t_7fc85e5e0e7b17 93-96,98-106,110,112-130
+  s_0ecd32d98e3b48::t_46593fcd43e892 154-155
+  s_0ecd32d98e3b48::t_3093149ba907a4 107-109,111
+  s_0ecd32d98e3b48::t_2c087cacbbb670 2
+  s_0ecd32d98e3b48::t_f0b0c7af01c9ce 97
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_0ecd32d98e3b48::t_31cc5f52c05d29 270
+  s_0ecd32d98e3b48::t_abbdf6a15dae35 93
+  s_0ecd32d98e3b48::t_ef5e10d430cd08 288
+  s_0ecd32d98e3b48::t_20246383950073 83
+  s_0ecd32d98e3b48::t_37f731a830b123 258
+  s_0ecd32d98e3b48::t_f4eb42b304f917 64
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_0ecd32d98e3b48::t_06ece27d10fab8 362
+  s_0ecd32d98e3b48::t_27fcef31428c14 82
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.vue
+  s_0ecd32d98e3b48::t_ab652ccd8c2537 28
+  s_0ecd32d98e3b48::t_90a171d383766f 3,38
+  s_0ecd32d98e3b48::t_a1b80cdb2b2d05 80
+packages/frontend/editor-ui/src/experiments/utils.ts
+  ai_agent 44
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.test.ts
+  s_0ecd32d98e3b48::t_da22f54c4863d7 20
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useInstanceAiSplitEmptyStateExperiment.test.ts
+  s_0ecd32d98e3b48::t_5a2f7e2226eade 12-19
+  ai_agent 23-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "413c67b31978ab3b1a63c0f17d07ad5ead08497a",
+  "prompts": {},
+  "sessions": {
+    "s_0ecd32d98e3b48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ef8fce-68b7-4ab7-9259-b6efca1e0c07",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

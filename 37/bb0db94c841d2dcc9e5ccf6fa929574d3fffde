@@ -1,0 +1,45 @@
+packages/cli/src/modules/engine-v2/engine-control-plane-client.ts
+  s_eda1948fcdabb8::t_007d2bdbd29e8b 1-83
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_eda1948fcdabb8::t_d24dee2af195a0 91
+  s_eda1948fcdabb8::t_5a11f6ae0cbb3f 7,88-89,105,132-148
+packages/cli/src/modules/engine-v2/__tests__/engine-status.controller.test.ts
+  s_eda1948fcdabb8::t_d2816dcd8b139d 87,94
+  s_eda1948fcdabb8::t_4777ee2ef80342 1,68-69,74-81,95-102,105,179
+  s_eda1948fcdabb8::t_41f2b96325ca38 2-67,70-73,82-86,88-93,103-104,106-112,114-178,180-224
+  s_eda1948fcdabb8::t_d24dee2af195a0 113
+packages/cli/src/modules/engine-v2/engine-status.controller.ts
+  s_eda1948fcdabb8::t_d24dee2af195a0 4-8
+  s_eda1948fcdabb8::t_aaef0700c8aa88 1-3,9-91
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_eda1948fcdabb8::t_7d4dc23996506c 32-37
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-client.test.ts
+  s_eda1948fcdabb8::t_d24dee2af195a0 144-147,149-152
+  s_eda1948fcdabb8::t_4fd16b770a50bc 1-143,148,153-160
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_eda1948fcdabb8::t_7d4dc23996506c 17,40
+  s_eda1948fcdabb8::t_d24dee2af195a0 88
+packages/@n8n/config/src/configs/engine.config.ts
+  s_eda1948fcdabb8::t_c37f9d69d8567d 59-73
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_eda1948fcdabb8::t_d2816dcd8b139d 59-63,65-66
+  s_eda1948fcdabb8::t_7a7a461c141f84 3,56-58,64
+packages/@n8n/config/test/engine.config.test.ts
+  s_eda1948fcdabb8::t_c79aa3e6f8f256 34-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37bb0db94c841d2dcc9e5ccf6fa929574d3fffde",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

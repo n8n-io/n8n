@@ -1,0 +1,28 @@
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_1fd1ca54c5bbdf::t_f72a5ae3957762 72
+  s_1fd1ca54c5bbdf::t_ac35df559ba57e 1-71,73-104
+packages/@n8n/cli/src/commands/package/import.ts
+  s_1fd1ca54c5bbdf::t_ed82d02366ac18 33-34,36-38
+  s_1fd1ca54c5bbdf::t_ae84d9c591b220 35
+  s_1fd1ca54c5bbdf::t_c1f37537a83911 101
+packages/@n8n/cli/docs/commands/package.md
+  s_1fd1ca54c5bbdf::t_64b5a56ffa7f9e 58
+packages/@n8n/cli/src/client.ts
+  s_1fd1ca54c5bbdf::t_419919ea90f8a0 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cefd2a1ba67ea1efc11e746c71189b02b1364117",
+  "prompts": {},
+  "sessions": {
+    "s_1fd1ca54c5bbdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acbb3179-73bf-4f7b-b3d3-1d5b1546653e",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

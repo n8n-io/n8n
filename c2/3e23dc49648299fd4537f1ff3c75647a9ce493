@@ -1,0 +1,38 @@
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_2b3031202dbc69::t_2daddd0b4ea608 6-9,11-13
+  s_2b3031202dbc69::t_eb74cfb42a6398 10
+  s_2b3031202dbc69::t_5dad75fe79af25 682-751
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.test.ts
+  s_2b3031202dbc69::t_794325859e6500 13
+  s_2b3031202dbc69::t_e00f7c433573ea 70-78
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_01772c0554492e::t_d9d13163a6da9c 146-159
+  s_01772c0554492e::t_c6b08e3a1f901f 179-202
+  s_2b3031202dbc69::t_75846c5d018802 129-145,160-168,177-178,203-214
+  s_2b3031202dbc69::t_8e8ba788d8d352 169-176
+  s_2b3031202dbc69::t_9db7f26dfe3cb2 5,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c23e23dc49648299fd4537f1ff3c75647a9ce493",
+  "prompts": {},
+  "sessions": {
+    "s_01772c0554492e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e59b0e16-5d56-4b94-8ea9-d124b1c5eb30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_2b3031202dbc69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8f7f960-2900-44c3-ad86-167b765a9410",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

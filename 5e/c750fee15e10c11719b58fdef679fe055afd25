@@ -1,0 +1,19 @@
+packages/nodes-base/scripts/check-released-scopes.mjs
+  s_a37fc6c52c4513::t_7629114dad9f01 101-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5ec750fee15e10c11719b58fdef679fe055afd25",
+  "prompts": {},
+  "sessions": {
+    "s_a37fc6c52c4513": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c39771d8-4c5d-4b56-ab4c-a2c8cb8676cd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

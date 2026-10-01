@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/css/_primitives.scss
+  s_6d5b5fa9e243a5::t_825833245aa421 322,326-333,338,340-342,344-345
+packages/frontend/@n8n/design-system/src/components/N8nPopover/Popover.vue
+  s_6d5b5fa9e243a5::t_11cf592d0d48cd 204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a5e68d01469454f4c6e0b35c94ac06e0df4769f",
+  "prompts": {},
+  "sessions": {
+    "s_6d5b5fa9e243a5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d7ce-6a37-73a4-a888-012b2603f104",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

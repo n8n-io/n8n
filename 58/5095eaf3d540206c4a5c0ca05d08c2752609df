@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/constants/enterprise.ts
+  ai_agent 26
+packages/@n8n/constants/src/index.ts
+  ai_agent 52
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  ai_agent 150
+packages/frontend/editor-ui/src/__tests__/mocks.ts
+  ai_agent 298
+packages/cli/src/constants/workflow-reviews.ts
+  ai_agent 1-11
+packages/frontend/editor-ui/src/Interface.ts
+  ai_agent 990-991
+packages/@n8n/backend-common/src/license-state.ts
+  ai_agent 69-72
+packages/@n8n/api-types/src/frontend-settings.ts
+  ai_agent 70
+packages/cli/src/controllers/e2e.controller.ts
+  ai_agent 137
+packages/cli/src/services/frontend.service.ts
+  ai_agent 366,532
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  ai_agent 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "585095eaf3d540206c4a5c0ca05d08c2752609df",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

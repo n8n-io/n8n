@@ -1,0 +1,79 @@
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_a8b11f747ee91e::t_b0249b39319e50 58-63,74-80
+  s_a8b11f747ee91e::t_055796953e23de 265-266,268-289
+  s_a8b11f747ee91e::t_9ff285055aa7b4 24-29,31-33,38-46
+  s_a8b11f747ee91e::t_dbdb6c50e8a148 178-220,234-264
+  s_a1c4aafd7954bc::t_5aaa3468510719 267
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_a8b11f747ee91e::t_0c39ad1505441b 233-248
+packages/@n8n/instance-ai/src/index.ts
+  s_a8b11f747ee91e::t_b85f30882d228c 502-504
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_a8b11f747ee91e::t_f2f6ad759887de 177
+  s_a8b11f747ee91e::t_afc61b7c5674bf 633-650
+  s_a8b11f747ee91e::t_8152205ebff759 159
+  s_a8b11f747ee91e::t_cb7ab826368846 3832-3947
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  s_a8b11f747ee91e::t_ee51686e7fad8e 141-146
+  s_a8b11f747ee91e::t_bf7a10e07bc868 170,172
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_a8b11f747ee91e::t_b72436b0e67d25 254-273
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_a8b11f747ee91e::t_a5f545a9b445a1 54
+  s_a8b11f747ee91e::t_8de61c07c12a0f 4434-4757,4766-4834
+  s_a8b11f747ee91e::t_38dfb44af63a4d 4758-4765
+  s_a8b11f747ee91e::t_b34525dc8a546d 1561-1567
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_a8b11f747ee91e::t_ad96353c31cabc 232-237,247,250-251,256,258
+packages/@n8n/instance-ai/src/utils/stream-helpers.ts
+  s_a8b11f747ee91e::t_4e31ef67a0f01f 43
+  s_a8b11f747ee91e::t_a54b555b6e7b82 68-88
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_a8b11f747ee91e::t_26eba0b86ae786 37-38
+packages/@n8n/instance-ai/src/runtime/stream-runner.ts
+  s_a8b11f747ee91e::t_26ce5a9426a850 74-89
+  s_a8b11f747ee91e::t_41b60015b1b538 18
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_a8b11f747ee91e::t_7f036dc263e615 102,113-114,117,130
+  s_a8b11f747ee91e::t_05a488efe69bae 246-284,288,295-298,305,307-367
+  s_a8b11f747ee91e::t_88e7a67ae00955 73
+  s_a8b11f747ee91e::t_eff374ab86b9d4 299-304,306
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_a8b11f747ee91e::t_224ead7424f8b8 306-318
+  s_a1c4aafd7954bc::t_f2e790f80cd013 305
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a8b11f747ee91e::t_9b46bd4cf61c9f 101
+  s_a8b11f747ee91e::t_f11de2f883f27f 221-227
+  s_a8b11f747ee91e::t_6786c8d1b9419e 762
+packages/cli/src/modules/instance-ai/repositories/instance-ai-checkpoint.repository.ts
+  s_a8b11f747ee91e::t_4c9325cc3493ed 41-57
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_a8b11f747ee91e::t_5988613764684a 236-267
+packages/cli/src/modules/instance-ai/event-bus/durable-log-metrics.ts
+  s_a8b11f747ee91e::t_f07e13966e11bb 60-61
+  s_a8b11f747ee91e::t_43156c3cdd7f69 125-129,132-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a9864c5a12642d44db8d74ef14b03d3a785b2225",
+  "prompts": {},
+  "sessions": {
+    "s_a1c4aafd7954bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b56cb72-36c3-4d3e-a4bb-c508f92690e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_a8b11f747ee91e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c6b651d-6fbc-49c2-a7a6-06d9a1233a37",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

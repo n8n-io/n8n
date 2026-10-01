@@ -1,0 +1,14 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_44f8d1c0f2f8c4 6062
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "07d753cb35182e0b30df729cfe541f292592a449",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

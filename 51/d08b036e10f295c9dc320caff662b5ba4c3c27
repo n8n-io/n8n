@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_b04c58447561ba::t_0a6d6d4720a350 2494-2533
+  s_b04c58447561ba::t_1e09aa72a76870 364-378
+  s_b04c58447561ba::t_43e86a54eb57d0 59,284,359
+  s_b04c58447561ba::t_55060d8aee22fc 2492-2493
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_b04c58447561ba::t_be1f7922e6a4d6 107-116,138-140
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_b04c58447561ba::t_66aff7a4e4070d 213-223,275-276
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_42baddb4dc7040 112,123-134
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_9b07e51e363ede 547-551
+  s_b04c58447561ba::t_01a65e0f51db6a 348-359
+  s_b04c58447561ba::t_316730c920d9c2 545-546
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_b04c58447561ba::t_956f3aea3fd16f 241-243,773-777,786,844,850-851,868,882-883,891,912-916
+  s_b04c58447561ba::t_00c55ea89b775e 911
+packages/cli/test/migration/1789138249047-add-agent-turn-queue.test.ts
+  s_b04c58447561ba::t_d39a894f64bd15 133,137
+packages/frontend/editor-ui/src/features/agents/composables/useAgentExecutionUpdates.ts
+  s_b04c58447561ba::t_1dd0bd2c7e8a42 39
+  s_b04c58447561ba::t_528c380fc763e1 41,47-56,58,70
+packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
+  s_b04c58447561ba::t_cab6b86903b2cf 94,98,102-105,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "51d08b036e10f295c9dc320caff662b5ba4c3c27",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/package.json
+  s_656385cceea8b2::t_d56b6703cf8cc7 7-8,11
+  s_656385cceea8b2::t_baf1b479349fac 9-10
+packages/frontend/@n8n/design-system/src/primitives/index.ts
+  s_656385cceea8b2::t_dd33b06e42f7f2 1
+packages/frontend/@n8n/design-system/src/primitives/index.test.ts
+  s_656385cceea8b2::t_b1cc566dca55b6 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "93c70c06349862c6adc40ce5b79a4c88eea6510a",
+  "prompts": {},
+  "sessions": {
+    "s_656385cceea8b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5db1560-35e4-4a2a-aa74-f57f6be8a039",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

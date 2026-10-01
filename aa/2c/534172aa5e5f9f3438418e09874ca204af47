@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.test.ts
+  s_6d2c07a45925a2::t_ba754fbc3cef33 82-101
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionConnectionForm.vue
+  s_6d2c07a45925a2::t_96b247e6052521 187
+  s_6d2c07a45925a2::t_8a12f2af14273b 147-150
+  s_6d2c07a45925a2::t_50cbadc8d94573 214
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.vue
+  s_6d2c07a45925a2::t_59add15687eae3 66-67,77-78,89-90
+  s_6d2c07a45925a2::t_8eadc2133e9e76 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa2c534172aa5e5f9f3438418e09874ca204af47",
+  "prompts": {},
+  "sessions": {
+    "s_6d2c07a45925a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "835aa381-fd2c-40f5-87c6-30ac17f29c75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

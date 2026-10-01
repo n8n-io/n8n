@@ -1,0 +1,26 @@
+.github/workflows/util-eval-roster-snapshot.yml
+  s_263baedf5e3003::t_41d64e44d1a3d5 66
+  s_263baedf5e3003::t_85a36a5ed5741a 38-40
+  s_263baedf5e3003::t_9f8a23b5b58f3f 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eea7757fb47ad09545ff5a754c7536c34ba821b9",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_263baedf5e3003": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "484ecec0-7c1b-432f-913b-0a9df79cebb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

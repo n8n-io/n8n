@@ -1,0 +1,26 @@
+packages/testing/containers/services/engine.ts
+  s_6292f7a6ebb209::t_5c58186ae0a1d7 27-46,61
+  s_6292f7a6ebb209::t_e0e0913515f0e1 26
+packages/testing/containers/stack.ts
+  s_6292f7a6ebb209::t_7bd8963c29cfce 11
+  s_6292f7a6ebb209::t_5c58186ae0a1d7 122-124
+  s_6292f7a6ebb209::t_15864513db5cd2 125
+packages/testing/containers/n8n-start-stack.ts
+  s_6292f7a6ebb209::t_7bd8963c29cfce 199,240-242,246,448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "46a5183bb0b335b3de8617d67bb2c35e4e142b08",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

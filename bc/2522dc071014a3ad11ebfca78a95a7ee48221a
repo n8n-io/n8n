@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  s_7cd7c156981271::t_dec819fc4d514f 56-63
+  s_7cd7c156981271::t_3b4ae681a991f9 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "bc2522dc071014a3ad11ebfca78a95a7ee48221a",
+  "prompts": {},
+  "sessions": {
+    "s_7cd7c156981271": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6d9bbda4-b4ae-4f2a-bf88-9f8bfb9a2023",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

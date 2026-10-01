@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_6905b67c31bbd3::t_89709d8ef99125 77
+  s_6905b67c31bbd3::t_913a1ad886d30f 167
+  s_6905b67c31bbd3::t_f81e472b78404e 224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3305f304eb4e6d716151165f7a7091c585f08c85",
+  "prompts": {},
+  "sessions": {
+    "s_6905b67c31bbd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d70b9e2-c772-4711-8791-f6bb17114d26",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

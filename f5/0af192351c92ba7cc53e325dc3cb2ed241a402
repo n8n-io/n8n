@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_2df5bb80907049::t_c3240804398b6a 95-96
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_2df5bb80907049::t_c3240804398b6a 183-185
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_2df5bb80907049::t_a39e0708eab42c 173,198-200,202,215-226,228-237,241,243,245,247-249
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_2df5bb80907049::t_c3240804398b6a 31,144-145
+  s_2df5bb80907049::t_51e20f49915c02 142
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_2df5bb80907049::t_c3240804398b6a 115-116
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_2df5bb80907049::t_a39e0708eab42c 1081,1110,1113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f50af192351c92ba7cc53e325dc3cb2ed241a402",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

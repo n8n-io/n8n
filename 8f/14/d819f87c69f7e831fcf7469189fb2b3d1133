@@ -1,0 +1,92 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_4ee530e0a1dff5::t_4f515c4bd8ef07 388
+  s_4ee530e0a1dff5::t_7661b8072316de 3
+  s_4ee530e0a1dff5::t_6585efb17a25b7 368-369,371
+  s_4ee530e0a1dff5::t_c97ec22cdd7e2c 479-484
+  s_4ee530e0a1dff5::t_8b4230b89793aa 287-294,296-312,316-321,325
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_4ee530e0a1dff5::t_6ef151ac2447b8 48-52,54,57-58
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_4ee530e0a1dff5::t_136d481f577e0d 24-26,29
+  s_4ee530e0a1dff5::t_0516c22d77a645 132-133,135,137
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_4ee530e0a1dff5::t_a5821a23b9ed21 43
+  s_4ee530e0a1dff5::t_e6fd88d6aa14b5 105,107
+docs/generated/sqlite-schema/README.md
+  s_4ee530e0a1dff5::t_aa521f075d658c 1110
+  s_4ee530e0a1dff5::t_fbf8ba15a7687b 96
+docs/generated/sqlite-schema/scheduled_job.md
+  s_4ee530e0a1dff5::t_aa521f075d658c 93
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_4ee530e0a1dff5::t_5a8dab297219db 54,57
+  s_4ee530e0a1dff5::t_d6ea1bbf1b6045 29-31,34
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_4ee530e0a1dff5::t_c3773fa0d7d688 92
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_4ee530e0a1dff5::t_c3773fa0d7d688 10,66
+docs/generated/postgres-schema/README.md
+  s_4ee530e0a1dff5::t_c3773fa0d7d688 96,1123
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_4ee530e0a1dff5::t_0d73658d37f971 17-18,100,118,130-131
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.property.test.ts
+  s_4ee530e0a1dff5::t_0d73658d37f971 12,38,58-59
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_4ee530e0a1dff5::t_a25cddafc0e637 197
+docs/generated/sqlite-schema/scheduled_task.md
+  s_4ee530e0a1dff5::t_aa521f075d658c 9,21,65
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_4ee530e0a1dff5::t_8192ec0a52c991 214
+  s_4ee530e0a1dff5::t_58b0a18b45ab28 429
+packages/@n8n/db/src/migrations/common/1784000000046-AddScheduledTaskDispatchedAt.ts
+  s_4ee530e0a1dff5::t_0320ff0e4ca430 1-21,23-35
+  s_4ee530e0a1dff5::t_22641ce940f3e8 22
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_4ee530e0a1dff5::t_ff92a542637cce 619-626,636-640
+  s_4ee530e0a1dff5::t_259d202778c13b 403
+  s_4ee530e0a1dff5::t_c337b00684d75d 262-265
+  s_4ee530e0a1dff5::t_8af87bee655f8b 254-261,266-273
+  s_4ee530e0a1dff5::t_03905465b2c156 482
+  s_4ee530e0a1dff5::t_7e3023e7fcb1b8 222,224,226-229,231-238,241-251,274,280,285,294,297,301
+  s_4ee530e0a1dff5::t_941b48cb9d4e21 554-555,557
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_4ee530e0a1dff5::t_280b41084ecfb1 262
+  s_4ee530e0a1dff5::t_f7fedf4b79c21c 231-232
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_4ee530e0a1dff5::t_32fc222795a10d 198,201,243,251,671,935,1197,1219,1239,1272
+packages/@n8n/db/src/entities/scheduled-task.ts
+  s_4ee530e0a1dff5::t_eeca6f996022c1 161-166,171-179
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_4ee530e0a1dff5::t_d330da0957a012 71-72
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_4ee530e0a1dff5::t_4b8e8a5e4ab890 447
+  s_4ee530e0a1dff5::t_ea9ed5e1937b75 222
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_4ee530e0a1dff5::t_ec5cdc92629eb4 246,249
+  s_4ee530e0a1dff5::t_1c981713afd2ec 56-70,82
+  s_4ee530e0a1dff5::t_dd656fd1f42257 225-231
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_4ee530e0a1dff5::t_66ce39ea0b4f39 227
+  s_4ee530e0a1dff5::t_94058a9b36e690 213
+  s_4ee530e0a1dff5::t_60c80443aedd81 172
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_4ee530e0a1dff5::t_9798fd5f9cc773 449
+  s_4ee530e0a1dff5::t_62dc17314c732b 179,196,209,236,269,288,311,331,355,370,391,408,427,450,475,490,505,520,538,553,563,577,591,605,634,697
+  s_4ee530e0a1dff5::t_19b3b61da151cc 337-344
+  s_4ee530e0a1dff5::t_84e94434dfd674 177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f14d819f87c69f7e831fcf7469189fb2b3d1133",
+  "prompts": {},
+  "sessions": {
+    "s_4ee530e0a1dff5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f28b5cb-2006-4bb1-8bdd-f25bc20db78d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
