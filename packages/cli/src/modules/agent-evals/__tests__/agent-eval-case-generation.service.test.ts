@@ -220,6 +220,28 @@ describe('AgentEvalCaseGenerationService', () => {
 		expect(prompt).toContain('It should have included the ticket number.');
 	});
 
+	it('forces count to 1 for a revision even when a larger count is requested', async () => {
+		// A revision always replaces one case — a caller passing a stale or
+		// wrong `count` must not change that, in the prompt or in what the
+		// model is required to return.
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+
+		const result = await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 3,
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+			previousOutput: 'SSO is down for some users.',
+		});
+
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('Write exactly 1 replacement test case');
+		expect(prompt).not.toContain('Write exactly 3');
+		// If `count` had leaked through, `invokeModel` would require 3 cases
+		// and this single-case response would fail and retry, then throw.
+		expect(generateMock).toHaveBeenCalledTimes(1);
+		expect(result.cases).toHaveLength(1);
+	});
+
 	it('revises with an empty previous output and still requests exactly one case', async () => {
 		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -86,6 +87,24 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
 		expect(emitted()['check-agent']).toEqual([[2]]);
+	});
+
+	it('moving the slider grows the visible examples and the emitted check-agent count', async () => {
+		const user = userEvent.setup();
+		const { getByRole, getByTestId, getAllByTestId, emitted } = renderComponent();
+
+		// Default value is 2 (of a max of 3, one per fixture example). The
+		// slider's thumb is a focusable `role="slider"` element — Element Plus
+		// moves it by `step` on ArrowRight/ArrowLeft.
+		const slider = getByRole('slider');
+		slider.focus();
+		await fireEvent.keyDown(slider, { key: 'ArrowRight' });
+
+		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(3);
+
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		expect(emitted()['check-agent']).toEqual([[3]]);
 	});
 
 	it('labels the confirmed try with its scenario tag', () => {
@@ -194,6 +213,28 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(emitted()['revise-case']).toEqual([
 				[{ rowId: 2, suggestion: 'Apologise and link the open ticket.' }],
 			]);
+		});
+
+		it('clears an "Actually fine" override once that row goes back to waiting (a rerun)', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText, rerender } = renderComponent({ props: { caseRuns } });
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-actually-fine'));
+
+			expect(getByText('2 of 3 went well, 1 need work')).toBeInTheDocument();
+
+			// A fresh run puts the row back to "waiting" — the override must not
+			// keep it looking passed once its real status is live again.
+			await rerender({
+				caseRuns: [
+					{ rowId: 1, input: 'a', status: 'pass' as const, output: 'answer a' },
+					{ rowId: 2, input: 'b', status: 'waiting' as const, output: null },
+					{ rowId: 3, input: 'c', status: 'fail' as const, output: null },
+				],
+			});
+
+			expect(getByText('Checking, 1 left')).toBeInTheDocument();
 		});
 
 		it('disables "Save check" for the row currently revising, even once a suggestion is typed', async () => {

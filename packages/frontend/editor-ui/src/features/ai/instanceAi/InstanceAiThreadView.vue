@@ -204,12 +204,16 @@ const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExper
 // The builder's own "Testing agent" step (the `call_agent` tool) already runs
 // a representative message against the draft agent — reused here so the
 // preview panel can show a real result immediately instead of generating and
-// running a case of its own.
+// running a case of its own. Scoped to the agent the panel is actually
+// offering to test, so a test run from an earlier agent built in this thread
+// is never shown as if it were this agent's.
 const latestCallAgentResult = computed(() => {
+	const targetAgentId = latchedTestAgentOffer.value?.agentId;
+	if (!targetAgentId) return null;
 	for (let i = thread.messages.length - 1; i >= 0; i--) {
 		const msg = thread.messages[i];
 		if (msg.agentTree) {
-			const result = getLatestCallAgentResult(msg.agentTree);
+			const result = getLatestCallAgentResult(msg.agentTree, targetAgentId);
 			if (result) return result;
 		}
 	}

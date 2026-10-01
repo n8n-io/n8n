@@ -109,7 +109,9 @@ const label = computed(() => {
 }
 
 .warn {
-	--fill-color: var(--color--warning--tint-4);
+	// Warning only defines tint-1 and tint-2 (no tint-4) — tint-2 is its
+	// lightest shade, matching the fill role tint-4 plays for success/danger.
+	--fill-color: var(--color--warning--tint-2);
 	--ring-color: var(--color--warning--tint-1);
 	--icon-color: var(--color--warning);
 }
@@ -142,7 +144,7 @@ const label = computed(() => {
 	height: calc(var(--avatar-size) * 0.3);
 	border-radius: var(--radius--full);
 	background: var(--color--warning);
-	color: var(--color--warning--tint-4);
+	color: var(--color--warning--tint-2);
 	font-size: calc(var(--avatar-size) * 0.28);
 	line-height: 1;
 	font-weight: var(--font-weight--bold);

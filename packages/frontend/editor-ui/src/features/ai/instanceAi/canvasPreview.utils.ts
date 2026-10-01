@@ -93,25 +93,27 @@ export interface CallAgentResult {
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the message
- * and response from the latest completed `call_agent` test run — the
- * builder's own "Testing agent" step already runs a representative message
- * against the draft agent, so a caller needing a real input/output pair for
- * preview purposes can reuse it instead of generating and running its own.
+ * and response from the latest completed `call_agent` test run against
+ * `targetAgentId` — the builder's own "Testing agent" step already runs a
+ * representative message against the draft agent, so a caller needing a real
+ * input/output pair for preview purposes can reuse it instead of generating
+ * and running its own. Scoped to `targetAgentId` (resolved the same way as
+ * `getLatestAgentArtifactResult`) so a `call_agent` result from an earlier
+ * agent built in this thread is never mistaken for the one just built.
  */
-export function getLatestCallAgentResult(node: InstanceAiAgentNode): CallAgentResult | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestCallAgentResult(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
+export function getLatestCallAgentResult(
+	node: InstanceAiAgentNode,
+	targetAgentId: string,
+): CallAgentResult | undefined {
+	return walkAgentTargetedResult(node, undefined, (tc, callTarget) => {
+		if (callTarget?.agentId !== targetAgentId) return undefined;
 		if (
 			tc.toolName !== 'call_agent' ||
 			tc.isLoading ||
 			!tc.result ||
 			typeof tc.result !== 'object'
 		) {
-			continue;
+			return undefined;
 		}
 		const args = tc.args;
 		const result = tc.result as Record<string, unknown>;
@@ -122,8 +124,8 @@ export function getLatestCallAgentResult(node: InstanceAiAgentNode): CallAgentRe
 		) {
 			return { message: args.message, response: result.response, toolCallId: tc.toolCallId };
 		}
-	}
-	return undefined;
+		return undefined;
+	}).result;
 }
 
 /** A workflow-builder sub-agent node, identified by kind or role. */

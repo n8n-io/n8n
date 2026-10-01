@@ -2532,6 +2532,10 @@ describe('InstanceAiThreadView', () => {
 					reasoning: '',
 					timeline: [],
 					children: [],
+					// Identifies which real agent this tree's tool calls target — the
+					// preview panel must only reuse a `call_agent` result from the
+					// agent it is actually offering to test.
+					targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',

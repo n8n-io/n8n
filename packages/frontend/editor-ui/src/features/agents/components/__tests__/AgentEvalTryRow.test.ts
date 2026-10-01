@@ -150,4 +150,37 @@ describe('AgentEvalTryRow', () => {
 		expect(getByTestId('row-1-save-check')).toBeDisabled();
 		expect(getByTestId('row-1-actually-fine')).toBeDisabled();
 	});
+
+	it('does not emit "save-check" for a whitespace-only suggestion', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent({
+			props: { status: 'fail', input: 'x', output: 'y', testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+
+		// The keyboard shortcut calls the handler directly, bypassing the
+		// disabled button — it must still refuse a blank suggestion.
+		await user.type(getByTestId('row-1-suggestion'), '   {Meta>}{Enter}{/Meta}');
+
+		expect(emitted()['save-check']).toBeUndefined();
+	});
+
+	it('clears a typed suggestion once the case stops needing correction', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, rerender } = renderComponent({
+			props: { status: 'fail', input: 'x', output: 'y', testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+		await user.type(getByTestId('row-1-suggestion'), 'Apologise and link the ticket.');
+		expect(getByTestId('row-1-suggestion')).toHaveValue('Apologise and link the ticket.');
+
+		// The parent accepted or regenerated the case — it no longer needs
+		// correction.
+		await rerender({ status: 'pass', input: 'x', output: 'y', testId: 'row-1' });
+		// Back to a failing case: the note must start blank, not reshow the
+		// stale text from before.
+		await rerender({ status: 'fail', input: 'x', output: 'y', testId: 'row-1' });
+
+		expect(getByTestId('row-1-suggestion')).toHaveValue('');
+	});
 });

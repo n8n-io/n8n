@@ -194,18 +194,20 @@ describe('getLatestBuildResult', () => {
 
 describe('getLatestCallAgentResult', () => {
 	test('returns undefined for node with no tool calls', () => {
-		expect(getLatestCallAgentResult(makeAgentNode())).toBeUndefined();
+		expect(getLatestCallAgentResult(makeAgentNode(), 'agent-1')).toBeUndefined();
 	});
 
 	test('returns undefined for non-call_agent tool calls', () => {
 		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [makeToolCall({ toolName: 'build-agent', result: { agentChange: 'created' } })],
 		});
-		expect(getLatestCallAgentResult(node)).toBeUndefined();
+		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
 	});
 
 	test('returns undefined for a loading call_agent call', () => {
 		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
 					toolName: 'call_agent',
@@ -215,11 +217,12 @@ describe('getLatestCallAgentResult', () => {
 				}),
 			],
 		});
-		expect(getLatestCallAgentResult(node)).toBeUndefined();
+		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
 	});
 
 	test('returns undefined for a call_agent call that did not complete', () => {
 		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
 					toolName: 'call_agent',
@@ -228,11 +231,12 @@ describe('getLatestCallAgentResult', () => {
 				}),
 			],
 		});
-		expect(getLatestCallAgentResult(node)).toBeUndefined();
+		expect(getLatestCallAgentResult(node, 'agent-1')).toBeUndefined();
 	});
 
 	test('returns the message and response from a completed call_agent call', () => {
 		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-call-1',
@@ -247,7 +251,7 @@ describe('getLatestCallAgentResult', () => {
 				}),
 			],
 		});
-		expect(getLatestCallAgentResult(node)).toEqual({
+		expect(getLatestCallAgentResult(node, 'agent-1')).toEqual({
 			message: 'Summarize the thread about the outage',
 			response: 'Ticket #48219 is a P1 SSO outage.',
 			toolCallId: 'tc-call-1',
@@ -256,6 +260,7 @@ describe('getLatestCallAgentResult', () => {
 
 	test('returns the latest result when multiple test calls exist', () => {
 		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-call-1',
@@ -271,16 +276,18 @@ describe('getLatestCallAgentResult', () => {
 				}),
 			],
 		});
-		expect(getLatestCallAgentResult(node)).toEqual({
+		expect(getLatestCallAgentResult(node, 'agent-1')).toEqual({
 			message: 'second try',
 			response: 'new answer',
 			toolCallId: 'tc-call-2',
 		});
 	});
 
-	test('finds result in child agent nodes', () => {
+	test('finds result in child agent nodes, resolving identity from the child target', () => {
 		const child = makeAgentNode({
 			agentId: 'builder-1',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
@@ -291,10 +298,42 @@ describe('getLatestCallAgentResult', () => {
 			],
 		});
 		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestCallAgentResult(parent)).toEqual({
+		expect(getLatestCallAgentResult(parent, 'agent-1')).toEqual({
 			message: 'child message',
 			response: 'child answer',
 			toolCallId: 'tc-child',
+		});
+	});
+
+	test('ignores a completed call_agent result that tested a different agent', () => {
+		// Reproduces building agent A, then agent B without B's own completed
+		// call_agent yet — A's test run must not be mistaken for B's.
+		const agentABuilder = makeAgentNode({
+			agentId: 'builder-a',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-a' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-call-a',
+					toolName: 'call_agent',
+					args: { message: 'test agent A' },
+					result: { status: 'completed', response: 'A answer', executionId: 'exec-a' },
+				}),
+			],
+		});
+		const agentBBuilder = makeAgentNode({
+			agentId: 'builder-b',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-b' },
+			toolCalls: [],
+		});
+		const parent = makeAgentNode({ children: [agentABuilder, agentBBuilder] });
+
+		expect(getLatestCallAgentResult(parent, 'agent-b')).toBeUndefined();
+		expect(getLatestCallAgentResult(parent, 'agent-a')).toEqual({
+			message: 'test agent A',
+			response: 'A answer',
+			toolCallId: 'tc-call-a',
 		});
 	});
 });

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * One eval case as a single row: a status avatar, the request text, and —
- * once it has run — a chevron that expands to the full input/output sample.
- * A case with no output yet has nothing to expand, so the chevron is hidden;
- * an idle (never-run) case says so in its place.
+ * once it has run, or it needs correction — a chevron that expands to the
+ * full input/output sample. A case with no output and nothing to correct has
+ * nothing to expand, so the chevron is hidden; an idle (never-run) case says
+ * so in its place. A "needs work" or "couldn't finish" case still expands
+ * with no output, to reach the correction form.
  */
 import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';

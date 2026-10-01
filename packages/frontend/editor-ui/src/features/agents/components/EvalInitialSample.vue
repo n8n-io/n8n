@@ -14,10 +14,7 @@ defineProps<{
 			<ChatBubble :text="previewInput" />
 		</div>
 
-		<AgentAnswerCard
-			data-test-id="instance-ai-test-agent-preview-output"
-			:source="previewOutput ?? ''"
-		/>
+		<AgentAnswerCard data-test-id="instance-ai-test-agent-preview-output" :source="previewOutput" />
 	</div>
 </template>
 

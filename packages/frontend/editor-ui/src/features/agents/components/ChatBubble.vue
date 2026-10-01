@@ -23,7 +23,7 @@ const positionStyle = computed(() =>
 
 <style module lang="scss">
 .root {
-	background-color: white;
+	background-color: var(--background--surface);
 	padding: var(--spacing--2xs);
 	border: var(--border);
 	border-radius: var(--radius--xl);

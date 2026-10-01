@@ -168,10 +168,13 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			loadingMore: false,
 		});
 
-		const { findByText, container } = renderComponent();
+		const { findByText, getByTestId } = renderComponent();
 
 		await findByText(/very long answer/);
-		expect(container.querySelector('[class*="content"]')).toBeInTheDocument();
+		// Scoped to the answer card specifically — the panel also has an
+		// `N8nCard` earlier in the tree with its own, unrelated `.content` wrapper.
+		const answerCard = getByTestId('instance-ai-test-agent-preview-output');
+		expect(answerCard.querySelector('[class*="content"]')).toHaveTextContent(/very long answer/);
 	});
 
 	it('shows the sample-input prompt instead of dismissing when "Needs work" is clicked', async () => {
@@ -649,6 +652,104 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(cancelRun).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2', 'suite-run');
 	});
 
+	it('recovers the stop button when cancelling the suite run fails', async () => {
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases')
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				cases: [
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
+				],
+			});
+		vi.spyOn(store, 'getDatasets').mockReturnValue([
+			{
+				id: 'dataset-2',
+				name: 'Draft cases',
+				description: null,
+				agentId: 'agent-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+				createdById: null,
+				createdAt: '',
+				updatedAt: '',
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'table-2' },
+			},
+		]);
+		vi.spyOn(store, 'deleteCase').mockResolvedValue(true);
+		vi.spyOn(store, 'fetchCases').mockResolvedValue([
+			{ rowId: 1, input: 'a', whatToCheck: 'b' },
+			{ rowId: 2, input: 'c', whatToCheck: 'd' },
+		]);
+		vi.spyOn(store, 'startRun')
+			.mockResolvedValueOnce({ id: 'preview-run' } as never)
+			.mockResolvedValueOnce({ id: 'suite-run' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(true);
+		vi.spyOn(store, 'startPollingRun').mockImplementation(() => {});
+		const cancelRun = vi.spyOn(store, 'cancelRun').mockRejectedValue(new Error('boom'));
+		vi.spyOn(store, 'getReview').mockImplementation((runId) => {
+			if (runId === 'suite-run') {
+				return {
+					run: { status: 'running' } as never,
+					results: [
+						{
+							sourceRowId: '1',
+							status: 'success',
+							input: {},
+							output: { finalText: 'ok' },
+						} as never,
+					],
+					resultsCount: 1,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				};
+			}
+			return {
+				run: { status: 'completed' } as never,
+				results: [
+					{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			};
+		});
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+		await findByTestId('instance-ai-test-agent-examples-stop');
+
+		await user.click(getByTestId('instance-ai-test-agent-examples-stop'));
+
+		expect(cancelRun).toHaveBeenCalled();
+		// The failed cancel must not leave the button stuck in its loading state.
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-examples-stop')).not.toHaveAttribute('aria-busy'),
+		);
+		expect(getByTestId('instance-ai-test-agent-examples-stop')).toBeEnabled();
+	});
+
 	it('dismisses with a toast when generation fails', async () => {
 		const store = useAgentEvalsStore();
 		vi.spyOn(store, 'generateDraftCases').mockRejectedValue(new Error('boom'));
@@ -795,20 +896,22 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				}) as never,
 		);
 
-		const { getByTestId, queryByTestId, findByTestId } = renderComponent();
+		const { getByTestId, queryByTestId, findByTestId, emitted } = renderComponent();
 		await waitFor(() => expect(store.openRun).toHaveBeenCalled());
 
 		// The run settles first — the case result has not caught up yet. The
-		// panel must not confirm on this window.
+		// panel must not confirm, nor dismiss, on this window.
 		runStatus.value = 'completed';
 		await Promise.resolve();
 		expect(getByTestId('instance-ai-test-agent-preview-generating')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-preview-looks-good')).not.toBeInTheDocument();
+		expect(emitted().dismiss).toBeUndefined();
 
 		// The second, later patch catches the result up — only now is it safe
 		// to confirm.
 		resultStatus.value = 'success';
 		expect(await findByTestId('instance-ai-test-agent-preview-looks-good')).toBeInTheDocument();
+		expect(emitted().dismiss).toBeUndefined();
 	});
 
 	it('dismisses when the preview case settles without succeeding', async () => {
@@ -898,6 +1001,82 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		unmount();
 
 		expect(stopPollingRun).toHaveBeenCalled();
+	});
+
+	it('does not start the suite run if the panel unmounts while checking the agent', async () => {
+		const store = useAgentEvalsStore();
+		vi.spyOn(store, 'generateDraftCases')
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Vague' }],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+		vi.spyOn(store, 'getDatasets').mockReturnValue([
+			{
+				id: 'dataset-2',
+				name: 'Draft cases',
+				description: null,
+				agentId: 'agent-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+				createdById: null,
+				createdAt: '',
+				updatedAt: '',
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'table-2' },
+			},
+		]);
+		let resolveFetchCases!: (
+			rows: Array<{ rowId: number; input: string; whatToCheck: string }>,
+		) => void;
+		vi.spyOn(store, 'fetchCases').mockImplementation(
+			async () =>
+				await new Promise((resolve) => {
+					resolveFetchCases = resolve;
+				}),
+		);
+		const deleteCase = vi.spyOn(store, 'deleteCase').mockResolvedValue(true);
+		const startRun = vi
+			.spyOn(store, 'startRun')
+			.mockResolvedValueOnce({ id: 'preview-run' } as never)
+			.mockResolvedValueOnce({ id: 'suite-run' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+		vi.spyOn(store, 'getReview').mockReturnValue({
+			run: { status: 'completed' } as never,
+			results: [{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never],
+			resultsCount: 1,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId, unmount } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+		await waitFor(() => expect(store.fetchCases).toHaveBeenCalled());
+
+		unmount();
+		resolveFetchCases([{ rowId: 1, input: 'a', whatToCheck: 'b' }]);
+		await Promise.resolve();
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(deleteCase).not.toHaveBeenCalled();
+		// Only the preview run started — the suite run never followed.
+		expect(startRun).toHaveBeenCalledTimes(1);
 	});
 
 	it('"Save check" on a failed case regenerates it with the suggestion, updates it, and reruns the suite', async () => {
@@ -1057,5 +1236,252 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(
 			within(getByTestId('instance-ai-test-agent-examples-case-2')).getAllByText('c, revised'),
 		).not.toHaveLength(0);
+	});
+
+	it('toasts an error and does not mutate the case or rerun when saving the revision fails', async () => {
+		const store = useAgentEvalsStore();
+		const generateDraftCases = vi
+			.spyOn(store, 'generateDraftCases')
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Upset' }],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				cases: [
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
+				],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-3',
+				dataTableId: 'table-3',
+				cases: [{ input: 'c, revised', whatToCheck: 'd, revised', scenario: 'Sensitive data' }],
+			});
+		vi.spyOn(store, 'getDatasets').mockReturnValue([
+			{
+				id: 'dataset-2',
+				name: 'Draft cases',
+				description: null,
+				agentId: 'agent-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+				createdById: null,
+				createdAt: '',
+				updatedAt: '',
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'table-2' },
+			},
+		]);
+		vi.spyOn(store, 'deleteCase').mockResolvedValue(true);
+		vi.spyOn(store, 'fetchCases').mockResolvedValue([
+			{ rowId: 1, input: 'a', whatToCheck: 'b' },
+			{ rowId: 2, input: 'c', whatToCheck: 'd' },
+		]);
+		// The dataset write fails — the panel must not act as if the revision
+		// had been saved.
+		const updateCase = vi.spyOn(store, 'updateCase').mockResolvedValue(false);
+		const startRun = vi
+			.spyOn(store, 'startRun')
+			.mockResolvedValueOnce({ id: 'preview-run' } as never)
+			.mockResolvedValueOnce({ id: 'suite-run' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+		vi.spyOn(store, 'getReview').mockImplementation((runId) => {
+			if (runId === 'suite-run') {
+				return {
+					run: { status: 'completed' } as never,
+					results: [
+						{
+							sourceRowId: '1',
+							status: 'success',
+							input: { input: 'a' },
+							output: { finalText: 'b answer' },
+						} as never,
+						{
+							sourceRowId: '2',
+							status: 'error',
+							input: { input: 'c' },
+							output: { finalText: 'd answer' },
+						} as never,
+					],
+					resultsCount: 2,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				};
+			}
+			return {
+				run: { status: 'completed' } as never,
+				results: [
+					{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			};
+		});
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId, findByText } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		expect(await findByText('1 of 2 went well, 1 need work')).toBeInTheDocument();
+		await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
+			'Apologise and link the open ticket.',
+		);
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-save-check'));
+
+		await waitFor(() => expect(updateCase).toHaveBeenCalled());
+		expect(generateDraftCases).toHaveBeenCalledTimes(3);
+		// The failed save must not advance the tally, rerun the suite, or show
+		// the un-persisted replacement text as if it had been saved.
+		expect(await findByText('1 of 2 went well, 1 need work')).toBeInTheDocument();
+		expect(startRun).toHaveBeenCalledTimes(2);
+		expect(
+			within(getByTestId('instance-ai-test-agent-examples-case-2')).queryByText('c, revised'),
+		).not.toBeInTheDocument();
+	});
+
+	it('ignores a second "Save check" while one revision is already in flight', async () => {
+		const store = useAgentEvalsStore();
+		const generateDraftCases = vi
+			.spyOn(store, 'generateDraftCases')
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Upset' }],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				// Both generated cases fail — the default slider cap (2) matches
+				// this batch exactly, so "Check your agent" keeps both rows.
+				cases: [
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
+					{ input: 'e', whatToCheck: 'f', scenario: 'Off topic' },
+				],
+			})
+			// The revision call for case 1 never resolves — keeps `revisingRowId`
+			// set for the rest of the test, so case 2's "Save check" has
+			// something to race against instead of a guard that already cleared.
+			.mockImplementationOnce(async () => await new Promise(() => {}));
+		vi.spyOn(store, 'getDatasets').mockReturnValue([
+			{
+				id: 'dataset-2',
+				name: 'Draft cases',
+				description: null,
+				agentId: 'agent-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+				createdById: null,
+				createdAt: '',
+				updatedAt: '',
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'table-2' },
+			},
+		]);
+		vi.spyOn(store, 'deleteCase').mockResolvedValue(true);
+		vi.spyOn(store, 'fetchCases').mockResolvedValue([
+			{ rowId: 1, input: 'c', whatToCheck: 'd' },
+			{ rowId: 2, input: 'e', whatToCheck: 'f' },
+		]);
+		vi.spyOn(store, 'updateCase').mockResolvedValue(true);
+		const startRun = vi
+			.spyOn(store, 'startRun')
+			.mockResolvedValueOnce({ id: 'preview-run' } as never)
+			.mockResolvedValueOnce({ id: 'suite-run' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+		vi.spyOn(store, 'getReview').mockImplementation((runId) => {
+			if (runId === 'suite-run') {
+				return {
+					run: { status: 'completed' } as never,
+					results: [
+						{
+							sourceRowId: '1',
+							status: 'error',
+							input: { input: 'c' },
+							output: { finalText: 'd answer' },
+						} as never,
+						{
+							sourceRowId: '2',
+							status: 'error',
+							input: { input: 'e' },
+							output: { finalText: 'f answer' },
+						} as never,
+					],
+					resultsCount: 2,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				};
+			}
+			return {
+				run: { status: 'completed' } as never,
+				results: [
+					{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			};
+		});
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId, findByText } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		expect(await findByText('0 of 2 went well, 2 need work')).toBeInTheDocument();
+		await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-case-1-suggestion'),
+			'Fix case 1.',
+		);
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
+			'Fix case 2.',
+		);
+
+		// The revision call for case 1 never resolves, so `revisingRowId` stays
+		// set for case 1 the whole time — case 2's own button stays enabled
+		// (only the revising row's own button disables), so this exercises the
+		// shared `revisingRowId` guard rather than a disabled-button no-op.
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-1-save-check'));
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-save-check'));
+
+		// 1 preview + 1 suite + 1 revision (case 1) — case 2's click was a no-op.
+		expect(generateDraftCases).toHaveBeenCalledTimes(3);
+		expect(startRun).toHaveBeenCalledTimes(2);
 	});
 });
