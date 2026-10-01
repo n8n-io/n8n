@@ -3,13 +3,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import SettingsMCPWorkflowsView from '@/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
-import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@n8n/frontend-constants/workflows';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
@@ -30,7 +29,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	},
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),

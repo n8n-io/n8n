@@ -5,16 +5,27 @@ import { z } from 'zod';
 import {
 	createDataTableColumnFieldDocs,
 	createDataTableFieldDocs,
+	createDataTableRowsFieldDocs,
 	dataTableColumnFieldDocs,
 	dataTableFieldDocs,
 	dataTableListFieldDocs,
+	dataTableRowFieldDocs,
+	dataTableRowListFieldDocs,
 	updateDataTableColumnFieldDocs,
 	updateDataTableFieldDocs,
+	upsertDataTableRowFieldDocs,
 } from './data-table-public.openapi';
+import {
+	FilterConditionSchema,
+	dataTableFilterRecordSchema,
+	dataTableFilterTypeSchema,
+} from '../../schemas/data-table-filter.schema';
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,
+	dataTableColumnValueSchema,
 	dataTableNameSchema,
+	insertRowReturnType,
 } from '../../schemas/data-table.schema';
 import { Z } from '../../zod-class';
 
@@ -109,5 +120,105 @@ export class UpdateDataTableColumnPublicDto implements UpdateDataTableColumnPubl
 
 	static parse(data: unknown) {
 		return updateDataTableColumnPublicSchema.parse(data);
+	}
+}
+
+export const dataTableRowPublicSchema = z
+	.object({
+		id: z.number().int().openapi(dataTableRowFieldDocs.id),
+		createdAt: z.string().datetime().openapi(dataTableRowFieldDocs.createdAt),
+		updatedAt: z.string().datetime().openapi(dataTableRowFieldDocs.updatedAt),
+	})
+	.passthrough()
+	.openapi({
+		description:
+			'A data table row with system columns (id, createdAt, updatedAt) and user-defined columns',
+	});
+
+export class DataTableRowListPublicDto extends Z.class({
+	data: z.array(dataTableRowPublicSchema),
+	nextCursor: z.string().nullable().openapi(dataTableRowListFieldDocs.nextCursor),
+}) {}
+
+export class CreateDataTableRowsPublicDto extends Z.class({
+	data: z
+		.array(z.record(dataTableColumnNameSchema, dataTableColumnValueSchema))
+		.min(1)
+		.openapi(createDataTableRowsFieldDocs.data),
+	returnType: insertRowReturnType
+		.optional()
+		.default('count')
+		.openapi(createDataTableRowsFieldDocs.returnType),
+}) {}
+
+const insertDataTableRowsResponseSchema = z.union([
+	z
+		.object({ success: z.literal(true), insertedRows: z.number().int() })
+		.openapi({ description: "Returned when returnType is 'count'" }),
+	z
+		.array(z.object({ id: z.number().int() }).strict())
+		.openapi({ description: "Returned when returnType is 'id'" }),
+	z.array(dataTableRowPublicSchema).openapi({ description: "Returned when returnType is 'all'" }),
+]);
+
+export class InsertDataTableRowsResponsePublicDto {
+	static schema = insertDataTableRowsResponseSchema;
+
+	static parse(data: unknown) {
+		return insertDataTableRowsResponseSchema.parse(data);
+	}
+
+	static safeParse(data: unknown) {
+		return insertDataTableRowsResponseSchema.safeParse(data);
+	}
+}
+
+const publicUpsertFilterSchema = z
+	.object({
+		type: dataTableFilterTypeSchema.default('and'),
+		filters: z.array(dataTableFilterRecordSchema.extend({ condition: FilterConditionSchema })),
+	})
+	.refine((filter) => filter.filters.length > 0, { message: 'filter must not be empty' });
+
+export class UpsertDataTableRowPublicDto extends Z.class({
+	filter: publicUpsertFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
+	data: z
+		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
+		.refine((obj) => Object.keys(obj).length > 0, { message: 'data must not be empty' })
+		.openapi(upsertDataTableRowFieldDocs.data),
+	returnData: z.boolean().optional().default(false).openapi(upsertDataTableRowFieldDocs.returnData),
+	dryRun: z.boolean().optional().default(false).openapi(upsertDataTableRowFieldDocs.dryRun),
+}) {}
+
+const dataTableRowWithStatePublicSchema = z
+	.object({
+		id: z.number().int().nullable().openapi(dataTableRowFieldDocs.id),
+		createdAt: z.string().datetime().nullable().openapi(dataTableRowFieldDocs.createdAt),
+		updatedAt: z.string().datetime().nullable().openapi(dataTableRowFieldDocs.updatedAt),
+		dryRunState: z.enum(['before', 'after']).openapi({
+			description: 'Whether this entry shows the row state before or after the change',
+		}),
+	})
+	.passthrough();
+
+const upsertDataTableRowResponseSchema = z.union([
+	z.boolean().openapi({ description: 'Returned when returnData is false and dryRun is false' }),
+	z.array(dataTableRowWithStatePublicSchema).openapi({
+		description: 'Returned when dryRun is true: one entry per row per before/after state',
+	}),
+	z
+		.array(dataTableRowPublicSchema)
+		.openapi({ description: 'Returned when returnData is true and dryRun is false' }),
+]);
+
+export class UpsertDataTableRowResponsePublicDto {
+	static schema = upsertDataTableRowResponseSchema;
+
+	static parse(data: unknown) {
+		return upsertDataTableRowResponseSchema.parse(data);
+	}
+
+	static safeParse(data: unknown) {
+		return upsertDataTableRowResponseSchema.safeParse(data);
 	}
 }

@@ -24,7 +24,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
-import { RoleService } from '../role.service';
+import { RoleService } from '@n8n/backend-services';
 
 describe('CredentialsFinderService', () => {
 	const roleService = mockInstance(RoleService);

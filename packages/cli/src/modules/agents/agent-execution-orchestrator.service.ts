@@ -238,8 +238,6 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	};
 	previewChat?: boolean;
 	abortSignal?: AbortSignal;
-	/** Add full sanitized tool configuration to approval cards in preview chat. */
-	includeHitlToolDetails?: boolean;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */
 	hideUserMessageFromTranscript?: boolean;
@@ -746,7 +744,6 @@ export class AgentExecutionOrchestratorService {
 					productionN8nChat: true,
 					source: N8N_CHAT_PRODUCTION_SOURCE,
 					telemetry: { runType: 'production', configuration: runtime.telemetryConfiguration },
-					includeHitlToolDetails: true,
 					sandboxPrincipalHash,
 					sessionMode,
 					abortSignal,
@@ -999,7 +996,6 @@ export class AgentExecutionOrchestratorService {
 				threadId: config.memory.threadId,
 			},
 			backgroundJobSignal: config.backgroundJobSignal,
-			includeHitlToolDetails: config.includeHitlToolDetails,
 			onExecutionRecorded: config.onExecutionRecorded,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
@@ -1161,8 +1157,6 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
-			includeHitlToolDetails:
-				!config.usePublishedVersion || config.source === N8N_CHAT_PRODUCTION_SOURCE,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
@@ -1404,7 +1398,6 @@ export class AgentExecutionOrchestratorService {
 			telemetry: { runType: 'test', configuration: runtime.telemetryConfiguration },
 			onExecutionRecorded,
 			abortSignal,
-			includeHitlToolDetails: true,
 			previewChat,
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash,
@@ -1589,7 +1582,6 @@ export class AgentExecutionOrchestratorService {
 				configuration: runtime.telemetryConfiguration,
 			},
 			abortSignal,
-			includeHitlToolDetails: isDraft || Boolean(productionUserId),
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,

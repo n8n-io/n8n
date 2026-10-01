@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { RedisClientService } from '@n8n/backend-services';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
@@ -22,7 +22,7 @@ describe('EngineV2Module', () => {
 	let runtime: EngineV2Runtime;
 	let client: EngineDataPlaneClient;
 	let controlPlaneServer: EngineControlPlaneServer;
-	let webhookResponder: EngineV2WebhookResponder;
+	let webhookResponseRegistry: EngineV2WebhookResponseRegistry;
 	let redisClientService: RedisClientService;
 	let subscriber: ReturnType<typeof mock<RedisResponseSubscriber>>;
 
@@ -34,7 +34,7 @@ describe('EngineV2Module', () => {
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
-		webhookResponder = mockInstance(EngineV2WebhookResponder);
+		webhookResponseRegistry = mockInstance(EngineV2WebhookResponseRegistry);
 		subscriber = mock<RedisResponseSubscriber>();
 		mockInstance(GlobalConfig, { redis: mock<GlobalConfig['redis']>({ prefix: 'n8n' }) });
 		redisClientService = mockInstance(RedisClientService, {
@@ -89,7 +89,7 @@ describe('EngineV2Module', () => {
 		it('receives responses in memory and opens no Redis client', async () => {
 			await module.init();
 
-			expect(webhookResponder.useReceiver).toHaveBeenCalledWith(
+			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
 				expect.any(InMemoryExecutionResponseReceiver),
 			);
 			expect(runtime.init).toHaveBeenCalledWith(expect.anything());
@@ -146,7 +146,7 @@ describe('EngineV2Module', () => {
 			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'subscriber(n8n)' });
 			expect(subscriber.on).toHaveBeenCalledWith('message', expect.any(Function));
-			expect(webhookResponder.useReceiver).toHaveBeenCalledWith(
+			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
 				expect.any(RedisExecutionResponseReceiver),
 			);
 		});
@@ -159,7 +159,7 @@ describe('EngineV2Module', () => {
 			await expect(module.init()).rejects.toThrow('Subscriber failed');
 
 			expect(subscriber.disconnect).toHaveBeenCalledTimes(1);
-			expect(webhookResponder.useReceiver).not.toHaveBeenCalled();
+			expect(webhookResponseRegistry.useReceiver).not.toHaveBeenCalled();
 		});
 
 		it('refuses to start without a shared secret', async () => {

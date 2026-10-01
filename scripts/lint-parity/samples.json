@@ -242,7 +242,6 @@
 		"src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts",
 		"src/public-api/v1/handlers/otel/otel.handler.ts",
 		"src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts",
-		"src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts",
 		"src/public-api/v1/handlers/workflows/workflows.handler.ts",
 		"src/scaling/scaling.service.ts",
 		"src/scheduling/durable-job-provisioner.ts",
@@ -378,8 +377,9 @@
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
 	"packages/testing/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/testing/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
 	"packages/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
-	"packages/testing/playwright": ["coverage-options.test.ts"],
+	"packages/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
 	"packages/testing/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
 	"packages/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
 	"packages/workflow": [
