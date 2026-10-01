@@ -51,16 +51,18 @@ it.each<{ name: string; entry?: ToolRegistryEntry; input: unknown; expected: unk
 		entry: {
 			kind: 'node',
 			nodeParameters: {
-				url: 'https://example.com/data',
+				url: '={{ $json.token }}',
+				query: "={{ $fromAI('token', 'Token', 'string') }}",
 				method: 'POST',
 				body: "={{ $fromAI('content', 'Content', 'string') }}",
 				headers: { authorization: '={{ $json.token }}' },
 			},
 		},
-		input: { content: 'visible', token: 'secret', method: 'model input' },
+		input: { content: 'visible', token: 'opaque-value', method: 'model input' },
 		expected: {
 			parameters: {
-				url: 'https://example.com/data',
+				url: '[REDACTED]',
+				query: '[REDACTED]',
 				method: 'POST',
 				body: 'visible',
 				headers: { authorization: '[REDACTED]' },

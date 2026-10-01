@@ -208,7 +208,7 @@ export function buildApprovalArgs(input: unknown, entry?: ToolRegistryEntry): un
 
 	return {
 		parameters: sanitizeExecutionLogRecord(
-			resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
+			resolveTemplatesInValue(entry.nodeParameters, isRecord(sanitizedInput) ? sanitizedInput : {}),
 		),
 		...(isRecord(input) && Object.keys(input).length === 0 ? {} : { input: sanitizedInput }),
 	};
