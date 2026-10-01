@@ -1922,7 +1922,7 @@ onBeforeUnmount(() => {
 }
 
 .errorBannerTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .errorBannerDetail {
@@ -1944,7 +1944,7 @@ onBeforeUnmount(() => {
 }
 
 .warningBannerTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .warningBannerDetail {
