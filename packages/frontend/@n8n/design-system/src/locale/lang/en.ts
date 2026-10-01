@@ -256,7 +256,7 @@ export default {
 	'markdownEditor.expand': 'Expand editor',
 	'markdownEditor.collapse': 'Collapse editor',
 	'markdownEditor.openExpandedView': 'Expand editor',
-	'markdownEditor.closeExpandedView': 'Collapse editor',
+	'markdownEditor.closeExpandedView': 'Close editor',
 	'markdownEditor.expandedViewTitle': 'Markdown editor',
 	'markdownEditor.linkDialogTitle': 'Add link',
 	'markdownEditor.linkUrl': 'Link URL',
