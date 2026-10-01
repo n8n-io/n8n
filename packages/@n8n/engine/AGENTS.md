@@ -3,6 +3,7 @@
 ## PR titles
 
 Add `(no-changelog)` to the title of every PR that changes this package.
+Engine v2 is not ready for use yet. We do not need to announce its changes.
 
 ## Naming
 
