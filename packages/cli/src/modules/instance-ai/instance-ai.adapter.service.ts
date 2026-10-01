@@ -4677,6 +4677,8 @@ export async function extractExecutionOutcome(
 	// parameter-values privacy setting.
 	const runData = foldToolExecutorRun(execution.data?.resultData?.runData, subNodeTarget);
 	const executedNodeNames = Object.keys(runData ?? {});
+	// `resultData` keeps only item JSON, so a node that outputs a file looks empty.
+	const binaryOutputNodeNames: string[] = [];
 	if (includeOutputData && runData) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
 		await workflow?.expression.acquireIsolate();
@@ -4691,6 +4693,9 @@ export async function extractExecutionOutcome(
 					lastRun?.data?.[NodeConnectionTypes.Main] ??
 					(nodeName === subNodeTarget ? nonMainOutputs(lastRun) : undefined);
 				if (!outputs) continue;
+				if (outputs.some((items) => items?.some((item) => Object.keys(item.binary ?? {}).length))) {
+					binaryOutputNodeNames.push(nodeName);
+				}
 				const branches = outputs.map((items) => (items ?? []).map((item) => item.json));
 				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
 				if (totalItems === 0) continue;
@@ -4729,6 +4734,7 @@ export async function extractExecutionOutcome(
 					? wrapResultDataEntries(truncateResultData(resultData))
 					: undefined,
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+			binaryOutputNodeNames: binaryOutputNodeNames.length > 0 ? binaryOutputNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 			lastNodeExecuted: renameToolExecutor(
 				execution.data?.resultData?.lastNodeExecuted,

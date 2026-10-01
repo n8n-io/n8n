@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -151,6 +153,69 @@ export function buildNodePreviews(
 			...(simulatedNodeNames?.has(nodeName) ? { simulated: true } : {}),
 		};
 	});
+}
+
+/** Item JSON a preview shows. A collapsed result keeps only its first item. */
+function visibleItems(nodeOutput: unknown): unknown[] | undefined {
+	const output = outputForInspection(nodeOutput);
+	if (Array.isArray(output)) return output;
+	if (!isRecord(output)) return undefined;
+	if (Array.isArray(output.outputs)) {
+		return output.outputs.filter(isRecord).flatMap((branch) => visibleItems(branch.items) ?? []);
+	}
+	if (Array.isArray(output.items)) return output.items;
+	if ('_firstItemPreview' in output) return [output._firstItemPreview];
+	return undefined;
+}
+
+const isEmptyItem = (item: unknown) => isRecord(item) && Object.keys(item).length === 0;
+
+/**
+ * A real node that returns only `{}` items still ends the run green, so the
+ * agent read a `[{}]` preview as a working step (INS-1583). Only the first
+ * empty node of a chain is named: nodes below it just pass the emptiness on.
+ * Roots (triggers) are skipped, because a Manual Trigger emits `{}` by design.
+ * Simulated nodes are skipped, because their output is a fixture. Nodes that
+ * output a file are not empty: their data is in the binary, which `resultData` omits.
+ */
+export function buildEmptyOutputNote(
+	resultData: Record<string, unknown> | undefined,
+	connections: WorkflowJSON['connections'] | undefined,
+	simulatedNodeNames: ReadonlySet<string>,
+	binaryOutputNodeNames: readonly string[] = [],
+): string | undefined {
+	if (!resultData || !connections) return undefined;
+	const byDestination = mapConnectionsByDestination(toEngineConnections(connections));
+	const parentsOf = (nodeName: string) =>
+		getParentNodes(byDestination, nodeName, NodeConnectionTypes.Main, 1);
+	const emptyNonRootNames = new Set(
+		Object.entries(resultData)
+			.filter(([nodeName, output]) => {
+				const items = visibleItems(output);
+				return (
+					items !== undefined &&
+					items.length > 0 &&
+					items.every(isEmptyItem) &&
+					!binaryOutputNodeNames.includes(nodeName) &&
+					parentsOf(nodeName).length > 0
+				);
+			})
+			.map(([nodeName]) => nodeName),
+	);
+	const flagged = [...emptyNonRootNames].filter(
+		(nodeName) =>
+			!simulatedNodeNames.has(nodeName) &&
+			!parentsOf(nodeName).some((parent) => emptyNonRootNames.has(parent)),
+	);
+	if (flagged.length === 0) return undefined;
+	return (
+		`Node(s) ${flagged.join(', ')} returned only empty items ({}), so the nodes after them ` +
+		'received no fields. This run does not prove that part of the workflow. Before you reply, ' +
+		"check each node's parameters against its typeVersion. If they do not match, repair the " +
+		'node now, also if you did not change it: fix the source file, rebuild, and verify again. ' +
+		'Then tell the user what you repaired. If they match, do not change a node that you did ' +
+		'not build. Tell the user that it outputs no fields.'
+	);
 }
 
 export function countProducedOutputRows(

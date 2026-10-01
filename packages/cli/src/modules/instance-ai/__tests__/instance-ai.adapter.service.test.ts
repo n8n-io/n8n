@@ -5082,6 +5082,25 @@ describe('createExecutionAdapter run()', () => {
 		expect(result).not.toHaveProperty('workflowPinnedNodeNames');
 	});
 
+	it('reports nodes whose output items carry file data', async () => {
+		const fileTask = makeTaskData([{}]);
+		fileTask.data!.main[0]![0].binary = { data: { data: 'aGk=', mimeType: 'text/plain' } };
+		const { adapter } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{
+				execution: makeExecution({
+					status: 'success',
+					runData: { Trigger: [makeTaskData([{}])], 'Convert to File': [fileTask] },
+				}),
+				allowSendingParameterValues: true,
+			},
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result.binaryOutputNodeNames).toEqual(['Convert to File']);
+	});
+
 	it('forces save settings so the agent can read the result back', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
