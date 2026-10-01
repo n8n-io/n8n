@@ -48,10 +48,19 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
+function createAgentCtx(
+	opts: {
+		resumeData?: unknown;
+		suspend?: Mock;
+		suspendPayload?: unknown;
+		continuation?: unknown;
+	} = {},
+) {
 	return {
 		resumeData: opts.resumeData,
 		suspend: opts.suspend ?? vi.fn(),
+		suspendPayload: opts.suspendPayload,
+		continuation: opts.continuation,
 	};
 }
 
@@ -920,6 +929,7 @@ describe('executions tool', () => {
 			deadlineAt: '2026-01-01T00:10:00.000Z',
 		};
 		const input = { action: 'listen' as const, workflowId: 'wf-1' };
+		const continuation = { workflowId: 'wf-1', armedAt: armed.armedAt, earlyAnswers: 0 };
 
 		function createListenContext(
 			permissions: Partial<InstanceAiPermissions> = { runWorkflow: 'always_allow' },
@@ -930,6 +940,20 @@ describe('executions tool', () => {
 			context.executionService.armTestListener = armTestListener;
 			context.executionService.resolveTestListener = resolveTestListener;
 			return { context, armTestListener, resolveTestListener };
+		}
+
+		/** The resume context the runtime rebuilds from the checkpoint of the last suspend call. */
+		function resumeCtx(lastSuspend: Mock, resumeData: unknown, suspend: Mock = vi.fn()) {
+			const [suspendPayload, options] = lastSuspend.mock.calls.at(-1) as [
+				unknown,
+				{ continuation?: unknown } | undefined,
+			];
+			return createAgentCtx({
+				resumeData,
+				suspend,
+				suspendPayload,
+				continuation: options?.continuation,
+			});
 		}
 
 		it('reports unsupported when the host cannot arm test listeners', async () => {
@@ -962,6 +986,20 @@ describe('executions tool', () => {
 			});
 		});
 
+		it('arms once the user approves the gate card', async () => {
+			const { context, armTestListener } = createListenContext({});
+			const suspendFn = vi.fn();
+
+			await executeTool(
+				createExecutionsTool(context),
+				input,
+				createAgentCtx({ resumeData: { approved: true }, suspend: suspendFn }) as never,
+			);
+
+			expect(armTestListener).toHaveBeenCalledWith('wf-1', { triggerNodeName: undefined });
+			expect(suspendFn.mock.calls[0][0]).toEqual(expect.objectContaining({ severity: 'info' }));
+		});
+
 		it('returns denied when the gate blocks the action', async () => {
 			const { context, armTestListener } = createListenContext({ runWorkflow: 'blocked' });
 
@@ -975,7 +1013,7 @@ describe('executions tool', () => {
 			expect(armTestListener).not.toHaveBeenCalled();
 		});
 
-		it('arms the requested trigger and suspends on the listener card', async () => {
+		it('arms the requested trigger and suspends on the listener card with its arm time', async () => {
 			const { context, armTestListener } = createListenContext();
 			const suspendFn = vi.fn();
 
@@ -986,32 +1024,40 @@ describe('executions tool', () => {
 			);
 
 			expect(armTestListener).toHaveBeenCalledWith('wf-1', { triggerNodeName: 'Webhook' });
-			expect(suspendFn).toHaveBeenCalledWith({
-				requestId: expect.any(String),
-				message: 'Waiting for a test request to Fetched Name',
-				severity: 'info',
-				testListener: {
-					workflowId: 'wf-1',
-					triggers: armed.triggers,
-					deadlineAt: armed.deadlineAt,
+			expect(suspendFn).toHaveBeenCalledWith(
+				{
+					requestId: expect.any(String),
+					message: 'Waiting for a test request to Fetched Name',
+					severity: 'info',
+					testListener: {
+						workflowId: 'wf-1',
+						triggers: armed.triggers,
+						deadlineAt: armed.deadlineAt,
+					},
 				},
-			});
+				{ continuation },
+			);
 		});
 
-		it('reads back the execution the browser named when the card settles', async () => {
+		it('reads back the named execution from the checkpoint, on a fresh tool instance', async () => {
 			const { context, resolveTestListener } = createListenContext();
-			const tool = createExecutionsTool(context);
-			await executeTool(tool, input, createAgentCtx({ suspend: vi.fn() }) as never);
+			const suspendFn = vi.fn();
+			await executeTool(
+				createExecutionsTool(context),
+				input,
+				createAgentCtx({ suspend: suspendFn }) as never,
+			);
 			resolveTestListener.mockResolvedValue({
 				state: 'received',
 				executionId: 'exec-9',
 				result: { executionId: 'exec-9', status: 'success' },
 			});
 
+			// A new tool instance stands in for another main process resuming the run.
 			const result = await executeTool(
-				tool,
+				createExecutionsTool(context),
 				input,
-				createAgentCtx({ resumeData: { approved: true, userInput: 'exec-9' } }) as never,
+				resumeCtx(suspendFn, { approved: true, userInput: 'exec-9' }) as never,
 			);
 
 			expect(resolveTestListener).toHaveBeenCalledWith('wf-1', {
@@ -1022,28 +1068,73 @@ describe('executions tool', () => {
 			expect(result).toEqual({ state: 'received', executionId: 'exec-9', status: 'success' });
 		});
 
+		it('records a received execution as live verification evidence', async () => {
+			const { context, resolveTestListener } = createListenContext();
+			const tool = createExecutionsTool(context);
+			const suspendFn = vi.fn();
+			const listenInput = { ...input, triggerNodeName: 'Webhook' };
+			await executeTool(tool, listenInput, createAgentCtx({ suspend: suspendFn }) as never);
+			const runResult = { executionId: 'exec-9', status: 'success' as const };
+			resolveTestListener.mockResolvedValue({
+				state: 'received',
+				executionId: 'exec-9',
+				result: runResult,
+			});
+			const claim: VerificationClaim = {
+				level: 'verified',
+				plannedNodeCount: 1,
+				reachedNodeCount: 1,
+				nodesNotReached: [],
+				simulatedNodes: [],
+				pinnedNodes: [],
+				unprovenTargets: [],
+				publishReady: true,
+				liveTestRecommended: false,
+			};
+			vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim);
+
+			const result = await executeTool(
+				tool,
+				listenInput,
+				resumeCtx(suspendFn, { approved: true, userInput: 'exec-9' }) as never,
+			);
+
+			expect(recordLiveRunVerification).toHaveBeenCalledWith({
+				context,
+				workflowId: 'wf-1',
+				triggerNodeName: 'Webhook',
+				result: runResult,
+			});
+			expect(result).toEqual({ state: 'received', ...runResult, verificationClaim: claim });
+		});
+
 		it('keeps waiting on a fresh card after a premature answer, then hands the turn back', async () => {
 			const { context, armTestListener, resolveTestListener } = createListenContext();
 			const tool = createExecutionsTool(context);
 			const firstSuspend = vi.fn();
 			await executeTool(tool, input, createAgentCtx({ suspend: firstSuspend }) as never);
 			resolveTestListener.mockResolvedValue({ state: 'armed' });
-			const earlyAnswer = async (suspend: Mock) =>
+			const earlyAnswer = async (lastSuspend: Mock, suspend: Mock = vi.fn()) =>
 				await executeTool(
 					tool,
 					input,
-					createAgentCtx({ resumeData: { approved: true }, suspend }) as never,
+					resumeCtx(lastSuspend, { approved: true }, suspend) as never,
 				);
 
 			const secondSuspend = vi.fn();
-			await earlyAnswer(secondSuspend);
-			const first = firstSuspend.mock.calls[0][0] as { requestId: string; testListener: unknown };
-			const second = secondSuspend.mock.calls[0][0] as { requestId: string; testListener: unknown };
+			await earlyAnswer(firstSuspend, secondSuspend);
+			const [first] = firstSuspend.mock.calls[0] as [{ requestId: string; testListener: unknown }];
+			const [second, options] = secondSuspend.mock.calls[0] as [
+				{ requestId: string; testListener: unknown },
+				{ continuation: unknown },
+			];
 			expect(second.testListener).toEqual(first.testListener);
 			expect(second.requestId).not.toBe(first.requestId);
+			expect(options.continuation).toEqual({ ...continuation, earlyAnswers: 1 });
 
-			await earlyAnswer(vi.fn());
-			const result = await earlyAnswer(vi.fn());
+			const thirdSuspend = vi.fn();
+			await earlyAnswer(secondSuspend, thirdSuspend);
+			const result = await earlyAnswer(thirdSuspend);
 
 			expect(result).toEqual({
 				state: 'armed',
@@ -1056,13 +1147,14 @@ describe('executions tool', () => {
 		it('cancels the listener when the user denies the card', async () => {
 			const { context, resolveTestListener } = createListenContext();
 			const tool = createExecutionsTool(context);
-			await executeTool(tool, input, createAgentCtx({ suspend: vi.fn() }) as never);
+			const suspendFn = vi.fn();
+			await executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never);
 			resolveTestListener.mockResolvedValue({ state: 'cancelled' });
 
 			const result = await executeTool(
 				tool,
 				input,
-				createAgentCtx({ resumeData: { approved: false } }) as never,
+				resumeCtx(suspendFn, { approved: false }) as never,
 			);
 
 			expect(resolveTestListener).toHaveBeenCalledWith('wf-1', {
@@ -1080,13 +1172,14 @@ describe('executions tool', () => {
 		it('reports a timeout distinctly and re-arms on the next call', async () => {
 			const { context, armTestListener, resolveTestListener } = createListenContext();
 			const tool = createExecutionsTool(context);
-			await executeTool(tool, input, createAgentCtx({ suspend: vi.fn() }) as never);
+			const suspendFn = vi.fn();
+			await executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never);
 			resolveTestListener.mockResolvedValue({ state: 'timed_out' });
 
 			const result = await executeTool(
 				tool,
 				input,
-				createAgentCtx({ resumeData: { approved: true } }) as never,
+				resumeCtx(suspendFn, { approved: true }) as never,
 			);
 			await executeTool(tool, input, createAgentCtx({ suspend: vi.fn() }) as never);
 

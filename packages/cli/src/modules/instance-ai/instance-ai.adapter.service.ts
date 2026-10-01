@@ -2778,9 +2778,11 @@ export class InstanceAiAdapterService {
 				const triggers = (await listRegistrations()).map(({ webhook }) => ({
 					nodeName: webhook.node,
 					method: webhook.httpMethod,
+					// A dynamic path (`orders/:id`) is registered without its webhookId; the public
+					// URL carries it as the first segment, as `NodeHelpers.getNodeWebhookUrl` does.
 					url: `${urlService.getTestWebhookBaseUrl()}${
 						webhook.webhookDescription.nodeType === 'form' ? formTest : webhookTest
-					}/${webhook.path.replace(/^\/+/, '')}`,
+					}/${webhook.webhookId ? `${webhook.webhookId}/` : ''}${webhook.path.replace(/^\/+/, '')}`,
 				}));
 				return {
 					state: 'armed',

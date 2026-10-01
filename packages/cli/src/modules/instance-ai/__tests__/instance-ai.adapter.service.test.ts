@@ -5074,6 +5074,7 @@ function makeRegistration(overrides: {
 	node?: string;
 	httpMethod?: string;
 	path?: string;
+	webhookId?: string;
 	nodeType?: 'webhook' | 'form';
 }) {
 	return {
@@ -5082,6 +5083,7 @@ function makeRegistration(overrides: {
 			node: overrides.node ?? 'Webhook',
 			httpMethod: overrides.httpMethod ?? 'POST',
 			path: overrides.path ?? 'abc-123/intake',
+			webhookId: overrides.webhookId,
 			webhookDescription: { nodeType: overrides.nodeType ?? 'webhook' },
 		},
 	};
@@ -5164,6 +5166,22 @@ describe('createExecutionAdapter test listeners', () => {
 			deadlineAt: expect.any(String),
 		});
 		expect(new Date(armed.deadlineAt).getTime() - new Date(armed.armedAt).getTime()).toBe(600_000);
+	});
+
+	it('prefixes a dynamic path with its webhookId, as the test webhook router expects', async () => {
+		const { adapter } = createListenerAdapter([
+			makeRegistration({ path: 'orders/:id', webhookId: 'abc-123' }),
+		]);
+
+		const armed = await adapter.armTestListener!('wf-1');
+
+		expect(armed.triggers).toEqual([
+			{
+				nodeName: 'Webhook',
+				method: 'POST',
+				url: 'http://localhost:5678/webhook-test/abc-123/orders/:id',
+			},
+		]);
 	});
 
 	it('rejects a workflow that has nothing to listen on', async () => {

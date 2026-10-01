@@ -810,8 +810,13 @@ push, when the user clicks "I sent the request", or when the user cancels.
 when the host has no test webhook registry. When the user clicks "I sent the
 request" before any request is visible, the card is shown again up to two times;
 after that the tool returns `{ state: 'armed', listenerCleared: false, reason }`
-while the listener stays armed until the deadline. Call `listen` again to keep
-waiting.
+while the listener stays armed until the deadline. The tool keeps no wait state
+between calls: a further `listen` call re-arms the same test URL with a fresh
+deadline instead of resuming the earlier wait.
+
+The arm time travels in the suspension's continuation, which the runtime
+checkpoints with the card. A card answered on another main process resumes from
+that checkpoint and the host's durable listener state, not from memory.
 
 ### `executions(action="debug")`
 
