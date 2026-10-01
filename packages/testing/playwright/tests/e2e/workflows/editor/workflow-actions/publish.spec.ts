@@ -108,7 +108,9 @@ test.describe(
 					{ makeUnique: false },
 				);
 				cleanupWorkflowIds.push(workflowId);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				// The conflict check reads the registered webhooks, which exist only after the
+				// first publication applies.
+				await api.workflows.activateAndWaitForPublication(workflowId, createdWorkflow.versionId!);
 
 				const { workflowId: workflowId2, createdWorkflow: createdWorkflow2 } =
 					await api.workflows.importWorkflowFromFile('webhook-publish-no-conflicts.json', {
