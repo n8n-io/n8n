@@ -8332,6 +8332,7 @@
 	"agents.builder.agent.title": "Model & instructions",
 	"agents.builder.agent.description": "Choose a model and give the agent instructions",
 	"agents.builder.setupTasks.title": "Finish setup",
+	"agents.builder.setupTasks.done": "Done!",
 	"agents.builder.setupTasks.remaining": "{count} remaining",
 	"agents.builder.setupTasks.tasksDone": "{count} tasks done",
 	"agents.builder.setupTasks.maximize": "Maximize",

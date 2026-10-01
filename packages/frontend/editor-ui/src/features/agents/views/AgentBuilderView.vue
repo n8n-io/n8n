@@ -752,7 +752,8 @@ const setupChecklistContext = computed(() => {
 		},
 	};
 });
-const { tasks: setupTasks } = useAgentSetupTasks(setupChecklistContext);
+const { tasks: setupTasks, isVisible: areSetupTasksVisible } =
+	useAgentSetupTasks(setupChecklistContext);
 const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
 	'builderHeader',
 );
@@ -2941,7 +2942,7 @@ useKeybindings({
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
-			:tasks="setupTasks"
+			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"

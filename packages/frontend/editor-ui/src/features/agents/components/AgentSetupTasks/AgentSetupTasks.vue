@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, Transition, TransitionGroup, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
@@ -17,8 +17,20 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const isTriggerShimmering = ref(false);
+const activeTaskIndex = ref(0);
+const isPopoverOpen = ref(false);
 
 const areTasksResolved = computed(() => props.tasks.every((task) => task.state !== 'unknown'));
+
+const listRef = useTemplateRef<InstanceType<typeof TransitionGroup>>('list');
+
+watch(isPopoverOpen, async (isOpen) => {
+	if (!isOpen || !areTasksResolved.value) return;
+
+	await nextTick();
+	const listElement = listRef.value?.$el;
+	if (listElement instanceof HTMLElement) listElement.focus();
+});
 
 const sortedList = computed(() => {
 	return props.tasks
@@ -39,16 +51,66 @@ const completedTasksAreGrouped = computed(() => completedTaskCount.value > 3);
 const incompleteTasks = computed(() =>
 	sortedList.value.filter((task) => task.state !== 'complete'),
 );
+
+const triggerLabel = computed(() =>
+	i18n.baseText(
+		incompleteTasks.value.length > 0
+			? 'agents.builder.setupTasks.title'
+			: 'agents.builder.setupTasks.done',
+	),
+);
+
+function resetActiveTask() {
+	activeTaskIndex.value = 0;
+}
+
+function setActiveTask(task: SetupTask<SetupTaskId>) {
+	const index = incompleteTasks.value.findIndex((incompleteTask) => incompleteTask.id === task.id);
+	if (index >= 0) activeTaskIndex.value = index;
+}
+
+function handleTaskKeydown(event: KeyboardEvent) {
+	if (!isPopoverOpen.value) return;
+	event.preventDefault();
+
+	switch (event.key) {
+		case 'ArrowUp':
+			return activeTaskIndex.value > 0 && (activeTaskIndex.value = activeTaskIndex.value - 1);
+		case 'ArrowDown':
+			return (
+				activeTaskIndex.value < incompleteTasks.value.length - 1 &&
+				(activeTaskIndex.value = activeTaskIndex.value + 1)
+			);
+		case 'Enter':
+		case ' ': {
+			const task = incompleteTasks.value[activeTaskIndex.value];
+			if (task) emit('action', task);
+			return;
+		}
+	}
+}
 </script>
 
 <template>
-	<N8nPopover side="bottom" align="end" width="240px" :content-class="$style.popoverContent">
+	<N8nPopover
+		v-model:open="isPopoverOpen"
+		:suppress-auto-focus="true"
+		side="bottom"
+		align="end"
+		width="280px"
+		:content-class="$style.popoverContent"
+		@before-enter="resetActiveTask"
+	>
 		<template #trigger>
 			<button
-				:class="[$style.trigger, { [$style.triggerShimmer]: isTriggerShimmering }]"
+				:class="[
+					$style.trigger,
+					{ [$style.triggerShimmer]: isTriggerShimmering && !isPopoverOpen },
+				]"
 				@animationend.self="isTriggerShimmering = true"
 			>
 				<svg
+					v-if="incompleteTasks.length > 0"
 					:class="$style.progressWheel"
 					viewBox="0 0 20 20"
 					fill="none"
@@ -71,33 +133,43 @@ const incompleteTasks = computed(() =>
 						transform="rotate(-90 10 10)"
 					/>
 				</svg>
-				<N8nText step="sm" bold>{{ i18n.baseText('agents.builder.setupTasks.title') }}</N8nText>
+				<N8nIcon v-else icon="check" :size="20" />
+				<N8nText :class="$style.triggerLabel" step="sm" bold>
+					<Transition
+						:enter-active-class="$style.labelEnter"
+						:leave-active-class="$style.labelLeave"
+					>
+						<span :key="triggerLabel">{{ triggerLabel }}</span>
+					</Transition>
+				</N8nText>
 			</button>
 		</template>
 		<template #content>
 			<div :class="$style.container" data-testid="agent-setup-tasks">
 				<div :class="$style.header" data-testid="agent-setup-tasks-header">
 					<div :class="$style.headerContent">
-						<N8nText tag="h3" bold>
+						<N8nText tag="h3" color="text-light" bold>
 							{{ i18n.baseText('agents.builder.setupTasks.title') }}
 						</N8nText>
 					</div>
 				</div>
 				<TransitionGroup
 					v-if="areTasksResolved"
+					ref="list"
 					tag="ul"
+					tabindex="-1"
 					:class="$style.list"
 					:move-class="$style.listMove"
+					@keydown="handleTaskKeydown"
 				>
 					<li
-						v-for="task in completedTasksAreGrouped ? incompleteTasks : sortedList"
+						v-for="(task, index) in completedTasksAreGrouped ? incompleteTasks : sortedList"
 						:key="task.id"
 						role="button"
-						tabindex="0"
+						:data-selected="activeTaskIndex === index"
 						:class="[$style.listItem, { [$style.isComplete]: task.state === 'complete' }]"
+						@mouseenter="setActiveTask(task)"
 						@click="emit('action', task)"
-						@keydown.enter.prevent="emit('action', task)"
-						@keydown.space.prevent="emit('action', task)"
 					>
 						<div :class="[$style.taskIcon, { [$style.isComplete]: task.state === 'complete' }]">
 							<N8nIcon
@@ -168,13 +240,33 @@ const incompleteTasks = computed(() =>
 		background-color: var(--color--purple-200);
 	}
 
-	&:focus-visible {
+	&:focus-visible,
+	&[data-state='open'] {
+		background-color: var(--color--purple-200);
 		@include focus.focus-ring-with-border;
 	}
 
 	> :global(.n8n-text) {
 		padding-inline-end: var(--spacing--2xs);
 	}
+}
+
+.triggerLabel {
+	--animation--blur-swap--blur: var(--spacing--5xs);
+
+	display: inline-grid;
+
+	> span {
+		grid-area: 1 / 1;
+	}
+}
+
+.labelEnter {
+	@include motion.blur-swap-in;
+}
+
+.labelLeave {
+	@include motion.blur-swap-out;
 }
 
 .triggerShimmer::after {
@@ -223,7 +315,7 @@ const incompleteTasks = computed(() =>
 }
 
 .container {
-	--n8n-agent-setup-task-list--padding: var(--spacing--sm);
+	--n8n-agent-setup-task-list--padding: var(--spacing--xs);
 	display: flex;
 	flex-direction: column;
 	max-height: 240px;
@@ -308,15 +400,12 @@ const incompleteTasks = computed(() =>
 	}
 
 	&:not(.isComplete) {
-		&:hover,
-		&:focus-visible {
+		&:focus-visible,
+		&[data-selected='true'] {
 			background-color: var(--background--hover);
 			.taskActionIcon {
 				opacity: 1;
 			}
-		}
-		&:focus-visible {
-			@include focus.focus-ring-with-border;
 		}
 	}
 

@@ -225,11 +225,6 @@ function onMenuSelect(id: string) {
 			</N8nBreadcrumbs>
 		</div>
 		<div :class="$style.right">
-			<AgentSetupTasks
-				v-if="tasks && tasks.length > 0"
-				:tasks="tasks"
-				@action="emit('setup-task-action', $event)"
-			/>
 			<span
 				v-if="saveStatus && saveStatus !== 'idle'"
 				:class="$style.saveStatus"
@@ -241,6 +236,11 @@ function onMenuSelect(id: string) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
+			<AgentSetupTasks
+				v-if="tasks && tasks.length > 0"
+				:tasks="tasks"
+				@action="emit('setup-task-action', $event)"
+			/>
 			<AgentPreviewButton
 				:is-runnable="props.agent?.isRunnable === true"
 				:is-preview-open="props.isPreviewOpen"
