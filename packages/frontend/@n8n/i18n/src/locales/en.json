@@ -5488,6 +5488,7 @@
 	"settings.ai.allowSendingParameterValues.label": "Send actual data values",
 	"settings.ai.allowSendingParameterValues.description": "Allow n8n to send real values from your executions which may include sensitive data. Turning this off hides your execution data from the AI Assistant and reduces its accuracy.",
 	"settings.ai.allowSendingParameterValues.deprecated": "This option is deprecated and will be removed. While it is off, n8n Assistant runs in a limited mode and cannot create or edit workflows. Select it to use all n8n Assistant features.",
+	"settings.ai.allowSendingParameterValues.deprecated.locked": "This option is deprecated and will be removed, unchecking the checkbox is no longer possible.",
 	"settings.ai.allowSendingParameterValues.deprecated.envVar": "The N8N_AI_ALLOW_SENDING_PARAMETER_VALUES=false environment variable also keeps this option off. Remove the variable and restart n8n.",
 	"settings.ai.privacyNote.heading": "Privacy Note:",
 	"settings.ai.privacyNote.content": "Your data is processed securely and is not used to train our models. These settings will help improve AI accuracy and provide context-aware responses. You can learn more <a href=\"{docsLink}\" target=\"_blank\">here</a>.",

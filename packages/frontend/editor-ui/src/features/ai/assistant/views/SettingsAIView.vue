@@ -85,13 +85,17 @@ onMounted(async () => {
 					{{ i18n.baseText('settings.ai.allowSendingParameterValues.description') }}
 				</N8nText>
 				<N8nCallout
-					v-if="!allowSendingParameterValues"
 					:class="$style.notice"
 					theme="warning"
 					data-test-id="ai-data-sharing-deprecation-notice"
 				>
-					{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated') }}
-					<template v-if="!settingsStore.isCloudDeployment">
+					<template v-if="allowSendingParameterValues">
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.locked') }}
+					</template>
+					<template v-else>
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated') }}
+					</template>
+					<template v-if="!allowSendingParameterValues && !settingsStore.isCloudDeployment">
 						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
 					</template>
 				</N8nCallout>

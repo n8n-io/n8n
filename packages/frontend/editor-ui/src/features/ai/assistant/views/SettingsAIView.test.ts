@@ -34,15 +34,18 @@ describe('SettingsAIView', () => {
 		settingsStore.isCloudDeployment = false;
 	});
 
-	it('disables the checkbox and hides the notice while data sharing is on', () => {
+	it('disables the checkbox and explains why while data sharing is on', () => {
 		settingsStore.isAiDataSharingEnabled = true;
 
-		const { getByRole, queryByTestId } = renderComponent();
+		const { getByRole, getByTestId } = renderComponent();
 
 		const checkbox = getByRole('checkbox', dataValuesCheckbox);
 		expect(checkbox).toBeChecked();
 		expect(checkbox).toBeDisabled();
-		expect(queryByTestId('ai-data-sharing-deprecation-notice')).not.toBeInTheDocument();
+		const notice = getByTestId('ai-data-sharing-deprecation-notice');
+		expect(notice).toHaveTextContent('unchecking the checkbox is no longer possible.');
+		expect(notice).not.toHaveTextContent('limited mode');
+		expect(notice).not.toHaveTextContent('N8N_AI_ALLOW_SENDING_PARAMETER_VALUES');
 	});
 
 	it('enables the checkbox and shows the notice with the env var sentence while data sharing is off', () => {
