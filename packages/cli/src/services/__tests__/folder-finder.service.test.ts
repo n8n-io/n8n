@@ -111,6 +111,50 @@ describe('FolderFinderService', () => {
 		expect(chains.get('leaf')).toEqual([root, leaf]);
 	});
 
+	it('fetches a shared ancestor once for multiple requested folders', async () => {
+		const first = mock<Folder>({ id: 'first', parentFolderId: 'shared' });
+		const second = mock<Folder>({ id: 'second', parentFolderId: 'shared' });
+		const shared = mock<Folder>({ id: 'shared', parentFolderId: null });
+		accessRepository.findFoldersByIdsForUser
+			.mockResolvedValueOnce([first, second])
+			.mockResolvedValueOnce([shared]);
+
+		const chains = await service.findFolderAncestorChainsForUser(['first', 'second'], member, [
+			'folder:read',
+		]);
+
+		expect(chains.get('first')).toEqual([shared, first]);
+		expect(chains.get('second')).toEqual([shared, second]);
+		expect(accessRepository.findFoldersByIdsForUser).toHaveBeenCalledTimes(2);
+		expect(accessRepository.findFoldersByIdsForUser).toHaveBeenNthCalledWith(
+			2,
+			['shared'],
+			expect.any(Object),
+			{},
+		);
+	});
+
+	it('truncates a chain when an ancestor is inaccessible', async () => {
+		const leaf = mock<Folder>({ id: 'leaf', parentFolderId: 'inaccessible' });
+		accessRepository.findFoldersByIdsForUser
+			.mockResolvedValueOnce([leaf])
+			.mockResolvedValueOnce([]);
+
+		const chains = await service.findFolderAncestorChainsForUser(['leaf'], member, ['folder:read']);
+
+		expect(chains.get('leaf')).toEqual([leaf]);
+	});
+
+	it('omits an inaccessible requested folder', async () => {
+		accessRepository.findFoldersByIdsForUser.mockResolvedValue([]);
+
+		const chains = await service.findFolderAncestorChainsForUser(['inaccessible'], member, [
+			'folder:read',
+		]);
+
+		expect(chains).toEqual(new Map());
+	});
+
 	it('forwards context when listing project folder ids', async () => {
 		const ctx = mock<OperationContext>();
 		accessRepository.findFolderIdsInProject.mockResolvedValue(['folder-1']);
