@@ -101,7 +101,7 @@ export async function executeLegacyRequest(
 		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
-		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+		// https://github.com/axios/axios/blob/v1.x/lib/core/AxiosError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
 		if (error.isAxiosError) {
 			error.config = error.request = undefined;

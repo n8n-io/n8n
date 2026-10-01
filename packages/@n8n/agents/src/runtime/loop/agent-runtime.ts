@@ -855,6 +855,7 @@ export class AgentRuntime {
 			telemetry: ctx.runTelemetry,
 			executionCounter: ctx.options?.executionCounter,
 			guardrails: ctx.options?.guardrails,
+			approvalContext: ctx.options?.approvalContext,
 			abortSignal: ctx.abortScope.signal,
 			isAborted: () => ctx.abortScope.isAborted,
 		};

@@ -1,8 +1,16 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	N8nApprovalCard,
+	N8nButton,
+	N8nCard,
+	N8nInput,
+	N8nText,
+	type ApprovalOption,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
@@ -11,7 +19,6 @@ import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
-import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -19,7 +26,6 @@ import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
 
 interface Props {
 	/**
@@ -39,6 +45,7 @@ const props = defineProps<Props>();
 
 const thread = useThread();
 const i18n = useI18n();
+const approvalLabels = useApprovalCardLabels();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
@@ -249,70 +256,32 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 	return details ? formatApprovalDetails(details) : (item.toolCall.confirmation.message ?? '');
 }
 
-/**
- * Build the floating-approval option list. Destructive confirmations hide
- * "Always allow" — by design, irreversible actions must be opted into one
- * at a time.
- */
-function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
-	const destructive = isDestructive(item);
+function canAlwaysAllow(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
-	if (conf.credentialDestination) {
-		return [
-			{
-				key: 'allow-once',
-				icon: 'check',
-				label: i18n.baseText('instanceAi.confirmation.credentialDestination.approve'),
-				testId: 'instance-ai-panel-confirm-approve',
-			},
-			{
-				key: 'deny',
-				icon: 'ban',
-				label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
-				testId: 'instance-ai-panel-confirm-deny',
-			},
-		];
-	}
 	// Workflow edits must be scoped to a workflow ID — never offer a session grant
 	// that would collapse to a blanket tool key.
-	const alwaysAllowAvailable =
-		!destructive &&
+	return (
+		!isDestructive(item) &&
 		!conf.targetApproval &&
-		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
-	const options: ApprovalOption[] = [];
-	if (alwaysAllowAvailable) {
-		options.push({
-			key: 'always-allow',
-			icon: 'check-check',
-			label: i18n.baseText('instanceAi.confirmation.alwaysAllow'),
-			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
-			testId: 'instance-ai-panel-confirm-always-allow',
-		});
-	}
-	options.push({
-		key: 'allow-once',
-		icon: 'check',
-		label: i18n.baseText('instanceAi.confirmation.approve'),
-		destructive,
-		testId: 'instance-ai-panel-confirm-approve',
-	});
-	options.push({
-		key: 'deny',
-		icon: 'ban',
-		label: i18n.baseText('instanceAi.confirmation.deny'),
-		testId: 'instance-ai-panel-confirm-deny',
-	});
-	return options;
+		!conf.credentialDestination &&
+		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId)
+	);
 }
 
-function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
-	const args = conf.targetApproval?.args;
-	if (args === undefined) return '';
-	try {
-		return JSON.stringify(args, null, 2) ?? String(args);
-	} catch {
-		return String(args);
-	}
+function credentialDestinationOptions(item: PendingConfirmationItem): ApprovalOption[] | undefined {
+	if (!item.toolCall.confirmation.credentialDestination) return undefined;
+	return [
+		{
+			key: 'allow-once',
+			icon: 'check',
+			label: i18n.baseText('instanceAi.confirmation.credentialDestination.approve'),
+		},
+		{
+			key: 'deny',
+			icon: 'ban',
+			label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
+		},
+	];
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -356,12 +325,7 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 			: { kind: 'approval', approved };
 		const ok = await thread.confirmAction(conf.requestId, payload);
 		if (!ok) return;
-		// Match the options actually shown in `buildApprovalOptions`.
-		const alwaysAllowAvailable =
-			!isDestructive(item) &&
-			!conf.targetApproval &&
-			!conf.credentialDestination &&
-			thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
+		const alwaysAllowAvailable = canAlwaysAllow(item);
 		trackInputCompleted(
 			conf,
 			[
@@ -622,132 +586,56 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				/>
 			</template>
 
-			<!-- ============ Floating approval ============ -->
-			<div
+			<DomainAccessApproval
+				v-else-if="chunk.item.toolCall.confirmation.domainAccess"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				data-test-id="instance-ai-confirmation-panel"
+				:request-id="chunk.item.toolCall.confirmation.requestId"
+				:url="chunk.item.toolCall.confirmation.domainAccess.url"
+				:host="chunk.item.toolCall.confirmation.domainAccess.host"
+				:severity="chunk.item.toolCall.confirmation.severity"
+			/>
+
+			<DomainAccessApproval
+				v-else-if="chunk.item.toolCall.confirmation.webSearch"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				data-test-id="instance-ai-confirmation-panel"
+				:request-id="chunk.item.toolCall.confirmation.requestId"
+				:query="chunk.item.toolCall.confirmation.webSearch.query"
+				:severity="chunk.item.toolCall.confirmation.severity"
+			/>
+
+			<N8nApprovalCard
 				v-else
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
-				:class="[$style.root, $style.floatingRoot]"
 				data-test-id="instance-ai-confirmation-panel"
+				:title="buildApprovalTitle(chunk.item)"
+				:labels="approvalLabels"
+				:description="buildApprovalSubtitle(chunk.item)"
+				:args="chunk.item.toolCall.confirmation.targetApproval?.args"
+				:description-label="i18n.baseText('instanceAi.confirmation.details')"
+				:options="credentialDestinationOptions(chunk.item)"
+				:supports-session-approval="canAlwaysAllow(chunk.item)"
+				:destructive="isDestructive(chunk.item)"
+				@select="(key) => handleApprovalSelect(chunk.item, key)"
 			>
-				<div :class="$style.items">
-					<div :class="$style.item">
-						<!-- Domain access -->
-						<DomainAccessApproval
-							v-if="chunk.item.toolCall.confirmation.domainAccess"
-							:request-id="chunk.item.toolCall.confirmation.requestId"
-							:url="chunk.item.toolCall.confirmation.domainAccess!.url"
-							:host="chunk.item.toolCall.confirmation.domainAccess!.host"
-							:severity="chunk.item.toolCall.confirmation.severity"
-						/>
-
-						<!-- Web search -->
-						<DomainAccessApproval
-							v-else-if="chunk.item.toolCall.confirmation.webSearch"
-							:request-id="chunk.item.toolCall.confirmation.requestId"
-							:query="chunk.item.toolCall.confirmation.webSearch!.query"
-							:severity="chunk.item.toolCall.confirmation.severity"
-						/>
-
-						<!-- Generic approval -->
-						<div v-else>
-							<div :class="$style.approvalRow">
-								<div :class="$style.approvalRowBody">
-									<N8nText size="large" bold>
-										{{ buildApprovalTitle(chunk.item) }}
-									</N8nText>
-									<N8nText
-										v-if="
-											settingsStore.isInstanceAiSetupPanelEnabled &&
-											chunk.item.toolCall.confirmation.credentialDestination
-										"
-										tag="p"
-										size="small"
-										:class="$style.credentialDescription"
-										>{{ buildApprovalSubtitle(chunk.item) }}</N8nText
-									>
-									<ConfirmationPreview
-										v-else
-										:class="$style.approvalDescription"
-										role="region"
-										:aria-label="i18n.baseText('instanceAi.confirmation.details')"
-										tabindex="0"
-									>
-										{{ buildApprovalSubtitle(chunk.item) }}
-									</ConfirmationPreview>
-									<ConfirmationPreview
-										v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
-										:class="$style.targetApprovalArgs"
-										data-test-id="instance-ai-target-approval-args"
-									>
-										{{ formatTargetApprovalArgs(chunk.item.toolCall.confirmation) }}
-									</ConfirmationPreview>
-								</div>
-
-								<ApprovalOptionList
-									:options="buildApprovalOptions(chunk.item)"
-									@select="(key) => handleApprovalSelect(chunk.item, key)"
-								/>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+				<template
+					v-if="
+						settingsStore.isInstanceAiSetupPanelEnabled &&
+						chunk.item.toolCall.confirmation.credentialDestination
+					"
+					#description
+				>
+					<N8nText tag="p" size="small" :class="$style.credentialDescription">
+						{{ buildApprovalSubtitle(chunk.item) }}
+					</N8nText>
+				</template>
+			</N8nApprovalCard>
 		</template>
 	</TransitionGroup>
 </template>
 
 <style lang="scss" module>
-.root {
-	border-radius: var(--radius--lg);
-	background-color: var(--background--surface);
-	box-shadow: var(--shadow--sm), var(--shadow--outline);
-}
-
-.floatingRoot {
-	// Fills the input-slot constraint width; no 90% reduction the inline
-	// `.confirmation` class applies inside the message list.
-	width: 100%;
-	max-width: none;
-}
-
-.items {
-	display: flex;
-	flex-direction: column;
-}
-
-.item {
-	& + & {
-		border-top: var(--border);
-	}
-}
-
-.targetApprovalArgs {
-	white-space: pre-wrap;
-	word-break: break-word;
-}
-
-/* Keep all action details accessible without pushing the approval options off screen. */
-.approvalRowBody .approvalDescription {
-	white-space: pre-wrap;
-	max-height: var(--height--5xl);
-	overflow-y: auto;
-	word-break: normal;
-	overflow-wrap: anywhere;
-}
-
-.approvalRow {
-	display: flex;
-	flex-direction: column;
-	font-size: var(--font-size--2xs);
-}
-
-.approvalRowBody {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
-}
-
 .credentialDescription {
 	margin: 0;
 	overflow-wrap: anywhere;

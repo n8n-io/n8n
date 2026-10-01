@@ -297,15 +297,15 @@ export class InstanceAiPage extends BasePage {
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmApproveButton(): Locator {
-		return this.container.getByTestId('instance-ai-panel-confirm-approve');
+		return this.container.getByTestId('approval-card-allow-once');
 	}
 
 	getConfirmAlwaysAllowButton(): Locator {
-		return this.container.getByTestId('instance-ai-panel-confirm-always-allow');
+		return this.container.getByTestId('approval-card-always-allow');
 	}
 
 	getConfirmDenyButton(): Locator {
-		return this.container.getByTestId('instance-ai-panel-confirm-deny');
+		return this.container.getByTestId('approval-card-deny');
 	}
 
 	getDomainAccessApprove(): Locator {

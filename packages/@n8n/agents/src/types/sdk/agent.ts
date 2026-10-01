@@ -8,6 +8,7 @@ import type {
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentDbMessage, AgentMessage, ContentMetadata } from './message';
+import type { ToolApprovalContext } from './tool';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
@@ -270,6 +271,8 @@ export interface ExecutionOptions {
 	 * Best-effort: a host failure here must not break the run.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/** Thread allowances supplied for this execution. Not stored in checkpoints. */
+	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/** @deprecated Use `onStepEnd` instead. */

@@ -201,6 +201,7 @@ export class ToolCallExecutor {
 						resolvedTelemetry: ctx.telemetry,
 						executionCounter: ctx.executionCounter,
 						guardrails: ctx.guardrails,
+						approvalContext: ctx.approvalContext,
 						abortSignal: ctx.abortSignal,
 						countToolCall: true,
 					}),
@@ -468,6 +469,7 @@ export class ToolCallExecutor {
 			telemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
 			guardrails: ctx.guardrails,
+			approvalContext: ctx.approvalContext,
 			abortSignal: ctx.abortSignal,
 			isAborted: ctx.isAborted,
 		});
@@ -524,6 +526,7 @@ export class ToolCallExecutor {
 			resolvedTelemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
 			guardrails: ctx.guardrails,
+			approvalContext: ctx.approvalContext,
 			abortSignal: ctx.abortSignal,
 			countToolCall: false,
 			previouslySuspended: entry.suspended,

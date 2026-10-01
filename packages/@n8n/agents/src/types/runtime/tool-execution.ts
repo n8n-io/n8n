@@ -13,6 +13,7 @@ import type {
 	GuardrailsOptions,
 	PendingToolCall,
 	ToolSuspendOptions,
+	ToolApprovalContext,
 } from '../index';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../sdk/agent';
 import type { AgentMessage } from '../sdk/message';
@@ -105,6 +106,7 @@ export interface ToolBatchContext {
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
 	guardrails?: GuardrailsOptions;
+	approvalContext?: ToolApprovalContext;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -123,6 +125,7 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
 	guardrails?: GuardrailsOptions;
+	approvalContext?: ToolApprovalContext;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
