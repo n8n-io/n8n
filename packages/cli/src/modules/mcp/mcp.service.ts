@@ -28,8 +28,8 @@ import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -45,6 +45,7 @@ import { TagService } from '@/services/tag.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -263,7 +264,7 @@ export class McpService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
-		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
@@ -271,6 +272,7 @@ export class McpService {
 		private readonly folderService: FolderService,
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly mcpConfig: McpConfig,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
 
 	/** Resolves user experience flags and the shared activity gate. */
@@ -522,6 +524,7 @@ export class McpService {
 			this.executionRepository,
 			this.workflowFinderService,
 			this.telemetry,
+			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(getExecutionTool);
 
@@ -1056,8 +1059,7 @@ export class McpService {
 			dataTableOps,
 			this.tagService,
 			this.globalConfig,
-			this.subworkflowPolicyChecker,
-			this.workflowPublishedDataService,
+			this.errorWorkflowValidationService,
 			this.aiGatewayService,
 			uninstalledNodeOptions,
 			this.logger,

@@ -35,6 +35,7 @@ import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { PolicyCleared } from '@n8n/decorators';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
@@ -134,6 +135,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -508,6 +510,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 
 			vi.clearAllMocks();
@@ -1352,6 +1355,7 @@ describe('WorkflowService', () => {
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 
 			// Bypass validation internals
@@ -2109,6 +2113,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -2250,6 +2255,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -2556,6 +2562,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -2726,6 +2733,7 @@ describe('WorkflowService', () => {
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -2907,6 +2915,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -3010,6 +3019,7 @@ describe('WorkflowService', () => {
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
+				mock(), // errorWorkflowValidationService
 			);
 		});
 
@@ -3051,6 +3061,181 @@ describe('WorkflowService', () => {
 			await expect(
 				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['missing-tag']),
 			).rejects.toThrow('Some tags not found');
+		});
+	});
+
+	describe('update() error workflow reference', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let errorWorkflowValidationServiceMock: MockProxy<ErrorWorkflowValidationService>;
+		let workflowRepositoryMock: MockProxy<{ update: Mock; updateContent: Mock; findOne: Mock }>;
+
+		const user = mock<User>({ id: 'user-1' });
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			errorWorkflowValidationServiceMock = mock<ErrorWorkflowValidationService>();
+			errorWorkflowValidationServiceMock.findProblem.mockResolvedValue(undefined);
+			workflowRepositoryMock = mock();
+
+			const ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock as never, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				ownershipServiceMock, // ownershipService
+				mock(), // tagService
+				mock(), // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
+				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
+				mock(), // nodeGroupRulesFlagGate
+				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
+			);
+
+			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
+		});
+
+		const setupExistingWorkflow = (settings: Record<string, unknown> = {}) => {
+			const existingWorkflow = mock<WorkflowEntity>({
+				id: 'workflow-1',
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				settings,
+				activeVersionId: undefined as unknown as string,
+				tags: [],
+			});
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
+		};
+
+		const update = async (
+			settings: Record<string, unknown>,
+			options: { allowUnresolvedErrorWorkflow?: boolean } = {},
+		) =>
+			await workflowService.update(user, { settings } as unknown as WorkflowEntity, 'workflow-1', {
+				forceSave: true,
+				...options,
+			});
+
+		it('validates a newly set reference against the acting user', async () => {
+			setupExistingWorkflow();
+
+			await update({ errorWorkflow: 'err-wf' });
+
+			expect(errorWorkflowValidationServiceMock.findProblem).toHaveBeenCalledWith({
+				errorWorkflowId: 'err-wf',
+				parentWorkflowId: 'workflow-1',
+				user,
+			});
+		});
+
+		it.each([
+			['not-found', 'does not exist or you do not have access to it'],
+			['not-published', 'has no published version'],
+			['no-error-trigger', 'no active Error Trigger node'],
+			['caller-policy', 'does not allow this workflow to call it'],
+		] as const)('rejects the write when the reference is %s', async (reason, message) => {
+			setupExistingWorkflow();
+			errorWorkflowValidationServiceMock.findProblem.mockResolvedValue({
+				reason,
+				name: 'Error Handler',
+				errorTriggerType: 'n8n-nodes-base.errorTrigger',
+			} as never);
+
+			await expect(update({ errorWorkflow: 'err-wf' })).rejects.toThrow(BadRequestError);
+			await expect(update({ errorWorkflow: 'err-wf' })).rejects.toThrow(message);
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+		});
+
+		// The message must read the same whether the workflow is missing or merely
+		// unreadable, otherwise the endpoint reports which ids exist.
+		it('does not distinguish a missing workflow from an unreadable one', async () => {
+			setupExistingWorkflow();
+			errorWorkflowValidationServiceMock.findProblem.mockResolvedValue({ reason: 'not-found' });
+
+			await expect(update({ errorWorkflow: 'err-wf' })).rejects.toThrow(
+				'The selected error workflow does not exist or you do not have access to it.',
+			);
+		});
+
+		// The setting is unversioned, so an existing workflow whose handler was since
+		// archived or restricted must stay saveable.
+		it('does not re-check a reference the write leaves unchanged', async () => {
+			setupExistingWorkflow({ errorWorkflow: 'err-wf' });
+
+			await update({ errorWorkflow: 'err-wf', timezone: 'UTC' });
+
+			expect(errorWorkflowValidationServiceMock.findProblem).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['no settings key', {}],
+			['a cleared reference', { errorWorkflow: 'DEFAULT' }],
+			['an expression', { errorWorkflow: '={{ $json.handler }}' }],
+		])('skips validation for %s', async (_label, settings) => {
+			setupExistingWorkflow();
+
+			await update(settings);
+
+			expect(errorWorkflowValidationServiceMock.findProblem).not.toHaveBeenCalled();
+		});
+
+		it('validates a reference that replaces a different one', async () => {
+			setupExistingWorkflow({ errorWorkflow: 'old-err-wf' });
+
+			await update({ errorWorkflow: 'new-err-wf' });
+
+			expect(errorWorkflowValidationServiceMock.findProblem).toHaveBeenCalledWith(
+				expect.objectContaining({ errorWorkflowId: 'new-err-wf' }),
+			);
+		});
+
+		// A package import points at a handler the same import still has to create and
+		// publish, so none of the four problems is decidable while it writes.
+		it('skips validation for a package import', async () => {
+			setupExistingWorkflow();
+			errorWorkflowValidationServiceMock.findProblem.mockResolvedValue({ reason: 'not-found' });
+
+			await expect(
+				update({ errorWorkflow: 'err-wf' }, { allowUnresolvedErrorWorkflow: true }),
+			).resolves.toBeDefined();
+
+			expect(errorWorkflowValidationServiceMock.findProblem).not.toHaveBeenCalled();
 		});
 	});
 });
