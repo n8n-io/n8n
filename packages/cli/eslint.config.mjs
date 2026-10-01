@@ -235,7 +235,6 @@ export default defineConfig(
 			// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
 			'./src/services/export.service.ts',
 			'./src/services/folder.service.ts',
-			'./src/services/folder-finder.service.ts',
 			'./src/services/hooks.service.ts',
 			'./src/services/import.service.ts',
 			'./src/services/ownership.service.ts',
