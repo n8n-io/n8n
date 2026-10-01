@@ -1,19 +1,22 @@
 import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	CredentialsRepository,
 	type User,
+	type Role,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@n8n/errors';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 import { userHasScopes } from '../check-access';
 
@@ -27,6 +30,7 @@ describe('userHasScopes', () => {
 	let hasGlobalConnectAccessMock: Mock;
 	let roleServiceMock: Mock;
 	let mockQueryBuilder: any;
+	const roleRepository = mock<RoleRepository>();
 
 	beforeAll(() => {
 		findByWorkflowMock = vi.fn();
@@ -92,6 +96,7 @@ describe('userHasScopes', () => {
 				rolesWithScope: roleServiceMock,
 			}),
 		);
+		Container.set(RoleRepository, roleRepository);
 	});
 
 	beforeEach(() => {
@@ -169,6 +174,37 @@ describe('userHasScopes', () => {
 	});
 
 	describe('RoleService integration', () => {
+		it('should load roles through the supplied transaction manager', async () => {
+			const credentialId = 'cred123';
+			const entityManager = mock<EntityManager>();
+			const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+			entityManager.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+			entityManager.getRepository.mockReturnValue(sharedCredentialsRepository);
+			sharedCredentialsRepository.findBy.mockResolvedValue([
+				{
+					credentialsId: credentialId,
+					projectId: 'projectId',
+					role: 'credential:custom',
+				},
+			] as never);
+			roleRepository.findAll.mockResolvedValue([mock<Role>({ slug: 'credential:custom' })]);
+			roleServiceMock.mockImplementation(
+				async (_namespace, _scopes, loadRoles: () => Promise<Role[]>) =>
+					(await loadRoles()).map(({ slug }) => slug),
+			);
+
+			const result = await userHasScopes(
+				{ id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User,
+				['credential:read'],
+				false,
+				{ credentialId },
+				entityManager,
+			);
+
+			expect(roleRepository.findAll).toHaveBeenCalledWith(entityManager);
+			expect(result).toBe(true);
+		});
+
 		it('should use RoleService for credential role resolution', async () => {
 			const credentialId = 'cred123';
 			const mockRoles = ['credential:owner', 'custom:credential-admin'];
@@ -187,7 +223,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes);
 			expect(result).toBe(true);
 		});
 
@@ -209,7 +245,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes);
 			expect(result).toBe(true);
 		});
 
@@ -231,7 +267,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', scopes);
 			expect(result).toBe(true);
 		});
 
@@ -273,7 +309,7 @@ describe('userHasScopes', () => {
 
 			await userHasScopes(user, ['credential:read'], false, { credentialId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('credential', ['credential:read'], undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('credential', ['credential:read']);
 			expect(roleServiceMock).not.toHaveBeenCalledWith('workflow', expect.anything());
 		});
 
@@ -292,7 +328,7 @@ describe('userHasScopes', () => {
 
 			await userHasScopes(user, ['workflow:execute'], false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', ['workflow:execute'], undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', ['workflow:execute']);
 			expect(roleServiceMock).not.toHaveBeenCalledWith('credential', expect.anything());
 		});
 
@@ -396,7 +432,7 @@ describe('userHasScopes', () => {
 
 			const result = await userHasScopes(user, scopes, false, { workflowId });
 
-			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes, undefined);
+			expect(roleServiceMock).toHaveBeenCalledWith('workflow', scopes);
 			expect(result).toBe(true);
 		});
 	});

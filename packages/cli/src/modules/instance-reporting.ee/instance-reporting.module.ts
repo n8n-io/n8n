@@ -9,8 +9,7 @@ import { UserError } from 'n8n-workflow';
  * receiver, once a day.
  *
  * Opt-in: not a default module, so it runs only when an operator lists it in
- * `N8N_ENABLED_MODULES`. Main-only, and within a multi-main deployment only the
- * leader holds the timer, so a cluster reports once rather than once per main.
+ * `N8N_ENABLED_MODULES`. A cluster system task sends reports from a main.
  *
  * The daily figure comes from the insights module, but the receiver only sees
  * data points, so that source is an implementation detail of
@@ -36,21 +35,19 @@ export class InstanceReportingModule implements ModuleInterface {
 			logger.warn(
 				'Instance reporting is enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset, so no reports will be sent',
 			);
-			return;
-		}
-
-		if (!(await this.hasCredential())) {
+		} else if (!(await this.hasCredential())) {
 			logger.warn(
 				'Instance reporting is enabled but this instance has no license certificate, so no reports will be sent. The receiver accepts reports only from licensed instances. Set N8N_LICENSE_CERT, activate a license, or set N8N_INSTANCE_REPORTING_AUTH_TOKEN.',
 			);
-			return;
 		}
+	}
 
-		const { InstanceReportingScheduler } = await import(
-			'./instance-reporting-scheduler.service.js'
-		);
-
-		Container.get(InstanceReportingScheduler).init();
+	async systemTasks() {
+		if (await this.isConfigured()) {
+			const { InstanceReportingTask } = await import('./instance-reporting.task.js');
+			return [InstanceReportingTask];
+		}
+		return [];
 	}
 
 	/**

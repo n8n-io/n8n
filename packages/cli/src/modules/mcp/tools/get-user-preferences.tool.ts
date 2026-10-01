@@ -145,6 +145,7 @@ export const createGetUserPreferencesTool = (
 			// The registered twin of the tool-call event: an MCP read is the one place a rendered
 			// block leaves n8n without a turn to attach it to.
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP, {
+				user_id: user.id,
 				count: items.length,
 				scope_types: scopes,
 				rendered_length: renderedLength,

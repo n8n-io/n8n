@@ -6,6 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createThreadComponentRenderer,
 	defaultModuleSettings,
@@ -63,6 +64,9 @@ describe('InstanceAiConversation', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
+		// Auto-stubbed push-store actions return undefined by default; the confirmation
+		// panel unsubscribes with addEventListener's return value, so return a no-op.
+		mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
 
 		thread = makeThread();
 		store = mockedStore(useInstanceAiStore);

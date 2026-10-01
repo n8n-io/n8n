@@ -732,43 +732,53 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
 	});
 
-	it('renders only reload-restored open cards that can still be resumed', () => {
-		const wrapper = mount(AgentChatMessageList, {
-			props: {
-				messages: [
-					{
-						id: 'assistant-open-cards',
-						role: 'assistant',
-						content: '',
-						interactives: [
-							{
-								toolName: 'chat_action',
-								toolCallId: 'tc-stale',
-								input: {
-									card: { components: [{ type: 'button', label: 'Old', value: 'old' }] },
+	it.each(['', 'Here is the request.'])(
+		'keeps active chat cards inline and tool approvals in the composer: %s',
+		(content) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'assistant-open-cards',
+							role: 'assistant',
+							content,
+							toolCalls: [{ tool: 'send_message', toolCallId: 'tc-approval', state: 'suspended' }],
+							interactives: [
+								{
+									toolName: 'approval',
+									toolCallId: 'tc-approval',
+									runId: 'run-active',
+									input: { type: 'approval', toolName: 'send_message', args: {} },
 								},
-							},
-							{
-								toolName: 'chat_action',
-								toolCallId: 'tc-active',
-								runId: 'run-active',
-								input: {
-									card: { components: [{ type: 'button', label: 'Approve', value: 'approve' }] },
+								{
+									toolName: 'chat_action',
+									toolCallId: 'tc-stale',
+									input: {
+										card: { components: [{ type: 'button', label: 'Old', value: 'old' }] },
+									},
 								},
-							},
-						],
-						status: 'awaitingUser',
-					} satisfies ChatMessage,
-				],
-				messagingState: 'idle',
-			},
-		});
+								{
+									toolName: 'chat_action',
+									toolCallId: 'tc-active',
+									runId: 'run-active',
+									input: {
+										card: { components: [{ type: 'button', label: 'Approve', value: 'approve' }] },
+									},
+								},
+							],
+							status: 'awaitingUser',
+						} satisfies ChatMessage,
+					],
+					messagingState: 'idle',
+				},
+			});
 
-		const cards = wrapper.findAll('[data-testid="interactive-card-stub"]');
-		expect(cards).toHaveLength(1);
-		expect(cards[0].attributes('data-tool-call-id')).toBe('tc-active');
-		expect(cards[0].attributes('data-run-id')).toBe('run-active');
-	});
+			const cards = wrapper.findAll('[data-testid="interactive-card-stub"]');
+			expect(cards).toHaveLength(1);
+			expect(cards[0].attributes('data-tool-call-id')).toBe('tc-active');
+			expect(cards[0].attributes('data-run-id')).toBe('run-active');
+		},
+	);
 
 	it('does not render external-wait notice for suspended chat_action tool (toolRun path)', () => {
 		// isGroupable: role=assistant, toolCalls.length>0, content is empty → toolRun group

@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import type { ExecutionCursor } from '../execution-cursor';
