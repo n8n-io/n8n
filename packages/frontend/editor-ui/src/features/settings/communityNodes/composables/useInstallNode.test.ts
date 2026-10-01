@@ -202,11 +202,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(result.success).toBe(true);
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				'1.0.0',
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', '1.0.0');
 		});
 
 		it('should install verified node with npm version', async () => {
@@ -219,11 +215,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(result.success).toBe(true);
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				'1.0.0',
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', '1.0.0');
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
 			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
@@ -248,11 +240,7 @@ describe('useInstallNode', () => {
 
 			expect(result.success).toBe(true);
 			expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('test-node');
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				'1.0.0',
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', '1.0.0');
 		});
 
 		it('should install verified node as latest when unverified packages are enabled', async () => {
@@ -441,11 +429,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(result.success).toBe(true);
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				undefined,
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', undefined);
 		});
 
 		it('should handle getNpmVersion errors', async () => {
@@ -567,11 +551,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('test-node');
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				'2.0.0',
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', '2.0.0');
 		});
 	});
 

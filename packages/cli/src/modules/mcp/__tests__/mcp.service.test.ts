@@ -30,8 +30,8 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -50,6 +50,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -135,7 +136,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
-			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(ErrorWorkflowValidationService),
 			mockAiGatewayService(),
 			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry),
@@ -143,6 +144,7 @@ describe('McpService', () => {
 			mockInstance(FolderService),
 			aiPreferenceService,
 			mockInstance(McpConfig),
+			mockInstance(ExecutionRedactionServiceProxy),
 		);
 	});
 
@@ -191,7 +193,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
@@ -199,6 +201,7 @@ describe('McpService', () => {
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -401,7 +404,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
@@ -409,6 +412,7 @@ describe('McpService', () => {
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
@@ -1203,7 +1207,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
@@ -1211,6 +1215,7 @@ describe('McpService', () => {
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1261,7 +1266,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
@@ -1269,6 +1274,7 @@ describe('McpService', () => {
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1344,7 +1350,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowHistoryService),
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
-					mockInstance(SubworkflowPolicyChecker),
+					mockInstance(ErrorWorkflowValidationService),
 					mockAiGatewayService(),
 					mockInstance(McpPostSaveMetricsService),
 					mockInstance(ModuleRegistry),
@@ -1352,6 +1358,7 @@ describe('McpService', () => {
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),
 					mockInstance(McpConfig),
+					mockInstance(ExecutionRedactionServiceProxy),
 				);
 			};
 
