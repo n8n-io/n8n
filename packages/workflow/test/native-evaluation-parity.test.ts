@@ -291,6 +291,23 @@ describe('Expression - fast native evaluation parity', () => {
 			}
 		};
 
+		// join and toSorted stringify elements; on nested arrays that work is
+		// proportional to the nested size, so they only run over primitives.
+		test('join and toSorted hand nested elements to the engine', () => {
+			const big = new Array<number>(600_000).fill(0);
+			const rows = { $json: { rows: [big, big], flat: [3, 1, 2] } };
+			expect(nativeOn('{{ $json.rows.join() }}', rows)).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.rows.toSorted() }}', rows)).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.flat.toSorted() }}', rows)).toEqual({
+				handled: true,
+				value: [1, 2, 3],
+			});
+			expect(nativeOn('{{ $json.rows.at(0).length }}', rows)).toEqual({
+				handled: true,
+				value: 600_000,
+			});
+		});
+
 		test('nesting deeper than the cap is declined', () => {
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(20)}$json.item.active }}`)).toBe(true);
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(100)}$json.item.active }}`)).toBe(false);

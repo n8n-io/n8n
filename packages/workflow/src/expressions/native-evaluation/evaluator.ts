@@ -213,6 +213,22 @@ function flatSize(array: unknown[], depth: number): number {
 	return size;
 }
 
+/**
+ * join() stringifies every element and toSorted()'s default comparator
+ * stringifies both operands per comparison. On nested arrays that work is
+ * proportional to the nested size, which no element count bounds, so those
+ * two methods only run natively over primitive elements. Scanning is O(n)
+ * over a receiver the size cap already limits, and happens before anything
+ * is stringified.
+ */
+function assertPrimitiveElements(receiver: unknown[], method: string): void {
+	if (method !== 'join' && method !== 'toSorted') return;
+
+	for (const element of receiver) {
+		if (!isPrimitive(element)) throw new EngineFallbackError();
+	}
+}
+
 function evalCall(
 	node: Extract<SimpleNode, { kind: 'call' }>,
 	data: IWorkflowDataProxyData,
@@ -241,6 +257,7 @@ function evalCall(
 		throw new EngineFallbackError();
 	}
 
+	if (isArray(receiver)) assertPrimitiveElements(receiver, node.method);
 	assertPreflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args));
