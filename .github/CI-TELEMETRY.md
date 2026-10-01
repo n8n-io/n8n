@@ -86,6 +86,18 @@ return 'blacksmith';
 | Build stats | `.github/scripts/send-build-stats.mjs` | Per-package build duration, cache hit/miss, run total |
 | Docker stats | `.github/scripts/send-docker-stats.mjs` | Image size per platform, docker build duration |
 | Container stack | `packages/testing/containers/telemetry.ts` | E2E stack startup times per service |
+| Merge queue | `.github/scripts/send-merge-queue-stats.mjs` | Enqueue and dequeue counts, dequeue outcome, queue duration |
+
+### Merge Queue Metrics
+
+`merge-queue-event` counts each enqueue and dequeue event. Dequeue events have
+an `outcome` dimension with the value `merged`, `manual`, or `rejected`. They
+also have the GitHub `reason` dimension. Use these dimensions to calculate the
+rejection rate and to group rejections by cause.
+
+`merge-queue-duration` records the seconds between queue entry and queue exit.
+It has the same dequeue dimensions. Use this metric to monitor latency by
+outcome and to alert on percentile changes.
 
 ## Secrets
 

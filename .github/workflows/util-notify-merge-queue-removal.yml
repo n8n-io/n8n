@@ -1,17 +1,37 @@
-name: 'Util: Notify Merge Queue Removal'
+name: 'Util: Merge Queue Status'
 
 on:
   pull_request:
-    types: [dequeued]
-
-permissions:
-  pull-requests: write
+    types: [enqueued, dequeued]
 
 jobs:
+  observe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # Read trusted scripts because this job has access to repository secrets.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: |
+            .github/scripts/send-merge-queue-stats.mjs
+            .github/scripts/send-metrics.mjs
+      - name: Report merge queue metrics
+        run: node .github/scripts/send-merge-queue-stats.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     # MERGE/ALREADY_MERGED are successful exits, MANUAL is the author's own doing
-    if: ${{ !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason) }}
+    if: ${{ github.event.action == 'dequeued' && !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason) }}
     steps:
       # A failing PR can dequeue others behind it, so the reason may not be this PR's fault
       - run: |
