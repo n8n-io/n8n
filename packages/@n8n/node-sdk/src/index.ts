@@ -20,6 +20,7 @@ export {
 	type NodeDefinition,
 	type ResourceField,
 	type RunContext,
+	type RunInput,
 } from './define';
 export { exampleOf, matches, validate } from './validate';
 export { nodeNameOf, toNodeType, toVersionedNodeType, type FrozenVersion } from './runtime';

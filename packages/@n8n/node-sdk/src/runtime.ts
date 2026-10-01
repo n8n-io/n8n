@@ -13,8 +13,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { Action, Http, HttpRequest } from './define';
-import type { AnySchema, JsonSchema, ObjectOf, Shape } from './schema';
+import type { Action, Http, HttpRequest, RunInput } from './define';
+import type { AnySchema, JsonSchema, Shape } from './schema';
 import { validate } from './validate';
 import { NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
 
@@ -153,7 +153,7 @@ type Execute = (this: IExecuteFunctions) => Promise<INodeExecutionData[][]>;
 function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>): Execute {
 	const inputKeys = Object.keys(action.input);
 	const outputSchema: JsonSchema = action.output.json;
-	const isInput = (value: unknown): value is ObjectOf<S> =>
+	const isInput = (value: unknown): value is RunInput<S> =>
 		validate(value, action.inputSchema).length === 0;
 	const { credentialTypes } = action;
 

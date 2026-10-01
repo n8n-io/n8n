@@ -220,8 +220,13 @@ export interface MockRoute {
 	readonly method?: string;
 	/** The URL path, or its end after the node's base path: `/tasks`. */
 	readonly path: string;
-	/** Every listed parameter must match. */
+	/**
+	 * Every listed parameter must match; other parameters may also be present. When more
+	 * routes match, the route with the most listed parameters answers.
+	 */
 	readonly query?: Readonly<Record<string, string | number | boolean>>;
+	/** The route answers at most this many calls, then the next matching route answers. */
+	readonly times?: number;
 	readonly reply: {
 		readonly status?: number;
 		readonly json?: unknown;
@@ -234,17 +239,24 @@ export interface MockCall {
 	readonly url: string;
 	readonly path: string;
 	readonly query: Record<string, string>;
+	/** Lower-case names, e.g. `authorization`. */
 	readonly headers: Record<string, string>;
+	/** A JSON body is already parsed. */
 	readonly body: unknown;
 }
 
 export type MockFetch = typeof fetch & { readonly calls: MockCall[] };
 
-const routeName = (route: MockRoute) => `${route.method ?? 'GET'} ${route.path}`;
+/** More calls than any test needs: the code under test loops. */
+const MAX_MOCK_CALLS = 1000;
+
+const routeName = (route: MockRoute) =>
+	`${route.method ?? 'GET'} ${route.path}${route.query ? ` ${JSON.stringify(route.query)}` : ''}`;
 
 /** A `fetch` stub that answers from `routes` and records each call. An unmatched call throws. */
 export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 	const calls: MockCall[] = [];
+	const answered = new Map<MockRoute, number>();
 	const mock = async (target: string | URL | Request, init: RequestInit = {}) => {
 		const url = new URL(target instanceof Request ? target.url : target);
 		const method = (init.method ?? 'GET').toUpperCase();
@@ -258,19 +270,35 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 			body: text && /^\s*[[{]/.test(text) ? JSON.parse(text) : text,
 		};
 		calls.push(call);
-		const route = routes.find(
-			(candidate) =>
-				(candidate.method ?? 'GET').toUpperCase() === method &&
-				url.pathname.endsWith(candidate.path) &&
-				Object.entries(candidate.query ?? {}).every(
-					([key, value]) => call.query[key] === String(value),
-				),
-		);
+		// A paging loop over mocks only runs microtasks, so a test timeout never fires.
+		if (calls.length > MAX_MOCK_CALLS) {
+			throw new Error(
+				`mockHttp: more than ${MAX_MOCK_CALLS} calls, the last ${method} ${url.pathname}${url.search}. The code loops: a route answers each call that has its listed query parameters. Add "times: 1" to a page route, or list the page parameter in each route.`,
+			);
+		}
+		const route = routes
+			.filter(
+				(candidate) =>
+					(candidate.method ?? 'GET').toUpperCase() === method &&
+					url.pathname.endsWith(candidate.path) &&
+					(candidate.times === undefined || (answered.get(candidate) ?? 0) < candidate.times) &&
+					Object.entries(candidate.query ?? {}).every(
+						([key, value]) => call.query[key] === String(value),
+					),
+			)
+			.reduce<MockRoute | undefined>(
+				(best, candidate) =>
+					best && Object.keys(best.query ?? {}).length >= Object.keys(candidate.query ?? {}).length
+						? best
+						: candidate,
+				undefined,
+			);
 		if (!route) {
 			throw new Error(
 				`mockHttp: no route for ${method} ${url.pathname}${url.search}. Routes: ${routes.map(routeName).join(', ') || 'none'}`,
 			);
 		}
+		answered.set(route, (answered.get(route) ?? 0) + 1);
 		const { status = 200, json, headers } = route.reply;
 		return new Response(json === undefined ? null : JSON.stringify(json), {
 			status,

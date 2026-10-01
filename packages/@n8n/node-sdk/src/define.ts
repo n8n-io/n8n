@@ -11,6 +11,7 @@ import {
 	type Infer,
 	type JsonSchema,
 	type ObjectOf,
+	type Schema,
 	type Shape,
 } from './schema';
 
@@ -129,6 +130,13 @@ export const isHttpError = (error: unknown): error is HttpError =>
 	error.headers !== null &&
 	'body' in error;
 
+type DefaultedKeys<S extends Shape> = {
+	[K in keyof S]: S[K] extends Schema<unknown, true, true> ? K : never;
+}[keyof S];
+
+/** The input `run()` gets. n8n fills in each default, so a field with `.default(v)` is always set. */
+export type RunInput<S extends Shape> = ObjectOf<S> & { [K in DefaultedKeys<S>]: Infer<S[K]> };
+
 export interface RunContext<Input, Output> {
 	/** Parameters for the current item, expressions resolved and validated. */
 	readonly input: Input;
@@ -173,7 +181,7 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 		toOutput(fields: readonly ResourceField[], input: ObjectOf<S>): JsonSchema;
 	};
 	/** Runs once per input item; emit one or more output items. */
-	run(context: RunContext<ObjectOf<S>, Infer<O>>): Promise<void>;
+	run(context: RunContext<RunInput<S>, Infer<O>>): Promise<void>;
 }
 
 export interface Action<S extends Shape = Shape, O extends AnySchema = AnySchema>

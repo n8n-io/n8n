@@ -44,7 +44,8 @@ describe('n8n-node-next', () => {
 	const server = createServer((request, response) => {
 		const authorized = request.headers.authorization === 'Bearer secret';
 		response.writeHead(authorized ? 200 : 401, { 'content-type': 'application/json' });
-		response.end(JSON.stringify(authorized ? { items: [{ id: '1', name: 'First' }] } : {}));
+		const items = [{ id: '1', name: 'First', ownerId: null }];
+		response.end(JSON.stringify(authorized ? { items, nextCursor: null } : {}));
 	});
 	const baseUrl = () => `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
 
@@ -60,7 +61,7 @@ describe('n8n-node-next', () => {
 		expect(result.code).toBe(0);
 		const manifest = JSON.parse(readFileSync(join(project, 'package.json'), 'utf8'));
 		expect(manifest.dependencies['@n8n/node-sdk']).toBe(`link:${SDK_ROOT}`);
-		expect(readFileSync(join(project, 'AGENTS.md'), 'utf8').split('\n').length).toBeLessThan(80);
+		expect(readFileSync(join(project, 'AGENTS.md'), 'utf8').split('\n').length).toBeLessThan(150);
 		expect(readFileSync(join(project, 'src/index.ts'), 'utf8')).toContain('export const actions');
 		install(project);
 		expect((await cli(workspace, ['new', 'todo', '--dir', 'todo'])).stderr).toContain(
@@ -69,7 +70,10 @@ describe('n8n-node-next', () => {
 	});
 
 	it('check passes on the scaffold', async () => {
-		expect(await cli(project, ['check'])).toMatchObject({ code: 0, stdout: 'check passed\n' });
+		expect(await cli(project, ['check'])).toMatchObject({
+			code: 0,
+			stdout: 'check passed. Next: n8n-node-next test\n',
+		});
 	});
 
 	it('check reports the file, action id and schema path', async () => {
@@ -87,7 +91,8 @@ describe('n8n-node-next', () => {
 	it('test runs the node:test files', async () => {
 		const result = await cli(project, ['test']);
 		expect(result.code).toBe(0);
-		expect(result.stdout).toContain('pass 2');
+		expect(result.stdout).toContain('pass 4');
+		expect(result.stdout).toContain('tests passed. Next:');
 	});
 
 	it('test fails a test that does not end and names it', async () => {
@@ -115,7 +120,7 @@ describe('n8n-node-next', () => {
 		expect(Date.now() - started).toBeLessThan(15_000);
 		expect(result.code).toBe(1);
 		expect(result.stdout).toContain('src/spins.test.ts');
-		expect(result.stderr).toContain('tests stopped after 5 s');
+		expect(result.stderr).toContain('tests stopped after 3 s');
 	}, 20_000);
 
 	it('describe prints the typed module', async () => {
@@ -133,12 +138,12 @@ describe('n8n-node-next', () => {
 		const args = ['run', 'todo.item.getAll', '--input', '{"limit":1}', '--credential-env', 'TODO'];
 		const ok = await cli(project, args, { TODO_API_KEY: 'secret' });
 		expect(ok.code).toBe(0);
-		expect(JSON.parse(ok.stdout)).toEqual([{ id: '1', name: 'First' }]);
+		expect(JSON.parse(ok.stdout)).toEqual([{ id: '1', name: 'First', ownerId: null }]);
 
 		const credentialFile = join(workspace, 'credential.json');
 		writeFileSync(credentialFile, JSON.stringify({ type: 'todoApi', data: { apiKey: 'secret' } }));
 		const fromFile = await cli(project, [...args.slice(0, 4), '--credential-file', credentialFile]);
-		expect(JSON.parse(fromFile.stdout)).toEqual([{ id: '1', name: 'First' }]);
+		expect(JSON.parse(fromFile.stdout)).toEqual([{ id: '1', name: 'First', ownerId: null }]);
 
 		const denied = await cli(project, args, { TODO_API_KEY: 'wrong' });
 		expect(denied.code).toBe(1);

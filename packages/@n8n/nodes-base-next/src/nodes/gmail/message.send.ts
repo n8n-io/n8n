@@ -60,7 +60,9 @@ export const sendGmailMessage = defineAction({
 	async run({ input, http, emit }) {
 		const html = input.body.format === 'html';
 		const message = (input.body.format === 'html' ? input.body.html : input.body.text).trim();
+		// Version 1 is frozen: a rewrite of this check changes the bundle bytes.
 		const content =
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
 			input.appendAttribution === false
 				? message
 				: html

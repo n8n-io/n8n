@@ -8,16 +8,19 @@ import {
 	generateNodeModule,
 	isHttpError,
 	lintContract,
+	nullable,
 	num,
 	obj,
 	oneOf,
 	str,
 	toContract,
 	toNodeType,
+	union,
 	validate,
 	variant,
 	type Action,
 	type Infer,
+	type RunInput,
 } from '../index';
 
 const todo = defineNode({
@@ -56,6 +59,40 @@ describe('schema builders', () => {
 		// @ts-expect-error `max` belongs to the limit branch only
 		const wrong: Paging = { mode: 'all', max: 5 };
 		expect([all, limited, wrong]).toHaveLength(3);
+	});
+
+	it('types a default field as set in run() and as optional for callers', () => {
+		const input = { limit: num().default(50).hint('At most 100'), query: str().optional() };
+		const inRun: RunInput<typeof input> = { limit: 5 };
+		const limit: number = inRun.limit;
+		// @ts-expect-error run() gets every default field
+		const withoutDefault: RunInput<typeof input> = {};
+		const fromCaller: Infer<ReturnType<typeof obj<typeof input>>> = {};
+		expect([limit, withoutDefault, fromCaller]).toEqual([5, {}, {}]);
+	});
+
+	it('builds a nullable schema', () => {
+		const assignee = nullable(str()).hint('null when unassigned');
+		const value: Infer<typeof assignee> = null;
+		expect(assignee.json).toEqual({
+			anyOf: [{ type: 'string' }, { type: 'null' }],
+			'x-n8n-hint': 'null when unassigned',
+		});
+		expect(validate(value, assignee.json)).toEqual([]);
+		expect(validate(1, assignee.json)).toEqual(['input: does not match any allowed shape']);
+		expect(nullable(str().optional()).isOptional).toBe(true);
+	});
+
+	it('builds a union of object schemas', () => {
+		const invoice = obj({ id: str() });
+		const line = obj({ sku: str(), invoiceId: str() });
+		const either = union(invoice, line);
+		const value: Infer<typeof either> = { sku: 's1', invoiceId: 'inv_1' };
+		expect(either.json).toEqual({ anyOf: [invoice.json, line.json] });
+		expect(validate(value, either.json)).toEqual([]);
+		expect(validate({ id: 'inv_1', sku: 's1' }, either.json)).toEqual([
+			'input: does not match any allowed shape',
+		]);
 	});
 
 	it('emits a closed JSON Schema with a discriminated union', () => {

@@ -7,23 +7,40 @@ import { credentials } from '../index';
 import { getManyItems } from './item.get-all';
 
 const credential = { type: '__service__Api', data: { apiKey: 'test-key' } };
+const first = { id: 'itm_1', name: 'First', ownerId: null };
+const second = { id: 'itm_2', name: 'Second', ownerId: 'usr_1' };
 
-test('lists items with the API key', async () => {
+test('returnAll follows nextCursor to the last page', async () => {
 	const fetch = mockHttp([
-		{
-			method: 'GET',
-			path: '/items',
-			query: { limit: 2 },
-			reply: { json: { items: [{ id: '1', name: 'First' }] } },
-		},
+		// When more routes match, the route with more matching query parameters answers.
+		{ path: '/items', reply: { json: { items: [first], nextCursor: 'c2' } } },
+		{ path: '/items', query: { cursor: 'c2' }, reply: { json: { items: [second], nextCursor: null } } },
 	]);
-	const result = await runAction(getManyItems, { input: { limit: 2 }, credential, credentials, fetch });
-	assert.deepEqual(result, { ok: true, items: [{ id: '1', name: 'First' }] });
+	const result = await runAction(getManyItems, { input: { returnAll: true }, credential, credentials, fetch });
+	// Compare the whole result: on failure, the message shows `result.error`.
+	assert.deepEqual(result, { ok: true, items: [first, second] });
+	// `fetch.calls` records each request. Query values are strings; a JSON body is parsed.
+	assert.deepEqual(
+		fetch.calls.map((call) => call.query),
+		[{ pageSize: '100' }, { pageSize: '100', cursor: 'c2' }],
+	);
 	assert.equal(fetch.calls[0]?.headers.authorization, 'Bearer test-key');
 });
 
-test('rejects a limit over 100', async () => {
-	const result = await runAction(getManyItems, { input: { limit: 500 }, credential, credentials });
-	assert.equal(result.ok, false);
+test('limit stops without fetching the next page', async () => {
+	const fetch = mockHttp([{ path: '/items', reply: { json: { items: [first, second], nextCursor: 'c2' } } }]);
+	const result = await runAction(getManyItems, { input: { limit: 1 }, credential, credentials, fetch });
+	assert.deepEqual(result, { ok: true, items: [first] });
+	assert.equal(fetch.calls.length, 1);
+});
+
+test('returns the status of a failed request', async () => {
+	const fetch = mockHttp([{ path: '/items', reply: { status: 401, json: { error: 'unauthorized' } } }]);
+	const result = await runAction(getManyItems, { input: {}, credential, credentials, fetch });
+	assert.equal(result.ok ? undefined : result.error.httpStatus, 401);
+});
+
+test('rejects a limit below 1', async () => {
+	const result = await runAction(getManyItems, { input: { limit: 0 }, credential, credentials });
 	assert.equal(result.ok ? undefined : result.error.path, 'input.limit');
 });

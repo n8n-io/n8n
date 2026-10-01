@@ -189,6 +189,39 @@ describe('runAction', () => {
 		});
 	});
 
+	it('answers from the route with the most matching query parameters', async () => {
+		const fetch = mockHttp([
+			{ path: '/tasks', query: { limit: 10 }, reply: { json: [{ id: 'first', tags: [] }] } },
+			{ path: '/tasks', query: { limit: 10, workspace: 'w-1' }, reply: { json: [] } },
+		]);
+		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		expect(result).toEqual({ ok: true, items: [] });
+	});
+
+	it('answers a route with "times" at most that many times', async () => {
+		const fetch = mockHttp([
+			{ path: '/tasks', times: 1, reply: { status: 429, json: { error: 'slow' } } },
+			{ path: '/tasks', reply: { json: [{ id: 't1', tags: [] }] } },
+		]);
+		const first = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		const second = await runAction(listTasks, { input: {}, credential, credentials, fetch });
+		expect([first.ok, second]).toEqual([false, { ok: true, items: [{ id: 't1', tags: [] }] }]);
+	});
+
+	it('fails a run that makes more calls than a test needs', async () => {
+		const pageLoop = defineAction({
+			...listTasks,
+			id: 'todo.task.loop',
+			async run({ http }) {
+				for (;;) await http.request({ path: '/tasks' });
+			},
+		});
+		const fetch = mockHttp([{ path: '/tasks', reply: { json: [] } }]);
+		const result = await runAction(pageLoop, { input: {}, credential, credentials, fetch });
+		expect(result.ok ? '' : result.error.message).toMatch(/^mockHttp: more than 1000 calls/);
+		expect(fetch.calls).toHaveLength(1001);
+	});
+
 	it('needs a known credential', async () => {
 		expect(await runAction(listTasks, { input: {} })).toEqual({
 			ok: false,

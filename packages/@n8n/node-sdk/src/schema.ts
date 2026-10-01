@@ -37,10 +37,15 @@ export interface JsonSchema {
 }
 
 declare const phantom: unique symbol;
+declare const hasDefault: unique symbol;
 
-/** A schema for values of type `T`. `Opt` marks a field the author may omit. */
-export class Schema<T, Opt extends boolean = false> {
+/**
+ * A schema for values of type `T`. `Opt` marks a field the author may omit. `Def` is `true`
+ * only after `.default(v)`: n8n fills in the default, so `run()` always gets the field.
+ */
+export class Schema<T, Opt extends boolean = false, Def extends boolean = boolean> {
 	declare readonly [phantom]?: T;
+	declare readonly [hasDefault]?: Def;
 
 	constructor(
 		readonly json: JsonSchema,
@@ -52,21 +57,21 @@ export class Schema<T, Opt extends boolean = false> {
 	}
 
 	/** A default value also makes the field optional. */
-	default(value: T): Schema<T, true> {
-		return new Schema<T, true>({ ...this.json, default: value }, true);
+	default(value: T): Schema<T, true, true> {
+		return new Schema<T, true, true>({ ...this.json, default: value }, true);
 	}
 
-	hint(text: string): Schema<T, Opt> {
-		return new Schema<T, Opt>({ ...this.json, 'x-n8n-hint': text }, this.isOptional);
+	hint(text: string): Schema<T, Opt, Def> {
+		return new Schema<T, Opt, Def>({ ...this.json, 'x-n8n-hint': text }, this.isOptional);
 	}
 
-	describe(text: string): Schema<T, Opt> {
-		return new Schema<T, Opt>({ ...this.json, description: text }, this.isOptional);
+	describe(text: string): Schema<T, Opt, Def> {
+		return new Schema<T, Opt, Def>({ ...this.json, description: text }, this.isOptional);
 	}
 
 	/** Extra JSON Schema keywords (`pattern`, `minLength`, `format`, …). */
-	with(keywords: JsonSchema): Schema<T, Opt> {
-		return new Schema<T, Opt>({ ...this.json, ...keywords }, this.isOptional);
+	with(keywords: JsonSchema): Schema<T, Opt, Def> {
+		return new Schema<T, Opt, Def>({ ...this.json, ...keywords }, this.isOptional);
 	}
 }
 
@@ -98,6 +103,10 @@ export const oneOf = <const V extends readonly string[]>(...values: V) =>
 export const arr = <S extends AnySchema>(items: S) =>
 	new Schema<ReadonlyArray<Infer<S>>>({ type: 'array', items: items.json }, false);
 
+/** The value or `null`. Use it in output schemas, e.g. `assignee: nullable(str())`. */
+export const nullable = <T, Opt extends boolean>(schema: Schema<T, Opt>) =>
+	new Schema<T | null, Opt>({ anyOf: [schema.json, { type: 'null' }] }, schema.isOptional);
+
 function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
 	const required = Object.entries(shape)
 		.filter(([, schema]) => !schema.isOptional)
@@ -112,6 +121,10 @@ function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
 }
 
 export const obj = <S extends Shape>(shape: S) => new Schema<ObjectOf<S>>(objectJson(shape), false);
+
+/** A value that matches one of the schemas, e.g. output shapes that depend on an input. */
+export const union = <const S extends readonly AnySchema[]>(...schemas: S) =>
+	new Schema<Infer<S[number]>>({ anyOf: schemas.map((schema) => schema.json) }, false);
 
 /** An object with arbitrary keys. */
 export const record = <S extends AnySchema>(values: S) =>

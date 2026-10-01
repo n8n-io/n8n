@@ -14,7 +14,7 @@ const USAGE = `Usage: n8n-node-next <command>
   new <service> [--dir <path>]    Scaffold a node project
   check                           Type-check (tsc --strict) and check the contracts
   test [--timeout <seconds>]      Run src/**/*.test.ts with node:test. Each test fails
-                                  after --timeout (default 20 s); all tests stop after 5 times that
+                                  after --timeout (default 20 s); all tests stop after 3 times that
   describe [actionId]             Print the typed module the AI workflow builder reads
   run <actionId> --input '<json>' [--credential-file <file.json> | --credential-env <PREFIX>]
                                   Run one action against the live API
@@ -83,7 +83,7 @@ async function check(root: string) {
 			`check failed: ${typed ? 'types ok' : 'type errors'}, ${issues.length} contract issue(s)`,
 		);
 	}
-	console.log('check passed');
+	console.log('check passed. Next: n8n-node-next test');
 }
 
 /** Kills the test run and each process it started. */
@@ -131,13 +131,17 @@ async function test(root: string, timeout: string | undefined) {
 	const args = [tsx, '--test', `--test-timeout=${seconds * 1000}`, '--test-force-exit', ...files];
 	// A separate process group, so that a stop also kills the test file processes.
 	const child = spawn(process.execPath, args, { cwd: root, stdio: 'inherit', detached: true });
-	const outcome = await waitForTests(child, seconds * 5 * 1000);
+	// 3 times the test timeout: the stop message comes before a typical 90 s shell timeout.
+	const outcome = await waitForTests(child, seconds * 3 * 1000);
 	if (outcome === 'stopped') {
 		throw new CliError(
-			`tests stopped after ${seconds * 5} s. A test blocks the event loop or does not end. See "Interrupted while running" above.`,
+			`tests stopped after ${seconds * 3} s. A test blocks the event loop or does not end. See "Interrupted while running" above.`,
 		);
 	}
 	if (outcome === 'failed') throw new CliError('tests failed');
+	console.log(
+		"tests passed. Next: n8n-node-next run <actionId> --input '<json>' calls the live API",
+	);
 }
 
 function findAction(project: Project, id: string | undefined): Action {

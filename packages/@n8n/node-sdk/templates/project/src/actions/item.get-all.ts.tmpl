@@ -1,11 +1,16 @@
-import { defineAction, int, matches, obj, str } from '@n8n/node-sdk';
+import { arr, bool, defineAction, int, matches, nullable, obj, str } from '@n8n/node-sdk';
 
 import { node } from '../node';
 
-const item = obj({
+// `obj` rejects fields it does not list, so list every field the API returns.
+export const item = obj({
 	id: str().with({ examples: ['itm_1'] }),
-	name: str().hint('The item title'),
+	name: str(),
+	ownerId: nullable(str()).hint('null when nobody owns the item'),
 });
+
+// One page of the list response. `matches(page, response)` narrows `unknown` to this type.
+const page = obj({ items: arr(item), nextCursor: nullable(str()).optional() });
 
 export const getManyItems = defineAction({
 	node,
@@ -14,15 +19,25 @@ export const getManyItems = defineAction({
 	summary: 'List items, newest first.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
 	input: {
-		limit: int().with({ minimum: 1, maximum: 100 }).default(50).hint('At most 100'),
+		returnAll: bool().default(false),
+		limit: int().with({ minimum: 1 }).default(50).hint('Used when returnAll is false'),
 	},
 	output: item,
 	async run({ input, http, emit }) {
-		const response = await http.request({ path: '/items', query: { limit: input.limit } });
-		const items = typeof response === 'object' && response !== null && 'items' in response ? response.items : [];
-		for (const entry of Array.isArray(items) ? items : []) {
-			if (!matches(item, entry)) throw new Error('__Service__ returned an item without id or name');
-			emit(entry);
-		}
+		const wanted = input.returnAll ? Infinity : input.limit;
+		const readPage = async (cursor: string | undefined, emitted: number): Promise<void> => {
+			const response = await http.request({
+				path: '/items',
+				// An undefined query value is not sent.
+				query: { pageSize: Math.min(wanted - emitted, 100), cursor },
+			});
+			if (!matches(page, response)) throw new Error('__Service__ returned an unexpected page');
+			const items = response.items.slice(0, wanted - emitted);
+			for (const entry of items) emit(entry);
+			const total = emitted + items.length;
+			// Stop at the limit: do not fetch a page that is not needed.
+			if (response.nextCursor && total < wanted) await readPage(response.nextCursor, total);
+		};
+		await readPage(undefined, 0);
 	},
 });

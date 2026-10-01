@@ -65,4 +65,11 @@ const result = await runAction(getManyItems, { input: { limit: 2 }, credential, 
 
 `runAction` fills in parameter defaults, validates the input, runs `run()` with a fetch-based
 HTTP client that applies the credential, and validates each output item. It needs no n8n instance.
-`mockHttp` records `fetch.calls` and fails each request that no route matches.
+`mockHttp` records `fetch.calls` and fails each request that no route matches. When more
+routes match, the route with the most listed query parameters answers. A route with `times: n`
+answers at most n calls. More than 1000 calls fail the run, because the code under test loops.
+
+## Types
+
+`nullable(schema)` accepts the value or `null`. In `run()`, a field with `.default(v)` is always
+set (`RunInput`), because n8n and `runAction` fill in the default. Callers can still omit it.

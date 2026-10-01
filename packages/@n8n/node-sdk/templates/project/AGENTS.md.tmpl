@@ -1,16 +1,17 @@
 # __Service__ node for n8n
 
 This project defines an n8n node as typed action contracts with `@n8n/node-sdk`.
-One action is one operation, e.g. `__service__.item.getAll`. n8n turns each action
-into a node type. The AI workflow builder reads a typed module made from the contracts.
+One action is one operation, e.g. `__service__.item.getAll`. n8n turns each action into a node type.
+This file is the complete API reference. You do not have to read the SDK source.
 
 ## Layout
 
 - `src/index.ts` exports `node`, `actions` (array) and `credentials` (array). Keep these names.
-- `src/node.ts`: `defineNode` with the id, display name, base URL and credential types.
-- `src/credentials.ts`: `defineCredential` with the fields and how they authenticate requests.
-- `src/actions/<resource>.<operation>.ts`: one `defineAction` for each file.
-- `src/actions/<resource>.<operation>.test.ts`: unit tests with `node:test` and `mockHttp`.
+- `src/node.ts`: `defineNode`. `src/credentials.ts`: `defineCredential`.
+- `src/actions/<resource>.<operation>.ts`: one `defineAction` for each file. Add each action to `actions`.
+- `src/actions/<resource>.<operation>.test.ts`: unit tests with `node:test`, `runAction` and `mockHttp`.
+- `src/actions/item.get-all.ts` and its test are an example: a list with `returnAll`, `limit` and cursor pages.
+  Rename or replace them.
 
 ## Commands
 
@@ -21,45 +22,110 @@ n8n-node-next describe [actionId]        # the typed module the AI builder sees
 n8n-node-next run __service__.item.getAll --input '{"limit":5}' --credential-env __ENV__
 ```
 
-`run` calls the live API. `--credential-env` reads each credential field from the
-environment: `--credential-env __ENV__` reads `apiKey` from `__ENV___API_KEY`.
-`--credential-file f.json` reads `{ "type": "...", "data": { ... } }`.
+`run` calls the live API and prints the items. `--credential-env __ENV__` reads the field `apiKey`
+from `__ENV___API_KEY`. `--credential-file f.json` reads `{ "type": "...", "data": { ... } }`.
+Run `check` and `test` after each change. Both must pass.
 
-## Write an action
+## Node and credential
 
 ```ts
-export const getItem = defineAction({
+defineNode({ id: '__service__', displayName: '__Service__', credentials: [__service__Api.name],
+	baseUrl: 'https://api.example.com/v1' }); // add `authOptional: true` if the API also works without a key
+defineCredential({
+	name: '__service__Api', displayName: '__Service__ API',
+	properties: [{ name: 'apiKey', displayName: 'API Key', type: 'string', typeOptions: { password: true }, required: true }],
+	// A template is '={{$credentials.<field>}}'. Send it in a header, or in the query: { qs: { api_key: '=...' } }.
+	authenticate: { headers: { 'X-Api-Key': '={{$credentials.apiKey}}' } },
+	test: { request: { baseURL: 'https://api.example.com/v1', url: '/me' } },
+});
+```
+
+## Action
+
+```ts
+defineAction({
 	node,
-	id: '__service__.item.get',             // <node>.<resource>.<operation>, unique
-	action: 'Get an item',                  // the label users pick
-	summary: 'Get one item by ID.',         // at most 120 characters
-	flow: { effect: 'read', cardinality: 'per-item', passthrough: 'replace', idempotent: true },
-	input: { itemId: str().hint('Item ID, e.g. itm_1') },
-	output: obj({ id: str(), name: str() }),
+	id: '__service__.item.create',          // <node>.<resource>.<operation>, unique
+	action: 'Create an item',               // the label users pick
+	summary: 'Create one item.',            // at most 120 characters
+	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },
+	input: { name: str(), ownerId: str().optional() },
+	output: item,
 	async run({ input, http, emit }) {
-		emit(await http.request({ path: `/items/${input.itemId}` }));
+		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
+		const response = await http.request({ method: 'POST', path: '/items', body });
+		if (!matches(item, response)) throw new Error('__Service__ returned an unexpected item');
+		emit(response);
 	},
 });
 ```
 
-Then add it to `actions` in `src/index.ts`.
+- `flow.effect`: `read` | `write` | `transform`. `flow.cardinality`: `per-item` (one call per input item),
+  `1:N` (a list), `N:1`. `flow.passthrough`: `replace` (emit only `output`) | `merge`. `idempotent?: boolean`.
+- `run()` runs once per input item. Call `emit(item)` once per output item. Each item must match `output`.
+- In `run()`, a field with `.default(v)` is always set. An `.optional()` field can be `undefined`.
+- `credentials?: string[]` on an action overrides the node's credential types.
+- When the output shape depends on an input, declare all shapes and pick one in `deriveOutput`:
+  `output: union(invoice, line)`, `deriveOutput: (input) => (input.split ? line.json : invoice.json)`.
+- Never read credentials in `run()`. The credential applies to each request.
 
-- Schemas: `str num int bool lit oneOf arr obj record json variant ref`.
-  Chain `.optional()`, `.default(v)`, `.hint(text)` (at most 80 characters), `.with({ pattern, minimum, examples })`.
-- Use `variant('mode', { ... })` when fields depend on a choice. Do not make a field conditionally required.
-- `http.request({ method, path, query, headers, body })` goes to `baseUrl` + `path`, with the credential applied.
-  It returns the parsed JSON body as `unknown`. Narrow it with `matches(schema, value)`.
-  A non-2xx response throws. After `isHttpError(error)`, read `error.status`, `error.body` and
-  `error.headers` (lower-case names, e.g. `error.headers['retry-after']`).
-- `emit(item)` once per output item. Each item must match `output`; n8n checks it at run time.
-- `deriveOutput(input)` may return a more exact output schema for these parameters.
-  It must stay compatible with `output`; `check` verifies this.
-- Never read credentials in `run()`. `defineCredential` applies them to each request.
+## Schemas
 
-## Rules
+| Builder | TypeScript type | Notes |
+|---|---|---|
+| `str()` `num()` `int()` `bool()` | `string` `number` `number` `boolean` | `int` allows integers only |
+| `oneOf('a', 'b')` | `'a' \| 'b'` | a fixed list of options |
+| `lit('a')` | `'a'` | one fixed value |
+| `nullable(s)` | `T \| null` | for output fields the API sets to `null` |
+| `arr(s)` | `readonly T[]` | |
+| `obj({ k: s })` | `{ k: T }` | rejects unlisted fields |
+| `record(s)` | `Record<string, T>` | any keys, checked values |
+| `json()` | `Record<string, unknown>` | any object, not checked |
+| `variant('mode', { a: {...}, b: {...} })` | tagged union | fields that depend on a choice |
+| `union(a, b)` | `A \| B` | a value that matches one of the schemas |
 
-- Run `n8n-node-next check` and `n8n-node-next test` after each change. Both must pass.
-- Every `examples` value must match its schema.
-- Every credential type an action or the node lists must be in `credentials`.
-- Test each action with `runAction(action, { input, credential, credentials, fetch: mockHttp([...]) })`.
-  `mockHttp` fails on any request that no route matches, and records `fetch.calls`.
+- Chain `.optional()`, `.default(v)` (also optional for callers), `.hint(text)` (at most 80 characters),
+  `.describe(text)`, `.with({ pattern, minimum, maximum, minLength, format, examples })`.
+- `obj` rejects fields it does not list. To emit an API object unchanged, list all of its fields,
+  or keep unlisted fields with `obj({ ... }).with({ additionalProperties: true })`.
+- Every `examples` value must match its schema. Do not make a field conditionally required: use `variant`.
+- `matches(schema, value)` is a type guard. `Infer<typeof schema>` is the TypeScript type.
+
+## HTTP
+
+- `http.request({ method, path, url, query, headers, body, fullResponse })`. `path` goes to `baseUrl` + `path`;
+  `url` is absolute (e.g. a `next` link). A `query` value that is `undefined` is not sent.
+  `body` is sent as JSON. It returns the parsed JSON body as `unknown`: narrow it with `matches`.
+- `fullResponse: true` returns `{ body, headers, statusCode }` as `unknown`. Header names are lower case:
+  `const full = obj({ body: arr(item), headers: json() }).with({ additionalProperties: true });`
+  `if (!matches(full, response)) throw ...;` then `response.body` is typed; check `typeof response.headers.link`.
+- A non-2xx response throws. After `isHttpError(error)`, read `error.status`, `error.body` and
+  `error.headers` (lower case, e.g. `error.headers['retry-after']`). There is no retry helper:
+  to retry, wait with `await new Promise((done) => setTimeout(done, ms))` and send the request again.
+- Paging: see `src/actions/item.get-all.ts`. With `returnAll`, read to the last page. Else stop at `limit`
+  and do not fetch a page that you do not need.
+
+## Tests
+
+```ts
+const fetch = mockHttp([
+	// For an action that retries: the first call gets a 429, the second call gets the item.
+	{ method: 'POST', path: '/items', times: 1, reply: { status: 429, headers: { 'retry-after': '0' } } },
+	{ method: 'POST', path: '/items', reply: { status: 201, json: { id: 'itm_1', name: 'A', ownerId: null } } },
+]);
+const result = await runAction(createItem, { input: { name: 'A' }, credential, credentials, fetch });
+assert.deepEqual(result, { ok: true, items: [{ id: 'itm_1', name: 'A', ownerId: null }] });
+assert.deepEqual(fetch.calls[0]?.body, { name: 'A' });
+```
+
+- `runAction(action, { input, credential, credentials, fetch })` fills in defaults, validates the input,
+  runs `run()` and validates each item. It returns `{ ok: true, items }` or
+  `{ ok: false, error: { message, path?, httpStatus? } }`. It does not throw.
+- A route matches on `method` (default `GET`), the end of the URL path, and each listed `query` parameter
+  (other parameters may also be present). When more routes match, the route with the most listed query
+  parameters answers. `times: n` answers at most n calls, then the next matching route answers.
+- `reply`: `{ status?, json?, headers? }`. A call that no route matches fails with the list of routes.
+- `fetch.calls[i]`: `{ method, url, path, query, headers, body }`. Query values are strings,
+  header names are lower case, a JSON body is already parsed.
+- Compare the whole result with `assert.deepEqual(result, ...)`: a failure then shows `result.error`.
+- A run with more than 1000 mock calls fails: the code loops over the same page.
