@@ -26,7 +26,7 @@
 	],
 	"packages/@n8n/backend-services": ["src/index.ts", "test/setup-test-folder.ts"],
 	"packages/@n8n/backend-test-utils": ["src/db/projects.ts"],
-	"packages/@n8n/benchmark": ["src/commands/list.ts"],
+	"packages/quality/efficiency/scale/benchmark": ["src/commands/list.ts"],
 	"packages/@n8n/blob-storage": [
 		"src/__tests__/azure-byte-store.test.ts",
 		"src/azure-blob/azure-blob.config.ts"
@@ -242,7 +242,6 @@
 		"src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts",
 		"src/public-api/v1/handlers/otel/otel.handler.ts",
 		"src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts",
-		"src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts",
 		"src/public-api/v1/handlers/workflows/workflows.handler.ts",
 		"src/scaling/scaling.service.ts",
 		"src/scheduling/durable-job-provisioner.ts",
@@ -377,12 +376,12 @@
 		"nodes/ActionNetwork/ActionNetwork.node.ts",
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
-	"packages/testing/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
-	"packages/testing/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
-	"packages/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
-	"packages/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
-	"packages/testing/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
-	"packages/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
+	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/quality/environments/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
+	"packages/quality/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
+	"packages/quality/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
+	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
+	"packages/quality/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
 	"packages/workflow": [
 		"src/augment-object.ts",
 		"test/ExpressionExtensions/array-extensions.test.ts"

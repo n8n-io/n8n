@@ -135,7 +135,6 @@ export default defineConfig({
 				'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-				'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
 				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],
 			rules: {
@@ -226,7 +225,6 @@ export default defineConfig({
 				'./src/credentials/credential-connection-status-provider.interface.ts',
 				'./src/credentials/credential-connection-status-proxy.ts',
 				'./src/credentials/credential-dependency.service.ts',
-				'./src/credentials/credentials-finder.service.ts',
 				'./src/credentials/credentials.controller.ts',
 				'./src/credentials/credentials.service.ee.ts',
 				'./src/credentials/credentials.service.ts',
@@ -241,7 +239,6 @@ export default defineConfig({
 				// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
 				'./src/services/export.service.ts',
 				'./src/services/folder.service.ts',
-				'./src/services/folder-finder.service.ts',
 				'./src/services/hooks.service.ts',
 				'./src/services/import.service.ts',
 				'./src/services/ownership.service.ts',
@@ -365,7 +362,6 @@ export default defineConfig({
 			// tasks. NEVER add to this list — new periodic leader work must be a
 			// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 			files: [
-				'./src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts',
 				'./src/services/pruning/executions-pruning.service.ts',
 				'./src/services/workflow-statistics-rollup.service.ts',
 			],

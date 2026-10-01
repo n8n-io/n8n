@@ -27,6 +27,7 @@ breaking-changes/
    sync/
       migration-finding-diff.ts  # Pure diff of scan hits against stored findings
       migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
+      migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, and pull
    query/
       migration-finding-query.service.ts  # Shapes finding table reads into the report response types
    group-nodes-by-type.ts                   # Nodes grouped by type, as workflow rules expect
