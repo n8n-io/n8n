@@ -8,6 +8,7 @@ const PARSER = '@n8n/n8n-nodes-langchain.outputParserAutofixing';
 const LANGCHAIN_CODE = '@n8n/n8n-nodes-langchain.code';
 const VECTOR_STORE_TOOL = '@n8n/n8n-nodes-langchain.toolVectorStore';
 const IN_MEMORY_VECTOR_STORE = '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
+const STRUCTURED_PARSER = '@n8n/n8n-nodes-langchain.outputParserStructured';
 
 /**
  * A schedule trigger feeding a No-Op, plus an agent with an autofixing parser
@@ -221,6 +222,88 @@ test.describe(
 			expect(
 				response.ok(),
 				`publish was refused over a subnode nothing can reach: ${await response.text()}`,
+			).toBe(true);
+
+			await expect
+				.poll(async () => (await api.workflows.getPublicationStatus(created.id)).status, {
+					timeout: 15_000,
+				})
+				.toBe('published');
+		});
+
+		test('publishes a subnode left on its own beside a healthy agent', async ({ api }) => {
+			// The chat model is reachable, so the pre-existing credential check applies to
+			// it. Give it one, or the refusal under test is masked by a credential error.
+			const credential = await api.credentials.createCredential({
+				name: `anthropic ${nanoid()}`,
+				type: 'anthropicApi',
+				data: { apiKey: 'sk-ant-not-a-real-key' },
+			});
+
+			// A Structured Output Parser dragged onto the canvas with Auto-Fix Format on
+			// and never wired to anything. Its own `Model` input is required and unmet,
+			// but no run reaches it, so it must not hold up the agent beside it. The
+			// agent's own Output Parser input is exposed and empty, which is allowed:
+			// only Chat Model and Fallback Model are required on the agent.
+			const created = await api.workflows.createWorkflow({
+				name: `lone subnode ${nanoid()}`,
+				nodes: [
+					{
+						id: nanoid(),
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1.2,
+						position: [0, 0],
+						parameters: { rule: { interval: [{ field: 'days' }] } },
+					},
+					{
+						id: nanoid(),
+						name: 'Sentiment Analyzer',
+						type: AGENT,
+						typeVersion: 2.2,
+						position: [260, 0],
+						parameters: { promptType: 'define', text: 'hello', hasOutputParser: true },
+					},
+					{
+						id: nanoid(),
+						name: 'Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						typeVersion: 1.3,
+						position: [200, 300],
+						parameters: {
+							model: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' },
+							options: {},
+						},
+						credentials: { anthropicApi: { id: credential.id, name: credential.name } },
+					},
+					{
+						id: nanoid(),
+						name: 'Structured Output Parser',
+						type: STRUCTURED_PARSER,
+						typeVersion: 1.3,
+						position: [560, 300],
+						parameters: { jsonSchemaExample: '{ "sentiment": "positive" }', autoFix: true },
+					},
+				],
+				connections: {
+					'Schedule Trigger': {
+						main: [[{ node: 'Sentiment Analyzer', type: 'main', index: 0 }]],
+					},
+					'Chat Model': {
+						ai_languageModel: [
+							[{ node: 'Sentiment Analyzer', type: 'ai_languageModel', index: 0 }],
+						],
+					},
+				},
+				settings: { executionOrder: 'v1' },
+			});
+			cleanupWorkflowIds.push(created.id);
+
+			const response = await api.workflows.activateRaw(created.id, created.versionId);
+
+			expect(
+				response.ok(),
+				`publish was refused over a subnode wired to nothing: ${await response.text()}`,
 			).toBe(true);
 
 			await expect
