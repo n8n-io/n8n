@@ -88,6 +88,45 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		expect(globallyFailed).not.toContain(job.id);
 	});
 
+	it('returns the job to the wait list before the current jobs of a paused worker finish', async () => {
+		const producer = createQueue();
+
+		const job = await producer.add(
+			JOB_TYPE_NAME,
+			{ executionId: 'exec-3', workflowId: 'wf-3', loadStaticData: false } as JobData,
+			{ priority: 50 },
+		);
+
+		const workerA = createQueue();
+
+		let release: () => void = () => {};
+		const released = new Promise<void>((resolve) => (release = resolve));
+		let markStarted: (activeJob: Job) => void = () => {};
+		const started = new Promise<Job>((resolve) => (markStarted = resolve));
+
+		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+			markStarted(activeJob);
+			await released;
+			handBackJob(activeJob);
+		});
+
+		const activeJob = await started;
+
+		expect(await (await producer.getJob(job.id))?.getState()).toBe('active');
+
+		await workerA.pause(true, true);
+		const currentJobsFinished = workerA.whenCurrentJobsFinished();
+
+		release();
+		await currentJobsFinished;
+
+		expect(activeJob.id).toBe(job.id);
+		const waiting = await producer.getWaiting();
+		expect(waiting.map((waitingJob) => waitingJob.id)).toContain(job.id);
+		expect(await (await producer.getJob(job.id))?.getState()).toBe('waiting');
+		expect(await control.exists(activeJob.lockKey())).toBe(0);
+	});
+
 	it('fails the handed-back job once, without a retry, when the next worker throws', async () => {
 		const producer = createQueue();
 

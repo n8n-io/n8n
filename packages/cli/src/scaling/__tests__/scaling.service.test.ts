@@ -732,14 +732,12 @@ describe('ScalingService', () => {
 
 			it('should finish stopping after 5s when the current jobs of the queue never finish', async () => {
 				vi.useFakeTimers();
-				const processFn = await startWorker();
+				await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 				queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
 
 				let hasStopped = false;
 				const stopped = scalingService.stop().then(() => (hasStopped = true));
-
-				await processFn(lateJob()).catch(() => {});
 
 				await vi.advanceTimersByTimeAsync(4_999);
 
@@ -752,14 +750,24 @@ describe('ScalingService', () => {
 			});
 
 			it.each([
-				{ shutdownTimeout: 2, drainMs: 0, case: 'the shutdown window is short' },
-				{ shutdownTimeout: 6, drainMs: 3_000, case: 'the drain used part of the shutdown window' },
+				{
+					shutdownTimeout: 2,
+					drainMs: 0,
+					expectedStopMs: 1_000,
+					case: 'the shutdown window is short',
+				},
+				{
+					shutdownTimeout: 6,
+					drainMs: 3_000,
+					expectedStopMs: 4_500,
+					case: 'the drain used part of the shutdown window',
+				},
 			])(
-				'should finish stopping at the end of the shutdown window when $case',
-				async ({ shutdownTimeout, drainMs }) => {
+				'should finish stopping halfway through what is left of the shutdown window when $case',
+				async ({ shutdownTimeout, drainMs, expectedStopMs }) => {
 					vi.useFakeTimers();
 					globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
-					const processFn = await startWorker();
+					await startWorker();
 					const drainStart = Date.now();
 					jobProcessor.getRunningJobIds.mockImplementation(() =>
 						Date.now() - drainStart < drainMs ? ['1'] : [],
@@ -769,10 +777,7 @@ describe('ScalingService', () => {
 					let hasStopped = false;
 					const stopped = scalingService.stop().then(() => (hasStopped = true));
 
-					await processFn(lateJob()).catch(() => {});
-
-					const windowMs = shutdownTimeout * 1_000;
-					await vi.advanceTimersByTimeAsync(windowMs - 1);
+					await vi.advanceTimersByTimeAsync(expectedStopMs - 1);
 
 					expect(hasStopped).toBe(false);
 
@@ -782,6 +787,50 @@ describe('ScalingService', () => {
 					await stopped;
 				},
 			);
+
+			it('should finish stopping after 4s when 8s of the shutdown window are left and the current jobs of the queue never finish', async () => {
+				vi.useFakeTimers();
+				globalConfig.generic.gracefulShutdownTimeout = 8;
+				await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(3_999);
+
+				expect(hasStopped).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
+			});
+
+			it('should finish stopping and cancel the in-process executions when waiting for the current jobs of the queue fails', async () => {
+				vi.useFakeTimers();
+				globalConfig.generic.gracefulShutdownTimeout = 5;
+				await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
+				queue.whenCurrentJobsFinished.mockRejectedValue(new Error('Connection is closed.'));
+
+				const outcome = scalingService.stop().then(
+					() => 'resolved',
+					() => 'rejected',
+				);
+
+				await vi.advanceTimersByTimeAsync(5_000);
+
+				expect(await outcome).toBe('resolved');
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Cancelled 1 in-process executions that could not finish before shutdown (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
 
 			it.each([
 				{ shutdownTimeout: 30, expectedDeadlineMs: 3_000, case: 'the ceiling on a wide window' },
