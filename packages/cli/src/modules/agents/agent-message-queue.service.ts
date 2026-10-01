@@ -33,7 +33,6 @@ import type {
 import {
 	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
-	N8N_CHAT_PRODUCTION_SOURCE,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
@@ -289,9 +288,7 @@ export class AgentMessageQueueService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		const sources = await this.executionRepository.findFirstSourceByThreadIds([thread.id], ctx);
-		// Items are filtered by kind, so a session without a recorded source can manage its own input.
-		const source =
-			sources.get(thread.id) ?? (input.kind === 'n8n_chat' ? N8N_CHAT_PRODUCTION_SOURCE : '');
+		const source = sources.get(thread.id);
 		if (
 			thread.projectId !== input.projectId ||
 			thread.agentId !== input.agentId ||

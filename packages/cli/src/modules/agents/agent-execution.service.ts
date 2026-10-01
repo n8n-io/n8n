@@ -901,13 +901,7 @@ export class AgentExecutionService {
 			if (!options.previewChat) return canUseTopLevelDraftThread(thread, userId);
 
 			const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-			const source = sources.get(threadId);
-			if (
-				!source &&
-				!(await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId)))
-			)
-				return false;
-			return canContinueThreadInPreview(thread, userId, source);
+			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
 		if (options.sessionMode === 'existing') return false;
 		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
@@ -920,11 +914,15 @@ export class AgentExecutionService {
 		userId: string,
 		sessionMode: AgentSessionMode,
 	): Promise<boolean> {
-		const resourceId = productionChatMemoryResourceId(userId);
 		const thread = await this.findThreadById(threadId);
 		if (!thread)
 			return (
-				sessionMode === 'new' && (await this.canUseUnrecordedThread(threadId, agentId, resourceId))
+				sessionMode === 'new' &&
+				(await this.canUseUnrecordedThread(
+					threadId,
+					agentId,
+					productionChatMemoryResourceId(userId),
+				))
 			);
 		if (
 			thread.projectId !== projectId ||
@@ -933,13 +931,10 @@ export class AgentExecutionService {
 		)
 			return false;
 		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-		const source = sources.get(threadId);
-		// A session whose only queued message was removed has no source. Its memory scope decides.
-		if (!source) return await this.canUseUnrecordedThread(threadId, agentId, resourceId);
-		return canContinueThreadInN8nChat(thread, userId, source);
+		return canContinueThreadInN8nChat(thread, userId, sources.get(threadId));
 	}
 
-	/** A session without a recorded source belongs to the memory scope that created it. */
+	/** A session ID without a thread is free only when no other memory scope uses it. */
 	private async canUseUnrecordedThread(
 		threadId: string,
 		agentId: string,

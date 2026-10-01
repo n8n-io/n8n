@@ -7,7 +7,6 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
-import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
@@ -244,17 +243,16 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.getRawMany<{ threadId: string; source: string }>();
 
 		const sources = new Map(rows.map((r) => [r.threadId, r.source]));
-		const queuedOnly = threadIds.filter((id) => !sources.has(id));
-		if (queuedOnly.length === 0) return sources;
-		// A thread whose first message is still queued has no execution yet. Its input names the surface.
-		const queued = await this.managerFor(ctx).find(AgentMessageQueue, {
-			where: { threadId: In(queuedOnly) },
-			relations: { message: true },
-			order: { id: 'ASC' },
+		const unrecorded = threadIds.filter((id) => !sources.has(id));
+		if (unrecorded.length === 0) return sources;
+		// Accepted input keeps its origin after removal from the queue. It names the surface before any execution.
+		const inputs = await this.managerFor(ctx).find(AgentMessageEntity, {
+			where: { threadId: In(unrecorded), origin: Not(IsNull()) },
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
-		for (const item of queued) {
-			const source = item.message.origin?.source;
-			if (source && !sources.has(item.threadId)) sources.set(item.threadId, source);
+		for (const input of inputs) {
+			const source = input.origin?.source;
+			if (source && !sources.has(input.threadId)) sources.set(input.threadId, source);
 		}
 		return sources;
 	}
