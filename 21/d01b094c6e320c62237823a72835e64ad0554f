@@ -1,0 +1,21 @@
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_bf5f9b5610d9e3::t_ca8b39604bb6a4 37
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_bf5f9b5610d9e3::t_63ebd70299b977 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21d01b094c6e320c62237823a72835e64ad0554f",
+  "prompts": {},
+  "sessions": {
+    "s_bf5f9b5610d9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfe894a7-c4bd-47d0-9b42-98b4f9b7307f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
