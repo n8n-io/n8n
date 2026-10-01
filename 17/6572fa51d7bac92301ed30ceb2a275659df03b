@@ -1,0 +1,27 @@
+packages/cli/src/modules/ldap.ee/ldap.controller.ee.ts
+  s_5faaac1057ba03::t_62ba129a1b3554 10
+  s_5faaac1057ba03::t_d1836488386090 24
+  s_5faaac1057ba03::t_3daaf47d8ef95c 55
+packages/cli/src/public-api/v1/controllers/ldap.public.controller.ts
+  s_5faaac1057ba03::t_9dd6844ab3a397 57
+  s_5faaac1057ba03::t_f7b0e9a1e840dd 2,19
+  s_5faaac1057ba03::t_465cd529844628 38
+packages/cli/src/modules/ldap.ee/redact-ldap-config.ts
+  s_5faaac1057ba03::t_5ba0934d75bdec 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "176572fa51d7bac92301ed30ceb2a275659df03b",
+  "prompts": {},
+  "sessions": {
+    "s_5faaac1057ba03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "74c7eb69-dea4-4acf-a985-01e950ced5f9",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
