@@ -97,14 +97,20 @@ describe('AgentPlanService', () => {
 	it('restores typed plans and immutable revisions through a fresh service', async () => {
 		const first = task({ title: '研究 🔎' });
 		const second = task({ dependsOn: [first.id] });
-		const initial = await create(document(first, second));
+		const initial = await create({
+			...document(first, second),
+			presentation: { label: 'Researching', detail: 'Checking the first source.' },
+		});
 		const updated = await service.replacePlan(
 			{
 				threadId,
 				planId: initial.id,
 				expectedRevision: 1,
 				formatVersion: 1,
-				data: document({ ...first, status: 'done', resultSummary: 'Ready' }, second),
+				data: {
+					...document({ ...first, status: 'done', resultSummary: 'Ready' }, second),
+					presentation: { label: 'Research finished', detail: 'One source remains unchecked.' },
+				},
 			},
 			{},
 		);
@@ -138,6 +144,13 @@ describe('AgentPlanService', () => {
 				{},
 			),
 		).rejects.toThrow(AgentPlanWriteConflictError);
+		const closed = await fresh.closePlan({ threadId, planId: initial.id, expectedRevision: 2 }, {});
+		expect(closed.data).toEqual(updated.data);
+		expect(closed.data.items[1].status).toBe('pending');
+		expect(await fresh.findRevision(threadId, initial.id, 3, {})).toMatchObject({
+			data: updated.data,
+			closedAt: closed.closedAt,
+		});
 	});
 
 	it('stores fallback redirection in one revision and leaves no history after an invalid update', async () => {
