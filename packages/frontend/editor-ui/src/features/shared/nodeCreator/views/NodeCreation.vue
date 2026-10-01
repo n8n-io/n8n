@@ -312,6 +312,12 @@ function openCommandBar(event: MouseEvent) {
 	position: absolute;
 	top: var(--spacing--sm);
 	right: var(--spacing--sm);
+	background: var(--background--surface);
+	border: var(--border);
+	box-shadow: var(--shadow--xs);
+	border-radius: var(--radius--full);
+	padding: var(--spacing--5xs);
+	gap: var(--spacing--5xs);
 	pointer-events: all !important;
 }
 

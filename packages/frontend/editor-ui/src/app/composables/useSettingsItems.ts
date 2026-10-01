@@ -49,7 +49,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-users',
 				order: 30,
-				icon: 'user-round',
+				icon: 'user',
 				label: i18n.baseText('settings.users'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
@@ -90,7 +90,7 @@ export function useSettingsItems() {
 			{
 				id: 'settings-roles',
 				order: 60,
-				icon: 'user-round',
+				icon: 'users',
 				label: i18n.baseText('settings.roles'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),

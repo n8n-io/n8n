@@ -315,7 +315,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="medium"
+					size="xsmall"
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -404,7 +404,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="medium"
+					size="small"
 					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -432,6 +432,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .projects {
 	width: 100%;
 	align-items: start;
@@ -560,8 +562,7 @@ onBeforeUnmount(() => {
 	}
 
 	&:focus-visible {
-		outline: 1px solid var(--color--secondary);
-		outline-offset: -1px;
+		@include focus.focus-ring;
 	}
 }
 
@@ -610,10 +611,11 @@ onBeforeUnmount(() => {
 }
 
 .home {
-	padding: 0 var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 
 	&.collapsed {
 		border-bottom: var(--border);
+		padding-inline: var(--spacing--3xs);
 	}
 }
 
