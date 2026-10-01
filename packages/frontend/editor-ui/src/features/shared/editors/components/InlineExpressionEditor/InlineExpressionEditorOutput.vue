@@ -129,7 +129,7 @@ defineExpose({
 		align-items: center;
 		gap: var(--spacing--2xs);
 		color: var(--color--text--shade-1);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding: 0 var(--spacing--2xs);
 		padding-top: var(--spacing--2xs);
 	}
