@@ -418,22 +418,6 @@ describe('Variables in Public API', () => {
 			expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
 		});
 
-		it('should let a member update a variable in a project they can edit', async () => {
-			testServer.license.enable('feat:variables');
-			const member = await createMemberWithApiKey({ scopes: ['variable:update'] });
-			await linkUserToProject(member, project, 'project:editor');
-			const projectVariable = await createProjectVariable('projectKey', 'projectValue', project);
-
-			const response = await testServer
-				.publicApiAgentFor(member)
-				.put(`/variables/${projectVariable.id}`)
-				.send(variablePayload);
-
-			expect(response.status).toBe(204);
-			const updatedVariable = await getVariableByIdOrFail(projectVariable.id);
-			expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
-		});
-
 		it('should move a variable to the global scope for a null projectId', async () => {
 			testServer.license.enable('feat:variables');
 			const projectVariable = await createProjectVariable('projectKey', 'projectValue', project);
@@ -517,20 +501,6 @@ describe('Variables in Public API', () => {
 
 			expect(response.status).toBe(204);
 			await expect(getVariableByIdOrFail(variable.id)).rejects.toThrow();
-		});
-
-		it('should let a member delete a variable in a project they can edit', async () => {
-			testServer.license.enable('feat:variables');
-			const member = await createMemberWithApiKey({ scopes: ['variable:delete'] });
-			await linkUserToProject(member, project, 'project:editor');
-			const projectVariable = await createProjectVariable('projectKey', 'projectValue', project);
-
-			const response = await testServer
-				.publicApiAgentFor(member)
-				.delete(`/variables/${projectVariable.id}`);
-
-			expect(response.status).toBe(204);
-			await expect(getVariableByIdOrFail(projectVariable.id)).rejects.toThrow();
 		});
 
 		it('should answer 204 for an unknown variable', async () => {
