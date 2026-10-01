@@ -870,6 +870,10 @@ describe('ActiveExecutions', () => {
 			(sleep as Mock).mockImplementation(async () => await new Promise(() => {}));
 		});
 
+		afterEach(() => {
+			(sleep as Mock).mockReset();
+		});
+
 		test('resolves promptly on a worker instance', async () => {
 			const workerActiveExecutions = buildActiveExecutions('worker');
 			const executionId = await workerActiveExecutions.add(executionData);
