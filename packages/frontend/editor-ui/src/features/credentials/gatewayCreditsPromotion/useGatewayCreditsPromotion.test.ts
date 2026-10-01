@@ -63,53 +63,59 @@ describe('useGatewayCreditsPromotion', () => {
 	it('returns the text inside the window, by node type and by credential type', () => {
 		setup({ text: TEXT, startsAt: '2026-01-01T00:00:00Z', endsAt: '2026-10-10T00:00:00Z' });
 
-		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBe(TEXT);
-		expect(useGatewayCreditsPromotion({ credentialType: 'typeSafeAiApi' }).value).toBe(TEXT);
+		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).promotionText.value).toBe(TEXT);
+		expect(
+			useGatewayCreditsPromotion({ credentialType: 'typeSafeAiApi' }).promotionText.value,
+		).toBe(TEXT);
 	});
 
 	it('returns the text for the Tool variant', () => {
 		setup({ text: TEXT });
 
-		expect(useGatewayCreditsPromotion({ nodeType: `${NODE_TYPE}Tool` }).value).toBe(TEXT);
+		expect(useGatewayCreditsPromotion({ nodeType: `${NODE_TYPE}Tool` }).promotionText.value).toBe(
+			TEXT,
+		);
 	});
 
 	it('returns nothing when Gateway credits are disabled', () => {
 		setup({ text: TEXT });
 		setGatewayEnabled(false);
 
-		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBeUndefined();
+		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).promotionText.value).toBeUndefined();
 	});
 
 	it('returns nothing when the gateway does not support the node', () => {
 		setup({ text: TEXT });
 		gateway.supportedNodes = [];
 
-		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBeUndefined();
+		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).promotionText.value).toBeUndefined();
 	});
 
 	it('returns nothing before startsAt', () => {
 		setup({ text: TEXT, startsAt: '2026-07-01T00:00:00Z' });
 
-		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBeUndefined();
+		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).promotionText.value).toBeUndefined();
 	});
 
 	it('returns nothing after endsAt', () => {
 		setup({ text: TEXT, endsAt: '2026-05-01T00:00:00Z' });
 
-		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBeUndefined();
+		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).promotionText.value).toBeUndefined();
 	});
 
 	it('returns nothing when the text is null', () => {
 		setup({ text: null } as unknown as GatewayCreditsPromotion);
 
-		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).value).toBeUndefined();
+		expect(useGatewayCreditsPromotion({ nodeType: NODE_TYPE }).promotionText.value).toBeUndefined();
 	});
 
 	it('returns nothing by credential type when the gateway does not support the credential', () => {
 		setup({ text: TEXT });
 		gateway.supportedCredentialTypes = [];
 
-		expect(useGatewayCreditsPromotion({ credentialType: 'typeSafeAiApi' }).value).toBeUndefined();
+		expect(
+			useGatewayCreditsPromotion({ credentialType: 'typeSafeAiApi' }).promotionText.value,
+		).toBeUndefined();
 	});
 
 	it('skips an expired promotion on another node with the same credential', () => {
@@ -126,6 +132,8 @@ describe('useGatewayCreditsPromotion', () => {
 		});
 		gateway.supportedNodes = [NODE_TYPE, 'expired.node'];
 
-		expect(useGatewayCreditsPromotion({ credentialType: 'typeSafeAiApi' }).value).toBe(TEXT);
+		expect(
+			useGatewayCreditsPromotion({ credentialType: 'typeSafeAiApi' }).promotionText.value,
+		).toBe(TEXT);
 	});
 });

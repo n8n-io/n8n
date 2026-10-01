@@ -36,9 +36,7 @@ const quickConnect = computed(() => {
 	const pkg = packageName.value;
 	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
 });
-const gatewayCreditsPromotion = useGatewayCreditsPromotion(() =>
-	nodeTypeName.value ? { nodeType: nodeTypeName.value } : undefined,
-);
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: nodeTypeName });
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -186,8 +184,8 @@ onMounted(async () => {
 			:disclaimer="quickConnect?.disclaimer"
 		/>
 		<GatewayCreditsPromotion
-			v-if="gatewayCreditsPromotion"
-			:text="gatewayCreditsPromotion"
+			v-if="promotionText"
+			:text="promotionText"
 			:class="$style.gatewayCreditsPromotion"
 		/>
 		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />

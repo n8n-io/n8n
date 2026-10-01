@@ -120,9 +120,11 @@ const quickConnect = computed(() => {
 });
 
 // CommunityNodeInfo shows the promotion when community node details are open.
-const gatewayCreditsPromotion = useGatewayCreditsPromotion(() => {
-	const items = useViewStacks().activeViewStack.items;
-	return !communityNodeDetails.value && items?.length ? { nodeType: items[0].key } : undefined;
+const { promotionText } = useGatewayCreditsPromotion({
+	nodeType: () => {
+		const items = useViewStacks().activeViewStack.items;
+		return !communityNodeDetails.value && items?.length ? items[0].key : undefined;
+	},
 });
 
 const hasNoTriggerActions = computed(
@@ -282,13 +284,13 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
-		<div v-if="quickConnect || gatewayCreditsPromotion" :class="$style.banner">
+		<div v-if="quickConnect || promotionText" :class="$style.banner">
 			<QuickConnectBanner
 				v-if="quickConnect"
 				:text="quickConnect.text"
 				:disclaimer="quickConnect.disclaimer"
 			/>
-			<GatewayCreditsPromotion v-if="gatewayCreditsPromotion" :text="gatewayCreditsPromotion" />
+			<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>

@@ -283,15 +283,10 @@ const showQuickConnectBanner = computed(
 		!props.isEmbeddedInCanvas,
 );
 
-const gatewayCreditsPromotion = useGatewayCreditsPromotion(() =>
-	node.value ? { nodeType: node.value.type } : undefined,
-);
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
 const showGatewayCreditsPromotion = computed(
 	() =>
-		!!gatewayCreditsPromotion.value &&
-		!isReadOnly.value &&
-		!isDemoPreview.value &&
-		!props.isEmbeddedInCanvas,
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
 );
 
 const showNoParametersNotice = computed(
@@ -800,7 +795,7 @@ function handleSelectAction(params: INodeParameters) {
 					/>
 					<GatewayCreditsPromotion
 						v-if="showGatewayCreditsPromotion"
-						:text="gatewayCreditsPromotion ?? ''"
+						:text="promotionText ?? ''"
 						:class="$style.gatewayCreditsPromotion"
 					/>
 					<NodeCredentials

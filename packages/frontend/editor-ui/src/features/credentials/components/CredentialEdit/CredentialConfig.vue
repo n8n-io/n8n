@@ -131,9 +131,9 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
-const gatewayCreditsPromotion = useGatewayCreditsPromotion(() => ({
-	credentialType: props.credentialType.name,
-}));
+const { promotionText } = useGatewayCreditsPromotion({
+	credentialType: () => props.credentialType.name,
+});
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -466,7 +466,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:text="quickConnectBannerText"
 					:disclaimer="quickConnectOption?.disclaimer"
 				/>
-				<GatewayCreditsPromotion v-if="gatewayCreditsPromotion" :text="gatewayCreditsPromotion" />
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -476,7 +476,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</template>
 
 			<template v-else>
-				<GatewayCreditsPromotion v-if="gatewayCreditsPromotion" :text="gatewayCreditsPromotion" />
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<N8nCallout
 					v-if="
 						!isInstanceAiCredentialHelpAvailable &&

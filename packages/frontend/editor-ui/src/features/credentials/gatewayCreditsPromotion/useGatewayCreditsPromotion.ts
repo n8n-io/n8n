@@ -4,15 +4,22 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-type PromotionTarget = { nodeType: string } | { credentialType: string };
-
 const isActive = (promotion: GatewayCreditsPromotion | null | undefined, now: number) =>
 	!!promotion?.text?.trim() &&
 	(!promotion.startsAt || now >= Date.parse(promotion.startsAt)) &&
 	(!promotion.endsAt || now < Date.parse(promotion.endsAt));
 
-/** Returns the Gateway credits promotion text of a community node, or undefined when it does not apply. */
-export function useGatewayCreditsPromotion(target: MaybeRefOrGetter<PromotionTarget | undefined>) {
+/**
+ * Gateway credits promotion of a community node, looked up by node type or,
+ * when there is no node type, by credential type.
+ */
+export function useGatewayCreditsPromotion({
+	nodeType,
+	credentialType,
+}: {
+	nodeType?: MaybeRefOrGetter<string | undefined>;
+	credentialType?: MaybeRefOrGetter<string | undefined>;
+}) {
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const aiGatewayStore = useAiGatewayStore();
@@ -20,33 +27,34 @@ export function useGatewayCreditsPromotion(target: MaybeRefOrGetter<PromotionTar
 
 	if (isEnabled.value) void aiGatewayStore.fetchConfig();
 
-	const initialTarget = toValue(target);
 	// The credential modal can open before a workflow loads the community node catalog.
 	if (
 		isEnabled.value &&
-		initialTarget &&
-		'credentialType' in initialTarget &&
+		credentialType !== undefined &&
 		nodeTypesStore.vettedCommunityNodeTypes.size === 0
 	) {
 		void nodeTypesStore.fetchCommunityNodePreviews();
 	}
 
 	const communityNode = computed(() => {
-		const value = toValue(target);
-		if (!value) return undefined;
-		if ('nodeType' in value) return nodeTypesStore.communityNodeType(value.nodeType);
-		if (!aiGatewayStore.isCredentialTypeSupported(value.credentialType)) return undefined;
+		const nodeTypeName = toValue(nodeType);
+		if (nodeTypeName) return nodeTypesStore.communityNodeType(nodeTypeName);
+
+		const credentialTypeName = toValue(credentialType);
+		if (!credentialTypeName || !aiGatewayStore.isCredentialTypeSupported(credentialTypeName)) {
+			return undefined;
+		}
 		// Strapi serves node descriptions without `credentials`, so read them from the installed node type.
 		return [...nodeTypesStore.vettedCommunityNodeTypes.values()].find(
 			({ name, gatewayCreditsPromotion }) =>
 				isActive(gatewayCreditsPromotion, Date.now()) &&
 				nodeTypesStore
 					.getNodeType(name)
-					?.credentials?.some(({ name: credential }) => credential === value.credentialType),
+					?.credentials?.some(({ name: credential }) => credential === credentialTypeName),
 		);
 	});
 
-	return computed(() => {
+	const promotionText = computed(() => {
 		const node = communityNode.value;
 		if (
 			!isEnabled.value ||
@@ -58,4 +66,6 @@ export function useGatewayCreditsPromotion(target: MaybeRefOrGetter<PromotionTar
 		}
 		return node.gatewayCreditsPromotion?.text;
 	});
+
+	return { promotionText };
 }
