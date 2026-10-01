@@ -251,6 +251,56 @@ describe('GET /binary-data (execution ownership)', () => {
 			.expect(400);
 	});
 
+	// A trigger node writes its binary before the execution row exists, so the path
+	// carries the literal `temp` where an execution id normally sits. No execution
+	// row is created here: access comes from the workflow the path names.
+	test('lets the owner download a binary stored in the temp execution dir', async () => {
+		const workflow = await createWorkflow({}, victim);
+
+		await testServer
+			.authAgentFor(victim)
+			.get('/binary-data')
+			.query({
+				id: executionBinaryId(workflow.id, 'temp'),
+				action: 'download',
+				fileName,
+				mimeType,
+			})
+			.expect(200);
+	});
+
+	test('does not let a user download a binary from the temp dir of another workflow', async () => {
+		await createWorkflow({}, attacker);
+		const victimWorkflow = await createWorkflow({}, victim);
+
+		await testServer
+			.authAgentFor(attacker)
+			.get('/binary-data')
+			.query({
+				id: executionBinaryId(victimWorkflow.id, 'temp'),
+				action: 'download',
+				fileName,
+				mimeType,
+			})
+			.expect(404);
+	});
+
+	test('lets a user download a binary from the temp dir of a workflow shared with them', async () => {
+		const workflow = await createWorkflow({}, victim);
+		await shareWorkflowWithUsers(workflow, [attacker]);
+
+		await testServer
+			.authAgentFor(attacker)
+			.get('/binary-data')
+			.query({
+				id: executionBinaryId(workflow.id, 'temp'),
+				action: 'download',
+				fileName,
+				mimeType,
+			})
+			.expect(200);
+	});
+
 	test('lets the owner download a binary from their own soft-deleted execution', async () => {
 		const workflow = await createWorkflow({}, victim);
 		const execution = await createSuccessfulExecution(workflow);
@@ -323,6 +373,19 @@ describe('GET /binary-data (execution ownership)', () => {
 
 			await testServer
 				.authAgentFor(attacker)
+				.get('/binary-data')
+				.query({ id, action: 'download', fileName, mimeType })
+				.expect(404);
+		});
+
+		// A row keeps the temp placeholder in its source id and names no workflow,
+		// so there is nothing to authorize against, even for the owner.
+		test('denies a row that holds the temp placeholder as its source', async () => {
+			await createWorkflow({}, victim);
+			const id = await storeExecutionBinary('temp');
+
+			await testServer
+				.authAgentFor(victim)
 				.get('/binary-data')
 				.query({ id, action: 'download', fileName, mimeType })
 				.expect(404);

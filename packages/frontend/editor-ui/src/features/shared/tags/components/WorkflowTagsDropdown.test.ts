@@ -21,6 +21,7 @@ vi.mock('./TagsDropdown.vue', () => ({
 		name: 'TagsDropdown',
 		props: {
 			createEnabled: Boolean,
+			createBlockedI18nKey: String,
 			manageEnabled: Boolean,
 			allTags: Array,
 			isLoading: Boolean,
@@ -78,6 +79,31 @@ describe('WorkflowTagsDropdown — scope-derived props', () => {
 			renderComponent(WorkflowTagsDropdown, { props: { createEnabled: false } });
 
 			expect(capturedProps.at(-1)?.createEnabled).toBe(false);
+		});
+	});
+
+	describe('createBlockedI18nKey', () => {
+		it('is set when the consumer wants creation but tag:create is denied', () => {
+			withScopes('tag:update', 'tag:delete');
+			renderComponent(WorkflowTagsDropdown, { props: { createEnabled: true } });
+
+			expect(capturedProps.at(-1)?.createBlockedI18nKey).toBe('tagsDropdown.noPermissionToCreate');
+		});
+
+		it('is undefined when tag:create is granted', () => {
+			withScopes('tag:create');
+			renderComponent(WorkflowTagsDropdown, { props: { createEnabled: true } });
+
+			expect(capturedProps.at(-1)?.createBlockedI18nKey).toBeUndefined();
+		});
+
+		it('is undefined when the consumer turned creation off itself', () => {
+			// The workflow-list tag filter passes createEnabled: false deliberately;
+			// a permission note there would be a non-sequitur.
+			withScopes();
+			renderComponent(WorkflowTagsDropdown, { props: { createEnabled: false } });
+
+			expect(capturedProps.at(-1)?.createBlockedI18nKey).toBeUndefined();
 		});
 	});
 

@@ -8,6 +8,7 @@ import {
 	UpdateRolePublicDto,
 	roleSlugParamSchema,
 } from '@n8n/api-types';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -30,10 +31,8 @@ import {
 import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { NotFoundError } from '@n8n/errors';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
-import { RoleService } from '@/services/role.service';
 
 type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
 const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>
@@ -97,7 +96,7 @@ export class RolesPublicController {
 		};
 	}
 
-	@Get('/:slug')
+	@Get('/:roleSlug')
 	@ApiKeyScope('role:read')
 	@ApiSummary('Retrieve a role')
 	@ApiDescription(
@@ -109,11 +108,11 @@ export class RolesPublicController {
 	async getRole(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('slug', roleSlugParamSchema) slug: string,
+		@Param('roleSlug', roleSlugParamSchema) roleSlug: string,
 		@Query query: RoleListQueryPublicDto,
 	): Promise<RoleGetPublicDto> {
 		const { withUsageCount } = query;
-		const role = await this.roleService.getRole(slug, withUsageCount);
+		const role = await this.roleService.getRole(roleSlug, withUsageCount);
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
@@ -146,12 +145,13 @@ export class RolesPublicController {
 			userId: req.user.id,
 			roleSlug: role.slug,
 			scopes: role.scopes,
+			source: 'public-api',
 		});
 
 		return toRolePublicDto({ ...role, roleType: createRole.roleType });
 	}
 
-	@Put('/:slug')
+	@Put('/:roleSlug')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	@ApiSummary('Update a custom role')
@@ -164,10 +164,10 @@ export class RolesPublicController {
 	async updateRole(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('slug', roleSlugParamSchema) slug: string,
+		@Param('roleSlug', roleSlugParamSchema) roleSlug: string,
 		@Body updateRole: UpdateRolePublicDto,
 	): Promise<RolePublicDto> {
-		const role = await this.roleService.getRole(slug);
+		const role = await this.roleService.getRole(roleSlug);
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
@@ -179,7 +179,7 @@ export class RolesPublicController {
 		});
 
 		const result = await this.roleService.updateCustomRole({
-			slug,
+			slug: roleSlug,
 			newRole: updateRole,
 			userId: req.user.id,
 		});
@@ -187,7 +187,7 @@ export class RolesPublicController {
 		return toRolePublicDto({ ...result, roleType: role.roleType });
 	}
 
-	@Delete('/:slug')
+	@Delete('/:roleSlug')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	@ApiSummary('Delete a custom role')
@@ -200,10 +200,10 @@ export class RolesPublicController {
 	async deleteRole(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('slug', roleSlugParamSchema) slug: string,
+		@Param('roleSlug', roleSlugParamSchema) roleSlug: string,
 		@Query query: RoleDeleteQueryDto,
 	): Promise<RolePublicDto> {
-		const role = await this.roleService.getRole(slug);
+		const role = await this.roleService.getRole(roleSlug);
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
@@ -221,7 +221,7 @@ export class RolesPublicController {
 			: undefined;
 
 		const result = await this.roleService.removeCustomRole({
-			slug,
+			slug: roleSlug,
 			reassignRoleSlug,
 			userId: req.user.id,
 		});

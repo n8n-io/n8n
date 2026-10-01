@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { computed, defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
@@ -14,16 +14,17 @@ import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 
-// Toggleable state for the 094 experiment and easy-setup detection.
+// Toggleable state for the "Set up automatically" switch and easy-setup detection.
 const experiment = vi.hoisted(() => ({ enabled: false }));
 const easySetup = vi.hoisted(() => ({ available: false }));
 const mockTelemetryTrack = vi.hoisted(() => vi.fn());
 const mockBrowserModalOpened = vi.hoisted(() => vi.fn());
 
-vi.mock('@/experiments/instanceAiBrowserCredentialSetup', () => ({
-	useInstanceAiBrowserCredentialSetupExperiment: () => ({
-		isFeatureEnabled: computed(() => experiment.enabled),
-	}),
+vi.mock('../constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../constants')>()),
+	get INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED() {
+		return experiment.enabled;
+	},
 }));
 
 vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
@@ -101,7 +102,7 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
-		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues'],
+		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues', 'credentials'],
 		emits: ['credentialSelected'],
 		setup(props: { overrideCredType: string }, { emit }: { emit: Function }) {
 			const onClick = () => {
@@ -113,7 +114,8 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 			};
 			return { onClick };
 		},
-		template: '<div data-test-id="credential-picker" @click="onClick" />',
+		template:
+			'<div data-test-id="credential-picker" :data-cred-count="credentials ? credentials.length : 0" @click="onClick" />',
 	},
 }));
 
@@ -359,6 +361,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 				'project-1',
 				expect.stringContaining('fal.ai API Key'),
+				{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 				{ source: 'credential_edit', origin: 'internal' },
 				undefined,
 				undefined,
@@ -384,6 +387,43 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(getByText('Reason for type 1')).toBeTruthy();
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
+		});
+
+		// AGENT-799: the reusable-credentials dropdown must render from the
+		// backend-supplied existingCredentials list even when the shared
+		// usable-credentials slice is empty (e.g. a competing scoped fetch on the
+		// canvas cleared it, or no projectId was available to scope the fetch).
+		it('renders the picker from payload existingCredentials when the usable slice is empty', () => {
+			const credentialsStore = useCredentialsStore();
+			// Slice empty — the pre-fix bug: the card would render the setup button
+			// instead of the picker.
+			stubUsableCredentials(credentialsStore, () => []);
+
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'linearApi',
+					reason: 'For the Linear tool',
+					existingCredentials: [
+						{ id: 'lin-1', name: 'Linear Team' },
+						{ id: 'lin-2', name: 'Personal Linear' },
+					],
+				},
+			];
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			const picker = getByTestId('credential-picker');
+			expect(picker).toBeTruthy();
+			// The setup button must not render alongside the picker.
+			expect(queryByTestId('instance-ai-credential-setup-button')).toBeNull();
+			// The backend-supplied list is forwarded to the picker verbatim.
+			expect(picker.getAttribute('data-cred-count')).toBe('2');
 		});
 	});
 
@@ -856,7 +896,7 @@ describe('InstanceAiCredentialSetup', () => {
 		});
 	});
 
-	describe('browser-use setup choice (094 experiment)', () => {
+	describe('browser-use setup choice', () => {
 		let settingsStore: ReturnType<typeof useInstanceAiSettingsStore>;
 
 		beforeEach(() => {
@@ -866,6 +906,8 @@ describe('InstanceAiCredentialSetup', () => {
 			mockBrowserModalOpened.mockClear();
 
 			settingsStore = useInstanceAiSettingsStore();
+			// @ts-expect-error Getters are writable in testing pinia
+			settingsStore.isBrowserUseAvailable = true;
 			vi.spyOn(settingsStore, 'fetchBrowserStatus').mockResolvedValue(undefined);
 			settingsStore.browserConnected = false;
 			settingsStore.browserStatusLoaded = true;
@@ -894,6 +936,17 @@ describe('InstanceAiCredentialSetup', () => {
 					browser_connection_state: 'disconnected',
 				}),
 			);
+		});
+
+		it('hides the choice when Browser Use is unavailable', () => {
+			experiment.enabled = true;
+			// @ts-expect-error Getters are writable in testing pinia
+			settingsStore.isBrowserUseAvailable = false;
+
+			const { queryByTestId, getByTestId } = renderCard(makeCredentialRequests(1));
+
+			expect(queryByTestId('setup-choice-ai')).toBeNull();
+			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
 		});
 
 		it('reports the connected state on the shown event', () => {

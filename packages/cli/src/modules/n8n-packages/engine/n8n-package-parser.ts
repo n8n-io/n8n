@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
@@ -137,8 +137,7 @@ export class N8nPackageParser {
 		WorkflowHelpers.validateWorkflowStructure(entity);
 		this.normalizeNodeGroups(entity, path);
 
-		// Read from `wire` only past `deserialize`, which is what validates it.
-		const sourcePublished = derivePublishedState(metadata, wire.versionId);
+		const sourcePublished = derivePublishedState(metadata);
 
 		return {
 			entity,
@@ -146,6 +145,7 @@ export class N8nPackageParser {
 			parentFolderId,
 			sourceArchived: entity.isArchived,
 			...(sourcePublished !== undefined ? { sourcePublished } : {}),
+			// Read from `wire` only past `deserialize`, which is what validates it.
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}

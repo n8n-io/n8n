@@ -2,7 +2,7 @@ import { EXPERIMENTS_TO_TRACK, MCP_JSON_NUDGE_EXPERIMENT } from '@/app/constants
 import { MCP_JSON_NUDGE_CALLOUT } from '@/experiments/mcpJsonNudge/constants';
 
 const mockMcpStore = vi.hoisted(() => ({ mcpAccessEnabled: false }));
-const mockIsFeatureEnabled = vi.hoisted(() => vi.fn());
+const mockIsVariantEnabled = vi.hoisted(() => vi.fn());
 const mockIsCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockSetCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockCurrentUser = vi.hoisted<{ settings: Record<string, unknown> }>(() => ({ settings: {} }));
@@ -13,7 +13,7 @@ vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
 }));
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: mockIsFeatureEnabled }),
+	usePostHog: () => ({ isVariantEnabled: mockIsVariantEnabled }),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -30,7 +30,7 @@ import { useMcpJsonNudgeEligibility } from './useMcpJsonNudgeEligibility';
 describe('useMcpJsonNudgeEligibility', () => {
 	beforeEach(() => {
 		mockMcpStore.mcpAccessEnabled = false;
-		mockIsFeatureEnabled.mockReset().mockReturnValue(true);
+		mockIsVariantEnabled.mockReset().mockReturnValue(true);
 		mockIsCalloutDismissed.mockReset().mockReturnValue(false);
 		mockSetCalloutDismissed.mockClear();
 		mockCurrentUser.settings = {};
@@ -39,6 +39,14 @@ describe('useMcpJsonNudgeEligibility', () => {
 
 	it('is registered in EXPERIMENTS_TO_TRACK', () => {
 		expect(EXPERIMENTS_TO_TRACK).toContain(MCP_JSON_NUDGE_EXPERIMENT.name);
+	});
+
+	// The PostHog flag is multivariate, and its enabled arm is the variant key
+	// `variant`, matching every other multivariate experiment here. A drift
+	// between this spelling and the flag's would make the nudge unreachable for
+	// every user, with no error to show for it.
+	it("names the flag's enabled arm `variant`", () => {
+		expect(MCP_JSON_NUDGE_EXPERIMENT.variant).toBe('variant');
 	});
 
 	describe('canShow', () => {
@@ -55,8 +63,19 @@ describe('useMcpJsonNudgeEligibility', () => {
 			expect(canShow()).toBe(false);
 		});
 
-		it('returns false when the feature flag is off', () => {
-			mockIsFeatureEnabled.mockReturnValue(false);
+		it('asks PostHog whether the user is in the enabled variant of the flag', () => {
+			const { canShow } = useMcpJsonNudgeEligibility();
+
+			canShow();
+
+			expect(mockIsVariantEnabled).toHaveBeenCalledWith(
+				MCP_JSON_NUDGE_EXPERIMENT.name,
+				MCP_JSON_NUDGE_EXPERIMENT.variant,
+			);
+		});
+
+		it('returns false when the user is not in the enabled variant (control or unassigned)', () => {
+			mockIsVariantEnabled.mockReturnValue(false);
 			const { canShow } = useMcpJsonNudgeEligibility();
 
 			expect(canShow()).toBe(false);
@@ -85,6 +104,33 @@ describe('useMcpJsonNudgeEligibility', () => {
 			const { canShow } = useMcpJsonNudgeEligibility();
 
 			expect(canShow()).toBe(expected);
+		});
+	});
+
+	// The exposed population of the experiment: everyone who would see the nudge
+	// but for their arm. The trigger reports exposure off this, so it must NOT
+	// consult the flag.
+	describe('isEligibleApartFromExperiment', () => {
+		it('ignores the experiment arm', () => {
+			mockIsVariantEnabled.mockReturnValue(false);
+			const { isEligibleApartFromExperiment } = useMcpJsonNudgeEligibility();
+
+			expect(isEligibleApartFromExperiment()).toBe(true);
+			expect(mockIsVariantEnabled).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['MCP is already enabled for the instance', () => (mockMcpStore.mcpAccessEnabled = true)],
+			[
+				'the impression cap is reached',
+				() => (mockCurrentUser.settings = { mcpJsonNudge: { impressions: 2 } }),
+			],
+			['the user opted out', () => mockIsCalloutDismissed.mockReturnValue(true)],
+		])('returns false when %s', (_label, arrange) => {
+			arrange();
+			const { isEligibleApartFromExperiment } = useMcpJsonNudgeEligibility();
+
+			expect(isEligibleApartFromExperiment()).toBe(false);
 		});
 	});
 

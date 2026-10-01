@@ -15,17 +15,17 @@ import {
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
-	N8nToggle,
 } from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system';
+import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 import AgentPublishButton from './AgentPublishButton.vue';
-import AgentValidationTooltip from './AgentValidationTooltip.vue';
+import AgentPreviewButton from './AgentPreviewButton.vue';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -34,6 +34,7 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	projectName: string | null;
+	projectIcon: IconOrEmoji;
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
@@ -61,6 +62,7 @@ const i18n = useI18n();
 const router = useRouter();
 const $style = useCssModule();
 
+const { createAgent } = useCreateAgent();
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
 	if (props.artifactMode) return;
@@ -83,15 +85,6 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
-const previewLabel = computed(() =>
-	props.isPreviewOpen
-		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
-		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
-);
-const previewDisabledTooltip = computed(() =>
-	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
-);
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
 	const others = list.filter((a) => a.id !== props.agentId);
@@ -116,20 +109,12 @@ function onSwitcherSelect(id: string) {
 }
 
 function onCreateAgent() {
-	void router.push(instanceAiCreateAgentRoute(props.projectId));
+	createAgent('dropdown', props.projectId);
 }
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id !== props.projectId) return;
 	void router.push(projectRoute.value);
-}
-
-function onPreviewClick() {
-	if (props.isPreviewOpen) {
-		emit('close-preview');
-		return;
-	}
-	if (!isPreviewDisabled.value) emit('open-preview');
 }
 
 /**
@@ -170,6 +155,9 @@ function onMenuSelect(id: string) {
 				theme="medium"
 				@item-selected="onBreadcrumbSelect"
 			>
+				<template #prepend>
+					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
+				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -226,7 +214,7 @@ function onMenuSelect(id: string) {
 		</div>
 		<div :class="$style.right">
 			<span
-				v-if="saveStatus === 'saving' || saveStatus === 'saved'"
+				v-if="saveStatus && saveStatus !== 'idle'"
 				:class="$style.saveStatus"
 				data-testid="agent-header-save-status"
 			>
@@ -236,23 +224,14 @@ function onMenuSelect(id: string) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
-			<AgentValidationTooltip
-				:disabled="!isPreviewDisabled"
-				:fallback="previewDisabledTooltip"
-				action="preview"
-				:issues="props.configValidationIssues ?? []"
-			>
-				<N8nToggle
-					:model-value="props.isPreviewOpen"
-					variant="ghost"
-					size="medium"
-					icon="play"
-					:label="previewLabel"
-					:disabled="isPreviewDisabled"
-					data-testid="agent-header-preview-btn"
-					@click="onPreviewClick"
-				/>
-			</AgentValidationTooltip>
+			<AgentPreviewButton
+				:is-runnable="props.agent?.isRunnable === true"
+				:is-preview-open="props.isPreviewOpen"
+				:validation-issues="props.configValidationIssues ?? []"
+				test-id="agent-header-preview-btn"
+				@open-preview="emit('open-preview')"
+				@close-preview="emit('close-preview')"
+			/>
 			<AgentPublishButton
 				:agent="agent"
 				:project-id="projectId"
@@ -279,7 +258,7 @@ function onMenuSelect(id: string) {
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--height--4xl);
+	height: var(--n8n--agent-builder-header-height, var(--height--4xl));
 	overflow-x: auto;
 	overflow-y: hidden;
 	scrollbar-width: thin;
@@ -295,6 +274,10 @@ function onMenuSelect(id: string) {
 
 .left :global(.n8n-breadcrumbs) {
 	min-width: max-content;
+}
+
+.left :global(.n8n-breadcrumbs > ul > li:first-child) {
+	display: none;
 }
 
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {

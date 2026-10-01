@@ -1,0 +1,131 @@
+operationId: getInsightsSummary
+tags:
+  - Insights
+summary: Retrieve insights summary
+description: Retrieve the insights summary for the selected date range.
+x-required-scope: insights:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: date-time
+      description: ISO 8601 start date. Defaults to 7 days ago.
+    required: false
+    name: startDate
+    in: query
+  - schema:
+      type: string
+      format: date-time
+      description: ISO 8601 end date. Defaults to now.
+    required: false
+    name: endDate
+    in: query
+  - schema:
+      type: string
+      description: Project identifier to filter insights by project.
+      example: VmwOO9HeTEj20kxM
+    required: false
+    name: projectId
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            total:
+              type: object
+              properties:
+                value:
+                  type: number
+                deviation:
+                  type: number
+                  nullable: true
+                unit:
+                  type: string
+                  enum:
+                    - count
+              required:
+                - value
+                - deviation
+                - unit
+            failed:
+              type: object
+              properties:
+                value:
+                  type: number
+                deviation:
+                  type: number
+                  nullable: true
+                unit:
+                  type: string
+                  enum:
+                    - count
+              required:
+                - value
+                - deviation
+                - unit
+            failureRate:
+              type: object
+              properties:
+                value:
+                  type: number
+                deviation:
+                  type: number
+                  nullable: true
+                unit:
+                  type: string
+                  enum:
+                    - ratio
+              required:
+                - value
+                - deviation
+                - unit
+            timeSaved:
+              type: object
+              properties:
+                value:
+                  type: number
+                deviation:
+                  type: number
+                  nullable: true
+                unit:
+                  type: string
+                  enum:
+                    - minute
+              required:
+                - value
+                - deviation
+                - unit
+            averageRunTime:
+              type: object
+              properties:
+                value:
+                  type: number
+                deviation:
+                  type: number
+                  nullable: true
+                unit:
+                  type: string
+                  enum:
+                    - millisecond
+              required:
+                - value
+                - deviation
+                - unit
+          required:
+            - total
+            - failed
+            - failureRate
+            - timeSaved
+            - averageRunTime
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

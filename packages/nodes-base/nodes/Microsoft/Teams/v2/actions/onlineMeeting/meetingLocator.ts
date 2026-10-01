@@ -1,8 +1,8 @@
 import { type IDataObject, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 
-import { odataStringLiteral } from '@utils/microsoft/odata';
+import { escapeODataValue } from '@utils/query-escaping';
 
-import { meetingRequest } from './shared';
+import { meetingRequest, meetingsPath } from './shared';
 
 const isLocator = (value: unknown): value is { mode: unknown; value: unknown } =>
 	typeof value === 'object' && value !== null && 'mode' in value && 'value' in value;
@@ -21,6 +21,7 @@ export function readMeetingLocator(
 
 export async function fetchMeetingByJoinUrl(
 	this: IExecuteFunctions,
+	i: number,
 	joinWebUrl: string,
 ): Promise<IDataObject> {
 	if (!joinWebUrl) {
@@ -31,11 +32,9 @@ export async function fetchMeetingByJoinUrl(
 	const response = await meetingRequest.call(
 		this,
 		'GET',
-		'/v1.0/me/onlineMeetings',
+		await meetingsPath.call(this, i),
 		{},
-		{
-			$filter: `JoinWebUrl eq ${odataStringLiteral(joinWebUrl)}`,
-		},
+		{ $filter: `JoinWebUrl eq '${escapeODataValue(joinWebUrl)}'` },
 	);
 	const meeting = response?.value?.[0];
 	if (!meeting) {
@@ -49,6 +48,6 @@ export async function fetchMeetingByJoinUrl(
 export async function resolveMeetingId(this: IExecuteFunctions, i: number): Promise<string> {
 	const { mode, value } = readMeetingLocator.call(this, i);
 	if (mode !== 'url') return value;
-	const meeting = await fetchMeetingByJoinUrl.call(this, value);
+	const meeting = await fetchMeetingByJoinUrl.call(this, i, value);
 	return asText(meeting.id);
 }

@@ -13,10 +13,12 @@ import {
 	type CredentialsEntity,
 	CredentialsRepository,
 	type Folder,
+	generateNanoId,
 	type Project,
 	type TagEntity,
 	TagRepository,
 	type User,
+	VariablesRepository,
 	type WorkflowEntity,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
@@ -51,6 +53,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
+import { createVariable } from '@test-integration/db/variables';
 
 import { createCredentials, saveCredential } from '../shared/db/credentials';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
@@ -73,6 +76,7 @@ describe('SourceControlImportService', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let userRepository: UserRepository;
 	let folderRepository: FolderRepository;
+	let variablesRepository: VariablesRepository;
 	let service: SourceControlImportService;
 	let workflowRepository: WorkflowRepository;
 	let tagRepository: TagRepository;
@@ -95,6 +99,7 @@ describe('SourceControlImportService', () => {
 		sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		userRepository = Container.get(UserRepository);
 		folderRepository = Container.get(FolderRepository);
+		variablesRepository = Container.get(VariablesRepository);
 		workflowRepository = Container.get(WorkflowRepository);
 		tagRepository = Container.get(TagRepository);
 		workflowTagMappingRepository = Container.get(WorkflowTagMappingRepository);
@@ -107,8 +112,8 @@ describe('SourceControlImportService', () => {
 		// The repository verifies the token, so it has to be a real one. With no backend
 		// registered the real service clears everything, which is what a default pull does.
 		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
-			async (context) =>
-				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+			async (context, actor) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
 		service = new SourceControlImportService(
 			mock(),
@@ -121,7 +126,7 @@ describe('SourceControlImportService', () => {
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			userRepository,
-			mock(),
+			variablesRepository,
 			workflowRepository,
 			workflowTagMappingRepository,
 			mock(),
@@ -156,6 +161,7 @@ describe('SourceControlImportService', () => {
 			'WorkflowEntity',
 			'CredentialsEntity',
 			'TagEntity',
+			'Variables',
 		]);
 
 		vi.restoreAllMocks();
@@ -705,6 +711,23 @@ describe('SourceControlImportService', () => {
 			expect(new Set(versions.map((v) => v.id))).toEqual(
 				new Set([...teamACredentials.map((w) => w.id), ...teamBCredentials.map((w) => w.id)]),
 			);
+		});
+
+		it('should leave out credentials whose authorization is still pending', async () => {
+			const pending = await createCredentials(
+				{ name: 'pending', data: '', type: 'test' },
+				teamProjectA,
+			);
+			await credentialsRepository.update(pending.id, {
+				pendingAuthorizationExpiresAt: new Date(Date.now() + 60_000),
+			});
+
+			const versions = await service.getLocalCredentialsFromDb(
+				await sourceControlContextFactory.createContext(instanceOwner),
+			);
+
+			expect(versions.map((v) => v.id)).not.toContain(pending.id);
+			expect(versions).toHaveLength(teamACredentials.length + teamBCredentials.length);
 		});
 
 		it('should only get all available credentials from the team project, for a project admin', async () => {
@@ -1368,6 +1391,31 @@ describe('SourceControlImportService', () => {
 			// Tags themselves should still exist
 			const tagsInDb = await tagRepository.find();
 			expect(tagsInDb).toHaveLength(2);
+		});
+	});
+
+	describe('importVariables()', () => {
+		it('creates a brand-new variable with an empty value, not NULL', async () => {
+			// A remote stub never carries the real value (source control never syncs
+			// values), and this key has no matching local row, e.g. after a push
+			// followed by a local delete.
+			const id = generateNanoId();
+
+			await service.importVariables([{ id, key: 'NEW_VAR', type: 'string', value: '' }]);
+
+			const variable = await variablesRepository.findOneByOrFail({ id });
+			expect(variable.value).toBe('');
+		});
+
+		it('does not overwrite an existing variable value with an empty remote stub', async () => {
+			const existing = await createVariable('EXISTING_VAR', 'keep-me');
+
+			await service.importVariables([
+				{ id: existing.id, key: existing.key, type: existing.type, value: '' },
+			]);
+
+			const variable = await variablesRepository.findOneByOrFail({ id: existing.id });
+			expect(variable.value).toBe('keep-me');
 		});
 	});
 
@@ -2049,11 +2097,14 @@ describe('SourceControlImportService', () => {
 				);
 
 				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
-				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
-					projectId: importingUserProject.id,
-					transport: 'source-control',
-				});
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+					{
+						workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+						projectId: importingUserProject.id,
+						transport: 'source-control',
+					},
+					{ kind: 'user', user: { id: importingUser.id } },
+				);
 			});
 
 			it('skips a blocked workflow, attaches the reason, and persists nothing', async () => {

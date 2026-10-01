@@ -1,5 +1,6 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CacheService, EventService } from '@n8n/backend-services';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -18,9 +19,7 @@ import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { BadRequestError } from '@n8n/errors';
 
 import { PasswordUtility } from './password.utility';
 
@@ -126,23 +125,43 @@ export class OwnershipService {
 	 * Personal project ownership is **immutable**.
 	 */
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
-		const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
-			'project-owner',
-			projectId,
+		const owners = await this.getPersonalProjectOwnersCached([projectId]);
+		return owners.get(projectId) ?? null;
+	}
+
+	async getPersonalProjectOwnersCached(projectIds: string[]): Promise<Map<string, User>> {
+		const ownerByProjectId = new Map<string, User>();
+		const cacheResults = await Promise.all(
+			[...new Set(projectIds)].map(async (projectId) => {
+				const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
+					'project-owner',
+					projectId,
+				);
+				return {
+					projectId,
+					owner: cachedValue ? this.reconstructUser(cachedValue) : undefined,
+				};
+			}),
 		);
-
-		if (cachedValue) {
-			const user = this.reconstructUser(cachedValue);
-			if (user) return user;
+		for (const { projectId, owner } of cacheResults) {
+			if (owner) ownerByProjectId.set(projectId, owner);
 		}
+		const projectIdsToFetch = cacheResults
+			.filter(({ owner }) => !owner)
+			.map(({ projectId }) => projectId);
 
-		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
-		const owner = ownerRel[0]?.user ?? null;
-		if (owner) {
-			void this.cacheService.setHash('project-owner', { [projectId]: this.copyUser(owner) });
+		if (projectIdsToFetch.length === 0) return ownerByProjectId;
+
+		const ownerRelations =
+			await this.projectRelationRepository.getPersonalProjectOwners(projectIdsToFetch);
+		const ownersToCache: Record<string, Partial<User>> = {};
+		for (const { projectId, user } of ownerRelations) {
+			ownerByProjectId.set(projectId, user);
+			ownersToCache[projectId] = this.copyUser(user);
 		}
+		void this.cacheService.setHash('project-owner', ownersToCache);
 
-		return owner;
+		return ownerByProjectId;
 	}
 
 	async invalidateProjectOwnerCacheByUserId(userId: string) {

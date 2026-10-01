@@ -16,6 +16,7 @@ export const ENFORCEMENT_POINTS = [
 	'workflowPublish',
 	'workflowStart',
 	'workflowTransfer',
+	'credentialSave',
 	'credentialDecrypt',
 	'contentImport',
 ] as const;
@@ -78,6 +79,32 @@ export type WorkflowTransferContext = {
 	readonly targetProjectId: string | null;
 };
 
+/**
+ * The credential as a policy check sees it: its id and its type, nothing else.
+ *
+ * A check never needs the name or the data, and a type this narrow keeps the secret out of
+ * the policy layer altogether.
+ */
+export type PolicedCredential = {
+	/** `null` for a new credential — it has no id until it's saved. */
+	readonly id: string | null;
+	readonly type: string;
+};
+
+export type CredentialSaveContext = {
+	readonly credential: PolicedCredential;
+	/**
+	 * The stored credential this save replaces, or `null` for a new one.
+	 *
+	 * Loaded from the database by the host, never taken from the request. A check compares the
+	 * two types so an edit that keeps a now-blocked type is grandfathered, while a switch to a
+	 * blocked type is not.
+	 */
+	readonly storedCredential: PolicedCredential | null;
+	/** The owning project; `null` for an instance-scoped credential. */
+	readonly projectId: string | null;
+};
+
 export type CredentialDecryptContext = {
 	readonly credentialType: string;
 	readonly credentialId: string;
@@ -95,11 +122,16 @@ export type CredentialDecryptContext = {
  */
 export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
 
+/**
+ * What's being imported, plus where it's landing and how it arrived.
+ *
+ * Exactly one of `workflow` / `credential` is set; narrow with `'workflow' in context`. No
+ * `?: never` on the other arm, because that breaks the `in` narrowing.
+ */
 export type ContentImportContext = {
-	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
 	readonly transport: ContentImportTransport;
-};
+} & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
 
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {
@@ -184,6 +216,7 @@ export interface RegisteredPolicyCheck {
 		ctx: WorkflowTransferContext,
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
+	onCredentialSave?(ctx: CredentialSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onCredentialDecrypt?(
 		ctx: CredentialDecryptContext,
 		signal: AbortSignal,
@@ -208,6 +241,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	workflowPublish: 'onWorkflowPublish',
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
+	credentialSave: 'onCredentialSave',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
 };

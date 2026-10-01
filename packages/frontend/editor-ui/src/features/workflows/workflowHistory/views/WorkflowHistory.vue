@@ -319,7 +319,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 
 				if (success) {
 					// Refresh the published workflow to get the latest publishedVersion from workflowPublishHistory
-					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value) ?? null;
 
 					// Update the history list with the new name, description, and workflowPublishHistory
 					const historyItem = workflowHistory.value.find(
@@ -377,7 +377,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 			return;
 		}
 
-		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value) ?? null;
 
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
@@ -625,7 +625,7 @@ watchEffect(async () => {
 				{{ publishedWorkflow?.name }}
 			</N8nHeading>
 			<span v-if="publishedWorkflow?.isArchived">
-				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
+				<N8nBadge class="ml-s" variant="outline" data-test-id="workflow-archived-tag">
 					{{ i18n.baseText('workflows.item.archived') }}
 				</N8nBadge>
 			</span>

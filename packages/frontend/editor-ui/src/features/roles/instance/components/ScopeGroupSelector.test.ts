@@ -4,7 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import ScopeGroupSelector from './ScopeGroupSelector.vue';
 import { INSTANCE_SCOPE_GROUP_LIST, INSTANCE_SCOPE_GROUPS } from '../instanceRoleScopes';
+import {
+	GLOBAL_ADMIN_SCOPES,
+	GLOBAL_CHAT_USER_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+} from '@n8n/permissions';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { getTooltip } from '@/__tests__/utils';
 
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
@@ -15,6 +21,31 @@ describe('ScopeGroupSelector', () => {
 		expect(checkboxes).toHaveLength(totalOptions);
 		// leaf scopes are never rendered as their own controls
 		expect(container.querySelector('[data-test-id^="scope-checkbox-"]')).toBeNull();
+	});
+
+	it('renders the personal space block as the first card, outside the option count', () => {
+		const { container, getByTestId } = renderComponent(ScopeGroupSelector, {
+			props: { modelValue: [] },
+		});
+		const cards = container.querySelectorAll(
+			'[data-test-id="personal-space-card"], [data-test-id^="scope-option-"]',
+		);
+		expect(cards[0].getAttribute('data-test-id')).toBe('personal-space-card');
+		expect(getByTestId('personal-space-card').textContent).toContain('Personal space');
+		expect(getByTestId('personal-space-group-view').getAttribute('aria-checked')).toBe('true');
+		expect(getByTestId('personal-space-group-manage').getAttribute('aria-checked')).toBe('true');
+	});
+
+	it('keeps the personal space in its own card, apart from the instance permissions', () => {
+		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+		const personalSpace = getByTestId('personal-space-card');
+		const instancePermissions = getByTestId('instance-permissions-card');
+
+		expect(instancePermissions.contains(personalSpace)).toBe(false);
+		expect(personalSpace.querySelector('[data-test-id^="scope-option-"]')).toBeNull();
+		expect(instancePermissions.querySelectorAll('[data-test-id^="scope-option-"]')).toHaveLength(
+			totalOptions,
+		);
 	});
 
 	it('renders an unchecked option for an empty scope list', () => {
@@ -53,7 +84,7 @@ describe('ScopeGroupSelector', () => {
 		expect(scopes).toHaveLength(5);
 	});
 
-	it('emits the option scopes removed when toggling a checked option off', async () => {
+	it('downgrades to "View" when toggling a checked option off', async () => {
 		const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
 			props: {
 				modelValue: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete', 'user:read'],
@@ -64,7 +95,7 @@ describe('ScopeGroupSelector', () => {
 
 		await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
 		const [scopes] = emitted()['update:modelValue'][0] as [string[]];
-		expect(scopes).toEqual(['user:read']);
+		expect(scopes).toEqual(['user:read', 'tag:read', 'tag:list']);
 	});
 
 	it('completes the full resolved set when toggling an indeterminate option', async () => {
@@ -103,6 +134,65 @@ describe('ScopeGroupSelector', () => {
 		expect(getByText('Manage all roles (instance and project)')).toBeTruthy();
 	});
 
+	describe('credential group', () => {
+		it('renders the three credential rungs, all unchecked by default', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+			for (const slug of ['view', 'use', 'manage']) {
+				expect(getByTestId(`scope-option-credential-${slug}`).getAttribute('aria-checked')).toBe(
+					'false',
+				);
+			}
+		});
+
+		it('checks View and leaves Use and Manage unchecked, not mixed', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.View] },
+			});
+			expect(getByTestId('scope-option-credential-view').getAttribute('aria-checked')).toBe('true');
+			expect(getByTestId('scope-option-credential-use').getAttribute('aria-checked')).toBe('false');
+			expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+		});
+
+		it('disables View when Use is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Use] },
+			});
+			expect(getByTestId('scope-option-credential-view').getAttribute('aria-checked')).toBe('true');
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+		});
+
+		it('disables both View and Use when Manage is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Manage] },
+			});
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-manage')).not.toBeDisabled();
+		});
+
+		it('emits the Use scope set when Use is toggled on', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [] },
+			});
+			await userEvent.click(getByTestId('scope-option-credential-use'));
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(new Set(scopes)).toEqual(new Set(INSTANCE_SCOPE_GROUPS.credential.Use));
+		});
+
+		it('downgrades Manage to Use when Manage is toggled off', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Manage] },
+			});
+			await userEvent.click(getByTestId('scope-option-credential-manage'));
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(new Set(scopes)).toEqual(new Set(INSTANCE_SCOPE_GROUPS.credential.Use));
+		});
+	});
+
 	describe('privilege-escalation warning', () => {
 		it('renders the members warning when a user scope is selected', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
@@ -123,6 +213,26 @@ describe('ScopeGroupSelector', () => {
 				props: { modelValue: ['role:read', 'role:manageProject'] },
 			});
 			expect(getByTestId('scope-escalation-warning-role')).toBeTruthy();
+		});
+
+		it('renders the credentials warning when credential Manage is selected', () => {
+			// Manage carries `credential:update`, which also unlocks plaintext decrypt.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.credential.Manage] },
+			});
+			expect(getByTestId('scope-escalation-warning-credential')).toBeTruthy();
+		});
+
+		it('does not render the credentials warning for View or Use', () => {
+			for (const option of [
+				INSTANCE_SCOPE_GROUPS.credential.View,
+				INSTANCE_SCOPE_GROUPS.credential.Use,
+			]) {
+				const { queryByTestId } = renderComponent(ScopeGroupSelector, {
+					props: { modelValue: [...option] },
+				});
+				expect(queryByTestId('scope-escalation-warning-credential')).toBeNull();
+			}
 		});
 
 		it('does not render a warning for a non-escalating scope', () => {
@@ -204,14 +314,12 @@ describe('ScopeGroupSelector', () => {
 			);
 		});
 
-		it('keeps all four MCP/n8n Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
+		it('keeps "Mcp manage" and "AiAssistant manage" enabled (not implied) when "Manage all settings" is checked', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
 			});
 			for (const testId of [
-				'scope-option-settings-mcp-use',
 				'scope-option-settings-mcp-manage',
-				'scope-option-settings-aiassistant-use',
 				'scope-option-settings-aiassistant-manage',
 			]) {
 				const checkbox = getByTestId(testId);
@@ -220,24 +328,54 @@ describe('ScopeGroupSelector', () => {
 			}
 		});
 
-		it('unchecking "Mcp use" (not just "Mcp manage") turns "Manage all settings" off', async () => {
+		it('shows "Mcp use" and "AiAssistant use" as checked and disabled while their manage option is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+			for (const testId of [
+				'scope-option-settings-mcp-use',
+				'scope-option-settings-aiassistant-use',
+			]) {
+				const checkbox = getByTestId(testId);
+				expect(checkbox.getAttribute('aria-checked')).toBe('true');
+				expect(checkbox.hasAttribute('disabled')).toBe(true);
+			}
+		});
+
+		it('shows "Mcp manage" and "Manage all settings" as unchecked (not indeterminate) when only "Mcp use" is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings['Mcp use']] },
+			});
+			expect(getByTestId('scope-option-settings-mcp-use').getAttribute('aria-checked')).toBe(
+				'true',
+			);
+			expect(getByTestId('scope-option-settings-mcp-manage').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+		});
+
+		it('unchecking "Mcp manage" and then "Mcp use" clears MCP without touching the rest of the bundle', async () => {
 			const { getByTestId, emitted, rerender } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
 			});
 
-			await userEvent.click(getByTestId('scope-option-settings-mcp-use'));
-
+			// "Mcp use" is implied (disabled) while "Mcp manage" is checked, so the
+			// first click goes to "Mcp manage", which downgrades to "Mcp use".
+			await userEvent.click(getByTestId('scope-option-settings-mcp-manage'));
 			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
-			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
-			expect(scopes).not.toContain('mcp:oauth');
-			expect(scopes).toContain('securitySettings:manage');
+			const [afterManage] = emitted()['update:modelValue'][0] as [string[]];
+			expect(afterManage).not.toContain('mcp:manage');
+			expect(afterManage).toContain('mcp:oauth');
 
-			// v-model doesn't auto-sync in tests — re-render with the emitted value to
-			// prove the effect the title claims: the checkbox itself loses its checked state.
-			await rerender({ modelValue: scopes });
-			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).not.toBe(
-				'true',
-			);
+			await rerender({ modelValue: afterManage });
+			await userEvent.click(getByTestId('scope-option-settings-mcp-use'));
+			await waitFor(() => expect(emitted()['update:modelValue']).toHaveLength(2));
+			const [afterUse] = emitted()['update:modelValue'][1] as [string[]];
+			expect(afterUse).not.toContain('mcp:oauth');
+			expect(afterUse).toContain('securitySettings:manage');
 		});
 
 		it('unchecking "Mcp manage" turns "Manage all settings" off while "Manage all settings" was checked', async () => {
@@ -321,29 +459,120 @@ describe('ScopeGroupSelector', () => {
 		});
 	});
 
-	describe('mandatory "Users: View" option', () => {
-		// The caller (InstanceRoleView's `withMandatoryInstanceScopes`) is what
-		// guarantees these scopes are always in `modelValue` — the selector itself
-		// stays a pure function of its props, same as every other option.
-		const withUserView = [...INSTANCE_SCOPE_GROUPS.user.View];
-
+	// The caller (InstanceRoleView's `withMandatoryInstanceScopes`) is what
+	// guarantees these scopes are always in `modelValue` — the selector itself
+	// stays a pure function of its props, same as every other option.
+	describe.each([
+		['Users: View', 'scope-option-user-view', [...INSTANCE_SCOPE_GROUPS.user.View]],
+		['Tags: View', 'scope-option-tag-view', [...INSTANCE_SCOPE_GROUPS.tag.View]],
+	])('mandatory "%s" option', (_label, testId, scopes) => {
 		it('renders checked and disabled', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
-				props: { modelValue: withUserView },
+				props: { modelValue: scopes },
 			});
-			const userView = getByTestId('scope-option-user-view');
-			expect(userView.getAttribute('aria-checked')).toBe('true');
-			expect(userView.hasAttribute('disabled')).toBe(true);
+			const option = getByTestId(testId);
+			expect(option.getAttribute('aria-checked')).toBe('true');
+			expect(option.hasAttribute('disabled')).toBe(true);
 		});
 
 		it('does not emit an update when clicked', async () => {
 			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
-				props: { modelValue: withUserView },
+				props: { modelValue: scopes },
 			});
 
-			await userEvent.click(getByTestId('scope-option-user-view'));
+			await userEvent.click(getByTestId(testId));
 
 			expect(emitted()['update:modelValue']).toBeFalsy();
+		});
+	});
+
+	describe('tag View/Manage tiering', () => {
+		it('keeps the mandatory tooltip on "Tags: View" even when "Manage" is checked', async () => {
+			// Without the mandatory-first ordering in `optionTooltip`, this reads
+			// "Included in Manage" — which implies unchecking Manage would remove
+			// View, and View can never be removed.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.tag.Manage] },
+			});
+
+			await userEvent.hover(getByTestId('scope-option-tag-view'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent(
+					'Users always see and can select any tags associated with workflows they have access to.',
+				),
+			);
+		});
+
+		it('shows the built-in Member role as Tags View checked and Tags Manage mixed', () => {
+			// Member holds 4 of the 5 tag scopes (no tag:delete), so Manage stays
+			// half-checked. That gap is IAM-1383's, not this View split's — pinned
+			// here so nobody closes it by accident.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...GLOBAL_MEMBER_SCOPES] },
+			});
+			expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('true');
+			expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('mixed');
+		});
+	});
+
+	describe('implied option without its own scopes', () => {
+		it('renders "Manage project roles" as checked and disabled when only the "Manage all roles" scopes are present', () => {
+			// Admin holds role:manage but not role:manageProject.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: ['role:read', 'role:manage'] },
+			});
+			const manageProjectRoles = getByTestId('scope-option-role-manage-project-roles');
+			expect(manageProjectRoles.getAttribute('aria-checked')).toBe('true');
+			expect(manageProjectRoles.hasAttribute('disabled')).toBe(true);
+		});
+	});
+
+	describe('system roles', () => {
+		const optionTestIdsWithState = (container: Element, state: string) =>
+			Array.from(container.querySelectorAll('[data-test-id^="scope-option-"]'))
+				.filter((el) => el.getAttribute('aria-checked') === state)
+				.map((el) => el.getAttribute('data-test-id'));
+
+		it('renders Admin with every option checked', () => {
+			const { container } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...GLOBAL_ADMIN_SCOPES], readonly: true },
+			});
+			expect(optionTestIdsWithState(container, 'true')).toHaveLength(totalOptions);
+		});
+
+		it('renders Chat with no half-checked option', () => {
+			const { container } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...GLOBAL_CHAT_USER_SCOPES], readonly: true },
+			});
+			expect(optionTestIdsWithState(container, 'mixed')).toEqual([]);
+		});
+
+		it('renders Member with no half-checked option, except Tags "Manage"', () => {
+			// Member holds every Tags scope but tag:delete; that is a product call,
+			// not a display bug. Drop the exception once Member covers it in full.
+			const { container, getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...GLOBAL_MEMBER_SCOPES], readonly: true },
+			});
+			expect(optionTestIdsWithState(container, 'mixed')).toEqual(['scope-option-tag-manage']);
+			for (const testId of [
+				'scope-option-settings-mcp-use',
+				'scope-option-settings-aiassistant-use',
+				'scope-option-user-view',
+				'scope-option-apiKey-manage-own',
+				'scope-option-tag-view',
+				'scope-option-variable-view',
+			]) {
+				expect(getByTestId(testId).getAttribute('aria-checked')).toBe('true');
+			}
+			for (const testId of [
+				'scope-option-settings-mcp-manage',
+				'scope-option-settings-aiassistant-manage',
+				'scope-option-settings-manage',
+				'scope-option-variable-manage',
+			]) {
+				expect(getByTestId(testId).getAttribute('aria-checked')).toBe('false');
+			}
 		});
 	});
 });

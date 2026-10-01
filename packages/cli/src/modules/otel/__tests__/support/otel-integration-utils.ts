@@ -23,7 +23,10 @@ import * as utils from '@test-integration/utils';
 
 import { OtelTestProvider } from './otel-test-provider';
 import { TestNodeWithTracing } from './test-node-with-tracing';
+import { OtelSettingsService } from '../../otel-settings.service';
 import { OtelConfig } from '../../otel.config';
+import { OtelService } from '../../otel.service';
+import type { TracingContext } from '../../tracing-context';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 
@@ -51,6 +54,8 @@ export async function initOtelTestEnvironment() {
 
 	await testModules.loadModules(['otel']);
 	await testDb.init();
+	Container.set(OtelService, otel.asOtelService());
+	await Container.get(OtelSettingsService).loadSettings();
 	await Container.get(ModuleRegistry).initModules('main');
 	Container.get(LicenseState).setLicenseProvider({
 		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
@@ -113,7 +118,7 @@ export async function executeWorkflow(
 	options: {
 		mode?: 'webhook' | 'trigger' | 'manual' | 'retry';
 		retryOf?: string;
-		tracingContext?: { traceparent: string; tracestate?: string };
+		tracingContext?: TracingContext;
 		triggerData?: IDataObject;
 	} = {},
 ): Promise<string> {

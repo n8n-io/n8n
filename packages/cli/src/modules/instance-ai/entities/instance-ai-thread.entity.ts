@@ -2,6 +2,7 @@ import { WithTimestamps, JsonColumn, Project } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'instance_ai_threads' })
+@Index(['resourceId', 'updatedAt', 'id'])
 export class InstanceAiThread extends WithTimestamps {
 	@PrimaryColumn('uuid')
 	id: string;

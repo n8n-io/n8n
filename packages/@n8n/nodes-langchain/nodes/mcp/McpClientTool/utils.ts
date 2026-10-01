@@ -135,6 +135,7 @@ export function isZodObjectSchema(schema: z.ZodTypeAny): schema is z.ZodObject<z
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
+	attribution?: string,
 ): DynamicStructuredTool {
 	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
 
@@ -146,6 +147,7 @@ export function mcpToolToDynamicTool(
 		description: tool.description ?? '',
 		schema: objectSchema,
 		func: onCallTool,
-		metadata: { isFromToolkit: true },
+		// The agent reads `attribution` to append it to its final reply.
+		metadata: { isFromToolkit: true, ...(attribution && { attribution }) },
 	});
 }

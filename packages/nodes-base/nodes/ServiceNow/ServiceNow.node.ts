@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { assertNoQueryDelimiters } from '@utils/query-escaping';
+
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
 import { businessServiceFields, businessServiceOperations } from './BusinessServiceDescription';
 import {
@@ -18,6 +20,7 @@ import {
 import { departmentFields, departmentOperations } from './DepartmentDescription';
 import { dictionaryFields, dictionaryOperations } from './DictionaryDescription';
 import {
+	ENCODED_QUERY_DELIMITERS,
 	mapEndpoint,
 	serviceNowApiRequest,
 	serviceNowDownloadAttachment,
@@ -193,6 +196,7 @@ export class ServiceNow implements INodeType {
 				let tableName;
 				if (resource === 'tableRecord') {
 					tableName = this.getNodeParameter('tableName') as string;
+					assertNoQueryDelimiters.call(this, 'Table Name', tableName, ENCODED_QUERY_DELIMITERS);
 				} else {
 					tableName = mapEndpoint(resource, operation);
 				}
@@ -250,6 +254,8 @@ export class ServiceNow implements INodeType {
 				if (resource === 'incident' && operation === 'create') {
 					const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 					const group = additionalFields.assignment_group;
+
+					assertNoQueryDelimiters.call(this, 'Assignment Group', group, ENCODED_QUERY_DELIMITERS);
 
 					const response = await serviceNowRequestAllItems.call(
 						this,
@@ -401,6 +407,8 @@ export class ServiceNow implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 					category = additionalFields.category;
 				}
+				assertNoQueryDelimiters.call(this, 'Category', category, ENCODED_QUERY_DELIMITERS);
+
 				const qs = {
 					sysparm_fields: 'label,value',
 					sysparm_query: `name=incident^element=subcategory^dependent_value=${category}`,
@@ -539,6 +547,14 @@ export class ServiceNow implements INodeType {
 						const options = this.getNodeParameter('options', i);
 
 						qs = {} as IDataObject;
+
+						assertNoQueryDelimiters.call(
+							this,
+							'Table Name',
+							tableName,
+							ENCODED_QUERY_DELIMITERS,
+							i,
+						);
 
 						qs.sysparm_query = `table_name=${tableName}`;
 
@@ -994,6 +1010,8 @@ export class ServiceNow implements INodeType {
 							responseData = response.result;
 						} else {
 							const userName = this.getNodeParameter('user_name', i) as string;
+							assertNoQueryDelimiters.call(this, 'Username', userName, ENCODED_QUERY_DELIMITERS, i);
+
 							qs.sysparm_query = `user_name=${userName}`;
 							qs.sysparm_limit = 1;
 							const response = await serviceNowApiRequest.call(

@@ -1,0 +1,49 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PreviewBadge > renders medium preview badge correctly 1`] = `
+<div>
+  <span
+    class="n8n-badge badge secondary xsmall preview"
+  >
+    <!--v-if-->
+    
+    
+    <span
+      class="n8n-text step-2xs bold label label"
+    >
+      
+      
+      Preview
+      
+      
+    </span>
+    
+    
+    <!--v-if-->
+  </span>
+</div>
+`;
+
+exports[`PreviewBadge > renders small preview badge correctly 1`] = `
+<div>
+  <span
+    class="n8n-badge badge secondary xxsmall preview"
+  >
+    <!--v-if-->
+    
+    
+    <span
+      class="n8n-text step-2xs bold label label"
+    >
+      
+      
+      Preview
+      
+      
+    </span>
+    
+    
+    <!--v-if-->
+  </span>
+</div>
+`;

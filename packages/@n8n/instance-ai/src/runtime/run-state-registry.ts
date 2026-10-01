@@ -1,4 +1,5 @@
 import type {
+	ComputerUseChannel,
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
@@ -14,6 +15,7 @@ import type {
 } from './liveness-policy';
 import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
+import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
 	runId: string;
@@ -58,6 +60,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	};
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
+	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
+	instanceContext?: SuspendedInstanceContext;
 }
 
 /**
@@ -149,8 +153,16 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/** Computer Use entries the client reported, reused by follow-up runs. Only the
+	 *  client can see its own rollout and the device, and a resumed or background
+	 *  run has no request of its own to ask. */
+	private readonly threadComputerUseChannels = new Map<string, ComputerUseChannel[]>();
+
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadSetupPanelEnabled = new Map<string, boolean>();
+
+	private readonly threadObserverThresholds = new Map<string, number>();
 	private readonly threadPromptSelections = new Map<
 		string,
 		{ version: string; metadata?: InstanceAiPromptConfiguration }
@@ -495,6 +507,16 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadTimeZones.get(threadId);
 	}
 
+	/** An omitted list clears it, so a client that stops reporting advertises nothing. */
+	setComputerUseChannels(threadId: string, channels: ComputerUseChannel[] | undefined): void {
+		if (channels === undefined) this.threadComputerUseChannels.delete(threadId);
+		else this.threadComputerUseChannels.set(threadId, channels);
+	}
+
+	getComputerUseChannels(threadId: string): ComputerUseChannel[] | undefined {
+		return this.threadComputerUseChannels.get(threadId);
+	}
+
 	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
 	setBuildMode(threadId: string, buildMode: InstanceAiBuildMode | undefined): void {
 		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
@@ -503,6 +525,24 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
 		return this.threadBuildModes.get(threadId);
+	}
+
+	setSetupPanelEnabled(threadId: string, enabled: boolean): void {
+		this.threadSetupPanelEnabled.set(threadId, enabled);
+	}
+
+	isSetupPanelEnabled(threadId: string): boolean {
+		return this.threadSetupPanelEnabled.get(threadId) === true;
+	}
+
+	/** Per-thread observer threshold; an omitted value clears it. */
+	setObserverThresholdTokens(threadId: string, tokens: number | undefined): void {
+		if (tokens === undefined) this.threadObserverThresholds.delete(threadId);
+		else this.threadObserverThresholds.set(threadId, tokens);
+	}
+
+	getObserverThresholdTokens(threadId: string): number | undefined {
+		return this.threadObserverThresholds.get(threadId);
 	}
 
 	setPromptVersion(threadId: string, version: string | undefined): void {
@@ -672,7 +712,10 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
+		this.threadComputerUseChannels.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadSetupPanelEnabled.delete(threadId);
+		this.threadObserverThresholds.delete(threadId);
 		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -722,7 +765,10 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
+		this.threadComputerUseChannels.clear();
 		this.threadBuildModes.clear();
+		this.threadSetupPanelEnabled.clear();
+		this.threadObserverThresholds.clear();
 		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();

@@ -13,6 +13,7 @@ import {
 	type BackgroundJobToolsOptions,
 } from '../background-job-tools';
 import type { SubAgentBackgroundRunner } from '../sub-agent-background-runner';
+import { PARENT_TASK_CANCELLED_REASON } from '../sub-agent-background-state';
 
 const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 const persistence = {
@@ -32,6 +33,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
+		notifiedAt: null,
 		childExecutionId: null,
 		...overrides,
 	};
@@ -53,6 +55,25 @@ function setup() {
 }
 
 describe('spawn_background_subagent', () => {
+	it.each([true, false])(
+		'handles a Stop during registration without treating disconnects as cancellation (%s)',
+		async (stop) => {
+			const { backgroundRunner, jobService, options } = setup();
+			const controller = new AbortController();
+			backgroundRunner.spawn.mockImplementation(async () => {
+				controller.abort(stop ? PARENT_TASK_CANCELLED_REASON : new Error('Connection closed'));
+				return { status: 'started', jobId: 'job-1' };
+			});
+			const tool = createSpawnBackgroundSubAgentTool(options);
+			await tool.handler!(
+				{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+				{ persistence, abortSignal: controller.signal },
+			);
+			if (stop) expect(jobService.cancel).toHaveBeenCalledWith('thread-1', 'job-1');
+			else expect(jobService.cancel).not.toHaveBeenCalled();
+		},
+	);
+
 	it('reads the parent thread from ctx.persistence at call time', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });

@@ -4,10 +4,14 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
-import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import {
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
+} from '@/app/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry'; // Experiment cleanup (119_surface_assistant_on_workflow_error)
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import type { FeatureFlags } from 'n8n-workflow';
 import postHogInitStub from '../../../public/static/posthog.init.js?raw';
@@ -120,6 +124,23 @@ describe('Posthog store', () => {
 			posthog.init();
 
 			expect(window.posthog?.init).not.toHaveBeenCalled();
+		});
+
+		it('should keep serverside flags and payloads if posthog is not enabled', async () => {
+			setSettings({ posthog: { ...DEFAULT_POSTHOG_SETTINGS, enabled: false } });
+			setCurrentUser();
+			const posthog = usePostHog();
+			posthog.init({ test: 'variant', enabled_flag: true }, { test: 'payload' });
+
+			expect(window.posthog?.init).not.toHaveBeenCalled();
+			expect(posthog.getVariant('test')).toBe('variant');
+			expect(posthog.isFeatureEnabled('enabled_flag')).toBe(true);
+			expect(posthog.getFeatureFlagPayload('test')).toBe('payload');
+			expect(posthog.hasPendingFeatureFlags()).toBe(false);
+			expect(await posthog.waitForFeatureFlags()).toEqual({
+				test: 'variant',
+				enabled_flag: true,
+			});
 		});
 
 		it('should not init if user is not logged in', () => {
@@ -458,6 +479,41 @@ describe('Posthog store', () => {
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
 			});
 		});
+
+		// Experiment cleanup (119_surface_assistant_on_workflow_error)
+		describe('cloud-only experiment tracking', () => {
+			const flags = { [SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name]: 'variant' };
+
+			beforeEach(() => {
+				vi.useFakeTimers();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('does not track the experiment on a self-hosted instance', () => {
+				usePostHog().init(flags);
+				vi.advanceTimersByTime(2000);
+
+				expect(useTelemetry().track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+					expect.objectContaining({ name: SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name }),
+				);
+			});
+
+			it('tracks the experiment on a cloud instance', () => {
+				setSettings({ deployment: { type: 'cloud' } });
+				usePostHog().init(flags);
+				vi.advanceTimersByTime(2000);
+
+				expect(useTelemetry().track).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
+					{ name: SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name, variant: 'variant' },
+				);
+			});
+		});
+		// EOF Experiment cleanup
 
 		afterEach(() => {
 			resetStores();

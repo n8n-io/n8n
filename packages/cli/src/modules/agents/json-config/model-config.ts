@@ -39,9 +39,10 @@ export async function resolveCredentialAwareModelConfig(
 		return {
 			id: model,
 			...mapCredentialForProvider(provider, raw),
-			// The gateway serves OpenAI's Responses API, so opt out of the model
-			// factory's "a baseURL means an OpenAI-compatible server" heuristic —
-			// /chat/completions rejects reasoning effort once tools are attached.
+			// The gateway serves OpenAI's Responses API, so pin the route here. The
+			// model factory otherwise asks the endpoint which API it speaks, and this
+			// one is known — /chat/completions rejects reasoning effort once tools are
+			// attached.
 			...(provider === 'openai' ? { apiStyle: 'responses' } : {}),
 		};
 	}

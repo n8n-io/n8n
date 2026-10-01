@@ -80,7 +80,7 @@ describe('Secret Providers Project API', () => {
 	): Promise<number> {
 		const cipher = Container.get(Cipher);
 		const mockSettings = { region: 'us-east-1', accessKeyId: 'test-key' };
-		const encryptedSettings = cipher.encrypt(mockSettings);
+		const encryptedSettings = cipher.encryptWithInstanceKey(mockSettings);
 
 		const connection = await connectionRepository.save(
 			connectionRepository.create({

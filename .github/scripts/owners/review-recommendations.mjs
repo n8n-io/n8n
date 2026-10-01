@@ -31,6 +31,38 @@ import {
  */
 
 const BOT_MARKER = '<!-- pr-recommendations -->';
+const REQUIRED_FILES_DISPLAY_LIMIT = 5;
+
+/**
+ * @param { string } value
+ * @returns { string }
+ */
+function escapeHtml(value) {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('|', '&#124;');
+}
+
+/**
+ * @param { string[] } files
+ * @returns { string }
+ */
+function formatRequiredFiles(files) {
+	const displayedFiles = files
+		.slice(0, REQUIRED_FILES_DISPLAY_LIMIT)
+		.map((file) => `<code>${escapeHtml(file)}</code>`);
+	const omittedFileCount = files.length - displayedFiles.length;
+
+	if (omittedFileCount > 0) {
+		displayedFiles.push(
+			`<em>${omittedFileCount} more file${omittedFileCount === 1 ? '' : 's'}</em>`,
+		);
+	}
+
+	return displayedFiles.join('<br>');
+}
 
 function createEmptyLineStats() {
 	return {
@@ -210,9 +242,11 @@ export function buildRequiredReviewsSection(requiredTeamFiles) {
 		'',
 		'Some changed files have a `required` owner in `OWNERS`. A member of each of these teams must approve this PR before it can merge:',
 		'',
-		'| Team | Files |',
-		'| --- | ---: |',
-		...[...requiredTeamFiles].map(([team, files]) => `| ${team} | ${files.length} |`),
+		'| Team | Files owned | Owned files |',
+		'| --- | ---: | --- |',
+		...[...requiredTeamFiles].map(
+			([team, files]) => `| ${team} | ${files.length} | ${formatRequiredFiles(files)} |`,
+		),
 		'',
 		`Request a review from the team${plural ? 's' : ''} — GitHub assigns reviewers according to the team's review settings. The \`Auto-assign reviewers\` label does this for all owning teams.`,
 	].join('\n');
@@ -282,7 +316,11 @@ export async function run(pullRequestNumber) {
 	await postOrUpdateComment(pullRequestNumber, body, BOT_MARKER);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export async function main() {
 	const pullRequestNumber = parseInt(ensureEnvVar('PULL_REQUEST_NUMBER'));
 	await run(pullRequestNumber);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+	await main();
 }

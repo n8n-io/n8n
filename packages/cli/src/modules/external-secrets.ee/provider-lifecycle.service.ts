@@ -85,7 +85,7 @@ export class ExternalSecretsProviderLifecycle {
 			if (provider.state === 'error') {
 				return {
 					success: false,
-					error: new Error('Provider entered error state during connection'),
+					error: provider.lastError ?? new Error('Provider entered error state during connection'),
 				};
 			}
 

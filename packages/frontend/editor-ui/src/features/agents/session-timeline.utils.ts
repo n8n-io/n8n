@@ -1,6 +1,12 @@
-import { WORKFLOW_WAIT_SUSPEND_TYPE } from '@n8n/api-types';
+import {
+	WORKFLOW_WAIT_SUSPEND_TYPE,
+	type AgentBackgroundJobSignal,
+	type AgentPersistedMessageDto,
+} from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
+import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
 import type {
 	EventKind,
 	HitlRequestType,
@@ -11,6 +17,7 @@ import type {
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import {
 	formatToolNameForDisplay,
@@ -19,6 +26,8 @@ import {
 } from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
+
+const LOAD_SKILL_TOOL_NAME = 'load_skill';
 
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
@@ -69,7 +78,14 @@ function mcpErrorMessage(output: Record<string, unknown>): string {
  * of throwing. In-flight calls without output are not failed.
  */
 export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
-	if (item.kind !== 'tool' && item.kind !== 'workflow' && item.kind !== 'node') return false;
+	if (
+		item.kind !== 'tool' &&
+		item.kind !== 'skill' &&
+		item.kind !== 'workflow' &&
+		item.kind !== 'node'
+	) {
+		return false;
+	}
 	if (item.toolOutcome === 'error') return true;
 	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
 	if (!isRecord(item.toolOutput)) return false;
@@ -128,6 +144,16 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 
 type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 
+export function backgroundJobSignalSummary(
+	item: TimelineItem,
+	i18n: Pick<ReturnType<typeof useI18n>, 'baseText' | 'locale'>,
+): string {
+	const labels = (item.backgroundJobSignal?.tasks ?? []).map((job) =>
+		backgroundJobResultLabel(job, i18n),
+	);
+	return new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(labels);
+}
+
 export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
 	return i18n.baseText(
 		item.executionStatus === 'interrupted'
@@ -163,7 +189,7 @@ export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string
 export type TimelineItemStatus = {
 	kind: 'hitl-response' | 'tool-error';
 	labelKey: BaseTextKey;
-	theme: 'default' | 'success' | 'danger';
+	theme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 };
 
 export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
@@ -181,7 +207,7 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 				item.hitlResponseStatus === 'declined'
 					? 'agentSessions.timeline.declined'
 					: 'agentSessions.timeline.responseReceived',
-			theme: 'default',
+			theme: 'outline',
 		};
 	}
 	if (isErroredTimelineItem(item)) {
@@ -269,11 +295,16 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('error'));
 	}
 
+	for (const job of item.backgroundJobSignal?.tasks ?? []) {
+		parts.push(job.title, labelForKey(`background-task-${job.status}`));
+	}
+
 	parts.push(
 		item.content,
 		item.toolName,
 		item.workflowName,
 		item.nodeDisplayName,
+		item.skillName,
 		item.subAgentName,
 		searchableValueText(item.toolInput),
 		searchableValueText(item.toolOutput),
@@ -332,12 +363,14 @@ export function sessionBounds(items: TimelineItem[]): { start: number; end: numb
 const COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-400)',
 	agent: 'var(--color--secondary)',
+	skill: 'var(--color--orange-400)',
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
 	'execution-error': 'var(--color--danger)',
 	suspension: 'var(--color--warning)',
 	'hitl-response': 'var(--color--blue-400)',
+	'background-task-signal': 'var(--color--mint-600)',
 };
 
 export function kindColorToken(kind: EventKind): string {
@@ -347,12 +380,14 @@ export function kindColorToken(kind: EventKind): string {
 const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-600)',
 	agent: 'var(--color--purple-600)',
+	skill: 'var(--color--orange-600)',
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--pink-600)',
 	'execution-error': 'var(--color--red-600)',
 	suspension: 'var(--color--yellow-600)',
 	'hitl-response': 'var(--color--blue-600)',
+	'background-task-signal': 'var(--color--mint-600)',
 };
 
 export function chartBlockColor(kind: EventKind): string {
@@ -380,7 +415,7 @@ export function formatDuration(ms: number): string {
 
 interface RawToolCallEvent {
 	type: 'tool-call';
-	kind?: 'tool' | 'workflow' | 'node';
+	kind?: 'tool' | 'workflow' | 'node' | 'skill';
 	name: string;
 	toolCallId: string;
 	input: unknown;
@@ -405,6 +440,12 @@ interface RawTextEvent {
 	endTime?: number;
 }
 
+interface RawInputEvent {
+	type: 'input';
+	messageId: string;
+	timestamp: number;
+}
+
 interface RawSuspensionEvent {
 	type: 'suspension';
 	toolName: string;
@@ -421,7 +462,19 @@ interface RawHitlResponseEvent {
 	timestamp: number;
 }
 
-type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent | RawHitlResponseEvent;
+interface RawBackgroundJobSignalEvent {
+	type: 'background-task-signal';
+	timestamp: number;
+	signal: AgentBackgroundJobSignal;
+}
+
+type RawEvent =
+	| RawToolCallEvent
+	| RawTextEvent
+	| RawInputEvent
+	| RawSuspensionEvent
+	| RawHitlResponseEvent
+	| RawBackgroundJobSignalEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -452,6 +505,48 @@ function isWaitRequest(value: unknown): boolean {
 function toolCallOutcome(event: RawToolCallEvent): ToolCallOutcome | undefined {
 	if (event.endTime === 0) return undefined;
 	return event.success ? 'success' : 'error';
+}
+
+function isSkillToolCall(event: RawToolCallEvent): boolean {
+	return event.kind === 'skill' || event.name === LOAD_SKILL_TOOL_NAME;
+}
+
+function skillNameFromText(value: string): string | undefined {
+	const match = /^\[Skill: ([^\]]+)\]/m.exec(value);
+	const name = match?.[1];
+	if (!name) return undefined;
+	if (!name.startsWith('"')) return name;
+	if (!name.endsWith('"')) return name.slice(1);
+
+	try {
+		const parsed: unknown = JSON.parse(name);
+		return typeof parsed === 'string' ? parsed : name;
+	} catch {
+		return name.slice(1, -1);
+	}
+}
+
+function skillNameFromOutput(output: unknown): string | undefined {
+	if (!isRecord(output)) return undefined;
+	if (typeof output.name === 'string' && output.name.length > 0) return output.name;
+	if (!Array.isArray(output.value)) return undefined;
+
+	for (const part of output.value) {
+		if (!isRecord(part) || typeof part.text !== 'string') continue;
+		const name = skillNameFromText(part.text);
+		if (name) return name;
+	}
+	return undefined;
+}
+
+function skillNameFromEvent(event: RawToolCallEvent): string | undefined {
+	const outputName = skillNameFromOutput(event.output);
+	if (outputName) return outputName;
+	if (!isRecord(event.input)) return undefined;
+	if (typeof event.input.name === 'string' && event.input.name.length > 0) return event.input.name;
+	return typeof event.input.skillId === 'string' && event.input.skillId.length > 0
+		? event.input.skillId
+		: undefined;
 }
 
 interface HitlContext {
@@ -563,6 +658,25 @@ function hitlResponseItem(
 	};
 }
 
+function inputTimelineItem(
+	input: AgentPersistedMessageDto,
+	executionId: string,
+	timestamp: number,
+): TimelineItem | undefined {
+	const [message] = convertDbMessages([input]);
+	if (!message) return undefined;
+	return {
+		kind: 'user',
+		executionId,
+		content: message.content,
+		timestamp,
+		...(input.author && { authorName: input.author.name }),
+		attachments: message.attachments?.flatMap(({ fileId, fileName, mimeType, sizeBytes }) =>
+			fileId ? [{ id: fileId, fileName, mimeType, sizeBytes: sizeBytes ?? 0 }] : [],
+		),
+	};
+}
+
 export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
 	const items: TimelineItem[] = [];
 	const initialToolCalls = new Map<string, RawToolCallEvent>();
@@ -573,19 +687,42 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 		const isResumed = exec.hitlStatus === 'resumed';
 		let resumedTagUsed = false;
 
-		// Attachment-only sends record a null userMessage but still carry files.
-		if (exec.userMessage || exec.attachments?.length) {
+		const events = timelineEvents(exec);
+		const timestamp = exec.startedAt ? new Date(exec.startedAt).getTime() : 0;
+		if (exec.inputMessages !== undefined) {
+			const steeredIds = new Set(
+				events.filter((event) => event.type === 'input').map((event) => event.messageId),
+			);
+			for (const input of exec.inputMessages) {
+				if (steeredIds.has(input.id)) continue;
+				const item = inputTimelineItem(input, exec.id, timestamp);
+				if (item) items.push(item);
+			}
+		} else if (exec.userMessage || exec.attachments?.length) {
 			items.push({
 				kind: 'user',
 				executionId: exec.id,
 				content: exec.userMessage ?? '',
-				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+				timestamp,
+				...(exec.author && { authorName: exec.author.name }),
 				...(exec.attachments?.length && { attachments: exec.attachments }),
 			});
 		}
 
-		for (const event of timelineEvents(exec)) {
-			if (event.type === 'text') {
+		for (const event of events) {
+			if (event.type === 'background-task-signal') {
+				items.push({
+					kind: 'background-task-signal',
+					executionId: exec.id,
+					timestamp: event.timestamp,
+					backgroundJobSignal: event.signal,
+				});
+			} else if (event.type === 'input') {
+				const input = exec.inputMessages?.find(({ id }) => id === event.messageId);
+				if (!input) continue;
+				const item = inputTimelineItem(input, exec.id, event.timestamp);
+				if (item) items.push(item);
+			} else if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;
 				const startTs = event.timestamp ?? 0;
@@ -612,11 +749,13 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
+				const isSkill = isSkillToolCall(event);
 				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
 				const item: TimelineItem = {
-					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
+					kind: isWorkflow ? 'workflow' : isNode ? 'node' : isSkill ? 'skill' : 'tool',
 					executionId: exec.id,
 					toolName: event.name,
+					skillName: isSkill ? skillNameFromEvent(event) : undefined,
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,

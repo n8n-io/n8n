@@ -11,6 +11,8 @@ import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemove
 import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKindSelector.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
+import AgentChannelTeamsEditView from './teams/AgentChannelTeamsEditView.vue';
+import AgentChannelTeamsSetup from './teams/AgentChannelTeamsSetup.vue';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
 import type {
@@ -104,6 +106,12 @@ const platforms = {
 		type: 'discord',
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	teams: {
+		type: 'teams',
+		setupComponent: AgentChannelTeamsSetup,
+		editComponent: AgentChannelTeamsEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;

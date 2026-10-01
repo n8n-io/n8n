@@ -15,7 +15,6 @@ describe('serializedWorkflowSchema', () => {
 			},
 		],
 		connections: {},
-		versionId: 'v1',
 		parentFolderId: null,
 		isArchived: false,
 	});

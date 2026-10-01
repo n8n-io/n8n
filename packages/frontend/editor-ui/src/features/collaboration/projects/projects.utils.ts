@@ -12,13 +12,21 @@ export type ProjectSearchFn = (query: string) => Promise<ProjectSearchResult>;
  * Hits `GET /projects/sharing-candidates` so non-admin callers receive peer
  * personal projects in addition to projects they have a relation to — without
  * that, the share dropdown would be empty for `global:member` users.
+ *
+ * Pass `type` when the caller accepts only one kind of project. The endpoint
+ * returns one page and sorts team projects first, so a caller that drops the
+ * other kind on the client gets an empty dropdown once team projects fill that
+ * page.
  */
-export function useRemoteProjectSearch(): ProjectSearchFn {
+export function useRemoteProjectSearch(
+	options: { type?: 'personal' | 'team' } = {},
+): ProjectSearchFn {
 	const store = useProjectsStore();
 	return async (query: string) => {
 		return await store.searchShareableProjects({
 			search: query,
 			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
+			...(options.type ? { type: options.type } : {}),
 		});
 	};
 }

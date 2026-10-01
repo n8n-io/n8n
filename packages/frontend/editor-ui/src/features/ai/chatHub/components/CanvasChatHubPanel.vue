@@ -19,7 +19,7 @@ import { useChatStore } from '../chat.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useChatSession } from '../composables/useChatSession';
-import { useFileDrop } from '../composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import ChatMessage from './ChatMessage.vue';
 import ChatPrompt from './ChatPrompt.vue';
 import ChatGreetings from './ChatGreetings.vue';

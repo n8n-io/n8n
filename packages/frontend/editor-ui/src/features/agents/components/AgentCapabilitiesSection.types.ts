@@ -5,6 +5,8 @@ import type { AgentJsonToolRef } from '../types';
 
 export type ToolRowNodeType = SimplifiedNodeType | null;
 
+export type ToolPickerMode = 'tools' | 'workflows';
+
 export type ToolOpenTarget =
 	| {
 			kind: 'tool';
@@ -55,6 +57,7 @@ export type ToolRow = GroupedToolRow | SingleToolRow;
 export type ToolMenuItem = DropdownMenuItemProps<
 	string,
 	{
+		index: number;
 		nodeType: ToolRowNodeType;
 		openTarget: ToolOpenTarget;
 		invalid: boolean;

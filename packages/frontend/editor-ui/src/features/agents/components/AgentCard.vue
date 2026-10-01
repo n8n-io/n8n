@@ -38,6 +38,7 @@ const emit = defineEmits<{
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
 	'new-chat': [agentId: string, projectId: string];
+	duplicate: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -48,11 +49,13 @@ const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
-const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
+const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 	() => props.projectId,
 );
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
+
+const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
@@ -117,6 +120,13 @@ const actions = computed(() => {
 		});
 	}
 
+	if (canCreate.value) {
+		items.push({
+			value: 'duplicate',
+			label: locale.baseText('agents.list.actions.duplicate'),
+		});
+	}
+
 	return items;
 });
 
@@ -158,6 +168,8 @@ async function onAction(action: string) {
 		removeProjectAgentFromListCache(props.projectId, props.agent.id);
 		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
+	} else if (action === 'duplicate') {
+		emit('duplicate', props.agent.id);
 	}
 }
 
@@ -177,13 +189,18 @@ async function toggleMCPAccess(enabled: boolean) {
 <template>
 	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
 		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
+			<N8nText
+				tag="h2"
+				:bold="!isUntitled"
+				:color="isUntitled ? 'text-light' : undefined"
+				:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
+				data-test-id="agent-card-name"
+			>
 				{{ agent.name }}
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
-					theme="tertiary"
-					bold
+					variant="outline"
 					data-test-id="agent-card-readonly-badge"
 				>
 					{{ locale.baseText('agents.list.readonly') }}
@@ -252,6 +269,10 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.untitledName {
+	font-style: italic;
 }
 
 .readonlyBadge {

@@ -59,7 +59,7 @@ describe('episodic memory defaults', () => {
 
 		await expect(
 			createEpisodicMemoryReflectFn(fakeModel)({
-				scope: { resourceId: 'user-1' },
+				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 				now: new Date('2026-05-12T15:00:00.000Z'),
 				seedEntryIds: [],
 				entries: [],
@@ -81,7 +81,7 @@ describe('episodic memory defaults', () => {
 		});
 
 		await createEpisodicMemoryReflectFn(fakeModel)({
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			seedEntryIds: [],
 			entries: [],

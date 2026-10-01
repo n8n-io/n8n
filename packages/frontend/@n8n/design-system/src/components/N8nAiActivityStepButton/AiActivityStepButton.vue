@@ -6,11 +6,14 @@ const props = withDefaults(
 		size?: 'small' | 'medium';
 		loading?: boolean;
 		interactive?: boolean;
+		/** Stretch the header and keep prefix and suffix content at their intrinsic width. */
+		fullWidth?: boolean;
 	}>(),
 	{
 		size: 'small',
 		loading: false,
 		interactive: true,
+		fullWidth: false,
 	},
 );
 
@@ -33,7 +36,11 @@ function handleClick(event: MouseEvent) {
 	<N8nButton
 		variant="ghost"
 		:size="props.size"
-		:class="[$style.button, !props.interactive && $style.nonInteractive]"
+		:class="[
+			$style.button,
+			!props.interactive && $style.nonInteractive,
+			props.fullWidth && $style.fullWidth,
+		]"
 		@click="handleClick"
 	>
 		<slot name="prefix" />
@@ -51,10 +58,13 @@ function handleClick(event: MouseEvent) {
 .button {
 	max-width: 90%;
 	justify-content: flex-start;
-	color: var(--text-color--subtler);
+	color: var(--ai-activity-step--color, var(--text-color--subtler));
 	font-size: var(--font-size--sm);
 	position: relative;
-	padding-inline: 0;
+	// Inherit header styles through the group without selecting nested buttons.
+	padding: var(--ai-activity-step--padding, 0);
+	height: var(--ai-activity-step--height, var(--button--height));
+	min-height: var(--ai-activity-step--min-height, 0);
 
 	--button--padding: 0;
 	--button--font-size: var(--font-size--sm);
@@ -62,7 +72,7 @@ function handleClick(event: MouseEvent) {
 	--button--color--background-hover: transparent;
 
 	&:hover {
-		color: var(--text-color--subtle);
+		color: var(--ai-activity-step--color, var(--text-color--subtle));
 	}
 
 	&.nonInteractive {
@@ -90,6 +100,22 @@ function handleClick(event: MouseEvent) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: normal;
+}
+
+.fullWidth {
+	width: 100%;
+	max-width: 100%;
+	justify-content: stretch;
+
+	> * {
+		min-width: 0;
+	}
+
+	.label {
+		flex: 1;
+		min-width: 0;
+		text-align: left;
+	}
 }
 
 .shimmer {

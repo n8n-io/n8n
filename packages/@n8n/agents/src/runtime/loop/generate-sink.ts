@@ -1,3 +1,4 @@
+import { finalizeRun } from './run-output-sink';
 import type {
 	CompleteEmission,
 	ModelCallContext,
@@ -5,14 +6,15 @@ import type {
 	RunOutputSink,
 	RunServices,
 	SuspendEmission,
-} from './run-output-sink';
+} from '../../types/runtime/agent-loop';
 import { classifyModelTurnError } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { toTokenUsage } from '../streaming/stream';
-import type { ToolCallBatchResult } from '../tools/tool-call-executor';
+import type { ToolCallBatchResult } from '../../types/runtime/tool-execution';
 
 /**
  * Non-streaming output sink: drives the loop with `generateText`, accumulates a
@@ -41,6 +43,9 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
 			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
+		}).catch(async (error: unknown) => {
+			if (isAttachmentValidationError(error)) await ctx.onInputRejected?.(error);
+			throw error;
 		});
 
 		const aiFinishReason = result.finishReason;
@@ -86,11 +91,8 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 	}
 
 	async finishComplete(emission: CompleteEmission): Promise<GenerateResult> {
-		const { list, options, finishReason, usage, structuredOutput } = emission;
-		await this.services.saveToMemory(list, options);
-		await this.services.maybeGenerateTitle(list, options);
-		await this.services.cleanupRun();
-		await this.services.flushTelemetry(options);
+		const { list, finishReason, usage, structuredOutput } = emission;
+		await finalizeRun(this.services, emission);
 
 		return {
 			runId: this.services.runId,
@@ -100,6 +102,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(this.toolCallSummary.length > 0 && { toolCalls: this.toolCallSummary }),
 			getState: () => this.services.getState(),
+			...(emission.guardrail && { guardrail: emission.guardrail }),
 		};
 	}
 }

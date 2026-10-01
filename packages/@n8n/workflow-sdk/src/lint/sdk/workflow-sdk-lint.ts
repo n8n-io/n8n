@@ -6,6 +6,7 @@
  */
 
 import type { CallExpression, MemberExpression, Node, Program } from 'estree';
+import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 
 import {
 	FORBIDDEN_NODE_TYPES,
@@ -163,6 +164,171 @@ function rangeContains(range: SourceRange, line: number, column: number): boolea
 	return true;
 }
 
+/** Builders that put a box on the canvas: `ifElse`, `merge` and `switchCase` each
+ *  call `node()` under the hood, so they draw one of their own. */
+export const CANVAS_BOX_BUILDERS = new Set(['node', 'trigger', 'ifElse', 'merge', 'switchCase']);
+
+/** Builders that draw a box only when they build the node themselves:
+ *  `splitInBatches({ version, config }, …)` does, `splitInBatches(handle, …)`
+ *  wraps a node the source already declared and counted. */
+export const CONFIG_OR_NODE_BUILDERS = new Set(['splitInBatches']);
+
+/**
+ * Everything else builder source may call, kept explicit so a new entry in
+ * `ALLOWED_SDK_FUNCTIONS` has to be classified rather than silently counting as
+ * nothing. Sub-node builders ride with their parent; `nextBatch` wraps a node
+ * the source already declared.
+ */
+export const NON_CANVAS_SDK_FUNCTIONS = new Set([
+	'workflow',
+	'sticky',
+	'placeholder',
+	'newCredential',
+	'nextBatch',
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'documentLoader',
+	'textSplitter',
+	'reranker',
+	'fromAi',
+	'nodeJson',
+]);
+
+/** Whether this call puts a box on the canvas, so the source draws one for it. */
+function drawsCanvasBox(call: CallExpression): boolean {
+	if (call.callee.type !== 'Identifier') {
+		return false;
+	}
+
+	if (CANVAS_BOX_BUILDERS.has(call.callee.name)) {
+		return true;
+	}
+
+	return (
+		CONFIG_OR_NODE_BUILDERS.has(call.callee.name) && call.arguments[0]?.type === 'ObjectExpression'
+	);
+}
+
+/**
+ * Counts the boxes the source will draw — each `.group()` plus every node not
+ * listed in one — and warns when they run past the ceiling. Agents skip the
+ * count they are asked to run after saving, so it is raised here instead, while
+ * the source is still theirs to edit.
+ */
+function ungroupedCanvasIssue(ast: Program): SourceLintIssue | undefined {
+	// A handle declared and never mentioned again never reaches the canvas, so
+	// declarations and references are collected apart.
+	const declaredBoxes = new Map<string, Node>();
+	const declaratorIds = new Set<Node>();
+	const boxCalls = new Set<Node>();
+	const declaredInits = new Set<Node>();
+	const references = new Set<string>();
+	const groupedHandles = new Set<string>();
+	let groupCount = 0;
+	// A member list the parser cannot read statically — a variable or a spread —
+	// would look like nothing is grouped, so the count is abandoned instead.
+	let unreadableMembers = false;
+
+	walkAst(ast, (node) => {
+		if (node.type === 'VariableDeclarator') {
+			declaratorIds.add(node.id);
+			if (
+				node.id.type === 'Identifier' &&
+				node.init?.type === 'CallExpression' &&
+				drawsCanvasBox(node.init)
+			) {
+				declaredBoxes.set(node.id.name, node.init);
+				declaredInits.add(node.init);
+			}
+			return;
+		}
+
+		if (node.type === 'Identifier' && !declaratorIds.has(node)) {
+			references.add(node.name);
+			return;
+		}
+
+		if (node.type !== 'CallExpression') {
+			return;
+		}
+
+		if (drawsCanvasBox(node)) {
+			boxCalls.add(node);
+			return;
+		}
+
+		const { callee } = node;
+
+		if (
+			callee.type !== 'MemberExpression' ||
+			callee.computed ||
+			callee.property.type !== 'Identifier' ||
+			callee.property.name !== 'group'
+		) {
+			return;
+		}
+
+		groupCount++;
+		const members = node.arguments[1];
+		if (members?.type !== 'ArrayExpression') {
+			unreadableMembers = true;
+			return;
+		}
+
+		for (const member of members.elements) {
+			if (member?.type === 'Identifier') {
+				groupedHandles.add(member.name);
+			} else {
+				unreadableMembers = true;
+			}
+		}
+	});
+
+	if (unreadableMembers) {
+		return undefined;
+	}
+
+	let ungrouped = 0;
+	for (const [handle] of declaredBoxes) {
+		if (references.has(handle) && !groupedHandles.has(handle)) {
+			ungrouped++;
+		}
+	}
+
+	// Inline `.add(node({…}))` has no handle, so it can never join a group.
+	for (const call of boxCalls) {
+		if (!declaredInits.has(call)) {
+			ungrouped++;
+		}
+	}
+
+	const boxes = groupCount + ungrouped;
+	if (boxes <= TOP_LEVEL_ITEM_CEILING) {
+		return undefined;
+	}
+
+	const exportDefault = ast.body.find((stmt) => stmt.type === 'ExportDefaultDeclaration');
+	return lintIssue({
+		code: 'SDK_UNGROUPED_CANVAS',
+		message:
+			`This source draws ${boxes} boxes on the canvas (${groupCount} group(s) and ${ungrouped} ` +
+			`ungrouped node(s)), past the ${TOP_LEVEL_ITEM_CEILING} a reader can take in. If you are ` +
+			'building this workflow, wrap each stage in `.group(name, members, { description })` now, while ' +
+			'the source is open — grouping cannot be added after the build, and a node stays out only when ' +
+			'no valid group can hold it. If you are editing a workflow that was already laid out this way, ' +
+			'leave it alone unless the user asked about grouping.',
+		line: exportDefault?.loc?.start.line ?? 1,
+		column: (exportDefault?.loc?.start.column ?? 0) + 1,
+		lintTarget: 'sdk',
+	});
+}
+
 /** Lint a prepared, parsed SDK AST (imports/TS already stripped). */
 export function lintWorkflowSdkAst(
 	ast: Program,
@@ -254,7 +420,8 @@ export function lintWorkflowSdkAst(
 						code: 'SDK_UNSOLICITED_STICKY',
 						message:
 							'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
-							'Put explanations in the chat reply instead.',
+							'Put explanations in the chat reply instead. This applies to sticky notes only: node groups ' +
+							'are not optional decoration, so keep the grouping decision the guidance requires.',
 						...locationOf(call),
 						lintTarget: 'sdk',
 					}),
@@ -361,6 +528,11 @@ export function lintWorkflowSdkAst(
 				lintTarget: 'sdk',
 			}),
 		);
+	}
+
+	const ungroupedCanvas = ungroupedCanvasIssue(ast);
+	if (ungroupedCanvas) {
+		issues.push(ungroupedCanvas);
 	}
 
 	return dedupeSourceLintIssues(issues);

@@ -229,14 +229,27 @@ const ExecutionContextSchemaV1 = z.object({
 	redaction: RedactionSettingSchema.optional(),
 
 	/**
-	 * The n8n user the execution ran as. Set during dynamic credential
-	 * resolution to the n8n user a private credential resolved to (covers manual
-	 * and chat-hub runs alike). Used by the redaction layer to grant that user
-	 * access to their own data. Absent when the resolved identity is not an n8n
-	 * user (external Slack/OAuth resolvers) or when no dynamic credential
-	 * resolved, so those executions stay redacted for everyone.
+	 * The n8n user the execution ran as. Stamped at context establishment by
+	 * deriving the user from the identity carrier with the same identifier that
+	 * credential resolution uses, so the redaction owner cannot drift from the
+	 * resolved user. Dynamic credential resolution re-affirms it on success. Used
+	 * by the redaction layer to grant that user access to their own data, including
+	 * a run that failed before the credential resolved. Absent when the identity is
+	 * not an n8n user (external Slack/OAuth resolvers) or cannot be validated, so
+	 * those executions stay redacted for everyone.
 	 */
 	executedByUserId: z.string().optional(),
+
+	/**
+	 * True when the workflow references a private (resolvable) credential.
+	 * Stamped at context establishment, before any node runs, so a run that
+	 * fails or stops before the credential resolves is still recognised as a
+	 * dynamic-credential execution and redacted for everyone but the executing
+	 * user — consistent with a successful run. The per-node
+	 * `usedDynamicCredentials` runData flag only appears after resolution, so it
+	 * cannot cover the failed/partial path on its own.
+	 */
+	usesDynamicCredentials: z.boolean().optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;
@@ -252,6 +265,45 @@ export const ExecutionContextSchema = z
  * Established at execution start and propagated to sub-workflows/error workflows
  */
 export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
+
+/**
+ * The subset of a failed run's context that an error workflow may inherit.
+ *
+ * An error workflow reports a failure; it does not continue the failed run's
+ * session. So it must not act as that run's user: the failing workflow names its
+ * handler in `settings.errorWorkflow`, and whoever can write that setting would
+ * otherwise choose which workflow gets to borrow the identity.
+ *
+ * Built as an allow-list rather than by deleting known-secret keys, so a field
+ * added to `IExecutionContext` later has to be listed here before it can cross
+ * the boundary.
+ */
+export function toErrorWorkflowContext(context: IExecutionContext): IExecutionContext;
+export function toErrorWorkflowContext(
+	context: IExecutionContext | undefined,
+): IExecutionContext | undefined;
+export function toErrorWorkflowContext(
+	context: IExecutionContext | undefined,
+): IExecutionContext | undefined {
+	if (!context) return undefined;
+
+	return {
+		version: context.version,
+		establishedAt: context.establishedAt,
+		source: context.source,
+		...(context.triggerNode !== undefined && { triggerNode: context.triggerNode }),
+		...(context.parentExecutionId !== undefined && {
+			parentExecutionId: context.parentExecutionId,
+		}),
+		...(context.redaction !== undefined && { redaction: context.redaction }),
+		...(context.executedByUserId !== undefined && {
+			executedByUserId: context.executedByUserId,
+		}),
+		...(context.usesDynamicCredentials !== undefined && {
+			usesDynamicCredentials: context.usesDynamicCredentials,
+		}),
+	};
+}
 
 /**
  * Metadata shape for the `n8n-oauth` credential-context source.

@@ -77,6 +77,41 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
 	});
 
+	it('retains the structured agent artifact from a target row', () => {
+		const cases = [withFile('agent-case', [scenario('s1')])];
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: {
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage requests.',
+			},
+			skills: {},
+		};
+		const rows = [
+			row(
+				{ testCaseFile: 'agent-case', scenarioName: 's1', _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: true,
+					score: 1,
+					reasoning: 'ok',
+					agentId: 'agent-1',
+					agentContext: 'AGENT CONTEXT',
+					agentArtifact,
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		expect(result[0][0]).toMatchObject({
+			agentId: 'agent-1',
+			agentArtifactContext: 'AGENT CONTEXT',
+			agentArtifact,
+		});
+	});
+
 	it('grades a build-only case (0 scenarios) from the sentinel row without a scenario unit', () => {
 		const cases = [withFile('build-only', [])];
 		const rows = [

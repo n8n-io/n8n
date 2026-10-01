@@ -125,6 +125,7 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 				workflowIds: ['seeded-wf-1'],
 				dataTableIds: ['scenario-dt-1'],
 				agentIds: [],
+				folderIds: [],
 			}),
 			// Rejected before the runner: an error result with an id no execution exists under.
 			executeWithLlmMock: vi.fn().mockResolvedValue({
@@ -149,6 +150,7 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 				workflows: [{ id: 'sEeDeDwF1234567a', name: 'Daily Sync', nodes: [], connections: {} }],
 				dataTables: [],
 				agents: [],
+				folders: [],
 				projects: [],
 				priorRuns: [{ workflow: 'sEeDeDwF1234567a' }],
 			},
@@ -168,6 +170,7 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 				workflowIds: [],
 				dataTableIds: ['scenario-dt-1'],
 				agentIds: [],
+				folderIds: [],
 			}),
 			listWorkflows: vi.fn().mockResolvedValue([]),
 		});
@@ -181,6 +184,7 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 				workflows: [{ id: 'sEeDeDwF1234567a', name: 'Daily Sync', nodes: [], connections: {} }],
 				dataTables: [],
 				agents: [],
+				folders: [],
 				projects: [],
 				// Not the declared id — `executePriorRuns` throws.
 				priorRuns: [{ workflow: 'nOtDeClArEd1234a' }],
@@ -244,7 +248,12 @@ describe('buildWorkflow declared credentials', () => {
 		expect(build.success).toBe(true);
 		// A blank credential models one the user saved without filling anything in,
 		// so it is seeded with no data and must never resolve a test as passing.
-		expect(createCredential).toHaveBeenCalledWith(expect.any(String), 'httpHeaderAuth', {});
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'httpHeaderAuth',
+			{},
+			undefined,
+		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
 			expect.any(String),
 			['cred-blank'],

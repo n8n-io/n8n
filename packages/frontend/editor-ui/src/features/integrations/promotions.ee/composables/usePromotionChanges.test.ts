@@ -51,26 +51,43 @@ const mockChanges = [
 	},
 ];
 
+const COMMIT_SHA = 'a'.repeat(40);
+
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue(mockChanges);
-		vi.mocked(promotionsApi.promoteChanges).mockResolvedValue({ branchName: 'promote/test' });
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
+			commitSha: COMMIT_SHA,
+			changes: mockChanges,
+		});
 	});
 
-	it('should call promote with correct parameters', async () => {
-		const { fetchChanges, toggleSelected, promote } = usePromotionChanges('project-1');
+	it('should drop selections whose resource disappears after a refresh', async () => {
+		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
+			usePromotionChanges('project-1');
+		await fetchChanges();
+		toggleSelected('wf-001');
+		toggleSelected('wf-002');
+		expect(selectedCount.value).toBe(2);
+
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce({
+			commitSha: COMMIT_SHA,
+			changes: mockChanges.filter((change) => change.id !== 'wf-001'),
+		});
 		await fetchChanges();
 
-		toggleSelected('wf-001');
-		toggleSelected('wf-003');
+		expect(selectedIds.value).toEqual(new Set(['wf-002']));
+		expect(selectedCount.value).toBe(1);
+	});
 
-		await promote(true);
+	it('should request the given direction and keep the commit the rows came from', async () => {
+		const { fetchChanges, commitSha } = usePromotionChanges('project-1', 'apply');
+		expect(commitSha.value).toBeNull();
 
-		expect(promotionsApi.promoteChanges).toHaveBeenCalledWith({}, 'project-1', {
-			workflowIds: expect.arrayContaining(['wf-001', 'wf-003']),
-			createBranch: true,
-		});
+		await fetchChanges();
+
+		expect(promotionsApi.getPromotableChanges).toHaveBeenCalledWith({}, 'project-1', 'apply');
+		expect(commitSha.value).toBe(COMMIT_SHA);
 	});
 
 	it('should handle fetch errors', async () => {
@@ -84,25 +101,29 @@ describe('usePromotionChanges', () => {
 		expect(isLoading.value).toBe(false);
 	});
 
-	it('should drop selections whose resource disappears after a refresh', async () => {
-		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
-			usePromotionChanges('project-1');
-		await fetchChanges();
+	it('should stamp the last refresh on success only', async () => {
+		vi.useFakeTimers();
+		try {
+			const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
+			expect(lastRefreshedAt.value).toBeNull();
 
-		toggleSelected('wf-001');
-		toggleSelected('wf-002');
-		expect(selectedCount.value).toBe(2);
+			await fetchChanges();
+			const firstRefresh = lastRefreshedAt.value;
+			expect(firstRefresh).not.toBeNull();
 
-		// wf-001 is gone from the refreshed response (e.g. promoted elsewhere).
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce([
-			mockChanges[1],
-			mockChanges[2],
-		]);
-		await fetchChanges();
+			vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(
+				new Error('Network error'),
+			);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).toBe(firstRefresh);
 
-		expect(selectedIds.value.has('wf-001')).toBe(false);
-		expect(selectedIds.value.has('wf-002')).toBe(true);
-		expect(selectedCount.value).toBe(1);
+			// Two stamps in the same millisecond would compare equal, so move the clock first.
+			vi.advanceTimersByTime(60_000);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).not.toBe(firstRefresh);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('should select only the visible rows when a search filter is active', async () => {
