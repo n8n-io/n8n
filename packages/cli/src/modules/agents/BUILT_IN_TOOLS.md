@@ -76,7 +76,7 @@ See the [dedicated section](#mark_session_failed-session-outcomes).
 
 ## Background job tools
 
-Attach condition: Top-level agent, background tasks on (`AgentsConfig.backgroundTasksEnabled` and the caller allows them), and the run supports human-in-the-loop resume.
+Attach condition: Top-level agent and background tasks on. Background tasks are on when `AgentsConfig.backgroundTasksEnabled` is set and the caller does not pass `allowBackgroundTasks: false`. For example, scheduled task runs and published n8n Chat runs pass `false`. Human-in-the-loop resume support does not change this condition. It only controls whether workflow tools move waiting workflows to the background.
 
 Source: [`background/background-job-tools.ts`](./background/background-job-tools.ts).
 
