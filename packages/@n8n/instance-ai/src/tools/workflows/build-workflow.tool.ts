@@ -14,7 +14,11 @@ import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { computeChatModelValidationIssues } from './chat-model-validation';
+import {
+	computeChatModelValidationIssues,
+	removeUnsupportedTemperature,
+} from './chat-model-validation';
+import { keepSubnodesWithParentGroup } from './keep-subnodes-with-parent-group';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
@@ -1286,6 +1290,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			for (const node of json.nodes ?? []) {
 				if (!node.name || node.disabled) continue;
+				const removedTemperatureFor = await removeUnsupportedTemperature(node);
+				if (removedTemperatureFor) {
+					informational.push({
+						code: 'AUTO_REMOVED_TEMPERATURE',
+						message: `${node.name}: removed options.temperature because model "${removedTemperatureFor}" does not accept it. Remove it from the source too.`,
+						nodeName: node.name,
+						severity: 'informational',
+					});
+				}
 				const chatModelIssues = await computeChatModelValidationIssues(context, node);
 				for (const messages of Object.values(chatModelIssues)) {
 					for (const message of messages) {
@@ -1341,6 +1354,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+				informational.push(...keepSubnodesWithParentGroup(json));
 				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
 				const droppedGroupWarnings = nodeGroupDroppedWarnings(
 					dropInvalidWorkflowJsonGroups(
