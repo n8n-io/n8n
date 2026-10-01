@@ -1,7 +1,7 @@
 import type {
-	SamlConfigurationResponse,
+	SamlConfigurationPublicDto,
 	SamlPreferences,
-	UpdateSamlConfigurationDto,
+	UpdateSamlConfigurationPublicDto,
 } from '@n8n/api-types';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
@@ -10,14 +10,7 @@ import {
 	getServiceProviderReturnUrl,
 } from '@/modules/sso-saml/service-provider.ee';
 
-/**
- * Normalize preferences into the public API response shape.
- *
- * Every writable PUT field is always present so a GET response can be sent back
- * as a PUT body. Secrets are redacted with the blanking placeholder when set, or
- * `""` when unset. Read-only `entityID` / `returnUrl` are included and ignored on write.
- */
-export function toSamlConfigurationResponse(prefs: SamlPreferences): SamlConfigurationResponse {
+export function toSamlConfigurationResponse(prefs: SamlPreferences): SamlConfigurationPublicDto {
 	return {
 		mapping: {
 			email: prefs.mapping?.email ?? '',
@@ -54,19 +47,20 @@ export function toSamlConfigurationResponse(prefs: SamlPreferences): SamlConfigu
 	};
 }
 
-/**
- * Convert a validated PUT body into preferences for `setSamlPreferences`.
- * Treats redaction placeholders as "keep existing" (omit the field). The service
- * already does this for `signingPrivateKey`; we mirror it here for metadata and
- * signingCertificate, which the service does not handle the same way.
- */
 export function toSamlPreferencesUpdate(
-	data: UpdateSamlConfigurationDto,
+	data: UpdateSamlConfigurationPublicDto,
 ): Partial<SamlPreferences> {
-	const { metadata, signingCertificate, signingPrivateKey, ...rest } = data;
+	const {
+		entityID: _entityID,
+		returnUrl: _returnUrl,
+		metadata,
+		signingCertificate,
+		signingPrivateKey,
+		...writable
+	} = data;
 
 	return {
-		...rest,
+		...writable,
 		...(metadata === CREDENTIAL_BLANKING_VALUE ? {} : { metadata }),
 		...(signingCertificate === CREDENTIAL_BLANKING_VALUE ? {} : { signingCertificate }),
 		...(signingPrivateKey === CREDENTIAL_BLANKING_VALUE ? {} : { signingPrivateKey }),
