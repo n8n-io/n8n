@@ -25,6 +25,22 @@ the chip text before the action moves outside the panel.
 Show session details on separate lines when the session list is narrow. Keep the
 title, origin, date, token count, and actions visible without overlap.
 
+## Item context menus
+
+Use `AgentItemContextMenu` for removable configuration chips. It wraps the
+Design System context menu and shows one destructive `Remove` action.
+Keep normal-click editing and existing modal removal controls.
+
+For grouped tools, put the menu on the group chip and each item in its dropdown.
+Remove on the group removes all its tool references in one configuration update.
+Normal click still opens the dropdown. Remove on an item removes only that
+reference. Keep shared workflows and sub-agents. Schedules and channels use
+their existing removal flows. Keep the managed Slack confirmation and its
+external app choice.
+
+Disable the menu under edit locks and read-only access. Check this state again
+when the user selects Remove. Configuration errors must not block removal.
+
 ## Modal patterns
 
 ### Canonical components

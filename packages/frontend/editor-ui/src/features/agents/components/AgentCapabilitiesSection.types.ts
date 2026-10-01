@@ -57,6 +57,7 @@ export type ToolRow = GroupedToolRow | SingleToolRow;
 export type ToolMenuItem = DropdownMenuItemProps<
 	string,
 	{
+		index: number;
 		nodeType: ToolRowNodeType;
 		openTarget: ToolOpenTarget;
 		invalid: boolean;

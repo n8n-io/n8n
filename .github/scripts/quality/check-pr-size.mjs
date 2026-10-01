@@ -36,8 +36,11 @@ export const TEST_PATTERNS = [
 	// Fixtures and mocks
 	'**/fixtures/**',
 	'**/__mocks__/**',
-	// Dedicated testing package
-	'packages/testing/**',
+	// Former packages/testing workspaces
+	'packages/quality/policy/**',
+	'packages/quality/testing/**',
+	'packages/quality/environments/**',
+	'packages/quality/efficiency/microbenchmarks/**',
 ];
 
 export const MISC_PATTERNS = [

@@ -8555,6 +8555,7 @@
 	"agents.builder.tasks.status.title": "Schedule status",
 	"agents.builder.tasks.status.success": "Success",
 	"agents.builder.tasks.status.error": "Failed",
+	"agents.builder.contextMenu.remove": "Remove",
 	"agents.builder.tasks.delete": "Remove schedule",
 	"agents.builder.tasks.loadError": "Could not load schedules",
 	"agents.builder.tasks.removeError": "Could not remove schedule",
