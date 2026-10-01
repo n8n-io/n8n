@@ -752,29 +752,28 @@ describe('SubAgentRunner', () => {
 		};
 		const runtimeSnapshot = JSON.stringify(pinnedRuntimeSource);
 		const shouldPause = vi.fn().mockResolvedValue(true);
-		sourceResolver.resolveForRuntime.mockResolvedValueOnce(pinnedRuntimeSource);
+		sourceResolver.resolveForRuntime.mockResolvedValue(pinnedRuntimeSource);
 		childAgent.resumePaused.mockImplementation(async (options) => {
 			await options.onResumeClaimed?.();
 			return makeStreamResult([{ type: 'finish', finishReason: 'paused' }]);
 		});
 
-		const result = await runner.resumePaused(
-			{
-				...delegatedRequest,
-				childRunId: 'child-run-1',
-				childThreadId: 'child-thread-1',
-				parentThreadId,
-				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
-			},
-			{
-				projectId,
-				parentAgentId,
-				credentialProvider,
-				runType: 'test',
-				runtimeSnapshot,
-				shouldPause,
-			},
-		);
+		const resumeRequest = {
+			...delegatedRequest,
+			childRunId: 'child-run-1',
+			childThreadId: 'child-thread-1',
+			parentThreadId,
+			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+		};
+		const runContext = {
+			projectId,
+			parentAgentId,
+			credentialProvider,
+			runType: 'test' as const,
+			runtimeSnapshot,
+			shouldPause,
+		};
+		const result = await runner.resumePaused(resumeRequest, runContext);
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
 			{ agentId: 'agent-1', versionId: 'version-7' },
@@ -802,6 +801,16 @@ describe('SubAgentRunner', () => {
 			status: 'paused',
 			result: { finishReason: 'paused' },
 		});
+
+		const admissionError = new Error('Resume admission rejected');
+		await expect(
+			runner.resumePaused(resumeRequest, {
+				...runContext,
+				onResumeClaimed: async () => {
+					throw admissionError;
+				},
+			}),
+		).rejects.toBe(admissionError);
 	});
 
 	it('records a draft child resume in the same thread only after host admission', async () => {
