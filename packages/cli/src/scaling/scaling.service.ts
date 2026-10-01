@@ -7,7 +7,6 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
 import type { IRun } from 'n8n-workflow';
@@ -15,7 +14,6 @@ import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
-import { JobHandedBackError } from '@/errors/job-handed-back.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
@@ -47,7 +45,7 @@ const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 /** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
-const HAND_BACK_SETTLE_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
+const CURRENT_JOBS_SETTLE_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
 
 @Service()
 export class ScalingService {
@@ -59,8 +57,6 @@ export class ScalingService {
 	private createBullQueue?: (name: string) => JobQueue;
 
 	private stopping = false;
-
-	private readonly pendingHandBacks = new Map<string, IDeferredPromise<void>>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -185,7 +181,6 @@ export class ScalingService {
 					`Worker received job ${jobId} for execution ${executionId} after it began to stop`,
 					{ executionId, jobId },
 				);
-				this.pendingHandBacks.set(jobId.toString(), createDeferredPromise());
 				handBackJob(job);
 			}
 
@@ -286,6 +281,7 @@ export class ScalingService {
 		const hasInProcessExecutionsToDrain = () =>
 			this.activeExecutions.getRunningExecutionIds().length !== 0;
 		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
+		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
 
 		let count = 0;
 
@@ -302,7 +298,7 @@ export class ScalingService {
 			await sleep(sleepMs);
 		}
 
-		await this.waitForPendingHandBacks();
+		await this.waitForCurrentQueueJobs(getRemainingWindowMs());
 
 		// Cancel the stragglers rather than leave them to run. The task runner stops
 		// next, so they cannot make progress.
@@ -316,7 +312,7 @@ export class ScalingService {
 
 			// The force-exit timer is armed at the full window, so the write gets a share of
 			// what is left of it. The rest stays for the shutdown hooks that run after this one.
-			const remainingWindowMs = Math.max(0, shutdownWindowMs - (Date.now() - start));
+			const remainingWindowMs = getRemainingWindowMs();
 			const writeDeadlineMs = Math.min(
 				MAX_CANCEL_WRITE_TIMEOUT_MS,
 				Math.round(remainingWindowMs * CANCEL_WRITE_BUDGET_SHARE),
@@ -334,18 +330,16 @@ export class ScalingService {
 		}
 	}
 
-	private async waitForPendingHandBacks() {
-		if (this.pendingHandBacks.size === 0) return;
-
+	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
 		let timeout: NodeJS.Timeout | undefined;
 
 		const timedOut = new Promise<void>((resolve) => {
-			timeout = setTimeout(resolve, HAND_BACK_SETTLE_TIMEOUT_MS);
+			timeout = setTimeout(resolve, Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs));
 			timeout.unref();
 		});
 
 		const settled = Promise.all(
-			[...this.pendingHandBacks.values()].map(async ({ promise }) => await promise),
+			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
 		);
 
 		try {
@@ -540,14 +534,6 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners(queue: JobQueue) {
-		queue.on('failed', (job: Job, error: Error) => {
-			if (!(error instanceof JobHandedBackError)) return;
-
-			const jobId = job.id.toString();
-			this.pendingHandBacks.get(jobId)?.resolve();
-			this.pendingHandBacks.delete(jobId);
-		});
-
 		queue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
