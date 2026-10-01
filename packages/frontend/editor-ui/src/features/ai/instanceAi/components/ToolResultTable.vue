@@ -70,7 +70,7 @@ function formatCell(value: unknown): string {
 .th {
 	text-align: left;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;

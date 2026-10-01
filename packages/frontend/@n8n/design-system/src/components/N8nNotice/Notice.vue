@@ -100,7 +100,7 @@ const onClick = (event: MouseEvent) => {
 	line-height: var(--line-height--sm);
 
 	a {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	ul {
