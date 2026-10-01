@@ -484,7 +484,7 @@ describe('AgentChatPanel', () => {
 		container.remove();
 	});
 
-	it('uses the order at drag start and restores the refreshed queue after a rejected drop', async () => {
+	it('uses the order at drag start and restores the refreshed queue after the reorder settles', async () => {
 		const items = [1, 2, 3].map((id) => ({
 			id: String(id),
 			message: `Message ${id}`,
