@@ -6,7 +6,7 @@
  * data. Only reachable via /dev/test-agent-preview, and only in dev mode
  * (see the route guard in router.ts). Delete freely.
  */
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import AgentAvatar, {
 	type AgentAvatarKind,
@@ -18,6 +18,26 @@ const avatarKinds: AgentAvatarKind[] = ['pass', 'work', 'fail', 'idle', 'strong'
 const avatarSizes: AgentAvatarSize[] = ['xs', 'row', 'sm', 'md'];
 
 const store = useAgentEvalsStore();
+
+// The store is a singleton shared with the rest of the app — stubbing its
+// actions in place would otherwise keep serving this playground's canned
+// data to a real agent builder session after navigating away. Captured
+// before the first `stubStore()` call, and put back on unmount.
+const realActions = {
+	generateDraftCases: store.generateDraftCases,
+	startRun: store.startRun,
+	openRun: store.openRun,
+	isRunInFlight: store.isRunInFlight,
+	stopPollingRun: store.stopPollingRun,
+	startPollingRun: store.startPollingRun,
+	hasLostTrackOfRun: store.hasLostTrackOfRun,
+	getReview: store.getReview,
+	getDatasets: store.getDatasets,
+	fetchCases: store.fetchCases,
+	updateCase: store.updateCase,
+	createCase: store.createCase,
+};
+onBeforeUnmount(() => Object.assign(store, realActions));
 
 const sampleInput = ref('Summarize the thread about the Acme SSO outage');
 const sampleOutput = ref(
