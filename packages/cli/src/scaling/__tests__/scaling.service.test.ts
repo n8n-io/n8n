@@ -11,6 +11,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { JobHandedBackError } from '@/errors/job-handed-back.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -386,7 +387,6 @@ describe('ScalingService', () => {
 
 		describe('when a job reaches the worker after stop began', () => {
 			it('should hand the job back without running it', async () => {
-				const { JobHandedBackError } = await import('@/errors/job-handed-back.error');
 				const processFn = await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 				const eventService = scalingService['eventService'];
