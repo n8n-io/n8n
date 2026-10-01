@@ -403,6 +403,7 @@ export {
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
+export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';
 
 export * from './evaluations';
 

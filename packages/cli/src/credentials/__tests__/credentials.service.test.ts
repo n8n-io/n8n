@@ -1895,6 +1895,7 @@ describe('CredentialsService', () => {
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				isManaged: false,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const unredactedData = { accessToken: 'live-token' } as ICredentialDataDecryptedObject;
@@ -1931,11 +1932,50 @@ describe('CredentialsService', () => {
 			expect(result).toEqual(testResult);
 		});
 
+		it('uses stored values when testing a managed credential', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'openAiApi',
+				isManaged: true,
+			});
+			const decryptedData = {
+				apiKey: 'stored-key',
+				url: 'https://saved.example/v1',
+			} as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+
+			const result = await service.testWithCredentials(ownerUser, {
+				id: storedCredential.id,
+				name: 'Draft Credential',
+				type: 'githubApi',
+				data: {
+					apiKey: CREDENTIAL_BLANKING_VALUE,
+					url: 'https://draft.example/v1',
+				},
+			});
+
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(ownerUser.id, 'openAiApi', {
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data: decryptedData,
+				homeProject: undefined,
+			});
+			expect(result).toEqual(testResult);
+		});
+
 		it('discards a caller-supplied homeProject and resolves the owning project from storage', async () => {
 			const storedCredential = mock<CredentialsEntity>({
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				isManaged: false,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
@@ -1991,6 +2031,7 @@ describe('CredentialsService', () => {
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				isManaged: false,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;

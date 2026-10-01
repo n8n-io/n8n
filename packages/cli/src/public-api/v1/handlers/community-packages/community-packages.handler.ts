@@ -7,17 +7,9 @@ import { mapToCommunityPackage, mapToCommunityPackageList } from './community-pa
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
-type InstallPackageRequest = AuthenticatedRequest<
-	{},
-	{},
-	{ name: string; version?: string; verify?: boolean }
->;
+type InstallPackageRequest = AuthenticatedRequest<{}, {}, { name: string; version?: string }>;
 
-type UpdatePackageRequest = AuthenticatedRequest<
-	{ name: string },
-	{},
-	{ version?: string; verify?: boolean }
->;
+type UpdatePackageRequest = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
 
 type CommunityPackageHandlers = {
 	installPackage: PublicAPIEndpoint<InstallPackageRequest>;
@@ -33,7 +25,7 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 
 			const installedPackage = await lifecycle.install(
-				{ name: req.body.name, version: req.body.version, verify: req.body.verify ?? true },
+				{ name: req.body.name, version: req.body.version },
 				req.user,
 				'publicApi',
 			);
@@ -60,7 +52,6 @@ const communityPackageHandlers: CommunityPackageHandlers = {
 				{
 					name: req.params.name,
 					version: req.body?.version,
-					verify: req.body?.verify ?? true,
 				},
 				req.user,
 				'notFound',

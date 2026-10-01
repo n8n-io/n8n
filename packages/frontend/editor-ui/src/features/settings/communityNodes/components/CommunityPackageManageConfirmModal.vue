@@ -160,11 +160,7 @@ const onUpdate = async () => {
 		if (settingsStore.isUnverifiedPackagesEnabled) {
 			await communityNodesStore.updatePackage(props.activePackageName);
 		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
-			await communityNodesStore.updatePackage(
-				props.activePackageName,
-				updateVersion.value,
-				nodeTypeStorePackage.value?.checksum,
-			);
+			await communityNodesStore.updatePackage(props.activePackageName, updateVersion.value);
 		} else {
 			throw new Error('Community nodes feature is not correctly enabled.');
 		}

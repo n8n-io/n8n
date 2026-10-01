@@ -7,7 +7,9 @@ import { defaultSettings } from '@n8n/frontend-test-utils';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
+import { fireEvent } from '@testing-library/vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY } from '../communityNodes.constants';
+import { useCommunityNodesStore } from '../communityNodes.store';
 
 const fetchWorkflowsWithNodesIncluded = vi.fn();
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -66,6 +68,13 @@ describe('CommunityPackageManageConfirmModal', () => {
 
 	beforeEach(() => {
 		nodeTypesStore = useNodeTypesStore();
+		useSettingsStore().$patch({
+			settings: {
+				...defaultSettings,
+				communityNodesEnabled: true,
+				unverifiedCommunityNodesEnabled: true,
+			},
+		});
 	});
 
 	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {
@@ -84,6 +93,35 @@ describe('CommunityPackageManageConfirmModal', () => {
 
 		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
 		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-test.test');
+	});
+
+	it('uses the exact package version without a client checksum for a verified-only update', async () => {
+		useSettingsStore().$patch({
+			settings: {
+				...defaultSettings,
+				communityNodesEnabled: true,
+				unverifiedCommunityNodesEnabled: false,
+			},
+		});
+		const communityNodesStore = useCommunityNodesStore();
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({
+			npmVersion: '2.0.5',
+			checksum: 'correct-checksum',
+		});
+
+		const { getByRole } = renderComponent({
+			props: {
+				modalName: 'test-modal',
+				activePackageName: 'n8n-nodes-test',
+				mode: 'update',
+			},
+		});
+
+		await flushPromises();
+		await fireEvent.click(getByRole('button', { name: 'Confirm update' }));
+
+		expect(communityNodesStore.updatePackage).toHaveBeenCalledWith('n8n-nodes-test', '2.0.5');
 	});
 
 	it('should call nodeTypesStore methods and update latestVerifiedVersion on mount', async () => {

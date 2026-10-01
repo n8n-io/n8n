@@ -9,6 +9,7 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 import type { CommunityNodeType } from '@n8n/api-types';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
 import path from 'node:path';
@@ -16,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
@@ -53,6 +55,7 @@ const parsedNpmPackageName = {
 };
 
 let owner: User;
+const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 
 describe('Community packages (Public API)', () => {
 	beforeAll(async () => {
@@ -61,6 +64,7 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		communityPackagesConfig.unverifiedEnabled = true;
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
@@ -199,8 +203,27 @@ describe('Community packages (Public API)', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body.packageName).toBe(pkg.packageName);
-			// No version requested, so install() pins the latest vetted version:
-			// the same catalog lookup provides both it and the checksum.
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				parsedNpmPackageName.packageName,
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should install the latest vetted version when unverified packages are disabled', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
+			const pkg = mockPackage();
+			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/community-packages')
+				.send({ name: mockPackageName() });
+
+			expect(response.status).toBe(200);
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				parsedNpmPackageName.packageName,
 				mockedVettedPackage.npmVersion,
@@ -208,7 +231,8 @@ describe('Community packages (Public API)', () => {
 			);
 		});
 
-		it('should return 400 when package is not vetted', async () => {
+		it('should return 400 when unverified packages are disabled and the package is not vetted', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
 			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
@@ -237,7 +261,32 @@ describe('Community packages (Public API)', () => {
 	});
 
 	describe('PATCH /community-packages/:name', () => {
-		it('should return 200 when package is updated successfully', async () => {
+		it('should update without a checksum and ignore a verify field when unverified packages are enabled', async () => {
+			const pkg = mockPackage();
+			communityPackagesService.findInstalledPackage.mockResolvedValue(pkg);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: pkg.packageName,
+				rawString: pkg.packageName,
+			});
+			communityPackagesService.updatePackage.mockResolvedValue(pkg);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/community-packages/${encodeURIComponent(pkg.packageName)}`)
+				.send({ version: COMMUNITY_PACKAGE_VERSION.UPDATED, verify: true });
+
+			expect(response.status).toBe(200);
+			expect(communityNodeTypesService.findVetted).not.toHaveBeenCalled();
+			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
+				pkg.packageName,
+				pkg,
+				COMMUNITY_PACKAGE_VERSION.UPDATED,
+				undefined,
+			);
+		});
+
+		it('should update with the vetted checksum when unverified packages are disabled', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
 			const pkg = mockPackage();
 			const updatedPkg = mockPackage();
 			updatedPkg.packageName = pkg.packageName;
@@ -268,6 +317,10 @@ describe('Community packages (Public API)', () => {
 		it('should return 404 when package is not installed', async () => {
 			const name = mockPackageName();
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				packageName: name,
+				rawString: name,
+			});
 
 			const response = await testServer
 				.publicApiAgentFor(owner)

@@ -1,5 +1,5 @@
 import type { ClientOptions } from '@langchain/openai';
-import { createRefreshingAuthFetch, getProxyAgent } from '@n8n/ai-utilities';
+import { aiClientFetch, createRefreshingAuthFetch, getProxyAgent } from '@n8n/ai-utilities';
 import {
 	assertUrlAllowed,
 	getCredentialAllowedDomains,
@@ -49,7 +49,7 @@ export function createDatabricksGatewayConfig(
 		// revoked server-side, or clock skew
 		fetch: wrapDatabricksErrorFetch(
 			createRefreshingAuthFetch({
-				baseFetch: fetch,
+				baseFetch: aiClientFetch,
 				expiredStatus: tokenSource.expiredStatus,
 				resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
 				...(refreshAfterRejection && {
