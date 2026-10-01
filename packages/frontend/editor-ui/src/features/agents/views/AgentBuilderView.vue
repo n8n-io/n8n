@@ -149,6 +149,7 @@ import {
 	type BudgetAmountField,
 } from '../utils/budget-config';
 import { hasBlockingIssues } from '../utils/validationIssues';
+import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
 	defineProps<{
@@ -2680,15 +2681,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function isNotFoundError(error: unknown): boolean {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'httpStatusCode' in error &&
-		error.httpStatusCode === 404
-	);
-}
 
 const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {

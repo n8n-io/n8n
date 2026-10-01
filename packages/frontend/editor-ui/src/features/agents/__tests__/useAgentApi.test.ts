@@ -4,9 +4,11 @@ import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
 	cancelAgentChatExecution,
+	cancelAgentChatRun,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
+	getN8nChatAgent,
 	removeAgentQueuedMessage,
 	steerAgentQueuedMessage,
 	updateAgentQueuedMessage,
@@ -133,6 +135,8 @@ describe('useAgentApi', () => {
 
 			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'agent-1:chat:bot-1-2#1');
 
+			// Relative to `restApiContext.baseUrl` — makeRestApiRequest prepends it itself,
+			// so an endpoint that already carried `/rest` would double it in production.
 			expect(makeRestApiRequest).toHaveBeenCalledWith(
 				restApiContext,
 				'GET',
@@ -157,6 +161,45 @@ describe('useAgentApi', () => {
 			'DELETE',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
 		);
+	});
+
+	describe('n8n Chat channel', () => {
+		it('switches the queue, messages, and stop routes to n8n-chat', async () => {
+			const args = [restApiContext, 'project-1', 'agent-1', 'thread-1'] as const;
+			await getAgentChatQueue(...args, 'n8n-chat');
+			await updateAgentQueuedMessage(...args, 'queue-1', { message: 'edited' }, 'n8n-chat');
+			await removeAgentQueuedMessage(...args, 'queue-1', 'n8n-chat');
+			await getChatMessages(...args, 'n8n-chat');
+			await cancelAgentChatExecution(...args, 'execution-1', 'n8n-chat');
+			await cancelAgentChatRun(restApiContext, 'project-1', 'agent-1', 'run-1', 'n8n-chat');
+
+			// Relative paths only: makeRestApiRequest prepends `restApiContext.baseUrl` itself.
+			const path = '/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1';
+			expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+				[restApiContext, 'GET', `${path}/queue`],
+				[restApiContext, 'PATCH', `${path}/queue/queue-1`, { message: 'edited' }],
+				[restApiContext, 'DELETE', `${path}/queue/queue-1`],
+				[restApiContext, 'GET', `${path}/messages`],
+				[restApiContext, 'DELETE', `${path}/executions/execution-1`],
+				[restApiContext, 'DELETE', '/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1'],
+			]);
+		});
+	});
+
+	describe('getN8nChatAgent', () => {
+		it('fetches one agent from the cross-project n8n Chat route', async () => {
+			const item = { id: 'agent-1', name: 'Support', project: { id: 'p1', name: 'Team' } };
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(item);
+
+			const result = await getN8nChatAgent(restApiContext, 'agent/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/v2/n8n-chat/agents/agent%2F1',
+			);
+			expect(result).toBe(item);
+		});
 	});
 
 	describe('duplicateAgent', () => {

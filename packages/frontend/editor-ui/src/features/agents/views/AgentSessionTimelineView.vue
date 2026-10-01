@@ -25,6 +25,7 @@ import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgent
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -304,22 +305,9 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-function closeTimeline() {
-	/**
-	 * Get the last visited route from Vue router so we return to the correct starting point (e.g Preview)
-	 * If no state is available, it's most likey because the link was visited directly.
-	 * Here we fallback to default Agents view.
-	 */
-	const previousRoute = router.options.history.state.back;
-	const resolvedPreviousRoute =
-		typeof previousRoute === 'string' ? router.resolve(previousRoute) : null;
-
-	if (resolvedPreviousRoute?.matched.length) {
-		router.back();
-		return;
-	}
-	void router.push(agentExecutionsRoute.value);
-}
+// Returns to the correct starting point (e.g. Preview) when there is one;
+// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
+const closeTimeline = useBackOrFallback(agentExecutionsRoute);
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
