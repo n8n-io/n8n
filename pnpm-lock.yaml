@@ -1864,9 +1864,6 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
@@ -1913,6 +1910,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/@n8n/backend-test-utils:
     dependencies:
