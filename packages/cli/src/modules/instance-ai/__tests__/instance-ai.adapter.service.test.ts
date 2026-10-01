@@ -1091,6 +1091,7 @@ describe('extractExecutionDebugInfo', () => {
 				id: 'exec-1',
 				mode: 'manual',
 				status: 'error',
+				createdAt: new Date('2026-01-01T00:00:00Z'),
 				startedAt: new Date('2026-01-01T00:00:00Z'),
 				stoppedAt: new Date('2026-01-01T00:00:01Z'),
 				workflowData: {
