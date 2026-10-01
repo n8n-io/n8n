@@ -253,31 +253,34 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		});
 	}
 
-	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
-		// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
-		// non-array `skills`, skip malformed refs, and resolve bodies by own key
-		// only so ids like "constructor" can't surface prototype members.
-		const rawRefs = localConfig.value?.skills;
-		const refs = Array.isArray(rawRefs) ? rawRefs : [];
-		const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
-		const seen = new Set<string>();
-		const out: Array<{ id: string; skill: AgentSkill }> = [];
+	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill; enabled?: boolean }>>(
+		() => {
+			// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
+			// non-array `skills`, skip malformed refs, and resolve bodies by own key
+			// only so ids like "constructor" can't surface prototype members.
+			const rawRefs = localConfig.value?.skills;
+			const refs = Array.isArray(rawRefs) ? rawRefs : [];
+			const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
+			const seen = new Set<string>();
+			const out: Array<{ id: string; skill: AgentSkill; enabled?: boolean }> = [];
 
-		for (const skillRef of refs) {
-			if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
-			seen.add(skillRef.id);
-			out.push({
-				id: skillRef.id,
-				skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
-					name: skillRef.id,
-					description: '',
-					instructions: '',
-				},
-			});
-		}
+			for (const skillRef of refs) {
+				if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
+				seen.add(skillRef.id);
+				out.push({
+					id: skillRef.id,
+					enabled: skillRef.enabled,
+					skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
+						name: skillRef.id,
+						description: '',
+						instructions: '',
+					},
+				});
+			}
 
-		return out;
-	});
+			return out;
+		},
+	);
 
 	function onOpenSkillFromList(id: string) {
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
@@ -424,6 +427,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleConfigUpdate({ tasks: nextTasks });
 	}
 
+	function onToggleSkill({ id, enabled }: { id: string; enabled: boolean }) {
+		scheduleConfigUpdate({
+			skills: (localConfig.value?.skills ?? []).map((ref) =>
+				ref.id === id ? { ...ref, enabled } : ref,
+			),
+		});
+	}
+
 	function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
 
@@ -542,6 +553,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onOpenSkillFromList,
 		onRemoveSkill,
 		onToggleTask,
+		onToggleSkill,
 		onConnectedTriggersUpdate,
 		onTriggerAdded,
 	};

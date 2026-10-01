@@ -322,6 +322,30 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
 	});
 
+	it('skips disabled tools before looking up user access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		const { service, credentialsFinderService, workflowFinderService, workflowRepository } =
+			makeService({});
+		const entity = makeAgentEntity([
+			{ ...nodeToolWithCredential, enabled: false },
+			{ ...workflowTool, enabled: false },
+			customTool,
+		]);
+
+		await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'test',
+			undefined,
+			testUser,
+		);
+
+		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+		expect(workflowRepository.findOneByAgentToolReference).not.toHaveBeenCalled();
+	});
+
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();

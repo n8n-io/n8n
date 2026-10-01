@@ -429,7 +429,7 @@ export class AgentConfigService {
 
 		if (validatedConfig.tools !== undefined) {
 			await this.nodeToolAiGatewayService.assignManagedCredentials(
-				validatedConfig.tools,
+				validatedConfig.tools.filter((tool) => tool.enabled !== false),
 				new Set(accessibleCredentials.map((credential) => credential.type)),
 			);
 		}
@@ -456,12 +456,24 @@ export class AgentConfigService {
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
-			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
+			const existingSkillIds = new Set((entity.schema?.skills ?? []).map((ref) => ref.id));
+			config.skills = config.skills.filter(
+				(ref) => ref.enabled === false || existingSkillIds.has(ref.id) || Boolean(skills[ref.id]),
+			);
 		}
 
 		if (config.tools !== undefined) {
 			const tools = entity.tools ?? {};
-			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
+			const existingToolIds = new Set(
+				(entity.schema?.tools ?? []).filter((ref) => ref.type === 'custom').map((ref) => ref.id),
+			);
+			config.tools = config.tools.filter(
+				(ref) =>
+					ref.enabled === false ||
+					ref.type !== 'custom' ||
+					existingToolIds.has(ref.id) ||
+					Boolean(tools[ref.id]),
+			);
 		}
 
 		if (config.tasks !== undefined) {
@@ -469,17 +481,17 @@ export class AgentConfigService {
 		}
 
 		if (config.subAgents?.agents !== undefined) {
+			const existingAgentIds = new Set(
+				(entity.schema?.subAgents?.agents ?? []).map((ref) => ref.agentId),
+			);
 			const resolvedSubAgents = await resolveUniqueSubAgents({
 				refs: config.subAgents.agents,
 				projectId: entity.projectId,
 				agentRepository: this.agentRepository,
 			});
 			config.subAgents.agents = resolvedSubAgents
-				.filter(({ agent }) => agent !== null)
-				.map(({ agentId, useWhen }) => ({
-					agentId,
-					...(useWhen ? { useWhen } : {}),
-				}));
+				.filter(({ agentId, agent }) => existingAgentIds.has(agentId) || agent !== null)
+				.map(({ agent: _agent, ...ref }) => ref);
 			return resolvedSubAgents;
 		}
 
@@ -487,8 +499,7 @@ export class AgentConfigService {
 	}
 
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
-		for (const { agentId, agent } of resolvedSubAgents) {
-			if (!agent) continue;
+		for (const { agentId } of resolvedSubAgents) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}

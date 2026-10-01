@@ -31,6 +31,21 @@ Use `AgentItemContextMenu` for removable configuration chips. It wraps the
 Design System context menu and shows one destructive `Remove` action.
 Keep normal-click editing and existing modal removal controls.
 
+In the standalone Agent Builder, put `Activate` or `Deactivate` before `Remove`
+for tools, workflow references, skills, sub-agents, and schedules. Use `play` for
+`Activate`, `timer` for `Deactivate`, and `trash-2` for `Remove`.
+Put `Remove` in a separate group below a divider.
+Keep these actions out of inline Agent editors and channel,
+MCP, vector store, and memory menus. Schedules use this menu instead of a modal
+switch. Activation edits the draft and takes effect in production after publish.
+
+Keep deactivated items editable and removable. Use the same reduced opacity as
+a disabled Design System button. Apply it to the whole chip in both themes.
+Do not show a status tag on the chip. Keep `Deactivated` in its accessible
+description. Each grouped tool has its own activation action. The group menu
+has no activation action. Mark the group deactivated only when all its tools
+are off.
+
 For grouped tools, put the menu on the group chip and each item in its dropdown.
 Remove on the group removes all its tool references in one configuration update.
 Normal click still opens the dropdown. Remove on an item removes only that
@@ -39,7 +54,8 @@ their existing removal flows. Keep the managed Slack confirmation and its
 external app choice.
 
 Disable the menu under edit locks and read-only access. Check this state again
-when the user selects Remove. Configuration errors must not block removal.
+when the user selects an action. Configuration errors must not block removal
+or deactivation.
 
 ## Modal patterns
 
