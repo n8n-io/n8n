@@ -345,12 +345,14 @@ function onCheckYourAgent() {
 
 .slider {
 	width: 100%;
+	cursor: ew-resize;
 
 	:global(.el-slider__runway) {
 		height: 44px;
 		background-color: var(--run-data--color--background);
 		border-radius: var(--radius--xl);
 		border: var(--border);
+		cursor: ew-resize;
 	}
 
 	:global(.el-slider__bar) {
@@ -362,10 +364,24 @@ function onCheckYourAgent() {
 
 	:global(.el-slider__button-wrapper) {
 		top: 2px;
+		cursor: ew-resize;
 	}
 
+	// The default round thumb reads as barely-there against the bar's own
+	// 1px edge above. Flattened into a second, thicker bar — shifted left by
+	// `margin-left` (the wrapper itself is centered exactly on the bar's edge
+	// via `translateX(-50%)`, so without this the two bars sit flush on top
+	// of each other instead of side by side) — so the pair reads as one
+	// clearly visible handle.
 	:global(.el-slider__button) {
-		border-color: var(--color--primary);
+		width: 3px;
+		height: 15px;
+		margin-left: -15px;
+		border: none;
+		border-radius: var(--radius--sm);
+		background-color: var(--color--orange-500);
+		box-shadow: none;
+		cursor: ew-resize;
 	}
 }
 
