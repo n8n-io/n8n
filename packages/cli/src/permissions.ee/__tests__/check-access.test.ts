@@ -1,13 +1,16 @@
 import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	CredentialsRepository,
 	type User,
+	type Role,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -27,6 +30,7 @@ describe('userHasScopes', () => {
 	let hasGlobalConnectAccessMock: Mock;
 	let roleServiceMock: Mock;
 	let mockQueryBuilder: any;
+	const roleRepository = mock<RoleRepository>();
 
 	beforeAll(() => {
 		findByWorkflowMock = vi.fn();
@@ -92,6 +96,7 @@ describe('userHasScopes', () => {
 				rolesWithScope: roleServiceMock,
 			}),
 		);
+		Container.set(RoleRepository, roleRepository);
 	});
 
 	beforeEach(() => {
@@ -169,6 +174,37 @@ describe('userHasScopes', () => {
 	});
 
 	describe('RoleService integration', () => {
+		it('should load roles through the supplied transaction manager', async () => {
+			const credentialId = 'cred123';
+			const entityManager = mock<EntityManager>();
+			const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+			entityManager.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+			entityManager.getRepository.mockReturnValue(sharedCredentialsRepository);
+			sharedCredentialsRepository.findBy.mockResolvedValue([
+				{
+					credentialsId: credentialId,
+					projectId: 'projectId',
+					role: 'credential:custom',
+				},
+			] as never);
+			roleRepository.findAll.mockResolvedValue([mock<Role>({ slug: 'credential:custom' })]);
+			roleServiceMock.mockImplementation(
+				async (_namespace, _scopes, loadRoles: () => Promise<Role[]>) =>
+					(await loadRoles()).map(({ slug }) => slug),
+			);
+
+			const result = await userHasScopes(
+				{ id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User,
+				['credential:read'],
+				false,
+				{ credentialId },
+				entityManager,
+			);
+
+			expect(roleRepository.findAll).toHaveBeenCalledWith(entityManager);
+			expect(result).toBe(true);
+		});
+
 		it('should use RoleService for credential role resolution', async () => {
 			const credentialId = 'cred123';
 			const mockRoles = ['credential:owner', 'custom:credential-admin'];
