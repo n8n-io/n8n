@@ -37,6 +37,7 @@ import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPre
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
 	findTailOpenInteractive,
+	getMessageInteractives,
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
@@ -66,6 +67,7 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
@@ -77,6 +79,7 @@ const props = withDefaults(
 		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
+		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
@@ -258,12 +261,32 @@ const backgroundJobStatuses = computed(() => ({
 	},
 }));
 
-const backgroundApprovals = computed(() =>
-	backgroundJobs.value.flatMap((job) => {
-		if (job.status !== 'suspended' || !job.approval) return [];
+const backgroundApproval = computed(() => {
+	if (!props.backgroundJobsActive) return undefined;
+	for (const job of backgroundJobs.value) {
+		if (job.status !== 'suspended' || !job.approval) continue;
 		const input = parseApprovalInput(job.approval.suspendPayload);
-		return input ? [{ id: job.id, title: job.title, approval: job.approval, input }] : [];
-	}),
+		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
+	}
+	return undefined;
+});
+const pendingApproval = computed(() => {
+	const tail = messages.value.at(-1);
+	if (!tail) return undefined;
+	for (const payload of getMessageInteractives(tail)) {
+		if (
+			payload.toolName !== APPROVAL_TOOL_NAME ||
+			payload.resolvedAt !== undefined ||
+			!payload.runId
+		) {
+			continue;
+		}
+		return { runId: payload.runId, toolCallId: payload.toolCallId, input: payload.input };
+	}
+	return undefined;
+});
+const hasPendingApprovals = computed(
+	() => pendingApproval.value !== undefined || backgroundApproval.value !== undefined,
 );
 const pendingBackgroundResponses = ref(new Set<string>());
 
@@ -348,6 +371,7 @@ const backgroundElapsed = computed(() => {
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
 	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
 );
@@ -359,18 +383,26 @@ function focusInput(options?: FocusOptions) {
 watch(
 	[
 		showBackgroundJobs,
+		hasPendingApprovals,
 		() => props.projectId,
 		() => props.agentId,
 		() => props.continueSessionId,
 		() => props.visible,
 	],
-	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+	async (
+		[shown, approvalsShown, ...target],
+		[wasShown, approvalsWereShown, ...previousTarget],
+		onCleanup,
+	) => {
+		const removedFocusedCard =
+			(!shown && wasShown && backgroundJobCard.value?.contains(document.activeElement)) ||
+			(!approvalsShown &&
+				approvalsWereShown &&
+				approvalCards.value?.contains(document.activeElement));
 		if (
-			shown ||
-			!wasShown ||
+			!removedFocusedCard ||
 			!props.visible ||
-			target.some((value, index) => value !== previousTarget[index]) ||
-			!backgroundJobCard.value?.contains(document.activeElement)
+			target.some((value, index) => value !== previousTarget[index])
 		) {
 			return;
 		}
@@ -385,7 +417,7 @@ watch(
 			cancelled ||
 			disposed ||
 			!props.visible ||
-			showBackgroundJobs.value ||
+			hasPendingApprovals.value ||
 			document.activeElement !== document.body
 		) {
 			return;
@@ -761,6 +793,7 @@ onBeforeUnmount(() => {
 			:agent-id="agentId"
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
+			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
@@ -818,24 +851,6 @@ onBeforeUnmount(() => {
 								<span>{{ job.label }}</span>
 							</li>
 						</ul>
-						<div v-if="backgroundApprovals.length" :class="$style.backgroundApprovals">
-							<div
-								v-for="job in backgroundApprovals"
-								:key="job.approval.toolCallId"
-								:class="$style.backgroundApproval"
-							>
-								<N8nText bold size="small">{{
-									locale.baseText('agents.chat.backgroundTasks.approvalFor', {
-										interpolate: { title: job.title },
-									})
-								}}</N8nText>
-								<ApprovalCard
-									:input="job.input"
-									:disabled="pendingBackgroundResponses.has(job.approval.toolCallId)"
-									@submit="respondToBackgroundApproval(job.approval, $event)"
-								/>
-							</div>
-						</div>
 						<N8nLink
 							v-if="continueSessionId"
 							:to="backgroundTraceRoute"
@@ -852,7 +867,38 @@ onBeforeUnmount(() => {
 					</div>
 				</N8nAiActivityStepGroup>
 			</div>
+			<div v-if="hasPendingApprovals" ref="approvalCards" data-testid="agent-chat-approvals">
+				<ApprovalCard
+					v-if="pendingApproval"
+					:key="pendingApproval.toolCallId"
+					:input="pendingApproval.input"
+					@submit="
+						resume({
+							runId: pendingApproval.runId,
+							toolCallId: pendingApproval.toolCallId,
+							resumeData: $event,
+						})
+					"
+				/>
+				<div
+					v-else-if="backgroundApproval"
+					:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
+					:class="$style.backgroundApproval"
+				>
+					<N8nText bold size="small">{{
+						locale.baseText('agents.chat.backgroundTasks.approvalFor', {
+							interpolate: { title: backgroundApproval.title },
+						})
+					}}</N8nText>
+					<ApprovalCard
+						:input="backgroundApproval.input"
+						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
+						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
+					/>
+				</div>
+			</div>
 			<ChatInputBase
+				v-else
 				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
@@ -1116,16 +1162,6 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--sm);
 	border-bottom: var(--border);
 	border-bottom-style: dashed;
-}
-
-.backgroundApprovals {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	width: 100%;
-	// Keep the composer visible when several children request approval.
-	max-height: 50vh;
-	overflow-y: auto;
 }
 
 .backgroundApproval {

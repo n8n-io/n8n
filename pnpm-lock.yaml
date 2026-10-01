@@ -1771,6 +1771,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1789,6 +1792,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1813,6 +1822,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../decorators
@@ -1822,6 +1834,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2006,9 +2021,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2021,9 +2036,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      eslint:
+      oxlint:
         specifier: 'catalog:'
-        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2

@@ -80,8 +80,7 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
-import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
+import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -1036,7 +1035,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	let pendingEngineV2Response: PendingWebhookResponse | undefined;
+	let pendingEngineV2Response: WebhookResponseWait | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
@@ -1242,10 +1241,13 @@ export async function executeWebhook(
 		// the run and the listener agree on it.
 		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
 			const engineExecutionId = createExecutionIdV2();
-			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
-				engineExecutionId,
-				toResponseExpectation(responseMode),
+			// Loaded here, because only an engine v2 run needs the module code.
+			const { EngineV2WebhookResponseRegistry } = await import(
+				'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
 			);
+			pendingEngineV2Response = await Container.get(
+				EngineV2WebhookResponseRegistry,
+			).waitForResponse(engineExecutionId, toResponseExpectation(responseMode));
 			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
 		}
 
@@ -1346,66 +1348,62 @@ export async function executeWebhook(
 		 * Returns the run data when it arrives. Otherwise, it sends the response
 		 * channel error or a 504 timeout to the webhook caller.
 		 */
-		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
-			try {
-				const outcome = await waiting.settled;
-				if (outcome.status === 'response') {
-					if (!isHttpFullResponse(outcome.response)) {
-						throw new UnexpectedError('Engine v2 produced an invalid webhook response');
-					}
+		const waitForDataPlaneRun = async (waiting: WebhookResponseWait) => {
+			const outcome = await waiting.outcome;
+			if (outcome.status === 'response') {
+				if (!isHttpFullResponse(outcome.response)) {
+					throw new UnexpectedError('Engine v2 produced an invalid webhook response');
+				}
 
-					responder.markResponded();
-					await sendResponseNodeResponse(
-						outcome.response,
-						res,
-						responder,
-						workflowStartNode,
-						executionId,
-						workflow,
-					);
+				responder.markResponded();
+				await sendResponseNodeResponse(
+					outcome.response,
+					res,
+					responder,
+					workflowStartNode,
+					executionId,
+					workflow,
+				);
+				return undefined;
+			}
+
+			if (outcome.status === 'completed' || outcome.status === 'failed') {
+				if (outcome.status === 'completed' && responseMode === 'responseNode') {
+					responder.respondWith({ data: undefined, responseCode });
 					return undefined;
 				}
 
-				if (outcome.status === 'completed' || outcome.status === 'failed') {
-					if (outcome.status === 'completed' && responseMode === 'responseNode') {
-						responder.respondWith({ data: undefined, responseCode });
-						return undefined;
-					}
-
-					return await engineV2Webhooks.toRun(outcome, executionMode);
-				}
-
-				const isUndeliverable = outcome.status === 'undeliverable';
-				const errorResponse = isUndeliverable
-					? {
-							logMessage: 'Could not deliver an engine v2 webhook response',
-							responseMessage: outcome.error.message,
-							responseCode: 500,
-						}
-					: {
-							// timeout
-							logMessage: 'No answer arrived for an engine v2 webhook run',
-							responseMessage: 'The workflow did not answer in time',
-							responseCode: 504,
-						};
-				Container.get(Logger).warn(errorResponse.logMessage, {
-					executionId,
-					workflowId: workflowData.id,
-					...(isUndeliverable ? { error: outcome.error } : {}),
-				});
-				// The webhook node can answer before the execution starts. Do not send a
-				// second response when the execution response later settles.
-				if (!responder.hasResponded) {
-					responder.respondWith({
-						data: { message: errorResponse.responseMessage },
-						responseCode: errorResponse.responseCode,
-					});
-				}
-
-				return undefined;
-			} finally {
-				waiting.release();
+				return await engineV2Webhooks.toRun(outcome, executionMode);
 			}
+
+			const isUndeliverable = outcome.status === 'undeliverable';
+			const errorResponse = isUndeliverable
+				? {
+						logMessage: 'Could not deliver an engine v2 webhook response',
+						responseMessage: outcome.error.message,
+						responseCode: 500,
+					}
+				: {
+						// timeout
+						logMessage: 'No answer arrived for an engine v2 webhook run',
+						responseMessage: 'The workflow did not answer in time',
+						responseCode: 504,
+					};
+			Container.get(Logger).warn(errorResponse.logMessage, {
+				executionId,
+				workflowId: workflowData.id,
+				...(isUndeliverable ? { error: outcome.error } : {}),
+			});
+			// The webhook node can answer before the execution starts. Do not send a
+			// second response when the execution response later settles.
+			if (!responder.hasResponded) {
+				responder.respondWith({
+					data: { message: errorResponse.responseMessage },
+					responseCode: errorResponse.responseCode,
+				});
+			}
+
+			return undefined;
 		};
 
 		// Get a promise which resolves when the workflow did execute and send then response.

@@ -1,6 +1,6 @@
 import { GetResourceDependenciesDto, GetResourceDependencyCountsDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, ProjectScope, RestController } from '@n8n/decorators';
 
 import { WorkflowDependencyQueryService } from './workflow-dependency-query.service';
 
@@ -30,6 +30,19 @@ export class WorkflowDependencyController {
 		return await this.workflowDependencyQueryService.getResourceDependencies(
 			body.resourceIds,
 			body.resourceType,
+			req.user,
+		);
+	}
+
+	@Get('/projects/:projectId/folders/:folderId')
+	@ProjectScope('folder:read')
+	@Licensed('feat:folders')
+	async getFolderDependencies(req: AuthenticatedRequest<{ projectId: string; folderId: string }>) {
+		const { projectId, folderId } = req.params;
+
+		return await this.workflowDependencyQueryService.getFolderDependencies(
+			projectId,
+			folderId,
 			req.user,
 		);
 	}
