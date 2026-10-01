@@ -184,9 +184,10 @@ Use `N8nApprovalCard` for Preview tool approvals, including background child
 approvals. It owns the shared layout, keyboard controls, and standard choices
 for the Assistant and Agent Preview. Pass the app catalog labels through
 `useApprovalCardLabels`.
-Pass the tool call arguments to the shared card. It formats and shows them
-inline for both surfaces. Leave space for the card's outline and shadow inside
-scrollable containers.
+Pass the sanitized display arguments from the backend to the shared card.
+For node tools, include the resolved node parameters and any model input.
+The card formats and shows these values inline for both surfaces. Leave space
+for the card's outline and shadow inside scrollable containers.
 Keep approval policy and response payloads in the caller. Show the session
 option only when the backend supports it. Replace the Preview composer with
 pending tool approvals, including background child approvals. Restore the

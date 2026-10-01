@@ -242,25 +242,32 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		);
 	});
 
-	it('includes display metadata from the wrapped tool object when suspending', async () => {
+	it('prepares approval display arguments without changing execution input', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = {
 			...wrapToolForApproval(baseTool, { requireApproval: true }),
 			metadata: { displayName: 'Display test tool' },
 		};
 		const { ctx, suspendMock } = makeCtx();
+		const getDisplayArgs = vi.fn().mockReturnValue({ id: '[REDACTED]' });
+		ctx.approvalContext = { approvedKeys: new Set(), onDecision: vi.fn(), getDisplayArgs };
 
 		await wrapped.handler!({ id: '1' }, ctx);
 
+		expect(getDisplayArgs).toHaveBeenCalledWith('testTool', { id: '1' });
 		expect(suspendMock).toHaveBeenCalledWith(
 			{
 				type: 'approval',
 				toolName: 'testTool',
 				displayName: 'Display test tool',
-				args: { id: '1' },
+				supportsSessionApproval: true,
+				args: { id: '[REDACTED]' },
 			},
 			expect.objectContaining({ resumeSchema: expect.anything() }),
 		);
+		ctx.suspendPayload = suspendMock.mock.calls[0][0];
+		ctx.resumeData = { approved: true };
+		expect(await wrapped.handler!({ id: '1' }, ctx)).toEqual({ result: '1' });
 	});
 
 	it('executes original handler when approved on resume', async () => {

@@ -724,6 +724,14 @@ describe('SubAgentRunner', () => {
 	it('resumes a draft child in the same thread', async () => {
 		const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
 		toolApprovalService.createContext.mockResolvedValueOnce(approvalContext);
+		const toolRegistry = new Map([
+			['child_request', { kind: 'node' as const, nodeParameters: { method: 'GET' } }],
+		]);
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValueOnce({
+			agent: childAgent as never,
+			toolRegistry,
+			mcpServerAttributions: new Map(),
+		});
 		const result = await runner.resumeForeground(
 			{
 				...delegatedRequest,
@@ -753,6 +761,7 @@ describe('SubAgentRunner', () => {
 		);
 		expect(toolApprovalService.createContext).toHaveBeenCalledWith(
 			expect.objectContaining({ threadId: 'child-thread-1', agentId: 'agent-1' }),
+			toolRegistry,
 		);
 		expect(toolApprovalService.createContext.mock.invocationCallOrder[0]).toBeGreaterThan(
 			agentExecutionService.startExecutionRecording.mock.invocationCallOrder[0],

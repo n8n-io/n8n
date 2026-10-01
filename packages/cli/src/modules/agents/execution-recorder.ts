@@ -200,6 +200,20 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
+export function buildApprovalArgs(input: unknown, entry?: ToolRegistryEntry): unknown {
+	const sanitizedInput = sanitizeExecutionLogValue(input);
+	if (!entry?.nodeParameters || Object.keys(entry.nodeParameters).length === 0) {
+		return sanitizedInput;
+	}
+
+	return {
+		parameters: sanitizeExecutionLogRecord(
+			resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
+		),
+		...(isRecord(input) && Object.keys(input).length === 0 ? {} : { input: sanitizedInput }),
+	};
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;

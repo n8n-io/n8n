@@ -174,7 +174,10 @@ export class AgentTurnExecutionService {
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
 	): Promise<ReadableStream<StreamChunk>> {
-		turn.options.approvalContext = await this.toolApprovalService.createContext(turn.recording);
+		turn.options.approvalContext = await this.toolApprovalService.createContext(
+			turn.recording,
+			config.toolRegistry,
+		);
 		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;

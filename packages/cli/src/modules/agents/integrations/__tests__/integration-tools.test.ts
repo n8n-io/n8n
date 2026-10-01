@@ -1614,8 +1614,10 @@ describe('integration tools', () => {
 
 		it('limits a session allowance to its connection and action, including batches', async () => {
 			const approvedKeys = new Set<string>();
+			const getDisplayArgs = vi.fn().mockReturnValue({ message: { text: '[REDACTED]' } });
 			const approvalContext: ToolApprovalContext = {
 				approvedKeys,
+				getDisplayArgs,
 				onDecision: vi.fn<ToolApprovalContext['onDecision']>(async (key) => {
 					approvedKeys.add(key);
 				}),
@@ -1623,8 +1625,12 @@ describe('integration tools', () => {
 			const { tool, actionExecutor } = approvalTool({ ...slackA, approval: { mode: 'global' } });
 			const ctx = makeInterruptibleCtx({ approvalContext });
 			await tool.handler!(sendToChannel, ctx);
+			expect(getDisplayArgs).toHaveBeenCalledWith(tool.name, sendToChannel.input);
 			expect(ctx.suspend).toHaveBeenCalledWith(
-				expect.objectContaining({ supportsSessionApproval: true }),
+				expect.objectContaining({
+					supportsSessionApproval: true,
+					args: { message: { text: '[REDACTED]' } },
+				}),
 				expect.anything(),
 			);
 			expect(actionExecutor.execute).not.toHaveBeenCalled();
@@ -1632,17 +1638,16 @@ describe('integration tools', () => {
 				sendToChannel,
 				makeInterruptibleCtx({
 					approvalContext,
-					suspendPayload: {
-						type: 'approval',
-						toolName: 'send_channel_message',
-						args: sendToChannel.input,
-					},
+					suspendPayload: vi.mocked(ctx.suspend).mock.calls[0][0],
 					resumeData: { approved: true, scope: 'session' },
 				}),
 			);
 			expect(approvalContext.onDecision).toHaveBeenCalledWith(
 				'["integration_action","slack:cred-a","send_channel_message"]',
 				{ approved: true, scope: 'session' },
+			);
+			expect(actionExecutor.execute).toHaveBeenCalledWith(
+				expect.objectContaining({ input: sendToChannel.input }),
 			);
 
 			const result = await tool.handler!(

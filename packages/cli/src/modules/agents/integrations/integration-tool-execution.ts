@@ -219,7 +219,9 @@ export async function executeActionToolOperation(params: {
 				toolName: operation.action,
 				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
 				displayName: describeActionForApproval(operation),
-				args: actionInput,
+				args: ctx.approvalContext?.getDisplayArgs
+					? ctx.approvalContext.getDisplayArgs(descriptor.actionToolName, actionInput)
+					: actionInput,
 			},
 			// The card's buttons are shaped from this schema, so the decision comes
 			// back as `{ approved }` rather than the tool's own resume shape.

@@ -142,7 +142,9 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 							toolName: currentTool.name,
 							...(approvalContext ? { supportsSessionApproval: true } : {}),
 							...(displayName ? { displayName } : {}),
-							args: input,
+							args: approvalContext?.getDisplayArgs
+								? approvalContext.getDisplayArgs(currentTool.name, input)
+								: input,
 						},
 						{
 							resumeSchema: APPROVAL_RESUME_SCHEMA,

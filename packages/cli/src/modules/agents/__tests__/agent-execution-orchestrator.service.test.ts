@@ -627,10 +627,16 @@ describe('AgentExecutionOrchestratorService', () => {
 		}
 
 		it('announces the recorded execution before the SDK starts', async () => {
-			const { stream, onExecutionStarted, sdkStart, executionService, toolApprovalService } =
-				makeTurn({
-					previewChat: true,
-				});
+			const {
+				stream,
+				onExecutionStarted,
+				sdkStart,
+				executionService,
+				toolApprovalService,
+				runtime,
+			} = makeTurn({
+				previewChat: true,
+			});
 			const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
 			toolApprovalService.createContext.mockResolvedValue(approvalContext);
 			onExecutionStarted.mockImplementation(() => {
@@ -643,6 +649,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			]);
 			expect(toolApprovalService.createContext).toHaveBeenCalledWith(
 				expect.objectContaining({ threadId: 'thread-1', agentId }),
+				runtime.toolRegistry,
 			);
 			expect(toolApprovalService.createContext.mock.invocationCallOrder[0]).toBeGreaterThan(
 				executionService.startExecutionRecording.mock.invocationCallOrder[0],

@@ -298,7 +298,10 @@ export class SubAgentRunner {
 			agent = reconstructed.agent;
 			context.abortSignal?.throwIfAborted();
 			const executionOptions = {
-				approvalContext: await this.toolApprovalService.createContext(recording),
+				approvalContext: await this.toolApprovalService.createContext(
+					recording,
+					reconstructed.toolRegistry,
+				),
 				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
 				...modelStreamStallOptions(this.aiConfig),

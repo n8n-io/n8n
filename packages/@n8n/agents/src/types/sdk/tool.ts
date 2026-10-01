@@ -11,6 +11,8 @@ import type { JSONObject, JSONValue } from '../utils/json';
 
 export interface ToolApprovalContext {
 	readonly approvedKeys: ReadonlySet<string>;
+	/** Prepare display arguments before checkpointing. Keep execution arguments unchanged. */
+	getDisplayArgs?(toolName: string, input: unknown): unknown;
 	/** Record a human decision. Persist a session grant before this resolves. */
 	onDecision(grantKey: string, decision: ApprovalResumePayload): Promise<void>;
 }
