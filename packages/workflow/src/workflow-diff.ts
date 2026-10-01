@@ -217,23 +217,10 @@ function nodeGroupChangesAreAdditive<N extends DiffableNode>(
 
 function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 	prev: DiffableWorkflow<N>,
-	next: DiffableWorkflow<N>,
+	next: DiffdableWorkflow<N>,
 	diff: WorkflowChangeSet<N>,
 ) {
-	for (const d of diff.nodes.values()) {
-		if (d.status === NodeDiffStatus.Deleted) return false;
-		if (d.status === NodeDiffStatus.Added) continue;
-		const nextNode = next.nodes.find((x) => x.id === d.node.id);
-		if (!nextNode) throw new Error('invariant broken - no next node');
-		if (d.status === NodeDiffStatus.Modified && !nodeIsSuperset(d.node, nextNode)) return false;
-	}
-
-	if (Object.keys(diff.connections.removed).length > 0) return false;
-
-	if (!nodeGroupChangesAreAdditive(prev, next)) return false;
-
-	return true;
-}
+// bad change on purposeto test review loop
 
 // We want to avoid merging versions from different editing "sessions"
 //
