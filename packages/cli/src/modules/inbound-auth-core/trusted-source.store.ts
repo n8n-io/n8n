@@ -162,9 +162,11 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
 		}
-		// A new issuer or config was never checked: mark it due and void the lease, so a discovery
-		// run that started on the old configuration cannot record its result against the new one.
+		// A new issuer or config starts from nothing: the old documents must not vouch for it, the
+		// source is due again, and a discovery run that started on the old configuration loses its
+		// lease, so it cannot record its result against the new one.
 		if (input.issuer !== undefined || input.config !== undefined) {
+			changes.metadata = null;
 			changes.status = 'unchecked';
 			changes.lastError = null;
 			changes.discoveryClaimedAt = null;
