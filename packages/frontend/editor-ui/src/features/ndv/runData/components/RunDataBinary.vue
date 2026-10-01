@@ -145,7 +145,7 @@ function openWorkflowSettings() {
 								@click="emit('preview', index, key)"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								v-if="isDownloadable(index, key)"
 								size="small"
 								:label="i18n.baseText('runData.downloadBinaryData')"

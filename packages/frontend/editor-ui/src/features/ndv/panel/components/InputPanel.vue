@@ -512,7 +512,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									variant="subtle"
+									variant="outline"
 									:node-name="nodeNameToExecute"
 									:label="i18n.baseText('ndv.input.noOutputData.action')"
 									:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"

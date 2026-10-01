@@ -145,7 +145,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				>
 					<span>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon="plus"
 							:loading="installing"
@@ -158,7 +158,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon="plus"
 					:loading="installing"

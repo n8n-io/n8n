@@ -2902,7 +2902,7 @@ useKeybindings({
 				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon-only
 					:aria-label="locale.baseText('agents.builder.header.editWithAi')"

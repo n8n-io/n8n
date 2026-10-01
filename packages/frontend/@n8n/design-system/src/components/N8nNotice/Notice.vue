@@ -93,10 +93,8 @@ const onClick = (event: MouseEvent) => {
 	margin: var(--notice--margin, var(--spacing--sm) 0);
 	padding: var(--spacing--2xs);
 	background-color: var(--notice--color--background);
-	border-width: 1px 1px 1px 7px;
-	border-style: solid;
-	border-color: var(--border-color);
-	border-radius: var(--radius--sm);
+	border: 1px solid var(--notice--color--border-color);
+	border-radius: var(--radius--xs);
 	line-height: var(--line-height--sm);
 
 	a {
@@ -114,23 +112,39 @@ const onClick = (event: MouseEvent) => {
 }
 
 .warning {
-	--border-color: var(--notice--border-color--warning);
-	--notice--color--background: var(--notice--color--background--warning);
+	--notice--color--border-color: var(--color--yellow-500);
+	--notice--color--background: light-dark(
+		var(--color--yellow-50),
+		color-mix(in srgb, var(--color--yellow-500), transparent 80%)
+	);
+	--notice--color--text: light-dark(var(--color--yellow-950), var(--text-color));
 }
 
 .danger {
-	--border-color: var(--callout--border-color--danger);
-	--notice--color--background: var(--callout--color--background--danger);
+	--notice--color--border-color: var(--color--red-500);
+	--notice--color--background: light-dark(
+		var(--color--red-50),
+		color-mix(in srgb, var(--color--red-500), transparent 80%)
+	);
+	--notice--color--text: light-dark(var(--color--red-950), var(--text-color));
 }
 
 .success {
-	--border-color: var(--callout--border-color--success);
-	--notice--color--background: var(--callout--color--background--success);
+	--notice--color--border-color: var(--color--green-500);
+	--notice--color--background: light-dark(
+		var(--color--green-50),
+		color-mix(in srgb, var(--color--green-500), transparent 80%)
+	);
+	--notice--color--text: light-dark(var(--color--green-950), var(--text-color));
 }
 
 .info {
-	--border-color: var(--color--info--tint-1);
-	--notice--color--background: var(--color--info--tint-2);
+	--notice--color--border-color: var(--color--blue-500);
+	--notice--color--background: light-dark(
+		var(--color--blue-50),
+		color-mix(in srgb, var(--color--blue-500), transparent 80%)
+	);
+	--notice--color--text: light-dark(var(--color--blue-950), var(--text-color));
 }
 
 .expanded {

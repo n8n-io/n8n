@@ -211,7 +211,7 @@ function close() {
 			<div :class="$style.actions">
 				<template v-if="phase === 'confirm'">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="migrating"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="migrate-modal-cancel-button"
@@ -227,7 +227,7 @@ function close() {
 				<template v-else-if="phase === 'success'">
 					<template v-if="result?.republishable && !published">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							:disabled="publishing"
 							:label="i18n.baseText('settings.migrationReport.detail.migrate.publish.skip')"
 							data-test-id="migrate-modal-skip-publish-button"
@@ -242,7 +242,7 @@ function close() {
 					</template>
 					<N8nButton
 						v-else
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.migrate.modal.done')"
 						data-test-id="migrate-modal-done-button"
 						@click="close"
@@ -250,7 +250,7 @@ function close() {
 				</template>
 				<template v-else>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('generic.close')"
 						data-test-id="migrate-modal-close-button"
 						@click="close"
