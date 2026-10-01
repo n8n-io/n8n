@@ -1,4 +1,5 @@
 import { mock } from 'vitest-mock-extended';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
 
 import { CredentialsEntity, Folder, SharedCredentials } from '../../entities';
 import type { TransactionRunner } from '../../services/transaction';
@@ -71,6 +72,196 @@ describe('access repositories', () => {
 				expect.objectContaining({ id: 'credential-1', projectId: 'project-1' }),
 			]);
 		});
+
+		it('filters global credential lists by scope and pending authorization', async () => {
+			manager.find.mockResolvedValue([]);
+
+			await repository.findGlobalProjectCredentials();
+
+			expect(manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: {
+					isGlobal: true,
+					usageScope: 'project',
+					pendingAuthorizationExpiresAt: expect.any(Object),
+				},
+				relations: { shared: true },
+			});
+		});
+
+		it('loads shared projects for a global credential only when requested', async () => {
+			manager.findOne.mockResolvedValue(null);
+
+			await repository.findGlobalProjectCredentialById('credential-1', true);
+
+			expect(manager.findOne).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: 'credential-1', isGlobal: true, usageScope: 'project' },
+				relations: { shared: { project: true } },
+			});
+		});
+
+		it('restricts a default id lookup to project credentials', async () => {
+			manager.findOne.mockResolvedValue(null);
+
+			await repository.findCredentialById('credential-1', {
+				includeInstanceCredentials: false,
+				includeSharedProject: false,
+			});
+
+			expect(manager.findOne).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: 'credential-1', usageScope: 'project' },
+				relations: undefined,
+			});
+		});
+
+		it('supports instance credentials and shared projects in an id lookup', async () => {
+			manager.findOne.mockResolvedValue(null);
+
+			await repository.findCredentialById('credential-1', {
+				includeInstanceCredentials: true,
+				includeSharedProject: true,
+			});
+
+			const options = manager.findOne.mock.calls[0]?.[1];
+			expect(options).toEqual(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						id: 'credential-1',
+						usageScope: expect.any(Object),
+					}),
+					relations: { shared: { project: true } },
+				}),
+			);
+		});
+
+		it('queries instance credentials by id and usage scope', async () => {
+			manager.findOneBy.mockResolvedValue(null);
+
+			await repository.findInstanceCredentialById('credential-1');
+
+			expect(manager.findOneBy).toHaveBeenCalledWith(CredentialsEntity, {
+				id: 'credential-1',
+				usageScope: 'instance',
+			});
+		});
+
+		it('ignores stale sharing rows for instance credentials', async () => {
+			manager.findOne.mockResolvedValue(
+				Object.assign(new SharedCredentials(), {
+					credentials: Object.assign(new CredentialsEntity(), { usageScope: 'instance' }),
+				}),
+			);
+
+			await expect(
+				repository.findProjectCredentialForUser('credential-1', null),
+			).resolves.toBeNull();
+		});
+
+		it('returns the project credential from an accessible sharing row', async () => {
+			const credential = Object.assign(new CredentialsEntity(), {
+				id: 'credential-1',
+				usageScope: 'project',
+			});
+			manager.findOne.mockResolvedValue(
+				Object.assign(new SharedCredentials(), { credentials: credential }),
+			);
+
+			await expect(repository.findProjectCredentialForUser('credential-1', null)).resolves.toBe(
+				credential,
+			);
+		});
+
+		it('chunks credential id access queries', async () => {
+			const credentialIds = Array.from({ length: 10_001 }, (_, index) => `credential-${index}`);
+			manager.find.mockResolvedValue([]);
+
+			await repository.findProjectCredentialIdsForUser(credentialIds, null);
+
+			expect(manager.find).toHaveBeenCalledTimes(2);
+		});
+
+		it('filters global ids to resolvable credentials when requested', async () => {
+			manager.find.mockResolvedValue([]);
+
+			await repository.findGlobalProjectCredentialIds(['credential-1'], true);
+
+			expect(manager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({
+						isGlobal: true,
+						isResolvable: true,
+						usageScope: 'project',
+					}),
+				}),
+			);
+		});
+
+		it('does not add a resolvable filter for global read access', async () => {
+			manager.find.mockResolvedValue([]);
+
+			await repository.findGlobalProjectCredentialIds(['credential-1'], false);
+
+			const options = manager.find.mock.calls[0]?.[1];
+			expect(options?.where).not.toEqual(expect.objectContaining({ isResolvable: true }));
+		});
+
+		it('returns credential names for error descriptions', async () => {
+			manager.find.mockResolvedValue([{ id: 'credential-1', name: 'Credential' }]);
+
+			await expect(repository.findCredentialNames(['credential-1'])).resolves.toEqual([
+				{ id: 'credential-1', name: 'Credential' },
+			]);
+			expect(manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				select: { id: true, name: true },
+				where: { id: expect.any(Object) },
+			});
+		});
+
+		it('maps owner projects by credential id', async () => {
+			const project = { id: 'project-1' };
+			manager.find.mockResolvedValue([
+				Object.assign(new SharedCredentials(), {
+					credentialsId: 'credential-1',
+					project,
+				}),
+			]);
+
+			const projects = await repository.findOwnerProjectsByCredentialIds(['credential-1']);
+
+			expect(projects.get('credential-1')).toBe(project);
+			expect(manager.find).toHaveBeenCalledWith(
+				SharedCredentials,
+				expect.objectContaining({
+					where: expect.objectContaining({ role: 'credential:owner' }),
+					relations: { project: true },
+				}),
+			);
+		});
+
+		it('filters credential ids by user and role slugs', async () => {
+			manager.find.mockResolvedValue([
+				Object.assign(new SharedCredentials(), { credentialsId: 'credential-1' }),
+			]);
+
+			await expect(
+				repository.findCredentialIdsByUserAndRoles(
+					['user-1'],
+					['project:editor'],
+					['credential:user'],
+				),
+			).resolves.toEqual(['credential-1']);
+			const options = manager.find.mock.calls[0]?.[1];
+			expect(options?.where).toEqual(
+				expect.objectContaining({
+					project: expect.objectContaining({
+						projectRelations: expect.objectContaining({
+							userId: expect.any(Object),
+							role: { slug: expect.any(Object) },
+						}),
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('FolderAccessRepository', () => {
@@ -111,6 +302,57 @@ describe('access repositories', () => {
 						}),
 					}),
 				}),
+			);
+		});
+
+		it('chunks existing folder id reads', async () => {
+			const folderIds = Array.from({ length: 10_001 }, (_, index) => `folder-${index}`);
+			manager.find.mockResolvedValue([]);
+
+			await repository.findExistingFolderIds(folderIds);
+
+			expect(manager.find).toHaveBeenCalledTimes(2);
+		});
+
+		it('lists folder ids in a project', async () => {
+			manager.find.mockResolvedValue([{ id: 'folder-1' }]);
+
+			await expect(repository.findFolderIdsInProject('project-1')).resolves.toEqual(['folder-1']);
+			expect(manager.find).toHaveBeenCalledWith(Folder, {
+				select: { id: true },
+				where: { homeProject: { id: 'project-1' } },
+			});
+		});
+
+		it('queries all descendants with a recursive CTE', async () => {
+			const baseQuery = mock<SelectQueryBuilder<Folder>>();
+			const recursiveQuery = mock<SelectQueryBuilder<Folder>>();
+			const query = mock<SelectQueryBuilder<Folder>>();
+			for (const builder of [baseQuery, recursiveQuery, query]) {
+				builder.select.mockReturnValue(builder);
+				builder.where.mockReturnValue(builder);
+				builder.innerJoin.mockReturnValue(builder);
+				builder.addCommonTableExpression.mockReturnValue(builder);
+				builder.from.mockReturnValue(builder);
+				builder.setParameters.mockReturnValue(builder);
+			}
+			baseQuery.getQuery.mockReturnValue('base query');
+			baseQuery.getParameters.mockReturnValue({ parentFolderIds: ['folder-1'] });
+			recursiveQuery.getQuery.mockReturnValue('recursive query');
+			query.getRawMany.mockResolvedValue([{ id: 'child-1' }, { id: 'child-2' }]);
+			manager.createQueryBuilder
+				.mockReturnValueOnce(baseQuery)
+				.mockReturnValueOnce(recursiveQuery)
+				.mockReturnValueOnce(query);
+
+			await expect(repository.findDescendantIds(['folder-1'])).resolves.toEqual([
+				'child-1',
+				'child-2',
+			]);
+			expect(query.addCommonTableExpression).toHaveBeenCalledWith(
+				'base query UNION ALL recursive query',
+				'folder_tree',
+				{ recursive: true },
 			);
 		});
 	});
