@@ -54,9 +54,8 @@ function onDropdownVisibleChange(visible: boolean) {
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
 			icon="list-checks"
+			:icon-only="customDataLength === 0"
 			:class="{
-				[$style.highlightDataButton]: true,
-				[$style.highlightDataButtonActive]: customDataLength > 0,
 				[$style.highlightDataButtonOpen]: isDropdownVisible,
 			}"
 			size="small"
@@ -112,15 +111,6 @@ function onDropdownVisibleChange(visible: boolean) {
 </template>
 
 <style module lang="scss">
-.highlightDataButton {
-	height: 30px;
-	width: 30px;
-}
-
-.highlightDataButtonActive {
-	width: auto;
-}
-
 .highlightDataButtonOpen {
 	color: var(--color--primary);
 	background-color: var(--button--color--background--secondary--hover);
