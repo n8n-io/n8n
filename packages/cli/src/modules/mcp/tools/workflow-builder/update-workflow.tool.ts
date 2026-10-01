@@ -9,7 +9,7 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, Workflow, type IWorkflowSettings } from 'n8n-workflow';
+import { NodeConnectionTypes, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
