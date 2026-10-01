@@ -35,7 +35,9 @@
     "cache-manager": "catalog:",
     "express-openapi-validator": "5.5.3",
     "ioredis": "5.3.2",
-    "n8n-workflow": "workspace:*",
+    "n8n-workflow": "workspace:*"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -52,7 +54,8 @@
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
