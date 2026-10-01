@@ -722,6 +722,64 @@ describe('WorkflowStatisticsService', () => {
 			});
 		});
 
+		describe('concurrent first occurrences', () => {
+			const makeService = () => {
+				const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
+				(
+					workflowRepositoryNoErrorWorkflows as unknown as {
+						hasAnyWorkflowsWithErrorWorkflow: Mock;
+					}
+				).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+				return new WorkflowStatisticsService(
+					mock(),
+					workflowStatisticsRepository,
+					Container.get(OwnershipService),
+					userService,
+					Container.get(EventService),
+					Container.get(SettingsRepository),
+					workflowRepositoryNoErrorWorkflows,
+					Container.get(DatabaseConfig),
+				);
+			};
+
+			test('emits instance-first-production-workflow-failed once for concurrent first failures', async () => {
+				const service = makeService();
+				const otherWorkflow = await createWorkflow({}, user);
+				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+				await Promise.all(
+					[workflow, otherWorkflow].map(
+						async (wf) =>
+							await service.emitFirstOccurrenceEvent(
+								StatisticsNames.productionError,
+								wf.id,
+								wf.name,
+								Date.now(),
+							),
+					),
+				);
+
+				const failureEvents = emitSpy.mock.calls.filter(
+					([eventName]) => eventName === 'instance-first-production-workflow-failed',
+				);
+				expect(failureEvents).toHaveLength(1);
+			});
+
+			test('keeps the first value when the instance activation key is inserted twice', async () => {
+				const settingsRepository = Container.get(SettingsRepository);
+
+				await expect(
+					settingsRepository.insertIfAbsent(INSTANCE_ACTIVATED_SETTINGS_KEY, 'a'),
+				).resolves.toBe(true);
+				await expect(
+					settingsRepository.insertIfAbsent(INSTANCE_ACTIVATED_SETTINGS_KEY, 'b'),
+				).resolves.toBe(false);
+
+				const row = await settingsRepository.findByKey(INSTANCE_ACTIVATED_SETTINGS_KEY);
+				expect(row?.value).toBe('a');
+			});
+		});
+
 		// The fold is Postgres-only (raw CTE). These exercise its mechanics directly via the repository.
 		describe('rollupIncrements (Postgres append path)', () => {
 			// The delta table is cleared by the outer beforeEach via testDb.truncate.

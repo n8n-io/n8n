@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SchedulerConfig } from '@n8n/config';
 import type { DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -11,7 +12,7 @@ import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.s
 type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncrements']>>;
 
 describe('WorkflowStatisticsRollupService', () => {
-	const makeService = () => {
+	const makeService = ({ leaseDurationSeconds = 60 } = {}) => {
 		const errorReporter = mock<ErrorReporter>();
 		const dbLockService = mock<DbLockService>();
 		const repository = mock<WorkflowStatisticsRepository>();
@@ -23,6 +24,7 @@ describe('WorkflowStatisticsRollupService', () => {
 			dbLockService,
 			repository,
 			statisticsService,
+			mock<SchedulerConfig>({ leaseDurationSeconds }),
 		);
 		return { service, logger, errorReporter, dbLockService, repository, statisticsService };
 	};
@@ -157,6 +159,18 @@ describe('WorkflowStatisticsRollupService', () => {
 
 			expect(settled).toBe(true);
 			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(2);
+		});
+
+		it('shrinks the run budget below a lease shorter than the interval', async () => {
+			const { service, dbLockService } = makeService({ leaseDurationSeconds: 2 });
+			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
+
+			let settled = false;
+			void rollup(service).then(() => (settled = true));
+			await vi.advanceTimersByTimeAsync(750);
+
+			expect(settled).toBe(true);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(4);
 		});
 
 		it('does not fold when the signal is already aborted', async () => {

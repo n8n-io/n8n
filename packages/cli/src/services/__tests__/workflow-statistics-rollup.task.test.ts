@@ -16,7 +16,7 @@ describe('WorkflowStatisticsRollupTask', () => {
 		expect(task.name).toBe('workflow-statistics-rollup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 5 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: false, runOnTakeover: true });
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
 	});
 
 	it('should pass the run signal to the rollup', async () => {

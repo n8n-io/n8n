@@ -20,7 +20,7 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		/** Increments pile up while no instance is the leader, so a backlog is waiting. */
 		runOnTakeover: true,
 	};

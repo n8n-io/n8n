@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { SchedulerConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbLock, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -17,9 +18,6 @@ const BATCH_DELAY_MS = 250;
 
 export const ROLLUP_INTERVAL_SECONDS = 5;
 
-/** Leaves a margin below the task interval for a batch slower than the one before. */
-const RUN_BUDGET_MS = (ROLLUP_INTERVAL_SECONDS - 1) * Time.seconds.toMilliseconds;
-
 /** Consecutive lock skips after which to warn that the lock is persistently held elsewhere. */
 const SKIP_WARN_THRESHOLD = 5;
 
@@ -33,14 +31,24 @@ export class WorkflowStatisticsRollupService {
 
 	private totalLockSkips = 0;
 
+	/**
+	 * Leaves a margin below the task interval and the durable lease, for a batch
+	 * slower than the one before. The lease is not renewed while a run is in progress.
+	 */
+	private readonly runBudgetMs: number;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly dbLockService: DbLockService,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly statisticsService: WorkflowStatisticsService,
+		schedulerConfig: SchedulerConfig,
 	) {
 		this.logger = this.logger.scoped('workflow-statistics');
+		this.runBudgetMs =
+			(Math.min(ROLLUP_INTERVAL_SECONDS, schedulerConfig.leaseDurationSeconds) - 1) *
+			Time.seconds.toMilliseconds;
 	}
 
 	/**
@@ -48,7 +56,7 @@ export class WorkflowStatisticsRollupService {
 	 * budget has no room left for another batch.
 	 */
 	async rollup(signal: AbortSignal): Promise<void> {
-		const deadline = Date.now() + RUN_BUDGET_MS;
+		const deadline = Date.now() + this.runBudgetMs;
 		let batchStartedAt = Date.now();
 		while (
 			!signal.aborted &&
@@ -78,7 +86,7 @@ export class WorkflowStatisticsRollupService {
 		}
 	}
 
-	/** Fold a batch under an advisory lock. Returns null if another instance holds the lock. */
+	/** Fold a batch under an advisory lock. Returns null if another run or process holds the lock. */
 	private async foldBatch(): Promise<RollupResult | null> {
 		try {
 			const result = await this.dbLockService.tryWithLock(
@@ -89,7 +97,7 @@ export class WorkflowStatisticsRollupService {
 			return result;
 		} catch (error) {
 			if (error instanceof OperationalError) {
-				this.registerLockSkip(); // another instance holds the lock
+				this.registerLockSkip(); // another run or process holds the lock
 				return null;
 			}
 			throw error;
@@ -97,9 +105,9 @@ export class WorkflowStatisticsRollupService {
 	}
 
 	/**
-	 * Occasional skips are expected around leader transitions; persistent skips suggest a process
-	 * outside this deployment holds the lock, e.g. a second n8n instance sharing this database
-	 * (advisory locks are not schema- or table-prefix-scoped).
+	 * Occasional skips are expected around leader transitions and when a slow run overlaps the next
+	 * one; persistent skips suggest a process outside this deployment holds the lock, e.g. a second
+	 * n8n instance sharing this database (advisory locks are not schema- or table-prefix-scoped).
 	 */
 	private registerLockSkip() {
 		this.consecutiveLockSkips++;
@@ -108,7 +116,7 @@ export class WorkflowStatisticsRollupService {
 		if (this.consecutiveLockSkips % SKIP_WARN_THRESHOLD !== 0) return;
 
 		this.logger.warn(
-			'Workflow statistics rollup repeatedly skipped: lock held by another process',
+			'Workflow statistics rollup repeatedly skipped: lock held by another run or process',
 			{
 				consecutiveLockSkips: this.consecutiveLockSkips,
 				totalLockSkips: this.totalLockSkips,
