@@ -1,0 +1,35 @@
+{
+	"complexity": "medium",
+	"tags": ["build", "node-contracts-poc", "holdout", "google-sheets", "gmail", "conditionality"],
+	"triggerType": "manual",
+	"credentials": [
+		{
+			"type": "googleSheetsOAuth2Api",
+			"name": "Google Sheets account"
+		},
+		{
+			"type": "gmailOAuth2",
+			"name": "Gmail account"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: read all rows from the 'Orders' tab of my Google Sheet (spreadsheet ID 1MnBvCxZaSdFgHjKlPoIuYtReWq1234567890). The columns are Order ID, Customer email, Total and Shipped. For every order where Shipped is not 'yes' and Total is more than 250, send a plain-text email with Gmail to that row's Customer email, with subject 'Your order <Order ID> is on its way soon' and body 'Hi, we are preparing order <Order ID> (total <Total> EUR).'"
+		}
+	],
+	"description": "Held-out case. Sheets rows carry header names with spaces, the Shipped cell can be empty, and Total is a number. The workflow must combine two conditions and build one Gmail message for each kept row from that row's fields.",
+	"executionScenarios": [
+		{
+			"name": "unshipped-large-orders-emailed",
+			"description": "Only the unshipped orders above 250 get an email, built from the row's own fields.",
+			"dataSetup": "The 'Orders' tab returns (Google Sheets API GET .../values/Orders...) the header row Order ID | Customer email | Total | Shipped and data rows: A-1 | ada@lovelace.test | 320 | (empty cell), A-2 | grace@hopper.test | 410.5 | yes, A-3 | alan@turing.test | 99 | no, A-4 | kat@johnson.test | 275 | no. Totals are numbers. The Gmail API POST /gmail/v1/users/me/messages/send accepts any message and returns { \"id\": \"m-1\", \"threadId\": \"t-1\", \"labelIds\": [\"SENT\"] }. The request body carries a base64url-encoded raw MIME message; decode it to check headers.",
+			"successCriteria": "Exactly two text emails are sent: to ada@lovelace.test with subject 'Your order A-1 is on its way soon' and body 'Hi, we are preparing order A-1 (total 320 EUR).', and to kat@johnson.test with subject 'Your order A-4 is on its way soon' and body 'Hi, we are preparing order A-4 (total 275 EUR).'. An email for A-2 or A-3, a missing email for A-1, an HTML-only message, or an empty or undefined field FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The Google Sheets node reads the 'Orders' tab.",
+		"An IF or Filter node keeps rows where Shipped is not 'yes' and Total is greater than 250, and an empty Shipped cell counts as not shipped.",
+		"The Gmail node sends a text email to the row's Customer email with the subject and body built from Order ID and Total."
+	]
+}

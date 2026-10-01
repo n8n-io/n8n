@@ -95,6 +95,12 @@ const NEXT_PREFIX = '@n8n/nodes-base-next.';
 const NEXT_NOTION_GET_ALL = `${NEXT_PREFIX}notionDatabasePageGetAll`;
 const NEXT_HTTP_GET = `${NEXT_PREFIX}httpRequestGet`;
 const NEXT_HTTP_SEND = `${NEXT_PREFIX}httpRequestSend`;
+const NEXT_SHEETS_READ = `${NEXT_PREFIX}googleSheetsSheetRead`;
+const NEXT_SHEETS_APPEND = `${NEXT_PREFIX}googleSheetsSheetAppend`;
+const NEXT_SHEETS_UPSERT = `${NEXT_PREFIX}googleSheetsSheetAppendOrUpdate`;
+const NEXT_GMAIL_SEND = `${NEXT_PREFIX}gmailMessageSend`;
+const NEXT_GMAIL_GET_ALL = `${NEXT_PREFIX}gmailMessageGetAll`;
+const NEXT_GEMINI_MESSAGE = `${NEXT_PREFIX}googleGeminiTextMessage`;
 
 const isHttpRequest = (node: WorkflowNodeResponse) =>
 	['n8n-nodes-base.httpRequest', NEXT_HTTP_GET, NEXT_HTTP_SEND].includes(node.type);
@@ -549,6 +555,8 @@ async function executeOutputs(
 				continueOnFail: () => false,
 				getWorkflowSettings: () => ({}),
 				addExecutionHints: () => undefined,
+				// The node-sdk runtime records the contract version after each run.
+				setMetadata: () => undefined,
 				...(helpers ? { helpers } : {}),
 			};
 			return await invoke(instance.execute, context);
@@ -589,17 +597,30 @@ const toDataValue = (value: unknown): IDataObject[string] =>
 					? undefined
 					: JSON.stringify(value);
 
+/** The node to walk to, and its names in path messages. */
+interface WalkTarget {
+	matches: (node: WorkflowNodeResponse) => boolean;
+	/** Used in "no <name> after …". */
+	name: string;
+	/** Used in "between <start> and <role>". */
+	role: string;
+}
+
+const HTTP_TARGET: WalkTarget = {
+	matches: isHttpRequest,
+	name: 'HTTP Request',
+	role: 'the POST',
+};
+
 /**
- * Walks from `startName` through RUNNABLE_NODE_TYPES nodes to the first HTTP Request, carrying
- * items along. After an IF or Filter it follows output 0 only; `filtered` is that output.
- * `walked` holds every node from `startName` to the parent of `node` with the items it emitted.
+ * Walks from the last step of `startWalked` through RUNNABLE_NODE_TYPES nodes to the first node
+ * that `target` matches, carrying items along. After an IF or Filter it follows output 0 only;
+ * `filtered` is that output. `walked` holds `startWalked` and every node after it up to the
+ * parent of `node`, with the items each emitted.
  */
-async function followToHttp(
-	workflow: WorkflowResponse,
-	startName: string,
-	startItems: IDataObject[],
-) {
-	const walked = sourceStep(startName, startItems);
+async function followTo(workflow: WorkflowResponse, startWalked: PathStep[], target: WalkTarget) {
+	const walked = [...startWalked];
+	const { name: startName } = walked[walked.length - 1];
 	let outputIndex: number | undefined;
 	let filtered: IDataObject[] | undefined;
 	const path: string[] = [];
@@ -611,9 +632,9 @@ async function followToHttp(
 				node: undefined,
 				walked,
 				filtered,
-				path: `no HTTP Request after ${[startName, ...path].join(' → ')}`,
+				path: `no ${target.name} after ${[startName, ...path].join(' → ')}`,
 			};
-		if (isHttpRequest(child))
+		if (target.matches(child))
 			return {
 				node: child,
 				walked,
@@ -625,7 +646,7 @@ async function followToHttp(
 				node: undefined,
 				walked,
 				filtered,
-				path: `ungraded: ${child.type} v${child.typeVersion ?? 1} between ${startName} and the POST`,
+				path: `ungraded: ${child.type} v${child.typeVersion ?? 1} between ${startName} and ${target.role}`,
 			};
 		}
 		const emitted = await firstOutput(child, walked);
@@ -635,8 +656,14 @@ async function followToHttp(
 		path.push(child.name);
 		walked.push({ name: child.name, ...emitted });
 	}
-	return { node: undefined, walked, filtered, path: 'no HTTP Request within 5 hops' };
+	return { node: undefined, walked, filtered, path: `no ${target.name} within 5 hops` };
 }
+
+const followToHttp = async (
+	workflow: WorkflowResponse,
+	startName: string,
+	startItems: IDataObject[],
+) => await followTo(workflow, sourceStep(startName, startItems), HTTP_TARGET);
 
 // ── Graders ─────────────────────────────────────────────────────────────────
 
@@ -684,6 +711,47 @@ function notionPage(id: string, title: string) {
 	};
 }
 
+/** The URL of a request option object, with its `qs` added. */
+function requestUrl(request: unknown): string {
+	const url = new URL(asText(valueAt(request, 'url')));
+	const qs = valueAt(request, 'qs');
+	const params = new URLSearchParams([
+		...url.searchParams,
+		...Object.entries(isRecord(qs) ? qs : {}).flatMap(
+			([key, value]): Array<[string, string]> =>
+				value === undefined || value === null ? [] : [[key, asText(value)]],
+		),
+	]);
+	return `${url.origin}${url.pathname}${params.size ? `?${params.toString()}` : ''}`;
+}
+
+/**
+ * Runs a nodes-base-next node after `walked` with its own action code against a fake API.
+ * `respond` answers each request (it may throw); `requests` holds every request sent.
+ */
+async function runNext(
+	node: WorkflowNodeResponse,
+	walked: PathStep[],
+	respond: (request: unknown) => unknown,
+) {
+	const requests: unknown[] = [];
+	const answer = async (options: unknown) => {
+		requests.push(options);
+		return await Promise.resolve(respond(options));
+	};
+	const helpers = {
+		httpRequest: answer,
+		httpRequestWithAuthentication: async (_credentialType: string, options: unknown) =>
+			await answer(options),
+	};
+	try {
+		const [output] = await executeOutputs(node, walked, helpers);
+		return { output: output ?? { items: [] }, requests, error: undefined };
+	} catch (error) {
+		return { output: { items: [] }, requests, error: errorText(error) };
+	}
+}
+
 /** The `filter` the nodes-base-next Notion node sends, run by its own execute code on a fake API. */
 async function nextNotionFilter(
 	workflow: WorkflowResponse,
@@ -708,6 +776,47 @@ async function nextNotionFilter(
 	return valueAt(query, 'body.filter') ?? {};
 }
 
+/** The `filter` body the Notion node of either family would send. */
+async function sentNotionFilter(
+	workflow: WorkflowResponse,
+	notion: WorkflowNodeResponse,
+): Promise<unknown> {
+	if (notion.type === NEXT_NOTION_GET_ALL) return await nextNotionFilter(workflow, notion);
+	const parameters = notion.parameters ?? {};
+	const conditions = isRecord(parameters.filters) ? parameters.filters.conditions : undefined;
+	try {
+		if (parameters.filterType === 'manual') {
+			return notionRuntime().filterBody(
+				Array.isArray(conditions) ? conditions : [],
+				parameters.matchType,
+				notion.typeVersion ?? 2,
+			);
+		}
+		if (parameters.filterType === 'json' && typeof parameters.filterJson === 'string') {
+			const parsed: unknown = JSON.parse(parameters.filterJson.replace(/^=/, ''));
+			return parsed;
+		}
+		return {};
+	} catch (error) {
+		return `<node throws: ${errorText(error)}>`;
+	}
+}
+
+/** The items a Notion getAll node of either family emits for the raw API `pages`. */
+function notionOutputItems(notion: WorkflowNodeResponse, pages: unknown[]): IDataObject[] {
+	const isNext = notion.type === NEXT_NOTION_GET_ALL;
+	// The next node emits the v3 simplified page.
+	const items =
+		notion.parameters?.simple === false && !isNext
+			? pages
+			: notionRuntime().simplifyObjects(pages, isNext ? 3 : (notion.typeVersion ?? 2));
+	return (Array.isArray(items) ? items : []).filter(isDataObject);
+}
+
+const isNotionGetAll = (node: WorkflowNodeResponse) =>
+	(node.type === 'n8n-nodes-base.notion' && node.parameters?.operation === 'getAll') ||
+	node.type === NEXT_NOTION_GET_ALL;
+
 /** What a Notion case adds to the base filter-and-read task. */
 interface NotionTask {
 	/** More filter conditions, each as a list of accepted forms. */
@@ -721,38 +830,10 @@ interface NotionTask {
 const notionGrader =
 	(task: NotionTask): Grader =>
 	async (workflow) => {
-		const runtime = notionRuntime();
-		const notion = workflow.nodes.find(
-			(node) =>
-				(node.type === 'n8n-nodes-base.notion' && node.parameters?.operation === 'getAll') ||
-				node.type === NEXT_NOTION_GET_ALL,
-		);
+		const notion = workflow.nodes.find(isNotionGetAll);
 		if (!notion) return [{ name: 'notion-node', pass: false, detail: 'no Notion getAll node' }];
-		const parameters = notion.parameters ?? {};
 		const isNext = notion.type === NEXT_NOTION_GET_ALL;
-
-		const version = notion.typeVersion ?? 2;
-		const conditions = isRecord(parameters.filters) ? parameters.filters.conditions : undefined;
-		const sent = isNext
-			? await nextNotionFilter(workflow, notion)
-			: ((): unknown => {
-					try {
-						if (parameters.filterType === 'manual') {
-							return runtime.filterBody(
-								Array.isArray(conditions) ? conditions : [],
-								parameters.matchType,
-								version,
-							);
-						}
-						if (parameters.filterType === 'json' && typeof parameters.filterJson === 'string') {
-							const parsed: unknown = JSON.parse(parameters.filterJson.replace(/^=/, ''));
-							return parsed;
-						}
-						return {};
-					} catch (error) {
-						return `<node throws: ${error instanceof Error ? error.message : String(error)}>`;
-					}
-				})();
+		const sent = await sentNotionFilter(workflow, notion);
 		// The legacy v3 node sends dates as UTC timestamps; the next node sends the date as given.
 		const completedDates = isNext
 			? ['2026-09-01', '2026-09-01T00:00:00Z']
@@ -771,15 +852,10 @@ const notionGrader =
 				choices.some((condition) => sentKeys.includes(sortedJson(condition))),
 			);
 
-		// The next node emits the v3 simplified page.
-		const items =
-			parameters.simple === false && !isNext
-				? [notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')]
-				: runtime.simplifyObjects(
-						[notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')],
-						isNext ? 3 : (notion.typeVersion ?? 2),
-					);
-		const outputItems = (Array.isArray(items) ? items : []).filter(isDataObject);
+		const outputItems = notionOutputItems(notion, [
+			notionPage('p1', 'Ship billing v3'),
+			notionPage('p2', 'Retire old API'),
+		]);
 
 		const {
 			node: http,
@@ -832,12 +908,17 @@ const gradeNotionEditAddFilter = notionGrader({
 
 /** The POST check shared by graders: method and URL after defaults, then the sent bodies. */
 async function postedBodies(workflow: WorkflowResponse, startName: string, items: IDataObject[]) {
+	return await postedAfter(workflow, sourceStep(startName, items));
+}
+
+/** As postedBodies, but the walk starts after the steps of `startWalked`. */
+async function postedAfter(workflow: WorkflowResponse, startWalked: PathStep[]) {
 	const {
 		node: http,
 		walked,
 		filtered,
 		path: via,
-	} = await followToHttp(workflow, startName, items);
+	} = await followTo(workflow, startWalked, HTTP_TARGET);
 	if (!http) return { via, filtered, target: undefined, bodies: [] };
 	const parameters = withDefaults(http);
 	const method = http.type === NEXT_HTTP_GET ? 'GET' : asText(parameters.method);
@@ -899,7 +980,12 @@ async function sheetsReadOutput(parameters: INodeParameters, version: number, va
 		.filter(isDataObject);
 }
 
-function sheetsReadTarget(parameters: INodeParameters, documentId: string, sheetName: string) {
+function sheetsReadTarget(
+	parameters: INodeParameters,
+	documentId: string,
+	sheetName: string,
+	operation = 'read',
+) {
 	const document = asText(valueAt(parameters, 'documentId.value'));
 	const sheetNames = [
 		valueAt(parameters, 'sheetName.value'),
@@ -908,29 +994,84 @@ function sheetsReadTarget(parameters: INodeParameters, documentId: string, sheet
 	return {
 		name: 'target',
 		pass:
-			parameters.operation === 'read' &&
+			parameters.operation === operation &&
 			document.includes(documentId) &&
 			sheetNames.includes(sheetName),
 		detail: JSON.stringify({ operation: parameters.operation, document, sheetNames }),
 	};
 }
 
+/** A fake Sheets API with one tab `sheetName` that holds `values`. Writes answer {}. */
+const sheetsApi =
+	(documentId: string, sheetName: string, values: unknown[][]) => (request: unknown) => {
+		const url = asText(valueAt(request, 'url'));
+		if (!url.includes(`/spreadsheets/${documentId}`))
+			throw new Error(`unknown spreadsheet: ${url}`);
+		if (valueAt(request, 'method') !== 'GET') return {};
+		return url.includes('/values/')
+			? { values: values.map((row) => [...row]) }
+			: { sheets: [{ properties: { sheetId: 0, title: sheetName } }] };
+	};
+
+const isSheetsRead = (node: WorkflowNodeResponse) =>
+	(node.type === 'n8n-nodes-base.googleSheets' && node.parameters?.operation === 'read') ||
+	node.type === NEXT_SHEETS_READ;
+
+/** The rows a Sheets read node of either family emits for `values`, and the target check. */
+async function readSheet(
+	workflow: WorkflowResponse,
+	sheets: WorkflowNodeResponse,
+	documentId: string,
+	sheetName: string,
+	values: unknown[][],
+) {
+	if (sheets.type === NEXT_SHEETS_READ) {
+		const { output, requests, error } = await runNext(
+			sheets,
+			sourceStep(parentName(workflow, sheets.name), [{}]),
+			sheetsApi(documentId, sheetName, values),
+		);
+		return {
+			target: {
+				name: 'target',
+				pass: error === undefined,
+				detail: error ?? requests.map(requestUrl).join(' , '),
+			},
+			rows: output.items,
+			settings: `parameters ${JSON.stringify(sheets.parameters)}`,
+		};
+	}
+	const parameters = await runtimeParameters(workflow, sheets);
+	return {
+		target: sheetsReadTarget(parameters, documentId, sheetName),
+		rows: await sheetsReadOutput(parameters, sheets.typeVersion ?? 1, values),
+		settings: `filters ${JSON.stringify(valueAt(parameters, 'filtersUI.values'))} options ${JSON.stringify(parameters.options)}`,
+	};
+}
+
 // A Limit node that keeps the first row passes: it sends the same single POST.
 const gradeSheetsLookupFirstMatch: Grader = async (workflow) => {
-	const sheets = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.googleSheets');
+	const sheets = workflow.nodes.find(
+		(node) => node.type === 'n8n-nodes-base.googleSheets' || node.type === NEXT_SHEETS_READ,
+	);
 	if (!sheets) return [{ name: 'sheets-node', pass: false, detail: 'no Google Sheets node' }];
-	const parameters = await runtimeParameters(workflow, sheets);
-	const rows = await sheetsReadOutput(parameters, sheets.typeVersion ?? 1, STOCK_ROWS);
+	const { target, rows, settings } = await readSheet(
+		workflow,
+		sheets,
+		SHEET_ID,
+		'Stock',
+		STOCK_ROWS,
+	);
 	const posted = await postedBodies(workflow, sheets.name, rows);
 	return [
-		sheetsReadTarget(parameters, SHEET_ID, 'Stock'),
+		target,
 		{
 			name: 'lookup',
 			pass:
 				rows.length > 0 &&
 				rows.every((row) => row.SKU === 'B-200') &&
 				rows[0].Warehouse === 'Berlin',
-			detail: `${rows.length} row(s) ${JSON.stringify(rows)} filters ${JSON.stringify(valueAt(parameters, 'filtersUI.values'))} options ${JSON.stringify(parameters.options)}`,
+			detail: `${rows.length} row(s) ${JSON.stringify(rows)} ${settings}`,
 		},
 		readsCheck(
 			posted,
@@ -949,13 +1090,20 @@ const SIGNUP_ROWS = [
 ];
 
 const gradeSheetsDynamicColumns: Grader = async (workflow) => {
-	const sheets = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.googleSheets');
+	const sheets = workflow.nodes.find(
+		(node) => node.type === 'n8n-nodes-base.googleSheets' || node.type === NEXT_SHEETS_READ,
+	);
 	if (!sheets) return [{ name: 'sheets-node', pass: false, detail: 'no Google Sheets node' }];
-	const parameters = await runtimeParameters(workflow, sheets);
-	const rows = await sheetsReadOutput(parameters, sheets.typeVersion ?? 1, SIGNUP_ROWS);
+	const { target, rows } = await readSheet(
+		workflow,
+		sheets,
+		SIGNUPS_SHEET_ID,
+		'Signups',
+		SIGNUP_ROWS,
+	);
 	const posted = await postedBodies(workflow, sheets.name, rows);
 	return [
-		sheetsReadTarget(parameters, SIGNUPS_SHEET_ID, 'Signups'),
+		target,
 		readsCheck(
 			posted,
 			'POST https://hooks.example.com/api/signups',
@@ -1124,6 +1272,25 @@ async function paginatedRequests(workflow: WorkflowResponse, http: WorkflowNodeR
 	}
 }
 
+/** Runs the nodes-base-next GET against CUSTOMER_PAGES and returns the URLs it requests. */
+async function nextPaginatedRequests(workflow: WorkflowResponse, http: WorkflowNodeResponse) {
+	const answered: string[] = [];
+	const { output, requests, error } = await runNext(
+		http,
+		sourceStep(parentName(workflow, http.name), [{}]),
+		(request) => {
+			answered.push(requestUrl(request));
+			if (answered.length > MAX_FAKE_REQUESTS) {
+				throw new Error(`more than ${MAX_FAKE_REQUESTS} requests`);
+			}
+			const body = CUSTOMER_PAGES[new URL(requestUrl(request)).searchParams.get('cursor') ?? ''];
+			if (!body) throw new Error('400 unknown cursor');
+			return body;
+		},
+	);
+	return { urls: requests.map(requestUrl), pages: output.items, error };
+}
+
 const gradeHttpCursorPagination: Grader = async (workflow) => {
 	const http = workflow.nodes.find(
 		(node) =>
@@ -1131,7 +1298,10 @@ const gradeHttpCursorPagination: Grader = async (workflow) => {
 	);
 	if (!http)
 		return [{ name: 'http-node', pass: false, detail: 'no HTTP Request to the customers API' }];
-	const { urls, pages, error } = await paginatedRequests(workflow, http);
+	const { urls, pages, error } =
+		http.type === NEXT_HTTP_GET
+			? await nextPaginatedRequests(workflow, http)
+			: await paginatedRequests(workflow, http);
 	const expected = [CUSTOMERS_URL, `${CUSTOMERS_URL}?cursor=c2`, `${CUSTOMERS_URL}?cursor=c3`];
 	const posted = await postedBodies(workflow, http.name, pages);
 	return [
@@ -1150,18 +1320,114 @@ const gradeHttpCursorPagination: Grader = async (workflow) => {
 
 const GMAIL_SENT = { id: 'm-1042', threadId: 't-77', labelIds: ['SENT'] };
 
-const gradeGmailSendThenPost: Grader = async (workflow) => {
-	const gmail = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.gmail');
-	if (!gmail) return [{ name: 'gmail-node', pass: false, detail: 'no Gmail node' }];
-	const parameters = await runtimeParameters(workflow, gmail);
-	const send = {
-		resource: parameters.resource,
-		operation: parameters.operation,
-		sendTo: asText(parameters.sendTo).trim(),
-		subject: parameters.subject,
-		emailType: parameters.emailType,
-		message: asText(parameters.message).trim(),
+/** The node's parameters with defaults filled and expressions resolved for each item after `walked`. */
+async function itemParameters(
+	node: WorkflowNodeResponse,
+	walked: PathStep[],
+): Promise<Array<INodeParameters | string>> {
+	const parameters = withDefaults(node);
+	const { items } = walked[walked.length - 1];
+	return await withChildContext(walked, node.name, (evaluate) =>
+		items.map((_, itemIndex) => {
+			try {
+				const resolved = evaluate(parameters, itemIndex);
+				return isNodeParameters(resolved) ? resolved : {};
+			} catch (error) {
+				return `<error: ${errorText(error)}>`;
+			}
+		}),
+	);
+}
+
+/** One sent email, in the terms of the legacy Gmail send parameters. */
+interface SentEmail {
+	resource: unknown;
+	operation: unknown;
+	sendTo: string;
+	subject: unknown;
+	emailType: unknown;
+	message: string;
+}
+
+/** The nodes-base-next send action adds this before its attribution footer. */
+const ATTRIBUTION_SEPARATOR = '\n\n---\n';
+
+/** The email in the raw MIME message that the nodes-base-next send action posts. */
+function decodeSentEmail(raw: unknown): SentEmail {
+	const mime = Buffer.from(asText(raw), 'base64url').toString('utf8');
+	const [head = '', ...body] = mime.split('\r\n\r\n');
+	const headers = Object.fromEntries(
+		head
+			.split('\r\n')
+			.map((line) => [
+				line.slice(0, line.indexOf(':')).toLowerCase(),
+				line.slice(line.indexOf(':') + 1).trim(),
+			]),
+	);
+	const text = Buffer.from(body.join('').replace(/\r\n/g, ''), 'base64').toString('utf8');
+	const contentType = headers['content-type'] ?? '';
+	return {
+		resource: 'message',
+		operation: 'send',
+		sendTo: headers.to ?? '',
+		subject: headers.subject,
+		emailType: contentType.startsWith('text/plain')
+			? 'text'
+			: contentType.startsWith('text/html')
+				? 'html'
+				: contentType,
+		message: (text.split(ATTRIBUTION_SEPARATOR)[0] ?? '').trim(),
 	};
+}
+
+const isGmailSend = (node: WorkflowNodeResponse) =>
+	(node.type === 'n8n-nodes-base.gmail' && node.parameters?.operation === 'send') ||
+	node.type === NEXT_GMAIL_SEND;
+
+/**
+ * The emails a Gmail send node of either family sends for the items after `walked`, and its
+ * output when the API answers each send with `sent`.
+ */
+async function gmailSends(gmail: WorkflowNodeResponse, walked: PathStep[], sent: IDataObject) {
+	if (gmail.type === NEXT_GMAIL_SEND) {
+		const { output, requests, error } = await runNext(gmail, walked, (request) =>
+			requestUrl(request).endsWith('/profile') ? { emailAddress: 'me@acme.test' } : sent,
+		);
+		const sends = requests
+			.filter((request) => requestUrl(request).endsWith('/messages/send'))
+			.map((request) => decodeSentEmail(valueAt(request, 'body.raw')));
+		return { sends, output, error };
+	}
+	const resolved = await itemParameters(gmail, walked);
+	const sends = resolved.filter(isNodeParameters).map(
+		(parameters): SentEmail => ({
+			resource: parameters.resource,
+			operation: parameters.operation,
+			sendTo: asText(parameters.sendTo).trim(),
+			subject: parameters.subject,
+			emailType: parameters.emailType,
+			message: asText(parameters.message).trim(),
+		}),
+	);
+	const error = resolved.find((parameters) => typeof parameters === 'string');
+	return {
+		sends,
+		output: { items: error ? [] : resolved.map(() => sent) },
+		error: typeof error === 'string' ? error : undefined,
+	};
+}
+
+const gradeGmailSendThenPost: Grader = async (workflow) => {
+	const gmail = workflow.nodes.find(
+		(node) => node.type === 'n8n-nodes-base.gmail' || node.type === NEXT_GMAIL_SEND,
+	);
+	if (!gmail) return [{ name: 'gmail-node', pass: false, detail: 'no Gmail node' }];
+	const { sends, output, error } = await gmailSends(
+		gmail,
+		sourceStep(parentName(workflow, gmail.name), [{}]),
+		GMAIL_SENT,
+	);
+	const [send] = sends;
 	const expected = {
 		resource: 'message',
 		operation: 'send',
@@ -1170,9 +1436,13 @@ const gradeGmailSendThenPost: Grader = async (workflow) => {
 		emailType: 'text',
 		message: 'Invoice 1042 is ready.',
 	};
-	const posted = await postedBodies(workflow, gmail.name, [GMAIL_SENT]);
+	const posted = await postedBodies(workflow, gmail.name, output.items);
 	return [
-		{ name: 'send', pass: sortedJson(send) === sortedJson(expected), detail: JSON.stringify(send) },
+		{
+			name: 'send',
+			pass: sends.length === 1 && sortedJson(send) === sortedJson(expected),
+			detail: error ?? JSON.stringify(sends.length === 1 ? send : sends),
+		},
 		readsCheck(
 			posted,
 			'POST https://crm.example.com/api/emails',
@@ -1230,6 +1500,628 @@ const gradeIfStringAmountThreshold: Grader = async (workflow) => {
 	];
 };
 
+// Held-out cases: nobody tunes prompts against these.
+
+const targetOf = (name: string, role: string, matches: WalkTarget['matches']): WalkTarget => ({
+	matches,
+	name,
+	role,
+});
+
+const isSheetsWrite = (operation: 'append' | 'appendOrUpdate') => (node: WorkflowNodeResponse) =>
+	(node.type === 'n8n-nodes-base.googleSheets' && node.parameters?.operation === operation) ||
+	node.type === (operation === 'append' ? NEXT_SHEETS_APPEND : NEXT_SHEETS_UPSERT);
+
+/**
+ * The rows a Sheets append or upsert node of either family writes for the items after `walked`
+ * into a tab that holds `values`, the column it matches on, and the target check.
+ */
+async function sheetsWrites(
+	sheets: WorkflowNodeResponse,
+	walked: PathStep[],
+	documentId: string,
+	sheetName: string,
+	values: unknown[][],
+) {
+	if (sheets.type.startsWith(NEXT_PREFIX)) {
+		const { output, requests, error } = await runNext(
+			sheets,
+			walked,
+			sheetsApi(documentId, sheetName, values),
+		);
+		const writes = requests.filter((request) => valueAt(request, 'method') !== 'GET');
+		return {
+			target: {
+				name: 'target',
+				pass: error === undefined,
+				detail: error ?? `${writes.length} write request(s)`,
+			},
+			rows: output.items,
+			matchOn: asText(sheets.parameters?.matchOn),
+		};
+	}
+	const resolved = await itemParameters(sheets, walked);
+	const { items } = walked[walked.length - 1];
+	const [first = {}] = resolved;
+	const rows = resolved.map((parameters, itemIndex): IDataObject => {
+		if (typeof parameters === 'string') return { error: parameters };
+		if (valueAt(parameters, 'columns.mappingMode') === 'autoMapInputData') return items[itemIndex];
+		const mapped = valueAt(parameters, 'columns.value');
+		return isDataObject(mapped) ? mapped : {};
+	});
+	const matching = valueAt(first, 'columns.matchingColumns');
+	return {
+		target:
+			typeof first === 'string'
+				? { name: 'target', pass: false, detail: first }
+				: sheetsReadTarget(first, documentId, sheetName, asText(sheets.parameters?.operation)),
+		rows,
+		matchOn: Array.isArray(matching)
+			? matching.map(asText).join(',')
+			: asText(valueAt(first, 'columnToMatchOn')),
+	};
+}
+
+/** A number column passes with any value that is that number, as Sheets USER_ENTERED reads it. */
+const cellMatches = (actual: unknown, expected: string | number) =>
+	typeof expected === 'number'
+		? (typeof actual === 'number' || (typeof actual === 'string' && actual.trim() !== '')) &&
+			Number(actual) === expected
+		: actual === expected;
+
+function rowsCheck(
+	rows: IDataObject[],
+	expected: Array<Record<string, string | number>>,
+	detail: string,
+): Check {
+	return {
+		name: 'rows',
+		pass:
+			rows.length === expected.length &&
+			expected.every((row, index) =>
+				Object.entries(row).every(([column, value]) => cellMatches(rows[index]?.[column], value)),
+			),
+		detail: `${detail} ${JSON.stringify(rows)}`,
+	};
+}
+
+/** The rows check when no write node was reached: ungraded only for an unsupported node. */
+const walkCheck = (name: string, via: string): Check => ({
+	name,
+	pass: false,
+	ungraded: via.startsWith('ungraded:'),
+	detail: via,
+});
+
+const DEALS_DATABASE = '8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d';
+const DEALS_SHEET_ID = '1QwErTyUiOpAsDfGhJkLzXcVbNm0987654321';
+
+function dealPage(
+	id: string,
+	title: string,
+	amount: number,
+	closeDate: string,
+	[ownerName, ownerEmail]: [string, string],
+) {
+	return {
+		object: 'page',
+		id,
+		url: `https://www.notion.so/${id}`,
+		parent: { type: 'data_source_id', data_source_id: DEALS_DATABASE },
+		properties: {
+			Name: {
+				id: 'title',
+				type: 'title',
+				title: [{ type: 'text', plain_text: title, text: { content: title } }],
+			},
+			Stage: { id: 'st', type: 'select', select: { name: 'Won' } },
+			Amount: { id: 'am', type: 'number', ['number']: amount },
+			'Close date': {
+				id: 'cd',
+				type: 'date',
+				date: { start: closeDate, end: null, time_zone: null },
+			},
+			Owner: {
+				id: 'ow',
+				type: 'people',
+				people: [
+					{
+						object: 'user',
+						id: `u-${id}`,
+						name: ownerName,
+						type: 'person',
+						person: { email: ownerEmail },
+					},
+				],
+			},
+		},
+	};
+}
+
+const gradeHoldoutNotionDealsToSheet: Grader = async (workflow) => {
+	const notion = workflow.nodes.find(isNotionGetAll);
+	if (!notion) return [{ name: 'notion-node', pass: false, detail: 'no Notion getAll node' }];
+	const sent = await sentNotionFilter(workflow, notion);
+	// One condition may be sent bare or inside an `and` or `or` list.
+	const conditions =
+		isRecord(sent) && Array.isArray(sent.and)
+			? sent.and
+			: isRecord(sent) && Array.isArray(sent.or)
+				? sent.or
+				: [sent];
+	const items = notionOutputItems(notion, [
+		dealPage('d1', 'Acme renewal', 12000, '2026-08-14', ['Dana Scully', 'dana@acme.test']),
+		dealPage('d2', 'Globex pilot', 4500.5, '2026-08-20T15:30:00.000+02:00', [
+			'Fox Mulder',
+			'fox@acme.test',
+		]),
+	]);
+	const filter: Check = {
+		name: 'filter',
+		pass:
+			conditions.length === 1 &&
+			sortedJson(conditions[0]) === sortedJson({ property: 'Stage', select: { equals: 'Won' } }),
+		detail: JSON.stringify(sent),
+	};
+	const {
+		node: sheets,
+		walked,
+		path: via,
+	} = await followTo(
+		workflow,
+		sourceStep(notion.name, items),
+		targetOf('Google Sheets append', 'the append', isSheetsWrite('append')),
+	);
+	if (!sheets) return [filter, walkCheck('rows', via)];
+	const written = await sheetsWrites(sheets, walked, DEALS_SHEET_ID, 'Closed deals', [
+		['Deal', 'Amount', 'Close date', 'Owner email'],
+	]);
+	return [
+		filter,
+		written.target,
+		rowsCheck(
+			written.rows,
+			[
+				{
+					Deal: 'Acme renewal',
+					Amount: 12000,
+					'Close date': '2026-08-14',
+					'Owner email': 'dana@acme.test',
+				},
+				{
+					Deal: 'Globex pilot',
+					Amount: 4500.5,
+					'Close date': '2026-08-20',
+					'Owner email': 'fox@acme.test',
+				},
+			],
+			via,
+		),
+	];
+};
+
+const ORDERS_SHEET_ID = '1MnBvCxZaSdFgHjKlPoIuYtReWq1234567890';
+// The API leaves out empty trailing cells, so A-1 has no Shipped cell.
+const ORDER_ROWS = [
+	['Order ID', 'Customer email', 'Total', 'Shipped'],
+	['A-1', 'ada@lovelace.test', 320],
+	['A-2', 'grace@hopper.test', 410.5, 'yes'],
+	['A-3', 'alan@turing.test', 99, 'no'],
+	['A-4', 'kat@johnson.test', 275, 'no'],
+];
+
+const orderEmail = (orderId: string, to: string, total: number): SentEmail => ({
+	resource: 'message',
+	operation: 'send',
+	sendTo: to,
+	subject: `Your order ${orderId} is on its way soon`,
+	emailType: 'text',
+	message: `Hi, we are preparing order ${orderId} (total ${total} EUR).`,
+});
+
+const gradeHoldoutSheetsOrdersGmail: Grader = async (workflow) => {
+	const sheets = workflow.nodes.find(isSheetsRead);
+	if (!sheets) return [{ name: 'sheets-node', pass: false, detail: 'no Google Sheets read node' }];
+	const read = await readSheet(workflow, sheets, ORDERS_SHEET_ID, 'Orders', ORDER_ROWS);
+	try {
+		const {
+			node: gmail,
+			walked,
+			filtered,
+			path: via,
+		} = await followTo(
+			workflow,
+			sourceStep(sheets.name, read.rows),
+			targetOf('Gmail send', 'the send', isGmailSend),
+		);
+		if (!gmail) return [read.target, walkCheck('emails', via)];
+		const { sends, error } = await gmailSends(gmail, walked, {
+			id: 'm-1',
+			threadId: 't-1',
+			labelIds: ['SENT'],
+		});
+		const expected = [
+			orderEmail('A-1', 'ada@lovelace.test', 320),
+			orderEmail('A-4', 'kat@johnson.test', 275),
+		];
+		return [
+			read.target,
+			{
+				name: 'emails',
+				pass: !error && sortedJson(sends) === sortedJson(expected),
+				detail: `${error ? `${error}; ` : ''}${via} kept ${JSON.stringify(filtered?.map((row) => row['Order ID']))} ${JSON.stringify(sends)}`,
+			},
+		];
+	} catch (error) {
+		// A type validation error thrown by the IF or Filter node stops the real execution too.
+		return [
+			read.target,
+			{ name: 'emails', pass: false, detail: `node throws: ${errorText(error)}` },
+		];
+	}
+};
+
+const TRIAGE_EMAILS = [
+	{
+		id: 'm1',
+		from: 'Ada Lovelace <ada@lovelace.test>',
+		address: 'ada@lovelace.test',
+		subject: 'Invoice question',
+		text: 'Hi, can you resend invoice 1042? Thanks, Ada',
+		/** Text only the email content holds; the fake Gemini answers when the prompt has it. */
+		key: 'resend invoice 1042',
+		summary: 'Summary: Ada asks us to resend invoice 1042.',
+	},
+	{
+		id: 'm2',
+		from: 'Globex Billing <billing@globex.test>',
+		address: 'billing@globex.test',
+		subject: 'Payment received',
+		text: 'We received your payment of 120 EUR.',
+		key: 'payment of 120 EUR',
+		summary: 'Summary: Globex confirms a payment of 120 EUR.',
+	},
+];
+
+const GMAIL_LABELS = {
+	labels: [
+		{ id: 'UNREAD', name: 'UNREAD' },
+		{ id: 'INBOX', name: 'INBOX' },
+	],
+};
+
+const triageMetadata = (email: (typeof TRIAGE_EMAILS)[number]) => ({
+	id: email.id,
+	threadId: `t-${email.id}`,
+	labelIds: ['UNREAD', 'INBOX'],
+	snippet: email.text,
+	sizeEstimate: 1200,
+	historyId: '9001',
+	internalDate: '1790000000000',
+	payload: {
+		mimeType: 'text/plain',
+		headers: [
+			{ name: 'From', value: email.from },
+			{ name: 'To', value: 'me@acme.test' },
+			{ name: 'Subject', value: email.subject },
+		],
+	},
+});
+
+const triageRaw = (email: (typeof TRIAGE_EMAILS)[number]) => ({
+	id: email.id,
+	threadId: `t-${email.id}`,
+	labelIds: ['UNREAD', 'INBOX'],
+	sizeEstimate: 1200,
+	raw: Buffer.from(
+		[
+			`From: ${email.from}`,
+			'To: me@acme.test',
+			`Subject: ${email.subject}`,
+			'Date: Mon, 28 Sep 2026 09:00:00 +0000',
+			`Message-ID: <${email.id}@acme.test>`,
+			'Content-Type: text/plain; charset=utf-8',
+			'',
+			email.text,
+		].join('\r\n'),
+	).toString('base64url'),
+});
+
+/** The list query the Gmail getAll node sends, and the messages it emits, for either family. */
+async function triageGmailOutput(workflow: WorkflowResponse, gmail: WorkflowNodeResponse) {
+	if (gmail.type === NEXT_GMAIL_GET_ALL) {
+		const { output, requests, error } = await runNext(
+			gmail,
+			sourceStep(parentName(workflow, gmail.name), [{}]),
+			(request) => {
+				const { pathname } = new URL(requestUrl(request));
+				if (pathname.endsWith('/labels')) return GMAIL_LABELS;
+				if (pathname.endsWith('/messages')) {
+					return { messages: TRIAGE_EMAILS.map(({ id }) => ({ id, threadId: `t-${id}` })) };
+				}
+				const email = TRIAGE_EMAILS.find(({ id }) => pathname.endsWith(`/messages/${id}`));
+				if (!email) throw new Error(`unexpected request ${pathname}`);
+				return triageMetadata(email);
+			},
+		);
+		const list = requests
+			.map((request) => new URL(requestUrl(request)))
+			.find((url) => url.pathname.endsWith('/messages'));
+		return {
+			query: {
+				q: list?.searchParams.get('q') ?? '',
+				labelIds: list?.searchParams.getAll('labelIds') ?? [],
+				maxResults: list?.searchParams.get('maxResults') ?? '',
+			},
+			items: output.items,
+			error,
+		};
+	}
+	const gmailFunctions = loadDist(
+		nodesBaseRequire,
+		'./dist/nodes/Google/Gmail/GenericFunctions.js',
+		['prepareQuery', 'simplifyOutput', 'parseRawEmail'],
+	);
+	const parameters = await runtimeParameters(workflow, gmail);
+	const context = {
+		getNode: () => ({ ...stubNode(gmail.name), typeVersion: gmail.typeVersion ?? 1 }),
+		getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : false),
+		helpers: { requestWithAuthentication: async () => await Promise.resolve(GMAIL_LABELS) },
+	};
+	try {
+		const prepared = invoke(
+			gmailFunctions.prepareQuery,
+			context,
+			isRecord(parameters.filters) ? parameters.filters : {},
+			0,
+		);
+		const labelIds = valueAt(prepared, 'labelIds');
+		const messages =
+			parameters.simple === false
+				? await Promise.all(
+						TRIAGE_EMAILS.map(
+							async (email) =>
+								await invoke(
+									gmailFunctions.parseRawEmail,
+									context,
+									triageRaw(email),
+									'attachment_',
+								),
+						),
+					).then((parsed) => parsed.map((item) => valueAt(item, 'json')))
+				: await invoke(gmailFunctions.simplifyOutput, context, TRIAGE_EMAILS.map(triageMetadata));
+		return {
+			query: {
+				q: asText(valueAt(prepared, 'q')),
+				labelIds: (Array.isArray(labelIds) ? labelIds : [labelIds]).map(asText),
+				maxResults: parameters.returnAll === true ? 'all' : asText(parameters.limit),
+			},
+			items: (Array.isArray(messages) ? messages : []).filter(isDataObject),
+			error: undefined,
+		};
+	} catch (error) {
+		return { query: { q: '', labelIds: [], maxResults: '' }, items: [], error: errorText(error) };
+	}
+}
+
+const LEGACY_GEMINI = '@n8n/n8n-nodes-langchain.googleGemini';
+
+const isGeminiMessage = (node: WorkflowNodeResponse) =>
+	(node.type === LEGACY_GEMINI &&
+		['', 'text'].includes(asText(node.parameters?.resource)) &&
+		['', 'message'].includes(asText(node.parameters?.operation))) ||
+	node.type === NEXT_GEMINI_MESSAGE;
+
+const geminiAnswer = (prompt: string) =>
+	TRIAGE_EMAILS.find((email) => prompt.includes(email.key))?.summary ??
+	'Summary: the prompt holds no email content.';
+
+const geminiCandidate = (answer: string) => ({
+	content: { parts: [{ text: answer }], role: 'model' },
+	finishReason: 'STOP',
+	index: 0,
+});
+
+/**
+ * The items a Gemini message node of either family emits after `walked`, with a fake model that
+ * answers from the prompt. The legacy node is not in nodes-base, so its output is built from its
+ * parameters as its message operation does.
+ */
+async function geminiOutput(gemini: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
+	if (gemini.type === NEXT_GEMINI_MESSAGE) {
+		const { output, error } = await runNext(gemini, walked, (request) => ({
+			candidates: [geminiCandidate(geminiAnswer(JSON.stringify(valueAt(request, 'body'))))],
+		}));
+		if (error) throw new Error(error);
+		return output;
+	}
+	const { items } = walked[walked.length - 1];
+	const outputs = await withChildContext(walked, gemini.name, (evaluate) =>
+		items.map((_, itemIndex) => {
+			const parameters = evaluate(
+				isNodeParameters(gemini.parameters) ? gemini.parameters : {},
+				itemIndex,
+			);
+			const messages = valueAt(parameters, 'messages.values');
+			const prompt = (Array.isArray(messages) ? messages : [])
+				.map((message) => asText(valueAt(message, 'content')))
+				.join('\n');
+			const answer = geminiAnswer(prompt);
+			const candidate = {
+				...geminiCandidate(answer),
+				...(valueAt(parameters, 'options.includeMergedResponse') === true
+					? { mergedResponse: answer }
+					: {}),
+			};
+			return valueAt(parameters, 'simplify') === false ? { candidates: [candidate] } : candidate;
+		}),
+	);
+	return { items: outputs, paired: outputs.map((_, index) => index) };
+}
+
+const gradeHoldoutGmailGeminiTriage: Grader = async (workflow) => {
+	const gmail = workflow.nodes.find(
+		(node) =>
+			(node.type === 'n8n-nodes-base.gmail' && node.parameters?.operation === 'getAll') ||
+			node.type === NEXT_GMAIL_GET_ALL,
+	);
+	if (!gmail) return [{ name: 'gmail-node', pass: false, detail: 'no Gmail getAll node' }];
+	const { query, items, error } = await triageGmailOutput(workflow, gmail);
+	const queryCheck: Check = {
+		name: 'query',
+		pass:
+			!error &&
+			query.maxResults === '5' &&
+			(/\bis:unread\b/.test(query.q) || query.labelIds.includes('UNREAD')),
+		detail: error ?? JSON.stringify(query),
+	};
+	const toGemini = await followTo(
+		workflow,
+		sourceStep(gmail.name, items),
+		targetOf('Gemini message', 'the Gemini message', isGeminiMessage),
+	);
+	if (!toGemini.node) return [queryCheck, walkCheck('reads', toGemini.path)];
+	try {
+		const answers = await geminiOutput(toGemini.node, toGemini.walked);
+		const posted = await postedAfter(workflow, [
+			...toGemini.walked,
+			{ name: toGemini.node.name, ...answers },
+		]);
+		const reads = readsCheck(
+			posted,
+			'POST https://triage.example.com/api/inbox',
+			(bodies) =>
+				sortedJson(bodies) ===
+				sortedJson(
+					TRIAGE_EMAILS.map((email) => ({
+						from: email.address,
+						subject: email.subject,
+						summary: email.summary,
+					})),
+				),
+		);
+		return [
+			queryCheck,
+			{ ...reads, ungraded: reads.ungraded === true && posted.via.startsWith('ungraded:') },
+		];
+	} catch (geminiError) {
+		return [
+			queryCheck,
+			{ name: 'reads', pass: false, detail: `node throws: ${errorText(geminiError)}` },
+		];
+	}
+};
+
+const SUBSCRIPTIONS_URL = 'https://api.example.com/v1/subscriptions';
+const SUBSCRIPTIONS_SHEET_ID = '1PlKoJiHuGyTfRdEsWaQ0192837465ZxCvBn';
+const SUBSCRIPTIONS: IDataObject = {
+	items: [
+		{
+			id: 'sub_1',
+			customer: { email: 'ada@lovelace.test', name: 'Ada' },
+			plan: { name: 'Pro', price_cents: 4900 },
+			// 2026-01-01T12:00:00Z: noon keeps the date the same in every zone from UTC-11 to UTC+11.
+			renews_at: 1767268800,
+		},
+		{
+			id: 'sub_2',
+			customer: { email: 'grace@hopper.test', name: 'Grace' },
+			plan: { name: 'Team', price_cents: 12950 },
+			renews_at: 1769947200,
+		},
+	],
+};
+const SUBSCRIPTION_ROWS = [
+	['Subscription ID', 'Customer email', 'Plan', 'Monthly price', 'Renews on'],
+	['sub_1', 'ada@lovelace.test', 'Free', 0, '2025-12-01'],
+];
+
+/** The URL the GET node requests and the items it emits for SUBSCRIPTIONS, for either family. */
+async function subscriptionsGet(workflow: WorkflowResponse, get: WorkflowNodeResponse) {
+	if (get.type === NEXT_HTTP_GET) {
+		const { output, requests, error } = await runNext(
+			get,
+			sourceStep(parentName(workflow, get.name), [{}]),
+			() => SUBSCRIPTIONS,
+		);
+		return { url: requests.map(requestUrl).join(' , '), items: output.items, error };
+	}
+	const parameters = await runtimeParameters(workflow, get);
+	const query = valueAt(parameters, 'queryParameters.parameters');
+	const qs =
+		parameters.sendQuery === true && Array.isArray(query)
+			? Object.fromEntries(
+					query.filter(isRecord).map((pair) => [asText(pair.name), asText(pair.value)]),
+				)
+			: {};
+	try {
+		const url = requestUrl({ url: asText(parameters.url).replace(/^=/, '').trim(), qs });
+		return {
+			url: parameters.method === 'GET' ? url : `${asText(parameters.method)} ${url}`,
+			items: [SUBSCRIPTIONS],
+			error: undefined,
+		};
+	} catch (error) {
+		return { url: '', items: [], error: errorText(error) };
+	}
+}
+
+const gradeHoldoutHttpSubscriptionsUpsert: Grader = async (workflow) => {
+	const get = workflow.nodes.find(
+		(node) => isHttpRequest(node) && asText(node.parameters?.url).includes(SUBSCRIPTIONS_URL),
+	);
+	if (!get)
+		return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the subscriptions API' }];
+	const { url, items, error } = await subscriptionsGet(workflow, get);
+	const request: Check = {
+		name: 'request',
+		pass: !error && url === `${SUBSCRIPTIONS_URL}?status=active`,
+		detail: error ?? url,
+	};
+	const {
+		node: sheets,
+		walked,
+		path: via,
+	} = await followTo(
+		workflow,
+		sourceStep(get.name, items),
+		targetOf('Google Sheets upsert', 'the upsert', isSheetsWrite('appendOrUpdate')),
+	);
+	if (!sheets) return [request, walkCheck('rows', via)];
+	const written = await sheetsWrites(
+		sheets,
+		walked,
+		SUBSCRIPTIONS_SHEET_ID,
+		'Subscriptions',
+		SUBSCRIPTION_ROWS,
+	);
+	return [
+		request,
+		written.target,
+		{ name: 'match-on', pass: written.matchOn === 'Subscription ID', detail: written.matchOn },
+		rowsCheck(
+			written.rows,
+			[
+				{
+					'Subscription ID': 'sub_1',
+					'Customer email': 'ada@lovelace.test',
+					Plan: 'Pro',
+					'Monthly price': 49,
+					'Renews on': '2026-01-01',
+				},
+				{
+					'Subscription ID': 'sub_2',
+					'Customer email': 'grace@hopper.test',
+					Plan: 'Team',
+					'Monthly price': 129.5,
+					'Renews on': '2026-02-01',
+				},
+			],
+			via,
+		),
+	];
+};
+
 const GRADERS: Record<string, Grader> = {
 	'nc-notion-filter-and-read': gradeNotionFilterAndRead,
 	'nc-notion-edit-add-filter': gradeNotionEditAddFilter,
@@ -1239,6 +2131,10 @@ const GRADERS: Record<string, Grader> = {
 	'nc-sheets-dynamic-columns': gradeSheetsDynamicColumns,
 	'nc-set-keep-all-passthrough': gradeSetKeepAllPassthrough,
 	'nc-if-string-amount-threshold': gradeIfStringAmountThreshold,
+	'nc-holdout-notion-deals-to-sheet': gradeHoldoutNotionDealsToSheet,
+	'nc-holdout-sheets-orders-gmail': gradeHoldoutSheetsOrdersGmail,
+	'nc-holdout-gmail-gemini-triage': gradeHoldoutGmailGeminiTriage,
+	'nc-holdout-http-subscriptions-upsert': gradeHoldoutHttpSubscriptionsUpsert,
 };
 
 async function gradeSafely(caseSlug: string, workflow: WorkflowResponse): Promise<Check[]> {

@@ -1,0 +1,34 @@
+{
+	"complexity": "medium",
+	"tags": ["build", "node-contracts-poc", "holdout", "notion", "google-sheets", "output-shape"],
+	"triggerType": "manual",
+	"credentials": [
+		{
+			"type": "notionApi",
+			"name": "Notion account"
+		},
+		{
+			"type": "googleSheetsOAuth2Api",
+			"name": "Google Sheets account"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: get all pages from my Notion database 8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d where the Stage select is Won. For each deal, add a row to the 'Closed deals' tab of my Google Sheet (spreadsheet ID 1QwErTyUiOpAsDfGhJkLzXcVbNm0987654321). The tab has the header row Deal | Amount | Close date | Owner email. Fill in the page title, the Amount number, the Close date as YYYY-MM-DD, and the email address of the person in the Owner field."
+		}
+	],
+	"description": "Held-out case. The Notion output shape depends on the property type: a number stays a number, a date becomes a {start, end, time_zone} object whose start can carry a time, and people become an array of emails. The Sheets append must map these values to header names that contain spaces.",
+	"executionScenarios": [
+		{
+			"name": "won-deals-appended",
+			"description": "The query filters on Stage and each won deal becomes one sheet row with plain values.",
+			"dataSetup": "The Notion API data source query (POST /v1/data_sources/8d2f4a6b-1c3e-4f5a-9b7d-2e4f6a8c0b1d/query) returns { \"object\": \"list\", \"has_more\": false, \"next_cursor\": null, \"results\": [{\"object\": \"page\", \"id\": \"d1\", \"url\": \"https://www.notion.so/d1\", \"properties\": {\"Name\": {\"id\": \"title\", \"type\": \"title\", \"title\": [{\"type\": \"text\", \"plain_text\": \"Acme renewal\", \"text\": {\"content\": \"Acme renewal\"}}]}, \"Stage\": {\"id\": \"st\", \"type\": \"select\", \"select\": {\"name\": \"Won\"}}, \"Amount\": {\"id\": \"am\", \"type\": \"number\", \"number\": 12000}, \"Close date\": {\"id\": \"cd\", \"type\": \"date\", \"date\": {\"start\": \"2026-08-14\", \"end\": null, \"time_zone\": null}}, \"Owner\": {\"id\": \"ow\", \"type\": \"people\", \"people\": [{\"object\": \"user\", \"id\": \"u1\", \"name\": \"Dana Scully\", \"type\": \"person\", \"person\": {\"email\": \"dana@acme.test\"}}]}}}, {\"object\": \"page\", \"id\": \"d2\", \"url\": \"https://www.notion.so/d2\", \"properties\": {\"Name\": {\"id\": \"title\", \"type\": \"title\", \"title\": [{\"type\": \"text\", \"plain_text\": \"Globex pilot\", \"text\": {\"content\": \"Globex pilot\"}}]}, \"Stage\": {\"id\": \"st\", \"type\": \"select\", \"select\": {\"name\": \"Won\"}}, \"Amount\": {\"id\": \"am\", \"type\": \"number\", \"number\": 4500.5}, \"Close date\": {\"id\": \"cd\", \"type\": \"date\", \"date\": {\"start\": \"2026-08-20T15:30:00.000+02:00\", \"end\": null, \"time_zone\": null}}, \"Owner\": {\"id\": \"ow\", \"type\": \"people\", \"people\": [{\"object\": \"user\", \"id\": \"u2\", \"name\": \"Fox Mulder\", \"type\": \"person\", \"person\": {\"email\": \"fox@acme.test\"}}]}}}] }. Return these raw API objects unchanged; the n8n node simplifies them itself. The 'Closed deals' tab has the header row Deal | Amount | Close date | Owner email and no data rows. Accept appends with 200.",
+			"successCriteria": "The Notion query filter is Stage select equals Won. Then two rows are appended: Deal 'Acme renewal', Amount 12000, Close date '2026-08-14', Owner email 'dana@acme.test'; and Deal 'Globex pilot', Amount 4500.5, Close date '2026-08-20', Owner email 'fox@acme.test'. A date with a time part, an empty, undefined or '[object Object]' value, or a value in the wrong column FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The Notion node filters on Stage select equals Won.",
+		"The Google Sheets node appends to the 'Closed deals' tab and maps Deal, Amount, Close date and Owner email from the simplified Notion values."
+	]
+}

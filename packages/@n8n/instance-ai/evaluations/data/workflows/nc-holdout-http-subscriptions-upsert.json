@@ -1,0 +1,31 @@
+{
+	"complexity": "medium",
+	"tags": ["build", "node-contracts-poc", "holdout", "http", "google-sheets", "output-shape"],
+	"triggerType": "manual",
+	"credentials": [
+		{
+			"type": "googleSheetsOAuth2Api",
+			"name": "Google Sheets account"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: GET https://api.example.com/v1/subscriptions?status=active (no auth). The response looks like { \"items\": [ { \"id\": \"sub_1\", \"customer\": { \"email\": \"ada@lovelace.test\", \"name\": \"Ada\" }, \"plan\": { \"name\": \"Pro\", \"price_cents\": 4900 }, \"renews_at\": 1767268800 } ] }. For each subscription, add or update a row in the 'Subscriptions' tab of my Google Sheet (spreadsheet ID 1PlKoJiHuGyTfRdEsWaQ0192837465ZxCvBn), matched on the Subscription ID column. Columns: Subscription ID, Customer email, Plan, Monthly price (in euros as a number, so 4900 cents is 49) and Renews on (the renews_at Unix timestamp in seconds as a YYYY-MM-DD date)."
+		}
+	],
+	"description": "Held-out case. The GET returns one item whose items array holds the subscriptions, so the workflow must split it into one item per subscription. The upsert must match on Subscription ID and map nested fields, a cents to euros number and a Unix seconds timestamp to a date.",
+	"executionScenarios": [
+		{
+			"name": "subscriptions-upserted",
+			"description": "Each subscription becomes one upserted row matched on Subscription ID.",
+			"dataSetup": "GET https://api.example.com/v1/subscriptions?status=active returns 200 { \"items\": [ { \"id\": \"sub_1\", \"customer\": { \"email\": \"ada@lovelace.test\", \"name\": \"Ada\" }, \"plan\": { \"name\": \"Pro\", \"price_cents\": 4900 }, \"renews_at\": 1767268800 }, { \"id\": \"sub_2\", \"customer\": { \"email\": \"grace@hopper.test\", \"name\": \"Grace\" }, \"plan\": { \"name\": \"Team\", \"price_cents\": 12950 }, \"renews_at\": 1769947200 } ] }. The 'Subscriptions' tab has the header row Subscription ID | Customer email | Plan | Monthly price | Renews on and one data row: sub_1 | ada@lovelace.test | Free | 0 | 2025-12-01. Answer reads with those values and accept updates and appends with 200.",
+			"successCriteria": "The run updates the sub_1 row to Plan 'Pro', Monthly price 49 and Renews on '2026-01-01', and appends sub_2 with Customer email 'grace@hopper.test', Plan 'Team', Monthly price 129.5 and Renews on '2026-02-01'. One row for the whole items array, a duplicate sub_1 row, a price in cents, a date in 1970 or a timestamp, or an empty or undefined value FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The HTTP Request node GETs the subscriptions URL with status=active.",
+		"The workflow splits the items array into one item per subscription.",
+		"The Google Sheets node appends or updates the 'Subscriptions' tab, matched on Subscription ID, with the price in euros and the renewal date as YYYY-MM-DD."
+	]
+}

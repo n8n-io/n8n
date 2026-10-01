@@ -1,0 +1,35 @@
+{
+	"complexity": "medium",
+	"tags": ["build", "node-contracts-poc", "holdout", "gmail", "gemini", "output-shape"],
+	"triggerType": "manual",
+	"credentials": [
+		{
+			"type": "gmailOAuth2",
+			"name": "Gmail account"
+		},
+		{
+			"type": "googlePalmApi",
+			"name": "Gemini account"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Manual workflow: get my 5 most recent unread Gmail emails. For each one, ask Google Gemini to summarize the email in one sentence. Then POST to https://triage.example.com/api/inbox as JSON: from (only the sender's email address), subject, and summary (Gemini's answer as plain text)."
+		}
+	],
+	"description": "Held-out case. The Gmail output fields depend on the simplify option (simple mode gives From as 'Name <address>' and Subject; raw mode gives from.value[0].address and subject). The Gemini node replaces each item with its answer, so the POST must read the sender and subject from the Gmail node and the summary from the Gemini output.",
+	"executionScenarios": [
+		{
+			"name": "unread-emails-summarized",
+			"description": "Each unread email is summarized and posted with the bare sender address and subject.",
+			"dataSetup": "The Gmail API list (GET /gmail/v1/users/me/messages) returns two messages m1 and m2. Message m1 is from 'Ada Lovelace <ada@lovelace.test>' with subject 'Invoice question' and text body 'Hi, can you resend invoice 1042? Thanks, Ada'. Message m2 is from 'Globex Billing <billing@globex.test>' with subject 'Payment received' and text body 'We received your payment of 120 EUR.'. Serve both metadata and raw formats for these messages. The Gemini API answers each request with one sentence that starts with 'Summary:'. The triage endpoint returns 200 { \"ok\": true }.",
+			"successCriteria": "The Gmail request asks for at most 5 unread messages. Each Gemini prompt contains the content of its email. Then two POSTs reach https://triage.example.com/api/inbox: from 'ada@lovelace.test', subject 'Invoice question' and summary = Gemini's answer for m1; and from 'billing@globex.test', subject 'Payment received' and summary = Gemini's answer for m2. A from value that includes the display name, an empty or undefined field, or a summary that is an object or JSON text FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The Gmail node gets at most 5 unread messages.",
+		"The Gemini node gets each email's content in its prompt.",
+		"The POST reads the bare sender address and the subject from the Gmail output and the summary text from the Gemini output."
+	]
+}
