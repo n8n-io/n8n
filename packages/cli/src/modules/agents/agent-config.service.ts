@@ -63,8 +63,6 @@ interface ConfigReplacement {
 	nextIntegrations: NonNullable<Agent['integrations']>;
 	previousSchema: AgentJsonConfig | null;
 	previousIntegrations: NonNullable<Agent['integrations']>;
-	/** Whether this write decides the integrations, so channels must be synced. */
-	integrationsReplaced: boolean;
 	changedParts: AgentConfigPart[];
 }
 
@@ -194,7 +192,7 @@ export class AgentConfigService {
 			user,
 			clearOmitted,
 		);
-		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, options);
+		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, clearOmitted);
 		entity.schema = replacement.nextSchema;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
@@ -219,7 +217,7 @@ export class AgentConfigService {
 		clearOmitted: boolean,
 	): Promise<AgentConfigMutationResponse> {
 		await this.removeUnreferencedTasks(validatedConfig, existingTaskIds, clearOmitted);
-		if (replacement.integrationsReplaced) {
+		if (writesField(validatedConfig, 'integrations', clearOmitted)) {
 			await syncAgentIntegrations(
 				saved,
 				replacement.previousIntegrations,
@@ -241,7 +239,7 @@ export class AgentConfigService {
 		existingTaskIds: string[],
 		clearOmitted: boolean,
 	): Promise<void> {
-		if (config.tasks === undefined && !clearOmitted) return;
+		if (!writesField(config, 'tasks', clearOmitted)) return;
 		const referencedTaskIds = new Set((config.tasks ?? []).map((ref) => ref.id));
 		const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 		if (orphanTaskIds.length > 0) await this.agentTaskRepository.delete(orphanTaskIds);
@@ -289,16 +287,15 @@ export class AgentConfigService {
 		return saved;
 	}
 
-	/** An omitted list keeps its resources, unless the write clears omitted fields. */
 	private removeUnreferencedResources(
 		entity: Agent,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
 	): void {
-		if (config.tools !== undefined || clearOmitted) {
+		if (writesField(config, 'tools', clearOmitted)) {
 			this.removeUnreferencedCustomTools(entity, config);
 		}
-		if (config.skills !== undefined || clearOmitted) {
+		if (writesField(config, 'skills', clearOmitted)) {
 			this.agentSkillsService.removeUnreferencedSkills(entity, config);
 		}
 	}
@@ -323,19 +320,19 @@ export class AgentConfigService {
 		entity: Agent,
 		validatedConfig: AgentJsonConfig,
 		rawConfig: unknown,
-		options: AgentConfigUpdateOptions,
+		clearOmitted: boolean,
 	): ConfigReplacement {
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
 		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
-		const integrationsReplaced =
-			validatedConfig.integrations !== undefined || options.clearOmittedOptionalFields === true;
-		const nextIntegrations = integrationsReplaced ? integrations : previousIntegrations;
+		const nextIntegrations = writesField(validatedConfig, 'integrations', clearOmitted)
+			? integrations
+			: previousIntegrations;
 		const nextSchema = this.mergeConfigSchema(
 			schemaConfig,
 			previousSchema,
 			rawConfig,
-			options.clearOmittedOptionalFields,
+			clearOmitted,
 		);
 		// Compare before the entity is changed.
 		const changedParts = diffAgentConfigParts(
@@ -349,7 +346,6 @@ export class AgentConfigService {
 			nextIntegrations,
 			previousSchema,
 			previousIntegrations,
-			integrationsReplaced,
 			changedParts,
 		};
 	}
@@ -358,68 +354,33 @@ export class AgentConfigService {
 		decomposedSchema: AgentJsonConfig,
 		previousSchema: AgentJsonConfig | null,
 		config: unknown,
-		clearOmitted: boolean | undefined,
+		clearOmitted: boolean,
 	): AgentJsonConfig {
+		const nextSchema: AgentJsonConfig = {
+			...previousSchema,
+			name: decomposedSchema.name,
+			model: decomposedSchema.model,
+			instructions: decomposedSchema.instructions,
+		};
+		for (const field of OPTIONAL_SCHEMA_FIELDS) {
+			applyOptionalField(nextSchema, decomposedSchema, field, clearOmitted);
+		}
+
 		// Under clearOmittedOptionalFields an omitted gradient is a deliberate
 		// removal, so the schema default wins instead of the previous gradient.
-		let nextPersonalisation = decomposedSchema.personalisation;
 		if (decomposedSchema.personalisation !== undefined && !clearOmitted) {
-			nextPersonalisation = mergePersonalisationWithPreviousGradient(
+			nextSchema.personalisation = mergePersonalisationWithPreviousGradient(
 				decomposedSchema.personalisation,
 				previousSchema,
 				config,
 			);
 		}
 
-		const nextSchema: AgentJsonConfig = {
-			...previousSchema,
-			name: decomposedSchema.name,
-			model: decomposedSchema.model,
-			instructions: decomposedSchema.instructions,
-			...(decomposedSchema.credential !== undefined
-				? { credential: decomposedSchema.credential }
-				: {}),
-			...(decomposedSchema.personalisation !== undefined
-				? { personalisation: nextPersonalisation }
-				: {}),
-			...(decomposedSchema.memory !== undefined ? { memory: decomposedSchema.memory } : {}),
-			...(decomposedSchema.subAgents !== undefined
-				? { subAgents: decomposedSchema.subAgents }
-				: {}),
-			...(decomposedSchema.tools !== undefined ? { tools: decomposedSchema.tools } : {}),
-			...(decomposedSchema.skills !== undefined ? { skills: decomposedSchema.skills } : {}),
-			...(decomposedSchema.tasks !== undefined ? { tasks: decomposedSchema.tasks } : {}),
-			...(decomposedSchema.providerTools !== undefined
-				? { providerTools: decomposedSchema.providerTools }
-				: {}),
-			...(decomposedSchema.config !== undefined ? { config: decomposedSchema.config } : {}),
-			...(decomposedSchema.mcpServers !== undefined
-				? { mcpServers: decomposedSchema.mcpServers }
-				: {}),
-			...(decomposedSchema.vectorStores !== undefined
-				? { vectorStores: decomposedSchema.vectorStores }
-				: {}),
-		};
-		this.normalizeOptionalConfigFields(nextSchema, decomposedSchema, clearOmitted);
-		return nextSchema;
-	}
-
-	private normalizeOptionalConfigFields(
-		nextSchema: AgentJsonConfig,
-		validatedConfig: AgentJsonConfig,
-		clearOmitted: boolean | undefined,
-	): void {
 		// Both are trimmed by the schema; an empty string clears the stored value.
 		for (const field of ['description', 'modelDeploymentName'] as const) {
-			const value = validatedConfig[field];
-			if (value === undefined) continue;
-			if (value) nextSchema[field] = value;
-			else delete nextSchema[field];
+			if (nextSchema[field] === '') delete nextSchema[field];
 		}
-
-		if (clearOmitted) {
-			clearOmittedOptionalFields(nextSchema, validatedConfig);
-		}
+		return nextSchema;
 	}
 
 	private async prepareConfig(entity: Agent, config: unknown, user: User, clearOmitted: boolean) {
@@ -457,8 +418,7 @@ export class AgentConfigService {
 		}
 		await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig, projectId);
 
-		const tasksReplaced = validatedConfig.tasks !== undefined || clearOmitted;
-		const existingTaskIds = tasksReplaced
+		const existingTaskIds = writesField(validatedConfig, 'tasks', clearOmitted)
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
@@ -555,24 +515,41 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
 }
 
-/** Drop optional fields the submitted config omitted instead of retaining the previous value. */
-function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
-	const optionalFields = [
-		'credential',
-		'description',
-		'modelDeploymentName',
-		'personalisation',
-		'memory',
-		'subAgents',
-		'tools',
-		'skills',
-		'tasks',
-		'providerTools',
-		'config',
-		'mcpServers',
-		'vectorStores',
-	] as const;
-	for (const field of optionalFields) {
-		if (submitted[field] === undefined) delete schema[field];
-	}
+const OPTIONAL_SCHEMA_FIELDS = [
+	'credential',
+	'description',
+	'modelDeploymentName',
+	'personalisation',
+	'memory',
+	'subAgents',
+	'tools',
+	'skills',
+	'tasks',
+	'providerTools',
+	'config',
+	'mcpServers',
+	'vectorStores',
+] as const;
+
+/**
+ * Whether a write decides `field`. A sent value always does. An omitted field
+ * does only when the write clears omitted fields; otherwise it keeps the stored value.
+ */
+function writesField(
+	config: AgentJsonConfig,
+	field: keyof AgentJsonConfig,
+	clearOmitted: boolean,
+): boolean {
+	return config[field] !== undefined || clearOmitted;
+}
+
+function applyOptionalField<K extends keyof AgentJsonConfig>(
+	target: AgentJsonConfig,
+	submitted: AgentJsonConfig,
+	field: K,
+	clearOmitted: boolean,
+): void {
+	if (!writesField(submitted, field, clearOmitted)) return;
+	if (submitted[field] === undefined) delete target[field];
+	else target[field] = submitted[field];
 }
