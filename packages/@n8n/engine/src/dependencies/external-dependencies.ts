@@ -96,9 +96,29 @@ export interface IStepExecutor {
  * Step types that are native to the engine (`wait`, `subworkflow`, `batch`)
  * do not go through this interface.
  */
+/** Where the files of one execution are stored: the pair every binary file path starts with. */
+export interface ExecutionLocation {
+	workflowId: string;
+	executionId: string;
+}
+
+/**
+ * Deletes every file stored under the location of an execution. The engine
+ * calls it before it deletes the execution's rows, so a rejection keeps the
+ * rows for a later retry. A repeat call for the same execution must succeed,
+ * as the files may be gone.
+ */
+export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
 	/** Ships lifecycle events to the host. A failed delivery never fails a step. */
 	lifecycleEventCallback?: LifecycleEventCallback;
+	/**
+	 * Deletes the binary files of a pruned execution. The engine has no store of
+	 * its own, so the host that owns the store deletes them. A host that runs no
+	 * `v1-node` steps writes no files and can omit it.
+	 */
+	deleteExecutionFiles?: ExecutionFilesDeleter;
 }

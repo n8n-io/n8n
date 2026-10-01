@@ -1,6 +1,7 @@
 import {
 	assertSubAgentTaskPath,
 	deriveSubAgentTelemetry,
+	isFinishReason,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
@@ -40,6 +41,7 @@ import { bindExecutionInput } from '../utils/execution-input';
 import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import {
 	decodeAgentSandboxHostMetadata,
@@ -52,6 +54,7 @@ import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { ExecutionRecorder, MessageRecord } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
+import { withBudgetGuardrail } from '../budget-guardrail';
 import { modelStreamStallOptions } from '../model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
@@ -97,6 +100,12 @@ export interface SubAgentRunContext {
 	parentWorkspaceHandle?: AgentSandboxRuntime;
 	/** Optional callback to forward child stream chunks to the parent chat. */
 	onChunk?: (chunk: StreamChunk) => void;
+	/** Root chat thread. Child runs debit this session, not their own thread id. */
+	rootSessionId?: string;
+	/** Session cap from the root agent. Omitted when that guardrail is off or has no cap. */
+	rootSessionCapUsd?: number;
+	/** Set once a run is delegated, so descendants keep the root session bucket. */
+	budgetForwarded?: boolean;
 	/** Difficulty-selected model override for parent self-delegation only. */
 	selfDelegationDifficulty?: SubAgentTaskDifficulty;
 	/** Persist reconstruction data before a background child can suspend. */
@@ -148,6 +157,7 @@ export class SubAgentRunner {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
+		private readonly toolApprovalService: AgentToolApprovalService,
 	) {}
 
 	async run(
@@ -280,6 +290,9 @@ export class SubAgentRunner {
 				runType: context.runType,
 				workflowToolExecutionMode: context.workflowToolExecutionMode,
 				parentAgentIdForDelegation: context.parentAgentId,
+				rootSessionId: context.rootSessionId,
+				rootSessionCapUsd: context.rootSessionCapUsd,
+				budgetForwarded: context.budgetForwarded,
 				user: context.user,
 				instrumentation: context.instrumentation,
 				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
@@ -295,12 +308,26 @@ export class SubAgentRunner {
 
 			agent = reconstructed.agent;
 			context.abortSignal?.throwIfAborted();
-			const executionOptions = {
-				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
-				...(telemetry !== undefined ? { telemetry } : {}),
-				...modelStreamStallOptions(this.aiConfig),
-				executionCounter: context.executionCounter,
-			};
+			const executionOptions = withBudgetGuardrail(
+				{
+					approvalContext: await this.toolApprovalService.createContext(
+						recording,
+						reconstructed.toolRegistry,
+					),
+					...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
+					...(telemetry !== undefined ? { telemetry } : {}),
+					...modelStreamStallOptions(this.aiConfig),
+					executionCounter: context.executionCounter,
+				},
+				{
+					useRootSessionCap: true,
+					budget: childConfig.config?.guardrails?.budget,
+					sessionId: context.rootSessionId,
+					agentId: runtimeSource.source.sourceId,
+					rootSessionCapUsd: context.rootSessionCapUsd,
+				},
+			);
+			context.abortSignal?.throwIfAborted();
 			executionStarted = operation.type === 'run';
 			const resultStream =
 				operation.type === 'run'
@@ -561,7 +588,7 @@ function buildGenerateResultFromRecord(
 	pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [],
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
-	const finishReason = toKnownFinishReason(record.finishReason);
+	const finishReason = isFinishReason(record.finishReason) ? record.finishReason : undefined;
 	const result: GenerateResult = {
 		runId,
 		messages,
@@ -592,21 +619,4 @@ function createAssistantMessages(text: string): AgentMessage[] {
 			content: [{ type: 'text', text }],
 		},
 	];
-}
-
-function toKnownFinishReason(
-	value: string,
-): NonNullable<GenerateResult['finishReason']> | undefined {
-	if (
-		value === 'stop' ||
-		value === 'length' ||
-		value === 'content-filter' ||
-		value === 'tool-calls' ||
-		value === 'error' ||
-		value === 'other' ||
-		value === 'max-iterations'
-	) {
-		return value;
-	}
-	return undefined;
 }
