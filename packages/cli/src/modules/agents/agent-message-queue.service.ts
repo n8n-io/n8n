@@ -177,7 +177,7 @@ export class AgentMessageQueueService {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
 				.filter((item) => item.payload.kind === 'preview')
-				// Show the next inputs first. Keep unreserved messages in their original FIFO order.
+				// Show accepted steers first. Keep future turns in their saved queue order.
 				.sort(
 					(a, b) =>
 						(a.steeringOrder ?? Number.MAX_SAFE_INTEGER) -
@@ -251,6 +251,33 @@ export class AgentMessageQueueService {
 		this.updates.notifyQueueUpdated(input.threadId);
 	}
 
+	async reorderPending(input: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		userId: string;
+		queueId: string;
+		targetQueueId: string;
+		expectedQueueIds: string[];
+	}): Promise<void> {
+		await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(input.threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			await this.assertPreviewAccess(thread, input, ctx);
+			const moved = await this.repository.movePending(
+				thread.id,
+				input.queueId,
+				input.targetQueueId,
+				input.expectedQueueIds,
+				ctx,
+			);
+			if (!moved) {
+				throw new ConflictError('The queue has changed. Refresh it and try again.');
+			}
+		});
+		this.updates.notifyQueueUpdated(input.threadId);
+	}
+
 	async steer(input: {
 		projectId: string;
 		agentId: string;
@@ -297,7 +324,7 @@ export class AgentMessageQueueService {
 	}
 
 	/**
-	 * Give the oldest pending message exclusive use of the session for its execution.
+	 * Give the next pending message exclusive use of the session for its execution.
 	 * Running work and valid suspended checkpoints block a claim.
 	 */
 	async claimNext(
