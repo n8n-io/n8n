@@ -334,13 +334,18 @@ export class ScalingService {
 		let timeout: NodeJS.Timeout | undefined;
 
 		const timedOut = new Promise<void>((resolve) => {
-			timeout = setTimeout(resolve, Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs));
+			timeout = setTimeout(
+				resolve,
+				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
+			);
 			timeout.unref();
 		});
 
 		const settled = Promise.all(
 			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
-		);
+		).catch((error) => {
+			this.logger.warn('Failed to wait for current queue jobs before stopping', { error });
+		});
 
 		try {
 			await Promise.race([settled, timedOut]);
