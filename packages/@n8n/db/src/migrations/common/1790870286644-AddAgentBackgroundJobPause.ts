@@ -1,5 +1,3 @@
-import { UserError } from 'n8n-workflow';
-
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddAgentBackgroundJobPause1790870286644 implements ReversibleMigration {
@@ -40,7 +38,7 @@ export class AddAgentBackgroundJobPause1790870286644 implements ReversibleMigrat
 			`SELECT ${escape.columnName('id')} FROM ${table} WHERE ${status} = 'paused' LIMIT 1`,
 		);
 		if (pausedJobs.length > 0) {
-			throw new UserError(
+			throw new Error(
 				'Cannot revert background job pause support while paused jobs exist. Resume or cancel the jobs before you retry.',
 			);
 		}
