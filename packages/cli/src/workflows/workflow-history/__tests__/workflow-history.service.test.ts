@@ -55,19 +55,13 @@ describe('WorkflowHistoryService', () => {
 		mockClear(workflowFinderService.findWorkflowForUser);
 	});
 
-	describe('saveVersion', () => {
+	describe('saveVersionRequired', () => {
 		it('keeps the human and Assistant authors on a guarded save', async () => {
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			workflow.connections = {};
 			const ctx = {};
-			await workflowHistoryService.saveVersion(
-				testUser,
-				workflow,
-				'workflow-1',
-				false,
-				'n8n-ai',
-				undefined,
-				undefined,
+			await workflowHistoryService.saveVersionRequired(
+				{ user: testUser, workflow, workflowId: 'workflow-1', source: 'n8n-ai' },
 				ctx,
 			);
 			expect(workflowHistoryRepository.insertVersion).toHaveBeenCalledWith(
@@ -83,19 +77,15 @@ describe('WorkflowHistoryService', () => {
 				new Error('History unavailable'),
 			);
 			await expect(
-				workflowHistoryService.saveVersion(
-					testUser,
-					workflow,
-					'workflow-1',
-					false,
-					'n8n-ai',
-					undefined,
-					undefined,
+				workflowHistoryService.saveVersionRequired(
+					{ user: testUser, workflow, workflowId: 'workflow-1', source: 'n8n-ai' },
 					{},
 				),
 			).rejects.toThrow('History unavailable');
 		});
+	});
 
+	describe('saveVersion', () => {
 		it('should save a new version when nodes and connections are present', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });

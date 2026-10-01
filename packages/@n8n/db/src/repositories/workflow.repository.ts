@@ -466,6 +466,16 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	async findForContentUpdate(workflowId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
+		return await manager.findOne(WorkflowEntity, {
+			where: { id: workflowId },
+			// Allow transfer FK checks while the transfer holds the owner row.
+			lock: lockRows ? { mode: 'for_no_key_update' } : undefined,
+		});
+	}
+
 	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
 		if (workflowIds.length === 0) {
 			return [];

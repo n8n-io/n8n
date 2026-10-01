@@ -6,11 +6,7 @@ import type {
 } from '@n8n/api-types';
 import {
 	BaseRepository,
-	SharedWorkflow,
 	TransactionRunner,
-	User,
-	WorkflowEntity,
-	WorkflowPublishHistory,
 	isUniqueConstraintError,
 	type OperationContext,
 } from '@n8n/db';
@@ -19,8 +15,6 @@ import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
@@ -28,25 +22,6 @@ import { WorkflowSuggestion } from './workflow-suggestion.entity';
 export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggestion> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowSuggestion, dataSource.manager, transactionRunner);
-	}
-
-	async findEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
-		const manager = this.managerFor(ctx);
-		const user = await manager.findOne(User, { where: { id: userId }, relations: ['role'] });
-		if (
-			!user ||
-			user.disabled ||
-			!(await userHasScopes(
-				user,
-				['workflow:read', 'workflow:update'],
-				false,
-				{ workflowId },
-				manager,
-			))
-		) {
-			return null;
-		}
-		return user;
 	}
 
 	async getSuggestion(
@@ -89,30 +64,6 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 				throw new ConflictError('This workflow already has a pending proposal.');
 			throw error;
 		}
-	}
-
-	async readWorkflowTargetForApply(workflowId: string, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
-		const workflow = await manager.findOne(WorkflowEntity, {
-			where: { id: workflowId },
-			// Allow transfer FK checks while the transfer holds the owner row.
-			...(lockRows ? { lock: { mode: 'for_no_key_update' as const } } : {}),
-		});
-		const owner = await manager.findOne(SharedWorkflow, {
-			where: { workflowId, role: 'workflow:owner' },
-			...(lockRows ? { lock: { mode: 'pessimistic_read' as const } } : {}),
-		});
-		const publicationId = await this.getLatestPublicationId(workflowId, ctx);
-		return { workflow, projectId: owner?.projectId, publicationId };
-	}
-
-	async getLatestPublicationId(workflowId: string, ctx: OperationContext = {}) {
-		const publication = await this.managerFor(ctx).findOne(WorkflowPublishHistory, {
-			where: { workflowId },
-			order: { id: 'DESC' },
-		});
-		return publication?.id ?? null;
 	}
 
 	async appendSubmittedActivity(suggestionId: string, ctx: OperationContext) {

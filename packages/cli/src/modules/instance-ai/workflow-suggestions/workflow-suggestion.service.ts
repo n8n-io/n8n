@@ -9,6 +9,7 @@ import {
 	TransactionRunner,
 	UserRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -47,6 +48,12 @@ export type PreparedWorkflowSuggestion = {
 	resultKind: WorkflowSuggestion['resultKind'];
 };
 
+type WorkflowSuggestionTarget = {
+	workflow: WorkflowEntity | null;
+	projectId: string | undefined;
+	publicationId: number | null;
+};
+
 @Service()
 export class WorkflowSuggestionService {
 	constructor(
@@ -57,27 +64,27 @@ export class WorkflowSuggestionService {
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
-		const user = await this.suggestions.findEditor(userId, workflowId, ctx);
-		if (!user) {
-			throw new ForbiddenError('Workflow edit access is required.');
-		}
+		const { user } = await this.getEditorContext(userId, workflowId, ctx);
 		return user;
 	}
 
-	private async getWorkflowForEditor(userId: string, workflowId: string) {
-		const user = await this.users.findByIdWithRole(userId);
+	private async getEditorContext(userId: string, workflowId: string, ctx: OperationContext = {}) {
+		const user = await this.users.findByIdWithRole(userId, ctx);
 		if (!user || user.disabled) {
 			throw new ForbiddenError('Workflow edit access is required.');
 		}
-		const workflow = await this.workflowFinder.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-			'workflow:update',
-		]);
+		const workflow = await this.workflowFinder.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:read', 'workflow:update'],
+			{ ctx },
+		);
 		if (!workflow) throw new ForbiddenError('Workflow edit access is required.');
-		return workflow;
+		return { user, workflow };
 	}
 
 	private async isPublished(workflow: WorkflowEntity, ctx: OperationContext) {
@@ -95,7 +102,7 @@ export class WorkflowSuggestionService {
 		workflowId: string,
 		backgroundUserId: string,
 	): Promise<WorkflowSuggestionBaseline> {
-		const workflow = await this.getWorkflowForEditor(backgroundUserId, workflowId);
+		const { workflow } = await this.getEditorContext(backgroundUserId, workflowId);
 		const projectId = workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId;
 		if (!projectId || !(await this.isPublished(workflow, {}))) {
 			throw new ConflictError('The workflow must be fully published without saved changes.');
@@ -110,7 +117,8 @@ export class WorkflowSuggestionService {
 				checksum: await calculateWorkflowChecksum(workflow),
 				versionCounter: workflow.versionCounter,
 				savedAt: workflow.updatedAt.toISOString(),
-				publicationId: await this.suggestions.getLatestPublicationId(workflowId),
+				publicationId:
+					await this.workflowPublishHistoryRepository.getLatestPublicationId(workflowId),
 			},
 			original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
 		};
@@ -128,7 +136,7 @@ export class WorkflowSuggestionService {
 		const { explanation, errorContext, resultKind } = suggestionInputSchema.parse(input);
 		baseline = structuredClone(baseline);
 		const { workflowId, backgroundUserId, expectedBaseline, original } = baseline;
-		await this.getWorkflowForEditor(backgroundUserId, workflowId);
+		await this.requireEditor(backgroundUserId, workflowId);
 		if ((await calculateWorkflowChecksum(original)) !== expectedBaseline.checksum) {
 			throw new ConflictError('The captured workflow baseline has changed.');
 		}
@@ -149,45 +157,53 @@ export class WorkflowSuggestionService {
 		};
 	}
 
-	private async readWorkflowTarget(workflowId: string, ctx: OperationContext) {
+	private async readWorkflowTarget(
+		workflowId: string,
+		ctx: OperationContext,
+	): Promise<WorkflowSuggestionTarget> {
 		const workflow = await this.workflowRepository.findByIdInContext(workflowId, ctx);
 		const ownerProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(
 			workflowId,
 			ctx,
 		);
-		const publicationId = await this.suggestions.getLatestPublicationId(workflowId, ctx);
+		const publicationId = await this.workflowPublishHistoryRepository.getLatestPublicationId(
+			workflowId,
+			ctx,
+		);
 		return { workflow, projectId: ownerProject?.id, publicationId };
+	}
+
+	async readWorkflowTargetForApply(
+		workflowId: string,
+		ctx: OperationContext,
+	): Promise<WorkflowSuggestionTarget> {
+		const workflow = await this.workflowRepository.findForContentUpdate(workflowId, ctx);
+		const projectId = await this.sharedWorkflowRepository.getWorkflowOwningProjectIdForUpdate(
+			workflowId,
+			ctx,
+		);
+		const publicationId = await this.workflowPublishHistoryRepository.getLatestPublicationId(
+			workflowId,
+			ctx,
+		);
+		return { workflow, projectId, publicationId };
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
 	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
 		const { baseline, payload } = prepared;
-		const { workflowId, projectId, expectedBaseline } = baseline;
+		const { workflowId } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(workflowId, ctx);
 			if (
 				!target.workflow ||
-				target.projectId !== projectId ||
-				target.workflow.versionId !== expectedBaseline.savedVersionId ||
-				target.workflow.activeVersionId !== expectedBaseline.publishedVersionId ||
-				expectedBaseline.publicationId !== target.publicationId ||
-				target.workflow.versionCounter !== expectedBaseline.versionCounter ||
-				target.workflow.updatedAt.toISOString() !== expectedBaseline.savedAt ||
-				(await calculateWorkflowChecksum(target.workflow)) !== expectedBaseline.checksum ||
+				!(await this.matchesBaseline(baseline, target)) ||
 				!(await this.isPublished(target.workflow, ctx))
 			) {
 				throw new ConflictError('The workflow no longer matches the published baseline.');
 			}
 			const previous = await this.suggestions.getPendingForWorkflow(workflowId, ctx);
-			if (
-				previous &&
-				!(await this.matchesBaseline(
-					previous,
-					target.workflow,
-					target.projectId,
-					target.publicationId,
-				))
-			) {
+			if (previous && !(await this.matchesBaseline(previous, target))) {
 				await this.suggestions.closePending(previous, 'outdated', null, ctx);
 			}
 			const suggestion = await this.suggestions.createPending(
@@ -202,21 +218,20 @@ export class WorkflowSuggestionService {
 	}
 
 	async matchesBaseline(
-		suggestion: WorkflowSuggestion,
-		workflow: WorkflowEntity,
-		projectId: string | undefined,
-		publicationId: number | null,
+		baseline: Pick<WorkflowSuggestionBaseline, 'projectId' | 'expectedBaseline'>,
+		{ workflow, projectId, publicationId }: WorkflowSuggestionTarget,
 	) {
-		const baseline = suggestion.expectedBaseline;
+		const expected = baseline.expectedBaseline;
 		return (
-			projectId === suggestion.projectId &&
+			!!workflow &&
+			projectId === baseline.projectId &&
 			!workflow.isArchived &&
-			workflow.versionId === baseline.savedVersionId &&
-			workflow.activeVersionId === baseline.publishedVersionId &&
-			baseline.publicationId === publicationId &&
-			workflow.versionCounter === baseline.versionCounter &&
-			workflow.updatedAt.toISOString() === baseline.savedAt &&
-			(await calculateWorkflowChecksum(workflow)) === baseline.checksum
+			workflow.versionId === expected.savedVersionId &&
+			workflow.activeVersionId === expected.publishedVersionId &&
+			expected.publicationId === publicationId &&
+			workflow.versionCounter === expected.versionCounter &&
+			workflow.updatedAt.toISOString() === expected.savedAt &&
+			(await calculateWorkflowChecksum(workflow)) === expected.checksum
 		);
 	}
 
@@ -228,16 +243,7 @@ export class WorkflowSuggestionService {
 		return await this.txRunner.run(ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(scope.workflowId, ctx);
 			let suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
-			if (
-				suggestion.state === 'pending' &&
-				(!target.workflow ||
-					!(await this.matchesBaseline(
-						suggestion,
-						target.workflow,
-						target.projectId,
-						target.publicationId,
-					)))
-			) {
+			if (suggestion.state === 'pending' && !(await this.matchesBaseline(suggestion, target))) {
 				await this.suggestions.closePending(suggestion, 'outdated', null, ctx);
 				suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 			}
@@ -257,7 +263,7 @@ export class WorkflowSuggestionService {
 		workflowId: string,
 		suggestionId: string,
 	): Promise<WorkflowSuggestionProposalDetail> {
-		const workflow = await this.getWorkflowForEditor(viewer.id, workflowId);
+		const { workflow } = await this.getEditorContext(viewer.id, workflowId);
 		if (workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId !== projectId) {
 			throw new NotFoundError('Proposal not found.');
 		}

@@ -10,6 +10,7 @@ import {
 	type User,
 	type UserRepository,
 	type WorkflowRepository,
+	type WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -27,6 +28,7 @@ const publication = mock<WorkflowPublicationStatusService>();
 const finder = mock<WorkflowFinderService>();
 const workflowRepository = mock<WorkflowRepository>();
 const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
 const service = new WorkflowSuggestionService(
@@ -37,6 +39,7 @@ const service = new WorkflowSuggestionService(
 	finder,
 	workflowRepository,
 	sharedWorkflowRepository,
+	workflowPublishHistoryRepository,
 );
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
@@ -60,8 +63,7 @@ let suggestion: WorkflowSuggestion;
 beforeEach(async () => {
 	vi.resetAllMocks();
 	users.findByIdWithRole.mockResolvedValue(user);
-	suggestions.findEditor.mockResolvedValue(user);
-	suggestions.getLatestPublicationId.mockResolvedValue(null);
+	workflowPublishHistoryRepository.getLatestPublicationId.mockResolvedValue(null);
 	tx.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 	workflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf',
@@ -419,10 +421,12 @@ it('lets another current editor review without publish permission', async () => 
 		},
 		ctx,
 	);
-	expect(finder.findWorkflowForUser).toHaveBeenCalledWith(workflow.id, viewer, [
-		'workflow:read',
-		'workflow:update',
-	]);
+	expect(finder.findWorkflowForUser).toHaveBeenCalledWith(
+		workflow.id,
+		viewer,
+		['workflow:read', 'workflow:update'],
+		{ ctx: {} },
+	);
 });
 
 it('rejects review after ownership changes', async () => {

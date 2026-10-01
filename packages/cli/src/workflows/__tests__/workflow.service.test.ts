@@ -559,7 +559,7 @@ describe('WorkflowService', () => {
 			});
 			const afterSave = vi.fn(async () => {
 				expect(committed).toBe(false);
-				expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalled();
+				expect(workflowHistoryServiceMock.saveVersionRequired).toHaveBeenCalled();
 				expect(workflowRepositoryMock.updateContent).toHaveBeenCalled();
 			});
 			externalHooksMock.run.mockImplementation(async (hook, args) => {
@@ -577,7 +577,10 @@ describe('WorkflowService', () => {
 			);
 			expect(beforeSave).toHaveBeenCalledOnce();
 			expect(afterSave).toHaveBeenCalledWith(ctx, original);
-			expect(workflowHistoryServiceMock.saveVersion.mock.calls[0][7]).toBe(ctx);
+			expect(workflowHistoryServiceMock.saveVersionRequired).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId: original.id, source: 'n8n-ai' }),
+				ctx,
+			);
 		});
 
 		test('does not write when the prepared proposal is rejected', async () => {
@@ -601,13 +604,14 @@ describe('WorkflowService', () => {
 			).rejects.toThrow('Prepared content changed');
 			expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
 			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+			expect(workflowHistoryServiceMock.saveVersionRequired).not.toHaveBeenCalled();
 			expect(afterSave).not.toHaveBeenCalled();
 		});
 
 		test('does not complete the guarded save when history persistence fails', async () => {
 			const original = setupExistingWorkflow();
 			transactionRunner.run.mockImplementation(async (ctx, run) => await run(ctx));
-			workflowHistoryServiceMock.saveVersion.mockRejectedValueOnce(
+			workflowHistoryServiceMock.saveVersionRequired.mockRejectedValueOnce(
 				new Error('History unavailable'),
 			);
 			const afterSave = vi.fn();
@@ -855,7 +859,6 @@ describe('WorkflowService', () => {
 				'workflow-1',
 				false,
 				'ui',
-				undefined,
 				undefined,
 				undefined,
 			);

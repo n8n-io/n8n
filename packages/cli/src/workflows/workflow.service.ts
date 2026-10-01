@@ -421,9 +421,11 @@ export class WorkflowService {
 			versionDescription?: string;
 			/** Allows a package import to update archived content. */
 			allowArchivedUpdate?: boolean;
-			/** Commit a related state change with the prepared workflow and its history. */
+			/** Both callbacks run inside the save transaction. A callback failure rolls back all writes. */
 			guardedUpdate?: {
+				/** Validate the prepared workflow before any writes. */
 				beforeSave: (ctx: OperationContext, prepared: WorkflowEntity) => Promise<void>;
+				/** Save related state after the workflow and history writes, before commit. */
 				afterSave: (ctx: OperationContext, saved: WorkflowEntity) => Promise<void>;
 			};
 		} = {},
@@ -690,18 +692,26 @@ export class WorkflowService {
 				);
 			}
 			if (saveNewVersion) {
-				await this.workflowHistoryService.saveVersion(
-					user,
-					workflowUpdateData,
-					workflowId,
-					autosaved,
-					source,
-					undefined,
+				const versionMetadata =
 					versionName || versionDescription
 						? { name: versionName, description: versionDescription }
-						: undefined,
-					guardedUpdate ? ctx : undefined,
-				);
+						: undefined;
+				if (guardedUpdate) {
+					await this.workflowHistoryService.saveVersionRequired(
+						{ user, workflow: workflowUpdateData, workflowId, autosaved, source, versionMetadata },
+						ctx,
+					);
+				} else {
+					await this.workflowHistoryService.saveVersion(
+						user,
+						workflowUpdateData,
+						workflowId,
+						autosaved,
+						source,
+						undefined,
+						versionMetadata,
+					);
+				}
 			}
 			await this.workflowRepository.updateContent(workflowId, updatePayload, {
 				...ctx,

@@ -23,6 +23,7 @@ import { createUser } from '@test-integration/db/users';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
+import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 let suggestions: WorkflowSuggestionRepository;
 let tx: TransactionRunner;
@@ -222,7 +223,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent wri
 
 	async function assertWriteBlocked(write: (manager: EntityManager) => Promise<unknown>) {
 		await tx.run({}, async (ctx) => {
-			await suggestions.readWorkflowTargetForApply(workflow.id, ctx);
+			await Container.get(WorkflowSuggestionService).readWorkflowTargetForApply(workflow.id, ctx);
 			await expect(
 				peer.transaction(async (manager) => {
 					await manager.query("SET LOCAL lock_timeout = '250ms'");
@@ -261,7 +262,14 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent wri
 		const { read } = await peer.transaction(async (manager) => {
 			await manager.delete(SharedWorkflow, { workflowId: workflow.id, projectId: project.id });
 			const read = Promise.allSettled([
-				tx.run({}, async (ctx) => await suggestions.readWorkflowTargetForApply(workflow.id, ctx)),
+				tx.run(
+					{},
+					async (ctx) =>
+						await Container.get(WorkflowSuggestionService).readWorkflowTargetForApply(
+							workflow.id,
+							ctx,
+						),
+				),
 			]);
 			await vi.waitFor(async () => {
 				const rows = await manager.query<Array<{ blocked: boolean }>>(
