@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0a1a804042c15b::t_a59062c92fd1eb 8061,8066-8067,8073-8074
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_0a1a804042c15b::t_77fab9767bbb89 43-44,50-51,79,83,88-89,284-285,673-790
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_0a1a804042c15b::t_6f1c4477f7fc26 12-16,21,82-153
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0a1a804042c15b::t_190e0e3436754d 272-277,284-325,329-331,333-339,363-370,451-467,482,495,509-510,523,531-532,535,537-539,544,555,959-960,962,994-1003,1006-1035,1395,1405-1414,1519-1544
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_0a1a804042c15b::t_a6d95694211213 567-579
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_0a1a804042c15b::t_d87178c1db69ca 14-18,35,67,157-178,198,211,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cd473b81aacf1eeb55b278c6170ec1593dd466dc",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
