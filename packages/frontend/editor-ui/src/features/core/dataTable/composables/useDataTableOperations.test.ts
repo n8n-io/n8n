@@ -356,7 +356,7 @@ describe('useDataTableOperations', () => {
 		});
 
 		it.each(['success', 'failure'])(
-			'leaves the grid unchanged when editing is locked before a move response: %s',
+			'reconciles a move started before editing was locked: %s',
 			async (result) => {
 				const readOnly = ref(false);
 				const response = createDeferredPromise<boolean>();
@@ -381,8 +381,17 @@ describe('useDataTableOperations', () => {
 				}
 				await move;
 
-				expect(params.moveGridColumn).not.toHaveBeenCalled();
-				expect(moveColumnByIndex).not.toHaveBeenCalled();
+				if (result === 'success') {
+					expect(params.moveGridColumn).toHaveBeenCalledWith(0, 2);
+					expect(moveColumnByIndex).not.toHaveBeenCalled();
+				} else {
+					expect(params.moveGridColumn).not.toHaveBeenCalled();
+					expect(moveColumnByIndex).toHaveBeenCalledWith(4, 1);
+					expect(showErrorMock).toHaveBeenCalledWith(
+						expect.any(Error),
+						'dataTable.moveColumn.error',
+					);
+				}
 			},
 		);
 

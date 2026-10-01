@@ -251,14 +251,10 @@ export const useDataTableOperations = ({
 				moveEvent.column.getColId(),
 				newIndex,
 			);
-			if (!readOnly.value) {
-				moveGridColumn(oldIndex, newIndex);
-			}
+			moveGridColumn(oldIndex, newIndex);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataTable.moveColumn.error'));
-			if (!readOnly.value) {
-				gridApi.value.moveColumnByIndex(moveEvent.toIndex, oldIndex + 1);
-			}
+			gridApi.value.moveColumnByIndex(moveEvent.toIndex, oldIndex + 1);
 		}
 	};
 
