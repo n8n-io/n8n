@@ -135,7 +135,6 @@ export default defineConfig({
 				'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-				'./src/public-api/v1/handlers/otel/otel.handler.ts',
 				'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
 				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],

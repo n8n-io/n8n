@@ -6,7 +6,7 @@ import { jsonValueSchema } from '../common';
 import { SETTLED_STEP_STATUSES } from '../execution/execution.types';
 
 /** The response kinds a caller can expect. */
-export const RESPONSE_EXPECTATION_KINDS = ['none', 'runEnd', 'stepResponse'] as const;
+export const RESPONSE_EXPECTATION_KINDS = ['none', 'runEnd', 'stepResponse', 'stream'] as const;
 
 /**
  * What the caller of an execution waits for. The caller sets it at start, and
@@ -36,6 +36,11 @@ export const executionResponseSchema = z.discriminatedUnion('type', [
 		executionId: z.string().min(1),
 		// A missing or undefined payload means an empty response.
 		payload: jsonValueSchema.optional(),
+	}),
+	z.object({
+		type: z.literal('chunk'),
+		executionId: z.string().min(1),
+		payload: jsonValueSchema,
 	}),
 	z.object({
 		type: z.literal('ended'),

@@ -8,7 +8,7 @@ import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, UnexpectedError } from 'n8n-workflow';
+import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
 import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -19,6 +19,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
+import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
@@ -52,8 +53,6 @@ export class ScalingService {
 
 	private createBullQueue?: (name: string) => JobQueue;
 
-	private jobResults = new Map<string, JobFinishedProps>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -66,6 +65,7 @@ export class ScalingService {
 		private readonly eventService: EventService,
 		private readonly webhookResponseRelay: WebhookResponseRelay,
 		private readonly executionCrashService: ExecutionCrashService,
+		private readonly jobOutcomeTracker: JobOutcomeTracker,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -101,6 +101,11 @@ export class ScalingService {
 		const { RedisClientService } = await import('@n8n/backend-services');
 
 		const service = Container.get(RedisClientService);
+
+		// Completion events sent while the connection was down are lost, so check the DB at once
+		service.on('connection-recovered', () => {
+			void this.jobOutcomeTracker.recheckAll();
+		});
 
 		const bullPrefix = this.globalConfig.queue.bull.prefix;
 		const prefix = service.toValidPrefix(bullPrefix);
@@ -336,9 +341,12 @@ export class ScalingService {
 
 	/** Get and remove the result for a completed job. */
 	popJobResult(executionId: string): JobFinishedProps | undefined {
-		const result = this.jobResults.get(executionId);
-		this.jobResults.delete(executionId);
-		return result;
+		return this.jobOutcomeTracker.popResult(executionId);
+	}
+
+	/** Wait until the job ends. Rejects with the failure reason, like Bull's `job.finished()`. */
+	async waitForJob(job: Job): Promise<void> {
+		await this.jobOutcomeTracker.waitFor(job);
 	}
 
 	async getPendingJobCounts() {
@@ -408,6 +416,9 @@ export class ScalingService {
 
 	async stopJob(job: Job) {
 		const props = { jobId: job.id, executionId: job.data.executionId };
+
+		// A removed job emits no completion event, and the caller handles the cancellation
+		this.jobOutcomeTracker.drop(job.data.executionId);
 
 		try {
 			if (await job.isActive()) {
@@ -523,25 +534,28 @@ export class ScalingService {
 					 * because `removeOnComplete: true` prevents `job.finished()`
 					 * from returning a value that is no longer in Redis.
 					 *
-					 * Bull broadcasts this message to every main and webhook process,
-					 * but only the process that enqueued the job ever pops the result.
+					 * A v1 message from an older worker carries no result, but it
+					 * still ends the wait for the job.
 					 */
-					if (msg.version === 2 && this.activeExecutions.has(msg.executionId)) {
-						this.jobResults.set(msg.executionId, {
-							success: msg.success,
-							error: msg.error,
-							status: msg.status,
-							lastNodeExecuted: msg.lastNodeExecuted,
-							usedDynamicCredentials: msg.usedDynamicCredentials,
-							metadata: msg.metadata,
-							startedAt: new Date(msg.startedAt),
-							stoppedAt: new Date(msg.stoppedAt),
-							// Dropping `waitTill` here makes main mistake a waiting execution
-							// for a finished one and delete it when the workflow does not
-							// save successful executions
-							waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
-						});
-					}
+					this.jobOutcomeTracker.recordFinished(
+						msg.executionId,
+						msg.version === 2
+							? {
+									success: msg.success,
+									error: msg.error,
+									status: msg.status,
+									lastNodeExecuted: msg.lastNodeExecuted,
+									usedDynamicCredentials: msg.usedDynamicCredentials,
+									metadata: msg.metadata,
+									startedAt: new Date(msg.startedAt),
+									stoppedAt: new Date(msg.stoppedAt),
+									// Dropping `waitTill` here makes main mistake a waiting execution
+									// for a finished one and delete it when the workflow does not
+									// save successful executions
+									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+								}
+							: undefined,
+					);
 
 					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,
@@ -563,6 +577,9 @@ export class ScalingService {
 							jobId,
 						},
 					);
+
+					// The worker already reported the underlying error, so this copy is only a handled signal
+					this.jobOutcomeTracker.recordFailed(msg.executionId, new OperationalError(msg.errorMsg));
 					break;
 				case 'abort-job':
 					break; // only for worker
@@ -580,6 +597,14 @@ export class ScalingService {
 				default:
 					assertNever(msg);
 			}
+		});
+
+		// Failures such as a stall are reported only by Bull, not by the worker
+		queue.on('global:failed', (jobId: JobId, failedReason: string) => {
+			this.jobOutcomeTracker.settleByJobKey(queue.name, jobId, new OperationalError(failedReason));
+		});
+		queue.on('global:completed', (jobId: JobId) => {
+			this.jobOutcomeTracker.settleByJobKey(queue.name, jobId);
 		});
 
 		if (this.isQueueMetricsEnabled) {

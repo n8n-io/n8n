@@ -376,6 +376,7 @@ describe('getStatus', () => {
 		).rejects.toThrowError(ForbiddenError);
 
 		expect(gitService.resetBranch).not.toHaveBeenCalled();
+		expect(gitService.pull).not.toHaveBeenCalled();
 	});
 
 	it('should allow push status for a user with project source control push access', async () => {

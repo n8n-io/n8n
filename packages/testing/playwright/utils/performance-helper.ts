@@ -18,6 +18,8 @@ const HEAP_USED_QUERY = 'n8n_nodejs_heap_size_used_bytes / 1024 / 1024';
 const HEAP_TOTAL_QUERY = 'n8n_nodejs_heap_size_total_bytes / 1024 / 1024';
 const RSS_QUERY = 'n8n_process_resident_memory_bytes / 1024 / 1024';
 const PSS_QUERY = 'n8n_process_pss_bytes / 1024 / 1024';
+// Use recent scrapes after GC instead of VictoriaMetrics' 30-second query offset.
+const MEMORY_QUERY_OPTIONS = { latencyOffset: '1s' };
 
 export async function measurePerformance(
 	page: Page,
@@ -96,7 +98,7 @@ export async function getStableHeap(
 	options: StableHeapOptions = {},
 ): Promise<StableHeapResult> {
 	const {
-		maxWaitMs = 60000,
+		maxWaitMs = 90000,
 		checkIntervalMs = 5000,
 		thresholdMB = 2,
 		stableReadingsRequired = 2,
@@ -152,9 +154,9 @@ async function collectAdditionalSamples(
 ): Promise<void> {
 	try {
 		const results = await Promise.all([
-			metrics.query(HEAP_TOTAL_QUERY),
-			metrics.query(RSS_QUERY),
-			metrics.query(PSS_QUERY),
+			metrics.query(HEAP_TOTAL_QUERY, MEMORY_QUERY_OPTIONS),
+			metrics.query(RSS_QUERY, MEMORY_QUERY_OPTIONS),
+			metrics.query(PSS_QUERY, MEMORY_QUERY_OPTIONS),
 		]);
 
 		if (results[0]?.[0]) samples.heapTotal.push(results[0][0].value);
@@ -180,6 +182,7 @@ async function waitForStableMemory(
 		const result = await metrics.waitForMetric(HEAP_USED_QUERY, {
 			timeoutMs: checkIntervalMs,
 			intervalMs: 1000,
+			...MEMORY_QUERY_OPTIONS,
 		});
 
 		if (result) {

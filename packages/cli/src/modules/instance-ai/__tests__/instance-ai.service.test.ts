@@ -303,7 +303,7 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
-import { buildThreadContextBlock } from '../internal-messages';
+import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 import type {
 	RebuildSuspendedRunOutcome,
@@ -5497,8 +5497,9 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(args)`. Both
 		// arguments must reach the block, or the editor hand-off drops out of it.
 		expect(source).toMatch(
-			/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*,\s*contextAttachments\s*\)/,
+			/resolveThreadArtifactsTurn\(\s*threadId\s*,\s*threadArtifacts\s*,\s*contextAttachments\s*,/,
 		);
+		expect(source).toMatch(/buildThreadArtifactsBlock\)?\s*\(\s*context\s*,\s*attachments\s*\)/);
 		expect(source).toMatch(/buildThreadContextBlock\)?/);
 		expect(source).not.toContain('buildContextResourcesBlock');
 		expect(source).not.toContain('EDITOR_CONTEXT_OPEN_TAG');
@@ -6579,6 +6580,165 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
+	type Context = {
+		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
+		activeId?: string;
+	};
+	type Internals = {
+		resolveThreadArtifactsTurn: (
+			threadId: string,
+			context: Context | undefined,
+			attachments: Array<{ type: 'workflow'; id: string; name: string }>,
+			loadHistory: () => Promise<unknown[]>,
+		) => Promise<string>;
+		getReplayedMessages: (threadId: string) => Promise<unknown[]>;
+		agentMemory: {
+			getMessages: Mock;
+			getCursor: Mock;
+			getActiveObservationLog: Mock;
+			getMessagesForObservationScope: Mock;
+		};
+		logger: { warn: Mock };
+	};
+
+	function createService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.agentMemory = {
+			getMessages: vi.fn().mockResolvedValue([]),
+			getCursor: vi.fn().mockResolvedValue(null),
+			getActiveObservationLog: vi.fn().mockResolvedValue([]),
+			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
+		};
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	const digest = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+	const report = { type: 'workflow' as const, id: 'wf-2', name: 'Report' };
+	const storedUserTurn = (block: string) => ({
+		role: 'user',
+		content: [buildThreadContextBlock(['Ambient context.', block]), 'Change it'].join('\n\n'),
+	});
+
+	async function resolve(
+		service: Internals,
+		context: Context | undefined,
+		attachments: Array<{ type: 'workflow'; id: string; name: string }> = [],
+	) {
+		return await service.resolveThreadArtifactsTurn(
+			'thread-1',
+			context,
+			attachments,
+			async () => await service.getReplayedMessages('thread-1'),
+		);
+	}
+
+	it('sends nothing when the client sent no tabs', async () => {
+		expect(await resolve(createService(), undefined)).toBe('');
+	});
+
+	it('sends the tabs when the history has no tabs block', async () => {
+		const block = await resolve(createService(), { artifacts: [digest], activeId: 'wf-1' });
+
+		expect(block).toContain('<thread-artifacts>');
+		expect(block).toContain('(id: `wf-1`) [current]');
+	});
+
+	it('does not send the tabs again when they have not changed, also after a reorder', async () => {
+		const service = createService();
+		const earlier = buildThreadArtifactsBlock({ artifacts: [digest, report], activeId: 'wf-1' });
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-1' })).toBe('');
+		expect(await resolve(service, { artifacts: [report, digest], activeId: 'wf-1' })).toBe('');
+	});
+
+	it('sends the tabs when a tab closed or the active tab changed', async () => {
+		const service = createService();
+		const earlier = buildThreadArtifactsBlock({ artifacts: [digest, report], activeId: 'wf-1' });
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, { artifacts: [digest], activeId: 'wf-1' })).toContain(
+			'Workflow "Digest"',
+		);
+		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
+			'(id: `wf-2`) [current]',
+		);
+	});
+
+	it('says no tabs are open once, then not again while nothing changes', async () => {
+		const service = createService();
+		const noTabs = await resolve(service, { artifacts: [] });
+		expect(noTabs).toContain('The user has no tabs open in this conversation’s preview.');
+
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(noTabs)]);
+		expect(await resolve(service, { artifacts: [] })).toBe('');
+	});
+
+	it('says no tabs are open after a block that listed tabs or only an editor hand-off', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+		]);
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+
+		const handoffOnly = buildThreadArtifactsBlock({ artifacts: [] }, [
+			{ type: 'workflow' as const, id: 'wf-9', name: 'Handed off' },
+		]);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(handoffOnly)]);
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+	});
+
+	it('says no tabs are open again when the same block was compacted out of the replay window', async () => {
+		const service = createService();
+		// The full history has the same block, so only a replay-window read sends it again.
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })),
+		]);
+		service.agentMemory.getCursor.mockResolvedValue({
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+			lastObservedMessageId: 'message-1',
+		});
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
+
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+	});
+
+	it('always sends a block that carries an editor hand-off', async () => {
+		const service = createService();
+		const attachments = [{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' }];
+		const earlier = buildThreadArtifactsBlock({ artifacts: [digest] }, attachments);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, { artifacts: [digest] }, attachments)).toBe(earlier);
+	});
+
+	it('sends the tabs again when the earlier block was compacted out of the replay window', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+		]);
+		service.agentMemory.getCursor.mockResolvedValue({
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+			lastObservedMessageId: 'message-1',
+		});
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
+
+		expect(await resolve(service, { artifacts: [digest] })).toContain('Workflow "Digest"');
+	});
+
+	it('sends the tabs when the history cannot be read', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockRejectedValue(new Error('database is locked'));
+
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+		expect(service.logger.warn).toHaveBeenCalled();
 	});
 });
 

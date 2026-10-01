@@ -146,9 +146,11 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 		if (newRunStarts <= currentRunFinishes) {
 			// The waits above return when the budget they are bounded by is spent,
 			// they do not throw. Checked here, or a turn that overran during them
-			// goes on to a follow-up, or is graded as a turn that finished.
+			// goes on to a follow-up, or is graded as a turn that finished. The
+			// cancel reaches the background tasks the wait gave up on, or they
+			// would keep editing the build while it is graded.
 			const breach = elapsedBudgetBreach(config);
-			if (breach) throw new RunTimeoutError(breach);
+			if (breach) await cancelAndThrow(config, breach);
 			break;
 		}
 
@@ -203,7 +205,10 @@ export function timeoutBreach(config: WaitConfig, now = Date.now()): BuildTimeou
  * inactivity bound is not in here: it reads the last event, and the post-run
  * waits emit none, so it belongs to a run in flight only.
  */
-export function elapsedBudgetBreach(config: WaitConfig, now = Date.now()): BuildTimeout | undefined {
+export function elapsedBudgetBreach(
+	config: WaitConfig,
+	now = Date.now(),
+): BuildTimeout | undefined {
 	const turn = Math.max(1, countEvents(config.events, USER_TURN_EVENT));
 	const conversationElapsed = now - config.startTime;
 	if (conversationElapsed > config.timeoutMs) {
@@ -220,6 +225,11 @@ export function elapsedBudgetBreach(config: WaitConfig, now = Date.now()): Build
 async function cancelOnTimeout(config: WaitConfig): Promise<void> {
 	const breach = timeoutBreach(config);
 	if (!breach) return;
+	await cancelAndThrow(config, breach);
+}
+
+/** Cancel the thread (its run in flight and its background tasks), then throw. */
+async function cancelAndThrow(config: WaitConfig, breach: BuildTimeout): Promise<never> {
 	await config.client.cancelRun(config.threadId).catch(() => {});
 	throw new RunTimeoutError(breach);
 }

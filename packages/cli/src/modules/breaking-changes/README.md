@@ -24,6 +24,13 @@ breaking-changes/
    database/
       entities/               # migration_finding + migration_finding_sync tables
       repositories/           # Use-case-named DB access (BaseRepository + OperationContext)
+   sync/
+      migration-finding-diff.ts  # Pure diff of scan hits against stored findings
+      migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
+   query/
+      migration-finding-query.service.ts  # Shapes finding table reads into the report response types
+   group-nodes-by-type.ts                   # Nodes grouped by type, as workflow rules expect
+   summarize-execution-statistics.ts        # Run count and last run from statistics rows
    breaking-changes.service.ts              # Detection orchestration
    breaking-changes.rule-registry.service.ts # Rule management
    breaking-changes.controller.ts           # REST API
