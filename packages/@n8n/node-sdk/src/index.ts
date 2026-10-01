@@ -18,6 +18,7 @@ export {
 	type HttpError,
 	type HttpMethod,
 	type HttpRequest,
+	type LogLevel,
 	type NodeBuilder,
 	type NodeDefinition,
 	type NodeResource,
@@ -25,12 +26,15 @@ export {
 	type ResourceField,
 	type RunContext,
 	type RunInput,
+	type RunLimits,
 	type RunResult,
 } from './define';
 export { exampleOf, list, matches, parse, validate } from './validate';
 export { isRecord } from '@n8n/utils/is-record';
 export {
 	nodeNameOf,
+	runsActionApi,
+	setActionApiRange,
 	setContractVersionLoader,
 	toNodeType,
 	toVersionedNodeType,
@@ -38,12 +42,13 @@ export {
 	type FrozenVersion,
 } from './runtime';
 export {
+	ACTION_API_VERSION,
+	apiVersionOf,
 	canonicalJson,
 	compareSemver,
 	contractHash,
 	diffContracts,
 	integrityOf,
-	NODE_CONTRACT_ABI,
 	openContractPackage,
 	packageNameOf,
 	parseFixtures,
@@ -51,6 +56,7 @@ export {
 	parseSemver,
 	resolveContractVersion,
 	verifyManifestSignature,
+	type ActionApiVersion,
 	type ChangeKind,
 	type ContractChange,
 	type ContractDiff,

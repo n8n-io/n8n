@@ -3507,7 +3507,7 @@ type SubNodeExecutionDataAction = {
 
 export interface ITaskMetadata {
 	/** The contract node version that ran, so the execution names the exact code. */
-	nodeContract?: { action: string; version: string; bundleHash: string; abi: number };
+	nodeContract?: { action: string; version: string; bundleHash: string; apiVersion: string };
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;

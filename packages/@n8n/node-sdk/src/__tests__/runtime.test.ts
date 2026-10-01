@@ -190,6 +190,43 @@ describe('executorOf', () => {
 			);
 		});
 
+		it('gives run() limits that it cannot change', async () => {
+			const raise = echoItem.action('raise', {
+				...fetchSpec,
+				flow: read,
+				async *run({ http, limits }) {
+					Object.assign(limits, { maxRequests: 10 });
+					await http.request({ path: '/items' });
+					yield { id: 'a' };
+				},
+			});
+			const { host, requests } = hostOf([[]], { limits: { maxRequests: 0 } });
+			await expect(executorOf(raise)(host)).rejects.toThrow(TypeError);
+			expect(requests).toHaveLength(0);
+		});
+
+		it('keeps the first 100 log lines of an execution, each cut to 2000 characters', async () => {
+			const chatty = echoItem.action('chatty', {
+				...fetchSpec,
+				flow: read,
+				async *run({ log }) {
+					Array.from({ length: 150 }).forEach(() => log('info', 'x'.repeat(3000)));
+					yield* [];
+				},
+			});
+			const lines: Array<[string, string]> = [];
+			const { host } = hostOf([], {
+				log: (level, message) => lines.push([level, message]),
+			});
+			await executorOf(chatty)(host);
+			expect(lines).toHaveLength(101);
+			expect(lines[0]?.[1]).toHaveLength(2000);
+			expect(lines[100]).toEqual([
+				'warn',
+				'echo.item.chatty logged 100 lines. n8n drops the rest.',
+			]);
+		});
+
 		it('fails on the first bad item, before the next page downloads', async () => {
 			const pager = echoItem.action('fetch', {
 				...fetchSpec,

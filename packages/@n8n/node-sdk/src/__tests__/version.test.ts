@@ -16,12 +16,16 @@ import {
 	obj,
 	openContractPackage,
 	packageNameOf,
+	parseManifest,
 	resolveContractVersion,
+	setActionApiRange,
 	setContractVersionLoader,
 	str,
 	toContract,
 	toVersionedNodeType,
 	verifyManifestSignature,
+	ACTION_API_VERSION,
+	type ActionApiVersion,
 	type ActionFlow,
 	type ContractFixtures,
 	type FrozenVersion,
@@ -35,8 +39,9 @@ import {
 	replayFixtures,
 	type ContractRegistry,
 } from '../publish';
+import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
-import { sha256 } from '../version';
+import { DEFAULT_ACTION_API_RANGE, semverRange, sha256 } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
@@ -457,7 +462,7 @@ describe('published versions', () => {
 					action: 'demo.echo',
 					version: '1.0.0',
 					bundleHash: v100.bundleHash,
-					abi: 2,
+					apiVersion: 'n8n:action@2.0.0',
 				},
 			},
 		]);
@@ -465,14 +470,83 @@ describe('published versions', () => {
 		expect(await run(frozenOf(head.manifest, head.bundle))).toEqual(['hello!?']);
 	});
 
-	it('refuse a bundle that does not match its hash, and an unknown ABI', async () => {
+	it('refuse a bundle that does not match its hash', async () => {
 		await writeShout('text');
 		const { manifest, bundle } = await freeze({ patch: 7 });
 		const tampered = { ...manifest, bundleHash: sha256('other bytes') };
 
 		await expect(run(frozenOf(tampered, bundle))).rejects.toThrow('does not match');
-		expect(() => toVersionedNodeType([frozenOf({ ...manifest, abi: 3 }, bundle)])).toThrow(
-			'needs ABI 3',
-		);
+	});
+
+	describe('apiVersion', () => {
+		afterEach(() => setActionApiRange(DEFAULT_ACTION_API_RANGE));
+
+		it('is the version freezeAction writes', async () => {
+			await writeShout('text');
+			const { manifest } = await freeze({ patch: 8 });
+			expect(manifest.apiVersion).toBe(ACTION_API_VERSION);
+			expect(manifest).not.toHaveProperty('abi');
+		});
+
+		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
+			await writeShout('text');
+			const { manifest, bundle } = await freeze({ patch: 9 });
+			const typeOf = (apiVersion: ActionApiVersion) =>
+				toVersionedNodeType([frozenOf({ ...manifest, apiVersion }, bundle)]);
+
+			expect(() => typeOf('n8n:action@3.0.0')).toThrow(
+				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.0.0.',
+			);
+			expect(() => typeOf('n8n:action@2.1.0')).toThrow('needs n8n:action@2.1.0');
+			expect(() => typeOf('n8n:action@2.0.3')).not.toThrow();
+
+			setActionApiRange('>=2.0.0 <3.0.0');
+			expect(() => typeOf('n8n:action@1.0.0')).toThrow(
+				'needs n8n:action@1.0.0. This host runs n8n:action >=2.0.0 <3.0.0',
+			);
+			// The range also applies at run time, to a version the registry loader picks.
+			setActionApiRange(DEFAULT_ACTION_API_RANGE);
+			const NodeType = typeOf('n8n:action@2.0.0');
+			setActionApiRange('>=1.0.0 <2.0.0');
+			await expect(new NodeType().getNodeType(1).execute?.call(contextOf([]))).rejects.toThrow(
+				'needs n8n:action@2.0.0',
+			);
+		});
+
+		it('reads the abi field of a manifest frozen before apiVersion', async () => {
+			await writeShout('text');
+			const { manifest } = await freeze({ patch: 10 });
+			const { apiVersion: _apiVersion, ...fields } = manifest;
+			const legacy = (abi: number) => JSON.stringify({ ...fields, abi });
+
+			expect(parseManifest(legacy(1))).toEqual({ ...fields, apiVersion: 'n8n:action@1.0.0' });
+			expect(parseManifest(legacy(2))).toEqual(manifest);
+			expect(() => parseManifest(legacy(3))).toThrow('not valid');
+			expect(() => parseManifest(JSON.stringify(fields))).toThrow('not valid');
+		});
+
+		it('is refused by evaluateBundle for a major or minor this host lacks', async () => {
+			await writeShout('text');
+			const { bundle } = await freeze({ patch: 11 });
+			expect(() => evaluateBundle(bundle, 'n8n:action@3.0.0')).toThrow(
+				'This host cannot run n8n:action@3.0.0',
+			);
+			expect(() => evaluateBundle(bundle, 'n8n:action@2.1.0')).toThrow('cannot run');
+			expect(evaluateBundle(bundle, ACTION_API_VERSION).id).toBe('demo.echo');
+		});
+	});
+});
+
+describe('semverRange', () => {
+	it('tests comparator sets joined by ||', () => {
+		const includes = semverRange('>=1.0.0 <3.0.0 || =4.1.0');
+		expect(['1.0.0', '2.9.9', '4.1.0'].map(includes)).toEqual([true, true, true]);
+		expect(['0.9.9', '3.0.0', '4.1.1'].map(includes)).toEqual([false, false, false]);
+	});
+
+	it('refuses a range it cannot read', () => {
+		expect(() => semverRange('^2.0.0')).toThrow('is not a semver range');
+		expect(() => semverRange('')).toThrow('is not a semver range');
+		expect(() => setActionApiRange('>=2')).toThrow('is not a semver range');
 	});
 });

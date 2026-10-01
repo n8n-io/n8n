@@ -6,18 +6,35 @@ import type { ContractDocument } from './define';
 import type { JsonSchema } from './schema';
 
 /**
- * The executor contract of frozen actions: `RunContext` and `Http` semantics, what `run()`
+ * The `n8n:action` interface a bundle targets: `RunContext` and `Http` semantics, what `run()`
  * returns or yields for each cardinality, parameter reading and validation, output pairing,
- * and the host modules a bundle may import. A change to any of them needs a new ABI.
+ * and the host modules a bundle may import. `spec/n8n-action@<major>.wit` defines it. Its
+ * semver does not follow the n8n version: a minor adds an optional host import or field, a
+ * major breaks.
  */
-export const NODE_CONTRACT_ABI = 2;
+export type ActionApiVersion = `n8n:action@${number}.${number}.${number}`;
+
+/** The version `freezeAction` writes and the newest one this host runs. */
+export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.0.0';
+
+/** The versions a host accepts when its config sets no range. */
+export const DEFAULT_ACTION_API_RANGE = '>=1.0.0 <3.0.0';
+
+const ACTION_API_PREFIX = 'n8n:action@';
+
+export const isActionApiVersion = (value: unknown): value is ActionApiVersion =>
+	typeof value === 'string' && /^n8n:action@\d+\.\d+\.\d+$/.test(value);
+
+/** `n8n:action@2.0.0` → `2.0.0`. */
+export const apiSemverOf = (apiVersion: ActionApiVersion) =>
+	apiVersion.slice(ACTION_API_PREFIX.length);
 
 /** One frozen action version. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {
 	readonly id: string;
 	/** `major.minor.patch`; the major is `contract.version` and the n8n `typeVersion`. */
 	readonly semver: string;
-	readonly abi: number;
+	readonly apiVersion: ActionApiVersion;
 	/** The normative hash, see `contractHash`. */
 	readonly contractHash: string;
 	readonly bundleHash: string;
@@ -28,6 +45,12 @@ export interface VersionManifest {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** `apiVersion`, or the `abi: 1 | 2` that bundles frozen before `apiVersion` declare. */
+export function apiVersionOf(value: Record<string, unknown>): ActionApiVersion | undefined {
+	if (isActionApiVersion(value.apiVersion)) return value.apiVersion;
+	return value.abi === 1 || value.abi === 2 ? `n8n:action@${value.abi}.0.0` : undefined;
+}
 
 const sortKeys = (value: unknown): unknown =>
 	Array.isArray(value)
@@ -104,27 +127,61 @@ export function compareSemver(a: string, b: string): number {
 	return x.major - y.major || x.minor - y.minor || x.patch - y.patch;
 }
 
-const isManifest = (value: unknown): value is VersionManifest =>
+const COMPARATORS: ReadonlyMap<string, (order: number) => boolean> = new Map([
+	['>=', (order: number) => order >= 0],
+	['>', (order: number) => order > 0],
+	['<=', (order: number) => order <= 0],
+	['<', (order: number) => order < 0],
+	['=', (order: number) => order === 0],
+]);
+
+/**
+ * A test for a semver range: comparator sets joined by `||`, e.g. `>=1.0.0 <3.0.0`. Each
+ * comparator has a full `major.minor.patch` version.
+ */
+export function semverRange(range: string): (version: string) => boolean {
+	const sets = range.split('||').map((set) =>
+		set
+			.trim()
+			.split(/\s+/)
+			.map((part) => {
+				const [, operator = '=', bound = ''] = /^(>=|<=|>|<|=)?(\d+\.\d+\.\d+)$/.exec(part) ?? [];
+				const test = COMPARATORS.get(operator);
+				if (!bound || !test) {
+					throw new UserError(`"${range}" is not a semver range, for example ">=1.0.0 <3.0.0"`);
+				}
+				return (version: string) => test(compareSemver(version, bound));
+			}),
+	);
+	return (version) => sets.some((set) => set.every((test) => test(version)));
+}
+
+type ManifestFields = Omit<VersionManifest, 'apiVersion'> & Record<string, unknown>;
+
+const isManifestFields = (value: unknown): value is ManifestFields =>
 	isRecord(value) &&
 	typeof value.id === 'string' &&
 	typeof value.semver === 'string' &&
 	/^\d+\.\d+\.\d+$/.test(value.semver) &&
-	typeof value.abi === 'number' &&
 	typeof value.contractHash === 'string' &&
 	typeof value.bundleHash === 'string' &&
 	isRecord(value.contract) &&
 	isRecord(value.description);
 
+/** Reads a manifest. A manifest with the old `abi` field gets its `apiVersion`. */
 export function parseManifest(text: string): VersionManifest {
 	const value: unknown = JSON.parse(text);
+	const apiVersion = isRecord(value) ? apiVersionOf(value) : undefined;
 	if (
-		!isManifest(value) ||
+		!isManifestFields(value) ||
+		!apiVersion ||
 		contractHash(value.contract) !== value.contractHash ||
 		parseSemver(value.semver).major !== value.contract.version
 	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
-	return value;
+	const { id, semver, contractHash: hash, bundleHash, contract, description } = value;
+	return { id, semver, apiVersion, contractHash: hash, bundleHash, contract, description };
 }
 
 export type ChangeKind = 'patch' | 'minor' | 'major';

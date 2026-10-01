@@ -1,7 +1,7 @@
 import * as sdk from '@n8n/node-sdk';
 import {
+	ACTION_API_VERSION,
 	actionFileOf,
-	NODE_CONTRACT_ABI,
 	nodeNameOf,
 	openContractPackage,
 	packageNameOf,
@@ -88,7 +88,9 @@ describe('bundled versions', () => {
 			return [description.name, description.defaultVersion];
 		});
 		expect(loaded).toEqual(actions.map(({ id, version }) => [nodeNameOf(id), version]));
-		expect(frozen.manifests.map(({ abi }) => abi)).toEqual(actions.map(() => NODE_CONTRACT_ABI));
+		expect(frozen.manifests.map(({ apiVersion }) => apiVersion)).toEqual(
+			actions.map(() => ACTION_API_VERSION),
+		);
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
@@ -134,7 +136,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					abi: NODE_CONTRACT_ABI,
+					apiVersion: ACTION_API_VERSION,
 				},
 			},
 		]);

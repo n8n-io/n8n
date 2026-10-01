@@ -1,0 +1,180 @@
+/// The interface between the n8n host and one frozen action. It is the source of truth for
+/// every runtime: inline JS, a WASM component, a process, and a container. `json-rpc.md`
+/// gives the JSON form of each type for the process and container runtimes.
+///
+/// The package version is the `apiVersion` of a bundle, independent of the n8n version. A
+/// minor adds an optional import or field. A major breaks. The host implements 2.0.0. The
+/// items with `@since(version = 2.1.0)` are a draft.
+package n8n:action@2.1.0;
+
+@since(version = 2.0.0)
+interface types {
+    /// A JSON value. WIT has no recursive types, so a JSON value crosses as UTF-8 text.
+    type json = string;
+}
+
+/// The only network access of an action. The host applies the node credential, the SSRF
+/// policy, the retries and the request limit.
+@since(version = 2.0.0)
+interface http {
+    use types.{json};
+
+    enum http-method { GET, POST, PUT, PATCH, DELETE, HEAD }
+
+    variant http-target {
+        /// An absolute URL, for example a `next` link.
+        url(string),
+        /// Starts with `/` and goes after the base URL of the node.
+        path(string),
+    }
+
+    record http-request {
+        method: http-method,
+        target: http-target,
+        /// A repeated name sends each value: `id=a&id=b`.
+        query: list<tuple<string, string>>,
+        headers: list<tuple<string, string>>,
+        /// Sent as JSON.
+        body: option<json>,
+        /// 300000 (5 minutes) when none.
+        timeout-ms: option<u32>,
+        /// None: the host retries a 429, 502, 503, 504 or a dropped connection for GET,
+        /// HEAD, PUT, or an action with `flow.idempotent`. True or false overrides this.
+        retry: option<bool>,
+    }
+
+    record http-response {
+        status: u16,
+        /// Lower-case names.
+        headers: list<tuple<string, string>>,
+        /// The JSON body, or the body text as a JSON string.
+        body: json,
+    }
+
+    /// A non-2xx response.
+    record http-error {
+        message: string,
+        status: u16,
+        /// Lower-case names.
+        headers: list<tuple<string, string>>,
+        body: json,
+    }
+
+    variant http-failure {
+        response(http-error),
+        /// No response: DNS, connection, TLS, time-out, or a host limit.
+        transport(string),
+    }
+
+    request: func(request: http-request) -> result<http-response, http-failure>;
+}
+
+@since(version = 2.0.0)
+interface log {
+    enum level { debug, info, warn, error }
+
+    /// Writes to the n8n log with the node name. Do not log credentials or personal data.
+    /// The host keeps the first 100 lines of a node execution, each cut to 2000 characters.
+    log: func(level: level, message: string);
+}
+
+@since(version = 2.0.0)
+interface limits {
+    /// The limits for one input item. The host enforces them.
+    record run-limits {
+        /// A page is one request.
+        max-requests: u32,
+        max-items: u32,
+    }
+
+    get: func() -> run-limits;
+}
+
+/// What the action exports.
+@since(version = 2.0.0)
+interface action {
+    use types.{json};
+    use http.{http-error};
+
+    record run-error {
+        message: string,
+        /// The failed response, when a request caused the error.
+        response: option<http-error>,
+    }
+
+    /// The contract document: id, version, flow, credentials, input and output schema.
+    describe: func() -> json;
+
+    /// The run for one input item.
+    resource run {
+        /// The host resolved, defaulted and validated `input` against the contract input.
+        constructor(input: json);
+        /// The next output item, or none at the end. A `per-item` action gives one item.
+        /// The host validates each item against the contract output.
+        next: func() -> result<option<json>, run-error>;
+    }
+}
+
+/// Binary data stays in the host. An action holds a handle and never gets all the bytes at once.
+@since(version = 2.1.0)
+interface binary {
+    use http.{http-method, http-target, http-request, http-response, http-failure};
+
+    record binary-meta {
+        mime-type: string,
+        file-name: option<string>,
+        /// Unknown for a stream that is not complete.
+        size: option<u64>,
+    }
+
+    resource binary {
+        meta: func() -> binary-meta;
+        /// Opens a new reader at the first byte.
+        reader: func() -> binary-reader;
+    }
+
+    resource binary-reader {
+        /// At most `max-bytes`. An empty list is the end.
+        read: func(max-bytes: u32) -> result<list<u8>, string>;
+    }
+
+    /// Creates a binary from chunks.
+    resource binary-writer {
+        constructor(meta: binary-meta);
+        write: func(chunk: list<u8>) -> result<_, string>;
+        /// The writer closes. The host keeps the binary for the execution.
+        finish: static func(writer: binary-writer) -> result<binary, string>;
+    }
+
+    record binary-response {
+        status: u16,
+        /// Lower-case names.
+        headers: list<tuple<string, string>>,
+        body: binary,
+    }
+
+    /// An `http-request` without `body`: the binary is the body.
+    record binary-request {
+        method: http-method,
+        target: http-target,
+        query: list<tuple<string, string>>,
+        headers: list<tuple<string, string>>,
+        timeout-ms: option<u32>,
+        retry: option<bool>,
+    }
+
+    /// Sends `body` as the request body.
+    send: func(request: binary-request, body: borrow<binary>) -> result<http-response, http-failure>;
+
+    /// Keeps the response body in the host as a binary.
+    fetch: func(request: http-request) -> result<binary-response, http-failure>;
+}
+
+world bundle {
+    import http;
+    import log;
+    import limits;
+    @since(version = 2.1.0)
+    import binary;
+    export action;
+}

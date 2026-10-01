@@ -10,12 +10,15 @@ bundles run in-process. Community and AI-generated bundles run in a sandbox.
 
 ## What the contract already gives
 
-- `run()` gets only `input` and `http` (`src/define.ts`, `RunContext`).
+- `run()` gets only `input`, `http`, `log` and `limits` (`src/define.ts`, `RunContext`).
 - All network I/O goes through `http.request`. The host applies the credential.
 - Secrets never enter `run()`. The guest sees credential settings only.
 - The executor owns parameters, defaults, validation, retries, limits, pairing and continue on fail.
 - Bundles are self-contained (esbuild inlines dependencies), hashed, signed (ed25519 manifest) and
-  carry an ABI number (`NODE_CONTRACT_ABI`).
+  declare the interface version they need (`apiVersion`, for example `n8n:action@2.0.0`). The
+  interface is defined in WIT (`spec/n8n-action@2.wit`). `spec/json-rpc.md` gives its JSON-RPC
+  form for process and container runtimes. The host runs the versions in
+  `N8N_NODE_CONTRACTS_API_RANGE` and runs @1 bundles through an adapter (`src/action-api-v1.ts`).
 - `replayFixtures` replays fixtures through any `ExecutorHost`.
 
 ## What blocks it
@@ -67,7 +70,7 @@ for the AI builder does not change. The same fixtures prove parity across langua
 | Phase | Work | Effort |
 |---|---|---|
 | 0 | Publish-gate lint: no `node:*`, no free `fetch`, `process` or `globalThis`. Host-enforced egress hosts and wall-clock cap. Redact auth headers in `fullResponse`. | ~1 week |
-| 1 | ABI 2: a WIT host interface (`n8n:contract@2`) and a JS shim, so current bundles run unchanged. A `SandboxRuntime` seam next to the bundle loader. `replayFixtures` runs through the seam. | 2 to 3 weeks |
+| 1 | A JS shim for the WIT interface (`n8n:action@2`, `spec/`), so current bundles run unchanged. A `SandboxRuntime` seam next to the bundle loader. `replayFixtures` runs through the seam. | 2 to 3 weeks |
 | 2 | A wasmtime sidecar for untrusted bundles, in the task-runner process family. Build: frozen bundle, then ComponentizeJS (or QuickJS), then sign the component digest. | 3 to 4 weeks |
 | 3 | Python and Rust actions. A gVisor or microVM tier for native dependencies, as an admin opt-in. | later |
 

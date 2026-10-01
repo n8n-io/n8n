@@ -190,10 +190,24 @@ type DefaultedKeys<S extends Shape> = {
 /** The input `run()` gets. n8n fills in each default, so a field with `.default(v)` is always set. */
 export type RunInput<S extends Shape> = ObjectOf<S> & { [K in DefaultedKeys<S>]: Infer<S[K]> };
 
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+/** Safety limits for one `run()` call. The defaults are far above normal use. */
+export interface RunLimits {
+	/** A page is one request. */
+	readonly maxRequests: number;
+	readonly maxItems: number;
+}
+
+/** One field per host import of `spec/n8n-action@2.wit`, plus `input`. */
 export interface RunContext<Input> {
 	/** Parameters for the current item, expressions resolved, defaults filled in, and validated. */
 	readonly input: Input;
 	readonly http: Http;
+	/** Writes to the n8n log with the node name. Do not log credentials or personal data. */
+	log(level: LogLevel, message: string): void;
+	/** The limits the host enforces for this run. */
+	readonly limits: RunLimits;
 }
 
 /** What `run()` gives back for one input item. The host validates each output item. */

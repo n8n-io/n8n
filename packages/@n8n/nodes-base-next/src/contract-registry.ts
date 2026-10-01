@@ -1,12 +1,15 @@
 import {
+	apiVersionOf,
 	integrityOf,
-	NODE_CONTRACT_ABI,
 	openContractPackage,
 	packageNameOf,
 	parseSemver,
 	resolveContractVersion,
+	runsActionApi,
+	setActionApiRange,
 	setContractVersionLoader,
 	verifyManifestSignature,
+	type ActionApiVersion,
 	type ContractPackage,
 	type ContractVersionLoader,
 	type FrozenVersion,
@@ -29,11 +32,13 @@ export interface ContractRegistryOptions {
 	readonly fetch: (url: string) => Promise<Response>;
 	/** The `meta` of the running workflow. */
 	readonly metaOf: (context: IExecuteFunctions) => Promise<unknown>;
+	/** The `n8n:action` versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
+	readonly apiRange: string;
 }
 
 interface PublishedVersion {
 	readonly version: string;
-	readonly abi: unknown;
+	readonly apiVersion: ActionApiVersion | undefined;
 	readonly contractHash: unknown;
 	readonly bundleHash: unknown;
 	readonly tarball: string;
@@ -66,8 +71,9 @@ const publishedVersions = (packument: unknown): PublishedVersion[] =>
 		if (!isRecord(contract) || !isRecord(dist)) return [];
 		const { tarball, integrity } = dist;
 		if (typeof tarball !== 'string' || typeof integrity !== 'string') return [];
-		const { abi, contractHash, bundleHash } = contract;
-		return [{ version, abi, contractHash, bundleHash, tarball, integrity }];
+		const { contractHash, bundleHash } = contract;
+		const apiVersion = apiVersionOf(contract);
+		return [{ version, apiVersion, contractHash, bundleHash, tarball, integrity }];
 	});
 
 const toVersion = ({ manifest, bundle }: ContractPackage): FrozenVersion => ({
@@ -167,13 +173,14 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 		if (!registryUrl || !publicKey) return [];
 		const locked = parseSemver(lock.version);
 		const versions = await versionsOf(packageNameOf(lock.action)).catch(() => []);
-		const candidates = versions.filter(({ version, abi, contractHash }) => {
+		const candidates = versions.filter(({ version, apiVersion, contractHash }) => {
 			const { major, minor, patch } = parseSemver(version);
 			return (
 				major === locked.major &&
 				minor === locked.minor &&
 				patch > locked.patch &&
-				abi === NODE_CONTRACT_ABI &&
+				apiVersion !== undefined &&
+				runsActionApi(apiVersion) &&
 				contractHash === lock.contractHash
 			);
 		});
@@ -215,6 +222,8 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 	};
 }
 
-/** Sets the contract version loader of this package's node-sdk, which its nodes run with. */
-export const useContractRegistry = (options: ContractRegistryOptions) =>
+/** Sets the API range and the version loader of this package's node-sdk, which its nodes run with. */
+export const useContractRegistry = (options: ContractRegistryOptions) => {
+	setActionApiRange(options.apiRange);
 	setContractVersionLoader(contractVersionLoader(options));
+};

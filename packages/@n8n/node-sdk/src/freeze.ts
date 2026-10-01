@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { toContract, type Action } from './define';
 import { evaluateBundle, toNodeType } from './runtime';
-import { contractHash, NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
+import { ACTION_API_VERSION, contractHash, sha256, type VersionManifest } from './version';
 
 /** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was frozen with. */
 const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
@@ -54,12 +54,12 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 		],
 	});
 	const bundle = result.outputFiles[0]?.text ?? '';
-	const action = evaluateBundle(bundle);
+	const action = evaluateBundle(bundle, ACTION_API_VERSION);
 	const contract = toContract(action);
 	const manifest: VersionManifest = {
 		id: action.id,
 		semver: action.semver,
-		abi: NODE_CONTRACT_ABI,
+		apiVersion: ACTION_API_VERSION,
 		contractHash: contractHash(contract),
 		bundleHash: sha256(bundle),
 		contract,

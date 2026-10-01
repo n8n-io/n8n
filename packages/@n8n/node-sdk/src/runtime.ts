@@ -5,6 +5,7 @@ import {
 	NodeOperationError,
 	safeRegex,
 	UnexpectedError,
+	UserError,
 	VersionedNodeType,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -16,17 +17,29 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { fromActionApiV1 } from './action-api-v1';
 import {
 	isHttpError,
 	type Action,
 	type Http,
 	type HttpMethod,
 	type HttpRequest,
+	type LogLevel,
 	type RunInput,
+	type RunLimits,
 } from './define';
 import type { AnySchema, JsonSchema, Shape } from './schema';
 import { applyDefaults, validate } from './validate';
-import { NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
+import {
+	ACTION_API_VERSION,
+	apiSemverOf,
+	DEFAULT_ACTION_API_RANGE,
+	parseSemver,
+	semverRange,
+	sha256,
+	type ActionApiVersion,
+	type VersionManifest,
+} from './version';
 
 const isRecord = (value: unknown): value is IDataObject =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -192,14 +205,11 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 const hasSelector = (action: Action) =>
 	action.credentialTypes.length > 1 || action.node.authOptional === true;
 
-/** Safety limits for one `run()` call. The defaults are far above normal use. */
-export interface ExecutorLimits {
-	/** A page is one request. */
-	readonly maxRequests: number;
-	readonly maxItems: number;
-}
+const DEFAULT_LIMITS: RunLimits = { maxRequests: 10_000, maxItems: 1_000_000 };
 
-const DEFAULT_LIMITS: ExecutorLimits = { maxRequests: 10_000, maxItems: 1_000_000 };
+// An action that logs in a loop must not fill the n8n log.
+const MAX_LOG_LENGTH = 2_000;
+const MAX_LOG_LINES = 100;
 
 /** The n8n services the executor uses. Fixture replay and `runAction` provide them without n8n. */
 export interface ExecutorHost {
@@ -211,7 +221,8 @@ export interface ExecutorHost {
 	continueOnFail(): boolean;
 	/** Waits before a retry. */
 	wait?(ms: number): Promise<void>;
-	readonly limits?: Partial<ExecutorLimits>;
+	log?(level: LogLevel, message: string): void;
+	readonly limits?: Partial<RunLimits>;
 }
 
 const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
@@ -226,6 +237,7 @@ const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
 	},
 	continueOnFail: () => context.continueOnFail(),
 	wait: async (ms) => await sleep(ms, context.getExecutionCancelSignal()),
+	log: (level, message) => context.logger[level](message, { node: context.getNode().name }),
 });
 
 /** n8n keeps a `json` property as text. Other fields keep the text the user typed. */
@@ -246,7 +258,7 @@ function readParameter(
 }
 
 /**
- * The ABI 2 executor. Parameters are resolved per item, defaults filled in, and validated
+ * The `n8n:action@2` executor. Parameters are resolved per item, defaults filled in, and validated
  * against `input`. Transient failures of idempotent requests retry. Each output item is
  * validated against `output` and paired with its input item. Continue-on-fail gives an error
  * item, which n8n routes to the error output when the node has one.
@@ -266,8 +278,18 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const { credentialTypes } = action;
 
 	return async (host) => {
-		const limits = { ...DEFAULT_LIMITS, ...host.limits };
+		// Frozen: `run()` gets the object that the host enforces.
+		const limits: RunLimits = Object.freeze({ ...DEFAULT_LIMITS, ...host.limits });
 		const wait = host.wait ?? (async (ms: number) => await sleep(ms));
+		const logged = { lines: 0 };
+		const log = (level: LogLevel, message: string) => {
+			logged.lines += 1;
+			if (logged.lines <= MAX_LOG_LINES) {
+				host.log?.(level, String(message).slice(0, MAX_LOG_LENGTH));
+			} else if (logged.lines === MAX_LOG_LINES + 1) {
+				host.log?.('warn', `${action.id} logged ${MAX_LOG_LINES} lines. n8n drops the rest.`);
+			}
+		};
 		const credentials = host.node.credentials ?? {};
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType =
@@ -340,7 +362,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				}
 				return { json: item, pairedItem: { item: itemIndex } };
 			};
-			const result = action.run({ input, http: httpFor(itemIndex) });
+			const result = action.run({ input, http: httpFor(itemIndex), log, limits });
 			if (action.flow.cardinality === 'per-item') return [toItem(await result, 0)];
 			if (!isAsyncIterable(result)) {
 				throw new NodeOperationError(host.node, `${action.id} is 1:N, so run() must yield`, {
@@ -429,7 +451,7 @@ export interface FrozenVersion {
 	readBundle(): Promise<string>;
 }
 
-/** Host modules a frozen bundle may import. They are part of ABI 1. */
+/** Host modules a frozen bundle may import. They are part of every `n8n:action` version. */
 const HOST_MODULES: Readonly<Record<string, unknown>> = { 'n8n-workflow': { safeRegex } };
 
 const isAction = (value: unknown): value is Action =>
@@ -438,34 +460,79 @@ const isAction = (value: unknown): value is Action =>
 	typeof value.version === 'number' &&
 	typeof value.run === 'function';
 
-/** Runs a CommonJS bundle from `freezeAction` and returns the action it exports. */
-export function evaluateBundle(code: string): Action {
+/** The newest version of each `n8n:action` major that this host runs. */
+const IMPLEMENTED_ACTION_APIS: readonly ActionApiVersion[] = [
+	'n8n:action@1.0.0',
+	ACTION_API_VERSION,
+];
+
+/** A newer minor than the host has uses imports that the host lacks. */
+const implementsActionApi = (apiVersion: ActionApiVersion) => {
+	const { major, minor } = parseSemver(apiSemverOf(apiVersion));
+	return IMPLEMENTED_ACTION_APIS.some((implemented) => {
+		const known = parseSemver(apiSemverOf(implemented));
+		return known.major === major && known.minor >= minor;
+	});
+};
+
+/**
+ * Runs a CommonJS bundle from `freezeAction` and returns the action it exports. An @1 bundle
+ * runs through its adapter, so the executor sees @2 only.
+ */
+export function evaluateBundle(code: string, apiVersion: ActionApiVersion): Action {
+	if (!implementsActionApi(apiVersion)) {
+		throw new UserError(
+			`This host cannot run ${apiVersion}. It implements ${IMPLEMENTED_ACTION_APIS.join(', ')}.`,
+		);
+	}
 	const module: { exports: unknown } = { exports: {} };
 	const hostRequire = (id: string) => {
 		if (!(id in HOST_MODULES)) throw new UnexpectedError(`A frozen action cannot import ${id}`);
 		return HOST_MODULES[id];
 	};
 	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
-	const action = isRecord(module.exports) ? module.exports.default : undefined;
+	const exported = isRecord(module.exports) ? module.exports.default : undefined;
+	const action = apiVersion.startsWith('n8n:action@1.') ? fromActionApiV1(exported) : exported;
 	if (!isAction(action)) throw new UnexpectedError('The bundle does not export an action');
 	return action;
+}
+
+// One slot: the host sets its configured range once at start.
+const actionApiRange = new Map<'range', { text: string; includes: (version: string) => boolean }>();
+
+/** Sets the `n8n:action` versions this host runs, e.g. `>=2.0.0 <3.0.0`. Throws for a bad range. */
+export const setActionApiRange = (range: string) => {
+	actionApiRange.set('range', { text: range, includes: semverRange(range) });
+};
+
+const DEFAULT_RANGE = {
+	text: DEFAULT_ACTION_API_RANGE,
+	includes: semverRange(DEFAULT_ACTION_API_RANGE),
+};
+
+const rangeOf = () => actionApiRange.get('range') ?? DEFAULT_RANGE;
+
+/** In the configured range, and implemented by this host. */
+export const runsActionApi = (apiVersion: ActionApiVersion) =>
+	rangeOf().includes(apiSemverOf(apiVersion)) && implementsActionApi(apiVersion);
+
+function assertActionApi({ id, semver, apiVersion }: VersionManifest) {
+	if (runsActionApi(apiVersion)) return;
+	throw new UserError(
+		`${id}@${semver} needs ${apiVersion}. This host runs n8n:action ${rangeOf().text} and implements ${IMPLEMENTED_ACTION_APIS.join(', ')}.`,
+	);
 }
 
 /** Executors by bundle hash. A bundle loads on its first execution only. */
 const executors = new Map<string, Promise<(host: ExecutorHost) => Promise<INodeExecutionData[]>>>();
 
 async function loadExecutor({ manifest, readBundle }: FrozenVersion) {
-	const { id, semver, abi, bundleHash } = manifest;
-	if (abi !== NODE_CONTRACT_ABI) {
-		throw new UnexpectedError(
-			`${id}@${semver} needs ABI ${abi}; this host runs ABI ${NODE_CONTRACT_ABI}`,
-		);
-	}
+	const { id, semver, apiVersion, bundleHash } = manifest;
 	const code = await readBundle();
 	if (sha256(code) !== bundleHash) {
 		throw new UnexpectedError(`The bundle of ${id}@${semver} does not match ${bundleHash}`);
 	}
-	return executorOf(evaluateBundle(code));
+	return executorOf(evaluateBundle(code, apiVersion));
 }
 
 /**
@@ -487,16 +554,17 @@ export const setContractVersionLoader = (loader: ContractVersionLoader) => {
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 	const loader = versionLoader.get('loader');
 	const frozen = loader ? await loader(context, head) : head;
-	const { id, semver, abi, bundleHash, contract } = frozen.manifest;
+	const { id, semver, apiVersion, bundleHash, contract } = frozen.manifest;
 	if (contract.version !== head.manifest.contract.version || id !== head.manifest.id) {
 		throw new UnexpectedError(
 			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
 		);
 	}
+	assertActionApi(frozen.manifest);
 	const executor = executors.get(bundleHash) ?? loadExecutor(frozen);
 	executors.set(bundleHash, executor);
 	const items = await (await executor)(hostOf(context));
-	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, abi } });
+	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, apiVersion } });
 	return [items];
 }
 
@@ -507,13 +575,7 @@ async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 export function toVersionedNodeType(
 	versions: readonly FrozenVersion[],
 ): new () => VersionedNodeType {
-	const unsupported = versions.find(({ manifest }) => manifest.abi !== NODE_CONTRACT_ABI);
-	if (unsupported) {
-		const { id, semver, abi } = unsupported.manifest;
-		throw new UnexpectedError(
-			`${id}@${semver} needs ABI ${abi}; this host runs ABI ${NODE_CONTRACT_ABI}`,
-		);
-	}
+	versions.forEach(({ manifest }) => assertActionApi(manifest));
 	const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 	const latest = versions.reduce<FrozenVersion | undefined>(
 		(best, frozen) => (best && majorOf(best) > majorOf(frozen) ? best : frozen),

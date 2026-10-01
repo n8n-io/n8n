@@ -36,7 +36,7 @@ export async function replayFixtures(
 	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
 	fixtures: ContractFixtures,
 ): Promise<string[]> {
-	const action = evaluateBundle(bundle);
+	const action = evaluateBundle(bundle, manifest.apiVersion);
 	const run = executorOf(action);
 	// n8n fills each property default into the parameters it runs with.
 	const defaults = new Map(manifest.description.properties.map((p) => [p.name, p.default]));
@@ -173,14 +173,14 @@ export function packContractPackage(
 	privateKey: string,
 ): Buffer {
 	const manifestText = `${JSON.stringify(manifest, null, '\t')}\n`;
-	const { id, semver, abi, contractHash, bundleHash } = manifest;
+	const { id, semver, apiVersion, contractHash, bundleHash } = manifest;
 	const packageJson = {
 		name: packageNameOf(id),
 		version: semver,
 		description: manifest.contract.summary,
 		license: 'SEE LICENSE IN manifest.json',
 		// The registry copies these into the packument, so a resolver can filter before download.
-		n8nContract: { id, abi, contractHash, bundleHash },
+		n8nContract: { id, apiVersion, contractHash, bundleHash },
 	};
 	const files: ReadonlyArray<readonly [string, string]> = [
 		['package.json', `${JSON.stringify(packageJson, null, '\t')}\n`],

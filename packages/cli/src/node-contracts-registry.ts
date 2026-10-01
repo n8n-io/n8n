@@ -39,6 +39,7 @@ export async function useNodeContractsRegistry() {
 	useContractRegistry({
 		policy: instanceAi.nodeContractsUpdatePolicy,
 		registryUrl: instanceAi.nodeContractsRegistryUrl,
+		apiRange: instanceAi.nodeContractsApiRange,
 		publicKey: publicKeyFile ? await readFile(publicKeyFile, 'utf8') : undefined,
 		cacheDir: path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts'),
 		// The registry URL is operator config, not user input, so the SSRF policy does not apply.

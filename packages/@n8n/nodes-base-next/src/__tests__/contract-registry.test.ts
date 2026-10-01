@@ -47,27 +47,33 @@ const strangerKey = keyPair().privateKey;
 const FIXTURES = { executions: [] };
 const NAME = packageNameOf('demo.echo');
 
+interface Published {
+	readonly data: Buffer;
+	readonly integrity: string;
+	readonly frozen: FrozenAction;
+	/** Replaces fields of `n8nContract` in the packument. */
+	readonly contract?: Record<string, unknown>;
+}
+
 /** Tarballs the fake registry serves, by version. A test may replace one. */
-const tarballs = new Map<string, { data: Buffer; integrity: string; frozen: FrozenAction }>();
+const tarballs = new Map<string, Published>();
 const dirs = { root: '', cache: '' };
 const registry = { url: '', server: createServer() };
 const versions = new Map<string, FrozenAction>();
 
-const publish = (frozen: FrozenAction, key = privateKey) => {
+const publish = (frozen: FrozenAction, key = privateKey, contract?: Record<string, unknown>) => {
 	const data = packContractPackage(frozen, FIXTURES, key);
-	tarballs.set(frozen.manifest.semver, { data, integrity: integrityOf(data), frozen });
+	tarballs.set(frozen.manifest.semver, { data, integrity: integrityOf(data), frozen, contract });
 };
 
 const packument = () => ({
 	name: NAME,
 	versions: Object.fromEntries(
-		[...tarballs].map(([version, { integrity, frozen }]) => {
-			const { id, abi, contractHash, bundleHash } = frozen.manifest;
+		[...tarballs].map(([version, { integrity, frozen, contract }]) => {
+			const { id, apiVersion, contractHash, bundleHash } = frozen.manifest;
 			const tarball = `${registry.url}/tarballs/${version}.tgz`;
-			return [
-				version,
-				{ n8nContract: { id, abi, contractHash, bundleHash }, dist: { tarball, integrity } },
-			];
+			const n8nContract = { id, apiVersion, contractHash, bundleHash, ...contract };
+			return [version, { n8nContract, dist: { tarball, integrity } }];
 		}),
 	),
 });
@@ -157,6 +163,7 @@ const run = async (
 			cacheDir: dirs.cache,
 			fetch: async (url) => await fetch(url),
 			metaOf: async () => meta,
+			apiRange: '>=1.0.0 <3.0.0',
 			...options,
 		}),
 	);
@@ -195,6 +202,16 @@ describe('contractVersionLoader', () => {
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
+	it('reads the abi field of a packument entry published before apiVersion', async () => {
+		publish(frozenOf('1.0.1'), privateKey, { apiVersion: undefined, abi: 2 });
+		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
+	});
+
+	it('applies no newer patch outside the API range of the host', async () => {
+		publish(frozenOf('1.0.1'), privateKey, { apiVersion: 'n8n:action@3.0.0' });
+		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+	});
+
 	it('refuses a tampered tarball', async () => {
 		const tarball = tarballs.get('1.0.0');
 		if (!tarball) throw new Error('1.0.0 is not published');
@@ -228,7 +245,14 @@ describe('contractVersionLoader', () => {
 		await run(locked('1.0.0'), {}, metadata);
 		const { bundleHash } = frozenOf('1.0.1').manifest;
 		expect(metadata).toEqual([
-			{ nodeContract: { action: 'demo.echo', version: '1.0.1', bundleHash, abi: 2 } },
+			{
+				nodeContract: {
+					action: 'demo.echo',
+					version: '1.0.1',
+					bundleHash,
+					apiVersion: 'n8n:action@2.0.0',
+				},
+			},
 		]);
 	});
 });
