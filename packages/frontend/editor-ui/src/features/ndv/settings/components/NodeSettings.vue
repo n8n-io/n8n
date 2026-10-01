@@ -65,6 +65,8 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -279,6 +281,12 @@ const showQuickConnectBanner = computed(
 		!isReadOnly.value &&
 		!isDemoPreview.value &&
 		!props.isEmbeddedInCanvas,
+);
+
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
+const showGatewayCreditsPromotion = computed(
+	() =>
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
 );
 
 const showNoParametersNotice = computed(
@@ -785,6 +793,11 @@ function handleSelectAction(params: INodeParameters) {
 						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
+					<GatewayCreditsPromotion
+						v-if="showGatewayCreditsPromotion"
+						:text="promotionText ?? ''"
+						:class="$style.gatewayCreditsPromotion"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
@@ -911,6 +924,10 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .quickConnectBanner {
+	margin-top: var(--spacing--sm);
+}
+
+.gatewayCreditsPromotion {
 	margin-top: var(--spacing--sm);
 }
 
