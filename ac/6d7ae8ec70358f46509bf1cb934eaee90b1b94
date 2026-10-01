@@ -49,6 +49,7 @@ packages/frontend/editor-ui/eslint.config.mjs
   s_bc92c7e8a354c5::t_59561a1d398cc6 47-51
 packages/modules/mcp/frontend/src/SettingsMCPClientsView.vue
   s_bc92c7e8a354c5::t_9a296d87deaba4 1-2,4-5,6-15,18-21,23-27,29-30,33-47,54-68,80-95,96-105,111-133,135-146,150-168
+  s_b89df8726e6157::t_9974ff401074b9 16
 packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.test.ts
   s_bc92c7e8a354c5::t_729757c225d872 8
 OWNERS
@@ -102,6 +103,7 @@ packages/modules/mcp/frontend/src/components/tabs/OAuthClientsTable.vue
   s_bc92c7e8a354c5::t_9a296d87deaba4 1-24,26-205,213-340,353-445,453-474
 packages/modules/mcp/frontend/src/SettingsMCPView.test.ts
   s_bc92c7e8a354c5::t_9a296d87deaba4 1-18,20-21,23-25,32-34,36-71,73-87,92-152,155-193,195-199,201-206,208-212,233-270,272-276,278-290,292,294-303,306-309,311-317,438-602,604-831
+  s_b89df8726e6157::t_e1ef894184b6bc 19,22
 packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
   s_bc92c7e8a354c5::t_729757c225d872 54
 packages/frontend/editor-ui/src/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility.test.ts
@@ -140,6 +142,7 @@ packages/modules/mcp/frontend/src/mcp.module.ts
   s_bc92c7e8a354c5::t_9a296d87deaba4 1,3-9,11-17,19-90
 packages/modules/mcp/frontend/src/SettingsMCPView.vue
   s_bc92c7e8a354c5::t_9a296d87deaba4 1,3-6,8-26,28,31,33-37,39-43,44-155,157-178,186-187,189-194,197-201,210-215,221-222,234-273,275-281,288-408,420-465,482-496
+  s_b89df8726e6157::t_9974ff401074b9 27,29-30,32,38
 packages/modules/mcp/frontend/src/mcp.store.ts
   s_bc92c7e8a354c5::t_9a296d87deaba4 2,4-31,33-39,41-43,47-57,66-272,279-280,282-307,309-313,351-383,390-392,394-395,397-443,446-462,466-490
   s_bc92c7e8a354c5::t_1c548b1b202d36 1,40,46,444-445
@@ -174,6 +177,14 @@ packages/modules/mcp/frontend/biome.jsonc
   s_bc92c7e8a354c5::t_1c548b1b202d36 1-4
 pnpm-lock.yaml
   s_bc92c7e8a354c5::t_d6750976061919 6525-6527,7172-7245,28726,41149,41153-41157,41182,41189-41199
+packages/modules/mcp/frontend/src/components/McpConnectedClientRow.test.ts
+  s_b89df8726e6157::t_9974ff401074b9 4-5
+packages/modules/mcp/frontend/src/components/McpConnectedClientRow.vue
+  s_b89df8726e6157::t_e1ef894184b6bc 10
+packages/modules/mcp/frontend/src/modals/MCPConnectAgentsModal.test.ts
+  s_b89df8726e6157::t_9974ff401074b9 6
+packages/modules/mcp/frontend/src/composables/useOAuthClientRevoke.ts
+  s_b89df8726e6157::t_9974ff401074b9 7-8
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -181,6 +192,14 @@ pnpm-lock.yaml
   "base_commit_sha": "ac6d7ae8ec70358f46509bf1cb934eaee90b1b94",
   "prompts": {},
   "sessions": {
+    "s_b89df8726e6157": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f99148-8762-454d-ae91-17c35bca1663",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
     "s_bc92c7e8a354c5": {
       "agent_id": {
         "tool": "claude",
