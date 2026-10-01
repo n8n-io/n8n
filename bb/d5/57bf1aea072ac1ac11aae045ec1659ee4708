@@ -1,0 +1,122 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3ee4700369edb0::t_5a1140fd2b8cef 65,731-732,1848,2140,2431
+  s_84e24ec6fa2c40::t_0920e96ec3bfe6 96,2042,2044-2046,2119,2121,2123-2128,2132,2134-2135,2137-2138,2157-2158
+  s_84e24ec6fa2c40::t_e1673777c0e035 2026,2028,2048-2059
+  s_84e24ec6fa2c40::t_db3be638878ae9 2043,2120
+  ai_agent 2047,2122,2130-2131,2133
+  s_84e24ec6fa2c40::t_260b0b3058f273 2129
+  s_3ee4700369edb0::t_0e85b9faba436c 2139,2143-2144,2155-2156
+  s_3ee4700369edb0::t_41640b5b168ffe 2141-2142,2145-2154
+  s_3ee4700369edb0::t_ed7123bb275ef1 2932-2933
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_3ee4700369edb0::t_cae1e2377d5a57 12,233,361,1009-1016
+  s_3ee4700369edb0::t_7caded0a3bdd62 15
+  s_3ee4700369edb0::t_02cb38af93b3e2 145-164,172-181
+  s_3ee4700369edb0::t_ebee25ad34cf58 216-220,362,999-1008
+  s_3ee4700369edb0::t_2446af73d87591 239-243,252-253,308-309,311,315,321,325
+  s_3ee4700369edb0::t_98311c8a115e67 365
+  s_3ee4700369edb0::t_6930d0129d007c 371-373,399-401,408,417-419,488-490,828-830,879-881
+  s_3ee4700369edb0::t_c2f2e0ab97d036 997-998,1017-1069,1072-1077,1080-1081,1084-1088,1090-1122,1078
+  s_3ee4700369edb0::t_5fa01ce441d056 1082-1083,1089
+  s_3ee4700369edb0::t_42bbf8fd276b71 1070-1071,1079
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_3ee4700369edb0::t_a41e1246b5042d 2
+  s_3ee4700369edb0::t_5a1140fd2b8cef 9,63-64,111,135,186
+  s_3ee4700369edb0::t_30e2626dd79ed6 32-35
+  s_3ee4700369edb0::t_68bac1947f5293 108-110,112
+  s_3ee4700369edb0::t_1843f5a4d4c426 113-126
+  s_3ee4700369edb0::t_3f758fd65ffc7d 258-259
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_84e24ec6fa2c40::t_7f189cdedab23c 8000-8002
+  s_0ed5271cdd014d::t_b27160b7a04934 8021,8031
+  s_c5954c3047b5ed::t_7cdb31f0dade0b 8022-8024,8026,8036-8038,8041
+  s_c5954c3047b5ed::t_911d3b8cdb5795 8025,8039
+  s_c5954c3047b5ed::t_882c1eaaaaa238 8027-8030,8042-8045
+  s_3ee4700369edb0::t_c20cb69865eff6 8926-8935
+  s_3ee4700369edb0::t_41640b5b168ffe 8936
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_3ee4700369edb0::t_5e48425bdd20e8 57-58,69-73,77,79
+  s_3ee4700369edb0::t_55f5eb8e3236b0 116
+  s_3ee4700369edb0::t_8ed69c1ac4033e 236-267,271-290
+  ai_agent 268-270
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue
+  s_3ee4700369edb0::t_0af54df71a6f46 1,3-24,28-31,33-45,47-72
+  ai_agent 25-27
+  s_3ee4700369edb0::t_6f041e8397865e 32
+  s_3ee4700369edb0::t_052a83f7b5e310 2
+  s_3ee4700369edb0::t_3817418a624cea 46
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3ee4700369edb0::t_3f1adef9b4fd3f 262-266
+  s_3ee4700369edb0::t_53d09753d8177f 810
+  s_84e24ec6fa2c40::t_0bfdb818cd48ac 4752-4783
+  s_3ee4700369edb0::t_42b9b7fc9f2b6d 4784-4799,4824-4841
+  s_3ee4700369edb0::t_66402534025fd8 4800-4823
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_3ee4700369edb0::t_e7308f926fbcb3 3,5
+  s_3ee4700369edb0::t_3900ec35bcc593 38-39,41
+  s_3ee4700369edb0::t_884d4675561071 110-111,125-128,132
+  s_3ee4700369edb0::t_e1374f1a3008a3 113,623
+  s_3ee4700369edb0::t_84a1a506549adc 114-124,466-469,476,478,480-484,513-514,523,686,762,772,784
+  s_3ee4700369edb0::t_63e4cf98b3b1a8 304-310
+  s_3ee4700369edb0::t_000f2c1ce3d2e2 487-499,501-512,515-519
+  s_3ee4700369edb0::t_9e744fb5f65d6d 614-618
+  s_3ee4700369edb0::t_66279834adaaf1 622
+  s_3ee4700369edb0::t_c3d2d98ce5e992 655
+  s_3ee4700369edb0::t_1af7370d9cb342 676,685,687-690,693
+  s_3ee4700369edb0::t_136ff4e9f455c1 728,752,761,766-771,773-783,785-786,788
+  s_3ee4700369edb0::t_271c3f2145888c 2
+  s_3ee4700369edb0::t_5a1140fd2b8cef 14,112
+  s_3ee4700369edb0::t_41640b5b168ffe 40,479
+  s_3ee4700369edb0::t_74e2f859b367af 477,500
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/useN8nChatChannel.ts
+  s_3ee4700369edb0::t_5a1140fd2b8cef 2-5,9-10,12-15,17,20-26
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_3ee4700369edb0::t_fdcee863b80130 60-63
+  s_3ee4700369edb0::t_1acb5c5676f31c 180-181
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/__tests__/AgentChannelN8nChatView.test.ts
+  s_3ee4700369edb0::t_6c01e01d5aa6a3 1-3,5-38,40-107,111-114,122
+  s_3ee4700369edb0::t_3165d61097e46f 4
+  s_3ee4700369edb0::t_e1ea4042b66ebd 39
+  ai_agent 108-110
+  s_3ee4700369edb0::t_453d07befaba77 115-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bbd557bf1aea072ac1ac11aae045ec1659ee4708",
+  "prompts": {},
+  "sessions": {
+    "s_0ed5271cdd014d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_3ee4700369edb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7da616ef-d7d8-46e7-b647-0d6f7197e3e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_84e24ec6fa2c40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3719f38f-95fa-4ccc-bac2-62f1b4973429",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

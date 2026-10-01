@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentsN8nChatFlag.test.ts
+  s_3ee4700369edb0::t_2bb4b08a9318ae 1-22
+packages/@n8n/api-types/src/agents/types.ts
+  s_3ee4700369edb0::t_fe818dc072fef6 416-419
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  s_3ee4700369edb0::t_fe818dc072fef6 6-9,12-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f7bb9d08e89d75e8956ec8bf46ca3bb8e20102c7",
+  "prompts": {},
+  "sessions": {
+    "s_3ee4700369edb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7da616ef-d7d8-46e7-b647-0d6f7197e3e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

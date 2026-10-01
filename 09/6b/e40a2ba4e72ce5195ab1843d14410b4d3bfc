@@ -1,0 +1,39 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_5c0e63866aa310::t_f8303aa7c269d6 736,743
+  s_5c0e63866aa310::t_128446cba9359e 709
+  s_5c0e63866aa310::t_d560d7091f5e91 737-738
+  s_5c0e63866aa310::t_237d4663d58f8b 723
+  s_5c0e63866aa310::t_1cfc3fcde12665 3
+  s_5c0e63866aa310::t_98b829c6443f89 697-706
+packages/cli/test/integration/executions-pruning.service.test.ts
+  s_1499e82e304f43::t_66a9b73c872ddb 157-159
+  s_5c0e63866aa310::t_d20cc56a8d55b8 449-508
+  s_1499e82e304f43::t_155f2b55d1e9df 4,177,193,198,203-205,210,218
+  s_5c0e63866aa310::t_233f573a782443 178-192,194-197,199-202,206-209,211-217,219-223
+  s_5c0e63866aa310::t_a7c5beccfac07d 89-91,95-97,100
+  s_1499e82e304f43::t_6e04d9a58e034d 6,86-88,92-94,98-99,101-156,160-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "096be40a2ba4e72ce5195ab1843d14410b4d3bfc",
+  "prompts": {},
+  "sessions": {
+    "s_1499e82e304f43": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f6fd-078b-7922-ba7f-7497aa182617",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_5c0e63866aa310": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12c7813f-1191-4d15-b35f-a708b4a0e7a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
