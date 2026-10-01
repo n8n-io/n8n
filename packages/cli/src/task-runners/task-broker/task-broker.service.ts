@@ -153,9 +153,12 @@ export class TaskBroker {
 		const requestTimeoutMs =
 			this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds;
 		const timesOutAt = Math.min(now + requestTimeoutMs, this.shutdownDeadline ?? Infinity);
-		const timeout = setTimeout(() => {
-			this.handleRequestTimeout(requestId);
-		}, timesOutAt - now);
+		const timeout = setTimeout(
+			() => {
+				this.handleRequestTimeout(requestId);
+			},
+			Math.max(timesOutAt - now, 0),
+		);
 		this.requestTimesOutAt.set(timeout, timesOutAt);
 		return timeout;
 	}
