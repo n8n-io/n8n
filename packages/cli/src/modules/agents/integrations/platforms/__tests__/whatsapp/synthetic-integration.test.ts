@@ -10,7 +10,15 @@ import {
 	whatsAppThreadId,
 } from '../../../__tests__/helpers/whatsapp/replay-test-context';
 import {
+	whatsAppInboundAudioMessage,
+	whatsAppInboundContactsMessage,
+	whatsAppInboundDocumentMessage,
+	whatsAppInboundImageMessage,
+	whatsAppInboundLocationMessage,
+	whatsAppInboundStickerMessage,
 	whatsAppInboundTextMessage,
+	whatsAppInboundVideoMessage,
+	whatsAppInboundVoiceMessage,
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
@@ -81,6 +89,129 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		} finally {
 			await ctx.shutdown();
 		}
+	});
+
+	describe('inbound media', () => {
+		it.each([
+			['image', whatsAppInboundImageMessage, 'image/jpeg'],
+			['document', whatsAppInboundDocumentMessage, 'application/pdf'],
+			['audio', whatsAppInboundAudioMessage, 'audio/mpeg'],
+			// Sniffed from real Opus/OGG magic bytes (see WHATSAPP_MEDIA_CONTENT) —
+			// the codec parameter comes from the sniffer, not the declared type.
+			['voice', whatsAppInboundVoiceMessage, 'audio/ogg; codecs=opus'],
+			['video', whatsAppInboundVideoMessage, 'video/mp4'],
+			['sticker', whatsAppInboundStickerMessage, 'image/webp'],
+		] as const)(
+			'stores a %s attachment and passes it to the agent executor',
+			async (_label, buildMessage, expectedMimeType) => {
+				const fixtures = whatsAppReplayFixtures();
+				const ctx = await createWhatsAppReplayContext(fixtures);
+				try {
+					await ctx.sendWebhook(
+						whatsAppWebhook({
+							phoneNumberId: fixtures.phoneNumberId,
+							contact: fixtures.contact,
+							message: buildMessage({ from: fixtures.contact.wa_id }),
+						}),
+					);
+
+					expect(ctx.attachmentService.storeInbound).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({
+							source: 'whatsapp',
+							mimeType: expectedMimeType,
+							data: expect.any(Buffer),
+						}),
+					);
+					expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({
+							attachments: [expect.objectContaining({ mimeType: expectedMimeType })],
+						}),
+					);
+				} finally {
+					await ctx.shutdown();
+				}
+			},
+		);
+
+		it('degrades to a text note instead of storing an attachment over the size cap', async () => {
+			// WhatsApp's inbound media messages never carry a declared size (see
+			// `WhatsAppInboundMessage`), unlike some other platforms — so this can
+			// only ever be caught after downloading, never pre-empted upfront.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundDocumentMessage({
+							from: fixtures.contact.wa_id,
+							document: {
+								id: 'media-oversized-1',
+								mime_type: 'application/pdf',
+								sha256: 'test-sha256-oversized',
+								filename: 'big.pdf',
+							},
+						}),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: expect.stringContaining('MB') }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('falls back to the location text summary instead of a stored attachment', async () => {
+			// The adapter represents a location as a URL-only pseudo-file (a Google
+			// Maps link, no `fetchData`/bytes), which the bridge's generic
+			// attachment pipeline can't download — so it degrades to a text note
+			// rather than a stored attachment. Not a WhatsApp integration choice;
+			// this documents the adapter's actual behavior at the pinned version.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundLocationMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: expect.stringContaining('Location') }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('drops a contacts message entirely — the adapter has no handling for it', async () => {
+			// Documents a real gap in the pinned adapter version: `type: "contacts"`
+			// has no structured field on `WhatsAppInboundMessage` and no text
+			// fallback, so the message never reaches n8n at all. Not something this
+			// integration can fix without the version bump we already ruled out.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundContactsMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		});
 	});
 
 	it('persists current message context for the integration context tool', async () => {

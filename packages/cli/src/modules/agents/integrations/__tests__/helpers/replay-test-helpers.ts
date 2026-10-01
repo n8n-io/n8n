@@ -5,6 +5,7 @@ import { deepCopy, type Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatAttachmentService } from '../../../agent-chat-attachment.service';
 import { AgentChatBridge } from '../../agent-chat-bridge';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
@@ -126,8 +127,18 @@ export interface StubbedRequest {
 export interface StubResponse {
 	/** Recorded call exposed to assertions (platform method name + request body). */
 	apiCall: ReplayApiCall;
-	/** JSON body returned to the real adapter so it proceeds without live network I/O. */
-	responseBody: unknown;
+	/**
+	 * JSON body returned to the real adapter so it proceeds without live
+	 * network I/O. Ignored when `rawResponseBody` is set.
+	 */
+	responseBody?: unknown;
+	/**
+	 * Non-JSON bytes returned as-is (no `JSON.stringify`) — for endpoints a
+	 * real adapter reads as a binary file, such as WhatsApp's media download,
+	 * where sniffing/parsing needs genuine magic bytes, not a JSON-escaped
+	 * stand-in that would corrupt them.
+	 */
+	rawResponseBody?: Buffer | Uint8Array;
 	status?: number;
 }
 
@@ -171,9 +182,17 @@ export function installFetchStub(options: {
 			}
 		}
 
-		const { apiCall, responseBody, status } = options.onRequest({ httpMethod, url, body, rawBody });
+		const { apiCall, responseBody, rawResponseBody, status } = options.onRequest({
+			httpMethod,
+			url,
+			body,
+			rawBody,
+		});
 		apiCalls.push(apiCall);
 
+		if (rawResponseBody) {
+			return new Response(new Uint8Array(rawResponseBody), { status: status ?? 200 });
+		}
 		return new Response(JSON.stringify(responseBody), {
 			status: status ?? 200,
 			headers: { 'content-type': 'application/json' },
@@ -199,6 +218,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
+	attachmentService: AgentChatAttachmentService;
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
 	nextStream: (chunks: StreamChunk[]) => void;
@@ -212,6 +232,15 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	integration: AgentIntegrationConfig;
 	componentMapper?: ComponentMapper;
 	stream?: StreamChunk[];
+	/**
+	 * Without this, `AgentChatBridge`'s attachment pipeline silently no-ops
+	 * (see its `!this.attachmentService` guard) — every inbound attachment
+	 * vanishes with no error and no note. Defaults to a real `mock<...>()`
+	 * whose `storeInbound` echoes back a plausible stored record, so a test
+	 * that doesn't care about attachments still gets a working default
+	 * instead of the silent-drop behavior production can hit too.
+	 */
+	attachmentService?: AgentChatAttachmentService;
 	/** Delay between chunks, so a timer-driven renderer ticks. */
 	streamGapMs?: number;
 }): ReplayContextSetup<TChat> {
@@ -243,6 +272,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		isResumable: vi.fn(async () => true),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
+	const attachmentService = params.attachmentService ?? defaultMockAttachmentService();
 	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
 	const queue = mock<AgentMessageQueueService>();
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
@@ -260,6 +290,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		'project-1',
 		params.integration,
 		messageContextStore as unknown as IntegrationMessageContextService,
+		attachmentService,
 		undefined,
 		undefined,
 		queue,
@@ -281,6 +312,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
+		attachmentService,
 		latestContext: () => selectedContext,
 		latestThreadId: () => selectedThreadId,
 		nextStream: (chunks: StreamChunk[]) => {
@@ -305,4 +337,23 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 			Container.reset();
 		},
 	};
+}
+
+/**
+ * Echoes back a plausible stored record instead of hitting real binary
+ * storage — good enough for asserting a platform's attachment made it
+ * through the bridge's pipeline with the right name/type/size, without
+ * needing a real `BinaryDataService`.
+ */
+function defaultMockAttachmentService(): AgentChatAttachmentService {
+	const service = mock<AgentChatAttachmentService>();
+	service.storeInbound.mockImplementation(async (params) =>
+		mock<Awaited<ReturnType<AgentChatAttachmentService['storeInbound']>>>({
+			id: `attachment-${params.fileName}`,
+			fileName: params.fileName,
+			mimeType: params.mimeType,
+			fileSizeBytes: params.data.byteLength,
+		}),
+	);
+	return service;
 }
