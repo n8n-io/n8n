@@ -1,6 +1,34 @@
-import { InMemorySpendLedger, type ExecutionOptions, type RunOptions } from '@n8n/agents';
+import type { ExecutionOptions, RunOptions, SpendLedger } from '@n8n/agents';
 
 import { withBudgetGuardrail } from '../budget-guardrail';
+
+/** Ledger for these tests. `add` ignores a repeated `callId`. */
+function spendLedger(): SpendLedger {
+	const totals = new Map<string, number>();
+	const appliedCallIds = new Set<string>();
+
+	return {
+		async add(callId, entries) {
+			if (appliedCallIds.has(callId)) {
+				return entries.map((entry) => {
+					const totalUsd = totals.get(entry.key) ?? 0;
+					return { key: entry.key, totalUsd, previousUsd: totalUsd };
+				});
+			}
+
+			appliedCallIds.add(callId);
+			return entries.map((entry) => {
+				const previousUsd = totals.get(entry.key) ?? 0;
+				const totalUsd = previousUsd + entry.usd;
+				totals.set(entry.key, totalUsd);
+				return { key: entry.key, totalUsd, previousUsd };
+			});
+		},
+		async read(key) {
+			return totals.get(key) ?? 0;
+		},
+	};
+}
 
 const base: RunOptions & ExecutionOptions = {
 	persistence: { threadId: 'thread-1', resourceId: 'user-1' },
@@ -13,7 +41,7 @@ const saved = {
 };
 
 describe('withBudgetGuardrail', () => {
-	const ledger = new InMemorySpendLedger();
+	const ledger = spendLedger();
 
 	it('attaches nothing when budget is missing or turned off', () => {
 		expect(
@@ -54,7 +82,7 @@ describe('withBudgetGuardrail', () => {
 	});
 
 	it('fires the attached onNotice once when the month total crosses the alert line', async () => {
-		const freshLedger = new InMemorySpendLedger();
+		const freshLedger = spendLedger();
 		const onNotice = vi.fn();
 		const attached = withBudgetGuardrail(base, {
 			ledger: freshLedger,

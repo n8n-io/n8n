@@ -41,7 +41,7 @@ export class AgentsConfigController {
 		if (!agent) {
 			throw new NotFoundError('Agent not found');
 		}
-		const spentUsd = await this.agentSpendLedger.ledger.read(budgetMonthKey(agentId));
+		const spentUsd = await this.agentSpendLedger.read(budgetMonthKey(agentId));
 		return { spentUsd };
 	}
 

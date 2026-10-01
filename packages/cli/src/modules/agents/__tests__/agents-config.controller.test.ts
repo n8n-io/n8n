@@ -1,5 +1,4 @@
-import { budgetMonthKey, type SpendLedger } from '@n8n/agents';
-import { vi } from 'vitest';
+import { budgetMonthKey } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -62,13 +61,8 @@ describe('AgentsConfigController getBudget', () => {
 	it('returns the ledger total for the current month key', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: 'agent-1' } as never);
-		const read = vi.fn<SpendLedger['read']>().mockResolvedValue(12.5);
-		const agentSpendLedger = {
-			ledger: {
-				read,
-				add: vi.fn<SpendLedger['add']>(),
-			},
-		};
+		const agentSpendLedger = mock<AgentSpendLedger>();
+		agentSpendLedger.read.mockResolvedValue(12.5);
 		const controller = new AgentsConfigController(
 			mock<AgentConfigService>(),
 			mock<AgentCustomToolsService>(),
@@ -84,6 +78,6 @@ describe('AgentsConfigController getBudget', () => {
 				params: { projectId: 'project-1', agentId: 'agent-1' },
 			} as never),
 		).resolves.toEqual({ spentUsd: 12.5 });
-		expect(read).toHaveBeenCalledWith(budgetMonthKey('agent-1'));
+		expect(agentSpendLedger.read).toHaveBeenCalledWith(budgetMonthKey('agent-1'));
 	});
 });
