@@ -1,0 +1,101 @@
+name: 'Test: Instance AI Routing Evals'
+run-name: "Test: Instance AI Routing Evals (branch=${{ inputs.branch || 'master' }}, suite=${{ inputs.suite || 'intent-routing' }}, model=${{ inputs.model || 'anthropic/claude-opus-5-5' }}, iterations=${{ inputs.iterations || '3' }}, filter=${{ inputs.filter || 'all' }})"
+
+# Manual only. LangTracer's dispatcher runs cases with eval:instance-ai, so the
+# routing suite has no scheduled lane until the dispatcher can run eval:discovery.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        default: 'master'
+      suite:
+        description: 'LangTracer suite slug or id with the routing cases'
+        required: false
+        default: 'intent-routing'
+      model:
+        description: 'Orchestrator model (provider/model)'
+        required: false
+        default: 'anthropic/claude-opus-5-5'
+      iterations:
+        description: 'Trials per case'
+        required: false
+        default: '3'
+      filter:
+        description: 'Comma-separated case-id tokens; an exact id runs only that case. Empty = all cases.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  run-routing-evals:
+    name: 'Run Routing Evals'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 90
+    env:
+      NODE_OPTIONS: '--max-old-space-size=7168'
+      OUTPUT_DIR: ${{ github.workspace }}/routing-eval-output
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Export Node Types
+        run: |
+          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
+
+      - name: Run Routing Evals
+        working-directory: packages/@n8n/instance-ai
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          N8N_ENABLED_MODULES: agents,instance-ai
+          LANGTRACER_URL: ${{ secrets.EVALS_LANGTRACER_URL }}
+          LANGTRACER_API_KEY: ${{ secrets.LANGTRACER_API_KEY }}
+          SUITE: ${{ inputs.suite || 'intent-routing' }}
+          MODEL: ${{ inputs.model || 'anthropic/claude-opus-5-5' }}
+          ITERATIONS: ${{ inputs.iterations || '3' }}
+          FILTER: ${{ inputs.filter }}
+        run: |
+          ARGS=(
+            --source langtracer
+            --suite "$SUITE"
+            --stop-on-route
+            --trials "$ITERATIONS"
+            --model "$MODEL"
+            --scenario-concurrency 4
+            --output-dir "$OUTPUT_DIR"
+            # The cases let evaluations/routing/grade.ts re-grade or compare the artifact.
+            --save-cases-dir "$OUTPUT_DIR/cases"
+          )
+          if [ -n "$FILTER" ]; then
+            ARGS+=(--filter "$FILTER")
+          fi
+          pnpm eval:discovery "${ARGS[@]}"
+
+      - name: Write job summary
+        if: ${{ always() }}
+        run: |
+          SUMMARY_FILE="$OUTPUT_DIR/routing-summary.md"
+          if [ -f "$SUMMARY_FILE" ]; then
+            cat "$SUMMARY_FILE" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No routing summary was written. Check the 'Run Routing Evals' step log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: instance-ai-routing-eval-results
+          path: routing-eval-output/
+          if-no-files-found: warn
+          retention-days: 14
