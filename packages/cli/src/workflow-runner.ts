@@ -29,6 +29,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	CRASHABLE_EXECUTION_STATUSES,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	isTerminalExecutionStatus,
@@ -283,17 +284,6 @@ export class WorkflowRunner {
 		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
-		if (error instanceof MaxStalledCountError) {
-			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
-				executionId,
-				'stall',
-			);
-			if (claimed.length === 0) {
-				this.activeExecutions.finalizeExecution(executionId);
-				return;
-			}
-		}
-
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
 				resultData: {
@@ -313,6 +303,29 @@ export class WorkflowRunner {
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
 			storedAt: this.storageConfig.modeTag,
 		};
+
+		if (error instanceof MaxStalledCountError) {
+			// Save-as-claim: transition to `crashed` and persist the error payload in one
+			// guarded write. If crash recovery (or another writer) transitioned the
+			// execution first, keep its data and run no hooks.
+			const claimed = await this.executionPersistence.updateExistingExecution(
+				executionId,
+				{
+					stoppedAt: fullRunData.stoppedAt,
+					status: fullRunData.status,
+					data: fullRunData.data,
+					storedAt: fullRunData.storedAt,
+				},
+				{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
+			);
+
+			if (!claimed) {
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			await this.executionCrashService.announceStalledExecution(executionId);
+		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.

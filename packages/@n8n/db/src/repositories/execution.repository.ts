@@ -92,6 +92,7 @@ export type CrashedExecution = {
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
+	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
 }
@@ -560,10 +561,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
 	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
 	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
-	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
-	 *   so combining them is not supported.
+	 *   Note: `requireStatus`, `requireStatuses`, and `requireNotCanceled` all constrain the
+	 *   `status` column, so combining them is not supported.
 	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
@@ -594,6 +596,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireStatuses)
+					whereCondition.status = In([...conditions.requireStatuses]);
 				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
