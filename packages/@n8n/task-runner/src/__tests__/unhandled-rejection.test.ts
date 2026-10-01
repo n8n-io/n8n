@@ -33,73 +33,62 @@ describe('describeRejectionReason', () => {
 		expect(result.length).toBeLessThanOrEqual(1000);
 	});
 
-	it('should describe an error-like object by its keys only', () => {
+	it('should describe an error-like plain object by its type name only', () => {
 		const result = describeRejectionReason({ name: 'CustomError', message: 'boom' });
 
-		expect(result).toBe('Object with keys [name, message]');
+		expect(result).toBe('Object');
 		expect(result).not.toContain('boom');
 	});
 
-	it('should describe a plain object by its keys only', () => {
+	it('should describe a plain object by its type name only', () => {
 		const result = describeRejectionReason({
 			headers: { authorization: 'Bearer abc' },
 			body: 'secret-value',
 		});
 
-		expect(result).toBe('Object with keys [headers, body]');
+		expect(result).toBe('Object');
 		expect(result).not.toContain('Bearer abc');
 		expect(result).not.toContain('secret-value');
+		expect(result).not.toContain('headers');
+		expect(result).not.toContain('body');
 	});
 
-	it('should list at most 10 keys of an object', () => {
-		const reason = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`k${i}`, i]));
-
-		expect(describeRejectionReason(reason)).toBe(
-			'Object with keys [k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, ...]',
-		);
-	});
-
-	it('should describe a class instance by its constructor name and keys', () => {
+	it('should describe a class instance by its constructor name only', () => {
 		class MyClass {
 			value = 'secret-value';
 		}
 
 		const result = describeRejectionReason(new MyClass());
 
-		expect(result).toBe('MyClass with keys [value]');
+		expect(result).toBe('MyClass');
 		expect(result).not.toContain('secret-value');
 	});
 
-	it('should describe an array by its type name and length only', () => {
+	it('should describe an array by its type name only', () => {
 		const result = describeRejectionReason(['first-element', 'second-element']);
 
-		expect(result).toBe('Array of length 2');
+		expect(result).toBe('Array');
 		expect(result).not.toContain('first-element');
 		expect(result).not.toContain('second-element');
 	});
 
-	it('should describe a large buffer by its type name and length', () => {
-		expect(describeRejectionReason(Buffer.alloc(1e6))).toBe('Buffer of length 1000000');
-	});
-
-	it('should describe a string by its length only', () => {
-		const result = describeRejectionReason('plain text');
-
-		expect(result).toBe('string of length 10');
-		expect(result).not.toContain('plain text');
-	});
-
-	it('should describe a long string by its length only', () => {
-		expect(describeRejectionReason('a'.repeat(5000))).toBe('string of length 5000');
+	it('should describe a buffer by its type name only', () => {
+		expect(describeRejectionReason(Buffer.alloc(1e6))).toBe('Buffer');
 	});
 
 	it.each([
+		{ reason: 'plain text', expected: 'string' },
+		{ reason: 42, expected: 'number' },
+		{ reason: true, expected: 'boolean' },
+		{ reason: BigInt(1), expected: 'bigint' },
 		{ reason: undefined, expected: 'undefined' },
 		{ reason: null, expected: 'null' },
-		{ reason: 42, expected: '42' },
-		{ reason: Symbol('tag'), expected: 'Symbol(tag)' },
-	])('should describe the primitive $expected', ({ reason, expected }) => {
-		expect(describeRejectionReason(reason)).toBe(expected);
+		{ reason: Symbol('tag'), expected: 'symbol' },
+	])('should describe the primitive $expected by its type only', ({ reason, expected }) => {
+		const result = describeRejectionReason(reason);
+
+		expect(result).toBe(expected);
+		if (typeof reason === 'string') expect(result).not.toContain(reason);
 	});
 });
 

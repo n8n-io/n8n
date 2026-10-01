@@ -2,8 +2,6 @@ import { types } from 'node:util';
 
 const LOG_PREFIX = 'Unhandled promise rejection in task runner, continuing.';
 const MAX_REASON_LENGTH = 1000;
-const MAX_KEY_LENGTH = 100;
-const MAX_KEYS = 10;
 
 function describeKind(value: object): string {
 	if (Array.isArray(value)) return 'Array';
@@ -22,33 +20,17 @@ function describeError(error: Error): string {
 	return `${typeof name === 'string' ? name : 'Error'}: ${typeof message === 'string' ? message : ''}`;
 }
 
-// Values that are not errors are often item or request data, so only their shape is logged.
-function describeObject(value: object): string {
-	if (types.isNativeError(value)) return describeError(value);
-
-	const kind = describeKind(value);
-	// Read only the length: listing every index of a huge array or buffer can exhaust the heap.
-	if (Array.isArray(value)) {
-		return `${kind} of length ${value.length}`;
-	}
-	if (ArrayBuffer.isView(value) && 'length' in value && typeof value.length === 'number') {
-		return `${kind} of length ${value.length}`;
-	}
-
-	const keys = Object.keys(value);
-	const shown = keys.slice(0, MAX_KEYS).map((key) => key.slice(0, MAX_KEY_LENGTH));
-	const more = keys.length > MAX_KEYS ? ', ...' : '';
-	return `${kind} with keys [${shown.join(', ')}${more}]`;
-}
-
 export function describeRejectionReason(reason: unknown): string {
 	let text: string;
-	if ((typeof reason === 'object' && reason !== null) || typeof reason === 'function') {
-		text = describeObject(reason);
-	} else if (typeof reason === 'string') {
-		text = `string of length ${reason.length}`;
+	if (types.isNativeError(reason)) {
+		text = describeError(reason);
+	} else if ((typeof reason === 'object' && reason !== null) || typeof reason === 'function') {
+		// Values that are not errors are often item or request data, so only their type is logged.
+		text = describeKind(reason);
+	} else if (reason === null) {
+		text = 'null';
 	} else {
-		text = String(reason);
+		text = typeof reason;
 	}
 
 	return text.slice(0, MAX_REASON_LENGTH);
