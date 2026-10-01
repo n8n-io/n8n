@@ -2,8 +2,9 @@
  * Host-side helper for injecting workspace packages into a remote Daytona /
  * n8n-sandbox sandbox during local development.
  *
- * Opt-in via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`. Production sandboxes
- * continue to install the registry-pinned version from `PACKAGE_JSON`.
+ * Opt-in via `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1`. Node contracts also link these
+ * packages, because only the host's own `@n8n/workflow-sdk` has `./next`. Other
+ * production sandboxes install the registry-pinned version from `PACKAGE_JSON`.
  *
  * Why this exists: remote sandboxes have no line-of-sight to the dev's
  * monorepo. When a dev rebuilds the SDK or `n8n-workflow` locally, the
@@ -18,7 +19,8 @@
  *
  * We use `pnpm pack` (not `npm pack`) because the workspace `package.json`
  * uses pnpm protocols (`workspace:*`, `catalog:`) that npm can't resolve;
- * pnpm rewrites those to concrete semver during packing.
+ * pnpm rewrites those to concrete semver during packing. An installed copy
+ * (an n8n Docker image) has no pnpm, so `packInstalledPackage` packs it.
  */
 
 import { execFile } from 'node:child_process';
@@ -28,6 +30,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+import {
+	isInstalledPackageCopy,
+	packInstalledPackage,
+	resolveInstalledPackageDir,
+} from './pack-installed-package';
 import type { Logger } from '../logger';
 
 const hostRequire = createRequire(__filename);
@@ -69,7 +76,8 @@ export function isLinkWorkspaceSdkEnabled(): boolean {
 }
 
 /**
- * Pack a host-resolved workspace package into a tarball using `pnpm pack`.
+ * Pack a host-resolved workspace package into a tarball using `pnpm pack`. An installed
+ * copy under `node_modules` is packed in-process instead.
  */
 export async function packWorkspacePackage(
 	logger: Logger,
@@ -77,9 +85,7 @@ export async function packWorkspacePackage(
 ): Promise<WorkspacePackageTarball | null> {
 	const packagePath = resolvePackagePath(packageName);
 	if (!packagePath) {
-		logger.warn(
-			`${ENV_FLAG} is set but ${packageName} could not be resolved on the host — skipping sandbox link`,
-		);
+		logger.warn(`${packageName} could not be resolved on the host — skipping sandbox link`);
 		return null;
 	}
 
@@ -90,9 +96,20 @@ export async function packWorkspacePackage(
 		await stat(distPath);
 	} catch {
 		logger.warn(
-			`${ENV_FLAG} is set but ${packageName}/dist is missing — run \`pnpm build\` in ${packagePath} first. Skipping sandbox link.`,
+			`${packageName}/dist is missing — run \`pnpm build\` in ${packagePath} first. Skipping sandbox link.`,
 		);
 		return null;
+	}
+
+	if (isInstalledPackageCopy(packagePath)) {
+		const packed = await packInstalledPackage(packagePath);
+		logger.info('Packed installed package for sandbox link', {
+			package: packageName,
+			version: packed.version,
+			bytes: packed.tarball.byteLength,
+			packagePath,
+		});
+		return { ...packed, packageName, packagePath };
 	}
 
 	const tmpDir = await mkdtemp(path.join(tmpdir(), 'n8n-workspace-pack-'));
@@ -125,22 +142,16 @@ export async function packWorkspacePackage(
 }
 
 /**
- * Pack workspace packages linked into the sandbox when the feature flag is on.
- *
- * Returns `null` when linking is disabled. Throws when linking is enabled but
- * any required package could not be packed.
+ * Pack the host's copies of the packages linked into the sandbox. Throws when any
+ * package could not be packed.
  */
-export async function packSandboxLinkedWorkspacePackages(
-	logger: Logger,
-): Promise<WorkspacePackageTarball[] | null> {
-	if (!isLinkWorkspaceSdkEnabled()) return null;
-
+export async function packHostSandboxPackages(logger: Logger): Promise<WorkspacePackageTarball[]> {
 	const packed: WorkspacePackageTarball[] = [];
 	for (const packageName of SANDBOX_LINKED_WORKSPACE_PACKAGES) {
 		const tarball = await packWorkspacePackage(logger, packageName);
 		if (!tarball) {
 			throw new Error(
-				`${ENV_FLAG} is enabled, but ${packageName} could not be packed. Run \`pnpm build\` for packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk, or unset ${ENV_FLAG}.`,
+				`${packageName} could not be packed for the sandbox. Run \`pnpm build\` for packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk.`,
 			);
 		}
 		packed.push(tarball);
@@ -167,33 +178,16 @@ export async function packWorkspaceSdk(
 	return { ...packed, sdkPath: packed.packagePath };
 }
 
-function resolveFrom(require: NodeRequire, name: string): string | null {
-	try {
-		return path.dirname(require.resolve(`${name}/package.json`));
-	} catch {
-		// Packages that omit a `package.json` export still live under node_modules.
-		for (const base of require.resolve.paths(name) ?? []) {
-			const candidate = path.join(base, name, 'package.json');
-			try {
-				require(candidate);
-				return path.dirname(candidate);
-			} catch {
-				// keep looking
-			}
-		}
-		return null;
-	}
-}
-
 /** A transitive dependency (such as `@n8n/errors`) resolves from the linked package that uses it. */
 function resolvePackagePath(name: string): string | null {
-	const direct = resolveFrom(hostRequire, name);
+	const direct = resolveInstalledPackageDir(hostRequire, name);
 	if (direct) return direct;
 	for (const linked of SANDBOX_LINKED_WORKSPACE_PACKAGES) {
 		if (linked === name) continue;
-		const linkedPath = resolveFrom(hostRequire, linked);
+		const linkedPath = resolveInstalledPackageDir(hostRequire, linked);
 		const transitive =
-			linkedPath && resolveFrom(createRequire(path.join(linkedPath, 'package.json')), name);
+			linkedPath &&
+			resolveInstalledPackageDir(createRequire(path.join(linkedPath, 'package.json')), name);
 		if (transitive) return transitive;
 	}
 	return null;

@@ -3,7 +3,7 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 		packWorkspaceSdkMockState: {
 			isEnabled: false,
 			packWorkspaceSdk: vi.fn(),
-			packSandboxLinkedWorkspacePackages: vi.fn(),
+			packHostSandboxPackages: vi.fn(),
 		},
 		resolveMockWorkspaceRoot: async (workspace: {
 			filesystem?: { basePath?: string };
@@ -35,7 +35,7 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
 	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
-	packSandboxLinkedWorkspacePackages: packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages,
+	packHostSandboxPackages: packWorkspaceSdkMockState.packHostSandboxPackages,
 }));
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
@@ -197,14 +197,12 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 }
 
 async function loadLinkWorkspaceSdkWithMocks(
-	packSandboxLinkedWorkspacePackages: Mock,
+	packHostSandboxPackages: Mock,
 	runInSandbox: RunInSandboxMock,
 ): Promise<LinkWorkspaceSdkIfEnabled> {
 	packWorkspaceSdkMockState.isEnabled = true;
-	packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockReset();
-	packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockImplementation(
-		packSandboxLinkedWorkspacePackages,
-	);
+	packWorkspaceSdkMockState.packHostSandboxPackages.mockReset();
+	packWorkspaceSdkMockState.packHostSandboxPackages.mockImplementation(packHostSandboxPackages);
 	vi.resetModules();
 	vi.doMock('../sandbox-fs', () => ({
 		runInSandbox,
@@ -281,6 +279,24 @@ function installCommandsFrom(runInSandbox: RunInSandboxMock): string[] {
 		.map(([, command]) => command)
 		.filter((command) => command.startsWith('npm install'));
 }
+
+/** One shared list: sandbox-setup keeps the first packed result for the whole process. */
+const HOST_PACKAGE_TARBALLS = [
+	{
+		filename: 'n8n-utils.tgz',
+		tarball: Buffer.from('utils'),
+		version: '1.41.0',
+		packageName: '@n8n/utils',
+		packagePath: '/host/utils',
+	},
+	{
+		filename: 'workflow-sdk.tgz',
+		tarball: Buffer.from('sdk'),
+		version: '1.0.0',
+		packageName: '@n8n/workflow-sdk',
+		packagePath: '/host/sdk',
+	},
+];
 
 describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
@@ -458,6 +474,7 @@ describe('setupSandboxWorkspace', () => {
 				version: 'test-sha',
 			};
 			const context = { ...createSetupContext(bundle), nodeContractsEnabled: true };
+			packWorkspaceSdkMockState.packHostSandboxPackages.mockResolvedValue(HOST_PACKAGE_TARBALLS);
 
 			const initialized = await setupSandboxWorkspace(
 				createLocalWorkspace(writeFile, undefined, readFile),
@@ -837,28 +854,14 @@ describe('setupSandboxWorkspace', () => {
 	});
 
 	describe('with workspace SDK linking enabled', () => {
-		const linkedTarballs = [
-			{
-				filename: 'n8n-utils.tgz',
-				tarball: Buffer.from('utils'),
-				version: '1.41.0',
-				packageName: '@n8n/utils',
-				packagePath: '/host/utils',
-			},
-			{
-				filename: 'workflow-sdk.tgz',
-				tarball: Buffer.from('sdk'),
-				version: '1.0.0',
-				packageName: '@n8n/workflow-sdk',
-				packagePath: '/host/sdk',
-			},
-		];
+		const linkedTarballs = HOST_PACKAGE_TARBALLS;
 		const tarballArgs =
 			"'/home/daytona/workspace/n8n-utils.tgz' '/home/daytona/workspace/workflow-sdk.tgz'";
 
 		async function runLinkedSetup(
 			nodeContractsEnabled: boolean,
 			failCachedInstall = false,
+			linkSdkEnv = true,
 		): Promise<string[]> {
 			const runInSandbox: RunInSandboxMock =
 				vi.fn<
@@ -880,10 +883,8 @@ describe('setupSandboxWorkspace', () => {
 				runInSandbox,
 				readFileViaSandbox,
 			);
-			packWorkspaceSdkMockState.isEnabled = true;
-			packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockResolvedValue(
-				linkedTarballs,
-			);
+			packWorkspaceSdkMockState.isEnabled = linkSdkEnv;
+			packWorkspaceSdkMockState.packHostSandboxPackages.mockResolvedValue(linkedTarballs);
 			const writeFile = vi.fn<
 				(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
 			>(async () => {});
@@ -908,6 +909,13 @@ describe('setupSandboxWorkspace', () => {
 			]);
 		});
 
+		it('installs the host packages when node contracts are enabled without the link env', async () => {
+			// The registry copy of the host SDK version has no `./next` export.
+			expect(await runLinkedSetup(true, false, false)).toEqual([
+				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
+			]);
+		});
+
 		it('keeps the linked tarballs when the combined install retries with fresh metadata', async () => {
 			expect(await runLinkedSetup(true, true)).toEqual([
 				`npm install ${tarballArgs} --no-save --force --ignore-scripts --no-audit --no-fund --prefer-offline`,
@@ -927,7 +935,7 @@ describe('setupSandboxWorkspace', () => {
 		const utilsTarball = Buffer.from('utils');
 		const workflowTarball = Buffer.from('workflow');
 		const sdkTarball = Buffer.from('sdk');
-		const packSandboxLinkedWorkspacePackages = vi
+		const packHostSandboxPackages = vi
 			.fn()
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce([
@@ -961,7 +969,7 @@ describe('setupSandboxWorkspace', () => {
 			>();
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
-			packSandboxLinkedWorkspacePackages,
+			packHostSandboxPackages,
 			runInSandbox,
 		);
 		const writeFile = vi.fn<(...args: [string, Buffer, { recursive?: boolean }?]) => Promise<void>>(
@@ -987,7 +995,7 @@ describe('setupSandboxWorkspace', () => {
 		);
 		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
-		expect(packSandboxLinkedWorkspacePackages).toHaveBeenCalledTimes(2);
+		expect(packHostSandboxPackages).toHaveBeenCalledTimes(2);
 		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-utils.tgz', utilsTarball, {
 			recursive: true,
 		});

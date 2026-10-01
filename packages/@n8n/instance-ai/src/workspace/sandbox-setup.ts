@@ -36,7 +36,7 @@ import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import {
 	isLinkWorkspaceSdkEnabled,
-	packSandboxLinkedWorkspacePackages,
+	packHostSandboxPackages,
 	type WorkspacePackageTarball,
 } from './pack-workspace-sdk';
 import {
@@ -244,7 +244,7 @@ async function uploadLinkedWorkspacePackages(
 	root: string,
 	logger: Logger,
 ): Promise<UploadedWorkspacePackages> {
-	linkedPackagesPromise ??= packSandboxLinkedWorkspacePackages(logger).catch((error: unknown) => {
+	linkedPackagesPromise ??= packHostSandboxPackages(logger).catch((error: unknown) => {
 		linkedPackagesPromise = null;
 		throw error;
 	});
@@ -553,9 +553,10 @@ export async function setupSandboxWorkspace(
 			);
 			await materializeKnowledgeBaseStep(workspace, root, context);
 
-			// With node contracts, one install covers package.json and the linked tarballs.
-			// A separate base install only repeats the same work.
-			const mergeLinkedInstall = context.nodeContractsEnabled && isLinkWorkspaceSdkEnabled();
+			// Node contracts import `@n8n/workflow-sdk/next`. The registry copy of the host
+			// version does not export it, so always install the host's own packages. One
+			// install covers package.json and the tarballs; a separate base install repeats work.
+			const mergeLinkedInstall = context.nodeContractsEnabled === true;
 			const linkedPackages = mergeLinkedInstall
 				? await setupStep(
 						'link-workspace-sdk',
