@@ -125,7 +125,7 @@ app-wide `bodyParser` before the registry sees it. Declaring
 - Multer's own parsing errors map to the same statuses express-openapi-validator
   used: `413` for a size/count limit, `400` for any other multer error, `500`
   — unmasked, since this is a `ResponseError` — for anything else (a
-  malformed body, a missing boundary gives `400` with `multipart file(s) are
+  malformed body; a missing boundary gives `400` with `multipart file(s)
   required`).
 - The body is parsed **after** every auth/scope/license/quota gate and
   **before** controller/route middlewares — a caller those gates would reject

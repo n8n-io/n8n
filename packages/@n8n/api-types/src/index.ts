@@ -231,10 +231,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
-export {
-	publicApiUploadedFileSchema,
-	type PublicApiUploadedFile,
-} from './schemas/public-api-uploaded-file.schema';
+export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
 	policyCheckFailureSchema,

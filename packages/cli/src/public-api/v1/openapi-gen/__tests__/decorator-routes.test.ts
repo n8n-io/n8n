@@ -260,7 +260,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 	});
 
-	it('documents a multipart body under its own content key, with 413 and 415 responses', () => {
+	it('documents a multipart body under its own content key, with 413, 415, and 500 responses', () => {
 		class WidgetsPublicController {
 			@Post('/')
 			@ApiResponse(200)
@@ -284,6 +284,11 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 		expect(operation.config.responses[415]).toEqual({
 			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+		// Multer's parsing errors can themselves 500 (an unmasked parse failure, or
+		// LIMIT_UNEXPECTED_FILE) - see multipart-errors.ts.
+		expect(operation.config.responses[500]).toEqual({
+			$ref: '../../../../shared/spec/responses/internalServerError.yml',
 		});
 	});
 

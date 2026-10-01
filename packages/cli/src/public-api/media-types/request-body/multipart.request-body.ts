@@ -51,7 +51,9 @@ function mergeMultipartInput(req: Request): Record<string, unknown> {
 
 export const multipartRequestBody: RequestBodyHandler = {
 	mediaType: 'multipart/form-data',
-	errorStatuses: [413, 415],
+	// 500 is reachable: `toPublicApiError` returns an InternalServerError for an unmasked parse
+	// failure (a malformed/truncated body) and for `LIMIT_UNEXPECTED_FILE` - see multipart-errors.ts.
+	errorStatuses: [413, 415, 500],
 	discoverable: false,
 
 	createMiddleware(media, bodyRequired) {
