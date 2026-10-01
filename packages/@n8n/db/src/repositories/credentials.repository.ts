@@ -579,6 +579,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return await this.findBy({ name, type, usageScope: 'project', shared: { projectId } });
 	}
 
+	/** Find credentials of any of the given types, scoped to a specific project. */
+	async findByTypesInProject(types: string[], projectId: string): Promise<CredentialsEntity[]> {
+		return await this.findBy({ type: In(types), usageScope: 'project', shared: { projectId } });
+	}
+
 	/**
 	 * Get credentials with sharing permissions using a subquery instead of pre-fetched IDs.
 	 * This combines the credential and sharing queries into a single database query.

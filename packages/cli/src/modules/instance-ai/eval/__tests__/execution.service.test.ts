@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
@@ -225,6 +225,8 @@ describe('EvalExecutionService', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const ownershipService = mock<OwnershipService>();
 	const dataTableService = mock<DataTableService>();
+	const processedDataRepository = mock<ProcessedDataRepository>();
+	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -261,6 +263,8 @@ describe('EvalExecutionService', () => {
 			loadNodesAndCredentials,
 			ownershipService,
 			dataTableService,
+			processedDataRepository,
+			instanceAiConfig,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -665,6 +669,31 @@ describe('EvalExecutionService', () => {
 
 			expect(result.success).toBe(false);
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
+		});
+
+		it('clears the workflow deduplication state before and after each run', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const clears = processedDataRepository.deleteForWorkflow.mock;
+			expect(clears.calls).toEqual([['wf-1'], ['wf-1'], ['wf-1'], ['wf-1']]);
+			// Keys that builder-verify runs recorded must be gone before the first scenario reads them.
+			const runs = workflowRunner.run.mock.invocationCallOrder;
+			expect(clears.invocationCallOrder[0]).toBeLessThan(runs[0]);
+			expect(clears.invocationCallOrder[1]).toBeGreaterThan(runs[0]);
+		});
+
+		it('leaves the deduplication state alone on an instance that is not an eval instance', async () => {
+			instanceAiConfig.evalInstance = false;
+			try {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+				await service.executeWithLlmMock('wf-1', makeUser());
+				expect(processedDataRepository.deleteForWorkflow).not.toHaveBeenCalled();
+			} finally {
+				instanceAiConfig.evalInstance = true;
+			}
 		});
 
 		it('preserves an intentional zero-item bypass pin instead of injecting a phantom item', async () => {

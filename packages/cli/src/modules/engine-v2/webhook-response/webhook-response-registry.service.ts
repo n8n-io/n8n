@@ -1,21 +1,40 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EndedMessage, ExecutionResponse, ResponseExpectation } from '@n8n/engine';
-import { decodeBufferBody } from 'n8n-core';
+import type { ExecutionResponse, ResponseExpectation } from '@n8n/engine';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
+
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
-} from '@/modules/engine-v2/response-channel/execution-response-receiver';
-import { PendingWebhookResponse } from '@/services/pending-webhook-response';
+} from '../response-channel/execution-response-receiver';
+import { toWebhookOutcome, type WebhookRunOutcome } from './webhook-outcome';
+
+/** The caller's view of an open webhook request that waits for its run. */
+export interface WebhookResponseWait {
+	readonly executionId: ExecutionIdV2;
+	/** Resolves when the run answers the request, or when the hold runs out. */
+	readonly outcome: Promise<WebhookRunOutcome>;
+	/**
+	 * Stops the wait. The registry releases the wait by itself when the outcome
+	 * settles, so call this only to give up early. It is safe to call again.
+	 */
+	release(): void;
+}
 
 /** A request that is still open, and the subscription that feeds its answer. */
 type PendingWebhook = {
-	response: PendingWebhookResponse;
-	unsubscribe: UnsubscribeExecutionResponse;
+	executionId: ExecutionIdV2;
+	expectation: ResponseExpectation;
+	answer: IDeferredPromise<WebhookRunOutcome>;
+	/** Held so an answered run does not leave a timer behind for the whole hold. */
+	timeoutTimer: NodeJS.Timeout;
+	/** Set when the subscription is ready. */
+	unsubscribe?: UnsubscribeExecutionResponse;
+	released: boolean;
 };
 
 /**
@@ -28,14 +47,15 @@ export const MAX_PENDING_WEBHOOKS = 5000;
 export const SUBSCRIBE_TIMEOUT_MS = 30_000;
 
 /**
- * A service for hooking up responses from the data plane with webhook callers
- * expecting that response.
+ * Keeps track of the webhook requests that wait for a data-plane run. It owns
+ * the lifecycle of each wait: the capacity limit, the subscription, the
+ * response timeout, and the release.
  *
  * `waitForResponse` should be called before starting the execution in case a
  * fast execution sends a response before we're listening for it.
  */
 @Service()
-export class EngineV2WebhookResponder {
+export class EngineV2WebhookResponseRegistry {
 	private receiver?: ExecutionResponseReceiver;
 
 	private readonly pendingWebhooks = new Map<string, PendingWebhook>();
@@ -71,7 +91,7 @@ export class EngineV2WebhookResponder {
 	async waitForResponse(
 		executionId: ExecutionIdV2,
 		expectation: ResponseExpectation,
-	): Promise<PendingWebhookResponse> {
+	): Promise<WebhookResponseWait> {
 		const { receiver } = this;
 		if (!receiver) {
 			throw new UnexpectedError('Engine v2 cannot wait for a response without a receiver');
@@ -90,21 +110,28 @@ export class EngineV2WebhookResponder {
 			});
 		}
 
-		const response = new PendingWebhookResponse({
+		const pending: PendingWebhook = {
 			executionId,
 			expectation,
-			timeoutMs: this.engineConfig.webhookResponseTimeout,
-			onRelease: (id) => this.release(id),
-		});
+			answer: createDeferredPromise<WebhookRunOutcome>(),
+			timeoutTimer: setTimeout(
+				() => this.settle(pending, { status: 'timeout' }),
+				this.engineConfig.webhookResponseTimeout,
+			).unref(),
+			released: false,
+		};
 
 		// Hold the slot before the subscription is ready, so requests that arrive
 		// meanwhile still count against the limit.
-		const pending: PendingWebhook = { response, unsubscribe: () => {} };
 		this.pendingWebhooks.set(executionId, pending);
 
-		pending.unsubscribe = await this.subscribe(receiver, response);
+		await this.subscribe(receiver, pending);
 
-		return response;
+		return {
+			executionId,
+			outcome: pending.answer.promise,
+			release: () => this.release(pending),
+		};
 	}
 
 	/**
@@ -116,29 +143,29 @@ export class EngineV2WebhookResponder {
 	 */
 	private async subscribe(
 		receiver: ExecutionResponseReceiver,
-		response: PendingWebhookResponse,
-	): Promise<UnsubscribeExecutionResponse> {
-		const { executionId } = response;
+		pending: PendingWebhook,
+	): Promise<void> {
+		const { executionId } = pending;
 		const subscription = receiver.receive(executionId, (received) =>
-			this.handle(received, response),
+			this.handle(received, pending),
 		);
-		let timeoutTimer: NodeJS.Timeout | undefined;
+		let subscribeTimeoutTimer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {
-			timeoutTimer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
+			subscribeTimeoutTimer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
 		});
 
 		let result: UnsubscribeExecutionResponse | 'timed-out';
 		try {
 			result = await Promise.race([subscription, timedOut]);
 		} catch (error) {
-			response.release();
+			this.release(pending);
 			throw error;
 		} finally {
-			clearTimeout(timeoutTimer);
+			clearTimeout(subscribeTimeoutTimer);
 		}
 
 		if (result === 'timed-out') {
-			response.release();
+			this.release(pending);
 			// The subscription can still complete. It must not outlive the request.
 			void subscription.then(
 				(unsubscribe) => unsubscribe(),
@@ -150,12 +177,23 @@ export class EngineV2WebhookResponder {
 			);
 		}
 
-		return result;
+		const unsubscribe = result;
+
+		// The wait can settle while the subscription is still pending.
+		if (pending.released) {
+			unsubscribe();
+			return;
+		}
+
+		pending.unsubscribe = unsubscribe;
 	}
 
-	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
+	private handle(received: ExecutionResponse, pending: PendingWebhook): void {
+		if (pending.released) return;
+
 		try {
-			this.route(received, response);
+			const outcome = toWebhookOutcome(received, pending.expectation);
+			if (outcome) this.settle(pending, outcome);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine v2 response', {
 				executionId: received.executionId,
@@ -165,46 +203,21 @@ export class EngineV2WebhookResponder {
 		}
 	}
 
-	private route(received: ExecutionResponse, response: PendingWebhookResponse): void {
-		switch (received.type) {
-			case 'undeliverable':
-				response.resolve({
-					status: 'undeliverable',
-					error: { name: received.error.code, message: received.error.message },
-				});
-				return;
+	/** The first outcome wins. Nothing more is needed from the run after it. */
+	private settle(pending: PendingWebhook, outcome: WebhookRunOutcome): void {
+		if (pending.released) return;
 
-			case 'response':
-				// A Buffer body arrives base64-encoded, because the channel is JSON.
-				response.resolveResponse(decodeBufferBody(received.payload));
-				return;
-
-			case 'ended':
-				this.onEnded(received, response);
-				return;
-		}
-	}
-
-	private onEnded(received: EndedMessage, response: PendingWebhookResponse): void {
-		const { nodeName, outputs, error } = received.lastStep;
-
-		if (received.status === 'failed') {
-			// The step that ended a failed run is the one that failed, so its name
-			// and error are what the caller reports.
-			response.resolve({ status: 'failed', nodeName, error });
-			return;
-		}
-
-		response.resolve({
-			status: 'completed',
-			// A skipped or failed step carries nothing to answer with.
-			lastNode: outputs ? { nodeName, outputs } : undefined,
-		});
+		pending.answer.resolve(outcome);
+		this.release(pending);
 	}
 
 	/** Ends the run's subscription: nothing more can arrive for it. */
-	private release(executionId: string): void {
-		this.pendingWebhooks.get(executionId)?.unsubscribe();
-		this.pendingWebhooks.delete(executionId);
+	private release(pending: PendingWebhook): void {
+		if (pending.released) return;
+		pending.released = true;
+
+		clearTimeout(pending.timeoutTimer);
+		pending.unsubscribe?.();
+		this.pendingWebhooks.delete(pending.executionId);
 	}
 }
