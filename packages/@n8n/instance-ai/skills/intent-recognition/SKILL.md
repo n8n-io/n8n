@@ -79,11 +79,8 @@ Two orthogonal decisions per request, or per part for compound requests:
   (running or triggering a workflow the user already has, debugging a failed
   execution, listing or managing workflows or agents, querying data) are not
   classified by this skill at all — route them through their normal paths.
-  Per the system prompt's "Existing Resources" section, check
-  `workflows(action="list")` before reading "trigger my X" as a build: a
-  workflow's own name can contain a build verb ("X — Create"), and a link to
-  a service you integrate with is an input value, not a request to build an
-  integration for it. Finally, a one-off task with a concrete
+  Follow the system prompt's "Existing Resources" section before reading
+  "trigger my X" as a build. Finally, a one-off task with a concrete
   external *effect* (export/copy data somewhere once, a migration, a
   backfill) is **workflow-anchored**, not out-of-scope — the workflow is
   just the vehicle. Classify it by shape (bounded data already in hand,

@@ -49,9 +49,7 @@ When deciding whether to load a skill:
 - A loaded skill can list references with a description of when each applies. Load a reference with \`{ "skillId": "<reference id>" }\` only when its description matches the current step.`
 			: ''
 	}
-- If the relevant skill was already loaded for this request, do not call load_skill again.
-- If no skill clearly matches, do not call load_skill.
-- Do not load a skill just because it is listed here.`;
+- If no skill clearly matches, do not call load_skill.`;
 }
 
 export function appendSkillCatalogToInstructions(

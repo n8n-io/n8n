@@ -115,6 +115,13 @@ describe('n8n-docs tool', () => {
 		expect(tool.description).toContain('using only returned page titles and URLs');
 	});
 
+	it('presents itself as always loaded and preferred over web search', () => {
+		const tool = createN8nDocsTool(createMockContext());
+
+		expect(tool.description).toMatch(/always available/i);
+		expect(tool.description).toMatch(/prefer it over web search/i);
+	});
+
 	it('parses markdown registry links from llms.txt', () => {
 		const registry = parseN8nDocsRegistry(REGISTRY, '2026-06-23T08:00:00.000Z');
 
