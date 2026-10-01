@@ -11,6 +11,9 @@ export {
 export const AGENTS_MODULE_NAME = 'agents';
 export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
+/** The shared "chat with a published agent over n8n Chat" screen. */
+export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
+
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';

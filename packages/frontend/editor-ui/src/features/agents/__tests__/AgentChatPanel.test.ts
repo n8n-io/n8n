@@ -64,6 +64,9 @@ vi.mock('../composables/useAgentBackgroundJobs', () => ({
 		isStopping: isStoppingMock,
 	}),
 }));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
+}));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
@@ -234,6 +237,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
+			capabilities: computed(() => ({ steer: true, backgroundTasks: true, previewHistory: true })),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
@@ -313,6 +317,8 @@ describe('AgentChatPanel', () => {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
 			}) => Promise<boolean>;
+			centerEmptyState: boolean;
+			newSession: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -340,6 +346,34 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	describe('centerEmptyState', () => {
+		const isCentered = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper
+				.get('aside')
+				.classes()
+				.some((c) => c.includes('centeredEmpty'));
+
+		it('centers an empty new chat, which already carries a minted session id', () => {
+			expect(
+				isCentered(
+					mountPanel({ centerEmptyState: true, newSession: true, continueSessionId: 'minted' }),
+				),
+			).toBe(true);
+		});
+
+		it('stops centering once the chat has messages', () => {
+			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
+		});
+
+		it('does not center a continued thread or without the prop', () => {
+			expect(isCentered(mountPanel({ centerEmptyState: true, continueSessionId: 's1' }))).toBe(
+				false,
+			);
+			expect(isCentered(mountPanel())).toBe(false);
+		});
+	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
 		queuedMessagesMock.value = [
