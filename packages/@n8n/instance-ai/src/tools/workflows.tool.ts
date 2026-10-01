@@ -12,6 +12,7 @@ import {
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -972,13 +973,27 @@ async function handleUnarchive(
 type SetupState = { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null };
 type SetupResumeData = NonNullable<WorkflowToolContext['resumeData']>;
 
-/** Run a single trigger node and map the execution status to a setup trigger-test result. */
+/**
+ * Test a single trigger for the setup panel. A Webhook or Form Trigger needs a real
+ * request: a run fed an empty `{}` proves nothing about it, so it must not pass, and
+ * nothing here owns a listener's lifecycle, so it is not armed either. Other triggers
+ * run and map the execution status.
+ */
 async function runTriggerTest(
 	context: InstanceAiContext,
 	workflowId: string,
 	triggerNodeName: string,
+	snapshot: WorkflowJSON | null,
 ): Promise<{ status: 'success' | 'error' | 'listening'; error?: string }> {
 	try {
+		const triggerType = snapshot?.nodes.find((node) => node.name === triggerNodeName)?.type;
+		if (triggerType === WEBHOOK_NODE_TYPE || triggerType === FORM_TRIGGER_NODE_TYPE) {
+			return {
+				status: 'error',
+				error:
+					'This trigger needs a real request. Arm its test URL with executions(action="listen").',
+			};
+		}
 		const result = await context.executionService.run(workflowId, undefined, {
 			timeout: 30_000,
 			triggerNodeName,
@@ -1165,7 +1180,12 @@ async function handleSetupTestTrigger(
 		};
 	}
 
-	const triggerTestResult = await runTriggerTest(context, input.workflowId, testTriggerNode);
+	const triggerTestResult = await runTriggerTest(
+		context,
+		input.workflowId,
+		testTriggerNode,
+		state.preTestSnapshot,
+	);
 
 	const refreshedRequests = await analyzeWorkflow(
 		context,

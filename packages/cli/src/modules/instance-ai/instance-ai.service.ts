@@ -703,6 +703,10 @@ export class InstanceAiService {
 
 	private readonly formBaseUrl: string;
 
+	private readonly webhookTestBaseUrl: string;
+
+	private readonly formTestBaseUrl: string;
+
 	private readonly runState = new RunStateRegistry<User>((user) => user.id);
 
 	private readonly backgroundTasks: BackgroundTaskManager;
@@ -939,6 +943,8 @@ export class InstanceAiService {
 		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
+		this.webhookTestBaseUrl = `${this.urlService.getTestWebhookBaseUrl()}${globalConfig.endpoints.webhookTest}`;
+		this.formTestBaseUrl = `${this.urlService.getTestWebhookBaseUrl()}${globalConfig.endpoints.formTest}`;
 
 		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
@@ -4250,6 +4256,8 @@ export class InstanceAiService {
 					? buildInstanceUrlsBlock({
 							webhookBaseUrl: this.webhookBaseUrl,
 							formBaseUrl: this.formBaseUrl,
+							webhookTestBaseUrl: this.webhookTestBaseUrl,
+							formTestBaseUrl: this.formTestBaseUrl,
 						})
 					: undefined,
 				pastConversationsSection

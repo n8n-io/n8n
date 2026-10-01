@@ -79,7 +79,7 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflows(action="get-as-code").',
 		'Do not call workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
-		'Use executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Run the live test with this workflowId: executions(action="listen") for a Webhook or Form Trigger, executions(action="run") with suitable trigger input for other triggers. Do not change publication state to test it.',
 		'Read the execution output and summarize the result in chat. If it fails, use executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
 		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
 		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
@@ -171,11 +171,20 @@ export function buildPastConversationsBlock(section: string): string {
 export function buildInstanceUrlsBlock(urls: {
 	webhookBaseUrl: string;
 	formBaseUrl: string;
+	webhookTestBaseUrl?: string;
+	formTestBaseUrl?: string;
 }): string {
 	return [
 		INSTANCE_URLS_OPEN_TAG,
 		`Webhook base URL: ${urls.webhookBaseUrl}`,
 		`Form base URL: ${urls.formBaseUrl}`,
+		...(urls.webhookTestBaseUrl && urls.formTestBaseUrl
+			? [
+					`Webhook test base URL: ${urls.webhookTestBaseUrl}`,
+					`Form test base URL: ${urls.formTestBaseUrl}`,
+					'Test URLs answer only while executions(action="listen") has armed the trigger; production URLs need a published workflow.',
+				]
+			: []),
 		INSTANCE_URLS_CLOSE_TAG,
 	].join('\n');
 }

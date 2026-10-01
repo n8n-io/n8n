@@ -26,7 +26,7 @@ import {
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, RoleService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -109,6 +109,7 @@ import {
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -196,6 +197,9 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -453,8 +457,14 @@ export class InstanceAiAdapterService {
 		// See `teamProjectsLicensed()` for the absent case.
 		private readonly licenseState?: LicenseState,
 		// Optional for the same reason as the other services above: existing tests
-		// construct this class positionally, and this must stay the last parameter.
+		// construct this class positionally and hard-code this index, so new
+		// parameters go after it.
 		private readonly aiPreferenceService?: AiPreferenceService,
+		// Optional for the same reason as above. Test listeners (`executions`
+		// action="listen") need the test webhook registry and the public URL.
+		private readonly testWebhooks?: TestWebhooks,
+		private readonly testWebhookRegistrations?: TestWebhookRegistrationsService,
+		private readonly urlService?: UrlService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -1957,6 +1967,7 @@ export class InstanceAiAdapterService {
 	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
+			workflowRepository,
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
@@ -1968,6 +1979,9 @@ export class InstanceAiAdapterService {
 			telemetry,
 			logger,
 			globalConfig,
+			testWebhooks,
+			testWebhookRegistrations,
+			urlService,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -1999,7 +2013,38 @@ export class InstanceAiAdapterService {
 			return execution;
 		};
 
-		return {
+		// One listener per workflow. `cancelWebhook` deregisters asynchronously, so wait for it:
+		// otherwise it sweeps away a registration made right after, and a request could still
+		// enter after a cancel was reported as done.
+		const clearTestListener = async (workflowId: string) => {
+			if (!testWebhooks || !testWebhookRegistrations) return;
+			await testWebhooks.cancelWebhook(workflowId);
+			for (let attempt = 0; attempt < 20; attempt++) {
+				const registrations = await testWebhookRegistrations.getAllRegistrations();
+				if (!registrations.some((r) => r.workflowEntity.id === workflowId)) return;
+				await sleep(100);
+			}
+		};
+
+		// A test request can run on another main, whose execution is not in this process:
+		// poll the stored state until it settles or the default run timeout passes.
+		const awaitExecutionResult = async (executionId: string) => {
+			if (activeExecutions.has(executionId)) {
+				await activeExecutions.getPostExecutePromise(executionId);
+			}
+			const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
+			for (;;) {
+				const result = await extractExecutionResult(
+					executionId,
+					allowSendingParameterValues,
+					nodeTypes,
+				);
+				if (result.status !== 'running' || Date.now() >= deadline) return result;
+				await sleep(1000);
+			}
+		};
+
+		const adapter: InstanceAiExecutionService = {
 			async list(options) {
 				const scope: Scope = 'workflow:read';
 
@@ -2675,7 +2720,141 @@ export class InstanceAiAdapterService {
 
 				return await extractResolvedNodeParameters(nodeTypes, executionId, nodeName, options);
 			},
+
+			async armTestListener(workflowId, options) {
+				assertNotReadOnly();
+				if (!testWebhooks || !testWebhookRegistrations || !urlService) {
+					throw new UnexpectedError('Test listeners are not available on this instance');
+				}
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+				if (!workflow) {
+					throw new WorkflowNotFoundError(workflowId);
+				}
+				if (options?.triggerNodeName !== undefined) {
+					// Throws when the node is missing or is not a trigger.
+					resolveRequestedTriggerNode(workflow.nodes ?? [], options.triggerNodeName);
+				}
+				const listRegistrations = async () =>
+					(await testWebhookRegistrations.getAllRegistrations()).filter(
+						(registration) => registration.workflowEntity.id === workflowId,
+					);
+
+				await clearTestListener(workflowId);
+
+				// Taken before registering so the correlation window covers the whole registration.
+				const armedAt = new Date();
+				// The registration's entity becomes the execution's workflow data, so the
+				// forced save settings `run()` applies must be set here as well.
+				const registered = await testWebhooks.needsWebhook({
+					userId: user.id,
+					workflowEntity: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+						},
+					},
+					additionalData: await WorkflowExecuteAdditionalData.getBase({
+						userId: user.id,
+						workflowId,
+					}),
+					pushRef,
+					triggerToStartFrom:
+						options?.triggerNodeName !== undefined ? { name: options.triggerNodeName } : undefined,
+					workflowIsActive: await workflowRepository.isActive(workflowId),
+					timeoutMs: MAX_TIMEOUT_MS,
+				});
+				if (!registered) {
+					throw new UserError(
+						`Workflow ${workflowId} has no Webhook or Form Trigger to listen on. Use action="run" for other triggers.`,
+					);
+				}
+
+				const { webhookTest, formTest } = globalConfig.endpoints;
+				const triggers = (await listRegistrations()).map(({ webhook }) => ({
+					nodeName: webhook.node,
+					method: webhook.httpMethod,
+					url: `${urlService.getTestWebhookBaseUrl()}${
+						webhook.webhookDescription.nodeType === 'form' ? formTest : webhookTest
+					}/${webhook.path.replace(/^\/+/, '')}`,
+				}));
+				return {
+					state: 'armed',
+					workflowId,
+					triggers,
+					armedAt: armedAt.toISOString(),
+					deadlineAt: new Date(armedAt.getTime() + MAX_TIMEOUT_MS).toISOString(),
+				};
+			},
+
+			async resolveTestListener(workflowId, { armedAt, executionId, cancel }) {
+				if (!testWebhooks || !testWebhookRegistrations) {
+					throw new UnexpectedError('Test listeners are not available on this instance');
+				}
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+				if (!workflow) {
+					throw new WorkflowNotFoundError(workflowId);
+				}
+				if (cancel) {
+					await clearTestListener(workflowId);
+					return { state: 'cancelled' };
+				}
+				// Only an execution created after arming counts. A queued one has no start time
+				// yet, and an older queued run must not pass as this request.
+				const armedAtMs = new Date(armedAt).getTime();
+				const belongsToThisArm = (execution: { createdAt?: Date | string }) =>
+					new Date(execution.createdAt ?? NaN).getTime() >= armedAtMs;
+				if (executionId) {
+					const execution = await assertExecutionAccess(executionId);
+					if (execution.workflowId !== workflowId) {
+						throw new UserError(
+							`Execution ${executionId} does not belong to workflow ${workflowId}`,
+						);
+					}
+					// A push from an earlier listener on this workflow can arrive late.
+					if (belongsToThisArm(execution)) {
+						return {
+							state: 'received',
+							executionId,
+							result: await awaitExecutionResult(executionId),
+						};
+					}
+				}
+				// No push event named the execution: take the newest one of this arm. The workflow
+				// access check above covers these rows, so the query needs no sharing scope.
+				const received = (
+					await executionRepository.findManyByRangeQuery({
+						kind: 'range',
+						workflowId,
+						range: { limit: 5 },
+						order: { startedAt: 'DESC' },
+					})
+				).find(belongsToThisArm);
+				if (received) {
+					return {
+						state: 'received',
+						executionId: received.id,
+						result: await awaitExecutionResult(received.id),
+					};
+				}
+				// Past the deadline the registration is gone or about to go: the timeout push can
+				// reach the client before the deregistration completes.
+				const stillArmed =
+					Date.now() < armedAtMs + MAX_TIMEOUT_MS &&
+					(await testWebhookRegistrations.getAllRegistrations()).some(
+						(registration) => registration.workflowEntity.id === workflowId,
+					);
+				return { state: stillArmed ? 'armed' : 'timed_out' };
+			},
 		};
+
+		return adapter;
 	}
 
 	private createCredentialAdapter(
