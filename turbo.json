@@ -149,6 +149,9 @@
 		"@n8n/task-runner#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/workflow-sdk#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"n8n-core#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
