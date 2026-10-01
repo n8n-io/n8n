@@ -452,7 +452,7 @@ export class StreamSink implements RunOutputSink<void> {
 		const costUsage = this.services.applyCost(emission.usage);
 		await this.guard.write({
 			type: 'finish',
-			finishReason: 'tool-calls',
+			finishReason: emission.finishReason ?? 'tool-calls',
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 		});

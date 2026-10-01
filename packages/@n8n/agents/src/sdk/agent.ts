@@ -837,6 +837,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
+	async resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.resumePaused(options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
 	/**
 	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
 	 * step checkpoint after a process crash. There is no pending tool call to

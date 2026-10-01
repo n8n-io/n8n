@@ -22,6 +22,9 @@ import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agen
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 
 import { createOwner } from '../../shared/db/users';
 
@@ -144,6 +147,98 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(remaining.map((job) => job.id)).toEqual([suspendedId]);
 	});
 
+	it('keeps one stop group until every selected job settles and the combined report is delivered', async () => {
+		const first = uuid();
+		const second = uuid();
+		const workflow = uuid();
+		const otherThread = uuid();
+		const pauseRequestId = uuid();
+		for (const id of [first, second])
+			await insertJob({ id, parentThreadId: 'parent', status: 'running', settledAt: null });
+		await insertJob({
+			id: workflow,
+			parentThreadId: 'parent',
+			kind: 'workflow',
+			status: 'running',
+			settledAt: null,
+		});
+		await insertJob({
+			id: otherThread,
+			parentThreadId: 'other',
+			status: 'running',
+			settledAt: null,
+		});
+		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
+		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuid());
+		expect(
+			(await repository.findByParentThread('parent'))
+				.filter((job) => job.pauseRequestId === pauseRequestId)
+				.map((job) => job.id)
+				.sort(),
+		).toEqual([first, second].sort());
+		expect((await repository.findById(workflow))?.pauseRequestId).toBeNull();
+		expect((await repository.findById(otherThread))?.pauseRequestId).toBeNull();
+
+		const later = uuid();
+		await insertJob({ id: later, parentThreadId: 'parent', status: 'running', settledAt: null });
+		await repository.update(first, { status: 'paused', settledAt: new Date(), timeoutAt: null });
+		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
+		await repository.settleIfActive(second, { status: 'completed', result: 'Won the race' });
+		expect((await repository.findWakeableUnconsumed('parent')).map((job) => job.id).sort()).toEqual(
+			[first, second].sort(),
+		);
+		expect(await repository.markMailConsumed('parent', [first, second])).toBe(0);
+		expect(await repository.resumeIfPaused(first, pauseRequestId, 'running', new Date())).toBe(
+			false,
+		);
+		expect(await repository.markMailConsumed('parent', [first, second], true)).toBe(2);
+		expect(await repository.markMailConsumed('parent', [first, second], true)).toBe(0);
+		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
+		expect(await repository.countActiveSubAgentsByParentThread('parent')).toBe(2);
+		await repository.deleteSettledBefore(new Date(Date.now() + 60_000));
+		expect((await repository.findById(first))?.status).toBe('paused');
+		const deadline = new Date(Date.now() + 30 * 60_000);
+		expect(await repository.resumeIfPaused(first, pauseRequestId, 'running', deadline)).toBe(true);
+		expect(await repository.resumeIfPaused(first, pauseRequestId, 'running', deadline)).toBe(false);
+		expect(await repository.findById(first)).toMatchObject({
+			status: 'running',
+			pauseRequestId: null,
+			timeoutAt: deadline,
+			settledAt: null,
+			notifiedAt: null,
+		});
+	});
+
+	it.each([false, true])(
+		'keeps the pause report delivery state when cancelling a paused job (delivered: %s)',
+		async (delivered) => {
+			const cancelledId = uuid();
+			const remainingId = uuid();
+			const pauseRequestId = uuid();
+			for (const id of [cancelledId, remainingId]) {
+				await insertJob({ id, parentThreadId: 'parent', status: 'paused', pauseRequestId });
+			}
+			if (delivered) {
+				await repository.markMailConsumed('parent', [cancelledId, remainingId], true);
+			}
+			const notifiedAt = (await repository.findById(cancelledId))?.notifiedAt;
+
+			expect(await repository.settleIfActive(cancelledId, { status: 'cancelled' })).toBe(true);
+			expect(await repository.markMailConsumed('parent', [cancelledId])).toBe(0);
+			expect(await repository.findById(cancelledId)).toMatchObject({
+				status: 'cancelled',
+				pauseRequestId,
+				notifiedAt,
+			});
+			expect(
+				(await repository.findWakeableUnconsumed('parent')).map((job) => job.id).sort(),
+			).toEqual(delivered ? [] : [cancelledId, remainingId].sort());
+			expect(
+				await repository.resumeIfPaused(remainingId, pauseRequestId, 'running', new Date()),
+			).toBe(delivered);
+		},
+	);
+
 	it('consumes only selected settled rows from the requested thread', async () => {
 		const selectedId = uuid();
 		const otherId = uuid();
@@ -173,6 +268,77 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(other?.notifiedAt).toBeNull();
 		expect(running?.notifiedAt).toBeNull();
 		expect(foreign?.notifiedAt).toBeNull();
+	});
+
+	it('pauses only after checkpoint persistence and execution finalization', async () => {
+		const checkpoints = Container.get(AgentCheckpointRepository);
+		const threads = Container.get(AgentExecutionThreadRepository);
+		const childThreadId = uuid();
+		const runId = uuid();
+		const id = uuid();
+		const executionId = uuid();
+		const agent = await agentRepository.findOneByOrFail({ id: agentId });
+		await threads.insert({
+			id: childThreadId,
+			projectId: agent.projectId,
+			agentId,
+			agentName: agent.name,
+		});
+		await repository.manager.insert(AgentExecution, {
+			id: executionId,
+			threadId: childThreadId,
+			status: 'running',
+		});
+		await insertJob({
+			id,
+			parentThreadId: 'parent',
+			subAgentId: agentId,
+			childThreadId,
+			status: 'running',
+			pauseRequestId: uuid(),
+			settledAt: null,
+		});
+		const job = await repository.findOneByOrFail({ id });
+		const original = JSON.stringify({ status: 'suspended', pendingToolCalls: { approval: {} } });
+		const state = JSON.stringify({
+			status: 'suspended',
+			finishReason: 'paused',
+			pendingToolCalls: { approval: {} },
+		});
+		try {
+			expect(await repository.pauseIfRequested(job, 'Progress', runId, state)).toBe(false);
+			const updatedAt = new Date(Date.now() - 60_000);
+			await checkpoints.insert({
+				runId,
+				agentId,
+				threadId: childThreadId,
+				state: original,
+				updatedAt,
+			});
+			expect(await checkpoints.markUserPaused(runId, agentId, original, state, updatedAt)).toBe(
+				true,
+			);
+			expect((await checkpoints.findByRunId(runId))?.updatedAt).toEqual(updatedAt);
+			expect(await checkpoints.markUserPaused(runId, agentId, original, state, updatedAt)).toBe(
+				false,
+			);
+			expect(await repository.pauseIfRequested(job, 'Progress', runId, state)).toBe(false);
+			await repository.manager.update(AgentExecution, executionId, { status: 'success' });
+			expect(await repository.pauseIfRequested(job, 'Progress', runId, original)).toBe(false);
+			expect(await repository.pauseIfRequested(job, 'Progress', runId, state)).toBe(true);
+			expect(await repository.settleIfActive(id, { status: 'failed' }, { status: 'running' })).toBe(
+				false,
+			);
+			expect(await repository.findById(id)).toMatchObject({
+				status: 'paused',
+				timeoutAt: null,
+				result: 'Progress',
+			});
+			expect(await repository.findSettledSubAgentsWithCheckpoints()).toEqual([]);
+		} finally {
+			await checkpoints.delete(runId);
+			await threads.delete(childThreadId);
+		}
 	});
 
 	it('deletes old settled jobs only if their results are marked as delivered', async () => {

@@ -26,6 +26,9 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentBackgroundJobStatus;
 
+	@Column({ type: 'uuid', nullable: true, comment: 'Groups jobs stopped by one user request' })
+	pauseRequestId: string | null;
+
 	@Column({ type: 'varchar', length: 36 })
 	parentAgentId: string;
 

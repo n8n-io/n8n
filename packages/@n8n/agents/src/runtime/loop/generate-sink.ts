@@ -76,7 +76,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		return {
 			runId: suspendRunId,
 			messages: list.responseDelta(),
-			finishReason: 'tool-calls',
+			finishReason: emission.finishReason ?? 'tool-calls',
 			usage,
 			pendingSuspend: suspensions.map((s) => ({
 				runId: suspendRunId,

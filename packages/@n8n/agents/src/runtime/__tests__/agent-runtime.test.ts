@@ -1070,6 +1070,39 @@ describe('AgentRuntime — execution counters', () => {
 		);
 	});
 
+	it.each(['generate', 'stream'] as const)(
+		'omits local and provider tools for one %s execution when disabled',
+		async (mode) => {
+			generateText.mockResolvedValue(makeGenerateSuccess());
+			streamText.mockImplementation(() => makeStreamSuccess());
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Report the saved progress.',
+				tools: [makeMockTool('work', vi.fn())],
+				providerTools: [{ name: 'openai.web_search', args: {} }],
+			});
+
+			for (const toolsEnabled of [false, undefined]) {
+				if (mode === 'generate') await runtime.generate('Report', { toolsEnabled });
+				else {
+					const result = await runtime.stream('Report', { toolsEnabled });
+					await collectChunks(result.stream);
+				}
+				const model = mode === 'generate' ? generateText : streamText;
+				const request = model.mock.lastCall?.[0];
+				if (toolsEnabled === false) expect(request.tools).toBeUndefined();
+				else {
+					expect(request.tools.work).toBeDefined();
+					expect(request.tools['openai.web_search']).toMatchObject({
+						type: 'provider',
+						isProviderExecuted: true,
+					});
+				}
+			}
+		},
+	);
+
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
 		generateText
 			.mockResolvedValueOnce({
@@ -3416,6 +3449,152 @@ function makeStreamWithToolCalls(
 		),
 	};
 }
+
+describe('AgentRuntime — user pause', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it.each(['generate', 'stream'] as const)(
+		'finishes the current %s tool batch and resumes once without replay',
+		async (mode) => {
+			const store = makeClaimingCheckpointStore();
+			const entered = createDeferredPromise();
+			const release = createDeferredPromise();
+			const handler = vi.fn(async () => {
+				entered.resolve();
+				await release.promise;
+				return 'Saved partial result';
+			});
+			const tool = makeMockTool('work', handler);
+			const calls = ['first', 'second'].map((toolCallId) => ({
+				toolCallId,
+				toolName: 'work',
+				args: {},
+			}));
+			generateText.mockResolvedValueOnce(makeGenerateWithToolCalls(calls));
+			streamText.mockReturnValueOnce(makeStreamWithToolCalls(calls));
+			const runtime = createRuntimeWithCheckpointStore([tool], store);
+			let requested = false;
+			let finished = false;
+			let runId = '';
+			const options = {
+				shouldPause: async () => requested,
+				persistence: { threadId: 'child', resourceId: 'user' },
+			};
+			const completion = (async () => {
+				if (mode === 'generate') {
+					const result = await runtime.generate('Do two steps', options);
+					runId = result.runId;
+					return result;
+				}
+				const result = await runtime.stream('Do two steps', options);
+				runId = result.runId;
+				return await collectChunks(result.stream);
+			})().finally(() => {
+				finished = true;
+			});
+			await entered.promise;
+			requested = true;
+			expect(finished).toBe(false);
+			expect(store.save).not.toHaveBeenCalled();
+			release.resolve();
+			const result = await completion;
+			expect(Array.isArray(result) ? result.at(-1) : result).toMatchObject({
+				finishReason: 'paused',
+			});
+			expect(handler).toHaveBeenCalledTimes(2);
+			const state = runtime.getState();
+			expect(state.status).toBe('suspended');
+			const checkpoint = await store.load(runId);
+			expect(checkpoint).toMatchObject({
+				finishReason: 'paused',
+				pendingToolCalls: {},
+				iterationCount: 1,
+				persistence: options.persistence,
+			});
+
+			streamText.mockReset().mockReturnValue(makeStreamSuccess('Finished from the saved results'));
+			const resumes = await Promise.allSettled(
+				[1, 2].map(async () => {
+					const restarted = createRuntimeWithCheckpointStore([tool], store);
+					return await restarted.resumePaused({ runId });
+				}),
+			);
+			expect(resumes.filter((resume) => resume.status === 'fulfilled')).toHaveLength(1);
+			for (const resume of resumes) {
+				if (resume.status === 'rejected') expect(resume.reason).toBeInstanceOf(StaleResumeError);
+				else
+					expect((await collectChunks(resume.value.stream)).at(-1)).toMatchObject({
+						finishReason: 'stop',
+					});
+			}
+			expect(handler).toHaveBeenCalledTimes(2);
+			expect(JSON.stringify(streamText.mock.calls[0][0].messages)).toContain(
+				'Saved partial result',
+			);
+			expect(await store.load(runId)).toBeUndefined();
+		},
+	);
+
+	it.each(['admission', 'options'] as const)(
+		'pauses before the first model call and permits a retry after %s fails',
+		async (failure) => {
+			const store = makeClaimingCheckpointStore();
+			const runtime = createRuntimeWithCheckpointStore([], store);
+			const result = await runtime.generate('Start later', {
+				shouldPause: async () => true,
+				maxIterations: 10,
+			});
+			expect(result.finishReason).toBe('paused');
+			expect(generateText).not.toHaveBeenCalled();
+			const original = await store.load(result.runId);
+			await expect(
+				runtime.resumePaused({
+					runId: result.runId,
+					maxIterations: failure === 'options' ? 1 : 10,
+					onResumeClaimed: async () => {
+						throw new Error('Admission failed');
+					},
+				}),
+			).rejects.toThrow(
+				failure === 'options' ? 'Cannot decrease maxIterations' : 'Admission failed',
+			);
+			expect(await store.load(result.runId)).toEqual(original);
+			expect(streamText).not.toHaveBeenCalled();
+
+			streamText.mockReturnValue(makeStreamSuccess());
+			const restarted = createRuntimeWithCheckpointStore([], store);
+			const resumed = await restarted.resumePaused({ runId: result.runId, maxIterations: 10 });
+			expect((await collectChunks(resumed.stream)).at(-1)).toMatchObject({
+				finishReason: 'stop',
+			});
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it('preserves an approval reached by the current step', async () => {
+		const handler = vi.fn();
+		const tool = wrapToolForApproval(makeMockTool('approve_work', handler), {
+			requireApproval: true,
+		});
+		const store = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([tool], store);
+		let requested = false;
+		generateText.mockImplementationOnce(async () => {
+			requested = true;
+			return makeGenerateWithToolCall('approval', tool.name, {});
+		});
+		const result = await runtime.generate('Start', { shouldPause: async () => requested });
+		expect(handler).not.toHaveBeenCalled();
+		expect(result.pendingSuspend).toHaveLength(1);
+		await expect(runtime.resumePaused({ runId: result.runId })).rejects.toBeInstanceOf(
+			StaleResumeError,
+		);
+		expect((await store.load(result.runId))?.pendingToolCalls.approval.suspended).toBe(true);
+	});
+});
 
 describe('AgentRuntime — deferred tool loading', () => {
 	beforeEach(() => {

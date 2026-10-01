@@ -8,6 +8,7 @@ import {
 	type AgentBackgroundJobStatus,
 } from '../entities/agent-background-job.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import { AgentExecution } from '../entities/agent-execution.entity';
 
 type NewAgentBackgroundJobBase = {
 	id: string;
@@ -34,7 +35,7 @@ export type NewWorkflowJob = NewAgentBackgroundJobBase & {
 export type NewAgentBackgroundJob = NewSubAgentJob | NewWorkflowJob;
 
 export type AgentBackgroundJobSettlement = {
-	status: Exclude<AgentBackgroundJobStatus, 'running' | 'suspended'>;
+	status: Exclude<AgentBackgroundJobStatus, 'running' | 'suspended' | 'paused'>;
 	result?: string | null;
 	error?: string | null;
 };
@@ -85,7 +86,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	/** Suspended children still occupy a job slot. */
 	async countActiveSubAgentsByParentThread(parentThreadId: string): Promise<number> {
 		return await this.count({
-			where: { parentThreadId, kind: 'subagent', status: In(['running', 'suspended']) },
+			where: { parentThreadId, kind: 'subagent', status: In(['running', 'suspended', 'paused']) },
 		});
 	}
 
@@ -113,25 +114,43 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 
 	/** Results and approval requests that still need delivery. */
 	async findWakeableUnconsumed(parentThreadId: string): Promise<AgentBackgroundJob[]> {
+		const activePauseGroup = this.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(AgentBackgroundJob, 'member')
+			.leftJoin(
+				AgentExecution,
+				'execution',
+				"execution.threadId = member.childThreadId AND execution.status = 'running'",
+			)
+			.where('member.pauseRequestId = job.pauseRequestId')
+			.andWhere("(member.status IN ('running', 'suspended') OR execution.id IS NOT NULL)")
+			.getQuery();
 		return await this.createQueryBuilder('job')
 			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
 			.andWhere("job.status <> 'running'")
 			.andWhere('job.notifiedAt IS NULL')
+			.andWhere(`(job.pauseRequestId IS NULL OR NOT EXISTS ${activePauseGroup})`)
 			.orderBy('COALESCE(job.settledAt, job.updatedAt)', 'ASC')
 			.addOrderBy('job.createdAt', 'ASC')
 			.getMany();
 	}
 
-	async markMailConsumed(parentThreadId: string, ids: string[]): Promise<number> {
+	async markMailConsumed(
+		parentThreadId: string,
+		ids: string[],
+		includePauseReports = false,
+	): Promise<number> {
 		if (ids.length === 0) return 0;
 
-		const result = await this.createQueryBuilder()
+		const query = this.createQueryBuilder()
 			.update()
 			.set({ notifiedAt: new Date() })
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')
-			.andWhere('notifiedAt IS NULL')
-			.execute();
+			.andWhere('notifiedAt IS NULL');
+		if (!includePauseReports) query.andWhere('pauseRequestId IS NULL');
+		const result = await query.execute();
 		return result.affected ?? 0;
 	}
 
@@ -179,6 +198,17 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return await this.find({ where: kind ? { status: 'running', kind } : { status: 'running' } });
 	}
 
+	async findRequestedPauses(parentThreadId?: string): Promise<AgentBackgroundJob[]> {
+		return await this.find({
+			where: {
+				kind: 'subagent',
+				pauseRequestId: Not(IsNull()),
+				status: In(['running', 'suspended', 'paused']),
+				...(parentThreadId ? { parentThreadId } : {}),
+			},
+		});
+	}
+
 	async findSettledSubAgentsWithCheckpoints(): Promise<AgentBackgroundJob[]> {
 		return await this.createQueryBuilder('job')
 			.innerJoin(
@@ -187,7 +217,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				'checkpoint.agentId = job.subAgentId AND checkpoint.threadId = job.childThreadId',
 			)
 			.where("job.kind = 'subagent'")
-			.andWhere("job.status NOT IN ('running', 'suspended')")
+			.andWhere("job.status NOT IN ('running', 'suspended', 'paused')")
 			.andWhere('checkpoint.state IS NOT NULL')
 			.distinct(true)
 			.getMany();
@@ -223,6 +253,67 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return result.affected === 1;
 	}
 
+	async requestPause(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId: string,
+		pauseRequestId: string,
+	): Promise<void> {
+		await this.update(
+			{
+				parentAgentId,
+				parentThreadId,
+				parentResourceId,
+				kind: 'subagent',
+				status: In(['running', 'suspended']),
+				pauseRequestId: IsNull(),
+			},
+			{ pauseRequestId, notifiedAt: null },
+		);
+	}
+
+	async pauseIfRequested(
+		job: AgentBackgroundJob,
+		resultText: string,
+		runId: string,
+		state: string,
+	): Promise<boolean> {
+		const running = this.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(AgentExecution, 'execution')
+			.where('execution.threadId = :childThreadId')
+			.andWhere("execution.status = 'running'")
+			.getQuery();
+		const result = await this.createQueryBuilder()
+			.update()
+			.set({
+				status: 'paused',
+				result: resultText,
+				timeoutAt: null,
+				settledAt: new Date(),
+				notifiedAt: null,
+			})
+			.where({ id: job.id, status: In(['running', 'suspended']), pauseRequestId: Not(IsNull()) })
+			.andWhere(this.matchCheckpoint(), { runId, state, expired: false })
+			.andWhere(`NOT EXISTS ${running}`, { childThreadId: job.childThreadId })
+			.execute();
+		return result.affected === 1;
+	}
+
+	async resumeIfPaused(
+		id: string,
+		pauseRequestId: string,
+		status: 'running' | 'suspended',
+		timeoutAt: Date,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'paused', pauseRequestId, notifiedAt: Not(IsNull()) },
+			{ status, pauseRequestId: null, timeoutAt, settledAt: null, notifiedAt: null, result: null },
+		);
+		return result.affected === 1;
+	}
+
 	/**
 	 * Settle the job if it is still active. Every writer that ends a job —
 	 * child settle, cancel, timeout, sweeper reconciliation — funnels through
@@ -236,7 +327,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		const result = await this.update(
 			{
 				id,
-				status: expected?.status ?? In(['running', 'suspended']),
+				status: expected?.status ?? In(['running', 'suspended', 'paused']),
 				...(expected?.timeoutAt !== undefined ? { timeoutAt: expected.timeoutAt ?? IsNull() } : {}),
 			},
 			{
@@ -244,7 +335,10 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				result: settlement.result ?? null,
 				error: settlement.error ?? null,
 				settledAt: new Date(),
-				notifiedAt: null,
+				notifiedAt:
+					settlement.status === 'cancelled'
+						? () => 'CASE WHEN "status" = \'paused\' THEN "notifiedAt" ELSE NULL END'
+						: null,
 			},
 		);
 		return result.affected === 1;

@@ -389,6 +389,42 @@ export class AgentRuntime {
 		}
 	}
 
+	/** Resume a user pause without settling or replaying a tool call. */
+	async resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult> {
+		this.runId = options.runId;
+		const state = await this.runState.resume(this.runId);
+		if (!state || state.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
+			throw new StaleResumeError('This run is not paused');
+		}
+		const { runId: _runId, hostMetadata, onResumeClaimed, ...executionOptions } = options;
+		const resumeOptions: RuntimeExecutionOptions = {
+			...mergeResumeExecutionOptions(state, executionOptions),
+			persistence: mergeResumePersistence(state.persistence, hostMetadata),
+		};
+		const list = await this.restoreCheckpointMessages(state);
+		if (!(await this.runState.claimResume(this.runId, state))) {
+			throw new StaleResumeError('This run has already resumed');
+		}
+		this.updateState({ status: 'running', persistence: resumeOptions.persistence });
+		const abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+		try {
+			await onResumeClaimed?.();
+			await this.prepareResumeMemory(list, state.persistence);
+			return this.createResumedStream({ list, options: resumeOptions, abortScope });
+		} catch (error) {
+			abortScope.dispose();
+			// No task action has started. Keep the checkpoint available for a retry.
+			await this.runState.suspend(this.runId, {
+				...state,
+				persistence: resumeOptions.persistence,
+			});
+			this.updateState({ status: 'suspended', finishReason: 'paused' });
+			throw error;
+		}
+	}
+
 	/**
 	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
 	 * step checkpoint after a process crash. Unlike resume(), there is no
@@ -619,7 +655,7 @@ export class AgentRuntime {
 		result.runId = this.runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
-		if (!result.pendingSuspend?.length) {
+		if (!result.pendingSuspend?.length && result.finishReason !== 'paused') {
 			this.updateState({ status: 'success', messageList: list.serialize() });
 			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
 		}
@@ -732,6 +768,24 @@ export class AgentRuntime {
 			// consuming it. End the run even if a consumer still returned messages.
 			if (state.guardrailStop) break;
 			if (state.reachedStopCondition && !hasInput) break;
+			if (await prepared.options?.shouldPause?.()) {
+				await this.persistSuspension(
+					{},
+					prepared.options,
+					prepared.list,
+					state.totalUsage,
+					state.maxIterations,
+					state.iterationCount,
+					'paused',
+				);
+				return await sink.finishSuspended({
+					suspendRunId: this.runId,
+					list: prepared.list,
+					usage: state.totalUsage,
+					suspensions: [],
+					finishReason: 'paused',
+				});
+			}
 			state.reachedStopCondition = false;
 			const settlement = await this.runLoopIteration(prepared, sink, state);
 			if (settlement.suspended) return settlement.result;
@@ -964,7 +1018,7 @@ export class AgentRuntime {
 			system: prompt.system,
 			messages: prompt.messages,
 			abortSignal: abortScope.signal,
-			hasTools: tools.hasTools,
+			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
 			providerOptions: staticContext.providerOptions,
@@ -1215,6 +1269,7 @@ export class AgentRuntime {
 		totalUsage: TokenUsage | undefined,
 		maxIterations?: number,
 		iterationCount?: number,
+		finishReason?: 'paused',
 	): Promise<void> {
 		const checkpointOptions = buildCheckpointOptions(options, maxIterations, iterationCount);
 
@@ -1226,10 +1281,16 @@ export class AgentRuntime {
 			messageList: list.serialize(),
 			pendingToolCalls,
 			usage: totalUsage,
+			finishReason,
 			...checkpointOptions,
 		};
 		await this.runState.suspend(this.runId, state);
-		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
+		this.updateState({
+			status: 'suspended',
+			pendingToolCalls,
+			messageList: list.serialize(),
+			finishReason,
+		});
 		await this.memory.persistTurnDelta(list, options);
 	}
 
