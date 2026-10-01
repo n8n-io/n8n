@@ -132,11 +132,10 @@ export class MigrationFindingQueryService {
 			this.workflowStatisticsRepository.findByWorkflowIds(workflowIds),
 		]);
 		const statisticsByWorkflow = groupByWorkflowId(statistics);
-		// A batch rule decides from all workflows at once, so its issues come from the full scan.
-		// The current endpoint scans for every rule, so this is no regression for the few batch rules.
+		// A batch rule decides from all workflows at once, so its issues come from a scan of that rule.
 		const issuesByWorkflow =
 			'collectWorkflowData' in rule
-				? await this.issuesFromScan(targetVersion, rule.id)
+				? await this.issuesFromScan(targetVersion, rule)
 				: await this.issuesFromRecheck(rule, workflows);
 
 		const affectedWorkflows: BreakingChangeAffectedWorkflow[] = [];
@@ -171,13 +170,12 @@ export class MigrationFindingQueryService {
 		};
 	}
 
-	/** Issues per workflow id for one rule, taken from a full scan. Concurrent callers share the scan. */
+	/** Issues per workflow id for one batch rule, from a scan of that rule alone. */
 	private async issuesFromScan(
 		targetVersion: BreakingChangeVersion,
-		ruleId: string,
+		rule: IBreakingChangeBatchWorkflowRule,
 	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
-		const { report } = await this.breakingChangeService.detect(targetVersion);
-		const result = report.workflowResults.find((entry) => entry.ruleId === ruleId);
+		const result = await this.breakingChangeService.detectRule(targetVersion, rule);
 		return new Map(
 			(result?.affectedWorkflows ?? []).map((workflow) => [workflow.id, workflow.issues]),
 		);
