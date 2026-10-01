@@ -210,12 +210,23 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-deploy-blocked')).toHaveTextContent('createBot.needsCredential');
 		});
 
-		it('offers the deployment once the credential is picked', async () => {
+		it('offers the deployment once the credential checks out', async () => {
 			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 
 			await waitFor(() => {
 				expect(getByTestId('teams-deploy-to-azure')).toHaveAttribute('href', DEPLOY_URL);
 			});
+		});
+
+		it('withholds the deployment while the credential fails its check', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			expect(getByTestId('teams-deploy-to-azure')).toBeDisabled();
+			expect(getByTestId('teams-deploy-to-azure')).not.toHaveAttribute('href');
+			expect(getByTestId('teams-deploy-blocked')).toHaveTextContent('createBot.needsCredential');
 		});
 
 		it('rebuilds the deployment when the credential changes, since it is baked in', async () => {

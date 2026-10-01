@@ -177,6 +177,12 @@ const ready = computed(
 	() => canDownloadPackage.value && (props.connected || credentialVerified.value),
 );
 
+// A deployment with IDs that fail the check binds the bot to the wrong app
+// registration, and Microsoft allows one bot for each registration.
+const deployToAzureUrl = computed(() =>
+	props.connected || credentialVerified.value ? (setupState.value?.deployToAzureUrl ?? null) : null,
+);
+
 async function runCredentialCheck(trigger: 'auto' | 'recheck') {
 	const request = ++latestCheck;
 	const id = credentialId.value;
@@ -487,12 +493,12 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 						</N8nText>
 						<div :class="$style.actions">
 							<N8nButton
-								:href="setupState?.deployToAzureUrl ?? undefined"
+								:href="deployToAzureUrl ?? undefined"
 								target="_blank"
 								variant="subtle"
 								size="medium"
 								icon="azure"
-								:disabled="!setupState?.deployToAzureUrl"
+								:disabled="!deployToAzureUrl"
 								data-testid="teams-deploy-to-azure"
 								@click="agentTelemetry.trackClickedDeployToAzure({ agentId })"
 							>
@@ -525,7 +531,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							</N8nButton>
 						</div>
 						<N8nText
-							v-else-if="!setupState?.deployToAzureUrl"
+							v-else-if="!deployToAzureUrl && !checking"
 							:class="$style.hint"
 							size="small"
 							data-testid="teams-deploy-blocked"
