@@ -7927,6 +7927,36 @@ describe('createCredentialAdapter', () => {
 		});
 	});
 
+	describe('getAllowedHttpRequestDomains', () => {
+		const adapterFor = (credential: unknown, data: Record<string, unknown>) =>
+			createNodeAdapterServiceForTests([], {
+				credentialsFinderService: { findCredentialForUser: vi.fn().mockResolvedValue(credential) },
+				credentialsService: { decrypt: vi.fn().mockResolvedValue(data) },
+			}).credentialService;
+		const credential = { id: 'cred-1', name: 'Header Auth account', type: 'httpHeaderAuth' };
+
+		it('returns only the domain setting fields of the credential', async () => {
+			const credentialService = adapterFor(credential, {
+				value: 'secret',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			await expect(credentialService.getAllowedHttpRequestDomains!('cred-1')).resolves.toEqual({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+		});
+
+		it('returns undefined when the credential is not readable by the user', async () => {
+			const credentialService = adapterFor(null, {});
+
+			await expect(
+				credentialService.getAllowedHttpRequestDomains!('cred-1'),
+			).resolves.toBeUndefined();
+		});
+	});
+
 	// A scope/setup answer has to be grounded in the credential's own docs page rather
 	// than recalled, so every search result carries the URL to look up (AGENT-743).
 	describe('searchCredentialTypes', () => {

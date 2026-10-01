@@ -1,0 +1,551 @@
+import {
+	assertUrlAllowed,
+	type IDataObject,
+	type IHttpRequestOptions,
+	type INode,
+	type INodeType,
+} from 'n8n-workflow';
+
+import {
+	compat,
+	contractHash,
+	credential,
+	custom,
+	defineNode,
+	diffContracts,
+	generateNodeModule,
+	lintContract,
+	oneOf,
+	obj,
+	paginate,
+	str,
+	toContract,
+	toCredentialType,
+	toTriggerNodeType,
+	type HttpRequest,
+} from '../index';
+import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
+import { executorOf, toRequestOptions, withCredentialHostsOf, type ExecutorHost } from '../runtime';
+
+const node: INode = {
+	id: '1',
+	name: 'Echo',
+	type: 'echo',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+	credentials: { echoApi: { id: '1', name: 'Echo account' } },
+};
+
+const echoApi = compat('echoApi', { hosts: ['api.echo.test'] });
+const headerAuth = compat('httpHeaderAuth');
+const serverApi = compat('serverApi', {
+	fields: { server: str().default('https://api.server.test') },
+	baseUrl: ({ server }) => server,
+});
+
+const echo = defineNode({
+	id: 'echo',
+	displayName: 'Echo',
+	credential: credential({ types: [echoApi, headerAuth, serverApi], optional: true }),
+	baseUrl: 'https://api.echo.test/v1',
+});
+
+const output = obj({ ok: str() });
+
+/** An action whose `run()` sends each request of `requests` and returns the last body. */
+const sender = (requests: readonly HttpRequest[]) =>
+	echo.action('send', {
+		action: 'Send',
+		summary: 'Send requests.',
+		flow: { effect: 'read', cardinality: 'per-item' },
+		input: { url: str().optional() },
+		output,
+		async run({ http }) {
+			const bodies = await requests.reduce<Promise<unknown[]>>(
+				async (sent, request) => [...(await sent), await http.request(request)],
+				Promise.resolve([]),
+			);
+			return { ok: String(bodies.length) };
+		},
+	});
+
+const fetchUrl = echo.action('fetch', {
+	action: 'Fetch a URL',
+	summary: 'GET any URL.',
+	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
+	egress: { fromInput: 'url' },
+	input: { url: str() },
+	output,
+	async run({ input, http }) {
+		await http.request({ url: input.url });
+		return { ok: 'yes' };
+	},
+});
+
+const regional = echo.action('regional', {
+	action: 'Regional',
+	summary: 'Call a regional API.',
+	flow: { effect: 'read', cardinality: 'per-item' },
+	egress: { hosts: ['{region}.region.echo.test'] },
+	input: { region: oneOf('eu', 'us') },
+	output,
+	async run({ input, http }) {
+		await http.request({ url: `https://${input.region}.region.echo.test/x` });
+		return { ok: 'yes' };
+	},
+});
+
+interface HostSetup {
+	readonly credentialType?: string;
+	readonly data?: IDataObject;
+	readonly parameters?: Record<string, unknown>;
+	readonly replies?: unknown[];
+}
+
+function hostOf({ credentialType, data = {}, parameters = {}, replies = [] }: HostSetup) {
+	const sent: IHttpRequestOptions[] = [];
+	const host: ExecutorHost = {
+		items: [{ json: {} }],
+		node,
+		parameter: (name) =>
+			name === 'authentication' ? (credentialType ?? 'none') : parameters[name],
+		request: async (options) => {
+			sent.push(options);
+			const reply = replies[sent.length - 1];
+			if (reply instanceof Error) throw reply;
+			return reply ?? {};
+		},
+		credentialData: async () => await Promise.resolve(data),
+		continueOnFail: () => false,
+		wait: async () => {},
+	};
+	return { host, sent };
+}
+
+const DOMAINS = { allowedHttpRequestDomains: 'domains', allowedDomains: 'allowed.test' };
+
+describe('host egress', () => {
+	it('refuses a host outside the allowed hosts and sends no request', async () => {
+		const { host, sent } = hostOf({ credentialType: 'echoApi' });
+		await expect(executorOf(sender([{ url: 'https://other.test/x' }]))(host)).rejects.toThrow(
+			'Host not allowed: echo.send may send requests to api.echo.test, not to other.test',
+		);
+		expect(sent).toEqual([]);
+	});
+
+	it('sets allowedDomains on each allowed request, so the request layer checks redirects', async () => {
+		const { host, sent } = hostOf({ credentialType: 'echoApi' });
+		await executorOf(sender([{ path: '/a' }, { url: 'https://api.echo.test/b' }]))(host);
+		expect(sent.map(({ url, allowedDomains }) => [url, allowedDomains])).toEqual([
+			['https://api.echo.test/v1/a', 'api.echo.test'],
+			['https://api.echo.test/b', 'api.echo.test'],
+		]);
+	});
+
+	it('refuses a redirect hop to a host outside the allowed hosts', async () => {
+		const { host, sent } = hostOf({ credentialType: 'echoApi' });
+		await executorOf(sender([{ path: '/a' }]))(host);
+		const [options] = sent;
+		expect(() =>
+			assertUrlAllowed({ url: 'https://other.test/x', allowedDomains: options?.allowedDomains }),
+		).toThrow('Domain not allowed');
+	});
+
+	it('refuses a path that would leave the base URL', () => {
+		const base = 'https://api.echo.test';
+		const paths = ['//other.test/x', '/\\other.test/x', '/\t/other.test/x', 'x', '@other.test/x'];
+		paths.forEach((path) => {
+			expect(() => toRequestOptions({ path: path as `/${string}` }, base)).toThrow();
+		});
+		expect(toRequestOptions({ path: '/users' }, 'https://api.echo.test/v1/').url).toBe(
+			'https://api.echo.test/v1/users',
+		);
+	});
+
+	it('refuses an absolute URL that is not http or https', () => {
+		['file:///etc/hosts', 'ftp://api.echo.test/x', 'api.echo.test/x'].forEach((url) => {
+			expect(() => toRequestOptions({ url }, undefined)).toThrow(
+				'The request URL must be an absolute http or https URL',
+			);
+		});
+	});
+
+	it('checks every page, so a next link to another host is refused', async () => {
+		const pages = echo.action('pages', {
+			action: 'Pages',
+			summary: 'Read pages.',
+			flow: { effect: 'read', cardinality: '1:N' },
+			input: {},
+			output,
+			async *run({ http }) {
+				yield* paginate(http, {
+					request: (cursor) => (cursor ? { url: cursor } : { path: '/items' }),
+					items: () => [{ ok: 'page' }],
+					next: (body) =>
+						body && typeof body === 'object' && 'next' in body ? String(body.next) : undefined,
+				});
+			},
+		});
+		const { host, sent } = hostOf({
+			credentialType: 'echoApi',
+			replies: [{ next: 'https://other.test/page2' }],
+		});
+		await expect(executorOf(pages)(host)).rejects.toThrow('not to other.test');
+		expect(sent).toHaveLength(1);
+	});
+
+	it('does not retry a refused request', async () => {
+		const { host, sent } = hostOf({ credentialType: 'echoApi' });
+		const retried = sender([{ url: 'https://other.test/x', retry: true }]);
+		await expect(executorOf(retried)(host)).rejects.toThrow('Host not allowed');
+		expect(sent).toEqual([]);
+	});
+
+	it('allows a host from input that the credential list allows, and refuses another', async () => {
+		const allowed = hostOf({
+			credentialType: 'httpHeaderAuth',
+			data: DOMAINS,
+			parameters: { url: 'https://allowed.test/x' },
+		});
+		await executorOf(fetchUrl)(allowed.host);
+		expect(allowed.sent.map(({ allowedDomains }) => allowedDomains)).toEqual(['allowed.test']);
+
+		const refused = hostOf({
+			credentialType: 'httpHeaderAuth',
+			data: DOMAINS,
+			parameters: { url: 'https://other.test/x' },
+		});
+		await expect(executorOf(fetchUrl)(refused.host)).rejects.toThrow(
+			'Domain not allowed: This credential is restricted from accessing other.test. Only the following domains are allowed: allowed.test',
+		);
+		expect(refused.sent).toEqual([]);
+	});
+
+	it('does not limit the redirect hops of a host from input without a credential limit', async () => {
+		const { host, sent } = hostOf({ parameters: { url: 'https://any.test/x' } });
+		await executorOf(fetchUrl)(host);
+		expect(sent[0]?.allowedDomains).toBeUndefined();
+	});
+
+	it('keeps a typed credential on its own hosts when its setting is none', async () => {
+		const { host, sent } = hostOf({
+			credentialType: 'echoApi',
+			data: { allowedHttpRequestDomains: 'none' },
+		});
+		await executorOf(sender([{ path: '/a' }]))(host);
+		expect(sent).toHaveLength(1);
+	});
+
+	it('refuses an untyped credential whose setting is none', async () => {
+		const { host, sent } = hostOf({
+			credentialType: 'httpHeaderAuth',
+			data: { allowedHttpRequestDomains: 'none' },
+		});
+		await expect(executorOf(sender([{ path: '/a' }]))(host)).rejects.toThrow(
+			'This credential is configured to prevent use within an Echo node',
+		);
+		expect(sent).toEqual([]);
+	});
+
+	it('refuses every host for a credential type with an empty host list', async () => {
+		const closed = defineNode({
+			id: 'closed',
+			displayName: 'Closed',
+			credential: credential({ types: [compat('closedApi', { hosts: [] })] }),
+			baseUrl: 'https://api.closed.test',
+		});
+		const ping = closed.action('ping', {
+			action: 'Ping',
+			summary: 'Ping.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output,
+			async run({ http }) {
+				await http.request({ path: '/ping' });
+				return { ok: 'yes' };
+			},
+		});
+		const { host, sent } = hostOf({ credentialType: 'closedApi' });
+		await expect(
+			executorOf(ping)({
+				...host,
+				node: { ...node, credentials: { closedApi: { id: '2', name: 'Closed' } } },
+			}),
+		).rejects.toThrow(
+			'Host not allowed: the credential of closed.ping may not go to api.closed.test',
+		);
+		expect(sent).toEqual([]);
+	});
+
+	it('takes the host of a credential base URL from its fields', async () => {
+		const { host, sent } = hostOf({
+			credentialType: 'serverApi',
+			data: { server: 'https://git.example.test/api/v3' },
+		});
+		await executorOf(sender([{ path: '/repos' }]))(host);
+		expect(sent.map(({ url, allowedDomains }) => [url, allowedDomains])).toEqual([
+			['https://git.example.test/api/v3/repos', 'git.example.test'],
+		]);
+	});
+
+	it('fills a host template from an enum input field', async () => {
+		const { host, sent } = hostOf({ parameters: { region: 'eu' } });
+		await executorOf(regional)(host);
+		expect(sent.map(({ url }) => url)).toEqual(['https://eu.region.echo.test/x']);
+	});
+
+	it('rejects a host template field that is not an enum input field', () => {
+		echo.action('bad', {
+			action: 'Bad',
+			summary: 'Bad host.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			// @ts-expect-error `name` is a free string, so the host set is not finite
+			egress: { hosts: ['{name}.echo.test'] },
+			input: { name: str() },
+			output,
+			async run() {
+				return await Promise.resolve({ ok: 'no' });
+			},
+		});
+	});
+
+	it('applies the credential hosts to trigger requests', async () => {
+		const polled = echo.trigger('changed', {
+			trigger: 'On change',
+			summary: 'Starts on a change.',
+			input: {},
+			output,
+			poll: {
+				request: () => ({ url: 'https://other.test/changes' }),
+				items: () => [],
+				cursor: { id: () => 1 },
+			},
+		});
+		const sent: IHttpRequestOptions[] = [];
+		const context = {
+			getNode: () => node,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'echoApi' : undefined),
+			getWorkflowStaticData: () => ({}),
+			getMode: () => 'trigger',
+			getCredentials: async () => await Promise.resolve({}),
+			helpers: {
+				httpRequestWithAuthentication: async (_type: string, options: IHttpRequestOptions) => {
+					sent.push(options);
+					return await Promise.resolve([]);
+				},
+			},
+		};
+		const type: INodeType = new (toTriggerNodeType(polled))();
+		await expect(type.poll?.call(context as never)).rejects.toThrow('not to other.test');
+		expect(sent).toEqual([]);
+	});
+});
+
+describe('credentialHostsOf', () => {
+	const surface = { surface: 'HTTP Request' };
+
+	it('gives the declared hosts and adds the user list', () => {
+		expect(credentialHostsOf(echoApi, {}, surface)).toEqual(['api.echo.test']);
+		expect(credentialHostsOf(echoApi, DOMAINS, surface)).toEqual(['api.echo.test', 'allowed.test']);
+		expect(credentialHostsOf(echoApi, { allowedHttpRequestDomains: 'all' }, surface)).toEqual([
+			'api.echo.test',
+		]);
+	});
+
+	it('derives a host from the credential base URL', () => {
+		const base = { ...surface, baseUrl: 'https://git.example.test/api/v3' };
+		expect(credentialHostsOf(serverApi, {}, base)).toEqual(['git.example.test']);
+	});
+
+	it('keeps the legacy meaning for a type without hosts', () => {
+		expect(credentialHostsOf(headerAuth, {}, surface)).toBeUndefined();
+		expect(
+			credentialHostsOf(headerAuth, { allowedHttpRequestDomains: 'all' }, surface),
+		).toBeUndefined();
+		expect(
+			credentialHostsOf(
+				headerAuth,
+				{ ...DOMAINS, allowedDomains: ' Allowed.test , *.b.test ' },
+				surface,
+			),
+		).toEqual(['allowed.test', '*.b.test']);
+		expect(() =>
+			credentialHostsOf(headerAuth, { allowedHttpRequestDomains: 'none' }, surface),
+		).toThrow('This credential is configured to prevent use within an HTTP Request node');
+		expect(() =>
+			credentialHostsOf(headerAuth, { allowedHttpRequestDomains: 'domains' }, surface),
+		).toThrow('No allowed domains specified');
+	});
+
+	it('rejects a declared host that is not a host', () => {
+		expect(() => compat('badApi', { hosts: ['https://api.bad.test'] })).toThrow('is not a host');
+		expect(() => compat('badApi', { hosts: ['*'] })).toThrow('is not a host');
+	});
+
+	it('keeps allowedDomains when a custom signer builds new options', async () => {
+		const signed = custom({
+			name: 'signedApi',
+			displayName: 'Signed API',
+			hosts: ['api.signed.test'],
+			async authenticate(_data, request) {
+				return await Promise.resolve({ method: request.method, url: request.url });
+			},
+		});
+		const authenticate = toCredentialType(signed)?.authenticate;
+		if (typeof authenticate !== 'function') throw new Error('no custom authenticate');
+		const options = await authenticate(
+			{},
+			{ url: 'https://api.signed.test/x', allowedDomains: 'api.signed.test' },
+		);
+		expect(options.allowedDomains).toBe('api.signed.test');
+	});
+});
+
+describe('narrowHosts', () => {
+	it.each([
+		[['a.test'], ['a.test', 'b.test'], ['a.test']],
+		[['*.a.test'], ['x.a.test'], ['x.a.test']],
+		[['*.a.test'], ['*.x.a.test'], ['*.x.a.test']],
+		[['*.a.test'], ['*.a.test'], ['*.a.test']],
+		[['a.test'], ['b.test'], []],
+		[['*.a.test'], ['a.test'], []],
+	])('narrows %j and %j to %j', (a, b, expected) => {
+		expect(narrowHosts(a, b)).toEqual(expected);
+		expect(narrowHosts(b, a).sort()).toEqual([...expected].sort());
+	});
+
+	it('matches a wildcard against subdomains only', () => {
+		expect(allowsHost(['*.a.test'], 'x.a.test')).toBe(true);
+		expect(allowsHost(['*.a.test'], 'a.test')).toBe(false);
+		expect(allowsHost(['*.a.test'], 'xa.test')).toBe(false);
+	});
+});
+
+describe('credential hosts of a frozen version', () => {
+	const frozenEcho = defineNode({
+		id: 'echo',
+		displayName: 'Echo',
+		credential: credential({ types: [compat('echoApi')] }),
+		baseUrl: 'https://api.echo.test/v1',
+	});
+	const frozenGet = frozenEcho.action('get', {
+		action: 'Get',
+		summary: 'Get one record.',
+		flow: { effect: 'read', cardinality: 'per-item' },
+		input: {},
+		output,
+		async run({ http }) {
+			await http.request({ path: '/x' });
+			return { ok: 'yes' };
+		},
+	});
+	const none = { allowedHttpRequestDomains: 'none' };
+
+	it('come from the bundled version of the credential type', async () => {
+		const before = hostOf({ credentialType: 'echoApi', data: none });
+		await expect(executorOf(frozenGet)(before.host)).rejects.toThrow(
+			'This credential is configured to prevent use within an Echo node',
+		);
+
+		const { host, sent } = hostOf({ credentialType: 'echoApi', data: none });
+		await executorOf(withCredentialHostsOf(sender([]), frozenGet))(host);
+		expect(sent.map(({ url }) => url)).toEqual(['https://api.echo.test/v1/x']);
+	});
+
+	it('stay the frozen ones for a type the bundled version does not list', () => {
+		const other = defineNode({ id: 'other', displayName: 'Other' }).action('get', {
+			action: 'Get',
+			summary: 'Get.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output,
+			async run() {
+				return { ok: 'yes' };
+			},
+		});
+		expect(
+			withCredentialHostsOf(other, frozenGet).node.credential?.types[0]?.hosts,
+		).toBeUndefined();
+	});
+});
+
+describe('egress in the contract', () => {
+	const contract = toContract(fetchUrl);
+	const withHosts = (hosts: string[]) => ({ ...contract, egress: { ...contract.egress, hosts } });
+
+	it('is part of the contract document and of the hash', () => {
+		expect(contract.egress).toEqual({ fromInput: 'url' });
+		expect(toContract(sender([])).egress).toBeUndefined();
+		expect(contractHash(withHosts(['b.test', 'a.test']))).toBe(
+			contractHash(withHosts(['a.test', 'b.test'])),
+		);
+		expect(contractHash(withHosts(['a.test']))).not.toBe(contractHash(contract));
+	});
+
+	it('is a major change when a host is added and a minor change when one is removed', () => {
+		expect(diffContracts(contract, withHosts(['a.test'])).kind).toBe('major');
+		expect(diffContracts(withHosts(['a.test']), contract).kind).toBe('minor');
+		const { egress: _, ...undeclared } = contract;
+		expect(diffContracts(undeclared, contract).kind).toBe('major');
+		expect(diffContracts(contract, undeclared).changes).toEqual([
+			{ kind: 'major', text: 'egress removed' },
+		]);
+	});
+
+	it('lints a host that is not a host and a fromInput without its input field', () => {
+		expect(lintContract(withHosts(['*', '{region}.api.test']))).toEqual([
+			'echo.fetch: egress host * is not a host. Use api.example.com or *.example.com.',
+		]);
+		expect(lintContract({ ...contract, egress: { fromInput: 'link' } })).toEqual([
+			'echo.fetch: egress.fromInput names no input field: link',
+		]);
+	});
+
+	it('shows the hosts in the generated node module', () => {
+		const text = generateNodeModule('echo', [
+			{ contract, nodeType: 'echoFetch', operation: 'fetch' },
+		]);
+		expect(text).toContain('read, per-item; hosts: the host of url');
+	});
+});
+
+describe('egressIssuesOf', () => {
+	const credentialHosts = { name: 'Header account', hosts: ['allowed.test'] };
+
+	it('fails a static host outside the credential hosts and names host and credential', () => {
+		expect(
+			egressIssuesOf({ fromInput: 'url' }, { url: 'https://other.test/x' }, credentialHosts),
+		).toEqual({
+			errors: [
+				'other.test is not an allowed host of the credential "Header account". Its hosts are: allowed.test',
+			],
+			warnings: [],
+		});
+		expect(
+			egressIssuesOf({ fromInput: 'url' }, { url: 'https://allowed.test/x' }, credentialHosts),
+		).toEqual({ errors: [], warnings: [] });
+	});
+
+	it('warns for an expression, which the host checks at run time', () => {
+		const issues = egressIssuesOf(
+			{ fromInput: 'url' },
+			{ url: '={{ $json.url }}' },
+			credentialHosts,
+		);
+		expect(issues.errors).toEqual([]);
+		expect(issues.warnings).toEqual([
+			'url is an expression, so n8n checks its host at run time against the hosts of the credential "Header account": allowed.test',
+		]);
+	});
+
+	it('checks a host template with static fields', () => {
+		const egress = { hosts: ['{region}.region.echo.test'] };
+		expect(egressIssuesOf(egress, { region: 'eu' }, credentialHosts).errors).toEqual([
+			'eu.region.echo.test is not an allowed host of the credential "Header account". Its hosts are: allowed.test',
+		]);
+		expect(
+			egressIssuesOf(egress, { region: '={{ $json.r }}' }, credentialHosts).warnings,
+		).toHaveLength(1);
+	});
+});

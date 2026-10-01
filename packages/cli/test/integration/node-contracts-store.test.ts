@@ -221,19 +221,19 @@ async function runToEnd(workflow: IWorkflowBase) {
 }
 
 describe('node contracts store', () => {
-	it('fetches the locked 1.x at sync, lists majors 1 and 2, and runs the workflow on 1.x', async () => {
+	it('fetches the locked 1.x at sync, lists majors 1 and 3, and runs the workflow on 1.x', async () => {
 		const workflow = await createV1Workflow();
-		expect(majorsOfSend()).toEqual(['2']);
+		expect(majorsOfSend()).toEqual(['3']);
 
 		const result = await Container.get(NodeContractsSync).run({ refreshNodeTypes: true });
 
 		expect(result.added.map(({ semver }) => semver)).toEqual(['1.0.2']);
 		expect(result.failed).toEqual([]);
-		expect(majorsOfSend()).toEqual(['1', '2']);
+		expect(majorsOfSend()).toEqual(['1', '3']);
 		const versions = Container.get(LoadNodesAndCredentials)
 			.types.nodes.filter(({ name }) => name === SEND)
 			.map(({ version }) => version);
-		expect(versions.sort()).toEqual([1, 2]);
+		expect(versions.sort()).toEqual([1, 3]);
 		expect(Container.get(Push).broadcast).toHaveBeenCalledWith({
 			type: 'nodeDescriptionUpdated',
 			data: {},
@@ -252,13 +252,13 @@ describe('node contracts store', () => {
 		await rm(path.join(state.storeDir, `${bundleHash}.tgz`));
 		// As after a restart: the node types come from the store.
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
-		expect(majorsOfSend()).toEqual(['2']);
+		expect(majorsOfSend()).toEqual(['3']);
 
 		expect(await runToEnd(workflow)).toMatchObject({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
 		});
-		expect(majorsOfSend()).toEqual(['1', '2']);
+		expect(majorsOfSend()).toEqual(['1', '3']);
 		expect(await (await Container.get(NodeContractsStore).open()).bundleHashes()).toContain(
 			bundleHash,
 		);
@@ -291,7 +291,7 @@ describe('node contracts store', () => {
 			const sync = Container.get(NodeContractsSync);
 			await Promise.all([sync.prepareRun(workflow), sync.prepareRun(workflow)]);
 			expect(rebuild).toHaveBeenCalledTimes(1);
-			expect(majorsOfSend()).toEqual(['1', '2']);
+			expect(majorsOfSend()).toEqual(['1', '3']);
 		} finally {
 			rebuild.mockRestore();
 		}
@@ -306,7 +306,7 @@ describe('node contracts store', () => {
 		await loadNodesAndCredentials.postProcessLoaders();
 		const refresh = vi.spyOn(loadNodesAndCredentials, 'refreshNodeTypes');
 		try {
-			expect(majorsOfSend()).toEqual(['2']);
+			expect(majorsOfSend()).toEqual(['3']);
 			await expect(runToEnd(workflow)).rejects.toThrow(
 				'its lock httpRequest.send@1.0.2 (bundle 4571314301c3',
 			);

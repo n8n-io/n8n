@@ -8,6 +8,7 @@ export const notionApi = custom({
 	name: 'notionApi',
 	displayName: 'Notion API',
 	documentationUrl: 'notion',
+	hosts: ['api.notion.com'],
 	secrets: { apiKey: str().with({ title: 'Internal Integration Secret' }) },
 	async authenticate({ apiKey }, request) {
 		const headers = { ...request.headers };
@@ -29,6 +30,7 @@ export const notionOAuth2Api = oauth2({
 	name: 'notionOAuth2Api',
 	displayName: 'Notion OAuth2 API',
 	documentationUrl: 'notion',
+	hosts: ['api.notion.com'],
 	authorizationUrl: 'https://api.notion.com/v1/oauth/authorize',
 	tokenUrl: 'https://api.notion.com/v1/oauth/token',
 	clientAuth: 'header',

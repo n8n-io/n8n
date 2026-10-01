@@ -234,6 +234,7 @@ function fakeContext(
 		getInputData: () => [{ json: {} }, { json: {} }],
 		getNode: () => ({ name: 'Tasks', credentials: { todoApi: { id: '1', name: 'Todo' } } }),
 		getNodeParameter: (name: string) => parameters[name],
+		getCredentials: async () => ({}),
 		continueOnFail: () => continueOnFail,
 		helpers: {
 			httpRequestWithAuthentication: async (credentialType: string, options: unknown) => {

@@ -2951,6 +2951,28 @@ export class InstanceAiAdapterService {
 				}
 			},
 
+			async getAllowedHttpRequestDomains(credentialId: string) {
+				try {
+					const credential = await credentialsFinderService.findCredentialForUser(
+						credentialId,
+						user,
+						['credential:read'],
+					);
+					if (!credential) return undefined;
+					// Decryption stays on this side of the boundary: only the two setting fields cross.
+					const { allowedHttpRequestDomains, allowedDomains } = await credentialsService.decrypt(
+						credential,
+						true,
+					);
+					return {
+						...(typeof allowedHttpRequestDomains === 'string' ? { allowedHttpRequestDomains } : {}),
+						...(typeof allowedDomains === 'string' ? { allowedDomains } : {}),
+					};
+				} catch {
+					return undefined;
+				}
+			},
+
 			async credentialTypeExists(credentialType: string): Promise<boolean> {
 				if (credentialType in loadNodesAndCredentials.knownCredentials) return true;
 				// Runtime-registered types (e.g. MCP registry loaders) may not appear

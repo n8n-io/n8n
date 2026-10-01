@@ -15,6 +15,7 @@ import {
 } from 'n8n-workflow';
 
 import { credentialDataOf } from './credentials';
+import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import {
 	isHttpError,
 	type Http,
@@ -156,11 +157,20 @@ const credentialTypeIn = (trigger: Trigger, context: TriggerContext) =>
 /** An HTTP client with the node's credential applied, as actions get it. */
 async function httpOf(trigger: Trigger, context: TriggerContext): Promise<Http> {
 	const type = credentialTypeIn(trigger, context);
-	const baseUrl = await baseUrlOf(
-		trigger.node,
-		type,
-		async (name) => await context.getCredentials(name),
-	);
+	const data = type ? await context.getCredentials(type) : {};
+	const baseUrl = await baseUrlOf(trigger.node, type, async () => await Promise.resolve(data));
+	const node = context.getNode();
+	// A trigger declares no egress: it reaches the base URL hosts, with the credential hosts.
+	const policy = {
+		...actionHostsOf(undefined, {}, [trigger.node.baseUrl, baseUrl]),
+		credential: type
+			? credentialHostsOf(
+					trigger.node.credential?.types.find(({ name }) => name === type),
+					data,
+					{ surface: trigger.node.displayName, baseUrl },
+				)
+			: undefined,
+	};
 	function request(
 		options: HttpRequest & { readonly response: 'binary'; readonly fullResponse?: false },
 	): Promise<Binary>;
@@ -170,7 +180,9 @@ async function httpOf(trigger: Trigger, context: TriggerContext): Promise<Http> 
 		if (options.response === 'binary') {
 			throw new UnexpectedError(`${trigger.id} is a trigger, and a trigger has no binary data`);
 		}
-		const requestOptions = toRequestOptions(options, baseUrl);
+		const built = toRequestOptions(options, baseUrl);
+		const allowedDomains = egressOf(policy, built.url, { node, actionId: trigger.id });
+		const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
 		try {
 			const response: unknown = type
 				? await context.helpers.httpRequestWithAuthentication.call(context, type, requestOptions)

@@ -54,7 +54,7 @@ function makeContractWorkflow(): WorkflowJSON {
 				id: 'n3',
 				name: 'Post Done Page',
 				type: '@n8n/nodes-base-next.httpRequestSend',
-				typeVersion: 2,
+				typeVersion: 3,
 				position: [448, 0],
 				parameters: {
 					method: 'POST',

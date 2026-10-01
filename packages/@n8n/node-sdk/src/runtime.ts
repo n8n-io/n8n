@@ -24,6 +24,7 @@ import {
 
 import { fromActionApiV1 } from './action-api-v1';
 import { credentialDataOf } from './credentials';
+import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
 import {
 	isHttpError,
@@ -77,6 +78,32 @@ const DEFAULT_TIMEOUT_MS = 300_000;
 // n8n sends `id[0]=a` for an array by default. Only a request with an array sets this.
 const REPEAT_KEYS: Pick<IHttpRequestOptions, 'arrayFormat'> = { arrayFormat: 'repeat' };
 
+const isWebUrl = (url: URL) => url.protocol === 'http:' || url.protocol === 'https:';
+
+/** The absolute URL of a request. A `path` cannot leave the origin of the base URL. */
+function requestUrlOf(request: HttpRequest, baseUrl: string | undefined): string {
+	if (request.url !== undefined) {
+		if (!URL.canParse(request.url) || !isWebUrl(new URL(request.url))) {
+			throw new UserError('The request URL must be an absolute http or https URL');
+		}
+		return request.url;
+	}
+	const { path } = request;
+	if (!/^\/(?![/\\])/.test(path)) {
+		throw new UserError('The request path must start with one "/"');
+	}
+	if (!baseUrl || !URL.canParse(baseUrl) || !isWebUrl(new URL(baseUrl))) {
+		throw new UserError('The request has a path, and no http or https base URL');
+	}
+	const base = new URL(baseUrl);
+	// `new URL('/x', base)` drops the base path, so the path goes after it.
+	const url = new URL(`${base.pathname.replace(/\/$/, '')}${path}`, base);
+	if (url.origin !== base.origin) {
+		throw new UserError('The request path leaves the origin of the base URL');
+	}
+	return url.href;
+}
+
 export function toRequestOptions(
 	request: HttpRequest,
 	baseUrl: string | undefined,
@@ -88,7 +115,7 @@ export function toRequestOptions(
 	);
 	return {
 		method: request.method ?? 'GET',
-		url: request.url ?? `${baseUrl ?? ''}${request.path ?? ''}`,
+		url: requestUrlOf(request, baseUrl),
 		qs: query,
 		...(Object.values(query).some(Array.isArray) ? REPEAT_KEYS : {}),
 		headers: { ...request.headers },
@@ -268,7 +295,10 @@ export interface ExecutorHost {
 	/** The raw parameter value, as `getNodeParameter` returns it. */
 	parameter(name: string, itemIndex: number): unknown;
 	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
-	/** The stored data of a credential, for a credential type with `baseUrl`. */
+	/**
+	 * The stored data of a credential: the fields `baseUrl` reads and the user's "Allowed HTTP
+	 * Request Domains" setting. Without it, only the declared credential hosts limit a request.
+	 */
 	credentialData?(credentialType: string): Promise<unknown>;
 	continueOnFail(): boolean;
 	/** Waits before a retry. */
@@ -552,10 +582,37 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		};
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType = credentialTypeOf(action, host.node, selected);
-		const baseUrl = await baseUrlOf(action.node, credentialType, async (type) => {
+		// One read per run: the base URL and the egress policy both need the stored data.
+		const stored = new Map<string, Promise<unknown>>();
+		const credentialData = async (type: string) => {
 			if (!host.credentialData) throw new UnexpectedError(`${action.id} cannot read ${type}`);
-			return await host.credentialData(type);
-		});
+			const read = stored.get(type) ?? host.credentialData(type);
+			stored.set(type, read);
+			return await read;
+		};
+		const baseUrl = await baseUrlOf(action.node, credentialType, credentialData);
+		const credentialValue = action.node.credential?.types.find(
+			({ name }) => name === credentialType,
+		);
+		/** The policy for the requests of one item. A credential that refuses every host fails the item. */
+		const egressPolicyOf = async (input: Readonly<Record<string, unknown>>, itemIndex: number) => {
+			const data =
+				credentialType && host.credentialData ? await credentialData(credentialType) : {};
+			try {
+				return {
+					...actionHostsOf(action.egress, input, [action.node.baseUrl, baseUrl]),
+					credential: credentialType
+						? credentialHostsOf(credentialValue, data, {
+								surface: action.node.displayName,
+								baseUrl,
+							})
+						: undefined,
+				};
+			} catch (error) {
+				if (!(error instanceof UserError)) throw error;
+				throw new NodeOperationError(host.node, error.message, { itemIndex });
+			}
+		};
 		/** `build` gives the options of each attempt, so a stream body opens again for a retry. */
 		const send = async (
 			build: () => Promise<IHttpRequestOptions>,
@@ -619,8 +676,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return request.fullResponse ? { body: file, headers, statusCode } : file;
 		};
 
-		const httpFor = (itemIndex: number): Http => {
+		const httpFor = (itemIndex: number, input: Readonly<Record<string, unknown>>): Http => {
 			const sent = { requests: 0 };
+			const policy = new Map<'policy', ReturnType<typeof egressPolicyOf>>();
 			function request(
 				options: HttpRequest & { readonly response: 'binary'; readonly fullResponse?: false },
 			): Promise<Binary>;
@@ -637,7 +695,16 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				const retryable =
 					options.retry ??
 					(IDEMPOTENT_METHODS.has(options.method ?? 'GET') || action.flow.idempotent === true);
-				const requestOptions = toRequestOptions(options, baseUrl);
+				const built = toRequestOptions(options, baseUrl);
+				// Every request, page and binary transfer passes here; the request layer checks redirects.
+				const current = policy.get('policy') ?? egressPolicyOf(input, itemIndex);
+				policy.set('policy', current);
+				const allowedDomains = egressOf(await current, built.url, {
+					node: host.node,
+					actionId: action.id,
+					itemIndex,
+				});
+				const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
 				return options.response === 'binary' || entries.has(options.body)
 					? await sendBinary(options, requestOptions, retryable)
 					: await send(async () => requestOptions, retryable, 0);
@@ -796,7 +863,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			if (!item) return [];
 			const input = await inputOf(itemIndex);
 			const route = routeOf(names, itemIndex);
-			const http = httpFor(itemIndex);
+			const http = httpFor(itemIndex, input);
 			// The host sends a declarative request itself; no author code runs for it.
 			// Only a 1:N binding names `items`.
 			const result: Promise<unknown> | AsyncIterable<unknown> | Iterable<unknown> | undefined =
@@ -842,7 +909,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					const input = await inputOf(0);
 					const result = action.run?.({
 						input,
-						http: httpFor(0),
+						http: httpFor(0, input),
 						log,
 						limits,
 						binary: binaries,
@@ -1043,16 +1110,32 @@ export async function verifiedBundleOf({ manifest, readBundle }: FrozenVersion) 
 	return evaluateBundle(code, apiVersion);
 }
 
-/** Executors by bundle hash. A bundle loads on its first execution only. */
+/** Executors by bundle hash and HEAD bundle hash. A bundle loads on its first execution only. */
 const executors = new Map<
 	string,
 	Promise<(host: ExecutorHost) => Promise<INodeExecutionData[][]>>
 >();
 
-async function loadExecutor(frozen: FrozenVersion) {
+/**
+ * n8n has one credential type for each name and signs with it, so the hosts of a credential
+ * type come from the bundled version. A type that it does not list keeps the hosts of `action`.
+ */
+export function withCredentialHostsOf(head: Action | Trigger, action: Action): Action {
+	const credential = action.node.credential;
+	if (!credential) return action;
+	const current = head.node.credential?.types ?? [];
+	const types = credential.types.map((type) => {
+		const hosts = current.find(({ name }) => name === type.name)?.hosts;
+		return hosts === undefined ? type : { ...type, hosts };
+	});
+	return { ...action, node: { ...action.node, credential: { ...credential, types } } };
+}
+
+async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion) {
 	const action = await verifiedBundleOf(frozen);
 	if ('kind' in action) throw new UnexpectedError(`${action.id} is a trigger, not an action`);
-	return executorOf(action);
+	if (frozen.manifest.bundleHash === head.manifest.bundleHash) return executorOf(action);
+	return executorOf(withCredentialHostsOf(await verifiedBundleOf(head), action));
 }
 
 /**
@@ -1082,13 +1165,15 @@ async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 	}
 	assertActionApi(frozen.manifest);
 	// A failed read, for example a registry outage, must not stay in the cache.
+	// The credential hosts come from `head`, so the executor depends on both bundles.
+	const key = `${bundleHash}:${head.manifest.bundleHash}`;
 	const executor =
-		executors.get(bundleHash) ??
-		loadExecutor(frozen).catch((error: unknown) => {
-			executors.delete(bundleHash);
+		executors.get(key) ??
+		loadExecutor(frozen, head).catch((error: unknown) => {
+			executors.delete(key);
 			throw error;
 		});
-	executors.set(bundleHash, executor);
+	executors.set(key, executor);
 	const outputs = await (await executor)(hostOf(context));
 	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, apiVersion } });
 	return outputs;

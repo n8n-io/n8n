@@ -35,6 +35,8 @@ export const notion = defineNode({
 - `oauth2` is configuration only. The projection extends `oAuth2Api`, so n8n core runs the flow.
 - A type may have `fields` (settings code may read) and `secrets` (only n8n reads them). A type
   with `baseUrl(fields)` replaces the node's base URL, e.g. a GitHub Enterprise server.
+- A type declares `hosts`, the hosts n8n may send it to. The host of `baseUrl(fields)` is
+  added. See "Egress and credential hosts" in `sandboxed-execution.md`.
 - `credential({ ..., optional: true })` lets the node run without a credential (HTTP Request).
 
 The parity suite proves that `toCredentialType(notionApi)` and `toCredentialType(notionOAuth2Api)`

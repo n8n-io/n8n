@@ -87,6 +87,7 @@ describe('composed nodes', () => {
 				credentials: { notionApi: { id: '1', name: 'Notion account' } },
 			}),
 			getNodeParameter: (name: string) => parameters[name],
+			getCredentials: async () => ({}),
 			continueOnFail: () => false,
 			getExecutionCancelSignal: () => undefined,
 			setMetadata,

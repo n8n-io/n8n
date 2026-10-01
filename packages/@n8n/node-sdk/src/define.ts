@@ -137,7 +137,10 @@ interface HttpRequestOptions {
 	readonly retry?: boolean;
 }
 
-/** `url` is absolute (e.g. a `next` link). `path` goes after the node's `baseUrl`. */
+/**
+ * `url` is an absolute http or https URL. `path` starts with one `/` and goes after the base
+ * URL. The host must be in the egress of the action and in the hosts of the credential.
+ */
 export type HttpRequest = HttpRequestOptions &
 	(
 		| { readonly url: string; readonly path?: never }
@@ -308,6 +311,49 @@ export type RequestPath<P extends string, Input> = [
 	? P
 	: `Path field is not a required input field: ${Exclude<PathFields<P>, RequiredKeys<Input>>}`;
 
+/** `api.example.com`, or `*.example.com` for its subdomains only: the `isDomainAllowed` syntax. */
+const HOST_PATTERN = /^(\*\.)?([a-z0-9-]+\.)*[a-z0-9-]+$/;
+
+export const isHostPattern = (value: string) => HOST_PATTERN.test(value);
+
+/** Required input keys whose value is one string of a fixed set. */
+type EnumKeys<Input> = {
+	[K in RequiredKeys<Input>]: Input[K] extends string
+		? string extends Input[K]
+			? never
+			: K
+		: never;
+}[RequiredKeys<Input>];
+
+/** Required input keys with a string value. Any string key when the input is not known. */
+type UrlKeys<Input> = string extends keyof Input
+	? string
+	: { [K in RequiredKeys<Input>]: Input[K] extends string ? K : never }[RequiredKeys<Input>];
+
+/**
+ * `H` when each `{field}` in it names a required enum input field, so the host set is finite,
+ * else the message the type error shows.
+ */
+export type EgressHost<H extends string, Input> = H extends string
+	? [Exclude<PathFields<H>, EnumKeys<Input>>] extends [never]
+		? H
+		: `Host field is not a required enum input field: ${Exclude<PathFields<H>, EnumKeys<Input>>}`
+	: never;
+
+/**
+ * The hosts an action may send requests to. Without it, the hosts of the base URLs of the node
+ * and of the credential. The host refuses a request to any other host.
+ */
+export interface Egress<Input, H extends string = string> {
+	/**
+	 * `api.example.com`, `*.example.com` for its subdomains only, or a template over enum input
+	 * fields, e.g. `{region}.api.example.com`. The base URL hosts stay allowed.
+	 */
+	readonly hosts?: ReadonlyArray<H & EgressHost<H, Input>>;
+	/** An input field with an absolute URL, e.g. `url`: the action may send requests to its host. */
+	readonly fromInput?: UrlKeys<Input>;
+}
+
 /** The declarative binding: data that says which request the host sends for each item. */
 export interface RequestBinding<Input, P extends string = string> {
 	readonly method?: HttpMethod;
@@ -378,10 +424,12 @@ interface ActionSpecBase<
 	F extends ActionFlow,
 	Sc extends string,
 	Outs extends ActionOutputs | undefined,
+	H extends string,
 > extends ContractSpec<Own, O, Sc> {
 	/** The label users pick, e.g. "Get many database pages". */
 	readonly action: string;
 	readonly flow: F;
+	readonly egress?: Egress<RunInput<Full>, H>;
 	/** Named outputs. An input list can name them, e.g. one output per Switch case. */
 	readonly outputs?: Outs;
 	/**
@@ -409,7 +457,8 @@ export type ActionSpec<
 	Sc extends string = string,
 	P extends string = string,
 	Outs extends ActionOutputs | undefined = undefined,
-> = ActionSpecBase<Own, Full, O, F, Sc, Outs> & ActionBinding<Full, O, F, P, Outs>;
+	H extends string = string,
+> = ActionSpecBase<Own, Full, O, F, Sc, Outs, H> & ActionBinding<Full, O, F, P, Outs>;
 
 /** What every contract has after its node built it. */
 interface Built {
@@ -534,9 +583,10 @@ type NodeAction<N extends NodeDefinition, RS extends Shape, Path extends ActionP
 	const F extends ActionFlow,
 	const P extends string = string,
 	const Outs extends ActionOutputs | undefined = undefined,
+	const H extends string = string,
 >(
 	operation: string,
-	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs> & OutputsCheck<Outs, RS & S>,
+	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H> & OutputsCheck<Outs, RS & S>,
 ) => Action<RS & S, O, F, Outs> & Path;
 
 type NodeTrigger<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
@@ -632,35 +682,54 @@ export interface ContractDocument {
 	readonly output: JsonSchema;
 	/** Named outputs in n8n output order. Absent for one unnamed output. */
 	readonly outputs?: ActionOutputs;
+	/** The declared egress, hosts sorted. Absent when the action reaches its base URL hosts only. */
+	readonly egress?: ContractEgress;
+}
+
+export interface ContractEgress {
+	readonly hosts?: readonly string[];
+	readonly fromInput?: string;
 }
 
 type ContractSource = Pick<
 	Action,
 	'id' | 'version' | 'node' | 'summary' | 'credentialTypes' | 'inputSchema' | 'output'
 > & { readonly scopes?: readonly string[] } & (
-		| Pick<Action, 'action' | 'flow' | 'outputs'>
+		| Pick<Action, 'action' | 'flow' | 'outputs' | 'egress'>
 		| Pick<Trigger, 'trigger' | 'kind'>
 	);
+
+/** Hosts are a set, so their order is not part of the contract. */
+function contractEgressOf(egress: ContractEgress | undefined): ContractEgress | undefined {
+	const hosts = [...new Set(egress?.hosts ?? [])].sort();
+	const fromInput = egress?.fromInput;
+	if (hosts.length === 0 && fromInput === undefined) return undefined;
+	return { ...(hosts.length ? { hosts } : {}), ...(fromInput === undefined ? {} : { fromInput }) };
+}
 
 // A trigger emits the items of one event: it reads the service, and one event gives N items.
 const TRIGGER_FLOW: ActionFlow = { effect: 'read', cardinality: '1:N' };
 
-export const toContract = (source: ContractSource): ContractDocument => ({
-	id: source.id,
-	version: source.version,
-	node: source.node.id,
-	action: 'kind' in source ? source.trigger : source.action,
-	summary: source.summary,
-	// Each contract hash includes passthrough. Remove it at the next major of each action.
-	flow: { ...('kind' in source ? TRIGGER_FLOW : source.flow), passthrough: 'replace' },
-	credentials: source.credentialTypes,
-	// Optional keys keep the hash of each contract that has neither.
-	...(source.scopes?.length ? { scopes: source.scopes } : {}),
-	...('kind' in source ? { trigger: source.kind } : {}),
-	input: source.inputSchema,
-	output: source.output.json,
-	...(!('kind' in source) && source.outputs ? { outputs: source.outputs } : {}),
-});
+export const toContract = (source: ContractSource): ContractDocument => {
+	const egress = 'kind' in source ? undefined : contractEgressOf(source.egress);
+	return {
+		id: source.id,
+		version: source.version,
+		node: source.node.id,
+		action: 'kind' in source ? source.trigger : source.action,
+		summary: source.summary,
+		// Each contract hash includes passthrough. Remove it at the next major of each action.
+		flow: { ...('kind' in source ? TRIGGER_FLOW : source.flow), passthrough: 'replace' },
+		credentials: source.credentialTypes,
+		// Optional keys keep the hash of each contract that has neither.
+		...(source.scopes?.length ? { scopes: source.scopes } : {}),
+		...('kind' in source ? { trigger: source.kind } : {}),
+		input: source.inputSchema,
+		output: source.output.json,
+		...(!('kind' in source) && source.outputs ? { outputs: source.outputs } : {}),
+		...(egress ? { egress } : {}),
+	};
+};
 
 /** Output names, fixed ones only: names that come from the input are known at run time. */
 export const fixedOutputNames = (outputs: ActionOutputs | undefined): readonly string[] =>
@@ -728,6 +797,23 @@ export function lintContract(contract: ContractDocument): string[] {
 		...binaryOutputIssues(contract),
 		...(hasHiddenBinary(contract.input)
 			? [`${contract.id}: an input binary must be a field, a list item, or in a variant branch`]
+			: []),
+		...egressIssues(contract),
+	];
+}
+
+/** A template field stands for one host label, so the pattern check reads it as one. */
+function egressIssues({ id, egress, input }: ContractDocument): string[] {
+	const invalid = (egress?.hosts ?? []).filter(
+		(host) => !isHostPattern(host.replace(/\{[^}]+\}/g, 'x')),
+	);
+	const { fromInput } = egress ?? {};
+	return [
+		...invalid.map(
+			(host) => `${id}: egress host ${host} is not a host. Use api.example.com or *.example.com.`,
+		),
+		...(fromInput !== undefined && !input.properties?.[fromInput]
+			? [`${id}: egress.fromInput names no input field: ${fromInput}`]
 			: []),
 	];
 }

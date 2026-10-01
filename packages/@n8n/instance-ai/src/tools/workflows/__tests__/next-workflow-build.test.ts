@@ -3,6 +3,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import {
+	contractEgressWarnings,
 	fetchResourceFields,
 	lockNodeContracts,
 	nextWorkspaceFiles,
@@ -232,6 +233,75 @@ describe('next workflow build', () => {
 				},
 			});
 			expect(Object.keys(synthesizedFixtures(workflow))).toEqual(['Get']);
+		});
+	});
+
+	describe('contract egress', () => {
+		const getNode = (url: string, credentials: WorkflowJSON['nodes'][number]['credentials']) => ({
+			id: '1',
+			name: 'Fetch',
+			type: '@n8n/nodes-base-next.httpRequestGet',
+			typeVersion: 2,
+			position: [0, 0] as [number, number],
+			parameters: { authentication: 'httpHeaderAuth', url },
+			credentials,
+		});
+		const workflowOf = (url: string): WorkflowJSON => ({
+			name: 'wf',
+			connections: {},
+			nodes: [getNode(url, { httpHeaderAuth: { id: 'c1', name: 'Header account' } })],
+		});
+		const contextOf = (stored: Record<string, string> | undefined) =>
+			({
+				credentialService: {
+					getAllowedHttpRequestDomains: vi.fn().mockResolvedValue(stored),
+				},
+			}) as unknown as InstanceAiContext;
+		const DOMAINS = { allowedHttpRequestDomains: 'domains', allowedDomains: 'api.allowed.test' };
+
+		it('fails a static URL whose host the credential does not allow, naming host and credential', async () => {
+			expect(
+				await contractEgressWarnings(contextOf(DOMAINS), workflowOf('https://other.test/x')),
+			).toEqual([
+				{
+					code: 'CONTRACT_EGRESS',
+					nodeName: 'Fetch',
+					severity: 'error',
+					message:
+						'other.test is not an allowed host of the credential "Header account". Its hosts are: api.allowed.test',
+				},
+			]);
+			expect(
+				await contractEgressWarnings(contextOf(DOMAINS), workflowOf('https://api.allowed.test/x')),
+			).toEqual([]);
+		});
+
+		it('warns for a URL expression, which n8n checks at run time', async () => {
+			const [issue] = await contractEgressWarnings(
+				contextOf(DOMAINS),
+				workflowOf('={{ $json.url }}'),
+			);
+			expect(issue).toMatchObject({ severity: 'warning', nodeName: 'Fetch' });
+		});
+
+		it('fails a credential that refuses every request', async () => {
+			const [issue] = await contractEgressWarnings(
+				contextOf({ allowedHttpRequestDomains: 'none' }),
+				workflowOf('https://api.allowed.test/x'),
+			);
+			expect(issue).toMatchObject({
+				severity: 'error',
+				message:
+					'Credential "Header account": This credential is configured to prevent use within an HTTP Request node',
+			});
+		});
+
+		it('does not check a credential without a limit or a node without a credential', async () => {
+			expect(
+				await contractEgressWarnings(contextOf(undefined), workflowOf('https://other.test/x')),
+			).toEqual([]);
+			const unbound = { name: 'wf', connections: {}, nodes: [getNode('https://other.test', {})] };
+			expect(await contractEgressWarnings(contextOf(DOMAINS), unbound)).toEqual([]);
 		});
 	});
 });

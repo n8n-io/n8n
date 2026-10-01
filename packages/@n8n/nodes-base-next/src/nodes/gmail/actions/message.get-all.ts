@@ -50,7 +50,7 @@ function queryOf(filter: Infer<typeof filters> | undefined) {
 }
 
 export const getManyGmailMessages = message.action('getAll', {
-	patch: 4,
+	patch: 5,
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

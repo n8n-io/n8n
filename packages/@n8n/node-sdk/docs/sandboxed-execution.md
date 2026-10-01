@@ -1,6 +1,6 @@
 # Sandboxed execution of contract actions (plan)
 
-Status: plan only. Nothing here is built. Research: lane S1 (NODE-6071 spike), with the
+Status: plan. Only the egress and credential hosts check is built. Research: lane S1, with the
 investigation `n8n-investigations/sandboxed-step-runtime` (SSR).
 
 ## Goal
@@ -52,7 +52,8 @@ S1 probe (SSR sidecar, `http-enrich` step, noisy macOS host):
 
 - The host interface is the only capability. The guest gets no ambient network, filesystem or clock.
 - Network goes only through host `http`, with the SSRF policy and credential injection on the host.
-- The contract declares egress hosts (`flow.capabilities.http.hosts`). The host enforces them.
+- The contract declares egress hosts (`egress`, see "Egress and credential hosts"). The host
+  enforces them.
 - Binary data passes as handles, not as files.
 - The host sets CPU time, memory, wall clock and output size limits.
 - The instance policy decides where a bundle runs. A bundle signed with a first-party key runs
@@ -69,7 +70,7 @@ for the AI builder does not change. The same fixtures prove parity across langua
 
 | Phase | Work | Effort |
 |---|---|---|
-| 0 | Publish-gate lint: no `node:*`, no free `fetch`, `process` or `globalThis`. Host-enforced egress hosts and wall-clock cap. Redact auth headers in `fullResponse`. | ~1 week |
+| 0 | Publish-gate lint: no `node:*`, no free `fetch`, `process` or `globalThis`. Wall-clock cap. Redact auth headers in `fullResponse`. Host-enforced egress hosts are built (see below). | ~1 week |
 | 1 | A JS shim for the WIT interface (`n8n:action@2`, `spec/`), so current bundles run unchanged. A `SandboxRuntime` seam next to the bundle loader. `replayFixtures` runs through the seam. | 2 to 3 weeks |
 | 2 | A wasmtime sidecar for untrusted bundles, in the task-runner process family. Build: frozen bundle, then ComponentizeJS (or QuickJS), then sign the component digest. | 3 to 4 weeks |
 | 3 | Python and Rust actions. A gVisor or microVM tier for native dependencies, as an admin opt-in. | later |
@@ -88,8 +89,39 @@ for the AI builder does not change. The same fixtures prove parity across langua
 
 - A JS component is about 12 MB and takes 1.4 to 3.7 s to compile. Compile ahead of time at install.
 - ComponentizeJS builds are not reproducible. Trust rests on the signed component digest.
-- An allowed API can still reflect a secret back. Binding each secret to its hosts limits this.
+- An allowed API can still reflect a secret back. The credential hosts limit this to the hosts
+  of the credential.
+- In-process bundles still reach global `fetch`. The egress check protects the secret, because
+  only host `http` applies it. Other data needs isolation.
 - Native npm addons never run as WASM. They need the heavy tier.
+
+## Egress and credential hosts
+
+Built. One check, in the host `http` import: `httpFor().request` in `src/runtime.ts`, the trigger
+`http` in `src/triggers.ts`, and the binary transfers, which go through the same `request`. The
+logic is in `src/egress.ts`.
+
+- A credential type declares `hosts` (`api.notion.com`, or `*.example.com` for subdomains only).
+  The host of its `baseUrl(fields)` is added. The user's "Allowed HTTP Request Domains" list
+  (mode `domains`) adds hosts. `all` and `none` do not remove the own hosts.
+- A credential type with no `hosts` and no `baseUrl` keeps the legacy meaning of that setting,
+  as the legacy HTTP Request node does: `all` is no limit, `domains` is the list, `none` refuses.
+- An action declares `egress`: static hosts, host templates over enum input fields
+  (`{region}.api.example.com`), or `fromInput` for a URL field. Without it, the action reaches
+  the hosts of the node and credential base URLs. An action with no base URL and no `egress` has
+  no action limit, so a version frozen before `egress` still runs. The credential hosts apply.
+- The host refuses a request outside the action hosts or the credential hosts before it sends it.
+  A refused request is not retried. Every page is a new request, so every page is checked.
+- The host sets `allowedDomains` on the request options, so the request layer checks every
+  redirect hop. The list is the action hosts narrowed by the credential hosts. A host from
+  `fromInput` does not bind redirect hops; the credential hosts still do.
+- A `url` must be an absolute http or https URL. A `path` must start with one `/`. The host adds
+  it to the base URL path and refuses a result with another origin.
+- `egress` is in the contract document and in the contract hash. A new host is a major change.
+  A removed host is a minor change. The publish gate refuses `*` and a value that is not a host.
+- The AI builder runs the same rules when it builds a workflow (node contracts on): a static
+  host outside the hosts of the bound credential is a build error that names the host and the
+  credential. An expression is a warning, because the host checks it at run time.
 
 ## Binary data
 

@@ -14,6 +14,7 @@ const notionUser = obj({
 
 /** Declarative: the host sends the request. No code of this action runs. */
 export const getUser = user.action('get', {
+	patch: 1,
 	action: 'Get a user',
 	summary: 'Get one Notion user (a person or a bot) by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },

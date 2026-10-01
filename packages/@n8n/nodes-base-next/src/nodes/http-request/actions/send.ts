@@ -5,11 +5,12 @@ import { common, toItems } from '../request';
 
 export const sendRequest = httpRequest.action('send', {
 	// Major 2: an array response gives one item per element, so the action is 1:N, not per-item.
-	version: 2,
-	minor: 1,
+	// Major 3: the action declares that it reaches the host of `url`.
+	version: 3,
 	action: 'Send a request',
 	summary: 'POST, PUT, PATCH, or DELETE to any HTTP API.',
 	flow: { effect: 'write', cardinality: '1:N', idempotent: false },
+	egress: { fromInput: 'url' },
 	input: {
 		method: oneOf('POST', 'PUT', 'PATCH', 'DELETE'),
 		...common,

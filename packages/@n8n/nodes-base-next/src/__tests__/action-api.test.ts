@@ -65,6 +65,7 @@ async function runInNode(frozen: FrozenVersion, fixture: ExecutionFixture) {
 		getInputData: () => [{ json: {} }],
 		getNode: () => ({ name: 'Notion', credentials: { notionApi: { id: '1', name: 'Notion' } } }),
 		getNodeParameter: (name: string) => fixture.params[name] ?? defaults.get(name),
+		getCredentials: async () => ({}),
 		continueOnFail: () => false,
 		setMetadata: (value: ITaskMetadata) => metadata.push(value),
 		helpers: { httpRequestWithAuthentication: async () => responses.shift() },

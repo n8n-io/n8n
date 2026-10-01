@@ -17,10 +17,12 @@ function cursorAt(body: unknown, path: string): string | undefined {
 }
 
 export const getRequest = httpRequest.action('get', {
-	patch: 4,
+	// Major 2: the action declares that it reaches the host of `url`.
+	version: 2,
 	action: 'GET a URL',
 	summary: 'Read from any HTTP API. Use a dedicated action when one exists for the service.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
+	egress: { fromInput: 'url' },
 	input: {
 		...common,
 		pagination: obj({

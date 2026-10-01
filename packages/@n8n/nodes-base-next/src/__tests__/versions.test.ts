@@ -136,7 +136,7 @@ describe('bundled versions', () => {
 		} as unknown as IExecuteFunctions;
 
 		const HttpRequestGet = loadNodeClass({ id: 'httpRequest.get' }, VERSIONS_DIR);
-		const result = await new HttpRequestGet().getNodeType(1).execute?.call(context);
+		const result = await new HttpRequestGet().getNodeType(2).execute?.call(context);
 
 		expect(result).toEqual([
 			[

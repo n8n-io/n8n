@@ -9,7 +9,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import type { RunInput } from './define';
+import { isHostPattern, type RunInput } from './define';
 import { toProperty } from './properties';
 import { obj, str, type JsonSchema, type Schema, type Shape } from './schema';
 import { applyDefaults, validate } from './validate';
@@ -62,6 +62,13 @@ export interface CredentialType<
 	readonly secrets?: S;
 	readonly scheme: CredentialScheme<F, S>;
 	readonly test?: ICredentialTestRequest;
+	/**
+	 * The hosts n8n may send this credential to: `api.example.com`, or `*.example.com` for its
+	 * subdomains only. The host of `baseUrl` is added. The user's "Allowed HTTP Request Domains"
+	 * list adds hosts. A type without hosts and without `baseUrl` keeps the legacy meaning of that
+	 * setting.
+	 */
+	readonly hosts?: readonly string[];
 	/** The API base URL of this account, e.g. a GitHub Enterprise server. It replaces the node's. */
 	baseUrl?(fields: RunInput<F>): string;
 }
@@ -112,17 +119,27 @@ interface CommonSpec<Name extends string, F extends Shape> {
 	readonly documentationUrl?: string;
 	readonly fields?: F;
 	readonly test?: ICredentialTestRequest;
+	readonly hosts?: readonly string[];
 	baseUrl?(fields: RunInput<F>): string;
 }
 
-const common = <Name extends string, F extends Shape>(spec: CommonSpec<Name, F>) => ({
-	name: spec.name,
-	displayName: spec.displayName,
-	...(spec.documentationUrl ? { documentationUrl: spec.documentationUrl } : {}),
-	...(spec.fields ? { fields: spec.fields } : {}),
-	...(spec.test ? { test: spec.test } : {}),
-	...(spec.baseUrl ? { baseUrl: spec.baseUrl } : {}),
-});
+const common = <Name extends string, F extends Shape>(spec: CommonSpec<Name, F>) => {
+	const invalid = (spec.hosts ?? []).filter((host) => !isHostPattern(host));
+	if (invalid.length > 0) {
+		throw new UserError(
+			`Credential ${spec.name}: ${invalid.join(', ')} is not a host. Use api.example.com or *.example.com.`,
+		);
+	}
+	return {
+		name: spec.name,
+		displayName: spec.displayName,
+		...(spec.documentationUrl ? { documentationUrl: spec.documentationUrl } : {}),
+		...(spec.fields ? { fields: spec.fields } : {}),
+		...(spec.test ? { test: spec.test } : {}),
+		...(spec.hosts ? { hosts: spec.hosts } : {}),
+		...(spec.baseUrl ? { baseUrl: spec.baseUrl } : {}),
+	};
+};
 
 const secret = (title: string) => str().with({ title });
 
@@ -225,7 +242,11 @@ export function custom<
  */
 export function compat<const Name extends string, F extends Shape = NoFields>(
 	name: Name,
-	spec: { readonly fields?: F; baseUrl?(fields: RunInput<F>): string } = {},
+	spec: {
+		readonly fields?: F;
+		readonly hosts?: readonly string[];
+		baseUrl?(fields: RunInput<F>): string;
+	} = {},
 ): CredentialType<Name, F, NoFields> {
 	return { ...common({ name, displayName: name, ...spec }), scheme: { kind: 'compat' } };
 }
@@ -309,8 +330,17 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 			return {
 				...base,
 				properties,
-				authenticate: async (data: ICredentialDataDecryptedObject, request: IHttpRequestOptions) =>
-					await scheme.authenticate(credentialDataOf(type, data), request),
+				// The request layer checks each redirect hop against `allowedDomains`, so a signer
+				// that builds new options must not drop it.
+				authenticate: async (
+					data: ICredentialDataDecryptedObject,
+					request: IHttpRequestOptions,
+				) => {
+					const signed = await scheme.authenticate(credentialDataOf(type, data), request);
+					return request.allowedDomains === undefined
+						? signed
+						: { ...signed, allowedDomains: request.allowedDomains };
+				},
 				...test,
 			};
 	}

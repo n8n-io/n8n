@@ -82,6 +82,7 @@ import {
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
+import { contractEgressWarnings } from './next-workflow-build';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
@@ -1324,6 +1325,41 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					guidance:
 						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
 					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
+					binding,
+					sourceHash,
+					targetWorkflowId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
+					plannedTaskId,
+					owner,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					withEscalation,
+				});
+			}
+
+			// The credentials are bound now, so the build sees the hosts each node may reach.
+			const egress = context.nodeContractsEnabled
+				? partitionWarnings(
+						downgradeUnchangedNodeBlockers(
+							await contractEgressWarnings(context, json),
+							json,
+							savedWorkflowSnapshot,
+						),
+					)
+				: { blocking: [], informational: [] };
+			informational.push(...egress.informational);
+			if (egress.blocking.length > 0) {
+				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
+					context,
+					blocking: egress.blocking,
+					informational,
+					reason: 'contract_egress_failed',
+					guidance:
+						'Send the request to a host the credential allows, or use a credential that allows the host, then call build-workflow again.',
+					summary: 'A node sends a request to a host its credential does not allow.',
 					binding,
 					sourceHash,
 					targetWorkflowId,

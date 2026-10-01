@@ -221,6 +221,7 @@ describe('composeVersion', () => {
 					credentials: { tasksApi: { id: '1', name: 'Tasks account' } },
 				}),
 				getNodeParameter: (name: string) => parameters[name],
+				getCredentials: async () => ({}),
 				continueOnFail: () => false,
 				getExecutionCancelSignal: () => undefined,
 				helpers: {

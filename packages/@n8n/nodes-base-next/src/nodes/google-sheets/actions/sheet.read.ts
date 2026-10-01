@@ -105,7 +105,7 @@ const input = {
 };
 
 export const readSheetRows = sheet.action('read', {
-	patch: 4,
+	patch: 5,
 	action: 'Get rows',
 	summary: 'Read rows, optionally only those matching column filters.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

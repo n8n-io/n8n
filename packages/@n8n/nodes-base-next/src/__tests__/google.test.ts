@@ -38,6 +38,7 @@ function run(
 		getInputData: () => [{ json: {} }],
 		getNode: () => ({ name: 'Node', credentials }),
 		getNodeParameter: (name: string) => parameters[name],
+		getCredentials: async () => ({}),
 		continueOnFail: () => false,
 		helpers: {
 			httpRequestWithAuthentication: async (credentialType: string, options: Options) => {

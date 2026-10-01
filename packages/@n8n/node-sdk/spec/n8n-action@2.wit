@@ -14,7 +14,11 @@ interface types {
 }
 
 /// The only network access of an action. The host applies the node credential, the SSRF
-/// policy, the retries and the request limit.
+/// policy, the retries and the request limit. The host refuses a request to a host outside
+/// the contract egress or outside the hosts of the credential, with
+/// `http-failure.transport`. It checks each page the same way. It checks each redirect hop
+/// against the credential hosts and the action hosts. A host from `fromInput` does not limit
+/// redirect hops; the credential hosts do.
 @since(version = 2.0.0)
 interface http {
     use types.{json};
@@ -22,9 +26,9 @@ interface http {
     enum http-method { GET, POST, PUT, PATCH, DELETE, HEAD }
 
     variant http-target {
-        /// An absolute URL, for example a `next` link.
+        /// An absolute http or https URL, for example a `next` link.
         url(string),
-        /// Starts with `/` and goes after the base URL of the node.
+        /// Starts with one `/` and goes after the base URL path. It cannot change the origin.
         path(string),
     }
 
@@ -62,7 +66,7 @@ interface http {
 
     variant http-failure {
         response(http-error),
-        /// No response: DNS, connection, TLS, time-out, or a host limit.
+        /// No response: DNS, connection, TLS, time-out, a host limit, or a refused host.
         transport(string),
     }
 

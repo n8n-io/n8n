@@ -327,3 +327,60 @@ describe('binary contracts', () => {
 		);
 	});
 });
+
+describe('binary egress', () => {
+	const hosted = defineNode({
+		id: 'hosted',
+		displayName: 'Hosted',
+		baseUrl: 'https://api.hosted.test',
+	});
+
+	const upload = hosted.action('upload', {
+		action: 'Upload a file',
+		summary: 'Upload a file.',
+		flow: once,
+		input: { file: binary(), url: str() },
+		output: obj({ ok: str() }),
+		async run({ input, http }) {
+			await http.request({ method: 'POST', url: input.url, body: input.file });
+			return { ok: 'yes' };
+		},
+	});
+
+	const fetchFile = hosted.action('fetchFile', {
+		action: 'Fetch a file',
+		summary: 'Fetch a file.',
+		flow: once,
+		input: { url: str() },
+		output: obj({ file: binary() }),
+		async run({ input, http }) {
+			return { file: await http.request({ url: input.url, response: 'binary' }) };
+		},
+	});
+
+	it('refuses a binary body to a host outside the allowed hosts', async () => {
+		const { store, writes } = memoryStore({ data: csv });
+		const { host, requests } = hostOf({ file: 'data', url: 'https://other.test/up' }, [], {
+			binary: store,
+		});
+
+		await expect(executorOf(upload)(host)).rejects.toThrow(
+			'Host not allowed: hosted.upload may send requests to api.hosted.test, not to other.test',
+		);
+		expect(requests).toEqual([]);
+		expect(writes).toEqual([]);
+	});
+
+	it('refuses a binary response from a host outside the allowed hosts', async () => {
+		const { store, writes } = memoryStore();
+		const { host, requests } = hostOf({ url: 'https://other.test/file.png' }, [], {
+			binary: store,
+		});
+
+		await expect(executorOf(fetchFile)(host)).rejects.toThrow(
+			'Host not allowed: hosted.fetchFile may send requests to api.hosted.test, not to other.test',
+		);
+		expect(requests).toEqual([]);
+		expect(writes).toEqual([]);
+	});
+});

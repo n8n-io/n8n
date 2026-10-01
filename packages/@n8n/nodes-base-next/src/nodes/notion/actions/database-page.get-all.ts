@@ -200,6 +200,7 @@ function outputFromProperties(
 
 export const getManyDatabasePages = databasePage.action('getAll', {
 	minor: 2,
+	patch: 1,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

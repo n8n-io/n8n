@@ -1,5 +1,7 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
+	credentialHostsOf,
+	egressIssuesOf,
 	exampleOf,
 	toTs,
 	type JsonSchema,
@@ -10,6 +12,7 @@ import { actionOfNode, actions, composedSlotOf, versionsOf } from '@n8n/nodes-ba
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
+import type { ValidationWarning } from './workflow-validation-warnings';
 import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
 import { nextNodeIds, nodeModuleText } from '../next-modules';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
@@ -257,6 +260,60 @@ export function nodeOutputsDeclaration(
 		'}',
 		'',
 	].join('\n');
+}
+
+/**
+ * The egress check of each contract node, with the rules the host applies at run time: a
+ * static host outside the hosts of the node's credential is an error, an expression is a
+ * warning. A credential type with `baseUrl` takes its host from stored fields, so the build
+ * cannot check it.
+ */
+export async function contractEgressWarnings(
+	context: InstanceAiContext,
+	workflow: WorkflowJSON,
+): Promise<ValidationWarning[]> {
+	const checks = await Promise.all(
+		workflow.nodes.map(async (node): Promise<ValidationWarning[]> => {
+			const action = actionOfNode(node);
+			if (!action?.egress || !node.name || node.disabled) return [];
+			const parameters = node.parameters ?? {};
+			const { authentication } = parameters;
+			const [bound] = Object.entries(node.credentials ?? {}).filter(
+				([type]) =>
+					action.credentialTypes.includes(type) &&
+					(authentication === undefined || authentication === type),
+			);
+			const type = action.node.credential?.types.find(({ name }) => name === bound?.[0]);
+			if (!bound || !type || type.baseUrl) return [];
+			const [, { id, name }] = bound;
+			const stored = id
+				? await context.credentialService.getAllowedHttpRequestDomains?.(id).catch(() => undefined)
+				: undefined;
+			const issue = (severity: 'error' | 'warning', message: string): ValidationWarning => ({
+				code: 'CONTRACT_EGRESS',
+				message,
+				nodeName: node.name,
+				severity,
+			});
+			try {
+				const hosts = credentialHostsOf(type, stored ?? {}, { surface: action.node.displayName });
+				if (!hosts) return [];
+				const { errors, warnings } = egressIssuesOf(action.egress, parameters, { name, hosts });
+				return [
+					...errors.map((message) => issue('error', message)),
+					...warnings.map((message) => issue('warning', message)),
+				];
+			} catch (error) {
+				return [
+					issue(
+						'error',
+						`Credential "${name}": ${error instanceof Error ? error.message : String(error)}`,
+					),
+				];
+			}
+		}),
+	);
+	return checks.flat();
 }
 
 const TYPECHECK_TIMEOUT_MS = 60_000;

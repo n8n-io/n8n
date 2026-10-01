@@ -45,6 +45,7 @@ function run(
 		getInputData: () => [{ json: {} }],
 		getNode: () => ({ name: 'Node', credentials: { notionApi: { id: '1', name: 'Notion' } } }),
 		getNodeParameter: (name: string) => parameters[name],
+		getCredentials: async () => ({}),
 		continueOnFail: () => false,
 		helpers: {
 			httpRequestWithAuthentication: async (credentialType: string, options: Call['options']) => {

@@ -17,7 +17,10 @@ export {
 	type BatchContext,
 	type ContextOf,
 	type ContractDocument,
+	type ContractEgress,
 	type CredentialTypeOf,
+	type Egress,
+	type EgressHost,
 	type Emit,
 	type Http,
 	type HttpError,
@@ -62,6 +65,7 @@ export {
 	type CredentialScheme,
 	type CredentialType,
 } from './credentials';
+export { credentialHostsOf, egressIssuesOf, type EgressIssues } from './egress';
 export {
 	toTriggerNodeType,
 	toVersionedTriggerType,

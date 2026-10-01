@@ -15,6 +15,7 @@ const hookPath = ({
 }: { owner: string; repository: string }): `/${string}` => `/repos/${owner}/${name}/hooks`;
 
 export const repositoryEvent = repository.trigger('event', {
+	patch: 1,
 	trigger: 'On repository event',
 	summary: 'Starts on each GitHub event of a repository, e.g. a push or an opened issue.',
 	scopes: ['admin:repo_hook'],

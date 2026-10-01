@@ -18,7 +18,7 @@ import {
 } from '../table';
 
 export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
-	patch: 4,
+	patch: 5,
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },

@@ -13,7 +13,7 @@ const node: INode = {
 	parameters: {},
 };
 
-const pages = defineNode({ id: 'pages', displayName: 'Pages' });
+const pages = defineNode({ id: 'pages', displayName: 'Pages', baseUrl: 'https://pages.test' });
 const head = pages.action('list', {
 	action: 'List pages',
 	summary: 'List pages.',

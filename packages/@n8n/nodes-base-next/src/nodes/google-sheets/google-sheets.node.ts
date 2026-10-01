@@ -3,7 +3,9 @@ import { compat, credential, defineNode, defineResource, ref, str, variant } fro
 export const googleSheets = defineNode({
 	id: 'googleSheets',
 	displayName: 'Google Sheets',
-	credential: credential({ types: [compat('googleSheetsOAuth2Api')] }),
+	credential: credential({
+		types: [compat('googleSheetsOAuth2Api', { hosts: ['sheets.googleapis.com'] })],
+	}),
 	baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
 });
 

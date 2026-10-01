@@ -291,6 +291,15 @@ export interface GeneratedAction {
 const scopesNote = ({ scopes }: ContractDocument) =>
 	scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
 
+/** The hosts the action may reach besides its base URL; the credential hosts also apply. */
+const egressNote = ({ egress }: ContractDocument) => {
+	const hosts = [
+		...(egress?.hosts ?? []),
+		...(egress?.fromInput === undefined ? [] : [`the host of ${egress.fromInput}`]),
+	];
+	return hosts.length ? `; hosts: ${hosts.join(', ')}` : '';
+};
+
 /** What the flow build reads to compute the scopes of a workflow, e.g. `{ credential: "notion", scopes: [...] }`. */
 const requiresOf = ({ node, scopes }: ContractDocument) =>
 	scopes?.length ? JSON.stringify({ credential: node, scopes }) : undefined;
@@ -469,7 +478,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const path = resource === undefined ? [operation] : [resource, operation];
 			const { outputs } = contract;
 			const shown = outputs ? `; outputs: ${outputsText(outputs)}` : '';
-			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}`;
+			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}${egressNote(contract)}`;
 			const requires = requiresOf(contract);
 			// Version 1 is the default, so most modules stay as short as before.
 			const version = slot

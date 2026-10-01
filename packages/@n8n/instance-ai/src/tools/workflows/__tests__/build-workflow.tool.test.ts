@@ -3068,6 +3068,72 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
+	/** Builds one HTTP Request node whose URL host is outside its credential's domain list. */
+	const buildOutsideHost = async (nodeContractsEnabled: boolean) => {
+		const fetchNode = {
+			id: '1',
+			name: 'Fetch',
+			type: '@n8n/nodes-base-next.httpRequestGet',
+			typeVersion: 2,
+			position: [0, 0] as [number, number],
+			parameters: { authentication: 'httpHeaderAuth', url: 'https://other.test/x' },
+			credentials: { httpHeaderAuth: { id: 'c1', name: 'Header account' } },
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: { name: 'Fetch', nodes: [fetchNode], connections: {} },
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const bySeverity = (warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter(({ severity }) => severity === 'error'),
+			informational: warnings.filter(({ severity }) => severity !== 'error'),
+		});
+		// The egress check partitions its warnings once more, only with the flag on.
+		const partition = vi.mocked(partitionWarnings);
+		partition.mockImplementationOnce(bySeverity).mockImplementationOnce(bySeverity);
+		if (nodeContractsEnabled) partition.mockImplementationOnce(bySeverity);
+		const getAllowedHttpRequestDomains = vi.fn().mockResolvedValue({
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'api.allowed.test',
+		});
+		const { context, filePath } = makeContext({
+			overrides: {
+				nodeContractsEnabled,
+				credentialService: {
+					getAllowedHttpRequestDomains,
+				} as unknown as InstanceAiContext['credentialService'],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Fetch',
+		});
+		return { context, result, getAllowedHttpRequestDomains };
+	};
+
+	it('refuses a contract node that sends a request to a host its credential does not allow', async () => {
+		const { context, result, getAllowedHttpRequestDomains } = await buildOutsideHost(true);
+
+		expect(result).toMatchObject({
+			success: false,
+			errors: [
+				'[CONTRACT_EGRESS] (Fetch): other.test is not an allowed host of the credential "Header account". Its hosts are: api.allowed.test',
+			],
+			remediation: { reason: 'contract_egress_failed' },
+		});
+		expect(getAllowedHttpRequestDomains).toHaveBeenCalledWith('c1');
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('skips the contract host check when node contracts are off', async () => {
+		const { result, getAllowedHttpRequestDomains } = await buildOutsideHost(false);
+
+		expect(result).not.toMatchObject({ remediation: { reason: 'contract_egress_failed' } });
+		expect(getAllowedHttpRequestDomains).not.toHaveBeenCalled();
+	});
+
 	it('keeps repeated validation-error escalation stable when diagnostics are unavailable', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const validationResult = {

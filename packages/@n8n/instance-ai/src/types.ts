@@ -759,6 +759,11 @@ export interface CredentialHostInfo {
 	hosts: string[];
 }
 
+export interface AllowedHttpRequestDomains {
+	allowedHttpRequestDomains?: string;
+	allowedDomains?: string;
+}
+
 export interface InstanceAiCredentialService {
 	/**
 	 * List credentials.
@@ -786,6 +791,11 @@ export interface InstanceAiCredentialService {
 	 *  the boundary, never the data. Tells an empty binding from a real one for the
 	 *  types that declare no connection test (generic auth). */
 	getCredentialFillState?(credentialId: string): Promise<'blank' | 'filled' | 'unknown'>;
+	/** The "Allowed HTTP Request Domains" setting of a stored credential and its domain list.
+	 *  Non-secret: only these two fields cross the boundary. `undefined` when unreadable. */
+	getAllowedHttpRequestDomains?(
+		credentialId: string,
+	): Promise<AllowedHttpRequestDomains | undefined>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,

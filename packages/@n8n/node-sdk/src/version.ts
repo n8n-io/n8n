@@ -127,6 +127,10 @@ export const contractHash = (contract: ContractDocument) =>
 			output: normativeSchema(contract.output),
 			// Only when set, so the hash of an action with one output stays the same.
 			...(contract.outputs ? { outputs: contract.outputs } : {}),
+			// The hosts an action may reach are a permission, so they are part of the contract. A set.
+			...(contract.egress
+				? { egress: { ...contract.egress, hosts: [...(contract.egress.hosts ?? [])].sort() } }
+				: {}),
 		}),
 	);
 
@@ -372,11 +376,32 @@ function outputChanges(prev: ContractDocument, next: ContractDocument): Contract
 	return [major(`outputs ${outputText(prev.outputs)} → ${outputText(next.outputs)}`)];
 }
 
+const egressSources = ({ egress }: ContractDocument) => [
+	...(egress?.hosts ?? []),
+	...(egress?.fromInput === undefined ? [] : [`the host of input.${egress.fromInput}`]),
+];
+
+/**
+ * A new host is a new permission, as a new scope is, so a user must accept it: a major. A
+ * removed host only narrows what the action reaches: a minor. A removed `egress` is a major:
+ * without a base URL, an action without `egress` has no action limit.
+ */
+function egressChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
+	const [before, after] = [egressSources(prev), egressSources(next)];
+	if (prev.egress && !next.egress) return [major('egress removed')];
+	return [
+		...after.filter((host) => !before.includes(host)).map((host) => major(`egress ${host} added`)),
+		...before
+			.filter((host) => !after.includes(host))
+			.map((host): ContractChange => ({ kind: 'minor', text: `egress ${host} removed` })),
+	];
+}
+
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
- * new required input with a default) or a removed scope is minor; a new required input, a
- * removed or narrowed output, a changed output list, a changed flow, or a new scope is major;
- * no normative change is a patch.
+ * new required input with a default), a removed scope or a removed egress host is minor; a
+ * new required input, a removed or narrowed output, a changed output list, a changed flow, a
+ * new scope or a new egress host is major; no normative change is a patch.
  */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
 	const input = schemaChanges('input', 'input', prev.input, next.input);
@@ -398,6 +423,7 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 			.filter((scope) => !(next.scopes ?? []).includes(scope))
 			.map((scope): ContractChange => ({ kind: 'minor', text: `scope ${scope} removed` })),
 		...outputChanges(prev, next),
+		...egressChanges(prev, next),
 		...prev.credentials
 			.filter((type) => !next.credentials.includes(type))
 			.map((type) => major(`credential ${type} removed`)),

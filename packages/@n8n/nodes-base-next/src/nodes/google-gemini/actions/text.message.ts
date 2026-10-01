@@ -24,7 +24,7 @@ const mergedText = (entry: unknown) =>
 		.join('');
 
 export const messageGemini = text.action('message', {
-	patch: 4,
+	patch: 5,
 	action: 'Message a model',
 	summary: 'Send messages to a Gemini model and get its reply as text.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: false },

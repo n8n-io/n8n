@@ -294,3 +294,59 @@ describe('httpRequest.send parity with HTTP Request v4.5 binary body', () => {
 		expect(compareRuns(legacy, next, jsonOnly('POST', 1))).toEqual({ unexplained: [], stale: [] });
 	});
 });
+
+describe('httpRequest.get parity with HTTP Request v4.5 for "Allowed HTTP Request Domains"', () => {
+	const routes: ParityCase['routes'] = [{ method: 'GET', url: URL, json: [{ id: 1 }] }];
+	const caseOf = (restriction: Record<string, string>): ParityCase => ({
+		credential: { data: { ...credential?.data, ...restriction }, types: credential?.types ?? [] },
+		headers: HEADERS,
+		input: [{}],
+		routes,
+	});
+	const NAMES_ITS_NODE: AllowedDifference = {
+		path: 'error',
+		kind: 'intended',
+		reason: 'The message names the node that refuses the credential, not the GraphQL node.',
+	};
+
+	it.each([
+		['all', { allowedHttpRequestDomains: 'all' }, true, jsonOnly('GET', 1)],
+		[
+			'domains with the host',
+			{ allowedHttpRequestDomains: 'domains', allowedDomains: 'api.example.com' },
+			true,
+			jsonOnly('GET', 1),
+		],
+		[
+			'domains without the host',
+			{ allowedHttpRequestDomains: 'domains', allowedDomains: 'other.example.com' },
+			false,
+			[],
+		],
+		[
+			'domains with no list',
+			{ allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+			false,
+			[],
+		],
+		['none', { allowedHttpRequestDomains: 'none' }, false, [NAMES_ITS_NODE]],
+	])('%s: sends or refuses the same request', async (_mode, restriction, sends, allowed) => {
+		const parityCase = caseOf(restriction);
+		const legacy = await runNode(legacyNode({ method: 'GET' }), parityCase);
+		const next = await runNode(
+			actionNode(
+				getRequest,
+				{
+					authentication: 'httpHeaderAuth',
+					url: URL,
+					query: { status: 'open' },
+					headers: { 'X-Trace': 'parity' },
+				},
+				'httpHeaderAuth',
+			),
+			parityCase,
+		);
+		expect(next.error === undefined).toBe(sends);
+		expect(compareRuns(legacy, next, allowed)).toEqual({ unexplained: [], stale: [] });
+	});
+});
