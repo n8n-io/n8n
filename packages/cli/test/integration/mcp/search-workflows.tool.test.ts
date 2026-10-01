@@ -64,10 +64,23 @@ describe('searchWorkflows folder filter', () => {
 		nested = await createFolder(ownerProject, { name: 'Nested', parentFolder: triggers });
 		const other = await createFolder(ownerProject, { name: 'Other' });
 
-		await createWorkflow({ name: 'Root flow' }, ownerProject);
-		await createWorkflow({ name: 'Slack trigger', parentFolder: triggers }, ownerProject);
-		await createWorkflow({ name: 'Nested slack trigger', parentFolder: nested }, ownerProject);
-		await createWorkflow({ name: 'Other flow', parentFolder: other }, ownerProject);
+		await createWorkflow({ name: 'Root flow', settings: { availableInMCP: true } }, ownerProject);
+		await createWorkflow(
+			{ name: 'Slack trigger', parentFolder: triggers, settings: { availableInMCP: true } },
+			ownerProject,
+		);
+		await createWorkflow(
+			{
+				name: 'Nested slack trigger',
+				parentFolder: nested,
+				settings: { availableInMCP: true },
+			},
+			ownerProject,
+		);
+		await createWorkflow(
+			{ name: 'Other flow', parentFolder: other, settings: { availableInMCP: true } },
+			ownerProject,
+		);
 	});
 
 	afterAll(async () => {
@@ -136,10 +149,21 @@ describe('searchWorkflows folder filter', () => {
 		const teamFolder = await createFolder(teamProject, { name: 'Team triggers' });
 
 		const shared = await createWorkflow(
-			{ name: 'Shared team flow', parentFolder: teamFolder },
+			{
+				name: 'Shared team flow',
+				parentFolder: teamFolder,
+				settings: { availableInMCP: true },
+			},
 			teamProject,
 		);
-		await createWorkflow({ name: 'Unshared team flow', parentFolder: teamFolder }, teamProject);
+		await createWorkflow(
+			{
+				name: 'Unshared team flow',
+				parentFolder: teamFolder,
+				settings: { availableInMCP: true },
+			},
+			teamProject,
+		);
 		await shareWorkflowWithProjects(shared, [{ project: memberProject }]);
 
 		const found = await searchWorkflows(member, workflowService, folderFinderService, {});
