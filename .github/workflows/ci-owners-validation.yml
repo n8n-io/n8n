@@ -5,8 +5,8 @@ name: 'CI: Validate OWNERS'
 # existing file or directory. Runs on OWNERS changes and on changes to the
 # owned paths, so a move or delete that orphans an OWNERS entry fails here.
 #
-# Team names are not checked here: that needs an org read token, which fork
-# PRs do not have. A separate workflow covers it (see DEVP-891).
+# Team names are checked against the GitHub organization by the required-review
+# workflow when OWNERS or GROUPS.json changes.
 
 # The paths cover every top-level path that OWNERS entries point at, so a
 # move or delete of an owned path cannot slip through unvalidated.
@@ -22,6 +22,7 @@ on:
       - 'security/**'
       - '.code-health-baseline.json'
       - 'OWNERS'
+      - 'GROUPS.json'
 
 permissions:
   contents: read

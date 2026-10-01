@@ -4,9 +4,17 @@ import { join } from "node:path";
 /**
  * @typedef OwnersEntry
  * @property { string } pattern
- * @property { string } team
+ * @property { string } owner Team handle or bare group key from OWNERS.
+ * @property { string[] } teams Expanded GitHub team handles.
  * @property { boolean } required A member of the team must approve before merge.
  * @property { number } line 1-based line number in the OWNERS file.
+ * */
+
+/**
+ * @typedef ReviewRequirement
+ * @property { string } owner Team handle or bare group key.
+ * @property { string[] } teams Teams where one member can satisfy this requirement.
+ * @property { string[] } files Files that triggered this requirement.
  * */
 
 /**
@@ -24,9 +32,65 @@ const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
 // Resolve relative to this file so the path works regardless of cwd
 // (workflow runs from repo root; `npm test` runs from .github/scripts).
 export const OWNERS_FILE = join(REPO_ROOT, "OWNERS");
+export const GROUPS_FILE = join(REPO_ROOT, "GROUPS.json");
 
 // GitHub team handle, e.g. `@n8n-io/catalysts`.
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
+const GROUP_TOKEN = /^[\w.-]+$/;
+
+/**
+ * Parse the ordered group definitions in GROUPS.json.
+ *
+ * A group is an object key and its value is an array of team or group
+ * handles. Group references must point to a group defined earlier in the
+ * object. This makes the file easy to read and prevents forward references.
+ *
+ * @param { string } content
+ * @returns { Map<string, string[]> }
+ */
+export function parseGroupsContent(content) {
+	let parsed;
+	try {
+		parsed = JSON.parse(content);
+	} catch (error) {
+		throw new Error(`GROUPS.json is not valid JSON: ${error.message}`);
+	}
+
+	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+		throw new Error('GROUPS.json must contain an object of group handles');
+	}
+
+	const definitions = parsed;
+	const groupNames = Object.keys(definitions);
+	const groups = new Map();
+	for (const [group, members] of Object.entries(definitions)) {
+		if (!GROUP_TOKEN.test(group)) {
+			throw new Error(`GROUPS.json: invalid group handle "${group}"`);
+		}
+		if (!Array.isArray(members) || members.length === 0 || !members.every((member) => typeof member === "string")) {
+			throw new Error(`GROUPS.json: group "${group}" must contain a non-empty array of handles`);
+		}
+
+		const teams = [];
+		for (const member of members) {
+			if (!GROUP_TOKEN.test(member)) {
+				throw new Error(`GROUPS.json: invalid handle "${member}" in group "${group}"`);
+			}
+			if (groupNames.includes(member)) {
+				const nestedTeams = groups.get(member);
+				if (!nestedTeams) {
+				throw new Error(`GROUPS.json: group "${group}" can only include groups defined earlier`);
+				}
+				teams.push(...nestedTeams);
+			} else {
+				teams.push(`@n8n-io/${member}`);
+			}
+		}
+		groups.set(group, [...new Set(teams)]);
+	}
+
+	return groups;
+}
 
 /**
  * Line grammar: `<pattern> <@org/team> [required]`
@@ -52,7 +116,7 @@ function stripComment(line) {
  * @param { string } content
  * @returns { OwnersEntry[] }
  * */
-export function parseOwnersContent(content) {
+export function parseOwnersContent(content, groups = new Map()) {
 	/** @type { OwnersEntry[] } */
 	const entries = [];
 
@@ -63,19 +127,19 @@ export function parseOwnersContent(content) {
 
 		const [pattern, ...tokens] = line.split(/\s+/);
 		/** @type { string | null } */
-		let team = null;
+		let owner = null;
 		let required = false;
 		let sawOption = false;
 
 		for (const token of tokens) {
-			if (TEAM_TOKEN.test(token)) {
+			if (TEAM_TOKEN.test(token) || groups.has(token)) {
 				if (sawOption) {
 					throw new Error(`OWNERS line ${lineNumber}: team "${token}" must come before options`);
 				}
-				if (team) {
+				if (owner) {
 					throw new Error(`OWNERS line ${lineNumber}: only one team per pattern is supported`);
 				}
-				team = token;
+				owner = token;
 			} else if (token === "required") {
 				required = true;
 				sawOption = true;
@@ -86,11 +150,17 @@ export function parseOwnersContent(content) {
 			}
 		}
 
-		if (!team) {
+		if (!owner) {
 			throw new Error(`OWNERS line ${lineNumber}: no team for pattern "${pattern}"`);
 		}
 
-		entries.push({ pattern, team, required, line: lineNumber });
+		entries.push({
+			pattern,
+			owner,
+			teams: groups.get(owner) ?? [owner],
+			required,
+			line: lineNumber,
+		});
 	});
 
 	return entries;
@@ -104,7 +174,8 @@ export function parseOwnersContent(content) {
  * */
 export function parseOwnersFile(path = OWNERS_FILE) {
 	const content = readFileSync(path, "utf8");
-	return parseOwnersContent(content);
+	const groups = parseGroupsContent(readFileSync(GROUPS_FILE, "utf8"));
+	return parseOwnersContent(content, groups);
 }
 
 /**
@@ -222,12 +293,13 @@ export function assignOwnership(files, entries) {
 		const entry = findOwningEntry(file, entries);
 		if (!entry) continue;
 
-		const bucket = teamToFiles.get(entry.team);
-
-		if (bucket) {
-			bucket.push(file);
-		} else {
-			teamToFiles.set(entry.team, [file]);
+		for (const team of entry.teams) {
+			const bucket = teamToFiles.get(team);
+			if (bucket) {
+				bucket.push(file);
+			} else {
+				teamToFiles.set(team, [file]);
+			}
 		}
 	}
 
@@ -235,31 +307,28 @@ export function assignOwnership(files, entries) {
 }
 
 /**
- * Determine which teams must approve the changeset: a team is required when
- * its `required` entry wins (last-match) for a changed file.
+ * Determine which ownership requirements apply to the changeset. Separate
+ * required team entries use AND semantics. Teams expanded from one required
+ * group use OR semantics.
  *
  * @param { Set<string> } files
  * @param { OwnersEntry[] } entries
- * @returns { Ownerships } required team -> files that triggered the requirement
+ * @returns { ReviewRequirement[] }
  * */
-export function resolveRequiredTeams(files, entries) {
-	/** @type { Ownerships } */
-	const teamToFiles = new Map();
+export function resolveReviewRequirements(files, entries) {
+	/** @type { ReviewRequirement[] } */
+	const requirements = [];
 
 	for (const file of [...files].sort()) {
 		const entry = findOwningEntry(file, entries);
 		if (!entry?.required) continue;
 
-		const bucket = teamToFiles.get(entry.team);
-
-		if (bucket) {
-			bucket.push(file);
-		} else {
-			teamToFiles.set(entry.team, [file]);
-		}
+		const requirement = requirements.find((candidate) => candidate.owner === entry.owner);
+		if (requirement) requirement.files.push(file);
+		else requirements.push({ owner: entry.owner, teams: entry.teams, files: [file] });
 	}
 
-	return teamToFiles;
+	return requirements;
 }
 
 /**

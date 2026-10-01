@@ -78,6 +78,70 @@ permissions:
   contents: read
 
 jobs:
+  validate-owner-files:
+    name: Validate owner files
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: read
+          permission-members: read
+          permission-pull-requests: read
+
+      - name: Check ownership file changes
+        id: changes
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          protected=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | select(.filename == "OWNERS" or .filename == "GROUPS.json") | .filename')
+          if [ -z "$protected" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$IS_FORK" = "true" ]; then
+            echo "Fork PRs cannot modify OWNERS or GROUPS.json:"
+            echo "$protected"
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # Use trusted master code. Read proposed ownership files only as data.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.changes.outputs.changed == 'true'
+        with:
+          ref: master
+          persist-credentials: false
+          sparse-checkout: .github
+
+      - name: Read proposed ownership files
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -o pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/contents/OWNERS?ref=${HEAD_SHA}" \
+            --jq .content | base64 --decode > "${RUNNER_TEMP}/OWNERS"
+          gh api "repos/${GITHUB_REPOSITORY}/contents/GROUPS.json?ref=${HEAD_SHA}" \
+            --jq .content | base64 --decode > "${RUNNER_TEMP}/GROUPS.json"
+
+      - name: Validate team names
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          OWNERS_FILE: ${{ runner.temp }}/OWNERS
+          GROUPS_FILE: ${{ runner.temp }}/GROUPS.json
+        run: node .github/scripts/owners/validate-team-names.mjs
+
   # The queue requires this status on the merge-group head, but there is
   # nothing new to evaluate there: entering the queue already required the
   # status to be green on the PR head, and queueing does not change approvals.

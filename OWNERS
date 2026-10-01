@@ -1,6 +1,8 @@
 # n8n OWNERS
 #
 # Format: <pattern> <@org/team> [required]
+# Use the exact bare key from GROUPS.json in place of a team handle, such as
+# `pkg/ core-experience`. The group assigns matching files to every team.
 #
 # Examples:
 #   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation
