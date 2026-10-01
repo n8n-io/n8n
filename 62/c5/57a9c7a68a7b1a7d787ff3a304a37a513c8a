@@ -1,0 +1,44 @@
+packages/@n8n/backend-common/src/modules/__tests__/modules.config.test.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 4
+packages/@n8n/inbound-auth/src/__tests__/inbound.test.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 107,112,116
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 43
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 46-55
+packages/@n8n/inbound-auth/src/pipeline.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 26-31
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 780
+packages/@n8n/inbound-auth/src/__tests__/trusted-source.test.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 84,119-124,190-208
+  s_5b85161403cb3c::t_e7ff0a4906065f 209-211
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 40-50
+  s_5b85161403cb3c::t_fb5e32945a34cf 72,110
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 6-7,10,38-62,65,67,70
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 48-51
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 177,190,202,1163,1843
+packages/@n8n/inbound-auth/src/trusted-source.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 52-57
+  s_5b85161403cb3c::t_d72ac32ee580d6 58-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62c557a9c7a68a7b1a7d787ff3a304a37a513c8a",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectCreateResource.vue
+  h_f8b427917eda26 58-59
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  h_f8b427917eda26 514,522
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  h_f8b427917eda26 224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc268ce0d66bb7735d8cfc1ae8a03c440c55840d",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
