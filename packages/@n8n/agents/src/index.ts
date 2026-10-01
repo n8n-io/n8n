@@ -19,6 +19,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	CheckpointStore,
