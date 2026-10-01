@@ -382,7 +382,7 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			promptVersion: '',
 			nodeUsageEnabled: false,
-			nodeContractsEnabled: false,
+			nodeContractsEnabled: true,
 			nodeContractsUpdatePolicy: 'tolerant',
 			nodeContractsRegistryUrl: '',
 			nodeContractsPublicKeyFile: '',

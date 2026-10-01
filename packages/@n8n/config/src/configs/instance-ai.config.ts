@@ -232,10 +232,11 @@ export class InstanceAiConfig {
 	/**
 	 * Serve AI-first action contracts through the `nodes` tool for the nodes that
 	 * have one, and compile contract nodes back to workflow JSON on build.
-	 * Spike (NODE-6071): env-only, no PostHog flag.
+	 * Spike (NODE-6071): env-only, no PostHog flag. On by default on the spike branch, so a
+	 * branch image runs the contract path in remote evals without extra settings.
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED')
-	nodeContractsEnabled: boolean = false;
+	nodeContractsEnabled: boolean = true;
 
 	/**
 	 * Which version a locked contract node runs. `strict` runs the locked bundle. `tolerant`
