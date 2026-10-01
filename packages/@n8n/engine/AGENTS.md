@@ -1,5 +1,9 @@
 # @n8n/engine — structure & modularity intent
 
+## PR titles
+
+Add `(no-changelog)` to the title of every PR that changes this package.
+
 ## Naming
 
 Refer to this project as **engine v2** (lowercase `v2`). Do not use "Engine
