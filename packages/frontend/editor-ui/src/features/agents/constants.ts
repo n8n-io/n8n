@@ -47,6 +47,12 @@ export const EXECUTIONS_SECTION_KEY = '__executions';
  */
 export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
 
+/** Agent n8n Chat threads fetched for the sidebar's "recent chats" list. */
+export const AGENT_N8N_CHAT_RECENT_THREADS_LIMIT = 10;
+
+/** Page size for the agent side of the "All chats" view's infinite scroll. */
+export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
+
 export {
 	CHAT_MESSAGE_STATUS,
 	TOOL_CALL_STATE,

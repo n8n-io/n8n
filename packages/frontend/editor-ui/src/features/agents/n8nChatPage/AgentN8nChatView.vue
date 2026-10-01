@@ -8,7 +8,11 @@ import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { AgentJsonConfig } from '../types';
-import { AGENT_BUILDER_VIEW, AGENT_N8N_CHAT_VIEW } from '../constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_N8N_CHAT_VIEW,
+	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
+} from '../constants';
 import { getN8nChatAgent } from '../composables/useAgentApi';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
@@ -16,6 +20,7 @@ import { isNotFoundError } from '../utils/errors';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue';
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
+import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 // `agentThreadId` (not `threadId`): this route's sibling `InstanceAiLayout` reads
@@ -26,6 +31,7 @@ const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
+const threadsStore = useAgentN8nChatThreadsStore();
 
 const agent = ref<AgentChatListItem | null>(null);
 const isLoading = ref(true);
@@ -96,6 +102,17 @@ function onSessionCreated(sessionId: string): void {
 		name: AGENT_N8N_CHAT_VIEW,
 		params: { agentId: props.agentId, agentThreadId: sessionId },
 	});
+}
+
+// `update:streaming` going false is this chat's "turn finished" signal — refresh the
+// sidebar every turn, since a title or an order can change on any of them, not just
+// the first.
+let wasStreaming = false;
+function onStreamingChange(streaming: boolean): void {
+	if (wasStreaming && !streaming) {
+		void threadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+	}
+	wasStreaming = streaming;
 }
 
 // The route carries no project id — a chat-only member never gets one in the
@@ -172,6 +189,7 @@ const agentPageRoute = computed(() => {
 			channel="n8n-chat"
 			center-empty-state
 			@session-created="onSessionCreated"
+			@update:streaming="onStreamingChange"
 		>
 			<template #empty-state>
 				<div :class="$style.emptyState" data-testid="agent-n8n-chat-empty-state">

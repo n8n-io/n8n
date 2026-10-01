@@ -4,6 +4,7 @@ import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useAgentsN8nChatFlag } from './useAgentsN8nChatFlag';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
@@ -12,6 +13,7 @@ export type N8nChatAgentSource = 'card' | 'library';
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 
 	const common = () => ({ session_id: rootStore.pushRef });
 
@@ -222,6 +224,20 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	// No-op with the flag off, so sidebar callers don't need their own flag check.
+	function trackClickedSidebarItem(
+		params: { item: 'new_chat' } | { item: 'chat'; chatType: 'assistant' | 'agent' },
+	) {
+		if (!isAgentsN8nChatFlag.value) return;
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM, {
+			...(params.item === 'new_chat'
+				? { item: 'new_chat' as const }
+				: { item: 'chat' as const, chat_type: params.chatType }),
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -239,5 +255,6 @@ export function useAgentTelemetry() {
 		trackDownloadedTeamsAppPackage,
 		trackSelectedN8nChatAgent,
 		trackSentMessageToN8nChatAgent,
+		trackClickedSidebarItem,
 	};
 }

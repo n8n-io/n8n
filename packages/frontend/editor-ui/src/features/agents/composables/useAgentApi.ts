@@ -19,6 +19,7 @@ import type {
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
+	AgentN8nChatThreadsResponse,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -30,8 +31,10 @@ import type {
 	ChatIntegrationDescriptor,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
-import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import { isRecord } from '@n8n/utils/is-record';
+import { UnexpectedError } from 'n8n-workflow';
 import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
 
 /**
@@ -145,6 +148,44 @@ export const listN8nChatAgents = async (
 		take,
 		sortBy,
 	});
+};
+
+/** Options for {@link listN8nChatThreads}. `cursor` is a thread's `updatedAt` ISO string. */
+export type ListN8nChatThreadsOptions = {
+	limit: number;
+	cursor?: string;
+};
+
+/** Narrows the raw response body — `request` returns `unknown`, and this avoids an `as` cast. */
+function isN8nChatThreadsResponse(body: unknown): body is AgentN8nChatThreadsResponse {
+	return (
+		isRecord(body) &&
+		Array.isArray(body.data) &&
+		(body.nextCursor === null || typeof body.nextCursor === 'string')
+	);
+}
+
+/**
+ * The user's own n8n Chat threads across every agent they can reach, newest first.
+ * The controller writes `{ data, nextCursor }` directly, without the usual `data`-key
+ * envelope — `makeRestApiRequest` would unwrap `data` and drop `nextCursor`, so this
+ * reads the full response instead (same reasoning as `evaluation.api.ts`'s raw `request` calls).
+ */
+export const listN8nChatThreads = async (
+	context: IRestApiContext,
+	options: ListN8nChatThreadsOptions,
+): Promise<AgentN8nChatThreadsResponse> => {
+	const response: unknown = await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: '/agents/v2/n8n-chat/threads',
+		headers: { 'push-ref': context.pushRef },
+		data: { limit: options.limit, cursor: options.cursor },
+	});
+	if (!isN8nChatThreadsResponse(response)) {
+		throw new UnexpectedError('Unexpected n8n Chat threads response shape');
+	}
+	return response;
 };
 
 export const listAgents = async (

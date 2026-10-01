@@ -152,6 +152,11 @@ const agentPublishTrigger = z
 		'What caused the publish, as opposed to who performed it. channel_connect and slack_setup are historical values only.',
 	);
 
+const n8nChatVariant = z
+	.string()
+	.nullable()
+	.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value');
+
 const agentPublish = {
 	...agentActorIdentity,
 	...agentCapabilityProfile,
@@ -664,10 +669,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			agent_id: z.string(),
 			source: z.enum(['card', 'library']),
-			variant: z
-				.string()
-				.nullable()
-				.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value'),
+			variant: n8nChatVariant,
 			session_id: sessionId,
 		}),
 	},
@@ -678,11 +680,26 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string(),
 			thread_id: z.string(),
 			is_new_thread: z.boolean(),
-			variant: z
-				.string()
-				.nullable()
-				.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value'),
+			variant: n8nChatVariant,
 			session_id: sessionId,
 		}),
+	},
+	USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM: {
+		name: 'User clicked n8n chat sidebar item',
+		description:
+			'The user clicked a "New chat" or existing-chat item in the sidebar\'s n8n Chat section.',
+		properties: z.discriminatedUnion('item', [
+			z.object({
+				item: z.literal('new_chat'),
+				variant: n8nChatVariant,
+				session_id: sessionId,
+			}),
+			z.object({
+				item: z.literal('chat'),
+				chat_type: z.enum(['assistant', 'agent']),
+				variant: n8nChatVariant,
+				session_id: sessionId,
+			}),
+		]),
 	},
 });
