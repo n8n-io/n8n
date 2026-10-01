@@ -197,6 +197,7 @@
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "@parcel/watcher": "^2.5.1",
     "@pinecone-database/pinecone": "catalog:",
+    "@pyroscope/nodejs": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
     "@rudderstack/rudder-sdk-node": "catalog:",
     "@sentry/node": "catalog:sentry",

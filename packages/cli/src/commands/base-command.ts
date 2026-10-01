@@ -49,6 +49,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { POLICY_MODULES } from '@/policy/policy-modules';
 import { PostHogClient } from '@/posthog';
+import { PyroscopeProfiler } from '@/profiling/pyroscope-profiler';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
@@ -160,6 +161,8 @@ export abstract class BaseCommand<F = never> {
 					this.globalConfig.cache.backend === 'redis',
 			},
 		});
+
+		await Container.get(PyroscopeProfiler).start();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));

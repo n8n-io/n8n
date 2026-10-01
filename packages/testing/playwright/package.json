@@ -20,6 +20,8 @@
     "test:encryption:rotation": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/rotation-cycle.spec.ts",
     "test:benchmark": "playwright test --project='benchmarking:infrastructure'",
     "benchmark:sizing-matrix": "tsx scripts/sizing-matrix-aggregate.ts",
+    "memory:snapshot": "tsx scripts/memory-snapshot.ts",
+    "memory:compare": "tsx scripts/memory-compare.ts",
     "test:container:sqlite": "playwright test --project='sqlite:*'",
     "test:container:sqlite:e2e": "playwright test --project='sqlite:e2e'",
     "test:container:postgres": "playwright test --project='postgres:*'",

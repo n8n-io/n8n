@@ -448,6 +448,9 @@ describe('GlobalConfig', () => {
 			grantTokenTtl: 30,
 			insecureMode: false,
 		},
+		profiling: {
+			pyroscopeUrl: '',
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',

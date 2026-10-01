@@ -44,11 +44,13 @@ const DEFAULT_IMAGES = {
 	mysql: 'mysql:9.6.0',
 	localstack: 'localstack/localstack:4.13.1',
 	postgresExporter: 'prometheuscommunity/postgres-exporter:v0.17.1',
-	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.49.1',
+	cadvisor: 'gcr.io/cadvisor/cadvisor:v0.52.1',
 	sandboxApi: 'n8nio/n8n-sandbox-service-api:1.3.0',
 	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:1.3.0',
 	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:1.3.0',
 	verdaccio: 'verdaccio/verdaccio:6.5.0',
+	pyroscope: 'grafana/pyroscope:2.1.2',
+	grafana: 'grafana/grafana:13.2.3',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -131,4 +133,6 @@ export const TEST_CONTAINER_IMAGES = {
 	sandboxRunner: getImage('sandboxRunner'),
 	sandboxSandbox: getImage('sandboxSandbox'),
 	verdaccio: getImage('verdaccio'),
+	pyroscope: getImage('pyroscope'),
+	grafana: getImage('grafana'),
 } as const;

@@ -14,6 +14,7 @@
     "stack:starter": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --plan starter",
     "stack:enterprise": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --plan enterprise",
     "stack:observability": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --observability",
+    "stack:memory": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --memory",
     "stack:kafka": "TESTCONTAINERS_REUSE_ENABLE=true npm run stack -- --kafka",
     "stack:clean:containers": "docker ps -aq --filter 'name=n8n-stack-*' | xargs -r docker rm -f 2>/dev/null",
     "stack:clean:networks": "docker network ls --filter 'label=org.testcontainers=true' -q | xargs -r docker network rm 2>/dev/null",

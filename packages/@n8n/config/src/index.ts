@@ -40,6 +40,7 @@ import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
 import { OutboundProxyConfig } from './configs/outbound-proxy.config';
 import { PersonalizationConfig } from './configs/personalization.config';
+import { ProfilingConfig } from './configs/profiling.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
@@ -101,6 +102,7 @@ export {
 } from './configs/canvas-only.config';
 export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
+export { ProfilingConfig } from './configs/profiling.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
@@ -243,6 +245,9 @@ export class GlobalConfig {
 
 	@Nested
 	personalization: PersonalizationConfig;
+
+	@Nested
+	profiling: ProfilingConfig;
 
 	@Nested
 	sso: SsoConfig;

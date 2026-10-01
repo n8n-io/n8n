@@ -363,6 +363,8 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `taskRunner` | - | External task runner |
 | `loadBalancer` | - | Caddy for multi-main |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
+| `pyroscope` | - | Pyroscope for heap and wall-time profiles |
+| `grafana` | - | Grafana with the n8n memory dashboard |
 
 **Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
 The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
@@ -380,10 +382,54 @@ The `observability` capability shortcut handles this automatically: `test.use({ 
 | `--env KEY=VALUE` | Set environment variables |
 | `--observability` | Enable metrics/logs stack |
 | `--tracing` | Enable tracing stack (Jaeger) |
+| `--memory` | Enable memory debugging (Grafana, Pyroscope, heap snapshot endpoints) |
 | `--tunnel` | Enable Cloudflare Tunnel for public webhook URLs |
 | `--oidc` | Enable Keycloak |
 | `--source-control` | Enable Gitea |
 | `--mailpit` | Enable email testing (Mailpit) |
+
+## Memory Debugging
+
+Use this flow to find out how a change affects the memory use of n8n.
+
+1. Build the image with `pnpm build:docker`.
+2. Start the stack from the repository root:
+
+   ```bash
+   pnpm memory:stack --plan starter
+   ```
+
+   The `--plan` flag is optional. It sets the memory and CPU limits of a cloud plan.
+   The command prints the URL of n8n and the URL of the memory dashboard.
+3. Open the dashboard and use n8n. The dashboard shows:
+   - The memory of the n8n container, which the OOM killer uses.
+   - The process memory: RSS, PSS, V8 heap, and external memory.
+   - The memory outside the JS heap. Heap snapshots do not show this memory.
+   - Flame graphs of the live heap and of wall time, from Pyroscope.
+4. Save a snapshot at each step that you want to compare. Use the n8n URL that the stack prints:
+
+   ```bash
+   pnpm memory:snapshot --url http://localhost:5678 --label before
+   ```
+
+   The command writes `before.heapsnapshot` and `before.memory.json` to `memory-snapshots/`.
+   Add `--skip-heap` to save only the memory breakdown.
+5. Compare two snapshots:
+
+   ```bash
+   pnpm memory:compare memory-snapshots/before.heapsnapshot memory-snapshots/after.heapsnapshot
+   ```
+
+V8 uses native memory to write a heap snapshot, and the process can keep that memory.
+After the first heap snapshot, RSS values from the same process can be too high.
+To compare RSS between steps, use `--skip-heap` for all steps except the last.
+
+To compare two branches, build the image and start a new stack for each branch. Then do the same steps on each stack.
+
+For a repeatable check in CI, write a scenario for the memory harness in
+`packages/testing/playwright/tests/infrastructure/benchmarks-local/harness/memory-harness.ts`.
+
+To profile a process outside the stack, set `N8N_PROFILING_PYROSCOPE_URL` to the URL of a Pyroscope server.
 
 ## Telemetry
 

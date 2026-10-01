@@ -2,6 +2,7 @@ import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
 import { gitea, createGiteaHelper } from './gitea';
+import { grafana } from './grafana';
 import { kafka, createKafkaHelper } from './kafka';
 import { kent, createKentHelper } from './kent';
 import { keycloak, createKeycloakHelper } from './keycloak';
@@ -15,6 +16,7 @@ import { createObservabilityHelper } from './observability';
 import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
+import { pyroscope } from './pyroscope';
 import { redis } from './redis';
 import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
@@ -49,6 +51,8 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	cadvisor,
 	sandbox,
 	npmRegistry,
+	pyroscope,
+	grafana,
 };
 
 export const helperFactories: Partial<HelperFactories> = {

@@ -289,6 +289,7 @@ catalog:
   zod-to-json-schema: 3.23.3
   knip: ^6.35.1
   openapi-types: 12.1.3
+  '@pyroscope/nodejs': 0.6.4
 
 catalogMode: strict
 
@@ -506,6 +507,7 @@ patchedDependencies:
 allowBuilds:
   '@biomejs/biome': false
   '@confluentinc/kafka-javascript': true
+  '@datadog/pprof': false
   '@jitsi/robotjs': false
   '@parcel/watcher': false
   '@sentry-internal/node-cpu-profiler': false

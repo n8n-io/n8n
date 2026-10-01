@@ -347,6 +347,9 @@ catalogs:
     '@pinecone-database/pinecone':
       specifier: ^5.0.2
       version: 5.1.2
+    '@pyroscope/nodejs':
+      specifier: 0.6.4
+      version: 0.6.4
     '@qdrant/js-client-rest':
       specifier: ^1.19.0
       version: 1.19.0
@@ -4792,6 +4795,9 @@ importers:
       '@pinecone-database/pinecone':
         specifier: 'catalog:'
         version: 5.1.2
+      '@pyroscope/nodejs':
+        specifier: 'catalog:'
+        version: 0.6.4(express@5.1.0(supports-color@8.1.1))(supports-color@8.1.1)
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
         version: 1.19.0(@typescript/typescript6@6.0.2)
@@ -9596,6 +9602,10 @@ packages:
     resolution: {integrity: sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==}
     engines: {node: '>17.0.0'}
 
+  '@datadog/pprof@5.14.4':
+    resolution: {integrity: sha512-egEZDD9v98RBI8ijbHyaWQeY8rW0WEu004As5D7SUkdqSMORhrnh7ZdsM46PUzQgAc85IaEZoukWS9UhMvWn9w==}
+    engines: {node: '>=16'}
+
   '@daytona/analytics-api-client@0.205.1':
     resolution: {integrity: sha512-/kGNw6RGI7psf5OYqOPTfyN2tDW/206XBMXFQxmD3Ljuor/xk17WrONRah35OJy62lk+BzvCRtnkGBNEL4EjhQ==}
 
@@ -12793,6 +12803,18 @@ packages:
     resolution: {integrity: sha512-46BZJYJjc/WwmKjsvDFykHtXrtomsCIrwYQPOP7VfMJoZY2bsDF9oROBABR3paDjDcmkUye1Pb1BqdcdiipaWA==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@pyroscope/nodejs@0.6.4':
+    resolution: {integrity: sha512-pSRR7QOtToxhYuKJJRxFHR74pElI2jSFV20b/j+zN3BMEoOOUCA/RxgEK3gjGB66/c85RGeRy5emOIf6+OAghw==}
+    engines: {node: '>=20.20.2'}
+    peerDependencies:
+      express: ^4.0.0 || ^5.0.0
+      fastify: ^5.8.5
+    peerDependenciesMeta:
+      express:
+        optional: true
+      fastify:
+        optional: true
 
   '@qdrant/js-client-rest@1.19.0':
     resolution: {integrity: sha512-1+QLUHsWp+WV4PE35FLnH2ckxotWrQEqi/F3t4goF3cCThR0ZxLVtOC4OoOi/E1iyj/iIYBdbuACWMuQ15NAnA==}
@@ -21686,6 +21708,9 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
+  pprof-format@2.3.1:
+    resolution: {integrity: sha512-y51Z83qG2vEQBACPu6lkGFREVkHwQaCaNDdSFEMLIqSo3bmpADsbP6J3F2SSk7tYB741oTQ9Kt5YAdQsmiCRkA==}
+
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
@@ -27435,6 +27460,12 @@ snapshots:
 
   '@dagrejs/graphlib@2.2.4': {}
 
+  '@datadog/pprof@5.14.4':
+    dependencies:
+      node-gyp-build: 4.8.4
+      pprof-format: 2.3.1
+      source-map: 0.7.6
+
   '@daytona/analytics-api-client@0.205.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -30668,6 +30699,19 @@ snapshots:
       semver: 7.7.3
       tar-fs: 2.1.5
       yargs: 17.7.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@pyroscope/nodejs@0.6.4(express@5.1.0(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      '@datadog/pprof': 5.14.4
+      debug: 4.4.3(supports-color@8.1.1)
+      p-limit: 7.3.1
+      pprof-format: 2.3.1
+      regenerator-runtime: 0.14.1
+      source-map: 0.7.6
+    optionalDependencies:
+      express: 5.1.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -41197,6 +41241,8 @@ snapshots:
     dependencies:
       commander: 9.5.0
     optional: true
+
+  pprof-format@2.3.1: {}
 
   prebuild-install@7.1.3:
     dependencies:

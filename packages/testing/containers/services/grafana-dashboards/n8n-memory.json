@@ -1,0 +1,153 @@
+{
+	"uid": "n8n-memory",
+	"title": "n8n memory",
+	"description": "Memory use of the n8n processes in this stack. Metrics come from VictoriaMetrics and cAdvisor, profiles come from Pyroscope.",
+	"editable": true,
+	"refresh": "5s",
+	"schemaVersion": 39,
+	"time": { "from": "now-15m", "to": "now" },
+	"panels": [
+		{
+			"id": 1,
+			"type": "timeseries",
+			"title": "Container memory",
+			"description": "Working set of each n8n container, as cAdvisor reports it. Kubernetes uses this value to decide when to kill a pod for using too much memory. The limit line shows only when the stack runs with a memory limit (for example --plan starter).",
+			"gridPos": { "x": 0, "y": 0, "w": 12, "h": 9 },
+			"datasource": { "type": "prometheus", "uid": "victoria-metrics" },
+			"fieldConfig": { "defaults": { "unit": "bytes", "min": 0 }, "overrides": [] },
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "container_memory_working_set_bytes{container_label_com_docker_compose_project=\"__PROJECT__\", container_label_com_docker_compose_service=~\"n8n-.*\"}",
+					"legendFormat": "{{container_label_com_docker_compose_service}} working set"
+				},
+				{
+					"refId": "B",
+					"expr": "container_spec_memory_limit_bytes{container_label_com_docker_compose_project=\"__PROJECT__\", container_label_com_docker_compose_service=~\"n8n-.*\"} > 0",
+					"legendFormat": "{{container_label_com_docker_compose_service}} limit"
+				}
+			]
+		},
+		{
+			"id": 2,
+			"type": "timeseries",
+			"title": "Process memory",
+			"description": "RSS and PSS are the total memory of the n8n process. The heap values are the part that V8 manages for JavaScript objects. External is memory that JavaScript objects hold outside the heap, for example Buffers.",
+			"gridPos": { "x": 12, "y": 0, "w": 12, "h": 9 },
+			"datasource": { "type": "prometheus", "uid": "victoria-metrics" },
+			"fieldConfig": { "defaults": { "unit": "bytes", "min": 0 }, "overrides": [] },
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "n8n_process_resident_memory_bytes",
+					"legendFormat": "{{instance}} RSS"
+				},
+				{ "refId": "B", "expr": "n8n_process_pss_bytes", "legendFormat": "{{instance}} PSS" },
+				{
+					"refId": "C",
+					"expr": "n8n_nodejs_heap_size_total_bytes",
+					"legendFormat": "{{instance}} heap total"
+				},
+				{
+					"refId": "D",
+					"expr": "n8n_nodejs_heap_size_used_bytes",
+					"legendFormat": "{{instance}} heap used"
+				},
+				{
+					"refId": "E",
+					"expr": "n8n_nodejs_external_memory_bytes",
+					"legendFormat": "{{instance}} external"
+				}
+			]
+		},
+		{
+			"id": 3,
+			"type": "timeseries",
+			"title": "Memory outside the JS heap",
+			"description": "RSS minus the total V8 heap. Growth here comes from native code, isolates, Buffers, or memory that the allocator does not give back. Heap snapshots and heap profiles do not show this memory.",
+			"gridPos": { "x": 0, "y": 9, "w": 8, "h": 8 },
+			"datasource": { "type": "prometheus", "uid": "victoria-metrics" },
+			"fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "n8n_process_resident_memory_bytes - on(instance) n8n_nodejs_heap_size_total_bytes",
+					"legendFormat": "{{instance}}"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"type": "timeseries",
+			"title": "JS heap by V8 space",
+			"description": "Used size of each V8 heap space. Old space holds long-lived objects, so steady growth there often means that something keeps references.",
+			"gridPos": { "x": 8, "y": 9, "w": 8, "h": 8 },
+			"datasource": { "type": "prometheus", "uid": "victoria-metrics" },
+			"fieldConfig": {
+				"defaults": {
+					"unit": "bytes",
+					"min": 0,
+					"custom": { "stacking": { "mode": "normal" }, "fillOpacity": 30 }
+				},
+				"overrides": []
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "n8n_nodejs_heap_space_size_used_bytes",
+					"legendFormat": "{{instance}} {{space}}"
+				}
+			]
+		},
+		{
+			"id": 5,
+			"type": "timeseries",
+			"title": "Garbage collection time",
+			"description": "Seconds per second that V8 spends in garbage collection, by GC kind.",
+			"gridPos": { "x": 16, "y": 9, "w": 8, "h": 8 },
+			"datasource": { "type": "prometheus", "uid": "victoria-metrics" },
+			"fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum by (instance, kind) (rate(n8n_nodejs_gc_duration_seconds_sum[1m]))",
+					"legendFormat": "{{instance}} {{kind}}"
+				}
+			]
+		},
+		{
+			"id": 6,
+			"type": "flamegraph",
+			"title": "Live heap by code (Pyroscope)",
+			"description": "Sampled JS heap memory that is still in use, grouped by the call stack that allocated it. Select a time range on a graph above to see the profile for that range.",
+			"gridPos": { "x": 0, "y": 17, "w": 12, "h": 16 },
+			"datasource": { "type": "grafana-pyroscope-datasource", "uid": "pyroscope" },
+			"targets": [
+				{
+					"refId": "A",
+					"queryType": "profile",
+					"profileTypeId": "memory:inuse_space:bytes:inuse_space:bytes",
+					"labelSelector": "{service_name=\"n8n\"}",
+					"groupBy": []
+				}
+			]
+		},
+		{
+			"id": 7,
+			"type": "flamegraph",
+			"title": "Wall time by code (Pyroscope)",
+			"description": "Where the n8n process spends time, grouped by call stack.",
+			"gridPos": { "x": 12, "y": 17, "w": 12, "h": 16 },
+			"datasource": { "type": "grafana-pyroscope-datasource", "uid": "pyroscope" },
+			"targets": [
+				{
+					"refId": "A",
+					"queryType": "profile",
+					"profileTypeId": "wall:wall:nanoseconds:wall:nanoseconds",
+					"labelSelector": "{service_name=\"n8n\"}",
+					"groupBy": []
+				}
+			]
+		}
+	]
+}

@@ -5,10 +5,12 @@ import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import { createServiceStack, writeDevEnvFile } from './service-stack';
 import type { CloudflaredResult } from './services/cloudflared';
+import type { GrafanaResult } from './services/grafana';
 import type { KentResult } from './services/kent';
 import type { KeycloakResult } from './services/keycloak';
 import type { MailpitResult } from './services/mailpit';
 import type { NgrokResult } from './services/ngrok';
+import type { PyroscopeResult } from './services/pyroscope';
 import { services as SERVICE_REGISTRY } from './services/registry';
 import type { TracingResult } from './services/tracing';
 import type { ServiceName } from './services/types';
@@ -56,6 +58,7 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --memory          Enable memory debugging (Grafana dashboard, Pyroscope profiles, heap snapshot endpoints)
   --kafka           Enable Kafka broker for message queue trigger testing
   --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
   --ngrok           Enable ngrok tunnel for public URL (requires NGROK_AUTHTOKEN env var)
@@ -98,6 +101,9 @@ ${colors.yellow}Examples:${colors.reset}
 
   ${colors.bright}# With observability stack (logs + metrics persist even after terminal closes)${colors.reset}
   npm run stack --observability
+
+  ${colors.bright}# Memory debugging with the memory limits of a cloud starter plan${colors.reset}
+  npm run stack --memory --plan starter
 
   ${colors.bright}# With tracing stack (Jaeger UI for workflow execution visualization)${colors.reset}
   npm run stack --queue --tracing
@@ -149,6 +155,7 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			memory: { type: 'boolean' },
 			kafka: { type: 'boolean' },
 			tunnel: { type: 'boolean' },
 			ngrok: { type: 'boolean' },
@@ -188,6 +195,7 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.memory) services.push('victoriaMetrics', 'cadvisor', 'pyroscope', 'grafana');
 	if (values.kafka) services.push('kafka');
 	if (values.tunnel) services.push('cloudflared');
 	if (values.ngrok) services.push('ngrok');
@@ -266,6 +274,11 @@ async function main() {
 				log.warn(`Invalid env format: ${envStr} (expected KEY=VALUE)`);
 			}
 		}
+	}
+
+	// The e2e controller exposes the GC, heap snapshot, and memory map endpoints.
+	if (values.memory) {
+		config.env = { E2E_TESTS: 'true', ...config.env };
 	}
 
 	// Services-only mode: start containers, write .env, no n8n
@@ -386,8 +399,25 @@ async function main() {
 					`VictoriaMetrics UI: ${colors.cyan}${metricsResult.meta.queryEndpoint}/vmui${colors.reset}`,
 				);
 			}
-			// Vector is always started when observability is enabled in the new stack
-			log.success('Container logs collected by Vector (runs in background)');
+			if (logsResult) {
+				log.success('Container logs collected by Vector (runs in background)');
+			}
+		}
+
+		const grafanaResult = stack.serviceResults.grafana as GrafanaResult | undefined;
+		const pyroscopeResult = stack.serviceResults.pyroscope as PyroscopeResult | undefined;
+		if (grafanaResult) {
+			console.log('');
+			log.header('Memory Debugging');
+			log.info(
+				`Memory dashboard: ${colors.cyan}${grafanaResult.meta.memoryDashboardUrl}${colors.reset}`,
+			);
+			if (pyroscopeResult) {
+				log.info(`Pyroscope UI: ${colors.cyan}${pyroscopeResult.meta.uiUrl}${colors.reset}`);
+			}
+			log.info(
+				`Save a snapshot: ${colors.bright}pnpm memory:snapshot --url ${stack.baseUrl} --label before${colors.reset}`,
+			);
 		}
 
 		const tracingResult = stack.serviceResults.tracing as TracingResult | undefined;
@@ -469,6 +499,7 @@ function displayConfig(config: N8NConfig) {
 	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
 	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');
 	if (services.includes('tracing')) enabledFeatures.push('Tracing (Jaeger)');
+	if (services.includes('grafana')) enabledFeatures.push('Memory debugging (Grafana + Pyroscope)');
 	if (services.includes('mailpit')) enabledFeatures.push('Email (Mailpit)');
 	if (services.includes('kent')) enabledFeatures.push('Sentry Mock (Kent)');
 

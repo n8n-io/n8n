@@ -29,6 +29,8 @@ export const SERVICE_NAMES = [
 	'cadvisor',
 	'sandbox',
 	'npmRegistry',
+	'pyroscope',
+	'grafana',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
