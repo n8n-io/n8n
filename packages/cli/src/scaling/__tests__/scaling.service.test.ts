@@ -127,6 +127,27 @@ describe('ScalingService', () => {
 
 	const defaultBullArgs = expectedBullArgs('jobs');
 
+	const startWorker = async () => {
+		Object.assign(instanceSettings, { instanceType: 'worker' });
+		await scalingService.setupQueue();
+		scalingService.setupWorker(5);
+		return queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+	};
+
+	const lateJob = ({ attemptsMade = 0 }: { attemptsMade?: number } = {}) =>
+		mock<Job>({
+			id: '1',
+			attemptsMade,
+			opts: {},
+			data: { executionId: '123', loadStaticData: false },
+		});
+
+	const getFailedListener = () =>
+		queue.on.mock.calls.find(([event]) => (event as string) === 'failed')?.[1] as (
+			job: Job,
+			error: Error,
+		) => void;
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// @ts-expect-error readonly property
@@ -348,14 +369,50 @@ describe('ScalingService', () => {
 
 			await scalingService.stop();
 
-			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
-			await processFn(job);
+			const job = mock<Job>({
+				id: '1',
+				attemptsMade: 0,
+				opts: {},
+				data: { executionId: '123', loadStaticData: false },
+			});
+			await expect(processFn(job)).rejects.toThrow();
 
 			expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
 			expect(scopedLogger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('123'),
 				expect.objectContaining({ executionId: '123', jobId: '1' }),
 			);
+		});
+
+		describe('when a job reaches the worker after stop began', () => {
+			it('should hand the job back without running it', async () => {
+				const { JobHandedBackError } = await import('@/errors/job-handed-back.error');
+				const processFn = await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				const eventService = scalingService['eventService'];
+
+				await scalingService.stop();
+
+				const job = lateJob();
+				await expect(processFn(job)).rejects.toBeInstanceOf(JobHandedBackError);
+
+				expect(jobProcessor.processJob).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith('job-dequeued', expect.anything());
+			});
+
+			it('should grant the job another attempt without reporting a failure', async () => {
+				const processFn = await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				await scalingService.stop();
+
+				const job = lateJob({ attemptsMade: 1 });
+				await processFn(job).catch(() => {});
+
+				expect(job.opts.attempts).toBe(job.attemptsMade + 2);
+				expect(job.progress).not.toHaveBeenCalled();
+				expect(errorReporter.error).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should process a job that reaches the worker before shutdown without warning', async () => {
@@ -653,6 +710,51 @@ describe('ScalingService', () => {
 				expect(hasStopped).toBe(true);
 				expect(activeExecutions.cancelRunningExecutions).not.toHaveBeenCalled();
 				expect(scopedLogger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should not finish stopping until a handed-back job has failed locally', async () => {
+				vi.useFakeTimers();
+				const processFn = await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				const job = lateJob();
+				const handBackError = await processFn(job).then(
+					() => undefined,
+					(error: Error) => error,
+				);
+
+				await vi.advanceTimersByTimeAsync(1_000);
+
+				expect(hasStopped).toBe(false);
+
+				getFailedListener()(job, handBackError as Error);
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
+			});
+
+			it('should finish stopping after 5s when a handed-back job never fails locally', async () => {
+				vi.useFakeTimers();
+				const processFn = await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await processFn(lateJob()).catch(() => {});
+
+				await vi.advanceTimersByTimeAsync(4_999);
+
+				expect(hasStopped).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
 			});
 
 			it.each([
