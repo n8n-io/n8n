@@ -15,6 +15,7 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { AGENT_N8N_CHAT_VIEW } from '../../constants';
+import { useAgentN8nChatThreadsStore } from '../n8nChatThreads.store';
 import AgentN8nChatView from '../AgentN8nChatView.vue';
 
 const getN8nChatAgentMock = vi.fn();
@@ -100,7 +101,7 @@ function renderView(
 						'channel',
 						'centerEmptyState',
 					],
-					emits: ['session-created'],
+					emits: ['session-created', 'update:streaming'],
 					methods: { sendMessageFromOutside: sendMessageFromOutsideMock },
 				},
 			},
@@ -288,5 +289,42 @@ describe('AgentN8nChatView', () => {
 		await wrapper.get('[data-testid="n8n-chat-back"]').trigger('click');
 		expect(pushMock).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 		expect(backMock).not.toHaveBeenCalled();
+	});
+
+	describe('refreshing the n8n Chat threads store', () => {
+		it('does not refresh when a session is created, only when a turn finishes streaming', async () => {
+			const wrapper = renderView();
+			await flushPromises();
+			const threadsStore = mockedStore(useAgentN8nChatThreadsStore);
+			const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+			const mintedId = panel.props('continueSessionId') as string;
+
+			panel.vm.$emit('session-created', mintedId);
+			await flushPromises();
+			expect(threadsStore.fetchRecent).not.toHaveBeenCalled();
+
+			panel.vm.$emit('update:streaming', true);
+			panel.vm.$emit('update:streaming', false);
+			await flushPromises();
+			expect(threadsStore.fetchRecent).toHaveBeenCalledTimes(1);
+
+			// Every later turn refreshes too — order and title can change on any of them.
+			panel.vm.$emit('update:streaming', true);
+			panel.vm.$emit('update:streaming', false);
+			await flushPromises();
+			expect(threadsStore.fetchRecent).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not refresh while still streaming or on an unmatched streaming toggle', async () => {
+			const wrapper = renderView({ agentThreadId: 'thread-99' });
+			await flushPromises();
+			const threadsStore = mockedStore(useAgentN8nChatThreadsStore);
+			const panel = wrapper.findComponent({ name: 'AgentChatPanel' });
+
+			panel.vm.$emit('update:streaming', true);
+			await flushPromises();
+
+			expect(threadsStore.fetchRecent).not.toHaveBeenCalled();
+		});
 	});
 });

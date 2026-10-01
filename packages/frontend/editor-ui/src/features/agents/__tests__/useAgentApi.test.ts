@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 
 import {
 	cancelAgentChatExecution,
@@ -17,6 +17,7 @@ import {
 	listAgents,
 	listAgentsPage,
 	listN8nChatAgents,
+	listN8nChatThreads,
 	duplicateAgent,
 } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -24,6 +25,7 @@ import type { AgentResource, AgentJsonConfig } from '../types';
 vi.mock('@n8n/rest-api-client', () => ({
 	getFullApiResponse: vi.fn(),
 	makeRestApiRequest: vi.fn(),
+	request: vi.fn(),
 }));
 
 const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
@@ -249,6 +251,36 @@ describe('useAgentApi', () => {
 				take: 50,
 				sortBy: undefined,
 			});
+		});
+	});
+
+	describe('listN8nChatThreads', () => {
+		it('reads the full response body, not just the data key, so nextCursor survives', async () => {
+			const response = {
+				data: [
+					{
+						id: 'thread-1',
+						title: 'Support question',
+						updatedAt: '2025-01-02T00:00:00.000Z',
+						agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+					},
+				],
+				nextCursor: '2025-01-02T00:00:00.000Z',
+			};
+			vi.mocked(request).mockResolvedValueOnce(response);
+
+			const result = await listN8nChatThreads(restApiContext, { limit: 20, cursor: 'cursor-1' });
+
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({ endpoint: '/agents/v2/n8n-chat/threads' }),
+			);
+			expect(result).toBe(response);
+		});
+
+		it('throws on a response body with the wrong shape', async () => {
+			vi.mocked(request).mockResolvedValueOnce({ data: [], nextCursor: 123 });
+
+			await expect(listN8nChatThreads(restApiContext, { limit: 20 })).rejects.toThrow();
 		});
 	});
 

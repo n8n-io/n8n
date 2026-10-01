@@ -181,4 +181,41 @@ describe('useAgentTelemetry', () => {
 			},
 		);
 	});
+
+	it('trackClickedSidebarItem fires "new_chat" with no chat_type and the current variant', () => {
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
+
+		useAgentTelemetry().trackClickedSidebarItem({ item: 'new_chat' });
+
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM,
+			{
+				item: 'new_chat',
+				variant: 'variant-a',
+				session_id: 'session-xyz',
+			},
+		);
+	});
+
+	it('trackClickedSidebarItem fires "chat" with chat_type and the current variant', () => {
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
+
+		useAgentTelemetry().trackClickedSidebarItem({ item: 'chat', chatType: 'agent' });
+
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM,
+			{
+				item: 'chat',
+				chat_type: 'agent',
+				variant: 'variant-a',
+				session_id: 'session-xyz',
+			},
+		);
+	});
+
+	it('trackClickedSidebarItem is a no-op with the flag off, so callers need not check it', () => {
+		useAgentTelemetry().trackClickedSidebarItem({ item: 'new_chat' });
+
+		expect(trackMock).not.toHaveBeenCalled();
+	});
 });

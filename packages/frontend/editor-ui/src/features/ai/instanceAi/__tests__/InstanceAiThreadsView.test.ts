@@ -23,6 +23,21 @@ const store = reactive({
 
 vi.mock('../instanceAi.store', () => ({ useInstanceAiStore: () => store }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
+// Flag off by default, matching production until the 125_agents_n8n_chat experiment
+// is on — the agent side of `useMergedChatHistory` is covered separately.
+const n8nChatFlag = { value: false };
+vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
+const listN8nChatThreadsMock = vi.fn().mockResolvedValue({ data: [], nextCursor: null });
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-1' } }),
+}));
 const { showError, showMessage } = vi.hoisted(() => ({
 	showError: vi.fn(),
 	showMessage: vi.fn(),
@@ -50,7 +65,9 @@ describe('InstanceAiThreadsView', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		store.resetThreadHistory();
+		n8nChatFlag.value = false;
 		vi.clearAllMocks();
+		listN8nChatThreadsMock.mockResolvedValue({ data: [], nextCursor: null });
 	});
 
 	afterEach(() => {
@@ -156,5 +173,59 @@ describe('InstanceAiThreadsView', () => {
 			expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
 		});
 		wrapper.unmount();
+	});
+
+	describe('with the n8n Chat flag on', () => {
+		beforeEach(() => {
+			n8nChatFlag.value = true;
+		});
+
+		it('merges agent threads into the list by updatedAt, with no actions menu for them', async () => {
+			store.threadHistory.threads = [
+				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			];
+			store.threadHistory.hasMore = false;
+			listN8nChatThreadsMock.mockResolvedValueOnce({
+				data: [
+					{
+						id: 'g1',
+						title: 'Agent chat',
+						updatedAt: '2026-01-03T00:00:00.000Z',
+						agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+					},
+				],
+				nextCursor: null,
+			});
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const rows = wrapper.findAll('[data-test-id="instance-ai-history-thread"]');
+			expect(rows.map((row) => row.text())).toEqual([
+				expect.stringContaining('Agent chat'),
+				expect.stringContaining('Assistant chat'),
+			]);
+			// Only the assistant row gets a rename/delete menu.
+			expect(wrapper.findAllComponents({ name: 'ActionDropdown' })).toHaveLength(1);
+		});
+
+		it('shows a fallback title and the agent icon for an untitled agent thread', async () => {
+			listN8nChatThreadsMock.mockResolvedValueOnce({
+				data: [
+					{
+						id: 'g1',
+						title: null,
+						updatedAt: '2026-01-03T00:00:00.000Z',
+						agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+					},
+				],
+				nextCursor: null,
+			});
+			store.threadHistory.hasMore = false;
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(wrapper.text()).toContain('New conversation');
+			expect(wrapper.find('agent-personalisation-icon-stub').exists()).toBe(true);
+		});
 	});
 });
