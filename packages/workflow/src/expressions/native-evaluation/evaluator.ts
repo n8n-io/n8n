@@ -179,12 +179,11 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 		// A missing replacement inserts the string "undefined".
 		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
 
-		// `$&`, `$\``, `$'` splice match context into every replacement, so
-		// the result is not bounded by the replacement's length. With a string
-		// pattern the other `$` forms (`$$`, `$1`, `$<name>`, a lone `$`) are
-		// literal, so a plain `$` in the replacement stays native. `$$` pairs
-		// are consumed first, as the replacement parser does, so `$$&` is the
-		// literal `$&` and not a token.
+		// Three replacement tokens expand: `$&`, `$\`` and `$'` insert match
+		// context, so the output is not bounded by the replacement's length.
+		// `$$` is an escaped literal `$`; strip those pairs first so that `$$&`
+		// (a literal "$&") stays native while `$$$&` (a literal "$" then `$&`)
+		// bails. With a string pattern every other `$` is literal.
 		if (/\$[&`']/.test(replacement.replaceAll('$$', ''))) throw new EngineFallbackError();
 
 		upperBound =
