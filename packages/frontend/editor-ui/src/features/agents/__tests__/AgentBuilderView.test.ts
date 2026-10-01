@@ -5721,7 +5721,7 @@ describe(
 			});
 			routeQuery.continueSessionId = 'thread-2';
 			save.resolve({
-				config: { name: 'Agent One', instructions: 'You are a helpful assistant.' },
+config: { name: 'Agent One', instructions: 'You are a helpful assistant.', config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } } },
 				versionId: 'v1',
 				stale: false,
 			});
