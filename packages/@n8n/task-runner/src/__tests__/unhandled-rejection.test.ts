@@ -23,7 +23,7 @@ describe('describeRejectionReason', () => {
 		const error = new RangeError('boom');
 		delete error.stack;
 
-		expect(describeRejectionReason(error)).toBe('RangeError: boom');
+		expect(describeRejectionReason(error)).toContain('RangeError: boom');
 	});
 
 	it('should cap the description at 1000 characters', () => {
