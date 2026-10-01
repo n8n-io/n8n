@@ -31,6 +31,16 @@ describe('next-modules', () => {
 		);
 	});
 
+	it('tells the Notion page ID apart from the key of a database property', () => {
+		const text = nodeModuleText('notion');
+		expect(text).toContain(
+			'export type NotionDatabasePageGetAllOutput = {\n /** Notion page UUID, not a database property */\n id: string;',
+		);
+		expect(text).toContain(
+			' /**\n  * property_ + snake_case of the property name, e.g. "Order ID": property_order_id\n  * Value by property type:',
+		);
+	});
+
 	it('adds the triggers of a node, so a workflow can start at one', () => {
 		expect(nodeModuleText('notion')).toContain(
 			'contractTrigger("@n8n/nodes-base-next.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]})',

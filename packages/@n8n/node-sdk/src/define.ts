@@ -741,6 +741,7 @@ function hints(schema: JsonSchema): string[] {
 		...(schema.items ? [schema.items] : []),
 		...(schema.oneOf ?? []),
 		...(schema.anyOf ?? []),
+		...Object.values(schema.patternProperties ?? {}),
 	];
 	return [...(schema['x-n8n-hint'] ? [schema['x-n8n-hint']] : []), ...children.flatMap(hints)];
 }

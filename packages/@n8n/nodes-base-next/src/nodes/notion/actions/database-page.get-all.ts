@@ -116,14 +116,19 @@ const input = {
 	).optional(),
 };
 
+// A user names a database property, also one called "... ID", so `id` must not read as one.
 const page = obj({
-	id: str().with({ format: 'uuid' }),
+	id: str().with({ format: 'uuid' }).hint('Notion page UUID, not a database property'),
 	name: str().hint('The page title'),
 	url: str().with({ format: 'uri' }),
 }).with({
-	patternProperties: { '^property_[a-z0-9_]+$': {} },
+	patternProperties: {
+		'^property_[a-z0-9_]+$': {
+			'x-n8n-hint':
+				'property_ + snake_case of the property name, e.g. "Order ID": property_order_id',
+		},
+	},
 	'x-n8n-value-types': SIMPLIFIED,
-	'x-n8n-hint': 'Keys: property_ + snake_case of the exact property name',
 });
 
 const TIMESTAMPS = new Set(['created_time', 'last_edited_time']);

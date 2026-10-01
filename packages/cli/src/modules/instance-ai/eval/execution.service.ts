@@ -9,6 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { actionOfNode, exampleOf, matches } from '@n8n/nodes-base-next';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -858,6 +859,9 @@ export class EvalExecutionService {
 	 * params so one incomplete node does not stop the entire mocked execution.
 	 */
 	private patchParameterIssuesForEval(workflow: Workflow, pinDataNodeNames: string[]): void {
+		const written = new Map(
+			Object.values(workflow.nodes).map((node) => [node.name, node.parameters ?? {}]),
+		);
 		for (const node of Object.values(workflow.nodes)) {
 			if (node.disabled) continue;
 			if (pinDataNodeNames.includes(node.name)) continue;
@@ -890,6 +894,12 @@ export class EvalExecutionService {
 				) as INodeParameters[string];
 			}
 			node.parameters = params;
+		}
+		for (const node of Object.values(workflow.nodes)) {
+			const fitted = fitContractMockValues(node, written.get(node.name) ?? {});
+			if (fitted.length > 0) {
+				this.logger.info(`[EvalMock] contract mock value on "${node.name}": ${fitted.join(', ')}`);
+			}
 		}
 	}
 
@@ -1459,6 +1469,26 @@ function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
 			value: synthesizeResourceLocatorValue(key),
 		};
 	}
+}
+
+/**
+ * A contract node checks its input against the contract schema before any request, where a
+ * legacy node takes any string. A value that the harness wrote and that the field schema
+ * rejects takes the schema example, so both reach the mocked service. Builder values stay.
+ * Returns the changed keys.
+ */
+function fitContractMockValues(node: INode, written: INodeParameters): string[] {
+	const action = actionOfNode(node);
+	const parameters = node.parameters;
+	if (!action || !parameters) return [];
+	return Object.entries(action.input).flatMap(([key, field]) => {
+		const value = parameters[key];
+		if (typeof value !== 'string' || value === written[key] || matches(field, value)) return [];
+		const example = exampleOf(field.json);
+		if (typeof example !== 'string' || !matches(field, example)) return [];
+		parameters[key] = example;
+		return [key];
+	});
 }
 
 function synthesizeMissingParamValue(current: unknown, paramName = ''): unknown {

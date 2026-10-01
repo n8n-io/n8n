@@ -192,6 +192,84 @@ const FORMAT_EXAMPLES: Record<string, string> = {
 	uuid: '8f14e45f-ceea-467a-9575-2a3b4c5d6e7f',
 };
 
+const CLASS_EXAMPLES: Record<string, string> = { d: '0', w: 'a', s: ' ', D: 'a', W: '-', S: 'a' };
+
+type Parsed = { text: string; end: number } | undefined;
+
+/** One character an escape matches: a class letter, or the escaped character itself. */
+function escapeAt(pattern: string, at: number): Parsed {
+	const char = pattern[at];
+	if (char === undefined) return undefined;
+	const shorthand = CLASS_EXAMPLES[char];
+	if (shorthand !== undefined) return { text: shorthand, end: at + 1 };
+	return /[A-Za-z0-9]/.test(char) ? undefined : { text: char, end: at + 1 };
+}
+
+/** The first character of a `[...]` class. A negated class is not supported. */
+function classAt(pattern: string, at: number): Parsed {
+	if (pattern[at] === '^') return undefined;
+	const first =
+		pattern[at] === '\\' ? escapeAt(pattern, at + 1) : { text: pattern[at] ?? '', end: at + 1 };
+	const close = /(?:\\.|[^\\\]])*\]/y;
+	close.lastIndex = at;
+	return first?.text && close.exec(pattern)
+		? { text: first.text, end: close.lastIndex }
+		: undefined;
+}
+
+function atomAt(pattern: string, at: number): Parsed {
+	const char = pattern[at];
+	if (char === '\\') return escapeAt(pattern, at + 1);
+	if (char === '[') return classAt(pattern, at + 1);
+	if (char === '.') return { text: 'a', end: at + 1 };
+	if (char === '(') {
+		const start = pattern.startsWith('?:', at + 1) ? at + 3 : at + 1;
+		if (pattern[start] === '?') return undefined;
+		const group = alternativesAt(pattern, start);
+		return group && pattern[group.end] === ')'
+			? { text: group.text, end: group.end + 1 }
+			: undefined;
+	}
+	return char === undefined || '^$|)*+?{}'.includes(char) ? undefined : { text: char, end: at + 1 };
+}
+
+/** The fewest repeats a quantifier allows, and where the quantifier ends. */
+function quantifierAt(pattern: string, at: number): { times: number; end: number } {
+	const match = /\{(\d+)(?:,\d*)?\}|[?*+]/y;
+	match.lastIndex = at;
+	const found = match.exec(pattern);
+	if (!found) return { times: 1, end: at };
+	const times = found[1] !== undefined ? Number(found[1]) : found[0] === '+' ? 1 : 0;
+	// A lazy quantifier matches the same strings.
+	return { times, end: pattern[match.lastIndex] === '?' ? match.lastIndex + 1 : match.lastIndex };
+}
+
+function sequenceAt(pattern: string, at: number, text = ''): Parsed {
+	if (at >= pattern.length || pattern[at] === '|' || pattern[at] === ')') return { text, end: at };
+	const atom = atomAt(pattern, at);
+	if (!atom) return undefined;
+	const { times, end } = quantifierAt(pattern, atom.end);
+	return sequenceAt(pattern, end, text + atom.text.repeat(times));
+}
+
+/** The first alternative gives the text; the others are parsed only to find the end. */
+function alternativesAt(pattern: string, at: number): Parsed {
+	const first = sequenceAt(pattern, at);
+	if (!first || pattern[first.end] !== '|') return first;
+	const rest = alternativesAt(pattern, first.end + 1);
+	return rest && { text: first.text, end: rest.end };
+}
+
+/**
+ * The shortest string that a simple pattern matches: literals, escapes, classes, groups,
+ * alternatives, and quantifiers. `undefined` for other constructs, e.g. a lookahead.
+ */
+function patternExample(pattern: string): string | undefined {
+	const body = pattern.replace(/^\^/, '').replace(/(?<!\\)\$$/, '');
+	const parsed = alternativesAt(body, 0);
+	return parsed?.end === body.length ? parsed.text : undefined;
+}
+
 /** One plausible value for `schema`, for verification fixtures when a node declares none. */
 export function exampleOf(schema: JsonSchema): unknown {
 	if (schema.const !== undefined) return schema.const;
@@ -207,7 +285,11 @@ export function exampleOf(schema: JsonSchema): unknown {
 	if (examples?.length) return examples[0];
 	switch (schema.type) {
 		case 'string':
-			return FORMAT_EXAMPLES[schema.format ?? ''] ?? 'example';
+			return (
+				FORMAT_EXAMPLES[schema.format ?? ''] ??
+				(schema.pattern ? patternExample(schema.pattern) : undefined) ??
+				'example'
+			);
 		case 'number':
 		case 'integer':
 			return 1;

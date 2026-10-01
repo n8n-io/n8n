@@ -39,16 +39,21 @@ function patternKey(pattern: string): string {
 	return prefix ? `\`${prefix}\${string}\`` : 'string';
 }
 
-/** The value types of an open key space, as a doc comment the agent reads. */
-function valueTypesDoc(schema: JsonSchema, mode: Mode, indent: string): string {
+/**
+ * The doc of an open key space, as the agent reads it: the hint of the pattern schema tells
+ * how a key is made, and the value types of the object tell the value of each source type.
+ */
+function patternDoc(schema: JsonSchema, child: JsonSchema, mode: Mode, indent: string): string {
+	const keys = docOf(child);
 	const types = schema['x-n8n-value-types'];
-	if (!types) return '';
-	const lines = Object.entries(types).map(([name, child]) => {
-		const hint = child['x-n8n-hint'] ? ` (${child['x-n8n-hint']})` : '';
-		const text = toTs(child, { input: false, indent: '', compact: mode.compact });
+	if (!types) return doc(keys, indent);
+	const lines = Object.entries(types).map(([name, valueType]) => {
+		const hint = valueType['x-n8n-hint'] ? ` (${valueType['x-n8n-hint']})` : '';
+		const text = toTs(valueType, { input: false, indent: '', compact: mode.compact });
 		return `${indent} * - ${name}: ${text.replace(/\s+/g, ' ')}${hint}`;
 	});
-	return `${indent}/**\n${indent} * Value by property type:\n${lines.join('\n')}\n${indent} */\n`;
+	const keyLine = keys ? `${indent} * ${keys.replace(/\*\//g, '*\\/')}\n` : '';
+	return `${indent}/**\n${keyLine}${indent} * Value by property type:\n${lines.join('\n')}\n${indent} */\n`;
 }
 
 /** A value in an open input object. Unlike `unknown`, it keeps a lambda typed. */
@@ -86,7 +91,7 @@ function objectTs(
 			body: `${key(name)}${required.has(name) || !mode.input ? '' : '?'}: ${toTs(child, childMode)}`,
 		})),
 		...Object.entries(schema.patternProperties ?? {}).map(([pattern, child]) => ({
-			doc: valueTypesDoc(schema, mode, inner),
+			doc: patternDoc(schema, child, mode, inner),
 			body: `[key: ${patternKey(pattern)}]: ${toTs(child, childMode)}`,
 		})),
 	];

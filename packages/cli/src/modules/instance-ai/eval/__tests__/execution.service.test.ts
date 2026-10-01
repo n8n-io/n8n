@@ -1430,6 +1430,36 @@ describe('EvalExecutionService', () => {
 				driveId: 'eval-drive-id',
 			});
 		});
+
+		it('fills a contract node placeholder with a value its input schema accepts', async () => {
+			const notionNode = (name: string, database: string): INode => ({
+				id: name,
+				name,
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 4,
+				position: [200, 0],
+				parameters: { resource: 'databasePage', operation: 'getAll', database, limit: 1 },
+			});
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						notionNode('Placeholder', placeholderValue('Notion tasks database')),
+						notionNode('Id Placeholder', placeholderValue('Notion database ID')),
+						notionNode('Builder Value', 'tasks'),
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const databaseOf = (name: string) =>
+				runArg.workflowData.nodes.find((node) => node.name === name)?.parameters.database;
+
+			expect(databaseOf('Placeholder')).toBe('0'.repeat(32));
+			expect(databaseOf('Id Placeholder')).toBe('0'.repeat(32));
+			expect(databaseOf('Builder Value')).toBe('tasks');
+		});
 	});
 
 	// ── buildResult behavior ─────────────────────────────────────────

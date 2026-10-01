@@ -350,6 +350,22 @@ describe('exampleOf', () => {
 		expect(example).toEqual({ id: 'example', tags: ['example'], paging: { mode: 'all' } });
 		expect(validate(example, schema.json)).toEqual([]);
 	});
+
+	it.each([
+		['[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}', '0'.repeat(32)],
+		['^C[A-Z0-9]{8,}$', 'CAAAAAAAA'],
+		['^(?:https?://)?\\w+\\.example\\.com/\\d+$', 'a.example.com/0'],
+		['^(draft|sent)_\\d{2}[.-]x*?$', 'draft_00.'],
+	])('builds a string that matches the pattern %s', (pattern, expected) => {
+		const schema = str().with({ pattern }).json;
+		expect(exampleOf(schema)).toBe(expected);
+		expect(validate(expected, schema)).toEqual([]);
+	});
+
+	it('falls back for a pattern construct it does not know', () => {
+		expect(exampleOf(str().with({ pattern: '^[^x]+$' }).json)).toBe('example');
+		expect(exampleOf(str().with({ pattern: '^(?=a)a$' }).json)).toBe('example');
+	});
 });
 
 describe('generateNodeModule', () => {
@@ -451,6 +467,32 @@ describe('generateNodeModule', () => {
 			'RoutedStep<In, Ctx, OutputOf<N, TodoTaskCheckOutput>, N, "open" | "done">',
 		);
 		expect(text).toContain('(transform, batch; outputs: open | done)');
+	});
+
+	it('shows the key hint and the value types of an open key space', () => {
+		const record = todo.resource('record').action('getAll', {
+			action: 'Get many records',
+			summary: 'List records.',
+			flow: { effect: 'read', cardinality: '1:N' },
+			input: {},
+			output: obj({ id: str().hint('Record ID, not a field') }).with({
+				patternProperties: { '^field_[a-z0-9_]+$': { 'x-n8n-hint': 'field_ + snake_case name' } },
+				'x-n8n-value-types': { text: { type: 'string' } },
+			}),
+			async *run() {},
+		});
+		expect(moduleOf(record)).toContain(
+			[
+				' /** Record ID, not a field */',
+				' id: string;',
+				' /**',
+				'  * field_ + snake_case name',
+				'  * Value by property type:',
+				'  * - text: string',
+				'  */',
+				' [key: `field_',
+			].join('\n'),
+		);
 	});
 
 	it('gives each key of an open input object a lambda type', () => {

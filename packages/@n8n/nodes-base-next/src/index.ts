@@ -51,8 +51,11 @@ export {
 	type ContractSyncResult,
 	type LockedNode,
 } from './contract-registry';
-// The cli builds node types from stored versions with the node-sdk instance of this package.
+// The cli builds node types from stored versions and checks eval mock values with the
+// node-sdk instance of this package.
 export {
+	exampleOf,
+	matches,
 	runsActionApi,
 	toVersionedNodeType,
 	toVersionedTriggerType,
