@@ -1,6 +1,8 @@
 import type {
 	UpdateDataTableRowDto,
 	PublicCreateDestination,
+	UpdateOtelSettingsDto,
+	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
@@ -154,6 +156,15 @@ export declare namespace LogStreamingRequest {
 	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
 	type TestDestination = AuthenticatedRequest<{ id: string }>;
 	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//        /settings/otel
+// ----------------------------------
+
+export declare namespace OtelSettingsRequest {
+	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }
 
 // ----------------------------------

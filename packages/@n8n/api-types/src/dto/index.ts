@@ -118,6 +118,10 @@ export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
 export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
+export {
+	SamlConfigurationPublicDto,
+	UpdateSamlConfigurationPublicDto,
+} from './saml/saml-configuration-public.dto';
 
 export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
 export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';

@@ -310,14 +310,14 @@ extends one of those layers):
 - Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
   Build first when shared types or cross-package dependencies change.
 - Use Vitest for unit tests. Use
-  [Playwright](packages/testing/playwright/AGENTS.md) when a test needs its
+  [Playwright](packages/quality/testing/playwright/AGENTS.md) when a test needs its
   browser, fixtures, or managed containers.
 - For Vitest packages with `@n8n/di` decorators, use
   `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`.
 - Check import and mock side effects before running tests. Keep tests out of
   user-owned directories. Set `N8N_USER_FOLDER` to a test-owned directory before
   importing n8n settings. Clean up only paths that the test created.
-- CI runs [`@n8n/code-health`](packages/testing/code-health/README.md) static
+- CI runs [`@n8n/code-health`](packages/quality/policy/code-health/README.md) static
   analysis on PRs. It checks monorepo rules, including dependency hygiene and
   encryption-boundary coverage.
 
@@ -331,7 +331,7 @@ extends one of those layers):
 | Start a Codespace backend and share its port | `pnpm dev:up` |
 
 The root `pnpm dev` command does not start a server. See the
-[Playwright guide](packages/testing/playwright/README.md) and the
+[Playwright guide](packages/quality/testing/playwright/README.md) and the
 [Codespaces guide](.devcontainer/codespaces/README.md) for details.
 
 ### Common Development Tasks

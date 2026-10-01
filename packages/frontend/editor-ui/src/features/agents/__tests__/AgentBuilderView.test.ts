@@ -4743,6 +4743,38 @@ describe('AgentBuilderView — three-column shell', () => {
 		createElementSpy.mockRestore();
 	});
 
+	it('saves the description from the header menu through the write-locked config path', async () => {
+		getAgentWriteLockMock.mockResolvedValue(null);
+		rootStoreMock.pushRef = 'tab-1';
+		const wrapper = await renderView();
+		await flushPromises();
+		pushSendMock.mockClear();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('header-action', 'edit-description');
+		await nextTick();
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'agentDescriptionModal' }),
+		);
+
+		openModalWithDataMock.mock.calls[0][0].data.onConfirm('Answers support tickets');
+		await flushPromises();
+
+		expect(pushSendMock).toHaveBeenCalledWith({
+			type: 'agentWriteAccessRequested',
+			agentId: 'a1',
+		});
+		await vi.waitFor(() =>
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ description: 'Answers support tickets' }),
+				'hash-1',
+			),
+		);
+	});
+
 	it('opens the JSON import modal and saves imported config from the header menu', async () => {
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');

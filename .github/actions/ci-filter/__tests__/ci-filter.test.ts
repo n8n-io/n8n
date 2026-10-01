@@ -242,7 +242,7 @@ describe('runtime filter', () => {
 		'!**/CHANGELOG.md',
 		'!**/*.test.ts',
 		'!**/*.spec.ts',
-		'!packages/testing/playwright/**',
+		'!packages/quality/testing/playwright/**',
 		'!packages/frontend/@n8n/storybook/**',
 		'!scripts/agent-setup.mjs',
 		'!scripts/backend-module/**',
@@ -265,7 +265,7 @@ describe('runtime filter', () => {
 
 	it('does not trigger on playwright tests', () => {
 		assert.equal(
-			evaluateFilter(['packages/testing/playwright/tests/x.spec.ts'], runtimePatterns),
+			evaluateFilter(['packages/quality/testing/playwright/tests/x.spec.ts'], runtimePatterns),
 			false,
 		);
 	});
