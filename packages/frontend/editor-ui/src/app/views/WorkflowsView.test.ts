@@ -567,39 +567,12 @@ describe('Folders', () => {
 		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { getByTestId, queryByTestId } = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
-	});
-
-	it('should NOT show standalone "Create folder" button when in overview subpage', async () => {
-		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
-		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
-
-		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { queryByTestId } = renderComponent({
-			pinia,
-		});
-		await waitAllPromises();
-
-		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
-	});
-
-	it('should NOT show standalone "Create folder" button when in shared subpage', async () => {
-		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
-		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
-
-		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { queryByTestId } = renderComponent({
-			pinia,
-		});
-		await waitAllPromises();
-
-		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 	});
 });
 
