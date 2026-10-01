@@ -211,6 +211,10 @@ describe('useGlobalEntityCreation', () => {
 			handleSelect('folder');
 			await flushPromises();
 
+			expect(promptMock).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ inputValidator: expect.any(Function) }),
+			);
 			expect(foldersStore.createFolder).toHaveBeenCalledWith('New folder', 'team-project');
 		});
 

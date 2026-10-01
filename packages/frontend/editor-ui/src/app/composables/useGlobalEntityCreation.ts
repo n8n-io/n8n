@@ -16,6 +16,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
+import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -72,6 +73,7 @@ export const useGlobalEntityCreation = () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const foldersStore = useFoldersStore();
+	const folderHelpers = useFolders();
 
 	const router = useRouter();
 	const i18n = useI18n();
@@ -482,6 +484,7 @@ export const useGlobalEntityCreation = () => {
 			{
 				confirmButtonText: i18n.baseText('generic.create'),
 				cancelButtonText: i18n.baseText('generic.cancel'),
+				inputValidator: folderHelpers.validateFolderName,
 				customClass: 'add-folder-modal',
 			},
 		);
