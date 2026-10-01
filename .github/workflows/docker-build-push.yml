@@ -265,6 +265,28 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Fingerprint runner image inputs
+        id: runner-inputs
+        if: inputs.build_profile == 'cloud-test' && needs.determine-build-context.outputs.push_enabled == 'true'
+        env:
+          PLATFORMS: ${{ matrix.docker_platform }}
+          N8N_RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
+        run: node .github/scripts/docker/runner-image-fingerprint.mjs
+
+      - name: Check for reusable runner image
+        id: runner-cache
+        if: steps.runner-inputs.outputs.image != ''
+        env:
+          RUNNER_IMAGE: ${{ steps.runner-inputs.outputs.image }}
+        run: |
+          if docker buildx imagetools inspect "$RUNNER_IMAGE" >/dev/null 2>&1; then
+            echo 'hit=true' >> "$GITHUB_OUTPUT"
+            echo 'Runner inputs match. Reuse the published runner image.'
+          else
+            echo 'hit=false' >> "$GITHUB_OUTPUT"
+            echo 'No reusable runner image. Build it with the main image.'
+          fi
+
       - name: Build and push Docker images
         env:
           N8N_VERSION: ${{ needs.determine-build-context.outputs.n8n_version }}
@@ -276,9 +298,19 @@ jobs:
           RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
           PUSH_ENABLED: ${{ needs.determine-build-context.outputs.push_enabled }}
           BUILD_TARGETS: ${{ needs.determine-build-context.outputs.targets }}
+          RUNNER_CACHE_HIT: ${{ steps.runner-cache.outputs.hit }}
+          RUNNER_CACHE_IMAGE: ${{ steps.runner-inputs.outputs.image }}
+          RUNNER_FINGERPRINT: ${{ steps.runner-inputs.outputs.fingerprint }}
         run: |
           set -euo pipefail
           read -ra TARGETS <<< "$(node -e 'process.stdout.write(JSON.parse(process.env.BUILD_TARGETS).join(" "))')"
+          EXTRA=()
+          if [ "$RUNNER_CACHE_HIT" = 'true' ]; then
+            TARGETS=(n8n)
+          elif [ -n "$RUNNER_CACHE_IMAGE" ]; then
+            export RUNNERS_DISTROLESS_TAGS="$RUNNERS_DISTROLESS_TAGS,$RUNNER_CACHE_IMAGE"
+            EXTRA=(--pull --set "runners-distroless.args.N8N_VERSION=runner-$RUNNER_FINGERPRINT")
+          fi
 
           # oci-mediatypes keeps the merged manifest an OCI image index. Older
           # containerd cannot pull a Docker manifest list that has attestation
@@ -293,7 +325,20 @@ jobs:
             --provenance=false \
             --sbom=false \
             --metadata-file /tmp/bake-metadata.json \
+            "${EXTRA[@]}" \
             "${OUTPUT[@]}"
+
+      - name: Publish reused runner tags
+        if: steps.runner-cache.outputs.hit == 'true'
+        env:
+          RUNNER_IMAGE: ${{ steps.runner-inputs.outputs.image }}
+          RUNNER_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra TAGS <<< "$RUNNER_TAGS"
+          TAG_ARGS=()
+          for TAG in "${TAGS[@]}"; do TAG_ARGS+=(--tag "$TAG"); done
+          docker buildx imagetools create --prefer-index=true "${TAG_ARGS[@]}" "$RUNNER_IMAGE"
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest

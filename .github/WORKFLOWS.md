@@ -767,6 +767,11 @@ Workflows with `workflow_call` trigger:
 | `architecture` | `auto`, `amd64`, `arm64`, `both` | `auto` | `auto` uses `include_arm64`. Other values select the build platforms directly. |
 | `build_profile` | `all`, `cloud-test` | `all` | `cloud-test` publishes only `n8n` and distroless runners to GHCR. |
 
+The `cloud-test` profile reuses a runner image when its input fingerprint matches.
+The fingerprint includes deployed JavaScript files, Python files, runner configuration, build arguments, platform, and resolved base images.
+The cache refreshes each UTC day to include changes from external package repositories.
+Runner image version labels use the fingerprint. Deployment tags use the branch version.
+
 Release and scheduled runs use both architectures and all image variants.
 
 ---
@@ -791,6 +796,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
+| `docker/runner-image-fingerprint.mjs` | Hash runner image inputs for the manual `cloud-test` cache | `docker-build-push.yml` |
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
