@@ -25,7 +25,12 @@ import {
 } from './flow';
 
 export { workflow, Flow, contractStep } from './flow';
-export { decompileWorkflow, locateNextNodes, type ContractFactory } from './decompile';
+export {
+	composedFactoryKey,
+	decompileWorkflow,
+	locateNextNodes,
+	type ContractFactory,
+} from './decompile';
 export type {
 	DateTime,
 	Dollar,

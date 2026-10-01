@@ -248,8 +248,10 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	id: string,
 	// The generated module types `sample`; `Out` comes from its declared return type.
 	config: { readonly name: N; readonly sample?: readonly unknown[] },
-	/** The action version the workflow pins. */
+	/** The node version: the action major, or the version of a composed node. */
 	version = 1,
+	/** The resource and operation that select the action in a composed node version. */
+	slot?: { readonly resource: string; readonly operation: string },
 ): Step<In, Ctx, Out, N> {
 	const { name, sample, ...parameters } = config;
 	return {
@@ -261,7 +263,8 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			sample,
 			parameters: (compiler) => {
 				const compiled = compiler.value(parameters);
-				return isDataObject(compiled) ? compiled : {};
+				// The slot goes last: no contract field may change the action that runs.
+				return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
 			},
 		},
 	};

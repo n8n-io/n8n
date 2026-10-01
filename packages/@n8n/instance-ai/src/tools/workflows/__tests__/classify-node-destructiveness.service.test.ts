@@ -35,6 +35,7 @@ function setupAgentFailure() {
 type NodeSpec = {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	disabled?: boolean;
 };
@@ -53,7 +54,7 @@ function chainWorkflow(nodes: NodeSpec[]): WorkflowJSON {
 			id: `id-${i}`,
 			name: n.name,
 			type: n.type,
-			typeVersion: 1,
+			typeVersion: n.typeVersion ?? 1,
 			position: [i * 100, 0],
 			parameters: n.parameters ?? {},
 			...(n.disabled !== undefined ? { disabled: n.disabled } : {}),
@@ -405,6 +406,23 @@ describe('classifyNodesForSimulation', () => {
 			source: 'deterministic',
 		});
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('classifies the owned slot of a composed node by the action effect', async () => {
+		const verdicts = await classify([
+			trigger,
+			{
+				name: 'Get Pages',
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 4,
+				parameters: { resource: 'databasePage', operation: 'getAll' },
+			},
+		]);
+		expect(verdictOf(verdicts, 'Get Pages')).toMatchObject({
+			verdict: 'execute',
+			reason: 'Get many database pages reads from Notion',
+			source: 'deterministic',
+		});
 	});
 
 	it('keeps mocked-credential precedence over contract action effects', async () => {

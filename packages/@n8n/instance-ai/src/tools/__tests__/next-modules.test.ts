@@ -1,4 +1,4 @@
-import { nodeTypeOf } from '@n8n/nodes-base-next';
+import { composedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
 
 import {
 	catalogRowsBesideModules,
@@ -19,9 +19,17 @@ describe('next-modules', () => {
 			const text = nodeModuleText(action.node.id);
 
 			expect(text).toContain(`export const ${action.node.id} = {`);
-			expect(text).toContain(JSON.stringify(nodeTypeOf(action)));
+			expect(text).toContain(
+				JSON.stringify(composedTargetOf(action)?.nodeType ?? nodeTypeOf(action)),
+			);
 		},
 	);
+
+	it('builds the composed Notion v4 node for an action that owns its slot', () => {
+		expect(nodeModuleText('notion')).toContain(
+			'contractStep("n8n-nodes-base.notion", config, 4, {"resource":"databasePage","operation":"getAll"})',
+		);
+	});
 
 	it('has no module for a node without actions', () => {
 		expect(nodeModuleText('slack')).toBeUndefined();

@@ -135,6 +135,18 @@ describe('workflow', () => {
 		expect(contractStep('x.y.z', { name: 'Default' }).spec.version).toBe(1);
 	});
 
+	it('emits a composed node with its slot parameters last', () => {
+		const slot = { resource: 'databasePage', operation: 'getAll' };
+		const config = { name: 'Tasks', database: 'db', operation: 'create' };
+		const step = contractStep('n8n-nodes-base.notion', config, 4, slot);
+		const json = workflow('Composed', manual().andThen(step)).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Tasks')).toMatchObject({
+			type: 'n8n-nodes-base.notion',
+			typeVersion: 4,
+			parameters: { database: 'db', resource: 'databasePage', operation: 'getAll' },
+		});
+	});
+
 	it('returns build problems instead of throwing while composing', () => {
 		const secret = 'x';
 		const wf = workflow(

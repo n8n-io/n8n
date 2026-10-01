@@ -313,6 +313,19 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('contractStep("@n8n/nodes-base-next.todo.task.getAll", config)');
 	});
 
+	it('emits the composed node version and its slot for an action that owns a slot', () => {
+		const slot = { typeVersion: 4, resource: 'task', operation: 'getAll' };
+		const text = generateNodeModule('todo', [
+			{ contract: toContract(listTasks), nodeType: 'n8n-nodes-base.todo', slot },
+		]);
+		expect(text).toContain(
+			'contractStep("n8n-nodes-base.todo", config, 4, {"resource":"task","operation":"getAll"})',
+		);
+		// The types the agent reads stay the same; only the call differs.
+		const call = /contractStep\(.*\)/;
+		expect(text.replace(call, '')).toBe(moduleOf(listTasks).replace(call, ''));
+	});
+
 	it('prints short objects without docs on one line', () => {
 		expect(moduleOf(listTasks)).toContain(
 			'paging: { mode: "all" } | { mode: "limit"; max?: Value<I, C, number> };',

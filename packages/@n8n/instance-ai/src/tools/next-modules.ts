@@ -2,8 +2,8 @@
  * Discovery over the typed node modules of `@n8n/nodes-base-next`. The agent imports a
  * module as `@n8n/nodes/<nodeId>`, and `tsc` checks the workflow against the same text.
  */
-import { generateNodeModule, toContract, type Action } from '@n8n/node-sdk';
-import { actions, NODE_PACKAGE, nodeTypeOf } from '@n8n/nodes-base-next';
+import { generateNodeModule, toContract, type Action, type GeneratedAction } from '@n8n/node-sdk';
+import { actions, composedTargetOf, NODE_PACKAGE, nodeTypeOf } from '@n8n/nodes-base-next';
 
 export const nextActions: readonly Action[] = actions;
 
@@ -15,11 +15,16 @@ export interface NextNodeModule {
 
 const actionsOfNode = (nodeId: string) => nextActions.filter((action) => action.node.id === nodeId);
 
+/** An action that owns a slot of a composed node emits that node, e.g. Notion v4. */
+function generatedActionOf(action: Action): GeneratedAction {
+	const target = composedTargetOf(action);
+	if (!target) return { contract: toContract(action), nodeType: nodeTypeOf(action) };
+	const { nodeType, ...slot } = target;
+	return { contract: toContract(action), nodeType, slot };
+}
+
 const moduleOf = (nodeId: string, own: readonly Action[]) =>
-	generateNodeModule(
-		nodeId,
-		own.map((action) => ({ contract: toContract(action), nodeType: nodeTypeOf(action) })),
-	);
+	generateNodeModule(nodeId, own.map(generatedActionOf));
 
 /** The generated TypeScript module for every action of one node. */
 export function nodeModuleText(nodeId: string): string | undefined {

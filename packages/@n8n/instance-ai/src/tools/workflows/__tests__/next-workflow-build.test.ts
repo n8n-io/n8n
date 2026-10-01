@@ -204,5 +204,34 @@ describe('next workflow build', () => {
 			const workflow = { name: 'wf', nodes: [nodes[0]], connections: {} };
 			expect(lockNodeContracts(workflow)).toBe(workflow);
 		});
+
+		it('locks the owned slot of a composed node by name, and no other slot', () => {
+			const composed = (name: string, operation: string) => ({
+				id: name,
+				name,
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 4,
+				position: [0, 0] as [number, number],
+				parameters: { resource: 'databasePage', operation, database: 'x' },
+			});
+			const workflow = {
+				name: 'wf',
+				nodes: [nodes[0], composed('Get', 'getAll'), composed('Create', 'create')],
+				connections: {},
+			};
+			const [head] = versionsOf('notion.databasePage.getAll');
+
+			expect(lockNodeContracts(workflow).meta).toEqual({
+				nodeContracts: {
+					Get: {
+						action: 'notion.databasePage.getAll',
+						version: head.manifest.semver,
+						bundleHash: head.manifest.bundleHash,
+						contractHash: head.manifest.contractHash,
+					},
+				},
+			});
+			expect(Object.keys(synthesizedFixtures(workflow))).toEqual(['Get']);
+		});
 	});
 });

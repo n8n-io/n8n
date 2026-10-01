@@ -5,6 +5,7 @@ export {
 	defineNode,
 	isHttpError,
 	lintContract,
+	paginate,
 	toContract,
 	type Action,
 	type ActionDefinition,
@@ -18,6 +19,7 @@ export {
 	type HttpMethod,
 	type HttpRequest,
 	type NodeDefinition,
+	type PaginateOptions,
 	type ResourceField,
 	type RunContext,
 	type RunInput,
@@ -59,3 +61,4 @@ export {
 	type VersionManifest,
 } from './version';
 export { generateNodeModule, toTs, type GeneratedAction } from './codegen';
+export { composeVersion, type ComposedSlot, type ComposeVersionOptions } from './compose';

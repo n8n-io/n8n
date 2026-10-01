@@ -15,8 +15,8 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { nodeTypeOf } from '@n8n/nodes-base-next';
-import type { ContractFactory } from '@n8n/workflow-sdk/next';
+import { composedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { nextActions } from './next-modules';
@@ -809,19 +809,31 @@ async function readConsistentWorkflowSnapshot(
 	throw new WorkflowSnapshotChangedError(workflowId);
 }
 
-/** The typed module factory of each contract node type, for `decompileWorkflow`. */
-const contractFactories = () =>
+/**
+ * The typed module factory of each contract node type and composed node slot, for
+ * `decompileWorkflow`. Both read back as the same factory, which builds the composed node.
+ */
+const contractFactories = (composedKey: typeof composedFactoryKey) =>
 	new Map<string, ContractFactory>(
-		nextActions.map((action) => [
-			nodeTypeOf(action),
-			{
+		nextActions.flatMap((action) => {
+			const factory: ContractFactory = {
 				module: action.node.id,
 				from: `@n8n/nodes/${action.node.id}`,
 				path: action.id.split('.').slice(1).join('.'),
 				version: action.version,
 				inputKeys: Object.keys(action.input),
-			},
-		]),
+			};
+			const target = composedTargetOf(action);
+			const composed = target
+				? [
+						[
+							composedKey(target.nodeType, target.typeVersion, target.resource, target.operation),
+							{ ...factory, version: target.typeVersion },
+						] as const,
+					]
+				: [];
+			return [[nodeTypeOf(action), factory] as const, ...composed];
+		}),
 	);
 
 const NEXT_SDK_IMPORT = "from '@n8n/workflow-sdk/next'";
@@ -849,8 +861,8 @@ async function handleGetAsCode(
 	// Node contracts: edit in the typed format when it can express the saved workflow.
 	const toNextCode = async (json: WorkflowJSON): Promise<string | undefined> => {
 		if (context.nodeContractsEnabled !== true) return undefined;
-		const { decompileWorkflow } = await import('@n8n/workflow-sdk/next');
-		return decompileWorkflow(json, contractFactories());
+		const { composedFactoryKey, decompileWorkflow } = await import('@n8n/workflow-sdk/next');
+		return decompileWorkflow(json, contractFactories(composedFactoryKey));
 	};
 	const indexNodes = async (json: WorkflowJSON, source: string) =>
 		context.nodeContractsEnabled === true && source.includes(NEXT_SDK_IMPORT)

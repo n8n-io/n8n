@@ -9,8 +9,19 @@ import { appendOrUpdateSheetRow } from './nodes/google-sheets/sheet.append-or-up
 import { readSheetRows } from './nodes/google-sheets/sheet.read';
 import { getRequest, sendRequest } from './nodes/http/request';
 import { getManyDatabasePages } from './nodes/notion/database-page.get-all';
+import { composedSlotOf, type WorkflowNodeRef } from './composed';
 
 export { versionsOf } from './registry';
+export {
+	COMPOSED_NODES,
+	composedSlotOf,
+	composedTargetOf,
+	withComposedVersions,
+	type ComposedSlotSpec,
+	type ComposedTarget,
+	type ComposedVersionSpec,
+	type WorkflowNodeRef,
+} from './composed';
 export {
 	contractVersionLoader,
 	useContractRegistry,
@@ -36,3 +47,11 @@ export const actions: readonly Action[] = [
 /** The n8n node type of an action, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll`. */
 export const nodeTypeOf = (action: Pick<Action, 'id'>) =>
 	`${NODE_PACKAGE}.${nodeNameOf(action.id)}`;
+
+/** The action a workflow node runs: a node type of this package, or a slot of a composed node. */
+export function actionOfNode(node: WorkflowNodeRef): Action | undefined {
+	const slot = composedSlotOf(node);
+	return slot
+		? actions.find(({ id, version }) => id === slot.action && version === slot.major)
+		: actions.find((action) => nodeTypeOf(action) === node.type);
+}

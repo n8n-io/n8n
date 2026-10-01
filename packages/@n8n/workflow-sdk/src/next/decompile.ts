@@ -28,11 +28,22 @@ export interface ContractFactory {
 	readonly from: string;
 	/** The factory in the module, e.g. `databasePage.getAll`. */
 	readonly path: string;
-	/** The action version that the factory pins. */
+	/** The node version the factory emits: the action major, or the version of a composed node. */
 	readonly version: number;
 	/** The parameters the factory takes. The host sets the others, e.g. `authentication`. */
 	readonly inputKeys: readonly string[];
 }
+
+/**
+ * The `factories` key of an action that runs one resource and operation of a composed node
+ * version. A contract node type is its own key.
+ */
+export const composedFactoryKey = (
+	type: string,
+	typeVersion: number,
+	resource: string,
+	operation: string,
+) => `${type}@${typeVersion}/${resource}/${operation}`;
 
 type NamedNode = NodeJSON & { name: string };
 
@@ -359,6 +370,16 @@ function contractShape(
 	return converted.raw ? undefined : { kind: 'contract', factory, parameters: converted.tree };
 }
 
+/** The slot decides first, so a legacy field of another slot never reads as contract input. */
+function factoryOf(node: NamedNode, factories: ReadonlyMap<string, ContractFactory>) {
+	const { resource, operation } = node.parameters ?? {};
+	const composed =
+		typeof resource === 'string' && typeof operation === 'string'
+			? factories.get(composedFactoryKey(node.type, node.typeVersion, resource, operation))
+			: undefined;
+	return composed ?? factories.get(node.type);
+}
+
 function shapeOf(
 	node: NamedNode,
 	isRoot: boolean,
@@ -375,7 +396,7 @@ function shapeOf(
 	return (
 		branchShape(node, names) ??
 		setShape(node, names) ??
-		contractShape(node, names, factories.get(node.type)) ?? {
+		contractShape(node, names, factoryOf(node, factories)) ?? {
 			kind: 'node',
 			parameters: convert(node.parameters ?? {}, { names, arrayLambdas: false }).tree,
 		}
@@ -657,7 +678,8 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 /**
  * `@n8n/workflow-sdk/next` source for a saved workflow, or `undefined` when the typed format
  * cannot express it (for example a Merge input, a sticky note, or a node setting such as
- * `retryOnFail`). `factories` maps each contract node type to its typed module factory.
+ * `retryOnFail`). `factories` maps each contract node type, and each `composedFactoryKey`, to
+ * its typed module factory.
  */
 export function decompileWorkflow(
 	json: WorkflowJSON,

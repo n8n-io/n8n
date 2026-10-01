@@ -1,7 +1,12 @@
 import vm from 'node:vm';
 
 import type { WorkflowJSON } from '../../types/base';
-import { decompileWorkflow, locateNextNodes, type ContractFactory } from '../decompile';
+import {
+	composedFactoryKey,
+	decompileWorkflow,
+	locateNextNodes,
+	type ContractFactory,
+} from '../decompile';
 import * as next from '../index';
 import { contractStep, manual, node, set, workflow, type Dollar, type Step } from '../index';
 
@@ -36,6 +41,20 @@ const notion = {
 	},
 };
 
+const COMPOSED_TYPE = 'n8n-nodes-base.notion';
+const OWNED = { resource: 'databasePage', operation: 'getAll' };
+
+// A stand-in for a module whose action runs one slot of the composed Notion v4.
+const composedNotion = {
+	databasePage: {
+		getAll: <In, Ctx, const N extends string>(config: {
+			name: N;
+			database: string;
+			limit?: number;
+		}): Step<In, Ctx, Page, N> => contractStep(COMPOSED_TYPE, config, 4, OWNED),
+	},
+};
+
 const httpRequest = {
 	send: <In, Ctx, const N extends string>(config: {
 		name: N;
@@ -57,6 +76,16 @@ const factories = new Map<string, ContractFactory>([
 		},
 	],
 	[
+		composedFactoryKey(COMPOSED_TYPE, 4, OWNED.resource, OWNED.operation),
+		{
+			module: 'composedNotion',
+			from: '@n8n/nodes/composedNotion',
+			path: 'databasePage.getAll',
+			version: 4,
+			inputKeys: ['database', 'where', 'limit', 'sort'],
+		},
+	],
+	[
 		SEND_TYPE,
 		{
 			module: 'httpRequest',
@@ -72,6 +101,7 @@ const modules: Record<string, unknown> = {
 	'@n8n/workflow-sdk/next': next,
 	'@n8n/nodes/notion': { notion },
 	'@n8n/nodes/httpRequest': { httpRequest },
+	'@n8n/nodes/composedNotion': { composedNotion },
 };
 
 /** Run decompiled source as the sandbox does, with its imports bound to the modules above. */
@@ -253,6 +283,41 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain(`type: "${SEND_TYPE}"`);
 		expect(source).not.toContain('@n8n/nodes/');
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
+	});
+
+	describe('a composed node version', () => {
+		const composedWorkflow = () =>
+			workflow(
+				'Composed Notion',
+				manual().andThen(
+					composedNotion.databasePage.getAll({ name: 'Get Pages', database: DATABASE, limit: 5 }),
+				),
+			).toJSON();
+
+		it('reads the owned slot back as the typed step', () => {
+			const json = composedWorkflow();
+			const { source, rebuilt, again } = roundTrip(json);
+			expect(source).toContain('composedNotion.databasePage.getAll({');
+			expect(source).not.toContain('resource');
+			expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+			expect(again).toBe(source);
+		});
+
+		it('keeps an unowned slot of the composed version and older versions in node()', () => {
+			const json = composedWorkflow();
+			const withNode = (change: object) => ({
+				...json,
+				nodes: json.nodes.map((n) => (n.type === COMPOSED_TYPE ? { ...n, ...change } : n)),
+			});
+			const unowned = withNode({ parameters: { resource: 'page', operation: 'create', limit: 5 } });
+			const legacy = withNode({ typeVersion: 3 });
+			for (const changed of [unowned, legacy]) {
+				const { source, rebuilt } = roundTrip(changed);
+				expect(source).toContain(`type: "${COMPOSED_TYPE}"`);
+				expect(source).not.toContain('@n8n/nodes/');
+				expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
+			}
+		});
 	});
 
 	it('gives undefined for what the typed format cannot express', () => {

@@ -66,6 +66,9 @@ export class LoadNodesAndCredentials {
 
 	private postProcessors: Array<() => Promise<void>> = [];
 
+	/** Legacy nodes with composed contract versions, e.g. Notion v4. */
+	private composedNodes: ReadonlyMap<string, LoadedClass<IVersionedNodeType>> = new Map();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -638,6 +641,11 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
+		const composeContractNodes =
+			this.globalConfig.instanceAi.nodeContractsEnabled && '@n8n/nodes-base-next' in this.loaders
+				? (await import('@/node-contracts-registry.js')).composeContractNodes
+				: undefined;
+
 		// Publish the rebuilt registry. Everything below runs synchronously until the
 		// post-processor loop, so no reader can observe a half-built registry.
 		this.known = known;
@@ -646,6 +654,13 @@ export class LoadNodesAndCredentials {
 
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);
+
+		// After the AI tools, so the tool variants keep their legacy versions.
+		if (composeContractNodes) {
+			const composed = composeContractNodes(this.loaders, this.types.nodes);
+			this.composedNodes = composed.nodes;
+			this.types = { ...this.types, nodes: composed.types };
+		}
 
 		this.injectCustomApiCallOptions();
 
@@ -664,6 +679,8 @@ export class LoadNodesAndCredentials {
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+		const composed = this.composedNodes.get(fullNodeType);
+		if (composed) return composed;
 		const [packageName, nodeType] = fullNodeType.split('.');
 		const { loaders } = this;
 		const loader = loaders[packageName];

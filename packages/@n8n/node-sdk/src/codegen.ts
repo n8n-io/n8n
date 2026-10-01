@@ -236,8 +236,14 @@ export function toTs(schema: JsonSchema, mode: Mode): string {
 
 export interface GeneratedAction {
 	readonly contract: ContractDocument;
-	/** The n8n node type, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll`. */
+	/** The n8n node type, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll` or `n8n-nodes-base.notion`. */
 	readonly nodeType: string;
+	/** The slot of a composed node version that runs the action, e.g. Notion v4 `databasePage.getAll`. */
+	readonly slot?: {
+		readonly typeVersion: number;
+		readonly resource: string;
+		readonly operation: string;
+	};
 }
 
 interface Factory {
@@ -393,11 +399,15 @@ export function generateNodeModule(nodeId: string, actions: readonly GeneratedAc
 			...locals,
 		].join('\n');
 	});
-	const factories = named.map(({ contract, name, nodeType }): Factory => {
+	const factories = named.map(({ contract, name, nodeType, slot }): Factory => {
 		const [, ...path] = contract.id.split('.');
 		const flow = `${contract.flow.effect}, ${contract.flow.cardinality}`;
 		// Version 1 is the default, so most modules stay as short as before.
-		const version = contract.version === 1 ? '' : `, ${contract.version}`;
+		const version = slot
+			? `, ${slot.typeVersion}, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`
+			: contract.version === 1
+				? ''
+				: `, ${contract.version}`;
 		const text = [
 			'<In, Ctx, const N extends string>(',
 			`\tconfig: { name: N; sample?: ${name}Output[] } & ${name}Input<In, Ctx>,`,

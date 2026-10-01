@@ -191,6 +191,33 @@ describe('workflows get-as-code integration', () => {
 			}
 		});
 
+		it('reads the owned slot of a composed Notion v4 node back as the typed step', async () => {
+			const files = new Map<string, string>();
+			const workflow = makeContractWorkflow();
+			const composed = workflow.nodes.map((node) =>
+				node.name === 'Get Done Pages'
+					? {
+							...node,
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 4,
+							parameters: { ...node.parameters, resource: 'databasePage', operation: 'getAll' },
+						}
+					: node,
+			);
+			const context = makeContext({ ...workflow, nodes: composed }, files);
+			context.nodeContractsEnabled = true;
+			const tool = createWorkflowsTool(context);
+
+			const result = await executeTool<GetAsCodeResult>(tool, {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.code).toContain('notion.databasePage.getAll({');
+			expect(result.code).not.toContain('n8n-nodes-base.notion');
+			expect(result.code).not.toContain('resource');
+		});
+
 		it('returns SDK code when the typed format cannot express the workflow', async () => {
 			const files = new Map<string, string>();
 			const workflow = makeContractWorkflow();

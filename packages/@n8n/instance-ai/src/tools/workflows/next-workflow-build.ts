@@ -1,18 +1,17 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
 	exampleOf,
-	generateNodeModule,
-	toContract,
 	toTs,
 	type JsonSchema,
 	type NodeContractLock,
 	type ResourceField,
 } from '@n8n/node-sdk';
-import { actions, nodeTypeOf, versionsOf } from '@n8n/nodes-base-next';
+import { actionOfNode, actions, composedSlotOf, versionsOf } from '@n8n/nodes-base-next';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
+import { nodeModuleText } from '../next-modules';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { WORKFLOW_DIAGNOSTICS_FILENAME } from '../../workspace/sandbox-typescript';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -48,14 +47,9 @@ export const usedNodeIds = (source: string) => [
 const nodeIds = () => [...new Set(actions.map((action) => action.node.id))];
 
 function nodeModule(nodeId: string): string | undefined {
-	const nodeActions = actions.filter((action) => action.node.id === nodeId);
-	if (nodeActions.length === 0) return undefined;
-	const text = generateNodeModule(
-		nodeId,
-		nodeActions.map((action) => ({ contract: toContract(action), nodeType: nodeTypeOf(action) })),
-	);
+	const text = nodeModuleText(nodeId);
 	// tsc reads the per-node output types through this reference; tsx ignores it.
-	return `/// <reference path="../node-outputs.d.ts" />\n${text}`;
+	return text === undefined ? undefined : `/// <reference path="../node-outputs.d.ts" />\n${text}`;
 }
 
 export const EMPTY_OUTPUTS = 'export {};\n';
@@ -84,8 +78,6 @@ export function nextWorkspaceFiles(
 		]),
 	};
 }
-
-const byNodeType = () => new Map(actions.map((action) => [nodeTypeOf(action), action]));
 
 /**
  * The action's output for this node's parameters and its resource fields. A hatch that cannot
@@ -181,9 +173,8 @@ export async function fetchResourceFields(
 ): Promise<ResourceFields> {
 	const explore = context.nodeService.exploreResources?.bind(context.nodeService);
 	if (!explore) return new Map();
-	const types = byNodeType();
 	const targets = workflow.nodes.flatMap((node) => {
-		const action = types.get(node.type);
+		const action = actionOfNode(node);
 		const calls = action?.resourceOutput
 			? (RESOURCE_LOOKUPS[action.resourceOutput.method]?.(node.parameters ?? {}) ?? [])
 			: [];
@@ -227,9 +218,8 @@ export function synthesizedFixtures(
 	declared: Fixtures = {},
 	resourceFields: ResourceFields = new Map(),
 ): Fixtures {
-	const types = byNodeType();
 	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
-		const action = types.get(node.type);
+		const action = actionOfNode(node);
 		if (!action || !node.name || declared[node.name]) return [];
 		const example = exampleOf(
 			outputOf(action, node.parameters ?? {}, resourceFields.get(node.name)),
@@ -250,9 +240,8 @@ export function nodeOutputsDeclaration(
 	workflow: WorkflowJSON,
 	resourceFields: ResourceFields = new Map(),
 ): string {
-	const types = byNodeType();
 	const members = workflow.nodes.flatMap((node) => {
-		const action = types.get(node.type);
+		const action = actionOfNode(node);
 		const fields = node.name ? resourceFields.get(node.name) : undefined;
 		if (!action || !node.name || !(action.deriveOutput || (fields && action.resourceOutput))) {
 			return [];
@@ -305,14 +294,14 @@ export async function typecheckWorkflowSource(
  * with. The instance update policy decides later if a newer patch may run instead.
  */
 export function lockNodeContracts(workflow: WorkflowJSON): WorkflowJSON {
-	const actionsByType = byNodeType();
 	const nodeContracts = Object.fromEntries(
 		workflow.nodes.flatMap((node): Array<[string, NodeContractLock]> => {
-			const action = actionsByType.get(node.type);
+			const action = actionOfNode(node);
+			// A composed node version runs a fixed action major; a contract node type runs its own.
+			const major = composedSlotOf(node)?.major ?? node.typeVersion;
 			const manifest = action
-				? versionsOf(action.id).find(
-						({ manifest }) => manifest.contract.version === node.typeVersion,
-					)?.manifest
+				? versionsOf(action.id).find(({ manifest }) => manifest.contract.version === major)
+						?.manifest
 				: undefined;
 			if (!manifest || !node.name) return [];
 			const { id, semver, bundleHash, contractHash } = manifest;
