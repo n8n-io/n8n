@@ -63,11 +63,13 @@ erDiagram
   TEXT config
   INTEGER configVersion
   datetime_3_ createdAt
+  datetime_3_ discoveryClaimedAt
   varchar_36_ id PK
   varchar issuer
   datetime_3_ lastCheckedAt
   TEXT lastError
   varchar_16_ managedBy
+  TEXT metadata
   varchar_128_ name
   varchar_16_ status
   varchar_32_ type

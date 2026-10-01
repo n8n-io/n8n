@@ -5,7 +5,9 @@ import { NotFoundError } from '@n8n/errors';
 import {
 	trustedSourceConfigSchemaFor,
 	type SurfaceId,
+	type TrustedSource,
 	type TrustedSourceConfigInput,
+	type TrustedSourceMetadata,
 } from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
@@ -14,14 +16,13 @@ import { TrustedSourceIdentityEntity } from '@/modules/inbound-auth-core/databas
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
 import {
 	SystemTrustedSourceModificationError,
-	TrustedSourceStore,
-	type TrustedSource,
+	TrustedSourceDbStore,
 } from '@/modules/inbound-auth-core/trusted-source.store';
 import { CacheService } from '@n8n/backend-services';
 
 import { createOwner } from '../shared/db/users';
 
-let store: TrustedSourceStore;
+let store: TrustedSourceDbStore;
 let cacheService: CacheService;
 let cipher: Cipher;
 /** Direct table access, so the tests do not depend on the repository under construction. */
@@ -56,9 +57,17 @@ async function seedRow(overrides: Partial<TrustedSourceEntity> = {}) {
 			lastCheckedAt: null,
 			configVersion: 1,
 			config: await cipher.encryptV2(config),
+			metadata: null,
+			discoveryClaimedAt: null,
 			...overrides,
 		}),
 	);
+}
+
+async function loadSource(id: string): Promise<TrustedSource> {
+	const source = await store.getById(id);
+	if (!source) throw new Error(`source ${id} did not load`);
+	return source;
 }
 
 async function encryptedAdminConfig(
@@ -73,7 +82,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['inbound-auth-core']);
 	await testDb.init();
 
-	store = Container.get(TrustedSourceStore);
+	store = Container.get(TrustedSourceDbStore);
 	cacheService = Container.get(CacheService);
 	cipher = Container.get(Cipher);
 	rows = Container.get(DataSource).getRepository(TrustedSourceEntity);
@@ -323,6 +332,108 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await rows.findOneBy({ id: row.id })).toBeNull();
 			expect(await store.getById(row.id)).toBeUndefined();
 			expect(await store.listBySurface('public-api')).toEqual([]);
+		});
+	});
+
+	describe('discovery lease', () => {
+		const now = new Date('2026-10-01T12:00:00.000Z');
+		const later = (ms: number) => new Date(now.getTime() + ms);
+		const metadata: TrustedSourceMetadata = {
+			version: 1,
+			documents: [
+				{
+					kind: 'jwks',
+					fetchedAt: now.toISOString(),
+					url: 'https://issuer.example.com/keys',
+					keys: [{ kid: 'k1', kty: 'RSA', n: 'AQAB', e: 'AQAB' }],
+				},
+			],
+		};
+
+		it('grants the lease once and again after it expires', async () => {
+			const source = await loadSource((await seedRow()).id);
+
+			expect(await store.claimDiscovery(source, now)).toBe(true);
+			expect(await store.claimDiscovery(source, later(1000))).toBe(false);
+			expect(await store.claimDiscovery(source, later(61_000))).toBe(true);
+		});
+
+		it('rejects a record whose claim is not the current lease and leaves the row alone', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			expect(await store.claimDiscovery(source, now)).toBe(true);
+
+			const recorded = await store.recordDiscovery(source, later(1), {
+				metadata,
+				status: 'healthy',
+				lastError: null,
+			});
+
+			expect(recorded).toBe(false);
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
+				metadata: null,
+				status: 'unchecked',
+				lastCheckedAt: null,
+			});
+			expect(await loadSource(row.id)).toMatchObject({ metadata: null, status: 'unchecked' });
+		});
+
+		it('records a healthy result, releases the lease and invalidates the cached source', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			expect(await store.claimDiscovery(source, now)).toBe(true);
+
+			const recorded = await store.recordDiscovery(source, now, {
+				metadata,
+				status: 'healthy',
+				lastError: null,
+			});
+
+			expect(recorded).toBe(true);
+			expect(await loadSource(row.id)).toMatchObject({
+				metadata,
+				status: 'healthy',
+				lastError: null,
+			});
+			const updated = await rows.findOneByOrFail({ id: row.id });
+			expect(updated.discoveryClaimedAt).toBeNull();
+			expect(updated.lastCheckedAt).toBeInstanceOf(Date);
+			expect(Date.now() - (updated.lastCheckedAt?.getTime() ?? 0)).toBeLessThan(60_000);
+		});
+
+		it('keeps the previous metadata when a later run records an error', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			expect(await store.claimDiscovery(source, now)).toBe(true);
+			expect(
+				await store.recordDiscovery(source, now, { metadata, status: 'healthy', lastError: null }),
+			).toBe(true);
+			const healthy = await loadSource(row.id);
+			const retry = later(1000);
+			expect(await store.claimDiscovery(healthy, retry)).toBe(true);
+
+			expect(await store.recordDiscovery(healthy, retry, { status: 'error', lastError: 'x' })).toBe(
+				true,
+			);
+
+			expect(await loadSource(row.id)).toMatchObject({
+				metadata,
+				status: 'error',
+				lastError: 'x',
+			});
+		});
+
+		it('reads unparseable metadata as null and still returns the source', async () => {
+			const row = await seedRow({ metadata: 'not json' });
+
+			expect(await store.getById(row.id)).toMatchObject({ id: row.id, metadata: null });
+		});
+
+		it('listAll returns every source regardless of its surfaces', async () => {
+			const publicApi = await seedRow({ config: await encryptedAdminConfig({ 'public-api': {} }) });
+			const mcp = await seedRow({ config: await encryptedAdminConfig({ 'instance-mcp': {} }) });
+
+			expect(ids(await store.listAll())).toEqual([publicApi.id, mcp.id].sort());
 		});
 	});
 

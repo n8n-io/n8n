@@ -1,6 +1,6 @@
 import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Or } from '@n8n/typeorm';
 
 import { TrustedSourceEntity } from '../entities/trusted-source.entity';
 
@@ -25,10 +25,22 @@ export type NewTrustedSourceRow = Pick<
 	| 'lastCheckedAt'
 	| 'configVersion'
 	| 'config'
+	| 'metadata'
 >;
 
 export type TrustedSourceRowChanges = Partial<
-	Pick<TrustedSourceEntity, 'name' | 'issuer' | 'configVersion' | 'config'>
+	Pick<
+		TrustedSourceEntity,
+		| 'name'
+		| 'issuer'
+		| 'configVersion'
+		| 'config'
+		| 'metadata'
+		| 'status'
+		| 'lastError'
+		| 'lastCheckedAt'
+		| 'discoveryClaimedAt'
+	>
 >;
 
 @Service()
@@ -62,5 +74,40 @@ export class TrustedSourceRepository {
 
 	async deleteById(id: string, ctx: OperationContext = {}) {
 		await this.table.managerFor(ctx).delete(TrustedSourceEntity, { id });
+	}
+
+	/** Takes the discovery lease when it is free or older than `staleBefore`. */
+	async claimForDiscovery(
+		id: string,
+		now: Date,
+		staleBefore: Date,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		// One where object: `update` reads an array criteria as a list of ids, not as OR branches.
+		const result = await this.table
+			.managerFor(ctx)
+			.update(
+				TrustedSourceEntity,
+				{ id, discoveryClaimedAt: Or(IsNull(), LessThan(staleBefore)) },
+				{ discoveryClaimedAt: now },
+			);
+		return result.affected === 1;
+	}
+
+	/** Writes the result and releases the lease, only while the lease is still the caller's. */
+	async recordDiscovery(
+		id: string,
+		claimedAt: Date,
+		changes: TrustedSourceRowChanges,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.table
+			.managerFor(ctx)
+			.update(
+				TrustedSourceEntity,
+				{ id, discoveryClaimedAt: claimedAt },
+				{ ...changes, discoveryClaimedAt: null },
+			);
+		return result.affected === 1;
 	}
 }

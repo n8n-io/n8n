@@ -37,4 +37,12 @@ export class TrustedSourceEntity extends WithTimestampsAndStringId {
 	/** Cipher.encryptV2(JSON.stringify(config)); the store decrypts, never the entity. */
 	@Column({ type: 'text' })
 	config: string;
+
+	/** Plain JSON of `TrustedSourceMetadata`; discovery data is public, so it is not encrypted. */
+	@Column({ type: 'text', nullable: true })
+	metadata: string | null;
+
+	/** Lease taken by a discovery run; null when free. */
+	@DateTimeColumn({ nullable: true })
+	discoveryClaimedAt: Date | null;
 }
