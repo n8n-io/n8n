@@ -31,6 +31,8 @@ import { OAuthTokenService } from '../oauth-token.service';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
+/** Flow id the mocked session service hands back for each pending authorization. */
+const FLOW_ID = 'ktest00-0123456789abcdef01234567';
 
 let logger: Mocked<Logger>;
 let oauthSessionService: Mocked<OAuthSessionService>;
@@ -99,6 +101,7 @@ describe('OAuthServerService', () => {
 		vi.clearAllMocks();
 		getAllowedRedirectUris.mockResolvedValue([]);
 		isResourceAvailable.mockResolvedValue(true);
+		oauthSessionService.createSession.mockReturnValue(FLOW_ID);
 	});
 
 	describe('clientsStore', () => {
@@ -603,7 +606,7 @@ describe('OAuthServerService', () => {
 				state: 'state-xyz',
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
-			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
 		});
 
 		it('should reject with invalid_target when the named resource is unavailable', async () => {
@@ -723,7 +726,7 @@ describe('OAuthServerService', () => {
 				await service.authorize(client, params, res);
 
 				expect(oauthSessionService.createSession).toHaveBeenCalled();
-				expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+				expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
 			});
 		});
 
@@ -830,7 +833,7 @@ describe('OAuthServerService', () => {
 				res,
 				expect.objectContaining({ redirectUri: 'http://localhost:52680/callback' }),
 			);
-			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
 		});
 
 		it('should reject a loopback redirect URI whose path differs from the allowlist entry', async () => {
@@ -925,7 +928,7 @@ describe('OAuthServerService', () => {
 				state: 'state-xyz',
 				resource: undefined,
 			});
-			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
@@ -955,7 +958,7 @@ describe('OAuthServerService', () => {
 			await service.authorize(client, params, res);
 
 			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
-			expect(oauthSessionService.clearSession).toHaveBeenCalledWith(res);
+			expect(oauthSessionService.clearSession).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith({
 				error: 'invalid_target',
@@ -995,10 +998,10 @@ describe('OAuthServerService', () => {
 				state: null,
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
-			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
 		});
 
-		it('should handle errors and clear session', async () => {
+		it('should handle errors without touching other pending flows', async () => {
 			const client = {
 				client_id: 'client-123',
 				client_name: 'Test Client',
@@ -1033,7 +1036,7 @@ describe('OAuthServerService', () => {
 				error,
 				clientId: 'client-123',
 			});
-			expect(oauthSessionService.clearSession).toHaveBeenCalledWith(res);
+			expect(oauthSessionService.clearSession).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(500);
 			expect(res.json).toHaveBeenCalledWith({
 				error: 'server_error',
