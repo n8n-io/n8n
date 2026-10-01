@@ -1,0 +1,29 @@
+{
+	"executions": [
+		{
+			"name": "json body",
+			"params": {
+				"method": "POST",
+				"url": "https://api.test/items",
+				"body": {
+					"kind": "json",
+					"json": {
+						"name": "Ada"
+					}
+				}
+			},
+			"responses": [
+				{
+					"id": 3,
+					"name": "Ada"
+				}
+			],
+			"output": [
+				{
+					"id": 3,
+					"name": "Ada"
+				}
+			]
+		}
+	]
+}

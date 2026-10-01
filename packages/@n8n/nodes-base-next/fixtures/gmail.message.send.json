@@ -1,0 +1,33 @@
+{
+	"executions": [
+		{
+			"name": "text message",
+			"params": {
+				"to": "ada@example.com",
+				"subject": "Hello",
+				"body": {
+					"format": "text",
+					"text": "Hi Ada"
+				},
+				"senderName": "Bob"
+			},
+			"responses": [
+				{
+					"emailAddress": "me@example.com"
+				},
+				{
+					"id": "m9",
+					"threadId": "t9",
+					"labelIds": ["SENT"]
+				}
+			],
+			"output": [
+				{
+					"id": "m9",
+					"threadId": "t9",
+					"labelIds": ["SENT"]
+				}
+			]
+		}
+	]
+}

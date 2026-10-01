@@ -122,6 +122,14 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
+		if (
+			this.globalConfig.instanceAi.nodeContractsEnabled &&
+			'@n8n/nodes-base-next' in this.loaders
+		) {
+			const { useNodeContractsRegistry } = await import('@/node-contracts-registry.js');
+			await useNodeContractsRegistry();
+		}
+
 		await this.loadNodesFromCustomDirectories();
 
 		for (const loader of this.moduleRegistry.nodeLoaders) {

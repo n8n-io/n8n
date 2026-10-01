@@ -7,6 +7,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestOptions,
+	type INode,
 	type INodeExecutionData,
 	type INodeProperties,
 	type INodeType,
@@ -75,17 +76,6 @@ function toProperty(name: string, schema: AnySchema): INodeProperties {
 	}
 }
 
-function readParameter(context: IExecuteFunctions, name: string, itemIndex: number): unknown {
-	const value: unknown = context.getNodeParameter(name, itemIndex, undefined);
-	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
-	try {
-		const parsed: unknown = JSON.parse(value);
-		return parsed;
-	} catch {
-		return value;
-	}
-}
-
 function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IHttpRequestOptions {
 	const query = Object.fromEntries(
 		Object.entries(request.query ?? {}).filter(([, value]) => value !== undefined),
@@ -143,25 +133,57 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 const hasSelector = (action: Action) =>
 	action.credentialTypes.length > 1 || action.node.authOptional === true;
 
-type Execute = (this: IExecuteFunctions) => Promise<INodeExecutionData[][]>;
+/** The n8n services the executor uses. Fixture replay provides them without n8n. */
+export interface ExecutorHost {
+	readonly itemCount: number;
+	readonly node: INode;
+	/** The raw parameter value, as `getNodeParameter` returns it. */
+	parameter(name: string, itemIndex: number): unknown;
+	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
+	continueOnFail(): boolean;
+}
+
+const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
+	itemCount: context.getInputData().length,
+	node: context.getNode(),
+	parameter: (name, itemIndex) => context.getNodeParameter(name, itemIndex, undefined),
+	request: async (options, credentialType) => {
+		const response: unknown = credentialType
+			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
+			: await context.helpers.httpRequest(options);
+		return response;
+	},
+	continueOnFail: () => context.continueOnFail(),
+});
+
+function readParameter(host: ExecutorHost, name: string, itemIndex: number): unknown {
+	const value = host.parameter(name, itemIndex);
+	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return parsed;
+	} catch {
+		return value;
+	}
+}
 
 /**
  * The ABI 1 executor. Parameters are resolved per item and validated against `input`, output
  * items are validated against `output` and paired with their input item, and continue-on-fail
  * routes failed items to the error output.
  */
-function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>): Execute {
+export function executorOf<S extends Shape, O extends AnySchema>(
+	action: Action<S, O>,
+): (host: ExecutorHost) => Promise<INodeExecutionData[]> {
 	const inputKeys = Object.keys(action.input);
 	const outputSchema: JsonSchema = action.output.json;
 	const isInput = (value: unknown): value is RunInput<S> =>
 		validate(value, action.inputSchema).length === 0;
 	const { credentialTypes } = action;
 
-	return async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getNode().credentials ?? {};
-		const selected: unknown = hasSelector(action)
-			? this.getNodeParameter(AUTHENTICATION, 0, undefined)
-			: undefined;
+	return async (host) => {
+		const credentials = host.node.credentials ?? {};
+		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType =
 			credentialTypes.find((type) => type === selected) ??
 			(selected === 'none'
@@ -171,10 +193,7 @@ function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>):
 			request: async (request) => {
 				const options = toRequestOptions(request, action.node.baseUrl);
 				try {
-					const response: unknown = credentialType
-						? await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options)
-						: await this.helpers.httpRequest(options);
-					return response;
+					return await host.request(options, credentialType);
 				} catch (error) {
 					throw withResponse(error);
 				}
@@ -184,12 +203,12 @@ function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>):
 		const runItem = async (itemIndex: number): Promise<INodeExecutionData[]> => {
 			const input = Object.fromEntries(
 				inputKeys
-					.map((key) => [key, readParameter(this, key, itemIndex)] as const)
+					.map((key) => [key, readParameter(host, key, itemIndex)] as const)
 					.filter(([, value]) => value !== undefined && value !== ''),
 			);
 			if (!isInput(input)) {
 				const issues = validate(input, action.inputSchema);
-				throw new NodeOperationError(this.getNode(), issues.join('; '), { itemIndex });
+				throw new NodeOperationError(host.node, issues.join('; '), { itemIndex });
 			}
 			const emitted: unknown[] = [];
 			await action.run({ input, http, emit: (item) => emitted.push(item) });
@@ -197,7 +216,7 @@ function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>):
 				const issues = validate(item, outputSchema, { path: 'output' });
 				if (issues.length > 0 || !isRecord(item)) {
 					throw new NodeOperationError(
-						this.getNode(),
+						host.node,
 						`Output does not match the contract: ${issues.join('; ') || 'not an object'}`,
 						{ itemIndex },
 					);
@@ -206,13 +225,13 @@ function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>):
 			});
 		};
 
-		const results = await this.getInputData().reduce<Promise<INodeExecutionData[]>>(
+		return await Array.from({ length: host.itemCount }).reduce<Promise<INodeExecutionData[]>>(
 			async (previous, _item, itemIndex) => {
 				const done = await previous;
 				try {
 					return [...done, ...(await runItem(itemIndex))];
 				} catch (error) {
-					if (!this.continueOnFail()) throw error;
+					if (!host.continueOnFail()) throw error;
 					return [
 						...done,
 						{ json: { error: errorMessage(error) }, pairedItem: { item: itemIndex } },
@@ -221,7 +240,6 @@ function executorOf<S extends Shape, O extends AnySchema>(action: Action<S, O>):
 			},
 			Promise.resolve([]),
 		);
-		return [results];
 	};
 }
 
@@ -267,11 +285,13 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		],
 	};
 
-	const execute = executorOf(action);
+	const run = executorOf(action);
 	return class implements INodeType {
 		description = description;
 
-		execute = execute;
+		async execute(this: IExecuteFunctions) {
+			return [await run(hostOf(this))];
+		}
 	};
 }
 
@@ -304,53 +324,87 @@ export function evaluateBundle(code: string): Action {
 }
 
 /** Executors by bundle hash. A bundle loads on its first execution only. */
-const executors = new Map<string, Promise<Execute>>();
+const executors = new Map<string, Promise<(host: ExecutorHost) => Promise<INodeExecutionData[]>>>();
 
-async function loadExecutor({ manifest, readBundle }: FrozenVersion): Promise<Execute> {
-	const code = await readBundle();
-	if (sha256(code) !== manifest.bundleHash) {
+async function loadExecutor({ manifest, readBundle }: FrozenVersion) {
+	const { id, semver, abi, bundleHash } = manifest;
+	if (abi !== NODE_CONTRACT_ABI) {
 		throw new UnexpectedError(
-			`The bundle of ${manifest.id}@${manifest.version} does not match ${manifest.bundleHash}`,
+			`${id}@${semver} needs ABI ${abi}; this host runs ABI ${NODE_CONTRACT_ABI}`,
 		);
+	}
+	const code = await readBundle();
+	if (sha256(code) !== bundleHash) {
+		throw new UnexpectedError(`The bundle of ${id}@${semver} does not match ${bundleHash}`);
 	}
 	return executorOf(evaluateBundle(code));
 }
 
 /**
- * An n8n node type with one version per frozen action version. The description comes from
- * the manifest; the bundle loads on the first execution of its version.
+ * Picks the version a node runs. `head` is the bundled version of the node's major. The
+ * result must have the same major. The host sets it once at start.
+ */
+export type ContractVersionLoader = (
+	context: IExecuteFunctions,
+	head: FrozenVersion,
+) => Promise<FrozenVersion>;
+
+// One slot: the host replaces the default, which runs the bundled HEAD.
+const versionLoader = new Map<'loader', ContractVersionLoader>();
+
+export const setContractVersionLoader = (loader: ContractVersionLoader) => {
+	versionLoader.set('loader', loader);
+};
+
+async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
+	const loader = versionLoader.get('loader');
+	const frozen = loader ? await loader(context, head) : head;
+	const { id, semver, abi, bundleHash, contract } = frozen.manifest;
+	if (contract.version !== head.manifest.contract.version || id !== head.manifest.id) {
+		throw new UnexpectedError(
+			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
+		);
+	}
+	const executor = executors.get(bundleHash) ?? loadExecutor(frozen);
+	executors.set(bundleHash, executor);
+	const items = await (await executor)(hostOf(context));
+	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, abi } });
+	return [items];
+}
+
+/**
+ * An n8n node type with one version per major. The description comes from the manifest; the
+ * bundle loads on the first execution of its version.
  */
 export function toVersionedNodeType(
 	versions: readonly FrozenVersion[],
 ): new () => VersionedNodeType {
 	const unsupported = versions.find(({ manifest }) => manifest.abi !== NODE_CONTRACT_ABI);
 	if (unsupported) {
-		const { id, version, abi } = unsupported.manifest;
+		const { id, semver, abi } = unsupported.manifest;
 		throw new UnexpectedError(
-			`${id}@${version} needs ABI ${abi}; this host runs ABI ${NODE_CONTRACT_ABI}`,
+			`${id}@${semver} needs ABI ${abi}; this host runs ABI ${NODE_CONTRACT_ABI}`,
 		);
 	}
+	const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 	const latest = versions.reduce<FrozenVersion | undefined>(
-		(best, frozen) => (best && best.manifest.version > frozen.manifest.version ? best : frozen),
+		(best, frozen) => (best && majorOf(best) > majorOf(frozen) ? best : frozen),
 		undefined,
 	);
 	if (!latest) throw new UnexpectedError('A versioned node type needs at least one version');
 	const nodeVersions = Object.fromEntries(
 		versions.map((frozen): [number, INodeType] => [
-			frozen.manifest.version,
+			majorOf(frozen),
 			{
 				description: frozen.manifest.description,
 				async execute(this: IExecuteFunctions) {
-					const { bundleHash } = frozen.manifest;
-					const executor = executors.get(bundleHash) ?? loadExecutor(frozen);
-					executors.set(bundleHash, executor);
-					return await (await executor).call(this);
+					return await executeVersion(this, frozen);
 				},
 			},
 		]),
 	);
 	const { displayName, name, group, description } = latest.manifest.description;
-	const base = { displayName, name, group, description, defaultVersion: latest.manifest.version };
+	const base = { displayName, name, group, description, defaultVersion: majorOf(latest) };
 	return class extends VersionedNodeType {
 		constructor() {
 			super(nodeVersions, base);

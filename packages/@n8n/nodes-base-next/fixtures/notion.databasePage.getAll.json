@@ -1,0 +1,109 @@
+{
+	"executions": [
+		{
+			"name": "two pages",
+			"params": {
+				"database": "https://www.notion.so/5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e?v=1",
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"property": "Status",
+							"type": "status",
+							"condition": {
+								"op": "equals",
+								"value": "Done"
+							}
+						}
+					]
+				}
+			},
+			"responses": [
+				{
+					"data_sources": [
+						{
+							"id": "ds-1"
+						}
+					]
+				},
+				{
+					"results": [
+						{
+							"object": "page",
+							"id": "p1",
+							"url": "https://www.notion.so/p1",
+							"parent": {
+								"type": "data_source_id",
+								"data_source_id": "ds"
+							},
+							"properties": {
+								"Name": {
+									"id": "title",
+									"type": "title",
+									"title": [
+										{
+											"type": "text",
+											"plain_text": "Launch v2"
+										}
+									]
+								},
+								"Status": {
+									"id": "s",
+									"type": "status",
+									"status": {
+										"name": "Done"
+									}
+								}
+							}
+						},
+						{
+							"object": "page",
+							"id": "p2",
+							"url": "https://www.notion.so/p2",
+							"parent": {
+								"type": "data_source_id",
+								"data_source_id": "ds"
+							},
+							"properties": {
+								"Name": {
+									"id": "title",
+									"type": "title",
+									"title": [
+										{
+											"type": "text",
+											"plain_text": "Launch v2"
+										}
+									]
+								},
+								"Status": {
+									"id": "s",
+									"type": "status",
+									"status": {
+										"name": "Done"
+									}
+								}
+							}
+						}
+					],
+					"next_cursor": null
+				}
+			],
+			"output": [
+				{
+					"id": "p1",
+					"name": "Launch v2",
+					"url": "https://www.notion.so/p1",
+					"property_name": "Launch v2",
+					"property_status": "Done"
+				},
+				{
+					"id": "p2",
+					"name": "Launch v2",
+					"url": "https://www.notion.so/p2",
+					"property_name": "Launch v2",
+					"property_status": "Done"
+				}
+			]
+		}
+	]
+}

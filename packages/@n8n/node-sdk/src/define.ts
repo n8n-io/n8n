@@ -155,8 +155,12 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 	readonly node: NodeDefinition;
 	/** `<node>.<resource>.<operation>`, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
-	/** Integer major, 1 when omitted. A frozen version never changes: any change needs a new one. */
+	/** Integer major, 1 when omitted. It is the n8n `typeVersion`. */
 	readonly version?: number;
+	/** Bump for an additive contract change. 0 when omitted. */
+	readonly minor?: number;
+	/** Bump for a code change that keeps the contract hash. 0 when omitted. */
+	readonly patch?: number;
 	/** The label users pick, e.g. "Get many database pages". */
 	readonly action: string;
 	/** At most 120 characters. */
@@ -182,11 +186,18 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 	};
 	/** Runs once per input item; emit one or more output items. */
 	run(context: RunContext<RunInput<S>, Infer<O>>): Promise<void>;
+	/**
+	 * Pure hatch on a new major: the parameters of an older major in, the parameters of this
+	 * major out. No I/O. Fixture pairs replay it.
+	 */
+	migrate?(fromMajor: number, params: Readonly<Record<string, unknown>>): Record<string, unknown>;
 }
 
 export interface Action<S extends Shape = Shape, O extends AnySchema = AnySchema>
 	extends ActionDefinition<S, O> {
 	readonly version: number;
+	/** `major.minor.patch`. */
+	readonly semver: string;
 	readonly inputSchema: JsonSchema;
 	readonly credentialTypes: readonly string[];
 }
@@ -197,6 +208,7 @@ export function defineAction<S extends Shape, O extends AnySchema>(
 	return {
 		...definition,
 		version: definition.version ?? 1,
+		semver: `${definition.version ?? 1}.${definition.minor ?? 0}.${definition.patch ?? 0}`,
 		inputSchema: obj(definition.input).json,
 		credentialTypes: definition.credentials ?? definition.node.credentials,
 	};
@@ -205,6 +217,7 @@ export function defineAction<S extends Shape, O extends AnySchema>(
 /** The JSON document agents and tools read. Execution details are never part of it. */
 export interface ContractDocument {
 	readonly id: string;
+	/** The major. Minor and patch live in the version manifest. */
 	readonly version: number;
 	readonly node: string;
 	readonly action: string;

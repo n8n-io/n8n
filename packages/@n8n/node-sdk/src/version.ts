@@ -1,5 +1,6 @@
-import { createHash } from 'node:crypto';
-import { UnexpectedError, type INodeTypeDescription } from 'n8n-workflow';
+import { createHash, verify } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
+import { UnexpectedError, UserError, type INodeTypeDescription } from 'n8n-workflow';
 
 import type { ContractDocument } from './define';
 import type { JsonSchema } from './schema';
@@ -11,11 +12,13 @@ import type { JsonSchema } from './schema';
  */
 export const NODE_CONTRACT_ABI = 1;
 
-/** One frozen action version. A published `id` and `version` never change their bytes. */
+/** One frozen action version. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {
 	readonly id: string;
-	readonly version: number;
+	/** `major.minor.patch`; the major is `contract.version` and the n8n `typeVersion`. */
+	readonly semver: string;
 	readonly abi: number;
+	/** The normative hash, see `contractHash`. */
 	readonly contractHash: string;
 	readonly bundleHash: string;
 	readonly contract: ContractDocument;
@@ -42,12 +45,70 @@ export const canonicalJson = (value: unknown) => JSON.stringify(sortKeys(value))
 
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
-export const contractHash = (contract: ContractDocument) => sha256(canonicalJson(contract));
+const PROSE_KEYWORDS = new Set(['description', 'x-n8n-hint', 'examples']);
+const SCHEMA_MAPS = new Set(['properties', 'patternProperties', 'x-n8n-value-types']);
+
+/** A schema without its prose keywords. Property names stay, also `description`. */
+const normativeSchema = (schema: unknown): unknown =>
+	isRecord(schema)
+		? Object.fromEntries(
+				Object.entries(schema)
+					.filter(([keyword]) => !PROSE_KEYWORDS.has(keyword))
+					.map(([keyword, value]) => [
+						keyword,
+						SCHEMA_MAPS.has(keyword) && isRecord(value)
+							? Object.fromEntries(
+									Object.entries(value).map(([name, child]) => [name, normativeSchema(child)]),
+								)
+							: Array.isArray(value) && (keyword === 'oneOf' || keyword === 'anyOf')
+								? value.map(normativeSchema)
+								: keyword === 'items' || keyword === 'additionalProperties'
+									? normativeSchema(value)
+									: value,
+					]),
+			)
+		: schema;
+
+/**
+ * Hashes only what a workflow depends on. Prose (action, summary, hints) and minor and patch
+ * stay outside, so a patch keeps the hash and a typo fix is no contract change.
+ */
+export const contractHash = (contract: ContractDocument) =>
+	sha256(
+		canonicalJson({
+			id: contract.id,
+			major: contract.version,
+			node: contract.node,
+			flow: contract.flow,
+			credentials: contract.credentials,
+			input: normativeSchema(contract.input),
+			output: normativeSchema(contract.output),
+		}),
+	);
+
+export interface Semver {
+	readonly major: number;
+	readonly minor: number;
+	readonly patch: number;
+}
+
+export function parseSemver(text: string): Semver {
+	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(text);
+	if (!match) throw new UserError(`${text} is not a major.minor.patch version`);
+	return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
+}
+
+/** Negative when `a` is older than `b`. */
+export function compareSemver(a: string, b: string): number {
+	const [x, y] = [parseSemver(a), parseSemver(b)];
+	return x.major - y.major || x.minor - y.minor || x.patch - y.patch;
+}
 
 const isManifest = (value: unknown): value is VersionManifest =>
 	isRecord(value) &&
 	typeof value.id === 'string' &&
-	typeof value.version === 'number' &&
+	typeof value.semver === 'string' &&
+	/^\d+\.\d+\.\d+$/.test(value.semver) &&
 	typeof value.abi === 'number' &&
 	typeof value.contractHash === 'string' &&
 	typeof value.bundleHash === 'string' &&
@@ -56,64 +117,370 @@ const isManifest = (value: unknown): value is VersionManifest =>
 
 export function parseManifest(text: string): VersionManifest {
 	const value: unknown = JSON.parse(text);
-	if (!isManifest(value) || contractHash(value.contract) !== value.contractHash) {
+	if (
+		!isManifest(value) ||
+		contractHash(value.contract) !== value.contractHash ||
+		parseSemver(value.semver).major !== value.contract.version
+	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
 	return value;
 }
 
-export interface ContractDiff {
-	readonly kind: 'none' | 'additive' | 'breaking';
-	readonly changes: readonly string[];
+export type ChangeKind = 'patch' | 'minor' | 'major';
+
+export interface ContractChange {
+	readonly kind: Exclude<ChangeKind, 'patch'>;
+	readonly text: string;
 }
 
-interface Change {
-	readonly breaking: boolean;
-	readonly text: string;
+export interface ContractDiff {
+	/** `patch` when nothing normative changed. */
+	readonly kind: ChangeKind;
+	/** True when some parameters valid for the old input fail the new one. */
+	readonly breaksInput: boolean;
+	readonly changes: readonly ContractChange[];
+}
+
+type Side = 'input' | 'output';
+
+/** A narrower input rejects old parameters; a wider output drops a guarantee. */
+const narrowed = (side: Side, narrower: boolean, text: string): ContractChange => ({
+	kind: (side === 'input') === narrower ? 'major' : 'minor',
+	text,
+});
+
+const major = (text: string): ContractChange => ({ kind: 'major', text });
+
+const LOWER_BOUNDS = ['minLength', 'minimum', 'minItems'] as const;
+const EXACT_KEYWORDS = ['const', 'format', 'pattern', 'x-n8n-ref', 'x-n8n-literal'] as const;
+
+function boundChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
+	const lower = LOWER_BOUNDS.flatMap((keyword) => {
+		const [old, now] = [prev[keyword] ?? -Infinity, next[keyword] ?? -Infinity];
+		return old === now ? [] : [narrowed(side, now > old, `${at} ${keyword} ${old} → ${now}`)];
+	});
+	const [oldMax, newMax] = [prev.maximum ?? Infinity, next.maximum ?? Infinity];
+	const upper =
+		oldMax === newMax
+			? []
+			: [narrowed(side, newMax < oldMax, `${at} maximum ${oldMax} → ${newMax}`)];
+	const exact = EXACT_KEYWORDS.flatMap((keyword) => {
+		const [old, now] = [prev[keyword], next[keyword]];
+		if (canonicalJson(old) === canonicalJson(now)) return [];
+		if (old === undefined) return [narrowed(side, true, `${at} adds ${keyword}`)];
+		if (now === undefined) return [narrowed(side, false, `${at} drops ${keyword}`)];
+		return [major(`${at} changes ${keyword}`)];
+	});
+	const closed = (schema: JsonSchema) => schema.additionalProperties === false;
+	const additional =
+		closed(prev) === closed(next)
+			? []
+			: [narrowed(side, closed(next), `${at} ${closed(next) ? 'closes' : 'opens'} properties`)];
+	return [...lower, ...upper, ...exact, ...additional];
+}
+
+function enumChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
+	if (!prev.enum && !next.enum) return [];
+	if (!prev.enum || !next.enum) return [narrowed(side, !prev.enum, `${at} enum added or removed`)];
+	const [old, now] = [prev.enum, next.enum];
+	const dropped = old.filter((value) => !now.includes(value));
+	const added = now.filter((value) => !old.includes(value));
+	return [
+		...(dropped.length ? [narrowed(side, true, `${at} drops ${dropped.join(', ')}`)] : []),
+		...(added.length ? [narrowed(side, false, `${at} adds ${added.join(', ')}`)] : []),
+	];
 }
 
 const isRequired = (schema: JsonSchema, name: string) => (schema.required ?? []).includes(name);
 
-/** An input change is breaking when it rejects old parameters, an output change when it drops a guarantee. */
-function fieldChanges(side: 'input' | 'output', prev: JsonSchema, next: JsonSchema): Change[] {
-	const input = side === 'input';
-	const before = prev.properties ?? {};
-	const after = next.properties ?? {};
+function propertyChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
+	const [before, after] = [prev.properties ?? {}, next.properties ?? {}];
 	const names = [...new Set([...Object.keys(before), ...Object.keys(after)])];
-	return names.flatMap((name): Change[] => {
-		const [old, now, at] = [before[name], after[name], `${side}.${name}`];
-		if (!now) return [{ breaking: true, text: `${at} removed` }];
-		if (!old) return [{ breaking: input && isRequired(next, name), text: `${at} added` }];
+	return names.flatMap((name): ContractChange[] => {
+		const [old, now, path] = [before[name], after[name], `${at}.${name}`];
 		const required = isRequired(next, name);
-		const oldEnum = old.enum ?? [];
-		const newEnum = now.enum ?? [];
-		const dropped = oldEnum.filter((value) => !newEnum.includes(value));
-		const added = newEnum.filter((value) => !oldEnum.includes(value));
-		return [
-			...(old.type !== now.type || Boolean(old.enum) !== Boolean(now.enum)
-				? [{ breaking: true, text: `${at} changed type` }]
-				: []),
-			...(isRequired(prev, name) !== required
-				? [{ breaking: input === required, text: `${at} is ${required ? 'required' : 'optional'}` }]
-				: []),
-			...(dropped.length ? [{ breaking: input, text: `${at} drops ${dropped.join(', ')}` }] : []),
-			...(added.length ? [{ breaking: !input, text: `${at} adds ${added.join(', ')}` }] : []),
-		];
+		// n8n fills a default into old parameters, so a required field with one rejects nothing.
+		const defaulted = side === 'input' && now?.default !== undefined;
+		if (!now) return [major(`${path} removed`)];
+		if (!old) {
+			return [
+				narrowed(side, required && !defaulted, `${path} added${required ? ' as required' : ''}`),
+			];
+		}
+		const requiredChange =
+			isRequired(prev, name) === required
+				? []
+				: [
+						narrowed(
+							side,
+							required && !defaulted,
+							`${path} is ${required ? 'required' : 'optional'}`,
+						),
+					];
+		return [...requiredChange, ...schemaChanges(side, path, old, now)];
 	});
 }
 
-/** Compares the top-level fields of two contracts. A breaking diff needs a new version. */
+function variantChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
+	return (['oneOf', 'anyOf'] as const).flatMap((keyword) => {
+		const [old, now] = [prev[keyword] ?? [], next[keyword] ?? []];
+		const count =
+			old.length === now.length
+				? []
+				: [
+						narrowed(
+							side,
+							now.length < old.length,
+							`${at} ${keyword} ${old.length} → ${now.length}`,
+						),
+					];
+		const shared = old.slice(0, now.length).flatMap((variant, index) => {
+			const other = now[index];
+			return other ? schemaChanges(side, `${at}.${keyword}[${index}]`, variant, other) : [];
+		});
+		return [...count, ...shared];
+	});
+}
+
+/** Classifies one schema change by the rules of the contract diff engine. */
+function schemaChanges(
+	side: Side,
+	at: string,
+	prev: JsonSchema,
+	next: JsonSchema,
+): ContractChange[] {
+	const itemChanges =
+		prev.items && next.items
+			? schemaChanges(side, `${at}[]`, prev.items, next.items)
+			: prev.items || next.items
+				? [narrowed(side, Boolean(next.items), `${at} items added or removed`)]
+				: [];
+	return [
+		...(prev.type !== next.type ? [major(`${at} type ${prev.type} → ${next.type}`)] : []),
+		// n8n saves no value equal to the default, so a new default changes old parameters.
+		...(side === 'input' && canonicalJson(prev.default) !== canonicalJson(next.default)
+			? [major(`${at} changes default`)]
+			: []),
+		...enumChanges(side, at, prev, next),
+		...boundChanges(side, at, prev, next),
+		...propertyChanges(side, at, prev, next),
+		...itemChanges,
+		...variantChanges(side, at, prev, next),
+	];
+}
+
+/**
+ * Classifies the change between two versions of one action: additive optional input (or a
+ * new required input with a default) is minor; a new required input, a removed or narrowed
+ * output, or a changed flow is major; no normative change is a patch.
+ */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
+	const input = schemaChanges('input', 'input', prev.input, next.input);
 	const changes = [
-		...fieldChanges('input', prev.input, next.input),
-		...fieldChanges('output', prev.output, next.output),
+		...(prev.id !== next.id || prev.node !== next.node ? [major('id or node changed')] : []),
+		...(canonicalJson(prev.flow) !== canonicalJson(next.flow) ? [major('flow changed')] : []),
+		...prev.credentials
+			.filter((type) => !next.credentials.includes(type))
+			.map((type) => major(`credential ${type} removed`)),
+		...next.credentials
+			.filter((type) => !prev.credentials.includes(type))
+			.map((type): ContractChange => ({ kind: 'minor', text: `credential ${type} added` })),
+		...input,
+		...schemaChanges('output', 'output', prev.output, next.output),
 	];
 	return {
-		kind: changes.some(({ breaking }) => breaking)
-			? 'breaking'
+		kind: changes.some(({ kind }) => kind === 'major')
+			? 'major'
 			: changes.length
-				? 'additive'
-				: 'none',
-		changes: changes.map(({ text }) => text),
+				? 'minor'
+				: 'patch',
+		breaksInput: input.some(({ kind }) => kind === 'major'),
+		changes,
 	};
+}
+
+/** One recorded run of a single input item. */
+export interface ExecutionFixture {
+	readonly name: string;
+	/** Parameters as n8n stores them; the replay fills the description defaults. */
+	readonly params: Readonly<Record<string, unknown>>;
+	/** HTTP response bodies, in request order. */
+	readonly responses: readonly unknown[];
+	/** The expected output items (`json`) for the input item. */
+	readonly output: readonly unknown[];
+}
+
+/** One `migrate` pair: parameters of `fromMajor` in, parameters of this major out. */
+export interface MigrationFixture {
+	readonly fromMajor: number;
+	readonly params: Readonly<Record<string, unknown>>;
+	readonly expected: Readonly<Record<string, unknown>>;
+}
+
+export interface ContractFixtures {
+	readonly executions: readonly ExecutionFixture[];
+	readonly migrations?: readonly MigrationFixture[];
+}
+
+const isExecutionFixture = (value: unknown): value is ExecutionFixture =>
+	isRecord(value) &&
+	typeof value.name === 'string' &&
+	isRecord(value.params) &&
+	Array.isArray(value.responses) &&
+	Array.isArray(value.output);
+
+const isMigrationFixture = (value: unknown): value is MigrationFixture =>
+	isRecord(value) &&
+	typeof value.fromMajor === 'number' &&
+	isRecord(value.params) &&
+	isRecord(value.expected);
+
+const isFixtures = (value: unknown): value is ContractFixtures =>
+	isRecord(value) &&
+	Array.isArray(value.executions) &&
+	value.executions.every(isExecutionFixture) &&
+	(value.migrations === undefined ||
+		(Array.isArray(value.migrations) && value.migrations.every(isMigrationFixture)));
+
+export function parseFixtures(text: string): ContractFixtures {
+	const value: unknown = JSON.parse(text);
+	if (!isFixtures(value)) throw new UserError('The fixtures file is not valid');
+	return value;
+}
+
+export const CONTRACT_PACKAGE_SCOPE = '@n8n-contracts';
+
+/** `notion.databasePage.getAll` → `@n8n-contracts/notion-database-page-get-all`. npm names are lower case. */
+export const packageNameOf = (actionId: string) =>
+	`${CONTRACT_PACKAGE_SCOPE}/${actionId
+		.replace(/\./g, '-')
+		.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+
+/** The files of a published action version, read from its npm tarball. */
+export interface ContractPackage {
+	readonly manifest: VersionManifest;
+	/** The exact bytes `signature` covers. */
+	readonly manifestText: string;
+	/** Base64 ed25519 signature of `manifestText`. */
+	readonly signature: string;
+	readonly bundle: string;
+	readonly fixtures: ContractFixtures;
+}
+
+const BLOCK = 512;
+
+/** Regular files of a ustar archive, by path. */
+function untar(tar: Buffer, offset = 0): ReadonlyArray<readonly [string, Buffer]> {
+	const header = tar.subarray(offset, offset + BLOCK);
+	if (header.length < BLOCK || header.every((byte) => byte === 0)) return [];
+	const field = (start: number, length: number) =>
+		header
+			.subarray(start, start + length)
+			.toString('utf8')
+			.split('\0')[0] ?? '';
+	const size = parseInt(field(124, 12).trim() || '0', 8);
+	const name = [field(345, 155), field(0, 100)].filter(Boolean).join('/');
+	const type = field(156, 1);
+	const data = tar.subarray(offset + BLOCK, offset + BLOCK + size);
+	const rest = untar(tar, offset + BLOCK + Math.ceil(size / BLOCK) * BLOCK);
+	return type === '' || type === '0' ? [[name, data], ...rest] : rest;
+}
+
+/** The npm `dist.integrity` of a tarball. */
+export const integrityOf = (tarball: Uint8Array) =>
+	`sha512-${createHash('sha512').update(tarball).digest('base64')}`;
+
+/**
+ * Opens a published tarball. It checks the npm `integrity`, the manifest and its contract
+ * hash, the bundle hash, and the package name and version. The signature is a separate
+ * check (`verifyManifestSignature`), because a locked bundle hash is enough for a strict run.
+ */
+export function openContractPackage(tarball: Uint8Array, integrity: string): ContractPackage {
+	if (!integrity.split(/\s+/).includes(integrityOf(tarball))) {
+		throw new UnexpectedError('The contract package does not match its integrity');
+	}
+	const files = new Map(untar(gunzipSync(tarball)));
+	const text = (name: string) => {
+		const data = files.get(`package/${name}`);
+		if (!data) throw new UnexpectedError(`The contract package has no ${name}`);
+		return data.toString('utf8');
+	};
+	const manifestText = text('manifest.json');
+	const manifest = parseManifest(manifestText);
+	const bundle = text('bundle.cjs');
+	const packageJson: unknown = JSON.parse(text('package.json'));
+	if (sha256(bundle) !== manifest.bundleHash) {
+		throw new UnexpectedError(
+			`The bundle of ${manifest.id}@${manifest.semver} does not match ${manifest.bundleHash}`,
+		);
+	}
+	if (
+		!isRecord(packageJson) ||
+		packageJson.name !== packageNameOf(manifest.id) ||
+		packageJson.version !== manifest.semver
+	) {
+		throw new UnexpectedError(`The package does not hold ${manifest.id}@${manifest.semver}`);
+	}
+	return {
+		manifest,
+		manifestText,
+		signature: text('manifest.sig').trim(),
+		bundle,
+		fixtures: parseFixtures(text('fixtures.json')),
+	};
+}
+
+/** `publicKey` is the PEM of the trusted ed25519 publisher key. */
+export const verifyManifestSignature = (
+	{ manifestText, signature }: Pick<ContractPackage, 'manifestText' | 'signature'>,
+	publicKey: string,
+) => verify(null, Buffer.from(manifestText), publicKey, Buffer.from(signature, 'base64'));
+
+/** What a workflow pins per contract node, in `meta.nodeContracts[nodeName]`. */
+export interface NodeContractLock {
+	readonly action: string;
+	/** The resolved `major.minor.patch`. */
+	readonly version: string;
+	readonly bundleHash: string;
+	readonly contractHash: string;
+}
+
+/** `strict` runs the locked bundle; `tolerant` also takes a newer patch with the same contract. */
+export type NodeContractsPolicy = 'strict' | 'tolerant';
+
+/**
+ * Picks the version a locked node runs. Pass only trusted manifests: the bundled HEAD, a
+ * version whose bundle hash equals the lock, or a version whose signature verifies. Minors
+ * and majors never apply.
+ */
+export function resolveContractVersion(
+	lock: NodeContractLock,
+	policy: NodeContractsPolicy,
+	manifests: readonly VersionManifest[],
+): VersionManifest {
+	const locked = parseSemver(lock.version);
+	const candidates = manifests.filter((manifest) => {
+		if (manifest.id !== lock.action) return false;
+		if (manifest.bundleHash === lock.bundleHash) return true;
+		const { major, minor, patch } = parseSemver(manifest.semver);
+		return (
+			policy === 'tolerant' &&
+			major === locked.major &&
+			minor === locked.minor &&
+			patch > locked.patch &&
+			manifest.contractHash === lock.contractHash
+		);
+	});
+	const newest = candidates.reduce<VersionManifest | undefined>(
+		(best, manifest) =>
+			best && compareSemver(best.semver, manifest.semver) >= 0 ? best : manifest,
+		undefined,
+	);
+	if (!newest) {
+		throw new UserError(
+			`No trusted version of ${lock.action} matches ${lock.version} (bundle ${lock.bundleHash})`,
+		);
+	}
+	return newest;
 }

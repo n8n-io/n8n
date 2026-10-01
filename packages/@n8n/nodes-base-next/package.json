@@ -13,18 +13,18 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist/**/*",
-    "versions/**/*"
+    "dist/**/*"
   ],
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json && pnpm freeze",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && pnpm freeze",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "freeze": "tsx scripts/freeze.ts",
+    "publish:contracts": "tsx scripts/publish.ts",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",

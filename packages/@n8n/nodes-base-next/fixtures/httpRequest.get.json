@@ -1,0 +1,31 @@
+{
+	"executions": [
+		{
+			"name": "array body",
+			"params": {
+				"url": "https://api.test/items",
+				"query": {
+					"page": "1"
+				}
+			},
+			"responses": [
+				[
+					{
+						"id": 1
+					},
+					{
+						"id": 2
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 1
+				},
+				{
+					"id": 2
+				}
+			]
+		}
+	]
+}

@@ -1,7 +1,10 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
+
+const nodeContractsUpdatePolicySchema = z.enum(['tolerant', 'strict']);
 
 @Config
 export class InstanceAiConfig {
@@ -233,6 +236,22 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED')
 	nodeContractsEnabled: boolean = false;
+
+	/**
+	 * Which version a locked contract node runs. `strict` runs the locked bundle. `tolerant`
+	 * also runs a newer signed patch with the same contract. `meta.nodeContractsPolicy` of a
+	 * workflow overrides it.
+	 */
+	@Env('N8N_NODE_CONTRACTS_UPDATE_POLICY', nodeContractsUpdatePolicySchema)
+	nodeContractsUpdatePolicy: z.infer<typeof nodeContractsUpdatePolicySchema> = 'tolerant';
+
+	/** The npm registry of published contract versions. Empty: only bundled versions run. */
+	@Env('N8N_NODE_CONTRACTS_REGISTRY_URL')
+	nodeContractsRegistryUrl: string = '';
+
+	/** PEM file of the trusted ed25519 publisher key. Empty: no newer patch applies. */
+	@Env('N8N_NODE_CONTRACTS_PUBLIC_KEY_FILE')
+	nodeContractsPublicKeyFile: string = '';
 
 	/**
 	 * Force-enable folder exploration in Instance AI: folder attribution and

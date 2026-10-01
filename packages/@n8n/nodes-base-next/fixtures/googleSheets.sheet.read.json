@@ -1,0 +1,43 @@
+{
+	"executions": [
+		{
+			"name": "three rows",
+			"params": {
+				"spreadsheet": "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=7",
+				"sheet": {
+					"mode": "name",
+					"name": "Leads"
+				}
+			},
+			"responses": [
+				{
+					"sheets": [
+						{
+							"properties": {
+								"sheetId": 7,
+								"title": "Leads"
+							}
+						}
+					]
+				},
+				{
+					"values": [["Name", "Status", "Score"], ["Ada", "new", 3], [], ["Bob", "done"]]
+				}
+			],
+			"output": [
+				{
+					"row_number": 2,
+					"Name": "Ada",
+					"Status": "new",
+					"Score": 3
+				},
+				{
+					"row_number": 4,
+					"Name": "Bob",
+					"Status": "done",
+					"Score": ""
+				}
+			]
+		}
+	]
+}

@@ -11,6 +11,11 @@ import { getRequest, sendRequest } from './nodes/http/request';
 import { getManyDatabasePages } from './nodes/notion/database-page.get-all';
 
 export { versionsOf } from './registry';
+export {
+	contractVersionLoader,
+	useContractRegistry,
+	type ContractRegistryOptions,
+} from './contract-registry';
 
 export const NODE_PACKAGE = '@n8n/nodes-base-next';
 

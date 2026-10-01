@@ -1,0 +1,55 @@
+{
+	"executions": [
+		{
+			"name": "one reply",
+			"params": {
+				"model": "models/gemini-2.5-flash",
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hi"
+					}
+				]
+			},
+			"responses": [
+				{
+					"candidates": [
+						{
+							"content": {
+								"parts": [
+									{
+										"text": "Hello"
+									},
+									{
+										"text": " there"
+									}
+								],
+								"role": "model"
+							},
+							"finishReason": "STOP",
+							"index": 0
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "Hello"
+							},
+							{
+								"text": " there"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0,
+					"mergedResponse": "Hello there"
+				}
+			]
+		}
+	]
+}

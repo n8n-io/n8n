@@ -5,6 +5,7 @@ import {
 	toContract,
 	toTs,
 	type JsonSchema,
+	type NodeContractLock,
 	type ResourceField,
 } from '@n8n/node-sdk';
 import { actions, nodeTypeOf, versionsOf } from '@n8n/nodes-base-next';
@@ -300,26 +301,22 @@ export async function typecheckWorkflowSource(
 }
 
 /**
- * Pins each contract node to the frozen bundle of its version. A later release can then
- * tell which exact code the workflow was built and verified with.
+ * Locks each contract node, by node name, to the bundled version it was built and verified
+ * with. The instance update policy decides later if a newer patch may run instead.
  */
 export function lockNodeContracts(workflow: WorkflowJSON): WorkflowJSON {
 	const actionsByType = byNodeType();
 	const nodeContracts = Object.fromEntries(
-		workflow.nodes.flatMap((node) => {
+		workflow.nodes.flatMap((node): Array<[string, NodeContractLock]> => {
 			const action = actionsByType.get(node.type);
 			const manifest = action
-				? versionsOf(action.id).find(({ manifest }) => manifest.version === node.typeVersion)
-						?.manifest
+				? versionsOf(action.id).find(
+						({ manifest }) => manifest.contract.version === node.typeVersion,
+					)?.manifest
 				: undefined;
-			return manifest
-				? [
-						[
-							`${node.type}@${manifest.version}`,
-							{ bundleHash: manifest.bundleHash, contractHash: manifest.contractHash },
-						],
-					]
-				: [];
+			if (!manifest || !node.name) return [];
+			const { id, semver, bundleHash, contractHash } = manifest;
+			return [[node.name, { action: id, version: semver, bundleHash, contractHash }]];
 		}),
 	);
 	if (Object.keys(nodeContracts).length === 0) return workflow;

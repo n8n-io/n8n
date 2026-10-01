@@ -1,6 +1,5 @@
+import { versionsOf } from '@n8n/nodes-base-next';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 
 import type { InstanceAiContext } from '../../../types';
 import {
@@ -172,12 +171,6 @@ describe('next workflow build', () => {
 	});
 
 	describe('lockNodeContracts', () => {
-		const lock = JSON.parse(
-			readFileSync(
-				path.join(require.resolve('@n8n/nodes-base-next/package.json'), '..', 'versions/lock.json'),
-				'utf8',
-			),
-		) as Record<string, { bundleHash: string; contractHash: string }>;
 		const nodes = [
 			{
 				id: '1',
@@ -195,13 +188,14 @@ describe('next workflow build', () => {
 			},
 		] as WorkflowJSON['nodes'];
 
-		it('pins contract nodes to the frozen bundle of their version', () => {
+		it('locks contract nodes by name to the bundled version', () => {
 			const locked = lockNodeContracts({ name: 'wf', nodes, connections: {} });
-			const { bundleHash, contractHash } = lock['notion.databasePage.getAll@1'];
+			const [head] = versionsOf('notion.databasePage.getAll');
+			const { semver, bundleHash, contractHash } = head.manifest;
 
 			expect(locked.meta).toEqual({
 				nodeContracts: {
-					'@n8n/nodes-base-next.notionDatabasePageGetAll@1': { bundleHash, contractHash },
+					Get: { action: 'notion.databasePage.getAll', version: semver, bundleHash, contractHash },
 				},
 			});
 		});

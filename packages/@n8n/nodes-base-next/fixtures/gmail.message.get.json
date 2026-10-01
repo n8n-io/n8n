@@ -1,0 +1,63 @@
+{
+	"executions": [
+		{
+			"name": "one message",
+			"params": {
+				"messageId": "m1"
+			},
+			"responses": [
+				{
+					"labels": [
+						{
+							"id": "INBOX",
+							"name": "INBOX"
+						}
+					]
+				},
+				{
+					"id": "m1",
+					"threadId": "t-m1",
+					"snippet": "Hi",
+					"historyId": "9",
+					"internalDate": "1767225600000",
+					"sizeEstimate": 120,
+					"labelIds": ["INBOX"],
+					"payload": {
+						"mimeType": "text/plain",
+						"headers": [
+							{
+								"name": "From",
+								"value": "Ada <ada@example.com>"
+							},
+							{
+								"name": "Subject",
+								"value": "Hello"
+							}
+						]
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "m1",
+					"threadId": "t-m1",
+					"snippet": "Hi",
+					"historyId": "9",
+					"internalDate": "1767225600000",
+					"sizeEstimate": 120,
+					"labels": [
+						{
+							"id": "INBOX",
+							"name": "INBOX"
+						}
+					],
+					"payload": {
+						"mimeType": "text/plain"
+					},
+					"From": "Ada <ada@example.com>",
+					"Subject": "Hello"
+				}
+			]
+		}
+	]
+}

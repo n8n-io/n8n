@@ -23,14 +23,38 @@ export {
 	type RunInput,
 } from './define';
 export { exampleOf, matches, validate } from './validate';
-export { nodeNameOf, toNodeType, toVersionedNodeType, type FrozenVersion } from './runtime';
+export {
+	nodeNameOf,
+	setContractVersionLoader,
+	toNodeType,
+	toVersionedNodeType,
+	type ContractVersionLoader,
+	type FrozenVersion,
+} from './runtime';
 export {
 	canonicalJson,
+	compareSemver,
 	contractHash,
 	diffContracts,
+	integrityOf,
 	NODE_CONTRACT_ABI,
+	openContractPackage,
+	packageNameOf,
+	parseFixtures,
 	parseManifest,
+	parseSemver,
+	resolveContractVersion,
+	verifyManifestSignature,
+	type ChangeKind,
+	type ContractChange,
 	type ContractDiff,
+	type ContractFixtures,
+	type ContractPackage,
+	type ExecutionFixture,
+	type MigrationFixture,
+	type NodeContractLock,
+	type NodeContractsPolicy,
+	type Semver,
 	type VersionManifest,
 } from './version';
 export { generateNodeModule, toTs, type GeneratedAction } from './codegen';
