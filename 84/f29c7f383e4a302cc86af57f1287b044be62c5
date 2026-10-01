@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.test.ts
+  s_6e5e6dade5599e::t_e8e90b1887ce37 14,21
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.ts
+  s_6e5e6dade5599e::t_e8e90b1887ce37 18-21,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "84f29c7f383e4a302cc86af57f1287b044be62c5",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
