@@ -20,7 +20,7 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { FORM_TRIGGER_NODE_TYPE, jsonParse, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { FORM_TRIGGER_NODE_TYPE, jsonParse, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { existsSync, promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -265,13 +265,26 @@ export async function createStubServices(
 					const isForm = node.type === FORM_TRIGGER_NODE_TYPE;
 					const { path, httpMethod, options: nodeOptions } = node.parameters ?? {};
 					// Both nodes register `path` verbatim; Form Trigger 2.2+ keeps it in `options.path`.
-					// An empty path falls back to the webhookId.
 					const customPath = [path, isRecord(nodeOptions) ? nodeOptions.path : undefined].find(
-						(candidate) => typeof candidate === 'string' && candidate !== '',
+						(candidate): candidate is string => typeof candidate === 'string' && candidate !== '',
 					);
-					const pathSegment =
-						typeof customPath === 'string' ? customPath : (node.webhookId ?? workflowId);
-					const url = `http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}/${pathSegment}`;
+					// The same URL rules as the host registration: webhookId prefix for a dynamic path,
+					// workflowId plus node name without a webhookId. Both triggers declare `isFullPath`.
+					const url = NodeHelpers.getNodeWebhookUrl(
+						`http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}`,
+						workflowId,
+						{
+							id: node.id,
+							name: nodeName,
+							type: node.type,
+							typeVersion: node.typeVersion,
+							position: node.position,
+							parameters: {},
+							webhookId: node.webhookId,
+						},
+						customPath ?? '',
+						true,
+					);
 					// A Form Trigger registers GET (renders the form) and POST (receives the submission).
 					// A Webhook that allows several methods keeps them as an array in `httpMethod`.
 					const methods = isForm
