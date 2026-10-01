@@ -143,12 +143,6 @@ describe('ScalingService', () => {
 			data: { executionId: '123', loadStaticData: false },
 		});
 
-	const getFailedListener = () =>
-		queue.on.mock.calls.find(([event]) => (event as string) === 'failed')?.[1] as (
-			job: Job,
-			error: Error,
-		) => void;
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// @ts-expect-error readonly property
@@ -158,6 +152,7 @@ describe('ScalingService', () => {
 		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
 		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
 		jobProcessor.getJobsInPreflight.mockReturnValue([]);
+		queue.whenCurrentJobsFinished.mockResolvedValue(undefined);
 		globalConfig.generic.gracefulShutdownTimeout = 30;
 
 		scalingService = new ScalingService(
@@ -360,7 +355,7 @@ describe('ScalingService', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
 		});
 
-		it('should warn once when a job reaches the worker after shutdown began', async () => {
+		it('should warn once when a job reaches the worker after stop began', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 			await scalingService.setupQueue();
@@ -400,7 +395,7 @@ describe('ScalingService', () => {
 				expect(eventService.emit).not.toHaveBeenCalledWith('job-dequeued', expect.anything());
 			});
 
-			it('should grant the job another attempt without reporting a failure', async () => {
+			it('should hand the job back without reporting a failure', async () => {
 				const processFn = await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 
@@ -409,7 +404,6 @@ describe('ScalingService', () => {
 				const job = lateJob({ attemptsMade: 1 });
 				await processFn(job).catch(() => {});
 
-				expect(job.opts.attempts).toBe(job.attemptsMade + 2);
 				expect(job.progress).not.toHaveBeenCalled();
 				expect(errorReporter.error).not.toHaveBeenCalled();
 			});
@@ -712,35 +706,35 @@ describe('ScalingService', () => {
 				expect(scopedLogger.warn).not.toHaveBeenCalled();
 			});
 
-			it('should not finish stopping until a handed-back job has failed locally', async () => {
+			it('should not finish stopping until the current jobs of the queue have finished', async () => {
 				vi.useFakeTimers();
-				const processFn = await startWorker();
+				await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				let finishCurrentJobs: () => void = () => {};
+				queue.whenCurrentJobsFinished.mockReturnValue(
+					new Promise<void>((resolve) => (finishCurrentJobs = resolve)),
+				);
 
 				let hasStopped = false;
 				const stopped = scalingService.stop().then(() => (hasStopped = true));
-
-				const job = lateJob();
-				const handBackError = await processFn(job).then(
-					() => undefined,
-					(error: Error) => error,
-				);
 
 				await vi.advanceTimersByTimeAsync(1_000);
 
 				expect(hasStopped).toBe(false);
 
-				getFailedListener()(job, handBackError as Error);
+				finishCurrentJobs();
 				await vi.advanceTimersByTimeAsync(0);
 
 				expect(hasStopped).toBe(true);
 				await stopped;
 			});
 
-			it('should finish stopping after 5s when a handed-back job never fails locally', async () => {
+			it('should finish stopping after 5s when the current jobs of the queue never finish', async () => {
 				vi.useFakeTimers();
 				const processFn = await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
 
 				let hasStopped = false;
 				const stopped = scalingService.stop().then(() => (hasStopped = true));
@@ -756,6 +750,38 @@ describe('ScalingService', () => {
 				expect(hasStopped).toBe(true);
 				await stopped;
 			});
+
+			it.each([
+				{ shutdownTimeout: 2, drainMs: 0, case: 'the shutdown window is short' },
+				{ shutdownTimeout: 6, drainMs: 3_000, case: 'the drain used part of the shutdown window' },
+			])(
+				'should finish stopping at the end of the shutdown window when $case',
+				async ({ shutdownTimeout, drainMs }) => {
+					vi.useFakeTimers();
+					globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
+					const processFn = await startWorker();
+					const drainStart = Date.now();
+					jobProcessor.getRunningJobIds.mockImplementation(() =>
+						Date.now() - drainStart < drainMs ? ['1'] : [],
+					);
+					queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
+
+					let hasStopped = false;
+					const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+					await processFn(lateJob()).catch(() => {});
+
+					const windowMs = shutdownTimeout * 1_000;
+					await vi.advanceTimersByTimeAsync(windowMs - 1);
+
+					expect(hasStopped).toBe(false);
+
+					await vi.advanceTimersByTimeAsync(1);
+
+					expect(hasStopped).toBe(true);
+					await stopped;
+				},
+			);
 
 			it.each([
 				{ shutdownTimeout: 30, expectedDeadlineMs: 3_000, case: 'the ceiling on a wide window' },

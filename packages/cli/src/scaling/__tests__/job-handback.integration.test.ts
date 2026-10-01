@@ -87,4 +87,48 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		await expect(globallyCompleted).resolves.toBe(job.id);
 		expect(globallyFailed).not.toContain(job.id);
 	});
+
+	it('fails the handed-back job once, without a retry, when the next worker throws', async () => {
+		const producer = createQueue();
+
+		const globallyFailed: JobId[] = [];
+		const failedRegistered = subscribe(producer, 'global:failed');
+		const globallyFailedOnce = new Promise<JobId>((resolve) => {
+			producer.on('global:failed', (jobId: JobId) => {
+				globallyFailed.push(jobId);
+				resolve(jobId);
+			});
+		});
+		await failedRegistered;
+
+		const job = await producer.add(
+			JOB_TYPE_NAME,
+			{ executionId: 'exec-2', workflowId: 'wf-2', loadStaticData: false } as JobData,
+			{ priority: 50 },
+		);
+
+		const workerA = createQueue();
+		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
+		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+			await workerA.pause(true, true);
+			handBackJob(activeJob);
+		});
+
+		const [handedBackJob] = await failedOnWorkerA;
+
+		expect(handedBackJob.id).toBe(job.id);
+		expect(await (await producer.getJob(job.id))?.getState()).toBe('waiting');
+
+		const workerC = createQueue();
+		void workerC.process(JOB_TYPE_NAME, 1, async () => {
+			throw new Error('execution failed');
+		});
+
+		await expect(globallyFailedOnce).resolves.toBe(job.id);
+
+		expect(globallyFailed.filter((jobId) => jobId === job.id)).toHaveLength(1);
+		expect(await (await producer.getJob(job.id))?.getState()).toBe('failed');
+		const waiting = await producer.getWaiting();
+		expect(waiting.map((waitingJob) => waitingJob.id)).not.toContain(job.id);
+	});
 });
