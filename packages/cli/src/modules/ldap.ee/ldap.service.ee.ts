@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
@@ -14,7 +15,6 @@ import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workf
 import type { ConnectionOptions } from 'tls';
 
 import { BadRequestError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import {
 	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,

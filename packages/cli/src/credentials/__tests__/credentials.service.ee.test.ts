@@ -16,7 +16,7 @@ import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/extern
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 describe('EnterpriseCredentialsService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();

@@ -4,6 +4,7 @@ import {
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import {
@@ -27,7 +28,6 @@ import {
 	NotFoundError,
 	UnprocessableRequestError,
 } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

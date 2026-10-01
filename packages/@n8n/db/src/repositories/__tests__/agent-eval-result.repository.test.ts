@@ -97,8 +97,7 @@ describe('AgentEvalResultRepository', () => {
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toBe('res-1');
-			expect(callArgs?.[2]).toMatchObject({ status: 'running' });
-			expect((callArgs?.[2] as { runAt: Date }).runAt).toBeInstanceOf(Date);
+			expect(callArgs?.[2]).toMatchObject({ status: 'running', runAt: expect.any(Date) });
 		});
 	});
 
@@ -110,8 +109,7 @@ describe('AgentEvalResultRepository', () => {
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toBe('res-1');
-			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled' });
-			expect((callArgs?.[2] as { completedAt: Date }).completedAt).toBeInstanceOf(Date);
+			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled', completedAt: expect.any(Date) });
 		});
 	});
 

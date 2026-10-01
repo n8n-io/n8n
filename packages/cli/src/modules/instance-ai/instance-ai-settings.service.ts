@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -16,6 +17,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
+	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
@@ -43,7 +45,6 @@ import {
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
 import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -1247,6 +1248,15 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	getMcpToolPermissions(): McpToolPermissions {
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
+	}
+
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
@@ -1851,7 +1861,9 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

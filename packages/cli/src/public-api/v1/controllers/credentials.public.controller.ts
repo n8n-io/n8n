@@ -12,6 +12,7 @@ import {
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -44,7 +45,6 @@ import { EnterpriseCredentialsService } from '@/credentials/credentials.service.
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,
@@ -325,6 +325,7 @@ export class CredentialsPublicController {
 		const updatedCredential = await this.credentialsService.update(
 			credentialId,
 			updatePayload,
+			{ kind: 'user', user: req.user },
 			decryptedDataForDeps,
 		);
 

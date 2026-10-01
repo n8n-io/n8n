@@ -178,6 +178,26 @@ Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
 
+## Tool approvals
+
+Use `N8nApprovalCard` for Preview tool approvals, including background child
+approvals. It owns the shared layout, keyboard controls, and standard choices
+for the Assistant and Agent Preview. Pass the app catalog labels through
+`useApprovalCardLabels`.
+Pass the sanitized display arguments from the backend to the shared card.
+For node tools, include the resolved node parameters and any model input.
+The card formats and shows these values inline for both surfaces. Leave space
+for the card's outline and shadow inside scrollable containers.
+Keep approval policy and response payloads in the caller. Show the session
+option only when the backend supports it. Replace the Preview composer with
+pending tool approvals, including background child approvals. Restore the
+composer and its draft after the approvals are resolved. Show one approval
+at a time, as the Assistant does. Advance to the next pending approval after
+each response. Use the existing child task order for background approvals.
+Focus each approval as it appears. Return focus to the composer after the last
+decision. Keep tool steps, questions, and display cards in the conversation.
+If a surface keeps a resolved card, show the decision without active actions.
+
 ## Preview composer queue
 
 Use one action on the right. Show Stop when a turn can be stopped and the
@@ -197,3 +217,5 @@ message a Remove action. Hide an empty queue section. Removal discards the
 message. It does not restore the composer draft.
 
 Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
+
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary FIFO processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.

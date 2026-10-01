@@ -5,7 +5,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { N8N_VERSION } from '../../../constants';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
@@ -187,6 +187,16 @@ describe('BreakingChangeService', () => {
 			expect(result2).toEqual(result3);
 		});
 
+		it('should share one scan between a report request and a direct detect call', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			// `count` runs once per scan, so it tells how many scans really ran.
+			await Promise.all([service.getDetectionResults('v2'), service.detect('v2')]);
+
+			expect(workflowRepository.count).toHaveBeenCalledTimes(1);
+		});
+
 		it('should skip a rule that throws for a workflow and keep the other results', async () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
@@ -208,6 +218,23 @@ describe('BreakingChangeService', () => {
 			);
 		});
 
+		it('should list the rule checks that threw and keep them out of the report result', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
+
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
+
+			const scan = await service.detect('v2');
+			expect(scan.failedChecks).toEqual([{ ruleId: throwingRule.id, workflowId: 'wf-1' }]);
+
+			const result = await service.getDetectionResults('v2');
+			expect(result).not.toHaveProperty('failedChecks');
+		});
+
 		it('should reject when detection fails and allow a later detection to run', async () => {
 			workflowRepository.count.mockRejectedValueOnce(new Error('db down'));
 			workflowRepository.count.mockResolvedValue(0);
@@ -218,6 +245,15 @@ describe('BreakingChangeService', () => {
 			const detectSpy = vi.spyOn(service, 'detect');
 			await expect(service.getDetectionResults('v2')).resolves.toBeDefined();
 			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should key the cache on the n8n version and the target version', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			await service.getDetectionResults('v2');
+
+			expect(cacheService.get).toHaveBeenCalledWith(`breaking-changes:results:${N8N_VERSION}:v2`);
 		});
 
 		it('should clean up ongoing detection promise after completion', async () => {

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -69,7 +70,6 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -80,8 +80,7 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
-import type { PendingWebhookResponse } from '@/services/pending-webhook-response';
+import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -94,6 +93,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { toResponseExpectation } from './engine-v2-response-expectation';
 import { EngineV2Webhooks } from './engine-v2-webhooks';
 import {
 	applySandboxCSP,
@@ -604,6 +604,39 @@ export async function invokeWebhook({
 	}
 }
 
+/** Stops OAuth webhook execution when required trigger credentials are not ready. */
+export async function checkTriggerCredentialGate({
+	workflowStartNode,
+	additionalData,
+	res,
+	responder,
+}: {
+	workflowStartNode: INode;
+	additionalData: IWorkflowExecuteAdditionalData;
+	res: express.Response;
+	responder: WebhookResponder;
+}): Promise<boolean> {
+	if (
+		responder.hasResponded ||
+		res.headersSent ||
+		!shouldEstablishTriggerIdentity(workflowStartNode)
+	) {
+		return true;
+	}
+
+	const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
+	if (!credentialGate || credentialGate.readyToExecute) {
+		return true;
+	}
+
+	responder.respondWith({
+		data: credentialGate,
+		responseCode: 428,
+	});
+
+	return false;
+}
+
 /**
  * Sends the immediate webhook response unless a response was already sent. When the
  * node answered the request itself (`noWebhookResponse`), it only reports that to the
@@ -1002,7 +1035,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	let pendingEngineV2Response: PendingWebhookResponse | undefined;
+	let pendingEngineV2Response: WebhookResponseWait | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
@@ -1107,20 +1140,13 @@ export async function executeWebhook(
 		// user's resolvable (private) credentials are still unconnected, responding
 		// 428 Precondition Required with the missing-credential list and a signed
 		// connect link for each.
-		if (
-			!responder.hasResponded &&
-			!res.headersSent &&
-			shouldEstablishTriggerIdentity(workflowStartNode)
-		) {
-			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
-			if (credentialGate && !credentialGate.readyToExecute) {
-				responder.respondWith({
-					data: credentialGate,
-					responseCode: 428,
-				});
-				return;
-			}
-		}
+		const shouldContinueAfterCredentialGate = await checkTriggerCredentialGate({
+			workflowStartNode,
+			additionalData,
+			res,
+			responder,
+		});
+		if (!shouldContinueAfterCredentialGate) return;
 
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.
@@ -1213,13 +1239,16 @@ export async function executeWebhook(
 		// Before the run, because a short workflow answers before `startExecution`
 		// returns and nothing replays a missed response. The id is minted here, so
 		// the run and the listener agree on it.
-		if (routesToEngineV2 && responseMode !== 'onReceived') {
+		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
 			const engineExecutionId = createExecutionIdV2();
-			pendingEngineV2Response = await Container.get(EngineV2WebhookResponder).waitForResponse(
-				engineExecutionId,
-				responseMode === 'responseNode',
+			// Loaded here, because only an engine v2 run needs the module code.
+			const { EngineV2WebhookResponseRegistry } = await import(
+				'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
 			);
-			runData.engineExecutionId = engineExecutionId;
+			pendingEngineV2Response = await Container.get(
+				EngineV2WebhookResponseRegistry,
+			).waitForResponse(engineExecutionId, toResponseExpectation(responseMode));
+			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
@@ -1319,66 +1348,62 @@ export async function executeWebhook(
 		 * Returns the run data when it arrives. Otherwise, it sends the response
 		 * channel error or a 504 timeout to the webhook caller.
 		 */
-		const waitForDataPlaneRun = async (waiting: PendingWebhookResponse) => {
-			try {
-				const outcome = await waiting.settled;
-				if (outcome.status === 'response') {
-					if (!isHttpFullResponse(outcome.response)) {
-						throw new UnexpectedError('Engine v2 produced an invalid webhook response');
-					}
+		const waitForDataPlaneRun = async (waiting: WebhookResponseWait) => {
+			const outcome = await waiting.outcome;
+			if (outcome.status === 'response') {
+				if (!isHttpFullResponse(outcome.response)) {
+					throw new UnexpectedError('Engine v2 produced an invalid webhook response');
+				}
 
-					responder.markResponded();
-					await sendResponseNodeResponse(
-						outcome.response,
-						res,
-						responder,
-						workflowStartNode,
-						executionId,
-						workflow,
-					);
+				responder.markResponded();
+				await sendResponseNodeResponse(
+					outcome.response,
+					res,
+					responder,
+					workflowStartNode,
+					executionId,
+					workflow,
+				);
+				return undefined;
+			}
+
+			if (outcome.status === 'completed' || outcome.status === 'failed') {
+				if (outcome.status === 'completed' && responseMode === 'responseNode') {
+					responder.respondWith({ data: undefined, responseCode });
 					return undefined;
 				}
 
-				if (outcome.status === 'completed' || outcome.status === 'failed') {
-					if (outcome.status === 'completed' && responseMode === 'responseNode') {
-						responder.respondWith({ data: undefined, responseCode });
-						return undefined;
-					}
-
-					return await engineV2Webhooks.toRun(outcome, executionMode);
-				}
-
-				const isUndeliverable = outcome.status === 'undeliverable';
-				const errorResponse = isUndeliverable
-					? {
-							logMessage: 'Could not deliver an engine v2 webhook response',
-							responseMessage: outcome.error.message,
-							responseCode: 500,
-						}
-					: {
-							// timeout
-							logMessage: 'No answer arrived for an engine v2 webhook run',
-							responseMessage: 'The workflow did not answer in time',
-							responseCode: 504,
-						};
-				Container.get(Logger).warn(errorResponse.logMessage, {
-					executionId,
-					workflowId: workflowData.id,
-					...(isUndeliverable ? { error: outcome.error } : {}),
-				});
-				// The webhook node can answer before the execution starts. Do not send a
-				// second response when the execution response later settles.
-				if (!responder.hasResponded) {
-					responder.respondWith({
-						data: { message: errorResponse.responseMessage },
-						responseCode: errorResponse.responseCode,
-					});
-				}
-
-				return undefined;
-			} finally {
-				waiting.release();
+				return await engineV2Webhooks.toRun(outcome, executionMode);
 			}
+
+			const isUndeliverable = outcome.status === 'undeliverable';
+			const errorResponse = isUndeliverable
+				? {
+						logMessage: 'Could not deliver an engine v2 webhook response',
+						responseMessage: outcome.error.message,
+						responseCode: 500,
+					}
+				: {
+						// timeout
+						logMessage: 'No answer arrived for an engine v2 webhook run',
+						responseMessage: 'The workflow did not answer in time',
+						responseCode: 504,
+					};
+			Container.get(Logger).warn(errorResponse.logMessage, {
+				executionId,
+				workflowId: workflowData.id,
+				...(isUndeliverable ? { error: outcome.error } : {}),
+			});
+			// The webhook node can answer before the execution starts. Do not send a
+			// second response when the execution response later settles.
+			if (!responder.hasResponded) {
+				responder.respondWith({
+					data: { message: errorResponse.responseMessage },
+					responseCode: errorResponse.responseCode,
+				});
+			}
+
+			return undefined;
 		};
 
 		// Get a promise which resolves when the workflow did execute and send then response.
@@ -1391,10 +1416,12 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
-				executionId,
-				workflowId: workflowData.id,
-			});
+			void Container.get(WaitTracker).resumeParentExecution(
+				parentExecution,
+				executePromise,
+				{ executionId, workflowId: workflowData.id },
+				workflowData,
+			);
 		}
 
 		if (!responder.hasResponded) {

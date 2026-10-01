@@ -1,27 +1,26 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	HttpRequestClient,
 	HttpRequestClientOptions,
 	OutboundHttp,
 } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import type { LicenseMetricsRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { InsightsConfig } from '@/modules/insights/insights.config';
 import type { InsightsService } from '@/modules/insights/insights.service';
 
 import type { InstanceMonitoringReport } from '../database/entities/instance-monitoring-report';
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
+import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
-import {
-	InstanceReportAlreadyCreatedError,
-	InstanceReportingService,
-} from '../instance-reporting.service';
+import { type DueReportWork, InstanceReportingService } from '../instance-reporting.service';
 
 vi.mock('@/constants', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/constants')>()),
@@ -82,6 +81,7 @@ function makeReport(overrides: Partial<InstanceMonitoringReport> = {}): Instance
 interface Harness {
 	service: InstanceReportingService;
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
+	settingsService: Mocked<InstanceReportingSettingsService>;
 	insightsService: Mocked<InsightsService>;
 	insightsConfig: InsightsConfig;
 	license: Mocked<License>;
@@ -93,12 +93,20 @@ interface Harness {
 function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const reportRepository = mock<InstanceMonitoringReportRepository>();
 	reportRepository.findPending.mockResolvedValue(null);
+	reportRepository.claimForSend.mockImplementation(async () => new Date());
+	reportRepository.readDbNow.mockImplementation(async () => new Date());
+	reportRepository.markDelivered.mockResolvedValue(true);
+	reportRepository.recordFailure.mockResolvedValue(true);
+	reportRepository.markSkipped.mockResolvedValue(true);
 	// A report already covers the day before the one under test, so the default
 	// harness reports exactly one day.
 	reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-24');
 	reportRepository.createPending.mockImplementation(async (dataPoints) =>
 		makeReport({ dataPoints }),
 	);
+
+	const settingsService = mock<InstanceReportingSettingsService>();
+	settingsService.getReportTime.mockResolvedValue('07:42');
 
 	const insightsService = mock<InsightsService>();
 	// The reported day held 42 executions.
@@ -130,6 +138,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const service = new InstanceReportingService(
 		config,
 		reportRepository,
+		settingsService,
 		insightsService,
 		insightsConfig,
 		mock<InstanceSettings>({ instanceId: 'abc123' }),
@@ -143,6 +152,7 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	return {
 		service,
 		reportRepository,
+		settingsService,
 		insightsService,
 		insightsConfig,
 		license,
@@ -153,6 +163,283 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 }
 
 describe('InstanceReportingService', () => {
+	describe('findDueWork', () => {
+		const BEFORE_SLOT = new Date('2026-03-26T07:41:00.000Z');
+		const AT_SLOT = new Date('2026-03-26T07:42:00.000Z');
+		const AFTER_SLOT = new Date('2026-03-26T07:43:00.000Z');
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(AFTER_SLOT);
+		});
+
+		afterEach(() => vi.useRealTimers());
+
+		it('waits for the configured UTC slot', async () => {
+			const { service } = makeHarness();
+			expect(await service.findDueWork(BEFORE_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: null,
+			});
+			expect(await service.findDueWork(AT_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+				slot: AT_SLOT,
+			});
+		});
+
+		it('catches up after the slot and leaves a settled day alone', async () => {
+			const { service, reportRepository } = makeHarness();
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(true);
+			reportRepository.hasSettledToday.mockResolvedValue(true);
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(false);
+		});
+
+		it('uses the current report time on every call', async () => {
+			const { service, settingsService } = makeHarness();
+			settingsService.getReportTime.mockResolvedValueOnce('08:00');
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(false);
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(true);
+			settingsService.getReportTime.mockResolvedValue('08:00');
+			expect((await service.findDueWork(AFTER_SLOT)).reportDue).toBe(false);
+		});
+
+		it('waits out the persisted retry delay of a pending report', async () => {
+			const { service, reportRepository } = makeHarness();
+			reportRepository.findPending.mockResolvedValue(
+				makeReport({
+					createdAt: AFTER_SLOT,
+					lastAttemptAt: new Date(AFTER_SLOT.getTime() - 3 * Time.minutes.toMilliseconds),
+				}),
+			);
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: AT_SLOT,
+			});
+			const afterDelay = new Date(AFTER_SLOT.getTime() + 2 * Time.minutes.toMilliseconds);
+			vi.setSystemTime(afterDelay);
+			expect(await service.findDueWork(afterDelay)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+				slot: AT_SLOT,
+			});
+			expect(reportRepository.hasSettledToday).not.toHaveBeenCalled();
+		});
+
+		it('expires a stale report before applying its retry delay', async () => {
+			const { service, reportRepository } = makeHarness();
+			const pending = makeReport({
+				createdAt: new Date('2026-03-25T07:42:00.000Z'),
+				lastAttemptAt: new Date(AFTER_SLOT.getTime() - Time.minutes.toMilliseconds),
+			});
+			reportRepository.findPending.mockResolvedValue(pending);
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: pending,
+				reportDue: true,
+				slot: AT_SLOT,
+			});
+		});
+
+		it('keeps a claimed report active across its next slot', async () => {
+			const { service, reportRepository } = makeHarness();
+			const sending = makeReport({
+				status: 'sending',
+				createdAt: new Date('2026-03-25T07:42:00.000Z'),
+				lastAttemptAt: new Date('2026-03-26T07:41:30.000Z'),
+			});
+			reportRepository.findPending.mockResolvedValue(sending);
+
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: null,
+			});
+			expect(reportRepository.releaseStaleSend).not.toHaveBeenCalled();
+		});
+
+		it('releases a claim left by a stopped main', async () => {
+			const { service, reportRepository } = makeHarness();
+			const startedAt = new Date('2026-03-26T07:40:00.000Z');
+			const sending = makeReport({
+				status: 'sending',
+				createdAt: AFTER_SLOT,
+				lastAttemptAt: startedAt,
+			});
+			reportRepository.findPending
+				.mockResolvedValueOnce(sending)
+				.mockResolvedValue(makeReport({ createdAt: AFTER_SLOT, lastAttemptAt: startedAt }));
+
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: AT_SLOT,
+			});
+			expect(reportRepository.releaseStaleSend).toHaveBeenCalledWith(BATCH_ID, startedAt);
+		});
+
+		it('releases a sending row with no claim timestamp', async () => {
+			const { service, reportRepository } = makeHarness();
+			reportRepository.findPending
+				.mockResolvedValueOnce(makeReport({ status: 'sending', lastAttemptAt: null }))
+				.mockResolvedValue(makeReport({ createdAt: AFTER_SLOT }));
+
+			expect(await service.findDueWork(AFTER_SLOT)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+				slot: AT_SLOT,
+			});
+			expect(reportRepository.releaseStaleSend).toHaveBeenCalledWith(BATCH_ID, null);
+		});
+
+		it('uses the database clock to check claim age', async () => {
+			const { service, reportRepository } = makeHarness();
+			reportRepository.findPending.mockResolvedValue(
+				makeReport({ status: 'sending', lastAttemptAt: AFTER_SLOT }),
+			);
+			reportRepository.readDbNow.mockResolvedValue(AFTER_SLOT);
+
+			expect(await service.findDueWork(new Date('2026-03-27T07:43:00.000Z'))).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: null,
+			});
+			expect(reportRepository.releaseStaleSend).not.toHaveBeenCalled();
+		});
+
+		it('uses the database clock to check the retry delay', async () => {
+			const { service, reportRepository } = makeHarness();
+			const oneMinuteAfterAttempt = new Date(AFTER_SLOT.getTime() + Time.minutes.toMilliseconds);
+			const tenMinutesAfterAttempt = new Date(
+				AFTER_SLOT.getTime() + 10 * Time.minutes.toMilliseconds,
+			);
+			reportRepository.findPending.mockResolvedValue(
+				makeReport({ createdAt: AFTER_SLOT, lastAttemptAt: AFTER_SLOT }),
+			);
+
+			reportRepository.readDbNow.mockResolvedValue(oneMinuteAfterAttempt);
+			expect(await service.findDueWork(tenMinutesAfterAttempt)).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: AT_SLOT,
+			});
+
+			reportRepository.readDbNow.mockResolvedValue(tenMinutesAfterAttempt);
+			expect(await service.findDueWork(oneMinuteAfterAttempt)).toEqual({
+				expiredReport: null,
+				reportDue: true,
+				slot: AT_SLOT,
+			});
+		});
+	});
+
+	describe('findDueWork with a slot late in the UTC day', () => {
+		const LATE_SLOT = new Date('2026-03-26T23:50:00.000Z');
+
+		function lateHarness() {
+			const harness = makeHarness();
+			harness.settingsService.getReportTime.mockResolvedValue('23:50');
+			return harness;
+		}
+
+		it('sends the slot on the first pass after midnight', async () => {
+			const { service, reportRepository } = lateHarness();
+			expect((await service.findDueWork(new Date('2026-03-26T23:47:00.000Z'))).reportDue).toBe(
+				false,
+			);
+			const work = await service.findDueWork(new Date('2026-03-27T00:02:00.000Z'));
+			expect(work.reportDue).toBe(true);
+			expect(work.slot).toEqual(LATE_SLOT);
+			expect(reportRepository.hasSettledToday).toHaveBeenCalledWith(LATE_SLOT);
+		});
+
+		it('expires a report sent after midnight at the next slot', async () => {
+			const { service, reportRepository } = lateHarness();
+			const pending = makeReport({
+				reportDate: '2026-03-26',
+				createdAt: new Date('2026-03-27T00:02:00.000Z'),
+			});
+			reportRepository.findPending.mockResolvedValue(pending);
+
+			expect((await service.findDueWork(new Date('2026-03-27T23:49:00.000Z'))).expiredReport).toBe(
+				null,
+			);
+			expect((await service.findDueWork(new Date('2026-03-27T23:50:00.000Z'))).expiredReport).toBe(
+				pending,
+			);
+		});
+
+		it('stops waiting for the slot once its grace has passed', async () => {
+			const { service } = lateHarness();
+			expect((await service.findDueWork(new Date('2026-03-27T00:49:00.000Z'))).reportDue).toBe(
+				true,
+			);
+			expect(await service.findDueWork(new Date('2026-03-27T00:50:00.000Z'))).toEqual({
+				expiredReport: null,
+				reportDue: false,
+				slot: null,
+			});
+		});
+	});
+
+	describe('sendDueReport', () => {
+		const NOW = new Date('2026-03-26T07:43:00.000Z');
+		const SLOT = new Date('2026-03-26T07:42:00.000Z');
+
+		function setup(work: Omit<DueReportWork, 'slot'>) {
+			const harness = makeHarness();
+			const findDueWork = vi
+				.spyOn(harness.service, 'findDueWork')
+				.mockResolvedValue({ ...work, slot: SLOT });
+			const sendReport = vi.spyOn(harness.service, 'sendReport').mockResolvedValue();
+			return { ...harness, findDueWork, sendReport };
+		}
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('sends the report when one is due', async () => {
+			const { service, findDueWork, sendReport } = setup({ expiredReport: null, reportDue: true });
+			await service.sendDueReport(NOW);
+			expect(findDueWork).toHaveBeenCalledWith(NOW);
+			expect(sendReport).toHaveBeenCalledExactlyOnceWith(SLOT);
+		});
+
+		it('sends nothing when no report is due', async () => {
+			const { service, reportRepository, sendReport } = setup({
+				expiredReport: null,
+				reportDue: false,
+			});
+			await service.sendDueReport(NOW);
+			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
+			expect(sendReport).not.toHaveBeenCalled();
+		});
+
+		it('skips an expired report before it sends', async () => {
+			const expiredReport = makeReport({ id: 'pending-report', attempts: 1 });
+			const { service, reportRepository, sendReport } = setup({ expiredReport, reportDue: true });
+			await service.sendDueReport(NOW);
+			expect(reportRepository.markSkipped).toHaveBeenCalledWith('pending-report');
+			expect(reportRepository.markSkipped.mock.invocationCallOrder[0]).toBeLessThan(
+				sendReport.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('exposes a delivery failure to the caller', async () => {
+			const { service, sendReport } = setup({ expiredReport: null, reportDue: true });
+			sendReport.mockRejectedValue(new Error('Network error'));
+			await expect(service.sendDueReport(NOW)).rejects.toThrow('Network error');
+		});
+
+		it('recovers from a failed read of the due work on the next pass', async () => {
+			const { service, findDueWork, sendReport } = setup({ expiredReport: null, reportDue: true });
+			findDueWork.mockRejectedValueOnce(new Error('DB unavailable'));
+			await expect(service.sendDueReport(NOW)).rejects.toThrow('DB unavailable');
+			await service.sendDueReport(NOW);
+			expect(sendReport).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('sendReport', () => {
 		beforeEach(() => {
 			// Pinned so the previous UTC day the service derives is deterministic.
@@ -185,7 +472,7 @@ describe('InstanceReportingService', () => {
 		test('posts the report to the receiver endpoint under the configured base URL', async () => {
 			const { service, http, clientOptions } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(clientOptions?.baseURL).toBe('https://example.com');
 			expect(sentOptions(http)).toMatchObject({
@@ -218,7 +505,7 @@ describe('InstanceReportingService', () => {
 		test('does not follow redirects, so the credential reaches only the configured host', async () => {
 			const { service, http } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(sentOptions(http).disableFollowRedirect).toBe(true);
 		});
@@ -226,7 +513,7 @@ describe('InstanceReportingService', () => {
 		test('sends one cumulative and one daily data point, with the row id as batchId', async () => {
 			const { service, http } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(body(http)).toMatchObject({
 				instanceId: 'abc123',
@@ -243,7 +530,7 @@ describe('InstanceReportingService', () => {
 		test('omits label when no label is configured', async () => {
 			const { service, http } = makeHarness(makeConfig({ instanceReportingLabel: '' }));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(body(http)).not.toHaveProperty('label');
 		});
@@ -251,7 +538,7 @@ describe('InstanceReportingService', () => {
 		test('sends the license certificate in the body as the credential', async () => {
 			const { service, http, clientOptions } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(body(http).licenseCert).toBe(LICENSE_CERT);
 			// No token: the certificate is the whole credential, and an `undefined`
@@ -262,11 +549,11 @@ describe('InstanceReportingService', () => {
 		test('reads the certificate fresh for every report, so a renewed license is sent', async () => {
 			const { service, license, http, reportRepository } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 			license.loadCertStr.mockResolvedValue('renewed-license-cert');
 			reportRepository.findLastCoveredDay.mockResolvedValue('2026-03-23');
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(body(http, 1).licenseCert).toBe('renewed-license-cert');
 		});
@@ -276,7 +563,7 @@ describe('InstanceReportingService', () => {
 			license.loadCertStr.mockResolvedValue('');
 
 			// Resolves rather than throws: this is not a delivery failure to retry.
-			await expect(service.sendReport()).resolves.toBeUndefined();
+			await expect(service.sendReport(new Date())).resolves.toBeUndefined();
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(insightsService.getDailyExecutionTotals).not.toHaveBeenCalled();
@@ -295,7 +582,7 @@ describe('InstanceReportingService', () => {
 			test('does not send or read the license certificate', async () => {
 				const { service, http, license } = makeHarness(tokenConfig());
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				expect(body(http)).not.toHaveProperty('licenseCert');
 				expect(license.loadCertStr).not.toHaveBeenCalled();
@@ -306,7 +593,7 @@ describe('InstanceReportingService', () => {
 				const { service, http, license } = makeHarness(tokenConfig());
 				license.loadCertStr.mockResolvedValue('');
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				expect(http.request).toHaveBeenCalledTimes(1);
 			});
@@ -315,7 +602,7 @@ describe('InstanceReportingService', () => {
 		test('reads the daily execution totals for the reported UTC day', async () => {
 			const { service, insightsService } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
 				startDate: new Date('2026-03-25T00:00:00.000Z'),
@@ -326,7 +613,7 @@ describe('InstanceReportingService', () => {
 		test('records the measurement before sending, then marks the report delivered', async () => {
 			const { service, reportRepository } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(reportRepository.createPending).toHaveBeenCalledWith(
 				[
@@ -338,11 +625,27 @@ describe('InstanceReportingService', () => {
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
 		});
 
-		test('throws without sending when another process already created the report for today', async () => {
+		test('dates a report sent after midnight by its slot', async () => {
+			const { service, reportRepository } = makeHarness();
+			vi.setSystemTime(new Date('2026-03-27T00:02:00.000Z'));
+			const slot = new Date('2026-03-26T23:50:00.000Z');
+
+			await service.sendReport(slot);
+
+			expect(reportRepository.createPending).toHaveBeenCalledWith(
+				[
+					{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
+					{ kind: 'daily', name: 'billableExecutions', value: 42, date: REPORT_DATE },
+				],
+				slot,
+			);
+		});
+
+		test('sends nothing when another process already created the report for today', async () => {
 			const { service, reportRepository, http } = makeHarness();
 			reportRepository.createPending.mockResolvedValue(null);
 
-			await expect(service.sendReport()).rejects.toThrow(InstanceReportAlreadyCreatedError);
+			await expect(service.sendReport(new Date())).resolves.toBeUndefined();
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
@@ -353,10 +656,11 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
 
-			await expect(service.sendReport()).rejects.toThrow('Network error');
+			await expect(service.sendReport(new Date())).rejects.toThrow('Network error');
 
 			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
 				BATCH_ID,
+				expect.any(Date),
 				'Network error',
 				expect.any(Date),
 			);
@@ -367,10 +671,11 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockResolvedValue({ statusCode: 200, body: '', headers: {} });
 
-			await expect(service.sendReport()).rejects.toThrow('200');
+			await expect(service.sendReport(new Date())).rejects.toThrow('200');
 
 			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
 				BATCH_ID,
+				expect.any(Date),
 				expect.stringContaining('200'),
 				expect.any(Date),
 			);
@@ -381,10 +686,11 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockResolvedValue({ statusCode: 500, body: '', headers: {} });
 
-			await expect(service.sendReport()).rejects.toThrow('500');
+			await expect(service.sendReport(new Date())).rejects.toThrow('500');
 
 			expect(reportRepository.recordFailure).toHaveBeenCalledWith(
 				BATCH_ID,
+				expect.any(Date),
 				expect.stringContaining('500'),
 				expect.any(Date),
 			);
@@ -395,7 +701,7 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockResolvedValue({ statusCode: 301, body: '', headers: {} });
 
-			await expect(service.sendReport()).rejects.toThrow('301');
+			await expect(service.sendReport(new Date())).rejects.toThrow('301');
 
 			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
 		});
@@ -403,17 +709,37 @@ describe('InstanceReportingService', () => {
 		test('emits a delivered event once the report is delivered', async () => {
 			const { service, eventService } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-report-delivered');
 			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-failed');
+		});
+
+		test('does not emit another delivery event for an already delivered report', async () => {
+			const { service, reportRepository, eventService } = makeHarness();
+			reportRepository.markDelivered.mockResolvedValue(false);
+
+			await service.sendReport(new Date());
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		test('does not settle a rejected report after losing the claim', async () => {
+			const { service, reportRepository, eventService, http } = makeHarness();
+			vi.mocked(http.request).mockResolvedValue({ statusCode: 413, body: '', headers: {} });
+			reportRepository.recordFailure.mockResolvedValue(false);
+
+			await service.sendReport(new Date());
+
+			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('emits a failed event when a delivery attempt fails', async () => {
 			const { service, eventService, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
 
-			await expect(service.sendReport()).rejects.toThrow('Network error');
+			await expect(service.sendReport(new Date())).rejects.toThrow('Network error');
 
 			expect(eventService.emit).toHaveBeenCalledWith('instance-report-failed');
 			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-delivered');
@@ -424,7 +750,7 @@ describe('InstanceReportingService', () => {
 			vi.mocked(http.request).mockResolvedValue({ statusCode: 409, body: '', headers: {} });
 
 			// Resolving is what stops the retry: the scheduler waits for the next slot.
-			await expect(service.sendReport()).resolves.toBeUndefined();
+			await expect(service.sendReport(new Date())).resolves.toBeUndefined();
 
 			expect(reportRepository.markDelivered).toHaveBeenCalledWith(BATCH_ID, expect.any(Date));
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
@@ -436,7 +762,7 @@ describe('InstanceReportingService', () => {
 				const { service, reportRepository, http } = makeHarness();
 				vi.mocked(http.request).mockResolvedValue({ statusCode, body: '', headers: {} });
 
-				await expect(service.sendReport()).resolves.toBeUndefined();
+				await expect(service.sendReport(new Date())).resolves.toBeUndefined();
 
 				expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
 			},
@@ -446,7 +772,7 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockResolvedValue({ statusCode, body: '', headers: {} });
 
-			await expect(service.sendReport()).rejects.toThrow();
+			await expect(service.sendReport(new Date())).rejects.toThrow();
 
 			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
 		});
@@ -455,10 +781,10 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			vi.mocked(http.request).mockRejectedValueOnce(new Error('Network error'));
 
-			await expect(service.sendReport()).rejects.toThrow();
+			await expect(service.sendReport(new Date())).rejects.toThrow();
 			// The retry picks up the still-undelivered row the first attempt created.
 			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 1 }));
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(body(http, 1).batchId).toBe(BATCH_ID);
 		});
@@ -472,7 +798,7 @@ describe('InstanceReportingService', () => {
 			] as InstanceMonitoringReport['dataPoints'];
 			reportRepository.findPending.mockResolvedValue(makeReport({ dataPoints: measured }));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			// Re-measuring would sample the cumulative total at a different point in
 			// the day and stretch its interval past 24 hours.
@@ -498,7 +824,7 @@ describe('InstanceReportingService', () => {
 			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
 			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 1 }));
 
-			await expect(service.sendReport()).rejects.toThrow();
+			await expect(service.sendReport(new Date())).rejects.toThrow();
 
 			expect(reportRepository.markSkipped).not.toHaveBeenCalled();
 		});
@@ -509,7 +835,7 @@ describe('InstanceReportingService', () => {
 			// Two attempts already recorded on the row, so this one is the last.
 			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 2 }));
 
-			await expect(service.sendReport()).rejects.toThrow();
+			await expect(service.sendReport(new Date())).rejects.toThrow();
 
 			expect(reportRepository.markSkipped).toHaveBeenCalledWith(BATCH_ID);
 		});
@@ -519,7 +845,7 @@ describe('InstanceReportingService', () => {
 			// A crash between the failure record and the skip leaves this row pending.
 			reportRepository.findPending.mockResolvedValue(makeReport({ attempts: 3 }));
 
-			await expect(service.sendReport()).resolves.toBeUndefined();
+			await expect(service.sendReport(new Date())).resolves.toBeUndefined();
 
 			expect(http.request).not.toHaveBeenCalled();
 			expect(reportRepository.recordFailure).not.toHaveBeenCalled();
@@ -555,7 +881,7 @@ describe('InstanceReportingService', () => {
 				totalsByDay({ '2026-03-23': 5, '2026-03-24': 7, '2026-03-25': 9 }),
 			);
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(dailyPoints(http)).toEqual([
 				{ value: 5, date: '2026-03-23' },
@@ -576,7 +902,7 @@ describe('InstanceReportingService', () => {
 			// Insights returns no row for a day that saw nothing.
 			insightsService.getDailyExecutionTotals.mockResolvedValue(totalsByDay({ '2026-03-25': 9 }));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(dailyPoints(http)).toEqual([
 				{ value: 0, date: '2026-03-24' },
@@ -590,7 +916,7 @@ describe('InstanceReportingService', () => {
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
 				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				const daily = dailyPoints(http);
 				expect(daily).toHaveLength(84);
@@ -610,7 +936,7 @@ describe('InstanceReportingService', () => {
 					totalsByDay({ '2026-03-20': 4, [REPORT_DATE]: 42 }),
 				);
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				// Inside the window, a day without data saw no executions.
 				expect(dailyPoints(http)).toEqual([
@@ -628,7 +954,7 @@ describe('InstanceReportingService', () => {
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
 				insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				expect(points(http)).toEqual([
 					{ kind: 'cumulative', name: 'billableExecutions', value: 815 },
@@ -642,7 +968,7 @@ describe('InstanceReportingService', () => {
 				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-26T00:00:00.000Z'));
 				insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				expect(dailyPoints(http)).toEqual([{ value: 0, date: REPORT_DATE }]);
 			});
@@ -654,7 +980,7 @@ describe('InstanceReportingService', () => {
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
 				insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-03-22T00:00:00.000Z'));
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				expect(dailyPoints(http).map(({ date }) => date)).toEqual([
 					'2026-03-22',
@@ -676,7 +1002,7 @@ describe('InstanceReportingService', () => {
 					makeReport({ dataPoints: measured, attempts: 1 }),
 				);
 
-				await service.sendReport();
+				await service.sendReport(new Date());
 
 				expect(points(http)).toEqual(measured);
 				expect(insightsService.getEarliestDataDate).not.toHaveBeenCalled();
@@ -689,7 +1015,7 @@ describe('InstanceReportingService', () => {
 			reportRepository.findLastCoveredDay.mockResolvedValue('2026-01-01');
 			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2025-10-01T00:00:00.000Z'));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			const daily = dailyPoints(http);
 			expect(daily).toHaveLength(83);
@@ -702,7 +1028,7 @@ describe('InstanceReportingService', () => {
 			reportRepository.findLastCoveredDay.mockResolvedValue('2025-12-30');
 			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-01-10T00:00:00.000Z'));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(dailyPoints(http).at(0)).toEqual({ value: 0, date: '2026-01-10' });
 		});
@@ -712,7 +1038,7 @@ describe('InstanceReportingService', () => {
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
 			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledTimes(1);
 			expect(insightsService.getDailyExecutionTotals).toHaveBeenCalledWith({
@@ -728,7 +1054,7 @@ describe('InstanceReportingService', () => {
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
 			insightsService.getEarliestDataDate.mockResolvedValue(new Date('2023-01-01T00:00:00.000Z'));
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			const daily = dailyPoints(http);
 			expect(daily).toHaveLength(29);
@@ -739,7 +1065,7 @@ describe('InstanceReportingService', () => {
 		test('does not read the insights history when only yesterday is owed', async () => {
 			const { service, insightsService } = makeHarness();
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(insightsService.getEarliestDataDate).not.toHaveBeenCalled();
 		});
@@ -748,7 +1074,7 @@ describe('InstanceReportingService', () => {
 			const { service, reportRepository, http } = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue(REPORT_DATE);
 
-			await service.sendReport();
+			await service.sendReport(new Date());
 
 			expect(reportRepository.createPending).not.toHaveBeenCalled();
 			expect(http.request).not.toHaveBeenCalled();

@@ -11,7 +11,7 @@ import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 /**
  * The credential scopes an instance role can hold without being allowed to use a

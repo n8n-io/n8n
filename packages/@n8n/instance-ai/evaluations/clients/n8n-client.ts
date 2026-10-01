@@ -1301,17 +1301,27 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
+	 * `seededDataTableIds` run live instead of pinned.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
+		seededDataTableIds?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
+		const body: {
+			scenarioHints?: string;
+			pinNodes?: string[];
+			timeoutMs?: number;
+			seededDataTableIds?: string[];
+		} = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		if (seededDataTableIds && seededDataTableIds.length > 0) {
+			body.seededDataTableIds = seededDataTableIds;
+		}
 		// Forwarded so the server stops the run rather than leaving it burning CPU.
 		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;

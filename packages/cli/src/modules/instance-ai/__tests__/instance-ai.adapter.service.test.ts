@@ -1827,7 +1827,7 @@ import {
 } from '@n8n/errors';
 import type { License } from '@/license';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -3778,11 +3778,14 @@ describe('createWorkflowAdapter', () => {
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith({
-			workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
-			storedWorkflow: null,
-			projectId: 'team-project-id',
-		});
+		expect(mockPolicyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
+			{
+				workflow: { id: null, name: minimalWorkflowJSON.name, nodes: [] },
+				storedWorkflow: null,
+				projectId: 'team-project-id',
+			},
+			{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+		);
 		expect(mockWorkflowRepository.runInTransaction).toHaveBeenCalledWith(
 			{ policyCleared: cleared },
 			expect.any(Function),

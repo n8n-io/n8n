@@ -1,10 +1,9 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ClaimedTask, DispatchReporter } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { SystemTaskHandler } from '../system-task-handler';
 import { DummySystemTask } from './dummy.task';

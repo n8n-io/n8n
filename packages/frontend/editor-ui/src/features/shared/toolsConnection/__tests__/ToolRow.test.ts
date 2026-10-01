@@ -9,12 +9,19 @@ import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
+	type ServiceConnectionItem,
 	type WorkflowConnectionItem,
 } from '../types';
 
 const renderRow = createComponentRenderer(ToolRow);
 
-function render(item: McpServerConnectionItem | NodeConnectionItem | WorkflowConnectionItem) {
+function render(
+	item:
+		| McpServerConnectionItem
+		| NodeConnectionItem
+		| ServiceConnectionItem
+		| WorkflowConnectionItem,
+) {
 	return renderRow({ props: { item }, pinia: createTestingPinia() });
 }
 
@@ -67,6 +74,15 @@ const baseWorkflow: WorkflowConnectionItem = {
 	title: 'Summariser',
 	status: 'none',
 	workflowId: 'wf-1234',
+};
+
+const baseService: ServiceConnectionItem = {
+	id: 'service-1',
+	kind: 'service',
+	title: 'Browser',
+	description: 'Use a managed browser',
+	status: 'none',
+	serviceId: 'browser-use',
 };
 
 describe('ToolRow', () => {
@@ -171,6 +187,25 @@ describe('ToolRow', () => {
 
 		await fireEvent.click(getByTestId('tools-connection-row-main'));
 		expect(emitted()['open-detail']?.[0]).toEqual([baseNode]);
+	});
+
+	it('uses an explicit Set up action for an available service', async () => {
+		const { getByTestId, emitted } = render(baseService);
+
+		expect(getByTestId('tools-connection-row-main').tagName).toBe('DIV');
+		expect(getByTestId('tools-connection-row-service-action')).toHaveTextContent('Set up');
+
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
+		expect(emitted()['open-detail']).toBeUndefined();
+
+		await fireEvent.click(getByTestId('tools-connection-row-service-action'));
+		expect(emitted()['open-detail']?.[0]).toEqual([baseService]);
+	});
+
+	it('uses an explicit Settings action for a connected service', () => {
+		const { getByTestId } = render({ ...baseService, status: 'connected' });
+
+		expect(getByTestId('tools-connection-row-service-action')).toHaveTextContent('Settings');
 	});
 
 	it('keeps row actions as sibling interactive controls', () => {
@@ -299,6 +334,61 @@ describe('ToolRow', () => {
 			const { getByTestId } = render(disabledWorkflow);
 
 			expect(getByTestId('tools-connection-row-main')).toBeDisabled();
+		});
+	});
+
+	describe('restricted rows', () => {
+		const restrictedNode: NodeConnectionItem = {
+			...baseNode,
+			restriction: { name: baseNode.nodeTypeName, available: false, scope: 'instance' },
+		};
+
+		it('renders a lock instead of a connect or install action', () => {
+			const { getByTestId, queryByTestId } = render(restrictedNode);
+
+			expect(getByTestId('node-restricted-icon')).toBeTruthy();
+			expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+			expect(queryByTestId('tools-connection-row-install')).toBeNull();
+			expect(queryByTestId('tools-connection-row-disabled')).toBeNull();
+		});
+
+		it('keeps the main action focusable but marks it disabled for assistive tech', () => {
+			const { getByTestId } = render(restrictedNode);
+
+			const main = getByTestId('tools-connection-row-main');
+			expect(main).not.toBeDisabled();
+			expect(main.getAttribute('aria-disabled')).toBe('true');
+		});
+
+		it('emits nothing on click or keyboard activation', async () => {
+			const { getByTestId, emitted } = render(restrictedNode);
+
+			const main = getByTestId('tools-connection-row-main');
+			await fireEvent.click(main);
+			main.focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(emitted()['open-detail']).toBeUndefined();
+			expect(emitted().connect).toBeUndefined();
+		});
+
+		it('shows the lock, not the install action, for a restricted community node', () => {
+			const item: NodeConnectionItem = {
+				...restrictedNode,
+				verified: true,
+				communityPreview: true,
+			};
+			const { getByTestId, queryByTestId } = render(item);
+
+			expect(getByTestId('node-restricted-icon')).toBeTruthy();
+			expect(getByTestId('tools-connection-row-verified-badge')).toBeTruthy();
+			expect(queryByTestId('tools-connection-row-install')).toBeNull();
+		});
+
+		it('renders no lock for an unrestricted node', () => {
+			const { queryByTestId } = render(baseNode);
+
+			expect(queryByTestId('node-restricted-icon')).toBeNull();
 		});
 	});
 });
