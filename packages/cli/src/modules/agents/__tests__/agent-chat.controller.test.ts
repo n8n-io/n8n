@@ -177,6 +177,7 @@ describe('AgentChatController route access scopes', () => {
 		['getQueuedMessages', 'agent:read'],
 		['removeQueuedMessage', 'agent:execute'],
 		['updateQueuedMessage', 'agent:execute'],
+		['reorderQueuedMessage', 'agent:execute'],
 		['steerQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
@@ -189,6 +190,11 @@ describe('AgentChatController route access scopes', () => {
 describe('AgentChatController queue mutations', () => {
 	it.each([
 		['updateQueuedMessage', 'updatePending', { message: 'Edited message' }],
+		[
+			'reorderQueuedMessage',
+			'reorderPending',
+			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+		],
 		['steerQueuedMessage', 'steer', { executionId: 'execution-1' }],
 	] as const)(
 		'%s reads the body after the request and response arguments',
