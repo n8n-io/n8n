@@ -90,22 +90,35 @@ export interface ActionFlow {
 	readonly cardinality: 'per-item' | '1:N' | 'N:1';
 	/** `merge` keeps the input item's fields; `replace` emits only `output`. */
 	readonly passthrough: 'replace' | 'merge';
+	/** A repeated request has no extra effect, so the host may retry any of its requests. */
 	readonly idempotent?: boolean;
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
-export interface HttpRequest {
+interface HttpRequestOptions {
 	readonly method?: HttpMethod;
-	/** Absolute URL. Use `path` for a URL under the node's `baseUrl`. */
-	readonly url?: string;
-	readonly path?: string;
 	readonly query?: Readonly<Record<string, string | number | boolean | undefined>>;
 	readonly headers?: Readonly<Record<string, string>>;
 	readonly body?: unknown;
 	/** Return `{ body, headers, statusCode }` instead of the body. */
 	readonly fullResponse?: boolean;
+	/** 300000 (5 minutes) when omitted, the default of the legacy HTTP Request node. */
+	readonly timeoutMs?: number;
+	/**
+	 * The host retries a 429, 502, 503, 504, or a dropped connection when the request is
+	 * idempotent: GET, HEAD, PUT, or an action with `flow.idempotent`. `true` also retries
+	 * another method; `false` never retries.
+	 */
+	readonly retry?: boolean;
 }
+
+/** `url` is absolute (e.g. a `next` link). `path` goes after the node's `baseUrl`. */
+export type HttpRequest = HttpRequestOptions &
+	(
+		| { readonly url: string; readonly path?: never }
+		| { readonly path: `/${string}`; readonly url?: never }
+	);
 
 /** An HTTP client with the node's credential already applied. A non-2xx response throws an `HttpError`. */
 export interface Http {
@@ -138,10 +151,10 @@ type DefaultedKeys<S extends Shape> = {
 export type RunInput<S extends Shape> = ObjectOf<S> & { [K in DefaultedKeys<S>]: Infer<S[K]> };
 
 export interface RunContext<Input, Output> {
-	/** Parameters for the current item, expressions resolved and validated. */
+	/** Parameters for the current item, expressions resolved, defaults filled in, and validated. */
 	readonly input: Input;
 	readonly http: Http;
-	/** Emit one output item for the current input item. */
+	/** Emit one output item for the current input item. An item that breaks `output` throws here. */
 	emit(item: Output): void;
 }
 
@@ -151,10 +164,14 @@ export interface ResourceField {
 	readonly value: string | number | boolean;
 }
 
-export interface ActionDefinition<S extends Shape, O extends AnySchema> {
-	readonly node: NodeDefinition;
+export interface ActionDefinition<
+	S extends Shape,
+	O extends AnySchema,
+	N extends NodeDefinition = NodeDefinition,
+> {
+	readonly node: N;
 	/** `<node>.<resource>.<operation>`, e.g. `notion.databasePage.getAll`. */
-	readonly id: string;
+	readonly id: `${N['id']}.${string}`;
 	/** Integer major, 1 when omitted. It is the n8n `typeVersion`. */
 	readonly version?: number;
 	/** Bump for an additive contract change. 0 when omitted. */
@@ -167,7 +184,7 @@ export interface ActionDefinition<S extends Shape, O extends AnySchema> {
 	readonly summary: string;
 	readonly flow: ActionFlow;
 	/** Credential types this action accepts, when they differ from the node's. */
-	readonly credentials?: readonly string[];
+	readonly credentials?: ReadonlyArray<N['credentials'][number]>;
 	readonly input: S;
 	readonly output: O;
 	/**
@@ -202,8 +219,8 @@ export interface Action<S extends Shape = Shape, O extends AnySchema = AnySchema
 	readonly credentialTypes: readonly string[];
 }
 
-export function defineAction<S extends Shape, O extends AnySchema>(
-	definition: ActionDefinition<S, O>,
+export function defineAction<S extends Shape, O extends AnySchema, N extends NodeDefinition>(
+	definition: ActionDefinition<S, O, N>,
 ): Action<S, O> {
 	return {
 		...definition,
@@ -228,7 +245,20 @@ export interface ContractDocument {
 	readonly output: JsonSchema;
 }
 
-export const toContract = (action: Action): ContractDocument => ({
+export const toContract = (
+	action: Pick<
+		Action,
+		| 'id'
+		| 'version'
+		| 'node'
+		| 'action'
+		| 'summary'
+		| 'flow'
+		| 'credentialTypes'
+		| 'inputSchema'
+		| 'output'
+	>,
+): ContractDocument => ({
 	id: action.id,
 	version: action.version,
 	node: action.node.id,

@@ -54,16 +54,19 @@ defineAction({
 	async run({ input, http, emit }) {
 		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
 		const response = await http.request({ method: 'POST', path: '/items', body });
-		if (!matches(item, response)) throw new Error('__Service__ returned an unexpected item');
-		emit(response);
+		emit(parse(item, response)); // throws e.g. "response.id: must be string"
 	},
 });
 ```
 
 - `flow.effect`: `read` | `write` | `transform`. `flow.cardinality`: `per-item` (one call per input item),
   `1:N` (a list), `N:1`. `flow.passthrough`: `replace` (emit only `output`) | `merge`. `idempotent?: boolean`.
-- `run()` runs once per input item. Call `emit(item)` once per output item. Each item must match `output`.
-- In `run()`, a field with `.default(v)` is always set. An `.optional()` field can be `undefined`.
+- `run()` runs once per input item. Call `emit(item)` once per output item. `emit` throws when the item
+  does not match `output`. n8n pairs each item with its input item.
+- In `run()`, a field with `.default(v)` is always set, also inside objects. Do not add `??` fallbacks.
+  An `.optional()` field can be `undefined`.
+- To fail an item, throw. Do not catch errors to emit `{ error }`: with "Continue on fail", n8n turns
+  the thrown error into an `{ error: message }` item (or sends it to the error output) and runs the next item.
 - `credentials?: string[]` on an action overrides the node's credential types.
 - When the output shape depends on an input, declare all shapes and pick one in `deriveOutput`:
   `output: union(invoice, line)`, `deriveOutput: (input) => (input.split ? line.json : invoice.json)`.
@@ -89,28 +92,33 @@ defineAction({
 - `obj` rejects fields it does not list. To emit an API object unchanged, list all of its fields,
   or keep unlisted fields with `obj({ ... }).with({ additionalProperties: true })`.
 - Every `examples` value must match its schema. Do not make a field conditionally required: use `variant`.
-- `matches(schema, value)` is a type guard. `Infer<typeof schema>` is the TypeScript type.
+- `variant('kind', { text: { text: str() }, json: { data: json() } })` is
+  `{ kind: 'text'; text: string } | { kind: 'json'; data: Record<string, unknown> }`. A branch `{}` has only the tag.
+  Narrow it in `run()` with `if (input.body.kind === 'text') input.body.text`, or a `switch` on the tag.
+- `parse(schema, value)` returns the typed value or throws with each failing path. `matches(schema, value)`
+  is a type guard. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
 
 ## HTTP
 
-- `http.request({ method, path, url, query, headers, body, fullResponse })`. `path` goes to `baseUrl` + `path`;
-  `url` is absolute (e.g. a `next` link). A `query` value that is `undefined` is not sent.
-  `body` is sent as JSON. It returns the parsed JSON body as `unknown`: narrow it with `matches`.
+- `http.request({ method, path, url, query, headers, body, fullResponse, timeoutMs, retry })`. Give `path`
+  (starts with `/`, goes after `baseUrl`) or `url` (absolute, e.g. a `next` link), not both.
+  A `query` value that is `undefined` is not sent. `body` is sent as JSON. It returns the parsed JSON body
+  as `unknown`: narrow it with `parse`. `timeoutMs` is 300000 when omitted.
 - `fullResponse: true` returns `{ body, headers, statusCode }` as `unknown`. Header names are lower case:
   `const full = obj({ body: arr(item), headers: json() }).with({ additionalProperties: true });`
   `if (!matches(full, response)) throw ...;` then `response.body` is typed; check `typeof response.headers.link`.
 - A non-2xx response throws. After `isHttpError(error)`, read `error.status`, `error.body` and
-  `error.headers` (lower case, e.g. `error.headers['retry-after']`). There is no retry helper:
-  to retry, wait with `await new Promise((done) => setTimeout(done, ms))` and send the request again.
+  `error.headers` (lower case, e.g. `error.headers['retry-after']`).
+- Do not write retries. n8n retries a 429, 502, 503, 504 or a dropped connection up to 3 times, with
+  backoff and `Retry-After`, for GET, HEAD, PUT, and every request of an action with `flow.idempotent: true`.
+  `retry: true` also retries another method; `retry: false` never retries.
 - Paging: see `src/actions/item.get-all.ts`. With `returnAll`, read to the last page. Else stop at `limit`
-  and do not fetch a page that you do not need.
+  and do not fetch a page that you do not need. One run may send 10000 requests and emit 1000000 items.
 
 ## Tests
 
 ```ts
 const fetch = mockHttp([
-	// For an action that retries: the first call gets a 429, the second call gets the item.
-	{ method: 'POST', path: '/items', times: 1, reply: { status: 429, headers: { 'retry-after': '0' } } },
 	{ method: 'POST', path: '/items', reply: { status: 201, json: { id: 'itm_1', name: 'A', ownerId: null } } },
 ]);
 const result = await runAction(createItem, { input: { name: 'A' }, credential, credentials, fetch });
@@ -118,8 +126,9 @@ assert.deepEqual(result, { ok: true, items: [{ id: 'itm_1', name: 'A', ownerId: 
 assert.deepEqual(fetch.calls[0]?.body, { name: 'A' });
 ```
 
-- `runAction(action, { input, credential, credentials, fetch })` fills in defaults, validates the input,
-  runs `run()` and validates each item. It returns `{ ok: true, items }` or
+- `runAction(action, { input, credential, credentials, fetch })` runs the action through the executor
+  n8n uses: it fills in defaults, validates the input, retries, and validates each item. An input value
+  `''` counts as unset, as in n8n. It returns `{ ok: true, items }` or
   `{ ok: false, error: { message, path?, httpStatus? } }`. It does not throw.
 - A route matches on `method` (default `GET`), the end of the URL path, and each listed `query` parameter
   (other parameters may also be present). When more routes match, the route with the most listed query

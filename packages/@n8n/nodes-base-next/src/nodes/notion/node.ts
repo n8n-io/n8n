@@ -1,4 +1,11 @@
-import { defineNode, defineResource, type Http, type JsonSchema } from '@n8n/node-sdk';
+import {
+	defineNode,
+	defineResource,
+	isRecord,
+	list,
+	type Http,
+	type JsonSchema,
+} from '@n8n/node-sdk';
 
 export const notion = defineNode({
 	id: 'notion',
@@ -18,11 +25,6 @@ export const notionDatabase = defineResource({
 });
 
 export const notionIdOf = (value: string) => new RegExp(ID).exec(value)?.[0] ?? value;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 /** change-case v5 `snakeCase`, which the v3 node uses for simplified keys. */
 export const snakeCase = (name: string) =>

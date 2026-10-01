@@ -3453,6 +3453,9 @@ importers:
 
   packages/@n8n/node-sdk:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1

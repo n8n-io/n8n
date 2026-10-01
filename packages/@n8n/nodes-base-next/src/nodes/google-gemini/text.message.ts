@@ -4,7 +4,9 @@ import {
 	defineAction,
 	defineNode,
 	int,
+	isRecord,
 	json,
+	list,
 	matches,
 	num,
 	obj,
@@ -18,11 +20,6 @@ export const googleGemini = defineNode({
 	credentials: ['googlePalmApi'],
 	baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
 });
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 /** A candidate as the node emits it with `simplify` and `includeMergedResponse`. */
 const candidate = obj({
@@ -43,6 +40,7 @@ const mergedText = (entry: unknown) =>
 export const messageGemini = defineAction({
 	node: googleGemini,
 	id: 'googleGemini.text.message',
+	patch: 1,
 	action: 'Message a model',
 	summary: 'Send messages to a Gemini model and get its reply as text.',
 	flow: { effect: 'read', cardinality: 'per-item', passthrough: 'replace', idempotent: false },

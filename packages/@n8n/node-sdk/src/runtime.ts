@@ -1,3 +1,5 @@
+import { errorChain } from '@n8n/utils/errors/error-chain';
+import { sleep } from '@n8n/utils/sleep';
 import { compileFunction } from 'node:vm';
 import {
 	NodeOperationError,
@@ -14,9 +16,16 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { Action, Http, HttpRequest, RunInput } from './define';
+import {
+	isHttpError,
+	type Action,
+	type Http,
+	type HttpMethod,
+	type HttpRequest,
+	type RunInput,
+} from './define';
 import type { AnySchema, JsonSchema, Shape } from './schema';
-import { validate } from './validate';
+import { applyDefaults, validate } from './validate';
 import { NODE_CONTRACT_ABI, sha256, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is IDataObject =>
@@ -76,6 +85,9 @@ function toProperty(name: string, schema: AnySchema): INodeProperties {
 	}
 }
 
+/** The default of the legacy HTTP Request node. */
+const DEFAULT_TIMEOUT_MS = 300_000;
+
 function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IHttpRequestOptions {
 	const query = Object.fromEntries(
 		Object.entries(request.query ?? {}).filter(([, value]) => value !== undefined),
@@ -88,7 +100,45 @@ function toRequestOptions(request: HttpRequest, baseUrl: string | undefined): IH
 		json: true,
 		...(request.body !== undefined ? { body: request.body } : {}),
 		...(request.fullResponse ? { returnFullResponse: true } : {}),
+		timeout: request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 	};
+}
+
+const IDEMPOTENT_METHODS: ReadonlySet<HttpMethod> = new Set(['GET', 'HEAD', 'PUT']);
+const RETRY_STATUSES: ReadonlySet<number> = new Set([429, 502, 503, 504]);
+const RETRY_CODES: ReadonlySet<string> = new Set([
+	'ECONNRESET',
+	'ECONNREFUSED',
+	'ETIMEDOUT',
+	'EPIPE',
+	'EAI_AGAIN',
+	'UND_ERR_SOCKET',
+]);
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 500;
+/** A request that asks for a longer wait fails: the run would hold its worker too long. */
+const RETRY_MAX_MS = 30_000;
+
+/** `Retry-After` in seconds or as an HTTP date. */
+function retryAfterMs(value: string | undefined): number | undefined {
+	const text = value?.trim();
+	if (!text) return undefined;
+	if (/^\d+$/.test(text)) return Number(text) * 1000;
+	const date = Date.parse(text);
+	return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
+}
+
+// A local classifier: `retryabilityFromError` in @n8n/backend-network needs DI and undici.
+/** The wait before retry number `retry`, or `undefined` when a retry cannot help. */
+function retryDelay(error: unknown, retry: number): number | undefined {
+	const transient = isHttpError(error)
+		? RETRY_STATUSES.has(error.status)
+		: errorChain(error).some(({ code }) => typeof code === 'string' && RETRY_CODES.has(code));
+	if (!transient || retry >= MAX_RETRIES) return undefined;
+	const asked = isHttpError(error) ? retryAfterMs(error.headers['retry-after']) : undefined;
+	// Full jitter: executions that failed together do not retry together.
+	const delay = asked ?? Math.random() * RETRY_BASE_MS * 2 ** retry;
+	return delay <= RETRY_MAX_MS ? delay : undefined;
 }
 
 /** The HTTP response on a failed request: on the transport error, or on its `cause` in a NodeApiError. */
@@ -126,14 +176,23 @@ function withResponse(error: unknown): unknown {
 	});
 }
 
-const AUTHENTICATION = 'authentication';
+export const AUTHENTICATION = 'authentication';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const hasSelector = (action: Action) =>
 	action.credentialTypes.length > 1 || action.node.authOptional === true;
 
-/** The n8n services the executor uses. Fixture replay provides them without n8n. */
+/** Safety limits for one `run()` call. The defaults are far above normal use. */
+export interface ExecutorLimits {
+	/** A page is one request. */
+	readonly maxRequests: number;
+	readonly maxItems: number;
+}
+
+const DEFAULT_LIMITS: ExecutorLimits = { maxRequests: 10_000, maxItems: 1_000_000 };
+
+/** The n8n services the executor uses. Fixture replay and `runAction` provide them without n8n. */
 export interface ExecutorHost {
 	readonly itemCount: number;
 	readonly node: INode;
@@ -141,6 +200,9 @@ export interface ExecutorHost {
 	parameter(name: string, itemIndex: number): unknown;
 	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
 	continueOnFail(): boolean;
+	/** Waits before a retry. */
+	wait?(ms: number): Promise<void>;
+	readonly limits?: Partial<ExecutorLimits>;
 }
 
 const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
@@ -154,11 +216,18 @@ const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
 		return response;
 	},
 	continueOnFail: () => context.continueOnFail(),
+	wait: async (ms) => await sleep(ms, context.getExecutionCancelSignal()),
 });
 
-function readParameter(host: ExecutorHost, name: string, itemIndex: number): unknown {
+/** n8n keeps a `json` property as text. Other fields keep the text the user typed. */
+function readParameter(
+	host: ExecutorHost,
+	name: string,
+	itemIndex: number,
+	isJson: boolean,
+): unknown {
 	const value = host.parameter(name, itemIndex);
-	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
+	if (!isJson || typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
 	try {
 		const parsed: unknown = JSON.parse(value);
 		return parsed;
@@ -168,20 +237,28 @@ function readParameter(host: ExecutorHost, name: string, itemIndex: number): unk
 }
 
 /**
- * The ABI 1 executor. Parameters are resolved per item and validated against `input`, output
- * items are validated against `output` and paired with their input item, and continue-on-fail
- * routes failed items to the error output.
+ * The ABI 1 executor. Parameters are resolved per item, defaults filled in, and validated
+ * against `input`. Transient failures of idempotent requests retry. Each emitted item is
+ * validated against `output` and paired with its input item. Continue-on-fail emits an error
+ * item, which n8n routes to the error output when the node has one.
  */
 export function executorOf<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): (host: ExecutorHost) => Promise<INodeExecutionData[]> {
 	const inputKeys = Object.keys(action.input);
+	const jsonKeys = new Set(
+		Object.entries(action.input)
+			.filter(([name, schema]) => toProperty(name, schema).type === 'json')
+			.map(([name]) => name),
+	);
 	const outputSchema: JsonSchema = action.output.json;
 	const isInput = (value: unknown): value is RunInput<S> =>
 		validate(value, action.inputSchema).length === 0;
 	const { credentialTypes } = action;
 
 	return async (host) => {
+		const limits = { ...DEFAULT_LIMITS, ...host.limits };
+		const wait = host.wait ?? (async (ms: number) => await sleep(ms));
 		const credentials = host.node.credentials ?? {};
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType =
@@ -189,31 +266,64 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			(selected === 'none'
 				? undefined
 				: credentialTypes.find((type) => credentials[type] !== undefined));
-		const http: Http = {
-			request: async (request) => {
-				const options = toRequestOptions(request, action.node.baseUrl);
-				try {
-					return await host.request(options, credentialType);
-				} catch (error) {
-					throw withResponse(error);
-				}
-			},
+		const send = async (
+			options: IHttpRequestOptions,
+			retryable: boolean,
+			retry: number,
+		): Promise<unknown> => {
+			try {
+				return await host.request(options, credentialType);
+			} catch (caught) {
+				const error = withResponse(caught);
+				const delay = retryable ? retryDelay(error, retry) : undefined;
+				if (delay === undefined) throw error;
+				await wait(delay);
+				return await send(options, retryable, retry + 1);
+			}
+		};
+
+		const httpFor = (itemIndex: number): Http => {
+			const sent = { requests: 0 };
+			return {
+				request: async (request) => {
+					if (sent.requests >= limits.maxRequests) {
+						throw new NodeOperationError(
+							host.node,
+							`${action.id} sent ${limits.maxRequests} requests for one input item, the most one run may send`,
+							{ itemIndex },
+						);
+					}
+					sent.requests += 1;
+					const retryable =
+						request.retry ??
+						(IDEMPOTENT_METHODS.has(request.method ?? 'GET') || action.flow.idempotent === true);
+					return await send(toRequestOptions(request, action.node.baseUrl), retryable, 0);
+				},
+			};
 		};
 
 		const runItem = async (itemIndex: number): Promise<INodeExecutionData[]> => {
-			const input = Object.fromEntries(
+			const parameters = Object.fromEntries(
 				inputKeys
-					.map((key) => [key, readParameter(host, key, itemIndex)] as const)
+					.map((key) => [key, readParameter(host, key, itemIndex, jsonKeys.has(key))] as const)
 					.filter(([, value]) => value !== undefined && value !== ''),
 			);
+			const input = applyDefaults(parameters, action.inputSchema);
 			if (!isInput(input)) {
 				const issues = validate(input, action.inputSchema);
 				throw new NodeOperationError(host.node, issues.join('; '), { itemIndex });
 			}
-			const emitted: unknown[] = [];
-			await action.run({ input, http, emit: (item) => emitted.push(item) });
-			return emitted.map((item) => {
-				const issues = validate(item, outputSchema, { path: 'output' });
+			const emitted: INodeExecutionData[] = [];
+			// Validate on emit, so a bad item fails before the next page downloads.
+			const emit = (item: unknown) => {
+				if (emitted.length >= limits.maxItems) {
+					throw new NodeOperationError(
+						host.node,
+						`${action.id} emitted ${limits.maxItems} items for one input item, the most one run may emit`,
+						{ itemIndex },
+					);
+				}
+				const issues = validate(item, outputSchema, { path: `output[${emitted.length}]` });
 				if (issues.length > 0 || !isRecord(item)) {
 					throw new NodeOperationError(
 						host.node,
@@ -221,8 +331,10 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 						{ itemIndex },
 					);
 				}
-				return { json: item, pairedItem: { item: itemIndex } };
-			});
+				emitted.push({ json: item, pairedItem: { item: itemIndex } });
+			};
+			await action.run({ input, http: httpFor(itemIndex), emit });
+			return emitted;
 		};
 
 		return await Array.from({ length: host.itemCount }).reduce<Promise<INodeExecutionData[]>>(

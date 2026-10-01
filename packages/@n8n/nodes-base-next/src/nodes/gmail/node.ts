@@ -1,4 +1,15 @@
-import { arr, defineNode, int, matches, obj, str, type Http, type Infer } from '@n8n/node-sdk';
+import {
+	arr,
+	defineNode,
+	int,
+	isRecord,
+	list,
+	matches,
+	obj,
+	str,
+	type Http,
+	type Infer,
+} from '@n8n/node-sdk';
 
 export const gmail = defineNode({
 	id: 'gmail',
@@ -6,11 +17,6 @@ export const gmail = defineNode({
 	credentials: ['gmailOAuth2'],
 	baseUrl: 'https://www.googleapis.com/gmail/v1/users/me',
 });
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 const label = obj({ id: str(), name: str() });
 

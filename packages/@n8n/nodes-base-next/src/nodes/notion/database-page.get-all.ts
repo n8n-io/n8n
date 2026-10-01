@@ -207,6 +207,7 @@ function outputFromProperties(
 export const getManyDatabasePages = defineAction({
 	node: notion,
 	id: 'notion.databasePage.getAll',
+	patch: 1,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
@@ -231,7 +232,9 @@ export const getManyDatabasePages = defineAction({
 				: {}),
 			page_size: Math.min(limit ?? 100, 100),
 		};
-		const fetchPages = async (cursor: string | undefined, emitted: number): Promise<void> => {
+		// `for...of` also visits the pages the loop appends: one request per page.
+		const pages: Array<{ cursor?: string; emitted: number }> = [{ emitted: 0 }];
+		for (const { cursor, emitted } of pages) {
 			const response = await http.request({
 				method: 'POST',
 				path: `/data_sources/${dataSourceId}/query`,
@@ -251,8 +254,8 @@ export const getManyDatabasePages = defineAction({
 					? record.next_cursor
 					: undefined;
 			const count = emitted + Math.min(room, results.length);
-			if (next && (limit === undefined || count < limit)) await fetchPages(next, count);
-		};
-		await fetchPages(undefined, 0);
+			if (next && (limit === undefined || count < limit))
+				pages.push({ cursor: next, emitted: count });
+		}
 	},
 });

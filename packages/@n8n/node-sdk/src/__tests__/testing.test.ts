@@ -91,7 +91,11 @@ describe('defineCredential', () => {
 				headers: { ...request.headers, 'x-signature': `sig-${data.secret as string}` },
 			}),
 		});
-		const action = defineAction({ ...listTasks, node: { ...todo, credentials: ['signedApi'] } });
+		const action = defineAction({
+			...listTasks,
+			id: 'todo.task.getAll',
+			node: { ...todo, credentials: ['signedApi'] },
+		});
 		const fetch = mockHttp([{ path: '/tasks', reply: { json: [] } }]);
 		const result = await runAction(action, {
 			input: {},
@@ -138,7 +142,10 @@ describe('runAction', () => {
 		const result = await runAction(listTasks, { input: {}, credential, credentials, fetch });
 		expect(result).toEqual({
 			ok: false,
-			error: { message: 'output[0].tags: must be array, got "a"', path: 'output[0].tags' },
+			error: {
+				message: 'Output does not match the contract: output[0].tags: must be array, got "a"',
+				path: 'output[0].tags',
+			},
 		});
 	});
 
@@ -157,7 +164,7 @@ describe('runAction', () => {
 			output: obj({ status: int(), retryAfter: str(), body: str() }),
 			async run({ http, emit }) {
 				try {
-					await http.request({ path: '/tasks' });
+					await http.request({ path: '/tasks', retry: false });
 				} catch (error) {
 					if (!isHttpError(error)) throw error;
 					const body = JSON.stringify(error.body);
@@ -200,7 +207,7 @@ describe('runAction', () => {
 
 	it('answers a route with "times" at most that many times', async () => {
 		const fetch = mockHttp([
-			{ path: '/tasks', times: 1, reply: { status: 429, json: { error: 'slow' } } },
+			{ path: '/tasks', times: 1, reply: { status: 404, json: { error: 'no' } } },
 			{ path: '/tasks', reply: { json: [{ id: 't1', tags: [] }] } },
 		]);
 		const first = await runAction(listTasks, { input: {}, credential, credentials, fetch });

@@ -1,9 +1,16 @@
-import { arr, bool, defineAction, matches, obj, str, variant, type Http } from '@n8n/node-sdk';
+import {
+	arr,
+	bool,
+	defineAction,
+	isRecord,
+	matches,
+	obj,
+	str,
+	variant,
+	type Http,
+} from '@n8n/node-sdk';
 
 import { gmail } from './node';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const ATTRIBUTION = 'This email was sent automatically with ';
 const LINK =
@@ -43,6 +50,7 @@ async function senderAddress(http: Http) {
 export const sendGmailMessage = defineAction({
 	node: gmail,
 	id: 'gmail.message.send',
+	patch: 1,
 	action: 'Send a message',
 	summary: 'Send an email.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },

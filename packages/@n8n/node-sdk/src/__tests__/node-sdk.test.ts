@@ -239,12 +239,13 @@ describe('toNodeType', () => {
 		);
 		const lenient = fakeContext({ project: 'p1', paging: { mode: 'all' } }, bad, true);
 		const result = await new NodeType().execute?.call(lenient.context);
-		expect(JSON.stringify(result)).toContain('output.id: must be string');
+		expect(JSON.stringify(result)).toContain('output[0].id: must be string');
 	});
 
 	it('adds status, headers and body to a failed request error, keeps the NodeApiError', async () => {
 		const transportError = Object.assign(new Error('Request failed with status code 429'), {
-			response: { status: 429, headers: { 'Retry-After': '2' }, data: { error: 'slow down' } },
+			// A wait above the retry cap fails at once.
+			response: { status: 429, headers: { 'Retry-After': '120' }, data: { error: 'slow down' } },
 		});
 		const { context } = fakeContext({ project: 'p1', paging: { mode: 'all' } }, []);
 		const node = { name: 'Tasks', type: 'todoTaskGetAll', parameters: {} } as unknown as INode;
@@ -256,7 +257,7 @@ describe('toNodeType', () => {
 		expect(isHttpError(caught)).toBe(true);
 		expect(caught).toMatchObject({
 			status: 429,
-			headers: { 'retry-after': '2' },
+			headers: { 'retry-after': '120' },
 			body: { error: 'slow down' },
 		});
 	});
@@ -285,7 +286,7 @@ describe('generateNodeModule', () => {
 		name: { name: str().hint('Exact list name') },
 		id: { id: str().hint('Numeric list ID') },
 	});
-	const listAction = (id: string, extra = {}) =>
+	const listAction = (id: `todo.${string}`, extra = {}) =>
 		defineAction({
 			node: todo,
 			id,

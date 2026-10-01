@@ -19,6 +19,7 @@ import {
 export const appendSheetRow = defineAction({
 	node: googleSheets,
 	id: 'googleSheets.sheet.append',
+	patch: 1,
 	action: 'Append row',
 	summary: 'Append one row per item. Never updates existing rows; use appendOrUpdate to upsert.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: false },

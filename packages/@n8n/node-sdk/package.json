@@ -45,6 +45,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "esbuild": "catalog:",
     "n8n-workflow": "workspace:*",
     "tsx": "catalog:",

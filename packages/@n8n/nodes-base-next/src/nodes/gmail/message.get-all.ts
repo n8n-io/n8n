@@ -3,6 +3,7 @@ import {
 	bool,
 	defineAction,
 	int,
+	isRecord,
 	obj,
 	oneOf,
 	str,
@@ -12,9 +13,6 @@ import {
 } from '@n8n/node-sdk';
 
 import { getMessage, gmail, labelsOf, simplifiedMessage } from './node';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const filters = obj({
 	q: str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
@@ -71,6 +69,7 @@ async function listIds(
 export const getManyGmailMessages = defineAction({
 	node: gmail,
 	id: 'gmail.message.getAll',
+	patch: 1,
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },

@@ -2,6 +2,7 @@ import {
 	defineNode,
 	defineResource,
 	int,
+	isRecord,
 	json,
 	obj,
 	oneOf,
@@ -51,9 +52,6 @@ export const sheetRow = obj({ [ROW_NUMBER]: int().hint('Sheet row of this item')
 /** The values a write operation sent, as the legacy node emits them in mapping mode. */
 export const writtenRow = json().hint('The values sent, keyed by header text');
 
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /** Write operations emit the keys of `values`, so those keys are known at build time. */
 export function deriveWritten({ values }: { values: unknown }): JsonSchema {
 	if (!isRecord(values)) return writtenRow.json;
@@ -74,7 +72,7 @@ export interface SheetTab {
 const a1 = (title: string, cells?: string) =>
 	`'${title.replace(/'/g, "''")}'${cells ? `!${cells}` : ''}`;
 
-const valuesPath = (spreadsheetId: string, range: string) =>
+const valuesPath = (spreadsheetId: string, range: string): `/${string}` =>
 	`/${spreadsheetId}/values/${encodeURIComponent(range)}`;
 
 /** 0 → A, 25 → Z, 26 → AA. */

@@ -1,18 +1,14 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHttpRequestOptions,
+	INode,
 } from 'n8n-workflow';
 
-import {
-	isHttpError,
-	type Action,
-	type CredentialDefinition,
-	type Http,
-	type HttpError,
-	type HttpRequest,
-} from './define';
-import { validate } from './validate';
+import { isHttpError, type Action, type CredentialDefinition, type HttpError } from './define';
+import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
 
 export interface RunActionOptions {
 	readonly input: unknown;
@@ -47,9 +43,6 @@ class ResponseError extends Error implements HttpError {
 
 const asText = (value: unknown) =>
 	typeof value === 'string' ? value : (JSON.stringify(value) ?? '');
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // Credential data is parsed JSON, so every value is a valid credential value.
 const isCredentialData = (
@@ -100,7 +93,8 @@ async function authenticate(
 	};
 }
 
-async function send(fetchFn: typeof fetch, options: IHttpRequestOptions, fullResponse: boolean) {
+/** Sends what the executor would pass to n8n's `httpRequest`. */
+async function send(fetchFn: typeof fetch, options: IHttpRequestOptions) {
 	const url = new URL(options.url);
 	Object.entries(options.qs ?? {})
 		.filter(([, value]) => value !== undefined && value !== null)
@@ -117,6 +111,7 @@ async function send(fetchFn: typeof fetch, options: IHttpRequestOptions, fullRes
 		method,
 		headers,
 		...(options.body === undefined ? {} : { body: asText(options.body) }),
+		...(options.timeout ? { signal: AbortSignal.timeout(options.timeout) } : {}),
 	});
 	const text = await response.text();
 	const body: unknown =
@@ -124,20 +119,19 @@ async function send(fetchFn: typeof fetch, options: IHttpRequestOptions, fullRes
 	const responseHeaders = Object.fromEntries(response.headers);
 	if (!response.ok) {
 		throw new ResponseError(
-			`${method} ${url.origin}${url.pathname} failed with ${response.status}: ${text.slice(0, 300)}`,
+			`${method} ${url.origin}${url.pathname} failed with ${response.status}: ${scrubSecretsInText(text).slice(0, 300)}`,
 			response.status,
 			responseHeaders,
 			body,
 		);
 	}
-	return fullResponse ? { body, headers: responseHeaders, statusCode: response.status } : body;
+	return options.returnFullResponse
+		? { body, headers: responseHeaders, statusCode: response.status }
+		: body;
 }
 
-const pathOf = (issue: string) => issue.split(': ')[0];
-
-function failure(issues: string[]): RunActionResult {
-	return { ok: false, error: { message: issues.join('; '), path: pathOf(issues[0] ?? '') } };
-}
+/** The first failing field in an executor message, e.g. `input.limit` or `output[0].id`. */
+const pathOf = (message: string) => /\b((?:input|output)[\w.[\]]*): /.exec(message)?.[1];
 
 function credentialFor(
 	action: Action,
@@ -159,61 +153,76 @@ function credentialFor(
 }
 
 /**
- * Run one action outside n8n: validate the input, call `run()` with a fetch-based HTTP client
- * that applies the credential, and validate each output item.
+ * Run one action outside n8n, through the executor n8n runs, with a fetch-based HTTP client
+ * that applies the credential.
  */
 export async function runAction(
 	action: Action,
 	options: RunActionOptions,
 ): Promise<RunActionResult> {
-	// n8n fills in each parameter default, so run() sees them here too.
-	const defaults = Object.fromEntries(
-		Object.entries(action.input).flatMap(([key, schema]) =>
-			schema.json.default === undefined ? [] : [[key, schema.json.default]],
-		),
-	);
-	const input = isRecord(options.input) ? { ...defaults, ...options.input } : options.input;
-	const inputIssues = validate(input, action.inputSchema);
-	if (inputIssues.length > 0) return failure(inputIssues);
-	if (!isRecord(input)) return failure(['input: must be an object']);
-	const credential = credentialFor(action, options);
-	if (typeof credential === 'string') return { ok: false, error: { message: credential } };
-	const data = options.credential?.data ?? {};
-	if (!isCredentialData(data)) return { ok: false, error: { message: 'Invalid credential data' } };
-
+	const { input } = options;
+	if (!isRecord(input)) return { ok: false, error: { message: 'input: must be an object' } };
+	const raw = options.credential?.data ?? {};
+	const data = isCredentialData(raw) ? raw : {};
+	const credential = isCredentialData(raw)
+		? credentialFor(action, options)
+		: 'Invalid credential data';
 	const fetchFn = options.fetch ?? fetch;
-	const http: Http = {
-		request: async (request: HttpRequest) => {
-			const base: IHttpRequestOptions = {
-				method: request.method ?? 'GET',
-				url: request.url ?? `${action.node.baseUrl ?? ''}${request.path ?? ''}`,
-				qs: { ...request.query },
-				headers: { ...request.headers },
-				json: true,
-				...(request.body !== undefined ? { body: request.body } : {}),
-			};
-			const authenticated = credential ? await authenticate(credential, data, base) : base;
-			return await send(fetchFn, authenticated, request.fullResponse === true);
-		},
+	const node: INode = {
+		id: 'runAction',
+		name: action.action,
+		type: nodeNameOf(action.id),
+		typeVersion: action.version,
+		position: [0, 0],
+		parameters: {},
+		credentials:
+			typeof credential === 'object'
+				? { [credential.name]: { id: null, name: credential.name } }
+				: {},
 	};
-
-	const items: unknown[] = [];
+	const host: ExecutorHost = {
+		itemCount: 1,
+		node,
+		parameter: (name) =>
+			name === AUTHENTICATION
+				? typeof credential === 'object'
+					? credential.name
+					: 'none'
+				: input[name],
+		// A credential problem fails the first request, after the input check, as in n8n.
+		request: async (request) => {
+			if (typeof credential === 'string') throw new Error(credential);
+			return await send(
+				fetchFn,
+				credential ? await authenticate(credential, data, request) : request,
+			);
+		},
+		continueOnFail: () => false,
+	};
 	try {
-		await action.run({ input, http, emit: (item) => items.push(item) });
+		const items = await executorOf(action)(host);
+		return { ok: true, items: items.map((item) => item.json) };
 	} catch (error) {
 		// fetch reports network failures as "fetch failed" and puts the reason in `cause`.
 		const cause =
-			error instanceof Error && error.cause instanceof Error ? `: ${error.cause.message}` : '';
-		const message = error instanceof Error ? `${error.message}${cause}` : String(error);
+			error instanceof Error &&
+			error.cause instanceof Error &&
+			!error.message.includes(error.cause.message)
+				? `: ${error.cause.message}`
+				: '';
+		const message = scrubSecretsInText(
+			error instanceof Error ? `${error.message}${cause}` : String(error),
+		);
+		const path = pathOf(message);
 		return {
 			ok: false,
-			error: { message, ...(isHttpError(error) ? { httpStatus: error.status } : {}) },
+			error: {
+				message,
+				...(path ? { path } : {}),
+				...(isHttpError(error) ? { httpStatus: error.status } : {}),
+			},
 		};
 	}
-	const outputIssues = items.flatMap((item, index) =>
-		validate(item, action.output.json, { path: `output[${index}]` }),
-	);
-	return outputIssues.length > 0 ? failure(outputIssues) : { ok: true, items };
 }
 
 export interface MockRoute {

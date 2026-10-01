@@ -21,6 +21,7 @@ import {
 export const appendOrUpdateSheetRow = defineAction({
 	node: googleSheets,
 	id: 'googleSheets.sheet.appendOrUpdate',
+	patch: 1,
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
 	flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace', idempotent: true },

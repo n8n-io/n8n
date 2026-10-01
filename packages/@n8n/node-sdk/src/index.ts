@@ -22,7 +22,8 @@ export {
 	type RunContext,
 	type RunInput,
 } from './define';
-export { exampleOf, matches, validate } from './validate';
+export { exampleOf, list, matches, parse, validate } from './validate';
+export { isRecord } from '@n8n/utils/is-record';
 export {
 	nodeNameOf,
 	setContractVersionLoader,

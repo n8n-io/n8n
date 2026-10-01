@@ -1,9 +1,21 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { safeRegex } from 'n8n-workflow';
 
 import type { AnySchema, Infer, JsonSchema } from './schema';
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
+/** The value, or no value. Narrows an API field that must be a list. */
+export const list = (value: unknown): readonly unknown[] => (Array.isArray(value) ? value : []);
+
+const SHOWN_LENGTH = 80;
+
+/** Issues go to logs and to the AI builder, so a value never shows a secret or a whole body. */
+function shown(value: unknown, at: string): string {
+	if (isSensitiveKey(at.split('.').pop() ?? '')) return '[REDACTED]';
+	const text = scrubSecretsInText(JSON.stringify(value) ?? String(value));
+	return text.length > SHOWN_LENGTH ? `${text.slice(0, SHOWN_LENGTH - 1)}…` : text;
+}
 
 const isExpression = (value: unknown) => typeof value === 'string' && value.startsWith('=');
 
@@ -76,20 +88,18 @@ export function validate(
 			return;
 		}
 		if (node.enum && !node.enum.includes(current)) {
-			issues.push(`${at}: must be ${describe(node)}, got ${JSON.stringify(current)}`);
+			issues.push(`${at}: must be ${describe(node)}, got ${shown(current, at)}`);
 			return;
 		}
 		if (node.type && !typeMatches(current, node.type)) {
-			issues.push(`${at}: must be ${describe(node)}, got ${JSON.stringify(current)}`);
+			issues.push(`${at}: must be ${describe(node)}, got ${shown(current, at)}`);
 			return;
 		}
 		if (typeof current === 'string') {
 			if (node.minLength && current.length < node.minLength)
 				issues.push(`${at}: must not be empty`);
 			if (node.pattern && !safeRegex.test(node.pattern, current)) {
-				issues.push(
-					`${at}: ${JSON.stringify(current)} is not ${node['x-n8n-hint'] ?? node.pattern}`,
-				);
+				issues.push(`${at}: ${shown(current, at)} is not ${node['x-n8n-hint'] ?? node.pattern}`);
 			}
 		}
 		if (typeof current === 'number') {
@@ -136,6 +146,43 @@ export function validate(
 /** Type guard: `value` matches `schema`. */
 export const matches = <S extends AnySchema>(schema: S, value: unknown): value is Infer<S> =>
 	validate(value, schema.json).length === 0;
+
+/** `value` typed by `schema`. Throws with each failing path, e.g. `response.id: must be string`. */
+export function parse<S extends AnySchema>(schema: S, value: unknown, path = 'response'): Infer<S> {
+	if (matches(schema, value)) return value;
+	throw new Error(validate(value, schema.json, { path }).join('; '));
+}
+
+const branchOf = (value: Record<string, unknown>, schema: JsonSchema) => {
+	const name = schema.discriminator?.propertyName;
+	return name === undefined
+		? undefined
+		: schema.oneOf?.find((branch) => tagOf(branch, name) === value[name]);
+};
+
+/**
+ * `value` with each missing `.default(v)` filled in, at any depth. n8n fills only top-level
+ * defaults, and `runAction` must see the same input as n8n, so both paths call this.
+ */
+export function applyDefaults(value: unknown, schema: JsonSchema): unknown {
+	const filled = value === undefined ? schema.default : value;
+	if (Array.isArray(filled) && schema.items) {
+		const { items } = schema;
+		return filled.map((item) => applyDefaults(item, items));
+	}
+	if (!isRecord(filled)) return filled;
+	const branch = branchOf(filled, schema);
+	if (branch) return applyDefaults(filled, branch);
+	return {
+		...filled,
+		...Object.fromEntries(
+			Object.entries(schema.properties ?? {}).flatMap(([key, child]) => {
+				const next = applyDefaults(filled[key], child);
+				return next === undefined ? [] : [[key, next]];
+			}),
+		),
+	};
+}
 
 const FORMAT_EXAMPLES: Record<string, string> = {
 	date: '2026-09-15',

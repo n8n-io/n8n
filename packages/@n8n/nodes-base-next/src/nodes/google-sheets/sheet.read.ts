@@ -113,6 +113,7 @@ const input = {
 export const readSheetRows = defineAction({
 	node: googleSheets,
 	id: 'googleSheets.sheet.read',
+	patch: 1,
 	action: 'Get rows',
 	summary: 'Read rows, optionally only those matching column filters.',
 	flow: { effect: 'read', cardinality: '1:N', passthrough: 'replace', idempotent: true },
