@@ -136,7 +136,7 @@ export class ERPNext implements INodeType {
 					//          document: get
 					// ----------------------------------
 
-					// https://docs.frappe.io/framework/user/en/api/rest
+					// https://docs.frappe.io/framework/user/en/api/rest#read
 
 					const docType = this.getNodeParameter('docType', i) as string;
 					const documentName = this.getNodeParameter('documentName', i) as string;
@@ -154,7 +154,7 @@ export class ERPNext implements INodeType {
 					//         document: getAll
 					// ----------------------------------
 
-					// https://docs.frappe.io/framework/user/en/api/rest
+					// https://docs.frappe.io/framework/user/en/api/rest#listing-documents
 
 					const docType = this.getNodeParameter('docType', i) as string;
 					const endpoint = `/api/resource/${docType}`;
@@ -207,7 +207,7 @@ export class ERPNext implements INodeType {
 					//         document: create
 					// ----------------------------------
 
-					// https://docs.frappe.io/framework/user/en/api/rest
+					// https://docs.frappe.io/framework/user/en/api/rest#create
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
@@ -237,7 +237,7 @@ export class ERPNext implements INodeType {
 					//         document: delete
 					// ----------------------------------
 
-					// https://docs.frappe.io/framework/user/en/api/rest
+					// https://docs.frappe.io/framework/user/en/api/rest#delete
 
 					const docType = this.getNodeParameter('docType', i) as string;
 					const documentName = this.getNodeParameter('documentName', i) as string;
@@ -252,7 +252,7 @@ export class ERPNext implements INodeType {
 					//         document: update
 					// ----------------------------------
 
-					// https://docs.frappe.io/framework/user/en/api/rest
+					// https://docs.frappe.io/framework/user/en/api/rest#update
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 

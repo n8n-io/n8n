@@ -104,7 +104,7 @@ export class Plivo implements INodeType {
 					//            call: make
 					// ----------------------------------
 
-					// https://www.plivo.com/docs/voice/api/calls
+					// https://www.plivo.com/docs/voice/api/calls#create-a-call
 
 					const body = {
 						from: this.getNodeParameter('from', i) as string,
@@ -125,7 +125,7 @@ export class Plivo implements INodeType {
 					//            mss: send
 					// ----------------------------------
 
-					// https://www.plivo.com/docs/messaging/api/messages
+					// https://www.plivo.com/docs/messaging/api/messages#send-a-message
 
 					const body = {
 						src: this.getNodeParameter('from', i) as string,
