@@ -18,7 +18,7 @@ function summarize(violations: NonEmptyViolations): string {
  * Thrown by every `enforce*` method when a policy blocks an action.
  *
  * `UserError` so the execution path treats a blocked run as non-retryable, plus the
- * `httpStatusCode`/`errorCode` pair `classifyHttpError` looks for so `meta` — and with it the
+ * `httpStatusCode`/`errorCode` pair `classifyRestError` looks for so `meta` — and with it the
  * violations — reaches the REST body. Extending `ResponseError` would lose the first.
  */
 export class PolicyViolationError extends UserError {

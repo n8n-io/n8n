@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved';
-export type AutosaveResult = 'skipped' | 'stale' | undefined;
+export type AutosaveResult = 'skipped' | 'stale' | 'outdated' | undefined;
 
 export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	/**
@@ -16,7 +16,9 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	 * write-lock is active) rather than performed — this suppresses `onSaved`
 	 * and keeps `saveStatus` at `'idle'` instead of flashing `'saved'` for an
 	 * edit that was never persisted. Return `'stale'` after reloading the
-	 * server state to drop snapshots queued from the same stale state.
+	 * server state to drop snapshots queued from the same stale state. Return
+	 * `'outdated'` when a newer local edit exists, so the old save does not
+	 * display `Saved`.
 	 */
 	save: (snapshot: TSnapshot) => Promise<AutosaveResult>;
 	/** Called after a successful save so the caller can fire telemetry. */
@@ -123,7 +125,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				if (!detached) saveStatus.value = 'idle';
 				return;
 			}
-			if (result === 'skipped') {
+			if (result === 'skipped' || result === 'outdated') {
 				if (!detached) saveStatus.value = 'idle';
 				return;
 			}

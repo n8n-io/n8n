@@ -22,15 +22,21 @@ export class BreakingChangesController {
 		private readonly migrationService: BreakingChangeMigrationService,
 	) {}
 
-	private getLightDetectionResults(
-		report: BreakingChangeReportResult['report'],
-	): BreakingChangeLightReportResult['report'] {
+	private toLightReportResult(result: BreakingChangeReportResult): BreakingChangeLightReportResult {
+		const { report } = result;
+		const affectedWorkflowIds = new Set(
+			report.workflowResults.flatMap((r) => r.affectedWorkflows.map((w) => w.id)),
+		);
 		return {
-			...report,
-			workflowResults: report.workflowResults.map((r) => {
-				const { affectedWorkflows, ...otherFields } = r;
-				return { ...otherFields, nbAffectedWorkflows: affectedWorkflows.length };
-			}),
+			...result,
+			totalAffectedWorkflows: affectedWorkflowIds.size,
+			report: {
+				...report,
+				workflowResults: report.workflowResults.map((r) => {
+					const { affectedWorkflows, ...otherFields } = r;
+					return { ...otherFields, nbAffectedWorkflows: affectedWorkflows.length };
+				}),
+			},
 		};
 	}
 
@@ -44,11 +50,8 @@ export class BreakingChangesController {
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
-		const report = await this.service.getDetectionResults(query.version ?? 'v2');
-		return {
-			...report,
-			report: this.getLightDetectionResults(report.report),
-		};
+		const result = await this.service.getDetectionResults(query.version ?? 'v2');
+		return this.toLightReportResult(result);
 	}
 
 	@Post('/report/refresh')
@@ -58,11 +61,8 @@ export class BreakingChangesController {
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
-		const report = await this.service.refreshDetectionResults(query.version ?? 'v2');
-		return {
-			...report,
-			report: this.getLightDetectionResults(report.report),
-		};
+		const result = await this.service.refreshDetectionResults(query.version ?? 'v2');
+		return this.toLightReportResult(result);
 	}
 
 	/**

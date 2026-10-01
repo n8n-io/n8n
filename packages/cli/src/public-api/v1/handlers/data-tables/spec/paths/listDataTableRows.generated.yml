@@ -1,0 +1,86 @@
+operationId: listDataTableRows
+tags:
+  - DataTable
+summary: List rows of a data table
+description: Retrieve rows from a data table with optional filtering, sorting, and pagination.
+x-required-scope: dataTableRow:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+  - schema:
+      type: string
+      format: jsonString
+    required: false
+    description: JSON string of filter conditions
+    example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"active"}]}'
+    name: filter
+    in: query
+  - schema:
+      type: string
+    required: false
+    description: 'Sort format: columnName:asc or columnName:desc'
+    example: createdAt:desc
+    name: sortBy
+    in: query
+  - schema:
+      type: string
+    required: false
+    description: Search text across all string columns
+    name: search
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The row ID (auto-generated)
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: The date and time the row was created
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: The date and time the row was last updated
+                required:
+                  - id
+                  - createdAt
+                  - updatedAt
+                description: A data table row with system columns (id, createdAt, updatedAt) and user-defined columns
+            nextCursor:
+              type: string
+              nullable: true
+              description: Paginate through rows by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+              example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

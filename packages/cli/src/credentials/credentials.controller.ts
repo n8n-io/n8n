@@ -378,6 +378,7 @@ export class CredentialsController {
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
+			{ kind: 'user', user: req.user },
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
@@ -468,7 +469,7 @@ export class CredentialsController {
 			throw new BadRequestError('Only OAuth credentials can be disconnected');
 		}
 
-		await this.credentialsService.clearOauthTokenData(credential);
+		await this.credentialsService.clearOauthTokenData(credential, { kind: 'user', user: req.user });
 
 		this.logger.debug('Credential OAuth token cleared', { credentialId });
 

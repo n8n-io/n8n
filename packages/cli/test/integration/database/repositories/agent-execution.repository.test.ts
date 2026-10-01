@@ -5,9 +5,10 @@ import type {
 } from '@n8n/api-types';
 import {
 	Agent as RuntimeAgent,
+	INLINE_SUB_AGENT_ID,
 	Tool,
 	type SerializableAgentState,
-	type StreamChunk,
+	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
@@ -26,7 +27,20 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
+import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
+import { SubAgentBackgroundRunner } from '@/modules/agents/background/sub-agent-background-runner';
+import { SubAgentRunner } from '@/modules/agents/sub-agents/sub-agent-runner';
+import type { SubAgentSourceResolver } from '@/modules/agents/sub-agents/sub-agent-source-resolver';
+import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import type {
+	AgentWorkspaceService,
+	AgentWorkspaceAcquisition,
+} from '@/modules/agents/agent-workspace.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentRunTracingService } from '@/modules/agents/agent-run-tracing.service';
@@ -45,6 +59,7 @@ import { AgentExecutionService } from '@/modules/agents/agent-execution.service'
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
+import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -56,6 +71,7 @@ import {
 import { AgentResourceEntity } from '@/modules/agents/entities/agent-resource.entity';
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
 import { AgentExecutionMessageLink } from '@/modules/agents/entities/agent-execution-message-link.entity';
+import { AgentMessageSteeringService } from '@/modules/agents/agent-message-steering.service';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentTurnAlreadyRunningError } from '@/modules/agents/agent-turn-already-running.error';
 import {
@@ -63,8 +79,6 @@ import {
 	type AgentExecutionAdmission,
 	type QueuedIntegrationMessage,
 } from '@/modules/agents/types/agent-queued-message';
-import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
-import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
 import type { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
@@ -193,6 +207,16 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
+		const steering = new AgentMessageSteeringService(
+			txRunner,
+			queueRepository,
+			threads,
+			executions,
+			messageRepository,
+			checkpointStorage,
+			executionService,
+			mock<AgentExecutionUpdateBroadcaster>(),
+		);
 		const queue = new AgentMessageQueueService(
 			txRunner,
 			queueRepository,
@@ -204,8 +228,14 @@ describe('AgentExecutionRepository', () => {
 			attachmentService,
 			queueUpdates,
 			messageRepository,
+			steering,
 		);
+		const chatExecutionService = mock<AgentChatExecutionService>();
+		chatExecutionService.settle.mockImplementation(async (_executionId, finalize) => {
+			await finalize();
+		});
 		return {
+			steering,
 			txRunner,
 			threads,
 			queue,
@@ -219,8 +249,9 @@ describe('AgentExecutionRepository', () => {
 			turns: new AgentTurnExecutionService(
 				mockLogger(),
 				executionService,
-				mock<AgentChatExecutionService>(),
+				chatExecutionService,
 				queue,
+				steering,
 			),
 		};
 	}
@@ -290,8 +321,8 @@ describe('AgentExecutionRepository', () => {
 		return spy;
 	}
 
-	async function collect(stream: AsyncIterable<StreamChunk>) {
-		const chunks: StreamChunk[] = [];
+	async function collect(stream: AsyncIterable<AgentExecutionStreamChunk>) {
+		const chunks: AgentExecutionStreamChunk[] = [];
 		for await (const chunk of stream) chunks.push(chunk);
 		return chunks;
 	}
@@ -331,6 +362,348 @@ describe('AgentExecutionRepository', () => {
 			pendingToolCalls: { ...checkpoint.pendingToolCalls, ...pendingToolCalls },
 		});
 	}
+
+	describe('background child approvals', () => {
+		afterEach(async () => {
+			vi.restoreAllMocks();
+			await Container.get(AgentBackgroundJobRepository).delete({});
+		});
+
+		async function startBackgroundChild(gates = 1) {
+			const parent = await createThread();
+			const jobs = Container.get(AgentBackgroundJobRepository);
+			const { turns, checkpointStorage: storage } = recordingServices();
+			const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+			const action = vi.fn().mockResolvedValue('Done');
+			const tool = new Tool('approve')
+				.description('Run the approved action')
+				.input(z.object({}))
+				.requireApproval()
+				.handler(action);
+			const model = new MockLanguageModelV3({
+				doStream: async ({ prompt }) => {
+					const completed = prompt.filter((message) => message.role === 'tool').length;
+					const needsApproval = completed < gates;
+					return {
+						stream: convertArrayToReadableStream([
+							...(needsApproval
+								? [
+										{
+											type: 'tool-call' as const,
+											toolCallId: `gate-${completed}`,
+											toolName: 'approve',
+											input: '{}',
+										},
+									]
+								: []),
+							{
+								type: 'finish',
+								finishReason: { unified: needsApproval ? 'tool-calls' : 'stop', raw: undefined },
+								usage: {
+									inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+									outputTokens: { total: 1, text: 1, reasoning: 0 },
+								},
+							},
+						]),
+					};
+				},
+			});
+			const workspace = mock<AgentWorkspaceAcquisition>({
+				handle: mock<AgentWorkspaceAcquisition['handle']>(),
+			});
+			const workspaceService = mock<AgentWorkspaceService>();
+			workspaceService.getAgentWorkspace.mockResolvedValue(workspace);
+			const reconstruction = mock<AgentRuntimeReconstructionService>();
+			reconstruction.reconstructFromResolvedSource.mockImplementation(
+				async ({ parentWorkspace }) => {
+					expect(parentWorkspace?.handle).toBe(workspace.handle);
+					return {
+						agent: new RuntimeAgent('Child')
+							.instructions('Complete the task.')
+							.model(model)
+							.tool(tool)
+							.checkpoint(storage.getStorage(agentId)),
+						toolRegistry: new Map(),
+						mcpServerAttributions: new Map(),
+					};
+				},
+			);
+			const wake = mock<AgentWakeService>();
+			const getService = Container.get.bind(Container);
+			vi.spyOn(Container, 'get').mockImplementation((service) => {
+				if (service === AgentRuntimeReconstructionService) return reconstruction;
+				if (service === AgentWakeService) return wake;
+				return getService(service);
+			});
+			const sourceResolver = mock<SubAgentSourceResolver>();
+			const versionId = uuid();
+			sourceResolver.resolveForRuntime.mockResolvedValue({
+				source: {
+					sourceId: agentId,
+					versionId,
+					config: {
+						name: 'Child',
+						model: 'mock/model',
+						credential: 'credential-1',
+						instructions: 'Complete the task.',
+					},
+				},
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+			});
+			const context = {
+				projectId,
+				parentAgentId: agentId,
+				credentialProvider: mock<CredentialProvider>(),
+				runType: 'production' as const,
+			};
+			const createMain = () => {
+				const service = new AgentBackgroundJobService(
+					jobs,
+					repository,
+					mock<ExecutionPersistence>(),
+					mock<Publisher>(),
+					mockLogger(),
+					mock<AgentsConfig>({ backgroundTasksEnabled: true }),
+					mock<AgentExecutionUpdateBroadcaster>(),
+					storage,
+				);
+				const runner = new SubAgentBackgroundRunner(
+					new SubAgentRunner(sourceResolver, turns, storage, mockLogger(), new AiConfig()),
+					service,
+					mockLogger(),
+					jobs,
+					workspaceService,
+				);
+				return { service, runner };
+			};
+			const main = createMain();
+			const receipt = await main.runner.spawn(
+				{
+					subAgentId: agentId,
+					source: { agentId },
+					taskName: 'Research',
+					goal: 'Complete the task.',
+					parentThreadId: parent.id,
+					parentResourceId: 'draft-chat:user-1',
+					parentSandboxPrincipalHash: principalHash,
+				},
+				{ ...context, parentWorkspaceHandle: workspace.handle },
+			);
+			if (receipt.status !== 'started') throw new Error('Expected a started child');
+			const readApproval = async () => {
+				const job = await jobs.findOneByOrFail({ id: receipt.jobId });
+				const approval = await main.service.getApproval(job);
+				if (!approval) throw new Error('Expected a pending approval');
+				return { job, approval };
+			};
+			await vi.waitFor(async () =>
+				expect(await jobs.findById(receipt.jobId)).toMatchObject({
+					status: 'suspended',
+					error: null,
+				}),
+			);
+			await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id));
+			return {
+				...main,
+				...(await readApproval()),
+				action,
+				context,
+				createMain,
+				jobs,
+				parent,
+				principalHash,
+				readApproval,
+				reconstruction,
+				sourceResolver,
+				storage,
+				versionId,
+				wake,
+				workspaceService,
+			};
+		}
+
+		it.each([true, false])(
+			'resumes the exact child after recovery with approved=%s',
+			async (approved) => {
+				const fixture = await startBackgroundChild();
+				const { job, approval, jobs, context, parent, storage } = fixture;
+				expect(fixture.action).not.toHaveBeenCalled();
+				expect(await storage.findSuspendedForThread(agentId, parent.id)).toBeNull();
+				expect(job.timeoutAt).toEqual(approval.expiresAt);
+				expect(await threadRepo.findOneByOrFail({ id: job.childThreadId! })).toMatchObject({
+					parentThreadId: parent.id,
+					parentAgentId: agentId,
+				});
+
+				// Recover the window after checkpoint persistence and before the job was parked.
+				await jobs.resumeIfSuspended(job.id, new Date(Date.now() - 1));
+				const recovered = fixture.createMain();
+				await recovered.service.reconcile();
+				const current = await fixture.readApproval();
+				expect(current.job.status).toBe('suspended');
+				expect(current.approval.token).toBe(approval.token);
+				await recovered.runner.resume(
+					current.job,
+					{ token: approval.token, resumeData: { approved } },
+					context,
+				);
+				await vi.waitFor(async () =>
+					expect(await jobs.findById(job.id)).toMatchObject({
+						status: 'completed',
+						childThreadId: job.childThreadId,
+					}),
+				);
+				expect(fixture.action).toHaveBeenCalledTimes(approved ? 1 : 0);
+				expect(fixture.workspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+					projectId,
+					agentId,
+					fixture.principalHash,
+				);
+				expect(fixture.sourceResolver.resolveForRuntime).toHaveBeenLastCalledWith(
+					{ agentId, versionId: fixture.versionId },
+					{ projectId, usePublishedVersion: true },
+				);
+				const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
+				expect(runs).toHaveLength(2);
+				expect(runs[1].timeline).toContainEqual(
+					expect.objectContaining({ type: 'hitl-response', response: { approved } }),
+				);
+				expect(
+					await Container.get(AgentCheckpointRepository).findByRunId(approval.runId),
+				).toMatchObject({ expired: true, state: null });
+			},
+		);
+
+		it('ignores responses, acknowledgments, and expiry checks from the previous gate', async () => {
+			const fixture = await startBackgroundChild(2);
+			const { job, approval, runner, context, jobs } = fixture;
+			const outcomes = await Promise.allSettled([
+				runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+				fixture
+					.createMain()
+					.runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+			]);
+			expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			await vi.waitFor(async () => {
+				const current = await fixture.readApproval();
+				expect(current.job.status).toBe('suspended');
+				expect(current.approval.token).not.toBe(approval.token);
+			});
+			const next = await fixture.readApproval();
+			expect(
+				await fixture.service.settle(
+					job.id,
+					{ status: 'failed', error: 'Approval expired' },
+					{ status: 'suspended', timeoutAt: job.timeoutAt },
+				),
+			).toBe(false);
+			await jobs.markApprovalDelivered(job.id, approval.runId, approval.serializedState);
+			expect((await jobs.findById(job.id))?.notifiedAt).toBeNull();
+			await expect(
+				runner.resume(
+					next.job,
+					{ token: approval.token, resumeData: { approved: false } },
+					context,
+				),
+			).rejects.toThrow('no longer available');
+			expect(fixture.action).toHaveBeenCalledTimes(1);
+			await runner.resume(
+				next.job,
+				{ token: next.approval.token, resumeData: { approved: true } },
+				context,
+			);
+			await vi.waitFor(async () =>
+				expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+			);
+			expect(fixture.action).toHaveBeenCalledTimes(2);
+		});
+
+		it('records the decision when background resume admission fails', async () => {
+			const { job, approval, runner, service, context, jobs } = await startBackgroundChild();
+			vi.spyOn(service, 'resume').mockRejectedValueOnce(new Error('Database unavailable'));
+			await expect(
+				runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+			).rejects.toThrow('could not be resumed');
+			expect(await jobs.findById(job.id)).toMatchObject({ status: 'failed' });
+			const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
+			expect(runs[1].timeline).toContainEqual(
+				expect.objectContaining({ type: 'hitl-response', response: { approved: true } }),
+			);
+		});
+
+		it('retries terminal child and descendant cleanup after recovery', async () => {
+			const { job, approval, service, jobs, storage, createMain } = await startBackgroundChild();
+			const childRunId = uuid();
+			await storage.getStorage(agentId).save(childRunId, {
+				...approval.checkpoint,
+				persistence: { ...approval.checkpoint.persistence!, threadId: uuid() },
+			});
+			await storage.getStorage(agentId).save(approval.runId, {
+				...approval.checkpoint,
+				pendingToolCalls: {
+					[approval.pending.toolCallId]: {
+						...approval.pending,
+						continuation: {
+							runId: childRunId,
+							toolCallId: 'nested-gate',
+							taskPath: '/root/research_0/nested_0',
+							subAgentId: INLINE_SUB_AGENT_ID,
+							childCount: 1,
+						},
+					},
+				},
+			});
+			const checkpoints = Container.get(AgentCheckpointRepository);
+			const expire = storage.delete.bind(storage);
+			let fail = true;
+			vi.spyOn(storage, 'delete').mockImplementation(async (runId, owner) => {
+				if (runId === childRunId && fail) {
+					fail = false;
+					throw new Error('Database unavailable');
+				}
+				await expire(runId, owner);
+			});
+			await service.cancel(job.parentThreadId, job.id);
+			expect(await jobs.findById(job.id)).toMatchObject({ status: 'cancelled' });
+			expect(await checkpoints.findByRunId(approval.runId)).toMatchObject({ expired: false });
+			await createMain().service.reconcile();
+			for (const runId of [approval.runId, childRunId]) {
+				expect(await checkpoints.findByRunId(runId)).toMatchObject({ expired: true, state: null });
+			}
+		});
+
+		it.each(['cancel', 'expire', 'cancel parent'] as const)(
+			'clears a pending child approval on %s',
+			async (reason) => {
+				const { job, approval, runner, service, context, jobs, action, wake } =
+					await startBackgroundChild();
+				wake.requestWake.mockClear();
+				if (reason === 'expire') {
+					await jobs.update(job.id, { timeoutAt: new Date(Date.now() - 1) });
+					await service.reconcile();
+				} else if (reason === 'cancel parent') {
+					await service.cancelForParent(agentId, job.parentThreadId, job.parentResourceId);
+				} else {
+					await service.cancel(job.parentThreadId, job.id);
+				}
+				const ended = await jobs.findOneByOrFail({ id: job.id });
+				expect(ended.status).toBe(reason === 'expire' ? 'failed' : 'cancelled');
+				if (reason === 'expire') {
+					expect(ended.error).toBe('Approval expired');
+					expect(wake.requestWake).toHaveBeenCalledWith(job.parentThreadId);
+				}
+				expect(
+					await Container.get(AgentCheckpointRepository).findByRunId(approval.runId),
+				).toMatchObject({ expired: true, state: null });
+				await expect(
+					runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+				).rejects.toThrow('no longer available');
+				expect(action).not.toHaveBeenCalled();
+			},
+		);
+	});
 
 	function createApprovalAgentFactory(threadId: string, ownerId?: string, approvals = 1) {
 		type ModelStreamPart = Awaited<
@@ -537,6 +910,42 @@ describe('AgentExecutionRepository', () => {
 			competing.restore();
 		}
 	}
+
+	it('clears retained delegated state with missing and cyclic references', async () => {
+		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const child = { runId: uuid(), agentId, threadId: uuid() };
+		const nested = { runId: uuid(), agentId, threadId: uuid() };
+		const missing = { runId: uuid(), agentId, threadId: uuid() };
+		await checkpointRepo.update(
+			{ runId: suspension.runId },
+			{ state: checkpointStateWithChildren(state, threadId, [child]) },
+		);
+		await checkpointRepo.insert([
+			{
+				...child,
+				expired: true,
+				state: checkpointStateWithChildren(state, child.threadId, [missing, nested]),
+			},
+			{
+				...nested,
+				expired: false,
+				state: checkpointStateWithChildren(state, nested.threadId, [
+					{ runId: suspension.runId, agentId, threadId },
+				]),
+			},
+		]);
+
+		await storage.deleteDelegatedForThread(agentId, threadId);
+
+		for (const runId of [suspension.runId, child.runId, nested.runId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toMatchObject({
+				expired: true,
+				state: null,
+			});
+		}
+	});
 
 	it('removes retained and delegated checkpoints without deleting child history', async () => {
 		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
@@ -1018,6 +1427,8 @@ describe('AgentExecutionRepository', () => {
 				agentRepo,
 				new AiConfig(),
 				mock<AgentChatExecutionService>(),
+				mock<AgentBackgroundJobRepository>(),
+				mock<AgentBackgroundJobService>(),
 			);
 			const resume = async (
 				user: User,
@@ -1170,16 +1581,469 @@ describe('AgentExecutionRepository', () => {
 		async function finish(
 			services: ReturnType<typeof recordingServices>,
 			item: ClaimedAgentMessage,
-			finishReason: 'stop' | 'cancelled' = 'stop',
+			finishReason: 'stop' | 'error' | 'cancelled' = 'stop',
 		) {
 			const recorder = new ExecutionRecorder();
-			recorder.record({ type: 'finish', finishReason: 'stop' });
+			if (finishReason === 'error') recorder.record({ type: 'error', error: new Error('Failed') });
 			await services.executionService.finalizeExecution(item.admission.executionId, {
 				...item.recording,
 				record: { ...recorder.getMessageRecord(), finishReason },
 			});
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
+
+		it.each([
+			{ automaticPreviewContinuation: false, legacy: false },
+			{ automaticPreviewContinuation: true, legacy: false },
+			{ automaticPreviewContinuation: false, legacy: true },
+		])(
+			'consumes steering through a Preview resume (automatic=$automaticPreviewContinuation, legacy=$legacy)',
+			async ({ automaticPreviewContinuation, legacy }) => {
+				const fixture = await startSuspendedApprovalRun(owner);
+				const services = recordingServices();
+				const { threadId, suspension, recording, common } = fixture;
+				const [predecessor] = await repository.findByThreadIdOrdered(threadId);
+				if (legacy) {
+					await repository.update(predecessor.id, { userMessage: 'Start' });
+					await repository.manager.delete(AgentExecutionMessageLink, {
+						executionId: predecessor.id,
+					});
+				}
+				const initialInputs = await services.messageRepository.findExecutionInputs([
+					predecessor.id,
+				]);
+				const target = { projectId, agentId, threadId, userId: owner.id };
+				const b = await enqueue(services, input(threadId, 'B'));
+				const c = await enqueue(services, input(threadId, 'C'));
+				const runtime = fixture.makeAgent(services.checkpointStorage.getStorage(agentId));
+				let executionId = '';
+				try {
+					const chunks = await collect(
+						services.turns.execute({
+							...common,
+							agentInstance: runtime,
+							previewChat: true,
+							automaticPreviewContinuation,
+							onExecutionStarted: (id) => {
+								executionId = id;
+							},
+							prepare: async () => ({
+								type: 'resume',
+								resumeData: { approved: true },
+								options: {
+									runId: suspension.runId,
+									toolCallId: suspension.toolCallId,
+									onResumeClaimed: async () => {
+										await services.queue.steer({ ...target, queueId: c.id, executionId });
+									},
+								},
+								recording: { ...recording, userMessage: null, sessionMode: 'existing' },
+							}),
+						}),
+					);
+					expect(chunks).toContainEqual(
+						expect.objectContaining({
+							type: 'message-steered',
+							queueId: c.id,
+							executionId,
+							message: expect.objectContaining({
+								id: c.messageId,
+								content: [{ type: 'text', text: 'C' }],
+							}),
+						}),
+					);
+					expect(await repository.findOneByOrFail({ id: executionId })).toMatchObject({
+						status: 'success',
+						acceptsSteering: false,
+						timeline: expect.arrayContaining([
+							expect.objectContaining({ type: 'input', messageId: c.messageId }),
+						]),
+					});
+					const inputs = await services.messageRepository.findExecutionInputs([executionId]);
+					expect(inputs.get(executionId)?.map(({ id }) => id)).toEqual([
+						...(initialInputs.get(predecessor.id) ?? []).map(({ id }) => id),
+						c.messageId,
+					]);
+					const detail = await services.executionService.getThreadDetail(
+						threadId,
+						projectId,
+						agentId,
+						owner.id,
+					);
+					expect(
+						executionsToMessagesDto(detail!.executions)
+							.filter(({ role }) => role === 'user')
+							.map(({ content }) => content),
+					).toEqual([[{ type: 'text', text: 'Start' }], [{ type: 'text', text: 'C' }]]);
+					expect(
+						formatPreviewSessionContext(detail!.thread, detail!.executions, executionId),
+					).toContain('User: Start');
+					expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+						b.id,
+					]);
+					await finish(services, await claim(services, threadId));
+				} finally {
+					await runtime.close();
+				}
+			},
+		);
+
+		it('consumes reserved messages in acceptance order and retains their history after interruption', async () => {
+			const local = recordingServices();
+			const remote = recordingServices(undefined, peer);
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id };
+			await enqueue(local, input(threadId, 'A', 'new'));
+			const active = await claim(local, threadId);
+			const executionId = active.admission.executionId;
+			const b = await enqueue(local, input(threadId, 'B'));
+			const data = input(threadId, 'C', 'existing', uuid());
+			data.payload.attachments = [
+				{ id: 'file-c', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 3 },
+			];
+			const c = await enqueue(local, data);
+			const original = await local.messageRepository.findOneByOrFail({ id: c.messageId });
+			const d = await enqueue(local, input(threadId, 'D'));
+			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				b.id,
+				c.id,
+				d.id,
+			]);
+			await local.queue.steer({ ...target, queueId: d.id, executionId });
+			const concurrent = await Promise.allSettled([
+				local.queue.steer({ ...target, queueId: c.id, executionId }),
+				remote.queue.steer({ ...target, queueId: c.id, executionId }),
+			]);
+			expect(concurrent.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
+			await expect(
+				remote.queue.steer({ ...target, userId: 'other-user', queueId: b.id, executionId }),
+			).rejects.toThrow('Session not found');
+			await expect(remote.queue.removePending({ ...target, queueId: c.id })).rejects.toThrow();
+			await expect(
+				remote.queue.updatePending({ ...target, queueId: c.id, message: 'changed' }),
+			).rejects.toThrow();
+			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				d.id,
+				c.id,
+				b.id,
+			]);
+			expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
+			const recorder = local.turns.createRecorder(undefined, () => executionId, target);
+			recorder.record({ type: 'text-delta', id: 'before', delta: 'before' });
+			const outputId = uuid();
+			const boundaryTimestamp = Date.now();
+			const result = await local.steering.consume(
+				{ ...target, executionId },
+				{
+					messages: [
+						{
+							id: active.admission.inputMessageIds[0],
+							createdAt: new Date(boundaryTimestamp - 1),
+							role: 'user',
+							content: [
+								{ type: 'text', text: 'A' },
+								{
+									type: 'file',
+									mediaType: 'text/plain',
+									data: new Uint8Array([1, 2, 3]),
+									fileRef: { id: 'file-a', fileName: 'a.txt' },
+								},
+							],
+						},
+						{
+							id: outputId,
+							createdAt: new Date(boundaryTimestamp),
+							role: 'assistant',
+							content: [{ type: 'text', text: 'before' }],
+						},
+					],
+					lastCreatedAt: boundaryTimestamp,
+					completing: false,
+					canContinue: true,
+				},
+				recorder,
+				local.executionService.getAbortSignal(executionId),
+			);
+			expect(result.events.map(({ queueId }) => queueId)).toEqual([d.id, c.id]);
+			expect(result.messages.map(({ id }) => id)).toEqual([d.messageId, c.messageId]);
+			expect(result.events[1].message).toMatchObject({
+				id: c.messageId,
+				createdAt: original.createdAt.toISOString(),
+			});
+			const stored = await local.messageRepository.findBy({ threadId });
+			expect(stored).toHaveLength(5);
+			expect(stored.find(({ id }) => id === c.messageId)).toMatchObject({
+				content: original.content,
+				createdAt: original.createdAt,
+				author: original.author,
+				origin: original.origin,
+				modelContextAt: result.messages[1].createdAt,
+			});
+			expect(
+				(await local.messageRepository.findRuntimeMessages({ threadId })).map(({ id }) => id),
+			).toEqual([active.admission.inputMessageIds[0], outputId, d.messageId, c.messageId]);
+			expect(
+				await repository.manager.find(AgentExecutionMessageLink, {
+					where: { executionId },
+					order: { direction: 'ASC', position: 'ASC' },
+				}),
+			).toMatchObject([
+				{ messageId: active.admission.inputMessageIds[0], direction: 'input', position: 0 },
+				{ messageId: d.messageId, direction: 'input', position: 1 },
+				{ messageId: c.messageId, direction: 'input', position: 2 },
+				{ messageId: outputId, direction: 'output', position: 0 },
+			]);
+			expect(await remote.queue.enqueue(data)).toEqual({ status: 'duplicate' });
+			expect(JSON.stringify(stored)).not.toContain('"data"');
+			expect(JSON.stringify(stored)).toContain('file-c');
+			expect(local.attachmentService.deleteByIds).not.toHaveBeenCalled();
+			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([b.id]);
+			await expect(
+				remote.queue.steer({ ...target, queueId: c.id, executionId }),
+			).rejects.toMatchObject({ httpStatusCode: 409 });
+			await expect(finish(remote, active)).rejects.toThrow('no longer running');
+			expect(
+				(await repository.findExecution(executionId))?.timeline?.filter(
+					({ type }) => type === 'input',
+				),
+			).toHaveLength(2);
+			const cutoff = new Date(Date.now() - 120_000);
+			await repository.update(executionId, { updatedAt: new Date(cutoff.getTime() - 1) });
+			const abandoned = await repository.findOneByOrFail({ id: executionId });
+			expect(await remote.executionService.finalizeInterruptedExecution(abandoned, cutoff)).toBe(
+				true,
+			);
+			const next = await claim(remote, threadId);
+			expect(next.item.id).toBe(b.id);
+			expect(
+				(await repository.findExecution(executionId))?.timeline?.filter(
+					({ type }) => type === 'input',
+				),
+			).toHaveLength(2);
+			await finish(remote, next);
+		});
+
+		it('rolls back messages and timeline markers if consumption fails', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id };
+			await enqueue(services, input(threadId, 'A', 'new'));
+			const active = await claim(services, threadId);
+			const executionId = active.admission.executionId;
+			const c = await enqueue(services, input(threadId, 'C'));
+			await services.queue.steer({ ...target, queueId: c.id, executionId });
+			const before = await services.messageRepository.find({
+				where: { threadId },
+				order: { id: 'ASC' },
+			});
+			const consume = services.queueRepository.consumeSteering.bind(services.queueRepository);
+			const failure = vi
+				.spyOn(services.queueRepository, 'consumeSteering')
+				.mockImplementationOnce(async (...args) => {
+					await consume(...args);
+					throw new Error('consumption failed');
+				});
+			const recorder = new ExecutionRecorder();
+			await expect(
+				services.steering.consume(
+					{ ...target, executionId },
+					{
+						messages: [],
+						lastCreatedAt: 0,
+						completing: false,
+						canContinue: true,
+					},
+					recorder,
+					new AbortController().signal,
+				),
+			).rejects.toThrow('consumption failed');
+			failure.mockRestore();
+			expect(
+				await services.messageRepository.find({ where: { threadId }, order: { id: 'ASC' } }),
+			).toEqual(before);
+			expect(
+				(await services.messageRepository.findExecutionInputs([executionId]))
+					.get(executionId)
+					?.map(({ id }) => id),
+			).toEqual(active.admission.inputMessageIds);
+			expect((await repository.findExecution(executionId))?.timeline ?? []).toEqual([]);
+			expect(recorder.getMessageRecord().timeline).toEqual([]);
+			expect(await services.queueRepository.findOneByOrFail({ id: c.id })).toMatchObject({
+				steeringExecutionId: executionId,
+			});
+			await finish(services, active);
+		});
+
+		it.each(['stop', 'failure', 'suspension', 'restart', 'limit'] as const)(
+			'restores original FIFO positions after %s before consumption',
+			async (reason) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				const target = { projectId, agentId, threadId, userId: owner.id };
+				await enqueue(local, input(threadId, 'A', 'new'));
+				const active = await claim(local, threadId);
+				const executionId = active.admission.executionId;
+				const b = await enqueue(local, input(threadId, 'B'));
+				const c = await enqueue(local, input(threadId, 'C'));
+				await remote.queue.steer({ ...target, queueId: c.id, executionId });
+				expect((await local.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+					c.id,
+					b.id,
+				]);
+				if (reason === 'stop') await remote.steering.close(threadId, executionId);
+				if (reason === 'limit') {
+					await local.steering.consume(
+						{ ...target, executionId },
+						{
+							messages: [],
+							lastCreatedAt: 0,
+							completing: true,
+							canContinue: false,
+						},
+						new ExecutionRecorder(),
+						new AbortController().signal,
+					);
+				}
+				if (reason === 'suspension') {
+					await local.checkpointStorage.save(
+						uuid(),
+						{
+							status: 'suspended',
+							messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+							pendingToolCalls: {},
+							persistence: {
+								threadId,
+								resourceId: `draft-chat:${owner.id}`,
+								hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+							},
+						},
+						agentId,
+					);
+				}
+				if (reason === 'restart') {
+					const cutoff = new Date(Date.now() - 120_000);
+					await repository.update(executionId, { updatedAt: new Date(cutoff.getTime() - 1) });
+					await remote.executionService.finalizeInterruptedExecution(
+						await repository.findOneByOrFail({ id: executionId }),
+						cutoff,
+					);
+				} else if (reason === 'stop') {
+					await finish(local, active, 'cancelled');
+				} else if (reason === 'failure') {
+					await finish(local, active, 'error');
+				} else {
+					await finish(local, active);
+				}
+				if (reason !== 'restart') {
+					expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+						b.id,
+						c.id,
+					]);
+				}
+				const next = await remote.queue.claimNext(threadId, async () => true);
+				expect(
+					(await remote.queueRepository.findOneByOrFail({ id: c.id })).steeringExecutionId,
+				).toBeNull();
+				await expect(
+					remote.queue.steer({ ...target, queueId: c.id, executionId }),
+				).rejects.toThrow();
+				if (reason === 'suspension') {
+					expect(next).toBeNull();
+					expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+						b.id,
+						c.id,
+					]);
+				} else {
+					expect(next?.item.id).toBe(b.id);
+					await finish(remote, next!);
+					await finish(remote, await claim(remote, threadId));
+				}
+			},
+		);
+
+		it.each(['steer', 'stop', 'completion', 'failure', 'edit', 'remove'] as const)(
+			'serializes steering with %s on another database connection',
+			async (operation) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				await enqueue(local, input(threadId, 'A', 'new'));
+				const active = await claim(local, threadId);
+				const executionId = active.admission.executionId;
+				const c = await enqueue(local, input(threadId, 'C'));
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					queueId: c.id,
+					executionId,
+				};
+				const acquired = createDeferredPromise();
+				const release = createDeferredPromise();
+				const lock = local.threads.lockById.bind(local.threads);
+				vi.spyOn(local.threads, 'lockById').mockImplementationOnce(async (...args) => {
+					const thread = await lock(...args);
+					acquired.resolve();
+					await release.promise;
+					return thread;
+				});
+				const first = (async () => {
+					switch (operation) {
+						case 'steer':
+							return await local.queue.steer(target);
+						case 'stop':
+							return await local.steering.close(threadId, executionId);
+						case 'completion':
+							return await local.steering.consume(
+								target,
+								{ messages: [], lastCreatedAt: 0, completing: true, canContinue: true },
+								new ExecutionRecorder(),
+								new AbortController().signal,
+							);
+						case 'failure':
+							return await local.executionService.finalizeExecution(executionId, {
+								...active.recording,
+								record: {
+									...new ExecutionRecorder().getMessageRecord(),
+									finishReason: 'error',
+									error: 'Failed',
+								},
+							});
+						case 'edit':
+							return await local.queue.updatePending({ ...target, message: 'edited' });
+						case 'remove':
+							return await local.queue.removePending(target);
+					}
+				})();
+				await acquired.promise;
+				const observe = observePeerTransaction();
+				const results = Promise.allSettled([first, remote.queue.steer(target)]);
+				try {
+					await observe.started;
+				} finally {
+					release.resolve();
+					observe.restore();
+				}
+				const settled = await results;
+				expect(settled[0].status).toBe('fulfilled');
+				expect(settled[1].status).toBe(operation === 'edit' ? 'fulfilled' : 'rejected');
+				if (operation === 'edit')
+					expect(
+						(await remote.messageRepository.findOneByOrFail({ id: c.messageId })).content,
+					).toEqual(buildInboundUserMessage('edited', [])[0]);
+				if (operation === 'failure') {
+					expect(settled[1]).toMatchObject({
+						reason: { message: 'This message cannot be added to that execution' },
+					});
+					await local.queue.settle(threadId, executionId);
+				} else {
+					await finish(local, active);
+				}
+			},
+		);
 
 		it.each(['preview', 'integration'] as const)(
 			'accepts one %s delivery across connections and rolls back the losing transaction',
@@ -1335,7 +2199,10 @@ describe('AgentExecutionRepository', () => {
 			expect(services.attachmentService.deleteByIds).not.toHaveBeenCalled();
 			await services.queue.removePending({ ...target, queueId: pending.id });
 			expect(await services.queue.enqueue(pendingInput)).toEqual({ status: 'duplicate' });
-			expect(await services.queue.listPending(target)).toEqual({ items: [] });
+			expect(await services.queue.listPending(target)).toEqual({
+				items: [],
+				steerableExecutionId: active.admission.executionId,
+			});
 			expect(services.attachmentService.deleteByIds).toHaveBeenCalledWith(['pending-file']);
 			expect(
 				await services.messageRepository.findOneByOrFail({ id: pending.messageId }),
@@ -1687,6 +2554,14 @@ describe('AgentExecutionRepository', () => {
 				await enqueue(local, original);
 				const pending = await enqueue(local, input(threadId, 'later'));
 				const active = await claim(local, threadId);
+				await local.queue.steer({
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					queueId: pending.id,
+					executionId: active.admission.executionId,
+				});
 				const runId = uuid();
 				const state: SerializableAgentState = {
 					status: 'suspended',
@@ -1700,6 +2575,13 @@ describe('AgentExecutionRepository', () => {
 				};
 				await local.checkpointStorage.save(runId, state, agentId);
 				expect(await remote.queue.enqueue(original)).toEqual({ status: 'duplicate' });
+				expect(await repository.findExecution(active.admission.executionId)).toMatchObject({
+					acceptsSteering: false,
+				});
+				expect(await remote.queueRepository.findOneByOrFail({ id: pending.id })).toMatchObject({
+					steeringExecutionId: null,
+					steeringOrder: null,
+				});
 				if (predecessor === 'settled') await finish(local, active);
 				if (predecessor === 'interrupted') {
 					const cutoff = new Date(Date.now() - 120_000);
@@ -2799,7 +3681,7 @@ describe('AgentExecutionRepository', () => {
 	});
 
 	describe('session filters', () => {
-		it('filters all composite statuses using the latest execution and recovered failures', async () => {
+		it('filters session status from the latest execution', async () => {
 			const running = await createThread({ sessionNumber: 1 });
 			const succeeded = await createThread({ sessionNumber: 2 });
 			const recovered = await createThread({ sessionNumber: 3 });
@@ -2844,8 +3726,8 @@ describe('AgentExecutionRepository', () => {
 				).threads.map(({ id }) => id);
 
 			expect(await idsFor('running')).toEqual([running.id]);
-			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
-			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
+			expect(new Set(await idsFor('succeeded'))).toEqual(new Set([succeeded.id, recovered.id]));
+			expect(await idsFor('error')).toEqual([errored.id]);
 
 			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
 			expect(latestStatuses.get(running.id)).toBe('running');

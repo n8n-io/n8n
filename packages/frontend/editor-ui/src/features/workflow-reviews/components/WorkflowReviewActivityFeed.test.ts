@@ -2,9 +2,13 @@ import type { WorkflowReviewActivityEntry } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { computed, nextTick } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
-import { ReviewLinkedWorkflowsKey, type ReviewLinkedWorkflowContext } from '../constants';
+import {
+	ReviewDetailScrollContainerKey,
+	ReviewLinkedWorkflowsKey,
+	type ReviewLinkedWorkflowContext,
+} from '../constants';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 
@@ -42,6 +46,16 @@ function resizeComposer(height: number) {
 }
 
 const renderComponent = createComponentRenderer(WorkflowReviewActivityFeed);
+
+/** Renders the feed with a stand-in for the detail pane's scroll area, and returns that area. */
+function renderInScrollContainer(options: Parameters<typeof renderComponent>[0] = {}) {
+	const container = document.createElement('div');
+	renderComponent({
+		...options,
+		global: { provide: { [ReviewDetailScrollContainerKey as symbol]: ref(container) } },
+	});
+	return container;
+}
 
 type CommentEntry = Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
 
@@ -228,8 +242,7 @@ describe('WorkflowReviewActivityFeed', () => {
 	 * differs without anything having been prepended. `scrollHeight` is stubbed because jsdom
 	 * has no layout; the assertion is on the feed landing at the bottom, not on any arithmetic.
 	 */
-	async function reloadFeedAndReturnContainer(getByTestId: (id: string) => HTMLElement) {
-		const container = getByTestId('workflow-review-activity-feed');
+	async function reloadFeed(container: HTMLElement) {
 		Object.defineProperty(container, 'scrollHeight', { value: 500, configurable: true });
 		container.scrollTop = 120;
 
@@ -242,10 +255,10 @@ describe('WorkflowReviewActivityFeed', () => {
 	it('shows the entry a decision just added to a feed the viewer had paged back through', async () => {
 		store.entries = [makeComment({ id: '1' }), makeComment({ id: '2' })];
 
-		const { getByTestId } = renderComponent();
+		const container = renderInScrollContainer();
 		await nextTick();
 
-		expect((await reloadFeedAndReturnContainer(getByTestId)).scrollTop).toBe(500);
+		expect((await reloadFeed(container)).scrollTop).toBe(500);
 	});
 
 	// `loadMore` returns early while another page is in flight, leaving behind the anchor it
@@ -255,11 +268,11 @@ describe('WorkflowReviewActivityFeed', () => {
 		store.hasMore = true;
 		store.loadingMore = true;
 
-		const { getByTestId } = renderComponent();
+		const container = renderInScrollContainer();
 		await nextTick();
 		observer.onIntersect();
 
-		expect((await reloadFeedAndReturnContainer(getByTestId)).scrollTop).toBe(500);
+		expect((await reloadFeed(container)).scrollTop).toBe(500);
 	});
 
 	it('does not request the same older page twice', async () => {
@@ -299,10 +312,9 @@ describe('WorkflowReviewActivityFeed', () => {
 
 	it('follows a growing composer only when the feed is at the bottom', async () => {
 		store.entries = [makeComment({ id: '1' })];
-		const { getByTestId } = renderComponent({ slots: { composer: '<textarea />' } });
+		const container = renderInScrollContainer({ slots: { composer: '<textarea />' } });
 		await nextTick();
 
-		const container = getByTestId('workflow-review-activity-feed');
 		Object.defineProperty(container, 'clientHeight', { value: 300, configurable: true });
 		Object.defineProperty(container, 'scrollHeight', { value: 524, configurable: true });
 

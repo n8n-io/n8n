@@ -41,6 +41,19 @@ Possible approaches:
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
 
+Phase 3 decisions:
+
+- `@n8n/agents`: retire the enum-member casing selector. It enforces style only.
+- `@n8n/instance-ai`: retire the quoted object-property selector. It only exempts names that require quotes and protects no API contract.
+- `@n8n/instance-ai`: remove the stale package-wide filename exception. The package no longer contains files that need it.
+- `@n8n/instance-ai`: override the removed Node 10 module resolution in the scripts tsconfig so tsgolint can keep linting `scripts/**/*.ts`.
+
+### Testing infrastructure decisions
+
+- `@n8n/rules-engine`, `@n8n/code-health`, and `@n8n/playwright-janitor`: retire the exemption-only rule-ID selectors. They enforce no positive naming contract.
+- `n8n-containers`: retire the Docker label exemption. Object literal keys are data, not identifier contracts.
+- `n8n-playwright`: retire the broad style selectors. Workflow names, fixture keys, and spec paths are data, while identifier casing has no runtime contract.
+
 ## Retirement exceptions
 
 ### `n8n-node-dev`

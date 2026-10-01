@@ -43,6 +43,7 @@ const props = defineProps<{
 	agentId?: string;
 	sessionId?: string;
 	canSendToAssistant?: boolean;
+	dismissedFixToolCallIds?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -461,6 +462,7 @@ watch(
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
@@ -551,6 +553,7 @@ watch(
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>

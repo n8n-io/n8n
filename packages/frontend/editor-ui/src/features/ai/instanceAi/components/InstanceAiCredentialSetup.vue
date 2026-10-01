@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
-import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -28,7 +27,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
-import { AI_GATEWAY_MANAGED_TAG } from '../constants';
+import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -51,8 +50,9 @@ const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 const settingsStore = useInstanceAiSettingsStore();
 
-const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
-	useInstanceAiBrowserCredentialSetupExperiment();
+const isBrowserCredentialSetupEnabled = computed(
+	() => INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED && settingsStore.isBrowserUseAvailable,
+);
 const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 

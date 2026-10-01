@@ -1,12 +1,6 @@
 import type {
-	AddDataTableColumnDto,
-	AddDataTableRowsDto,
-	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
 	PublicCreateDestination,
-	UpdateOtelSettingsDto,
-	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
@@ -125,25 +119,7 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
 	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
 
 	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
@@ -156,17 +132,6 @@ export declare namespace DataTableRequest {
 			returnData?: string | boolean;
 			dryRun?: string | boolean;
 		}
-	>;
-
-	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
-
-	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
-
-	type UpdateColumn = AuthenticatedRequest<
-		{ dataTableId: string; columnId: string },
-		{},
-		UpdateDataTableColumnDto,
-		{}
 	>;
 }
 
@@ -198,15 +163,6 @@ export declare namespace LogStreamingRequest {
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
-}
-
-// ----------------------------------
-//        /settings/otel
-// ----------------------------------
-
-export declare namespace OtelSettingsRequest {
-	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
-	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }
 
 // ----------------------------------
