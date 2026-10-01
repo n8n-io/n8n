@@ -135,14 +135,14 @@ export class SubAgentBackgroundRunner {
 					workflowToolExecutionMode: context.workflowToolExecutionMode,
 					user: context.user,
 					instrumentation: context.instrumentation,
-				abortSignal: abortController.signal,
-				backgroundJobId: jobId,
-				parentMessageContext: request.parentMessageContext,
-				// The parent thread is the root session: the child debits it, not
-				// its own thread id, and its descendants keep the same bucket.
-				rootSessionId: request.parentThreadId,
-				rootSessionCapUsd: context.rootSessionCapUsd,
-				budgetForwarded: true,
+					abortSignal: abortController.signal,
+					backgroundJobId: jobId,
+					parentMessageContext: request.parentMessageContext,
+					// The parent thread is the root session: the child debits it, not
+					// its own thread id, and its descendants keep the same bucket.
+					rootSessionId: request.parentThreadId,
+					rootSessionCapUsd: context.rootSessionCapUsd,
+					budgetForwarded: true,
 					...(request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
 						: {}),
