@@ -988,7 +988,12 @@ onBeforeUnmount(() => {
 						:plan="currentPlan"
 						:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
 					/>
-					<div v-if="displayedQueueRows.length" ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
+					<div
+						v-if="displayedQueueRows.length"
+						ref="messageQueue"
+						:class="$style.messageQueue"
+						data-testid="agent-message-queue"
+					>
 						<Draggable
 							:id="queueListId"
 							:model-value="visibleQueueRows"
