@@ -500,17 +500,8 @@ describe('processError', () => {
 			{ executionMode: 'webhook', workflowData: workflow },
 			{ executionId: execution.id, expectedStatus: 'new' },
 		);
-		const claim = vi
-			.spyOn(Container.get(ExecutionCrashService), 'markAsCrashedWithoutCounting')
-			.mockResolvedValue([
-				{
-					id: execution.id,
-					workflowId: workflow.id,
-					mode: 'webhook',
-					startedAt: null,
-					stoppedAt: new Date(),
-				},
-			]);
+		const executionRepository = Container.get(ExecutionRepository);
+		const announce = vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution');
 
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -521,7 +512,7 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(claim).toHaveBeenCalledExactlyOnceWith(execution.id, 'stall');
+		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -533,6 +524,10 @@ describe('processError', () => {
 				}),
 			}),
 		);
+
+		// the guarded write transitioned and persisted the execution atomically
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('crashed');
 	});
 
 	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
@@ -640,16 +635,12 @@ describe('processError', () => {
 	});
 
 	test.each(['error', 'crashed'] as const)(
-		'processError fails a stalled-count error without rechecking when the execution is already %s',
+		'processError does not overwrite an execution already %s on a stalled-count error',
 		async (status) => {
 			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution({ status: 'running', finished: false }, workflow);
+			const execution = await createExecution({ status, finished: false }, workflow);
 			const executionRepository = Container.get(ExecutionRepository);
 			const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
-
-			const findSingleExecution = vi
-				.spyOn(executionRepository, 'findSingleExecution')
-				.mockResolvedValue(mock<IExecutionBase>({ status }));
 
 			globalConfig.executions.mode = 'queue';
 			vi.useFakeTimers();
@@ -667,12 +658,11 @@ describe('processError', () => {
 				vi.useRealTimers();
 			}
 
-			expect(findSingleExecution).toHaveBeenCalledTimes(1);
-			expect(finalizeExecution).toHaveBeenCalledWith(
-				execution.id,
-				expect.objectContaining({ status: 'crashed' }),
-			);
-			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+			// the guarded write loses to the terminal row, so nothing is persisted
+			expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+			expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+			const stored = await executionRepository.findSingleExecution(execution.id, {});
+			expect(stored?.status).toBe(status);
 		},
 	);
 
