@@ -269,17 +269,18 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(false);
 		});
 
-		it('shows a read permission only while its surface is on', async () => {
+		it('does not offer the read permissions yet', async () => {
 			withBot();
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
 			await openAvailability(getByTestId);
 
-			expect(queryByTestId('teams-read-channels')).toBeNull();
 			await fireEvent.click(getByTestId('teams-scope-channels'));
+			await fireEvent.click(getByTestId('teams-scope-groups'));
 
-			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
+			await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(true));
+			expect(queryByTestId('teams-read-channels')).toBeNull();
 			expect(queryByTestId('teams-read-groups')).toBeNull();
 		});
 
@@ -289,31 +290,14 @@ describe('AgentChannelTeamsSetup', () => {
 			await openAvailability(getByTestId);
 
 			await fireEvent.click(getByTestId('teams-scope-channels'));
-			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-read-channels'));
 
 			await expectSummary(
 				getByTestId,
 				[
 					'agents.channels.teams.setup.availability.directChat',
 					'agents.channels.teams.setup.availability.teamChannels',
-					'agents.channels.teams.setup.availability.readsChannels',
 				].join(SUMMARY_SEPARATOR),
 			);
-		});
-
-		it('clears a read permission when its surface goes off, so turning it back on starts cleared', async () => {
-			withBot();
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
-			await openAvailability(getByTestId);
-
-			await fireEvent.click(getByTestId('teams-scope-channels'));
-			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-read-channels'));
-			await fireEvent.click(getByTestId('teams-scope-channels'));
-			await fireEvent.click(getByTestId('teams-scope-channels'));
-
-			await waitFor(() => expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(false));
 		});
 
 		it('restores saved settings', async () => {
@@ -327,7 +311,6 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await openAvailability(getByTestId);
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
-			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
 	});
 

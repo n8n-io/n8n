@@ -69,12 +69,16 @@ const READ_GROUPS: Row = {
 	testId: 'teams-read-groups',
 };
 
+// Off until the agent can act on every message it reads. Until then a read
+// permission would only widen what the app asks for at install.
+const OFFER_READ_PERMISSIONS = false;
+
 // A read permission is offered only while its surface is on, since it depends on it.
 const rows = computed(() => [
 	TEAM_CHANNELS,
-	...(value.value.teamChannels ? [READ_CHANNELS] : []),
+	...(OFFER_READ_PERMISSIONS && value.value.teamChannels ? [READ_CHANNELS] : []),
 	GROUP_CHATS,
-	...(value.value.groupChats ? [READ_GROUPS] : []),
+	...(OFFER_READ_PERMISSIONS && value.value.groupChats ? [READ_GROUPS] : []),
 ]);
 
 /** A collapsed panel still has to say what it is set to. */
@@ -82,11 +86,13 @@ const summary = computed(() => {
 	const { teamChannels, readAllChannelMessages, groupChats, readAllGroupMessages } = value.value;
 	const on = [
 		teamChannels && 'agents.channels.teams.setup.availability.teamChannels',
-		teamChannels &&
+		OFFER_READ_PERMISSIONS &&
+			teamChannels &&
 			readAllChannelMessages &&
 			'agents.channels.teams.setup.availability.readsChannels',
 		groupChats && 'agents.channels.teams.setup.availability.groupChats',
-		groupChats &&
+		OFFER_READ_PERMISSIONS &&
+			groupChats &&
 			readAllGroupMessages &&
 			'agents.channels.teams.setup.availability.readsGroupChats',
 	].filter((key): key is BaseTextKey => Boolean(key));
