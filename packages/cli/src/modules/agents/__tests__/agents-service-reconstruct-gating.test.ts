@@ -908,8 +908,42 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			) as BuiltTool[];
 			expect(tools.find((tool) => tool.name === 'create_plan')?.systemInstruction).toBe(
 				'Use planning for potentially long-running work, work with multiple steps, or work with complex dependencies. ' +
+					'For this work, create or update the plan before research, other task tool calls, or sub-agent delegation. ' +
+					'Discovery followed by a shortlist and parallel research requires a plan. A chat message describing the steps is not a plan. ' +
+					'If the user asks for quick work, keep the plan compact rather than skipping it. ' +
+					'Always save new tasks and groups with status "pending", in both create_plan and update_plan. ' +
+					'Do not create an item as "in_progress" or "done", even when work starts immediately or already finished. ' +
+					'After the write succeeds, use the returned permanent IDs and revision in a separate update_plan call to change statuses. ' +
+					'Only start or complete work after its prerequisites are Done. ' +
+					'If later tasks depend on research results, start with the known tasks and extend the plan after research. ' +
+					'Do not invent placeholder tasks for work whose scope or targets are not yet known. ' +
+					'Represent that stage as a Pending group with an empty tasks list and dependencies on the prerequisite work. ' +
+					'For example, add "Research finalists" without tasks named "Finalist 1", "Finalist 2", or "Finalist 3". ' +
+					'After accepting the shortlist results, add concrete tasks to that group before starting the research. ' +
+					'Do not add final communication-only tasks, such as "Presented findings to user", to the plan. ' +
+					'Include such a task only when it requires a sub-agent or a tool call beyond plan maintenance. ' +
 					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
+					'For sub-agent work on a plan task, always use spawn_background_subagent, even for short or sequential tasks. ' +
+					'Do not use delegate_subagent for plan work. ' +
+					'This rule overrides the default foreground-delegation guidance for plan work. ' +
+					'If spawn_background_subagent is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
 					'Keep task and group statuses current. Accept results before marking work Done. ' +
+					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
+					'Wait for the plan update to succeed before announcing the change. ' +
+					'Use presentation.label for a short, factual activity label in the plan card. ' +
+					'Name the current activity in a few words, such as "Checking vendor pricing", not a list of completed tasks. ' +
+					'Use presentation.detail for one brief progress note, limitation, or change of approach, not a results report. ' +
+					'Keep task and group titles short. Each title must explain the work without its description. ' +
+					'Avoid repeated words or phrases across task and group titles at the same nesting level when clarity permits. ' +
+					'Put shared context in the parent title instead of repeating it in every child title. ' +
+					'Keep each title distinct and clear. Do not replace repeated words with synonyms just for variety. ' +
+					'Update titles of pending or in-progress tasks to reflect the current activity. The card shows titles, not task descriptions. ' +
+					'For an in-progress task, use a simple action verb with a short note in parentheses, such as "Research pricing (3 vendors)". ' +
+					'When marking a task Done, use a past-tense title, such as "Researched pricing". ' +
+					'Save the completed title in the same update as the Done status. Final tasks cannot change. ' +
+					'Put constraints in descriptions and findings in resultSummary. ' +
+					'Keep this text current through update_plan. Presentation text does not set task or group statuses. ' +
+					'Before closing a plan, save a final presentation.detail summary of completed and unfinished work. ' +
 					'Underlying runs do not set plan statuses.',
 			);
 			if (backgroundTasksEnabled) {
