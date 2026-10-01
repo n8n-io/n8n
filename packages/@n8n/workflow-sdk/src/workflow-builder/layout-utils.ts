@@ -980,7 +980,7 @@ export function calculateNodePositionsDagre(
 	const collapsedGroups = nodeGroups?.length
 		? collapseNodeGroups(parentGraph, nodeGroups, nodes, keyByNodeId, ungroupableKeys, {
 				createSubGraph,
-				canFoldMembers: (memberKeys, graph) =>
+				canCollapseMembers: (memberKeys, graph) =>
 					hasCompleteAiSubtree(memberKeys, graph, aiParentNames, aiConfigNames),
 				layoutSubGraph: (memberKeys, graph) =>
 					layoutGroupMembers(memberKeys, graph, aiParentNames, aiConfigNames, nodes),

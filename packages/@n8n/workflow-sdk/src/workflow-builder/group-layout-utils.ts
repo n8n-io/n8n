@@ -11,6 +11,11 @@ import {
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
 
+const GROUP_GRAPH_ID_PREFIX = '__nodeGroup__:';
+
+/** Vertical drop from a group's title bar to its members. */
+const GROUP_HEADER_TO_MEMBERS_Y = GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
+
 export interface BoundingBox {
 	x: number;
 	y: number;
@@ -29,12 +34,12 @@ export interface CollapsedGroup {
 	stickyMemberKeys: string[];
 }
 
-interface FoldNodeGroupsDependencies {
+interface CollapsedNodeGroupsDependencies {
 	createSubGraph: (nodeIds: string[], parent: dagre.graphlib.Graph) => dagre.graphlib.Graph;
 	/** Layout the complete member set before the parent graph replaces it with a chip. */
 	layoutSubGraph?: (nodeIds: string[], parent: dagre.graphlib.Graph) => dagre.graphlib.Graph;
 	/** Reject groups that another layout owner cannot represent safely. */
-	canFoldMembers?: (nodeIds: readonly string[], parent: dagre.graphlib.Graph) => boolean;
+	canCollapseMembers?: (nodeIds: readonly string[], parent: dagre.graphlib.Graph) => boolean;
 }
 
 interface PlaceGroupMembersDependencies {
@@ -252,7 +257,7 @@ export function collapseNodeGroups(
 	nodes: ReadonlyMap<string, GraphNode>,
 	keyByNodeId: ReadonlyMap<string, string>,
 	excludedKeys: ReadonlySet<string>,
-	{ canFoldMembers, createSubGraph, layoutSubGraph }: FoldNodeGroupsDependencies,
+	{ canCollapseMembers, createSubGraph, layoutSubGraph }: CollapsedNodeGroupsDependencies,
 ): CollapsedGroup[] {
 	const collapsed: CollapsedGroup[] = [];
 	const resolvedGroups = nodeGroups
@@ -267,7 +272,7 @@ export function collapseNodeGroups(
 	for (const group of resolvedGroups) {
 		if (
 			!isEligibleGroup(group, conflictingIndexes, parentGraph, excludedKeys, nodes, keyByNodeId) ||
-			(canFoldMembers !== undefined && !canFoldMembers(group.memberKeys, parentGraph))
+			(canCollapseMembers !== undefined && !canCollapseMembers(group.memberKeys, parentGraph))
 		) {
 			continue;
 		}
@@ -312,11 +317,6 @@ export function collapseNodeGroups(
 
 	return collapsed;
 }
-
-const GROUP_GRAPH_ID_PREFIX = '__nodeGroup__:';
-
-/** Vertical drop from a group's title bar to the top of its members. */
-const GROUP_HEADER_TO_MEMBERS_Y = GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
 
 /**
  * Unfold a group: place its members below and right of where the layout put the
