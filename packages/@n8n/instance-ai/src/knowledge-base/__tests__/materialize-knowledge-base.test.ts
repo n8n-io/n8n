@@ -152,6 +152,10 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				file: 'reference/workflow-builder-guardrails.md',
 			}),
 			expect.objectContaining({
+				id: 'workflow-sdk-patterns',
+				file: 'reference/workflow-sdk-patterns.md',
+			}),
+			expect.objectContaining({
 				id: 'workflow-sdk-language',
 				file: 'reference/workflow-sdk-language.md',
 			}),
