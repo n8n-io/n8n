@@ -17,6 +17,12 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<i :data-icon="icon" />',
 		props: ['icon'],
 	},
+	N8nPopover: {
+		template:
+			'<div><div @click="$emit(\'update:open\', !open)"><slot name="trigger" /></div><div v-if="open"><slot name="content" /></div></div>',
+		props: ['open'],
+		emits: ['update:open'],
+	},
 	N8nText: {
 		template: '<component :is="tag ?? \'span\'"><slot /></component>',
 		props: ['tag'],
@@ -118,6 +124,22 @@ describe('AgentSetupTasks', () => {
 
 		expect(container.classes()).not.toContain('hasPersonalisation');
 		expect(container.attributes('style') ?? '').not.toContain('--agent-personalisation-gradient');
+	});
+
+	it('moves the selected task with the arrow keys and activates it with Enter', async () => {
+		const wrapper = mount(AgentSetupTasks, { props: { tasks } });
+		await wrapper.get('button').trigger('click');
+
+		const list = wrapper.get('ul');
+		const taskItems = wrapper.findAll('li');
+		expect(taskItems[0].attributes('data-selected')).toBe('true');
+
+		await list.trigger('keydown', { key: 'ArrowDown' });
+		expect(taskItems[0].attributes('data-selected')).toBe('false');
+		expect(taskItems[1].attributes('data-selected')).toBe('true');
+
+		await list.trigger('keydown', { key: 'Enter' });
+		expect(wrapper.emitted('action')?.[0]).toEqual([tasks[0]]);
 	});
 
 	it('only shows visible tasks', () => {
