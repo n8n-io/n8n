@@ -304,6 +304,8 @@ describe('JobProcessor', () => {
 
 			settleExecution();
 			await processing;
+			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
+			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
 		});
 
 		it('should stop tracking a job when loading its execution fails', async () => {
