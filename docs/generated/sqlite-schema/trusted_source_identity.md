@@ -63,6 +63,7 @@ erDiagram
   TEXT config
   INTEGER configVersion
   datetime_3_ createdAt
+  varchar_36_ discoveryClaimToken
   datetime_3_ discoveryClaimedAt
   varchar_36_ id PK
   varchar issuer

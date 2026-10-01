@@ -57,6 +57,7 @@ erDiagram
   text config
   integer configVersion
   timestamp_3__with_time_zone createdAt
+  varchar_36_ discoveryClaimToken
   timestamp_3__with_time_zone discoveryClaimedAt
   varchar_36_ id
   varchar issuer

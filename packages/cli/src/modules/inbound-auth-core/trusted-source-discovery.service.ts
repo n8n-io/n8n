@@ -14,10 +14,8 @@ import { OperationalError } from 'n8n-workflow';
 
 import { TrustedSourceDbStore, type DiscoveryResult } from './trusted-source.store';
 
-/** A failed source is retried soon; a healthy one is refreshed on a slow cadence. */
-export const ERROR_RETRY_MS = 5 * Time.minutes.toMilliseconds;
-// ponytail: 1 h staleness ceiling after key rotation.
-export const HEALTHY_REFRESH_MS = 1 * Time.hours.toMilliseconds;
+/** Due sources taken per run; more than one run can finish this many in 40 s at concurrency 5. */
+export const DUE_BATCH = 200;
 /** Sources refreshed at once in one run. */
 export const CONCURRENCY = 5;
 /** A run stops taking new sources after this; the task fires every minute anyway. */
@@ -42,11 +40,8 @@ export class TrustedSourceDiscoveryService {
 	}
 
 	async refreshDue(signal: AbortSignal): Promise<void> {
-		const now = Date.now();
-		const deadline = now + RUN_DEADLINE_MS;
-		const queue = (await this.store.listAll()).filter((source) => this.isDue(source, now));
-		// A source that was never checked is unusable until it is; it goes before every refresh.
-		queue.sort((a, b) => Number(a.status !== 'unchecked') - Number(b.status !== 'unchecked'));
+		const deadline = Date.now() + RUN_DEADLINE_MS;
+		const queue = await this.store.listDue(DUE_BATCH);
 
 		const worker = async () => {
 			while (!signal.aborted && Date.now() < deadline) {
@@ -58,18 +53,12 @@ export class TrustedSourceDiscoveryService {
 		await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
 	}
 
-	private isDue(source: TrustedSource, now: number): boolean {
-		if (source.status === 'unchecked' || source.lastCheckedAt === null) return true;
-		const interval = source.status === 'error' ? ERROR_RETRY_MS : HEALTHY_REFRESH_MS;
-		return now - new Date(source.lastCheckedAt).getTime() >= interval;
-	}
-
 	/** Never throws: one source's failure must not end the run for the others. */
 	private async refreshSource(source: TrustedSource): Promise<void> {
-		const claimedAt = new Date();
 		try {
-			if (!(await this.store.claimDiscovery(source, claimedAt))) return;
-			await this.store.recordDiscovery(source, claimedAt, await this.discover(source));
+			const token = await this.store.claimDiscovery(source);
+			if (token === null) return;
+			await this.store.recordDiscovery(source, token, await this.discover(source));
 		} catch (error) {
 			this.logger.error('Could not write the discovery result of a trusted source', {
 				id: source.id,

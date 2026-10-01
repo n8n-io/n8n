@@ -12,14 +12,14 @@ import { mock } from 'vitest-mock-extended';
 
 import {
 	CONCURRENCY,
-	ERROR_RETRY_MS,
-	HEALTHY_REFRESH_MS,
+	DUE_BATCH,
 	RUN_DEADLINE_MS,
 	TrustedSourceDiscoveryService,
 } from '../trusted-source-discovery.service';
 import type { TrustedSourceDbStore } from '../trusted-source.store';
 
 const NOW = new Date('2026-10-01T12:00:00.000Z');
+const TOKEN = 'token-1';
 const issuer = 'https://idp.example';
 
 const oidcMetadata: AuthorizationServerMetadata = {
@@ -97,7 +97,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	vi.useFakeTimers({ toFake: ['Date'] });
 	vi.setSystemTime(NOW);
-	store.claimDiscovery.mockResolvedValue(true);
+	store.claimDiscovery.mockResolvedValue(TOKEN);
 	store.recordDiscovery.mockResolvedValue(true);
 	client.fetchOpenIdConfiguration.mockResolvedValue(fetched(oidcMetadata));
 	client.fetchOAuth2ServerMetadata.mockResolvedValue(fetched(oauth2Metadata));
@@ -121,12 +121,12 @@ describe('TrustedSourceDiscoveryService', () => {
 
 			await refresh(src);
 
-			expect(store.claimDiscovery).toHaveBeenCalledWith(src, NOW);
+			expect(store.claimDiscovery).toHaveBeenCalledWith(src);
 			expect(client.fetchOpenIdConfiguration).toHaveBeenCalledWith(issuer);
 			expect(client.fetchOAuth2ServerMetadata).toHaveBeenCalledWith({ issuer });
 			// The OIDC document wins, so its jwks_uri is the one fetched.
 			expect(client.fetchJwks).toHaveBeenCalledWith(`${issuer}/oidc/keys`);
-			expect(store.recordDiscovery).toHaveBeenCalledWith(src, NOW, {
+			expect(store.recordDiscovery).toHaveBeenCalledWith(src, TOKEN, {
 				metadata: {
 					version: 1,
 					documents: [
@@ -245,7 +245,7 @@ describe('TrustedSourceDiscoveryService', () => {
 			expect(client.fetchOpenIdConfiguration).not.toHaveBeenCalled();
 			expect(client.fetchOAuth2ServerMetadata).not.toHaveBeenCalled();
 			expect(client.fetchJwks).not.toHaveBeenCalled();
-			expect(store.recordDiscovery).toHaveBeenCalledWith(src, NOW, {
+			expect(store.recordDiscovery).toHaveBeenCalledWith(src, TOKEN, {
 				metadata: {
 					version: 1,
 					documents: [
@@ -317,7 +317,7 @@ describe('TrustedSourceDiscoveryService', () => {
 		});
 
 		it('does nothing when another run holds the lease', async () => {
-			store.claimDiscovery.mockResolvedValue(false);
+			store.claimDiscovery.mockResolvedValue(null);
 			const src = source();
 
 			await refresh(src);
@@ -331,43 +331,23 @@ describe('TrustedSourceDiscoveryService', () => {
 
 	describe('refreshDue', () => {
 		const signal = () => new AbortController().signal;
-		const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
 		const claimedIds = () => store.claimDiscovery.mock.calls.map(([src]) => src.id);
 
-		it.each<[TrustedSource['status'], string | null, boolean]>([
-			['unchecked', null, true],
-			['unchecked', ago(1000), true],
-			['error', null, true],
-			['error', ago(ERROR_RETRY_MS + 1000), true],
-			['error', ago(ERROR_RETRY_MS - 1000), false],
-			['healthy', null, true],
-			['healthy', ago(HEALTHY_REFRESH_MS + 1000), true],
-			['healthy', ago(HEALTHY_REFRESH_MS - 1000), false],
-		])('a %s source last checked at %s is due: %s', async (status, lastCheckedAt, due) => {
-			const src = source({ status, lastCheckedAt });
-			store.listAll.mockResolvedValue([src]);
+		it('passes the batch size to listDue and processes sources in the returned order', async () => {
+			const sources = [source(), source(), source()];
+			const ids = sources.map((src) => src.id);
+			store.listDue.mockResolvedValue(sources);
 
 			await service.refreshDue(signal());
 
-			expect(claimedIds()).toEqual(due ? [src.id] : []);
-		});
-
-		it('takes unchecked sources before healthy ones', async () => {
-			const healthyA = source({ status: 'healthy', lastCheckedAt: ago(HEALTHY_REFRESH_MS + 1000) });
-			const uncheckedA = source();
-			const healthyB = source({ status: 'healthy', lastCheckedAt: ago(HEALTHY_REFRESH_MS + 1000) });
-			const uncheckedB = source();
-			store.listAll.mockResolvedValue([healthyA, uncheckedA, healthyB, uncheckedB]);
-
-			await service.refreshDue(signal());
-
-			expect(claimedIds().slice(0, 2).sort()).toEqual([uncheckedA.id, uncheckedB.id].sort());
-			expect(claimedIds().slice(2).sort()).toEqual([healthyA.id, healthyB.id].sort());
+			expect(store.listDue).toHaveBeenCalledWith(DUE_BATCH);
+			expect(claimedIds()).toEqual(ids);
+			expect(store.recordDiscovery).toHaveBeenCalledTimes(3);
 		});
 
 		it('refreshes at most CONCURRENCY sources at once', async () => {
 			const sources = Array.from({ length: 8 }, () => source());
-			store.listAll.mockResolvedValue(sources);
+			store.listDue.mockResolvedValue(sources);
 			const pending = sources.map(() => deferred<ReturnType<typeof fetched>>());
 			let call = 0;
 			client.fetchOpenIdConfiguration.mockImplementation(async () => await pending[call++].promise);
@@ -392,11 +372,11 @@ describe('TrustedSourceDiscoveryService', () => {
 		it('takes no further source once the run deadline has passed', async () => {
 			const first = source();
 			const second = source();
-			store.listAll.mockResolvedValue([first, second]);
+			store.listDue.mockResolvedValue([first, second]);
 			// The first source's claim is slow enough to use up the whole run budget.
 			store.claimDiscovery.mockImplementationOnce(async () => {
 				vi.setSystemTime(NOW.getTime() + RUN_DEADLINE_MS + 1);
-				return true;
+				return TOKEN;
 			});
 
 			await service.refreshDue(signal());
@@ -405,7 +385,7 @@ describe('TrustedSourceDiscoveryService', () => {
 		});
 
 		it('claims nothing when the signal is already aborted', async () => {
-			store.listAll.mockResolvedValue([source(), source()]);
+			store.listDue.mockResolvedValue([source(), source()]);
 			const controller = new AbortController();
 			controller.abort();
 
