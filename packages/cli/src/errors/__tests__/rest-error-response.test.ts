@@ -28,7 +28,7 @@ describe('rest-error-response', () => {
 	});
 
 	it('serializePublicApiError: exposes cross-project moved workflow ids for selective promote', () => {
-		const descriptor = classifyHttpError(
+		const descriptor = classifyRestError(
 			new PromotionsWorkflowsMovedCrossProjectError(['wf-moved']),
 		);
 
