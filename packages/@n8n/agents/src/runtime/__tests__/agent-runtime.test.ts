@@ -3538,9 +3538,13 @@ describe('AgentRuntime — user pause', () => {
 		},
 	);
 
-	it.each(['admission', 'options'] as const)(
+	it.each([
+		['admission', 'Admission failed'],
+		['options', 'Cannot decrease maxIterations'],
+		['metadata', 'Cannot update host metadata without persistence'],
+	] as const)(
 		'pauses before the first model call and permits a retry after %s fails',
-		async (failure) => {
+		async (failure, message) => {
 			const store = makeClaimingCheckpointStore();
 			const runtime = createRuntimeWithCheckpointStore([], store);
 			const result = await runtime.generate('Start later', {
@@ -3554,13 +3558,12 @@ describe('AgentRuntime — user pause', () => {
 				runtime.resumePaused({
 					runId: result.runId,
 					maxIterations: failure === 'options' ? 1 : 10,
+					hostMetadata: failure === 'metadata' ? { actor: 'selected' } : undefined,
 					onResumeClaimed: async () => {
 						throw new Error('Admission failed');
 					},
 				}),
-			).rejects.toThrow(
-				failure === 'options' ? 'Cannot decrease maxIterations' : 'Admission failed',
-			);
+			).rejects.toThrow(message);
 			expect(await store.load(result.runId)).toEqual(original);
 			expect(streamText).not.toHaveBeenCalled();
 
@@ -3570,6 +3573,66 @@ describe('AgentRuntime — user pause', () => {
 			expect((await collectChunks(resumed.stream)).at(-1)).toMatchObject({
 				finishReason: 'stop',
 			});
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it.each(['pause polling', 'checkpoint persistence'] as const)(
+		'cancels and removes the checkpoint when abort arrives during %s',
+		async (phase) => {
+			const bus = new AgentEventBus();
+			const store = makeClaimingCheckpointStore();
+			const entered = createDeferredPromise();
+			const release = createDeferredPromise();
+			const save = store.save;
+			store.save = async (...args) => {
+				await save(...args);
+				if (phase !== 'checkpoint persistence') return;
+				entered.resolve();
+				await release.promise;
+			};
+			const runtime = createRuntimeWithCheckpointStore([], store, bus);
+			const completion = runtime.generate('Start later', {
+				shouldPause: async () => {
+					if (phase === 'pause polling') {
+						entered.resolve();
+						await release.promise;
+					}
+					return true;
+				},
+			});
+			await entered.promise;
+			bus.abort();
+			release.resolve();
+			const result = await completion;
+
+			expect(result.finishReason).toBe('error');
+			expect(runtime.getState().status).toBe('cancelled');
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it.each([
+		['stop', 'success'],
+		['error', 'failed'],
+	] as const)(
+		'keeps the terminal %s result when pause is requested during the model call',
+		async (finishReason, status) => {
+			const store = makeClaimingCheckpointStore();
+			const runtime = createRuntimeWithCheckpointStore([], store);
+			let requested = false;
+			generateText.mockImplementationOnce(async () => {
+				requested = true;
+				if (finishReason === 'error') throw new Error('Model failed');
+				return makeGenerateSuccess();
+			});
+			const result = await runtime.generate('Start', {
+				shouldPause: async () => requested,
+				onInputBoundary: async () => [],
+			});
+
+			expect(result.finishReason).toBe(finishReason);
+			expect(runtime.getState().status).toBe(status);
 			expect(await store.load(result.runId)).toBeUndefined();
 		},
 	);
@@ -7125,31 +7188,58 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		expect((await checkpointStore.load(runId))?.status).toBe('suspended');
 	});
 
-	it('claims the checkpoint after resume validation passes', async () => {
+	it('restores a rejected resume with current metadata and permits a retry', async () => {
 		const checkpointStore = makeClaimingCheckpointStore();
-		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
-		const onResumeClaimed = vi.fn();
+		const tool = makeApprovalTool();
+		const handler = vi.spyOn(tool, 'handler');
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		const persistence = {
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			hostMetadata: { owner: 'previous', scope: 'retained' },
+		};
 
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
 		);
-		const first = await runtime.generate('run tool');
+		const first = await runtime.generate('run tool', { persistence });
 		const { runId, toolCallId } = first.pendingSuspend![0];
+		const checkpoint = await checkpointStore.load(runId);
+		handler.mockClear();
+		const rejectedRuntime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		const error = new Error('Resume admission rejected');
+		await expect(
+			rejectedRuntime.resume(
+				'stream',
+				{ approved: true },
+				{
+					runId,
+					toolCallId,
+					hostMetadata: { owner: 'current' },
+					onResumeClaimed: async () => {
+						expect((await checkpointStore.load(runId))?.status).toBe('running');
+						throw error;
+					},
+				},
+			),
+		).rejects.toBe(error);
+		expect(await checkpointStore.load(runId)).toEqual({
+			...checkpoint,
+			persistence: {
+				...persistence,
+				hostMetadata: { owner: 'current', scope: 'retained' },
+			},
+		});
+		expect(rejectedRuntime.getState().status).toBe('suspended');
+		expect(handler).not.toHaveBeenCalled();
+		expect(streamText).not.toHaveBeenCalled();
 
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
-		const resumed = await runtime.resume(
-			'generate',
-			{ approved: true },
-			{ runId, toolCallId, onResumeClaimed },
-		);
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
 
 		expect(resumed.finishReason).toBe('stop');
-		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
-		expect(checkpointStore.claimForResume).toHaveBeenCalledWith(
-			runId,
-			expect.objectContaining({ status: 'suspended' }),
-		);
-		expect(onResumeClaimed).toHaveBeenCalledTimes(1);
+		expect(handler).toHaveBeenCalledOnce();
+		expect(await checkpointStore.load(runId)).toBeUndefined();
 	});
 
 	it('does not emit a runtime error when another resume wins the checkpoint claim', async () => {

@@ -153,8 +153,8 @@ describe('AgentBackgroundJobRepository', () => {
 		const workflow = uuid();
 		const otherThread = uuid();
 		const pauseRequestId = uuid();
-		for (const id of [first, second])
-			await insertJob({ id, parentThreadId: 'parent', status: 'running', settledAt: null });
+		await insertJob({ id: first, parentThreadId: 'parent', status: 'running', settledAt: null });
+		await insertJob({ id: second, parentThreadId: 'parent', status: 'suspended', settledAt: null });
 		await insertJob({
 			id: workflow,
 			parentThreadId: 'parent',
@@ -178,9 +178,16 @@ describe('AgentBackgroundJobRepository', () => {
 		).toEqual([first, second].sort());
 		expect((await repository.findById(workflow))?.pauseRequestId).toBeNull();
 		expect((await repository.findById(otherThread))?.pauseRequestId).toBeNull();
+		expect(await repository.resumeIfSuspended(second, new Date())).toBe(false);
+		expect(await repository.findById(second)).toMatchObject({
+			status: 'suspended',
+			pauseRequestId,
+			timeoutAt: null,
+		});
 
 		const later = uuid();
-		await insertJob({ id: later, parentThreadId: 'parent', status: 'running', settledAt: null });
+		await insertJob({ id: later, parentThreadId: 'parent', status: 'suspended', settledAt: null });
+		expect(await repository.resumeIfSuspended(later, new Date())).toBe(true);
 		await repository.update(first, { status: 'paused', settledAt: new Date(), timeoutAt: null });
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
 		await repository.settleIfActive(second, { status: 'completed', result: 'Won the race' });

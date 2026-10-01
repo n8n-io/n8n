@@ -470,7 +470,6 @@ describe('AgentExecutionRepository', () => {
 					mock<AgentsConfig>({ backgroundTasksEnabled: true }),
 					mock<AgentExecutionUpdateBroadcaster>(),
 					storage,
-					Container.get(AgentMessageRepository),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
@@ -573,11 +572,7 @@ describe('AgentExecutionRepository', () => {
 				);
 				expect(fixture.sourceResolver.resolveForRuntime).toHaveBeenLastCalledWith(
 					{ agentId, versionId: fixture.versionId },
-					{
-						projectId,
-						usePublishedVersion: true,
-						runtimeSnapshot: expect.stringContaining(fixture.versionId),
-					},
+					{ projectId, usePublishedVersion: true },
 				);
 				const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
 				expect(runs).toHaveLength(2);

@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddAgentBackgroundJobPause1790870286644 implements ReversibleMigration {
@@ -34,10 +36,15 @@ export class AddAgentBackgroundJobPause1790870286644 implements ReversibleMigrat
 	}: MigrationContext) {
 		const table = escape.tableName('agent_background_job');
 		const status = escape.columnName('status');
-		await runQuery(`UPDATE ${table} SET ${status} = 'failed',
-			${escape.columnName('error')} = 'Background pause is unavailable after this downgrade',
-			${escape.columnName('settledAt')} = CURRENT_TIMESTAMP, ${escape.columnName('notifiedAt')} = NULL
-			WHERE ${status} = 'paused'`);
+		const pausedJobs = await runQuery<Array<{ id: string }>>(
+			`SELECT ${escape.columnName('id')} FROM ${table} WHERE ${status} = 'paused' LIMIT 1`,
+		);
+		if (pausedJobs.length > 0) {
+			throw new UserError(
+				'Cannot revert background job pause support while paused jobs exist. Resume or cancel the jobs before you retry.',
+			);
+		}
+
 		await dropEnumCheck('agent_background_job', 'status', { recreatesOnSqlite: true });
 		await addEnumCheck(
 			'agent_background_job',

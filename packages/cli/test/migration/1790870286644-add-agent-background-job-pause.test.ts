@@ -32,7 +32,7 @@ describe('AddAgentBackgroundJobPause migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('preserves existing jobs and settles paused jobs on rollback', async () => {
+	it('preserves jobs and blocks rollback until paused jobs are settled', async () => {
 		const agentId = randomUUID();
 		const projectId = randomUUID();
 		const runningId = randomUUID();
@@ -91,30 +91,61 @@ describe('AddAgentBackgroundJobPause migration', () => {
 			).rejects.toThrow();
 		});
 
-		await undoLastSingleMigration();
+		await expect(undoLastSingleMigration()).rejects.toThrow(
+			'Cannot revert background job pause support while paused jobs exist.',
+		);
 		await withContext(async ({ escape, runQuery }) => {
 			const rows = await runQuery<
 				Array<{
 					id: string;
 					status: string;
+					pauseRequestId: string | null;
 					error: string | null;
 					notifiedAt: Date | null;
 					settledAt: Date | null;
 				}>
 			>(
-				`SELECT "id", "status", "error", "notifiedAt", "settledAt" FROM ${escape.tableName('agent_background_job')}`,
+				`SELECT ${escape.columnName('id')}, ${escape.columnName('status')}, ${escape.columnName('pauseRequestId')},
+				 ${escape.columnName('error')}, ${escape.columnName('notifiedAt')}, ${escape.columnName('settledAt')}
+				 FROM ${escape.tableName('agent_background_job')}`,
 			);
 			expect(rows.find(({ id }) => id === runningId)).toMatchObject({
 				status: 'running',
+				pauseRequestId: null,
 				error: null,
+				notifiedAt: null,
 				settledAt: null,
 			});
 			expect(rows.find(({ id }) => id === pausedId)).toMatchObject({
-				status: 'failed',
-				error: 'Background pause is unavailable after this downgrade',
-				notifiedAt: null,
-				settledAt: expect.anything(),
+				status: 'paused',
+				pauseRequestId,
+				error: null,
+				notifiedAt: expect.anything(),
+				settledAt: null,
 			});
+			await runQuery(
+				`UPDATE ${escape.tableName('agent_background_job')}
+				 SET ${escape.columnName('status')} = 'completed', ${escape.columnName('settledAt')} = :now
+				 WHERE ${escape.columnName('id')} = :pausedId`,
+				{ pausedId, now },
+			);
+		});
+
+		await undoLastSingleMigration();
+		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
+			expect(
+				await queryRunner.hasColumn(`${tablePrefix}agent_background_job`, 'pauseRequestId'),
+			).toBe(false);
+			const rows = await runQuery<Array<{ id: string; status: string }>>(
+				`SELECT ${escape.columnName('id')}, ${escape.columnName('status')}
+				 FROM ${escape.tableName('agent_background_job')}`,
+			);
+			expect(rows).toEqual(
+				expect.arrayContaining([
+					{ id: runningId, status: 'running' },
+					{ id: pausedId, status: 'completed' },
+				]),
+			);
 			await expect(
 				runQuery(
 					`UPDATE ${escape.tableName('agent_background_job')} SET "status" = 'paused' WHERE "id" = :pausedId`,

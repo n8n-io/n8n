@@ -124,6 +124,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				"execution.threadId = member.childThreadId AND execution.status = 'running'",
 			)
 			.where('member.pauseRequestId = job.pauseRequestId')
+			.andWhere('member.parentThreadId = job.parentThreadId')
 			.andWhere("(member.status IN ('running', 'suspended') OR execution.id IS NOT NULL)")
 			.getQuery();
 		return await this.createQueryBuilder('job')
@@ -247,7 +248,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 
 	async resumeIfSuspended(id: string, timeoutAt: Date): Promise<boolean> {
 		const result = await this.update(
-			{ id, status: 'suspended' },
+			{ id, status: 'suspended', pauseRequestId: IsNull() },
 			{ status: 'running', timeoutAt, notifiedAt: null },
 		);
 		return result.affected === 1;

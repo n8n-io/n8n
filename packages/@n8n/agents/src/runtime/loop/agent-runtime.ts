@@ -341,6 +341,7 @@ export class AgentRuntime {
 		const { state, list, resumeData } = await this.prepareToolResume(data, options);
 		let abortScope: AgentAbortScope | undefined;
 		let resumeClaimed = false;
+		let resumeAdmitted = false;
 
 		try {
 			// Merge persisted execution options with fresh caller options
@@ -364,6 +365,7 @@ export class AgentRuntime {
 			};
 			this.updateState({ persistence: resumeOptions.persistence });
 			await options.onResumeClaimed?.();
+			resumeAdmitted = true;
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
@@ -385,6 +387,12 @@ export class AgentRuntime {
 			if (method === 'generate') return await this.generateResumedRun(ctx);
 			return this.createResumedStream(ctx);
 		} catch (error) {
+			if (resumeClaimed && !resumeAdmitted) {
+				const suspendedState = { ...state, persistence: this.currentState.persistence };
+				await this.runState.suspend(this.runId, suspendedState);
+				this.updateState(suspendedState);
+				throw error;
+			}
 			return await this.handleResumeFailure(method, error, abortScope, resumeClaimed);
 		}
 	}
@@ -397,6 +405,9 @@ export class AgentRuntime {
 		const state = await this.runState.resume(this.runId);
 		if (!state || state.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
 			throw new StaleResumeError('This run is not paused');
+		}
+		if (options.hostMetadata !== undefined && !state.persistence) {
+			throw new Error('Cannot update host metadata without persistence');
 		}
 		const { runId: _runId, hostMetadata, onResumeClaimed, ...executionOptions } = options;
 		const resumeOptions: RuntimeExecutionOptions = {
@@ -768,6 +779,7 @@ export class AgentRuntime {
 			// consuming it. End the run even if a consumer still returned messages.
 			if (state.guardrailStop) break;
 			if (state.reachedStopCondition && !hasInput) break;
+			this.assertNotAborted(prepared.abortScope);
 			if (await prepared.options?.shouldPause?.()) {
 				await this.persistSuspension(
 					{},
@@ -778,6 +790,7 @@ export class AgentRuntime {
 					state.iterationCount,
 					'paused',
 				);
+				this.assertNotAborted(prepared.abortScope);
 				return await sink.finishSuspended({
 					suspendRunId: this.runId,
 					list: prepared.list,
