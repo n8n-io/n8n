@@ -155,17 +155,24 @@ export function buildNodePreviews(
 	});
 }
 
-/** Item JSON a preview shows. A collapsed result keeps only its first item. */
-function visibleItems(nodeOutput: unknown): unknown[] | undefined {
+/**
+ * Item JSON of a node, or `undefined` when the preview omits items (a size cap,
+ * or a collapsed result that keeps only its first item): the hidden items can hold data.
+ */
+function completeItems(nodeOutput: unknown): unknown[] | undefined {
 	const output = outputForInspection(nodeOutput);
 	if (Array.isArray(output)) return output;
 	if (!isRecord(output)) return undefined;
+	let items: unknown[] | undefined;
 	if (Array.isArray(output.outputs)) {
-		return output.outputs.filter(isRecord).flatMap((branch) => visibleItems(branch.items) ?? []);
+		const branches = output.outputs.filter(isRecord).map((branch) => completeItems(branch.items));
+		items = branches.includes(undefined) ? undefined : branches.flat();
+	} else if (Array.isArray(output.items)) {
+		items = output.items;
+	} else if ('_firstItemPreview' in output) {
+		items = [output._firstItemPreview];
 	}
-	if (Array.isArray(output.items)) return output.items;
-	if ('_firstItemPreview' in output) return [output._firstItemPreview];
-	return undefined;
+	return items?.length === getCountFromMetadata(output) ? items : undefined;
 }
 
 const isEmptyItem = (item: unknown) => isRecord(item) && Object.keys(item).length === 0;
@@ -191,7 +198,7 @@ export function buildEmptyOutputNote(
 	const emptyNonRootNames = new Set(
 		Object.entries(resultData)
 			.filter(([nodeName, output]) => {
-				const items = visibleItems(output);
+				const items = completeItems(output);
 				return (
 					items !== undefined &&
 					items.length > 0 &&

@@ -275,7 +275,8 @@ empty node of a chain is named, because the nodes after it only pass the
 emptiness on. Triggers are skipped because a Manual Trigger emits `{}`.
 Simulated nodes are skipped because their output is a fixture. Nodes that
 output a file are skipped because their data is in the binary, which the
-preview omits.
+preview omits. Truncated outputs are skipped because the hidden items can hold
+data.
 
 ### `report-verification-verdict` *(conditional)*
 

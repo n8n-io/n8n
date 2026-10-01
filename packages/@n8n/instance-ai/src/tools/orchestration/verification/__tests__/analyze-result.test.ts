@@ -556,6 +556,42 @@ describe('buildEmptyOutputNote', () => {
 		).toBeUndefined();
 	});
 
+	it.each([
+		['a size-capped output', { items: [{}], truncated: true, totalItems: 3, shownItems: 1 }],
+		['a collapsed output', { _itemCount: 2, _truncated: true, _firstItemPreview: {} }],
+		[
+			'an output with a collapsed branch',
+			{
+				outputs: [
+					{ index: 0, items: [{}] },
+					{ index: 1, items: { _itemCount: 2, _truncated: true, _firstItemPreview: {} } },
+				],
+				totalItems: 3,
+			},
+		],
+	])('ignores %s, whose hidden items can hold data', (_label, tagRecordOutput) => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': wrap(tagRecordOutput), Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toBeUndefined();
+	});
+
+	it('names a collapsed output whose only item is empty', () => {
+		expect(
+			buildEmptyOutputNote(
+				{
+					Trigger: [{ name: 'Ada' }],
+					'Tag Record': wrap({ _itemCount: 1, _truncated: true, _firstItemPreview: {} }),
+				},
+				connections,
+				new Set(),
+			),
+		).toContain('Node(s) Tag Record returned');
+	});
+
 	it('ignores an empty trigger when the nodes after it return data', () => {
 		expect(
 			buildEmptyOutputNote(
