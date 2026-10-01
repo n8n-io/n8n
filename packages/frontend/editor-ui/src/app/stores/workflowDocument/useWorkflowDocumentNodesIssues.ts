@@ -20,13 +20,26 @@ export type WorkflowDocumentNodesIssuesDeps = {
 	nodeIssuesToString: (issues: INodeIssues, node?: INode) => string[];
 };
 
+/**
+ * Whether anything is actually wired to this node.
+ *
+ * A connection type can outlive its links: deleting the last connection leaves
+ * `{ ai_outputParser: [[]] }` behind, so counting the type keys reports a node
+ * wired to nothing as connected. Count the endpoints instead.
+ */
+function hasAnyConnection(connections: INodeConnections): boolean {
+	return Object.values(connections).some((outputs) =>
+		(outputs ?? []).some((targets) => (targets ?? []).length > 0),
+	);
+}
+
 export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssuesDeps) {
 	const nodesWithValidationIssues = computed<INodeUi[]>(() =>
 		deps.allNodes.value.filter((node) => {
 			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
 			const isConnected =
-				Object.keys(deps.outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(deps.incomingConnectionsByNodeName(node.name)).length > 0;
+				hasAnyConnection(deps.outgoingConnectionsByNodeName(node.name)) ||
+				hasAnyConnection(deps.incomingConnectionsByNodeName(node.name));
 
 			return !node.disabled && isConnected && nodeHasIssues;
 		}),
@@ -44,8 +57,8 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 			if (Object.keys(configIssues).length === 0) return false;
 
 			const isConnected =
-				Object.keys(deps.outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(deps.incomingConnectionsByNodeName(node.name)).length > 0;
+				hasAnyConnection(deps.outgoingConnectionsByNodeName(node.name)) ||
+				hasAnyConnection(deps.incomingConnectionsByNodeName(node.name));
 
 			return !node.disabled && isConnected;
 		}),
@@ -61,8 +74,8 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 			if (!node.issues || node.disabled) return;
 
 			const isConnected =
-				Object.keys(deps.outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(deps.incomingConnectionsByNodeName(node.name)).length > 0;
+				hasAnyConnection(deps.outgoingConnectionsByNodeName(node.name)) ||
+				hasAnyConnection(deps.incomingConnectionsByNodeName(node.name));
 
 			if (!isConnected) return;
 
