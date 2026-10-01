@@ -63,7 +63,7 @@ import { type ResponseError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
@@ -2482,6 +2482,19 @@ describe('executeWebhook on engine v2', () => {
 		dataPlane = new Map();
 	});
 
+	/**
+	 * Makes the next wait time out, as the registry does when no answer arrives
+	 * within the response timeout.
+	 */
+	const timeOutNextWait = () =>
+		vi
+			.spyOn(Container.get(EngineV2WebhookResponseRegistry), 'waitForResponse')
+			.mockImplementationOnce(async (executionId) => ({
+				executionId,
+				outcome: Promise.resolve({ status: 'timeout' as const }),
+				release: vi.fn(),
+			}));
+
 	/** Ends the run the request is waiting on, as the data plane would. */
 	const answerRun = (status: EndedMessage['status'], lastStep: EndedMessage['lastStep']): void => {
 		const executionId = workflowRunner.run.mock.calls[0][0].engineV2Response?.executionId as string;
@@ -2495,9 +2508,9 @@ describe('executeWebhook on engine v2', () => {
 	};
 
 	beforeAll(() => {
-		// The host hands the responder its receiver at boot. Keeping each run's
+		// The host hands the response registry its receiver at boot. Keeping each run's
 		// handler is how a test plays the data plane answering.
-		Container.get(EngineV2WebhookResponder).useReceiver(
+		Container.get(EngineV2WebhookResponseRegistry).useReceiver(
 			mock<ExecutionResponseReceiver>({
 				receive: vi.fn(async (executionId: string, handler: (r: ExecutionResponse) => void) => {
 					dataPlane.set(executionId, handler);
@@ -2555,7 +2568,10 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('tells the dispatcher that the caller waits for the run end', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			const waitForResponse = vi.spyOn(
+				Container.get(EngineV2WebhookResponseRegistry),
+				'waitForResponse',
+			);
 
 			await startWebhook({ responseMode: 'lastNode' });
 
@@ -2649,12 +2665,8 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with a timeout when the run does not send an ended message', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			timeOutNextWait();
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = await waitForResponse.mock.results[0]?.value;
-
-			expect(pending).toBeDefined();
-			pending?.resolve({ status: 'timeout' });
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
 			expect(responseCallback.mock.calls[0]).toEqual([
@@ -2667,14 +2679,14 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with the channel error when the response is undeliverable', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = await waitForResponse.mock.results[0]?.value;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineV2Response
+				?.executionId as string;
 
-			expect(pending).toBeDefined();
-			pending?.resolve({
-				status: 'undeliverable',
-				error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			dataPlane.get(executionId)?.({
+				type: 'undeliverable',
+				executionId,
+				error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 			});
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
@@ -2690,7 +2702,10 @@ describe('executeWebhook on engine v2', () => {
 
 	describe('responseNode', () => {
 		it('tells the dispatcher that the caller waits for a step response', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			const waitForResponse = vi.spyOn(
+				Container.get(EngineV2WebhookResponseRegistry),
+				'waitForResponse',
+			);
 
 			await startWebhook({ responseMode: 'responseNode' });
 
@@ -2780,12 +2795,8 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with a timeout when no terminal outcome arrives', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			timeOutNextWait();
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const pending = await waitForResponse.mock.results[0]?.value;
-
-			expect(pending).toBeDefined();
-			pending?.resolve({ status: 'timeout' });
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
 			expect(responseCallback).toHaveBeenCalledWith(null, {

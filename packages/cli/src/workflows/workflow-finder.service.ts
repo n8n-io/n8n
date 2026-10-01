@@ -1,12 +1,18 @@
+import { RoleService } from '@n8n/backend-services';
 import type { SharedWorkflow, User, WorkflowEntity, ListQuery, OperationContext } from '@n8n/db';
-import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, chunkIds } from '@n8n/db';
+import {
+	SharedWorkflowRepository,
+	FolderRepository,
+	WorkflowRepository,
+	RoleRepository,
+	chunkIds,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { RoleService } from '@/services/role.service';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {
@@ -31,6 +37,7 @@ export class WorkflowFinderService {
 		private readonly folderRepository: FolderRepository,
 		private readonly roleService: RoleService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	async findWorkflowForUser(
@@ -94,10 +101,15 @@ export class WorkflowFinderService {
 		context?: EntityManager | OperationContext,
 	): Promise<FindOptionsWhere<SharedWorkflow>> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
+		const loadRoles = context ? async () => await this.roleRepository.findAll(context) : undefined;
+		const rolesWithScope = async (namespace: 'project' | 'workflow') =>
+			loadRoles
+				? await this.roleService.rolesWithScope(namespace, scopes, loadRoles)
+				: await this.roleService.rolesWithScope(namespace, scopes);
 
 		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roleService.rolesWithScope('project', scopes, context),
-			this.roleService.rolesWithScope('workflow', scopes, context),
+			rolesWithScope('project'),
+			rolesWithScope('workflow'),
 		]);
 
 		return {
