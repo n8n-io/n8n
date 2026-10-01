@@ -1,6 +1,8 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { NotFoundError } from '@n8n/errors';
+
 import type { AgentsService } from '../agents.service';
 import { AgentsListController } from '../agents-list.controller';
 
@@ -66,5 +68,82 @@ describe('AgentsListController', () => {
 		await controller.list(req, res, query);
 
 		expect(res.json).toHaveBeenCalledWith(emptyResponse);
+	});
+
+	describe('getChatAgent', () => {
+		it("returns the narrow chat item for the registry to wrap in { data } — it must not call res.json itself, or the registry's wrapping never runs", async () => {
+			const { controller, agentsService } = makeController();
+			const item = { id: 'agent-1', name: 'Support', project: { id: 'p1', name: 'Team' } };
+			agentsService.findChatReachableAgentForUser.mockResolvedValue(item as never);
+
+			const result = await controller.getChatAgent(req, mock<Response>(), 'agent-1');
+
+			expect(agentsService.findChatReachableAgentForUser).toHaveBeenCalledWith('agent-1', user);
+			expect(result).toBe(item);
+		});
+
+		it('404s when the agent is not reachable over n8n Chat', async () => {
+			const { controller, agentsService } = makeController();
+			agentsService.findChatReachableAgentForUser.mockResolvedValue(null);
+
+			await expect(controller.getChatAgent(req, mock<Response>(), 'agent-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('listN8nChatThreads', () => {
+		it('defaults the limit to 20 and forwards the cursor', async () => {
+			const { controller, agentsService } = makeController();
+			const res = mock<Response>();
+			const response = { data: [], nextCursor: null } as never;
+
+			agentsService.findN8nChatThreadsForUser.mockResolvedValue(response);
+
+			await controller.listN8nChatThreads(req, res, { cursor: 'cursor-1' } as never);
+
+			expect(agentsService.findN8nChatThreadsForUser).toHaveBeenCalledWith(user, {
+				limit: 20,
+				cursor: 'cursor-1',
+			});
+			expect(res.json).toHaveBeenCalledWith(response);
+		});
+
+		it('clamps the requested limit to the 1-100 range', async () => {
+			const { controller, agentsService } = makeController();
+			const res = mock<Response>();
+			agentsService.findN8nChatThreadsForUser.mockResolvedValue({
+				data: [],
+				nextCursor: null,
+			} as never);
+
+			await controller.listN8nChatThreads(req, res, { limit: '500' } as never);
+			expect(agentsService.findN8nChatThreadsForUser).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ limit: 100 }),
+			);
+
+			await controller.listN8nChatThreads(req, res, { limit: '-5' } as never);
+			expect(agentsService.findN8nChatThreadsForUser).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ limit: 1 }),
+			);
+		});
+
+		it('forwards an agentId filter', async () => {
+			const { controller, agentsService } = makeController();
+			const res = mock<Response>();
+			agentsService.findN8nChatThreadsForUser.mockResolvedValue({
+				data: [],
+				nextCursor: null,
+			} as never);
+
+			await controller.listN8nChatThreads(req, res, { agentId: 'agent-1' } as never);
+
+			expect(agentsService.findN8nChatThreadsForUser).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ agentId: 'agent-1' }),
+			);
+		});
 	});
 });

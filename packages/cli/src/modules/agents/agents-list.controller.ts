@@ -1,9 +1,11 @@
-import { ListAgentsQueryDto } from '@n8n/api-types';
+import { ListAgentsQueryDto, ListN8nChatThreadsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, Query, RestController } from '@n8n/decorators';
+import { Get, Param, Query, RestController } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import { AgentsService } from './agents.service';
+import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 
 /**
  * Global (cross-project) agents list endpoint.
@@ -30,6 +32,39 @@ export class AgentsListController {
 			query.filter?.availableInChat === undefined
 				? await this.agentsService.findByUserMembershipPaginated(req.user, query)
 				: await this.agentsService.findChatReachableByUserPaginated(req.user, query),
+		);
+	}
+
+	/**
+	 * One agent as the n8n Chat page needs it: a chat-only member holds
+	 * `agent:execute` but not `agent:read`, so they cannot call the regular
+	 * agent-by-id route to get its name and avatar for a direct link or a
+	 * reload. 404s when the agent doesn't exist, isn't reachable by this user,
+	 * or isn't published to n8n Chat — same response for all three, so the
+	 * chat-only member learns nothing about agents they cannot reach.
+	 */
+	@Get('/n8n-chat/agents/:agentId')
+	async getChatAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
+		const agent = await this.agentsService.findChatReachableAgentForUser(agentId, req.user);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	/** The user's own n8n Chat threads across every agent they can reach, for
+	 *  the chat page's cross-agent "recent chats" list. */
+	@Get('/n8n-chat/threads')
+	async listN8nChatThreads(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query query: ListN8nChatThreadsQueryDto,
+	) {
+		const limit = parseThreadListLimit(query.limit);
+		res.json(
+			await this.agentsService.findN8nChatThreadsForUser(req.user, {
+				limit,
+				cursor: query.cursor,
+				agentId: query.agentId,
+			}),
 		);
 	}
 }

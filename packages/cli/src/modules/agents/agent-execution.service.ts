@@ -1,6 +1,8 @@
 import type {
 	AgentExecutionStatus,
 	AgentMessageAuthor,
+	AgentN8nChatThreadSummary,
+	AgentN8nChatThreadsResponse,
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
@@ -32,6 +34,7 @@ import type { AgentMessageEntity, AgentMessageOrigin } from './entities/agent-me
 import { messageToDto } from './agent-message-mapper';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { buildAgentTurnMetrics } from './agent-telemetry';
+import { toAgentRef } from './utils/agent-ref';
 import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
@@ -734,6 +737,36 @@ export class AgentExecutionService {
 		return { ...page, threads: await this.toThreadListItems(page.threads, userId) };
 	}
 
+	/**
+	 * The user's own n8n Chat threads across the given `agentIds`, newest
+	 * first. The caller (`AgentsService`) has already narrowed `agentIds` to
+	 * the agents the user can currently reach over n8n Chat, so a chat-only
+	 * member never sees a thread under an agent they cannot talk to.
+	 */
+	async findN8nChatThreadsForAgents(
+		userId: string,
+		agentIds: string[],
+		limit: number,
+		cursor?: string,
+	): Promise<AgentN8nChatThreadsResponse> {
+		const { threads, nextCursor } =
+			await this.agentExecutionThreadRepository.findN8nChatThreadsForOwner(
+				userId,
+				agentIds,
+				limit,
+				cursor,
+			);
+		return { data: threads.map(toN8nChatThreadSummary), nextCursor };
+	}
+
+	/** How many of the user's own n8n Chat threads reference each agent, for the usage sort. */
+	async countN8nChatThreadsByAgent(
+		userId: string,
+		projectIds: string[] | null,
+	): Promise<Map<string, number>> {
+		return await this.agentExecutionThreadRepository.countN8nChatThreadsByAgent(userId, projectIds);
+	}
+
 	private async toThreadListItems(
 		threads: AgentExecutionThread[],
 		userId: string,
@@ -1248,4 +1281,15 @@ function executionStatus(record: MessageRecord): AgentExecution['status'] {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';
+}
+
+/** Maps a thread (with `agent` and `agent.activeVersion` loaded) to the
+ *  cross-agent n8n Chat thread list shape. */
+function toN8nChatThreadSummary(thread: AgentExecutionThread): AgentN8nChatThreadSummary {
+	return {
+		id: thread.id,
+		title: thread.title,
+		updatedAt: thread.updatedAt.toISOString(),
+		agent: { ...toAgentRef(thread.agent), projectId: thread.agent.projectId },
+	};
 }

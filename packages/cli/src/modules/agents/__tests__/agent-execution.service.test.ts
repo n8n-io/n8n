@@ -1605,6 +1605,97 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('findN8nChatThreadsForAgents', () => {
+		const userId = 'user-1';
+
+		function makeThreadWithAgent(
+			overrides: Partial<AgentExecutionThread> = {},
+		): AgentExecutionThread {
+			return makeThread({
+				id: 'thread-1',
+				title: 'Refund status',
+				updatedAt: new Date('2025-01-02T00:00:00Z'),
+				agent: {
+					id: 'agent-1',
+					name: 'Support',
+					projectId: 'project-1',
+					activeVersion: {
+						schema: {
+							name: 'Support',
+							model: 'm',
+							instructions: 'i',
+							personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
+						},
+					},
+				},
+				...overrides,
+			} as never);
+		}
+
+		it('forwards the agent ids and page request to the repository', async () => {
+			agentExecutionThreadRepository.findN8nChatThreadsForOwner.mockResolvedValue({
+				threads: [],
+				nextCursor: null,
+			});
+
+			await service.findN8nChatThreadsForAgents(userId, ['agent-1'], 20, 'cursor-1');
+
+			expect(agentExecutionThreadRepository.findN8nChatThreadsForOwner).toHaveBeenCalledWith(
+				userId,
+				['agent-1'],
+				20,
+				'cursor-1',
+			);
+		});
+
+		it('maps each thread to the narrow chat-item shape, never the agent config', async () => {
+			agentExecutionThreadRepository.findN8nChatThreadsForOwner.mockResolvedValue({
+				threads: [makeThreadWithAgent()],
+				nextCursor: 'next-cursor',
+			});
+
+			const result = await service.findN8nChatThreadsForAgents(userId, ['agent-1'], 20);
+
+			expect(result).toEqual({
+				data: [
+					{
+						id: 'thread-1',
+						title: 'Refund status',
+						updatedAt: '2025-01-02T00:00:00.000Z',
+						agent: {
+							id: 'agent-1',
+							name: 'Support',
+							personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
+							projectId: 'project-1',
+						},
+					},
+				],
+				nextCursor: 'next-cursor',
+			});
+			expect(JSON.stringify(result)).not.toContain('schema');
+		});
+
+		it('omits personalisation when the agent has none', async () => {
+			agentExecutionThreadRepository.findN8nChatThreadsForOwner.mockResolvedValue({
+				threads: [
+					makeThreadWithAgent({
+						agent: {
+							id: 'agent-2',
+							name: 'Plain',
+							projectId: 'project-1',
+							activeVersion: { schema: { name: 'Plain', model: 'm', instructions: 'i' } },
+						},
+					} as never),
+				],
+				nextCursor: null,
+			});
+
+			const result = await service.findN8nChatThreadsForAgents(userId, ['agent-2'], 20);
+
+			expect(result.data[0].agent).not.toHaveProperty('personalisation');
+		});
+	});
+
 	describe('canUseDraftThread', () => {
 		it.each<{
 			name: string;

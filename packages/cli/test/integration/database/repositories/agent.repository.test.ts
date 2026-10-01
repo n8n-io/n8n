@@ -571,4 +571,123 @@ describe('AgentRepository', () => {
 			expect(page.data).toHaveLength(1);
 		});
 	});
+
+	describe('findChatReachableIds', () => {
+		const chatChannel: AgentIntegrationConfig = {
+			type: N8N_CHAT_INTEGRATION_TYPE,
+			credentialId: '',
+		};
+
+		/** Publishes `snapshotIntegrations`, while the draft column keeps `overrides`. */
+		async function createPublishedAgent(
+			snapshotIntegrations: AgentIntegrationConfig[],
+			overrides: Partial<Agent> = {},
+		): Promise<Agent> {
+			const versionId = uuid();
+			const agent = await createAgent(overrides);
+			await agentHistoryRepo.save({
+				versionId,
+				agentId: agent.id,
+				author: 'test',
+				schema: {
+					name: 'Published',
+					model: 'm',
+					instructions: 'i',
+					integrations: snapshotIntegrations,
+				},
+				tools: null,
+				skills: null,
+			});
+			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
+			return (await agentRepo.findById(agent.id)) as Agent;
+		}
+
+		it('includes an agent whose published config carries the channel', async () => {
+			const agent = await createPublishedAgent([chatChannel]);
+
+			const ids = await agentRepo.findChatReachableIds([projectId]);
+
+			expect(ids).toEqual([agent.id]);
+		});
+
+		it('excludes an unpublished agent', async () => {
+			await createAgent({
+				integrations: [chatChannel] as unknown as Agent['integrations'],
+				activeVersionId: null,
+			});
+
+			await expect(agentRepo.findChatReachableIds([projectId])).resolves.toEqual([]);
+		});
+
+		it('excludes an agent whose published config dropped the channel', async () => {
+			await createPublishedAgent([]);
+
+			await expect(agentRepo.findChatReachableIds([projectId])).resolves.toEqual([]);
+		});
+
+		it('excludes a published agent in another project', async () => {
+			const otherProject = await createTeamProject();
+			await createPublishedAgent([chatChannel], { projectId: otherProject.id });
+
+			await expect(agentRepo.findChatReachableIds([projectId])).resolves.toEqual([]);
+		});
+
+		it('ignores the project filter for a global scope (projectIds: null)', async () => {
+			const otherProject = await createTeamProject();
+			const inProject = await createPublishedAgent([chatChannel]);
+			const inOtherProject = await createPublishedAgent([chatChannel], {
+				projectId: otherProject.id,
+			});
+
+			const ids = await agentRepo.findChatReachableIds(null);
+
+			expect(ids.sort()).toEqual([inProject.id, inOtherProject.id].sort());
+		});
+
+		it('returns no ids without a query when the project scope is empty', async () => {
+			await createPublishedAgent([chatChannel]);
+
+			await expect(agentRepo.findChatReachableIds([])).resolves.toEqual([]);
+		});
+	});
+
+	describe('findByProjectIdsPaginated - usage sort', () => {
+		async function listByUsage(usageCounts?: Map<string, number>) {
+			return await agentRepo.findByProjectIdsPaginated(
+				[projectId],
+				{ skip: 0, take: 10, sortBy: 'usage:desc' },
+				{ usageCounts },
+			);
+		}
+
+		it('falls back to createdAt desc without usage counts', async () => {
+			const older = await createAgent({
+				name: 'Older',
+				createdAt: new Date('2024-01-01T00:00:00Z'),
+			} as Partial<Agent>);
+			const newer = await createAgent({
+				name: 'Newer',
+				createdAt: new Date('2024-02-01T00:00:00Z'),
+			} as Partial<Agent>);
+
+			const { data } = await listByUsage();
+
+			expect(data.map((agent) => agent.id)).toEqual([newer.id, older.id]);
+		});
+
+		it('ranks agents by usage count, usage above none', async () => {
+			const unused = await createAgent({ name: 'Unused' });
+			const lightlyUsed = await createAgent({ name: 'Lightly used' });
+			const heavilyUsed = await createAgent({ name: 'Heavily used' });
+
+			const { data } = await listByUsage(
+				new Map([
+					[heavilyUsed.id, 2],
+					[lightlyUsed.id, 1],
+				]),
+			);
+
+			expect(data.map((agent) => agent.id)).toEqual([heavilyUsed.id, lightlyUsed.id, unused.id]);
+		});
+	});
 });

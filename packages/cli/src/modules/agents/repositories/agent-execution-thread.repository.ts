@@ -17,7 +17,11 @@ import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
 } from '../utils/delegated-child-checkpoints';
-import { PREVIEW_THREAD_SOURCES, type AgentSessionMode } from '../utils/agent-thread-access';
+import {
+	N8N_CHAT_PRODUCTION_SOURCE,
+	PREVIEW_THREAD_SOURCES,
+	type AgentSessionMode,
+} from '../utils/agent-thread-access';
 
 const CHECKPOINT_BATCH_SIZE = 400;
 
@@ -146,25 +150,104 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
 	): Promise<AgentExecutionThreadPage> {
-		// SQLite timestamps can omit milliseconds, so compare them in one format.
-		const updatedAt =
-			this.manager.connection.options.type === 'postgres'
-				? 'thread.updatedAt'
-				: "STRFTIME('%Y-%m-%d %H:%M:%f', thread.updatedAt)";
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
 			.andWhere(
 				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
 				{ userId },
-			)
-			.orderBy('thread.updatedAt', 'DESC')
-			.take(limit + 1);
+			);
+		this.applyListFilters(query, filters, userId, this.updatedAtExpression());
+		return await this.paginateByUpdatedAt(query, limit, cursor);
+	}
 
-		if (cursor) {
-			query.andWhere(`${updatedAt} < :cursor`, { cursor: new Date(cursor) });
+	/**
+	 * The owner's own top-level n8n Chat threads across the given `agentIds`
+	 * (the agents the caller already resolved as currently reachable), newest
+	 * `updatedAt` first.
+	 *
+	 * Selects only the columns the cross-agent thread list renders.
+	 * `activeVersion.schema` loads in full — it is read for the published
+	 * personalisation — but the draft schema, tools and skills never load.
+	 */
+	async findN8nChatThreadsForOwner(
+		userId: string,
+		agentIds: string[],
+		limit: number,
+		cursor?: string,
+	): Promise<AgentExecutionThreadPage> {
+		if (agentIds.length === 0) return { threads: [], nextCursor: null };
+
+		const query = this.createQueryBuilder('thread')
+			.leftJoinAndSelect('thread.agent', 'agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.select([
+				'thread.id',
+				'thread.title',
+				'thread.updatedAt',
+				'agent.id',
+				'agent.name',
+				'agent.projectId',
+				'activeVersion.versionId',
+				'activeVersion.schema',
+			])
+			.where('thread.ownerId = :userId', { userId })
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.agentId IN (:...agentIds)', { agentIds });
+		// ponytail: the origin rule re-runs a correlated first-source subquery per
+		// thread row; fine for one user's threads, add a stored thread origin
+		// column if profiling shows it.
+		this.applyOriginFilter(query, N8N_CHAT_PRODUCTION_SOURCE);
+
+		return await this.paginateByUpdatedAt(query, limit, cursor);
+	}
+
+	/**
+	 * How many of `userId`'s own n8n Chat threads reference each agent, for
+	 * ranking an agent list by usage. `projectIds: null` means no restriction.
+	 */
+	async countN8nChatThreadsByAgent(
+		userId: string,
+		projectIds: string[] | null,
+	): Promise<Map<string, number>> {
+		if (projectIds?.length === 0) return new Map();
+
+		const query = this.createQueryBuilder('thread')
+			.select('thread.agentId', 'agentId')
+			.addSelect('COUNT(*)', 'count')
+			.where('thread.ownerId = :userId', { userId })
+			.andWhere("thread.accessScope = 'user'")
+			.groupBy('thread.agentId');
+		// ponytail: the origin rule re-runs a correlated first-source subquery per
+		// thread row; fine for one user's threads, add a stored thread origin
+		// column if profiling shows it.
+		this.applyOriginFilter(query, N8N_CHAT_PRODUCTION_SOURCE);
+
+		if (projectIds !== null) {
+			query.andWhere('thread.projectId IN (:...projectIds)', { projectIds });
 		}
-		this.applyListFilters(query, filters, userId, updatedAt);
+
+		const rows = await query.getRawMany<{ agentId: string; count: string }>();
+		return new Map(rows.map((row) => [row.agentId, Number(row.count)]));
+	}
+
+	/** SQLite timestamps can omit milliseconds, so compare them in one format. */
+	private updatedAtExpression(): string {
+		return this.manager.connection.options.type === 'postgres'
+			? 'thread.updatedAt'
+			: "STRFTIME('%Y-%m-%d %H:%M:%f', thread.updatedAt)";
+	}
+
+	/** Cursor pagination shared by every `thread.updatedAt DESC` listing. */
+	private async paginateByUpdatedAt(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		limit: number,
+		cursor?: string,
+	): Promise<AgentExecutionThreadPage> {
+		query.orderBy('thread.updatedAt', 'DESC').take(limit + 1);
+		if (cursor) {
+			query.andWhere(`${this.updatedAtExpression()} < :cursor`, { cursor: new Date(cursor) });
+		}
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
