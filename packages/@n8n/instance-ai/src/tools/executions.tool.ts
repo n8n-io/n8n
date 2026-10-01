@@ -1,5 +1,5 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output,
+ * Consolidated executions tool — list, get, run, listen, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
 import {
@@ -8,6 +8,7 @@ import {
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	testListenerCardSchema,
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
@@ -218,6 +219,16 @@ const getResolvedNodeParametersAction = z.object({
 		.describe('Which run of the node to use, if it ran multiple times (default: last run)'),
 });
 
+const listenAction = z.object({
+	action: z
+		.literal('listen')
+		.describe(
+			'Arm the test URL of a Webhook or Form Trigger, wait for one real request, and return the execution it started. The workflow stays unpublished.',
+		),
+	workflowId: z.string().describe('Workflow ID'),
+	triggerNodeName: runAction.shape.triggerNodeName,
+});
+
 const stopAction = z.object({
 	action: z.literal('stop').describe('Cancel a running workflow execution'),
 	executionId: z.string().describe('Execution ID'),
@@ -228,6 +239,7 @@ const inputSchema = sanitizeInputSchema(
 		listAction,
 		getAction,
 		runAction,
+		listenAction,
 		runStepAction,
 		debugAction,
 		getNodeOutputAction,
@@ -238,7 +250,7 @@ const inputSchema = sanitizeInputSchema(
 
 type Input = z.infer<typeof inputSchema>;
 
-// ── Suspend / resume schemas (used by `run`) ───────────────────────────────
+// ── Suspend / resume schemas (used by `run` and `listen`) ──────────────────
 
 const suspendSchema = z.object({
 	requestId: z.string(),
@@ -246,7 +258,17 @@ const suspendSchema = z.object({
 	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
 	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
+	/** Renders the "waiting for a test request" card instead of an approval. */
+	testListener: testListenerCardSchema.optional(),
 });
+
+type SuspendPayload = z.infer<typeof suspendSchema>;
+type Suspend = (payload: SuspendPayload) => Promise<never>;
+
+/** Listeners this tool instance armed, keyed by the workflow ID the agent passed. */
+type ArmedListeners = Map<string, { armedAt: string; card: SuspendPayload; earlyAnswers?: number }>;
+/** Premature "I sent the request" answers tolerated before the tool hands the turn back. */
+const MAX_EARLY_LISTENER_ANSWERS = 2;
 
 /** Includes `scope` for "always allow" session grants (see handler). */
 const resumeSchema = instanceAiApprovalResumeSchema;
@@ -326,20 +348,24 @@ async function findAllowedWorkflowByName(
 	return undefined;
 }
 
-async function handleRun(
+type RunGate =
+	| { kind: 'blocked' }
+	| { kind: 'denied' }
+	| { kind: 'needs-approval'; workflowName: string }
+	| { kind: 'allowed'; workflowId: string; workflowName: string | undefined };
+
+/**
+ * Permission gate shared by `run` and `listen`. Both start an execution of the
+ * named workflow under the user's authority, so both honour the same admin
+ * policy, allow-lists, and session grants.
+ */
+async function resolveRunGate(
 	context: InstanceAiContext,
-	input: Extract<Input, { action: 'run' }>,
+	requestedWorkflowId: string,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
-	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
-	abortSignal?: AbortSignal,
-) {
+): Promise<RunGate> {
 	if (context.permissions?.runWorkflow === 'blocked') {
-		return {
-			executionId: '',
-			status: 'error' as const,
-			denied: true,
-			reason: 'Action blocked by admin',
-		};
+		return { kind: 'blocked' };
 	}
 
 	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
@@ -352,7 +378,7 @@ async function handleRun(
 	const allowList = context.allowedRunWorkflowIds;
 	const workflowNameAllowList = context.allowedRunWorkflowNames;
 	let workflowName: string | undefined;
-	let workflowId = input.workflowId;
+	let workflowId = requestedWorkflowId;
 	const getWorkflowName = async () => {
 		workflowName ??= await context.workflowService
 			.get(workflowId)
@@ -394,16 +420,51 @@ async function handleRun(
 		context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
-	// If approval is required and this is the first call, suspend for confirmation
+	// Approval is required and this is the first call
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const workflowName = (await getWorkflowName()) ?? input.workflowId;
+		return {
+			kind: 'needs-approval',
+			workflowName: (await getWorkflowName()) ?? requestedWorkflowId,
+		};
+	}
+
+	// Resumed with denial
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { kind: 'denied' };
+	}
+
+	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(grantKey);
+	}
+
+	return { kind: 'allowed', workflowId, workflowName: await getWorkflowName() };
+}
+
+async function handleRun(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'run' }>,
+	resumeData: z.infer<typeof resumeSchema> | undefined,
+	suspend: Suspend,
+	abortSignal?: AbortSignal,
+) {
+	const gate = await resolveRunGate(context, input.workflowId, resumeData);
+	if (gate.kind === 'blocked' || gate.kind === 'denied') {
+		return {
+			executionId: '',
+			status: 'error' as const,
+			denied: true,
+			reason: gate.kind === 'blocked' ? 'Action blocked by admin' : 'User denied the action',
+		};
+	}
+	if (gate.kind === 'needs-approval') {
 		return await suspend({
 			requestId: nanoid(),
 			message: formatApprovalMessage(
 				`Run this workflow live${input.triggerNodeName ? ` from "${input.triggerNodeName}"` : ''}`,
 				input.approvalSummary,
 			),
-			resourceName: workflowName,
+			resourceName: gate.workflowName,
 			approvalDetails: {
 				action: 'run-workflow',
 				summary: input.approvalSummary,
@@ -413,23 +474,8 @@ async function handleRun(
 		});
 	}
 
-	// If resumed with denial
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return {
-			executionId: '',
-			status: 'error' as const,
-			denied: true,
-			reason: 'User denied the action',
-		};
-	}
-
-	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
-	if (resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(grantKey);
-	}
-
 	// Approved or always_allow — execute
-	const result = await context.executionService.run(workflowId, input.inputData, {
+	const result = await context.executionService.run(gate.workflowId, input.inputData, {
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
@@ -438,7 +484,7 @@ async function handleRun(
 	// so the publish gate stops disclosing simulations that this run replaced.
 	const verificationClaim = await recordLiveRunVerification({
 		context,
-		workflowId,
+		workflowId: gate.workflowId,
 		triggerNodeName: input.triggerNodeName,
 		result,
 	});
@@ -538,6 +584,105 @@ async function handleRunStep(
 	});
 }
 
+/**
+ * Arm a trigger's test URL and suspend on a listener card. The card settles when
+ * the browser sees the `testWebhookReceived` push, when the user clicks
+ * "I sent the request", or when the user cancels. The outcome is read from
+ * durable state (registration, executions), never from the click alone.
+ */
+async function handleListen(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'listen' }>,
+	resumeData: z.infer<typeof resumeSchema> | undefined,
+	suspend: Suspend,
+	listeners: ArmedListeners,
+) {
+	const { executionService } = context;
+	if (!executionService.armTestListener || !executionService.resolveTestListener) {
+		return {
+			state: 'unsupported' as const,
+			reason:
+				'This instance cannot arm test listeners. Ask the user to test the trigger from the editor.',
+		};
+	}
+
+	// Phase 2: the listener card was answered.
+	const armed = listeners.get(input.workflowId);
+	if (armed && resumeData) {
+		const executionId =
+			typeof resumeData.userInput === 'string' && resumeData.userInput.length > 0
+				? resumeData.userInput
+				: undefined;
+		const outcome = await executionService.resolveTestListener(
+			armed.card.testListener?.workflowId ?? input.workflowId,
+			{
+				armedAt: armed.armedAt,
+				executionId,
+				cancel: !resumeData.approved,
+			},
+		);
+		if (outcome.state === 'armed') {
+			// "I sent the request" before anything arrived: keep waiting on a fresh card, but not
+			// forever — a client that answers every card at once would otherwise loop here.
+			armed.earlyAnswers = (armed.earlyAnswers ?? 0) + 1;
+			if (armed.earlyAnswers <= MAX_EARLY_LISTENER_ANSWERS) {
+				armed.card = { ...armed.card, requestId: nanoid() };
+				return await suspend(armed.card);
+			}
+			listeners.delete(input.workflowId);
+			return {
+				state: 'armed' as const,
+				listenerCleared: false,
+				reason: `No request has reached the test URL yet. The listener stays armed until ${armed.card.testListener?.deadlineAt ?? 'the deadline'}; call action="listen" again to keep waiting.`,
+			};
+		}
+		listeners.delete(input.workflowId);
+		if (outcome.state === 'received') {
+			return { state: 'received' as const, ...outcome.result };
+		}
+		return {
+			state: outcome.state,
+			listenerCleared: true,
+			reason:
+				outcome.state === 'cancelled'
+					? 'The user cancelled the test listener.'
+					: `No request reached the test URL before ${armed.card.testListener?.deadlineAt ?? 'the deadline'}. Call action="listen" again to re-arm.`,
+		};
+	}
+
+	// Phase 1: permission gate, then arm.
+	const gate = await resolveRunGate(context, input.workflowId, resumeData);
+	if (gate.kind === 'blocked' || gate.kind === 'denied') {
+		return {
+			state: 'denied' as const,
+			reason: gate.kind === 'blocked' ? 'Action blocked by admin' : 'User denied the action',
+		};
+	}
+	if (gate.kind === 'needs-approval') {
+		return await suspend({
+			requestId: nanoid(),
+			message: `Listen for a test request to ${gate.workflowName} (ID: ${input.workflowId})`,
+			severity: 'warning' as const,
+		});
+	}
+
+	const listener = await executionService.armTestListener(gate.workflowId, {
+		triggerNodeName: input.triggerNodeName,
+	});
+	const card: SuspendPayload = {
+		requestId: nanoid(),
+		message: `Waiting for a test request to ${gate.workflowName ?? gate.workflowId}`,
+		severity: 'info' as const,
+		testListener: {
+			workflowId: gate.workflowId,
+			triggers: listener.triggers,
+			deadlineAt: listener.deadlineAt,
+		},
+	};
+	listeners.set(input.workflowId, { armedAt: listener.armedAt, card });
+	return await suspend(card);
+}
+
 async function handleDebug(context: InstanceAiContext, input: Extract<Input, { action: 'debug' }>) {
 	return await context.executionService.getDebugInfo(input.executionId);
 }
@@ -573,9 +718,10 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createExecutionsTool(context: InstanceAiContext) {
+	const listeners: ArmedListeners = new Map();
 	return new Tool('executions')
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
+			'Manage workflow executions — list, inspect, run, run one node, listen, debug, ' +
 				'get node output, get resolved node parameters for a past run, and stop. ' +
 				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
 				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
@@ -586,7 +732,11 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				'"Execute step" button. Use it to see what one node really returns — when ' +
 				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
 				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+				'not point it at a node that writes. ' +
+				'action="listen" arms the test URL of a Webhook or Form Trigger and waits for one real request ' +
+				'(curl, a browser form, a third-party callback), then returns the execution it started. ' +
+				'Use it instead of action="run" when the trigger\'s auth, query parameters, response mode, or form must be exercised for real; ' +
+				'the workflow stays unpublished and the listener clears itself at the stated deadline.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
@@ -600,6 +750,8 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'run': {
 					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
+				case 'listen':
+					return await handleListen(context, input, ctx.resumeData, ctx.suspend, listeners);
 				case 'run-step': {
 					return await handleRunStep(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}

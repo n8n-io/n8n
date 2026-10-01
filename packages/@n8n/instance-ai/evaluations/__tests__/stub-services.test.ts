@@ -141,6 +141,46 @@ describe('createStubServices nodeService.getNodeTypeDefinition', () => {
 	});
 });
 
+describe('createStubServices executionService.armTestListener', () => {
+	it('reports every method of a Webhook that accepts several', async () => {
+		const file = await writeNodesJson([
+			{
+				name: 'n8n-nodes-base.webhook',
+				displayName: 'Webhook',
+				description: 'Starts the workflow when a webhook is called',
+				group: ['trigger'],
+				version: [2.1],
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			},
+		]);
+		const { context } = await createStubServices({ nodesJsonPath: file });
+		await context.workflowService.createFromWorkflowJSON({
+			id: 'wf-1',
+			name: 'Intake',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2.1,
+					position: [0, 0],
+					parameters: { path: 'intake', multipleMethods: true, httpMethod: ['GET', 'POST'] },
+				},
+			],
+			connections: {},
+		});
+
+		const armed = await context.executionService.armTestListener!('wf-1');
+
+		expect(armed.triggers).toEqual([
+			{ nodeName: 'Webhook', method: 'GET', url: 'http://localhost:5678/webhook-test/intake' },
+			{ nodeName: 'Webhook', method: 'POST', url: 'http://localhost:5678/webhook-test/intake' },
+		]);
+	});
+});
+
 describe('resolveEvalNodeDefinitionDirs', () => {
 	it('returns absolute paths and only lists dirs that actually exist', () => {
 		const dirs = resolveEvalNodeDefinitionDirs();
