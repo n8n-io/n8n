@@ -19,13 +19,15 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn() }),
+	useToast: () => ({ showError: showQueueErrorMock }),
 }));
 
+const showQueueErrorMock = vi.fn();
 const getAgentChatQueueMock = vi.fn().mockResolvedValue({ items: [] });
 const removeAgentQueuedMessageMock = vi.fn().mockResolvedValue({ removed: true });
 const updateAgentQueuedMessageMock = vi.fn();
 const steerAgentQueuedMessageMock = vi.fn();
+const reorderAgentQueuedMessageMock = vi.fn();
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
@@ -59,6 +61,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		removeAgentQueuedMessage: (...args: unknown[]) => removeAgentQueuedMessageMock(...args),
 		updateAgentQueuedMessage: (...args: unknown[]) => updateAgentQueuedMessageMock(...args),
 		steerAgentQueuedMessage: (...args: unknown[]) => steerAgentQueuedMessageMock(...args),
+		reorderAgentQueuedMessage: (...args: unknown[]) => reorderAgentQueuedMessageMock(...args),
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
@@ -202,6 +205,8 @@ beforeEach(() => {
 	getAgentChatQueueMock.mockReset().mockResolvedValue({ items: [] });
 	removeAgentQueuedMessageMock.mockReset().mockResolvedValue({ removed: true });
 	steerAgentQueuedMessageMock.mockReset().mockResolvedValue(undefined);
+	reorderAgentQueuedMessageMock.mockReset().mockResolvedValue(undefined);
+	showQueueErrorMock.mockClear();
 });
 
 const hookScopes: ReturnType<typeof effectScope>[] = [];
@@ -3773,9 +3778,15 @@ describe('useAgentChatStream — queued submissions', () => {
 		streams[1].close([{ type: 'done', executionId: 'B' }]);
 	});
 
-	it.each([false, true])(
-		'ignores an older start after B starts (B settled: %s)',
-		async (settled) => {
+	it.each([
+		{ settled: false, unavailable: false },
+		{ settled: true, unavailable: false },
+		{ settled: false, unavailable: true },
+	])(
+		'ignores an older start with a stale queue (B settled: $settled, history unavailable: $unavailable)',
+		async ({ settled, unavailable }) => {
+			const queued = { id: '1', message: 'A', createdAt: new Date().toISOString() };
+			getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
 			const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
 			const signals: Array<AbortSignal | null> = [];
 			vi.stubGlobal(
@@ -3795,13 +3806,25 @@ describe('useAgentChatStream — queued submissions', () => {
 			const hook = buildHook('thread-1');
 			await hook.sendMessage('A');
 			await hook.sendMessage('B');
+			getChatMessagesMock.mockResolvedValue({
+				messages: [],
+				openSuspensions: [],
+				activeExecutionId: 'B',
+			});
 			streams[1].emit([{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' }]);
 			await flushPromises();
+			expect(hook.queuedMessages.value).toEqual([queued]);
 			if (settled) {
+				getChatMessagesMock.mockResolvedValue({
+					messages: [],
+					openSuspensions: [],
+					activeExecutionId: null,
+				});
 				streams[1].close([{ type: 'done', executionId: 'B' }]);
 				await flushPromises();
 			}
-			streams[0].close([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
+			if (unavailable) getChatMessagesMock.mockRejectedValueOnce(new Error('History unavailable'));
+			streams[0].emit([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
 			await flushPromises();
 			expect(signals[0]?.aborted).toBe(true);
 			expect(hook.activeExecutionId.value).toBe(settled ? null : 'B');
@@ -3812,9 +3835,117 @@ describe('useAgentChatStream — queued submissions', () => {
 				await hook.stopGenerating();
 				expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('B');
 			}
+			streams[0].close();
 			hook.detachStream();
 		},
 	);
+
+	it.each([false, true])(
+		'ignores a delayed ownership response after C starts (history recovery: %s)',
+		async (recovered) => {
+			const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+			const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+				const stream = makeControllableSseResponse(
+					[{ type: 'message-queued', queueId: String(streams.length + 1), sessionId: 'thread-1' }],
+					init.signal ?? null,
+				);
+				streams.push(stream);
+				return stream.response;
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const hook = buildHook('thread-1');
+			await hook.sendMessage('A');
+			await hook.sendMessage('B');
+			streams[1].emit([{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' }]);
+			await flushPromises();
+			await hook.sendMessage('C');
+			if (recovered) {
+				streams[1].close([{ type: 'done', executionId: 'B' }]);
+				await flushPromises();
+			}
+
+			const validation = Promise.withResolvers<AgentChatMessagesResponse>();
+			getChatMessagesMock.mockReturnValueOnce(validation.promise);
+			streams[0].emit([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
+			await flushPromises();
+			expect(hook.activeExecutionId.value).toBe(recovered ? null : 'B');
+
+			getChatMessagesMock.mockResolvedValue({
+				messages: ['B', 'C'].map((text) => ({
+					id: text,
+					executionId: text,
+					role: 'user',
+					content: [{ type: 'text', text }],
+				})),
+				openSuspensions: [],
+				activeExecutionId: 'C',
+			});
+			if (recovered) hook.refresh();
+			else
+				streams[2].emit([{ type: 'execution-started', executionId: 'C', sessionId: 'thread-1' }]);
+			await flushPromises();
+			validation.resolve({ messages: [], openSuspensions: [], activeExecutionId: 'A' });
+			await flushPromises();
+			expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true);
+			expect(hook.activeExecutionId.value).toBe('C');
+			if (recovered)
+				streams[2].emit([{ type: 'execution-started', executionId: 'C', sessionId: 'thread-1' }]);
+			streams[2].emit([{ type: 'text-delta', id: 'c-text', delta: 'C output' }]);
+			await flushPromises();
+			expect(hook.messages.value.map(({ content }) => content)).toEqual(['B', 'C', 'C output']);
+			await hook.stopGenerating();
+			expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('C');
+			hook.detachStream();
+		},
+	);
+
+	it('stops validating a delayed start after repeated ownership changes', async () => {
+		const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+		const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+			const executionId = ['A', 'B', 'C', 'D', 'E'][streams.length];
+			const event: AgentSseEvent =
+				streams.length < 2
+					? { type: 'message-queued', queueId: executionId, sessionId: 'thread-1' }
+					: { type: 'execution-started', executionId, sessionId: 'thread-1' };
+			const stream = makeControllableSseResponse([event], init.signal ?? null);
+			streams.push(stream);
+			return stream.response;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('A');
+		await hook.sendMessage('B');
+		streams[1].emit([{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' }]);
+		await flushPromises();
+
+		let validation = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock.mockReturnValueOnce(validation.promise);
+		streams[0].emit([{ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' }]);
+		await flushPromises();
+		for (const executionId of ['C', 'D', 'E']) {
+			await hook.sendMessage(executionId);
+			const nextValidation = Promise.withResolvers<AgentChatMessagesResponse>();
+			getChatMessagesMock.mockReturnValueOnce(nextValidation.promise);
+			validation.resolve({ messages: [], openSuspensions: [], activeExecutionId: 'A' });
+			await flushPromises();
+			expect(hook.activeExecutionId.value).toBe(executionId);
+			validation = nextValidation;
+		}
+
+		expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true);
+		streams[4].emit([{ type: 'text-delta', id: 'e-text', delta: 'E output' }]);
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual([
+			'B',
+			'C',
+			'D',
+			'E',
+			'E output',
+		]);
+		await hook.stopGenerating();
+		expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('E');
+		hook.detachStream();
+	});
 
 	it('handles start before acceptance and preserves the original stream after a removal conflict', async () => {
 		let stream: ReturnType<typeof makeControllableSseResponse>;
@@ -3988,6 +4119,171 @@ describe('useAgentChatStream — queued submissions', () => {
 			expect(hook.queuedMessages.value).toEqual([item]);
 		},
 	);
+
+	it('keeps live output once after reordering, history recovery, and timeline updates', async () => {
+		const items = ['A', 'B'].map((message, index) => ({
+			id: String(index + 1),
+			message,
+			createdAt: new Date().toISOString(),
+		}));
+		getAgentChatQueueMock.mockResolvedValue({ items });
+		const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+		const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+			const event: AgentSseEvent =
+				streams.length === 0
+					? { type: 'execution-started', executionId: 'active', sessionId: 'thread-1' }
+					: { type: 'message-queued', queueId: String(streams.length), sessionId: 'thread-1' };
+			const stream = makeControllableSseResponse([event], init.signal ?? null);
+			streams.push(stream);
+			return stream.response;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('Current turn');
+		await hook.sendMessage('A');
+		await hook.sendMessage('B');
+		await flushPromises();
+		const saved = Promise.withResolvers<void>();
+		reorderAgentQueuedMessageMock.mockReturnValueOnce(saved.promise);
+		const reordering = hook.reorderQueuedMessage('1', '2', ['1', '2']);
+		expect(reorderAgentQueuedMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+			'1',
+			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+		);
+		expect(hook.isReorderingQueue.value).toBe(true);
+		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['1', '2']);
+		getAgentChatQueueMock.mockResolvedValue({ items: [items[1], items[0]] });
+		saved.resolve();
+		await reordering;
+		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['2', '1']);
+		expect(hook.isReorderingQueue.value).toBe(false);
+		expect(hook.activeExecutionId.value).toBe('active');
+		expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(false);
+
+		getAgentChatQueueMock.mockResolvedValue({ items: [items[0]] });
+		streams[2].emit([
+			{ type: 'execution-started', executionId: 'B', sessionId: 'thread-1' },
+			{ type: 'text-delta', id: 'b-text', delta: 'B output' },
+		]);
+		await flushPromises();
+		expect(fetchMock.mock.calls[1][1].signal?.aborted).toBe(false);
+		expect(hook.activeExecutionId.value).toBe('B');
+		expect(hook.queuedMessages.value.map(({ id }) => id)).toEqual(['1']);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual([
+			'Current turn',
+			'B',
+			'B output',
+		]);
+
+		const recovered: AgentChatMessagesResponse = {
+			messages: ['Current turn', 'B', 'B output', 'A'].map((text, index) => ({
+				id: `saved-${index}`,
+				role: index === 2 ? 'assistant' : 'user',
+				executionId: ['active', 'B', 'B', 'A'][index],
+				content: [{ type: 'text', text }],
+			})),
+			openSuspensions: [],
+			activeExecutionId: 'A',
+		};
+		getChatMessagesMock.mockResolvedValue(recovered);
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		streams[2].close([{ type: 'done', executionId: 'B' }]);
+		await flushPromises();
+		const validation = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock.mockReturnValueOnce(validation.promise);
+		streams[1].emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-1',
+				inputMessageIds: ['saved-3'],
+			},
+			{ type: 'text-delta', id: 'a-text', delta: 'A output' },
+		]);
+		await flushPromises();
+		getChatMessagesMock.mockResolvedValue({
+			...recovered,
+			messages: [
+				...recovered.messages,
+				{
+					id: 'a-partial',
+					role: 'assistant',
+					executionId: 'A',
+					content: [{ type: 'text', text: 'A out' }],
+				},
+			],
+		});
+		for (let update = 0; update < 3; update++) {
+			for (const listener of [...pushListeners])
+				listener({
+					type: 'agentExecutionUpdated',
+					data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'A' },
+				});
+			await flushPromises();
+		}
+		expect(hook.messages.value.at(-1)?.content).toBe('A out');
+		getChatMessagesMock.mockReturnValue(Promise.withResolvers<AgentChatMessagesResponse>().promise);
+		validation.resolve(recovered);
+		await flushPromises();
+		streams[1].emit([{ type: 'text-delta', id: 'a-text', delta: ' continues' }]);
+		await flushPromises();
+		expect(hook.activeExecutionId.value).toBe('A');
+		expect(hook.queuedMessages.value).toEqual([]);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual([
+			'Current turn',
+			'B',
+			'B output',
+			'A',
+			'A output continues',
+		]);
+		expect(hook.messages.value[3].id).toBe('saved-3');
+		await hook.stopGenerating();
+		expect(cancelAgentChatExecutionMock.mock.lastCall?.[4]).toBe('A');
+		hook.detachStream();
+	});
+
+	it('keeps a new session reorder busy when the previous session refresh completes', async () => {
+		const stale = Promise.withResolvers<{ items: [] }>();
+		getAgentChatQueueMock.mockReturnValueOnce(stale.promise);
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const threadId = ref('thread-1');
+		const hook = scope.run(() =>
+			useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1'), continueSessionId: threadId }),
+		)!;
+		const first = hook.reorderQueuedMessage('1', '2', ['1', '2']);
+		await flushPromises();
+		threadId.value = 'thread-2';
+		await flushPromises();
+		const saved = Promise.withResolvers<void>();
+		reorderAgentQueuedMessageMock.mockReturnValueOnce(saved.promise);
+		const second = hook.reorderQueuedMessage('3', '4', ['3', '4']);
+		stale.resolve({ items: [] });
+		await first;
+		expect(hook.isReorderingQueue.value).toBe(true);
+		saved.resolve();
+		await second;
+		expect(hook.isReorderingQueue.value).toBe(false);
+	});
+
+	it.each([
+		[409, 'agents.chat.queue.reorderUnavailable'],
+		[500, 'agents.chat.queue.reorderError'],
+	])('refreshes the queue and explains reorder failure %i', async (status, errorKey) => {
+		const item = { id: '2', message: 'Still pending', createdAt: new Date().toISOString() };
+		getAgentChatQueueMock.mockResolvedValue({ items: [item] });
+		const error = { httpStatusCode: status };
+		reorderAgentQueuedMessageMock.mockRejectedValueOnce(error);
+		const hook = buildHook('thread-1');
+		await hook.reorderQueuedMessage('1', '2', ['1', '2']);
+		expect(hook.queuedMessages.value).toEqual([item]);
+		expect(hook.isReorderingQueue.value).toBe(false);
+		expect(showQueueErrorMock).toHaveBeenCalledWith(error, errorKey);
+	});
 
 	it('restores pending inputs after reload and ignores a queue snapshot invalidated by removal', async () => {
 		const item = { id: '1', message: 'Queued', createdAt: new Date().toISOString() };

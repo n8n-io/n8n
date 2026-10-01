@@ -4,6 +4,7 @@ import {
 	AgentChatMessageDto,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
+	AgentChatQueueReorderDto,
 	type AgentChatMessagesResponse,
 	type AgentChatQueueResponse,
 	AgentChatResumeDto,
@@ -648,6 +649,29 @@ export class AgentChatController {
 			...req.params,
 			userId: req.user.id,
 			message: payload.message,
+		});
+	}
+
+	@Post('/:agentId/chat/:threadId/queue/:queueId/reorder')
+	@ProjectScope('agent:execute')
+	async reorderQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+		_res: Response,
+		@Body payload: AgentChatQueueReorderDto,
+	): Promise<void> {
+		if (!/^[1-9]\d*$/.test(req.params.queueId)) throw new BadRequestError('Invalid queue ID');
+		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		await this.messageQueue.reorderPending({
+			...req.params,
+			userId: req.user.id,
+			targetQueueId: payload.targetQueueId,
+			expectedQueueIds: payload.expectedQueueIds,
 		});
 	}
 

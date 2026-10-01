@@ -82,7 +82,7 @@ export class AgentMessageQueueConsumer {
 			.finally(() => this.activeThreads.delete(threadId));
 	}
 
-	/** Run messages in FIFO order until the session is empty, blocked, or unavailable on this main. */
+	/** Run messages in queue order until the session is empty, blocked, or unavailable on this main. */
 	private async drain(threadId: string): Promise<void> {
 		while (!this.stopped) {
 			if (!(await this.consumeNext(threadId))) return;

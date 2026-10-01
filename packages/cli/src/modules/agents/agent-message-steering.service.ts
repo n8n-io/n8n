@@ -54,7 +54,7 @@ export class AgentMessageSteeringService {
 		this.updates.notifyQueueUpdated(threadId);
 	}
 
-	/** Return unconsumed input to its original FIFO position. The caller holds the session lock. */
+	/** Return unconsumed input to its saved queue position. The caller holds the session lock. */
 	async release(threadId: string, executionId: string, ctx: OperationContext) {
 		await this.executions.closeSteering(threadId, executionId, ctx);
 		return await this.queue.releaseSteering(threadId, executionId, ctx);

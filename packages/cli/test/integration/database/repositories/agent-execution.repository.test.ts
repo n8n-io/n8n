@@ -1697,6 +1697,67 @@ describe('AgentExecutionRepository', () => {
 			},
 		);
 
+		it('moves pending messages across multiple positions and rejects a changed order', async () => {
+			const local = recordingServices();
+			const remote = recordingServices(undefined, peer);
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id };
+			await enqueue(local, input(threadId, 'A', 'new'));
+			const active = await claim(local, threadId);
+			const data = input(threadId, 'B');
+			data.payload.attachments = [
+				{ id: 'file-b', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 3 },
+			];
+			const b = await enqueue(local, data);
+			const c = await enqueue(local, input(threadId, 'C'));
+			const d = await enqueue(local, input(threadId, 'D'));
+			const steer = await enqueue(local, input(threadId, 'Steering input'));
+			await local.queue.steer({
+				...target,
+				queueId: steer.id,
+				executionId: active.admission.executionId,
+			});
+			const original = await local.messageRepository.findOneByOrFail({ id: b.messageId });
+			const move = {
+				...target,
+				queueId: b.id,
+				targetQueueId: d.id,
+				expectedQueueIds: [b.id, c.id, d.id],
+			};
+			const results = await Promise.allSettled([
+				local.queue.reorderPending(move),
+				remote.queue.reorderPending(move),
+			]);
+			expect(results.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				steer.id,
+				c.id,
+				d.id,
+				b.id,
+			]);
+			await expect(remote.queue.reorderPending(move)).rejects.toThrow('The queue has changed');
+			await remote.queue.reorderPending({
+				...move,
+				targetQueueId: c.id,
+				expectedQueueIds: [c.id, d.id, b.id],
+			});
+			for (const queueId of [active.item.id, steer.id]) {
+				await expect(local.queue.reorderPending({ ...move, queueId })).rejects.toThrow(
+					'The queue has changed',
+				);
+			}
+			expect((await local.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				steer.id,
+				b.id,
+				c.id,
+				d.id,
+			]);
+			expect(await local.messageRepository.findOneByOrFail({ id: b.messageId })).toEqual(original);
+			expect(await repository.findOneByOrFail({ id: active.admission.executionId })).toMatchObject({
+				status: 'running',
+			});
+		});
+
 		it('consumes reserved messages in acceptance order and retains their history after interruption', async () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);

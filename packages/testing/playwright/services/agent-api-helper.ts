@@ -91,6 +91,20 @@ export class AgentApiHelper {
 			throw new TestError(`Failed to remove queued message: ${await response.text()}`);
 	}
 
+	async reorderQueuedMessage(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		queueId: string,
+		targetQueueId: string,
+		expectedQueueIds: string[],
+	) {
+		return await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}/reorder`,
+			{ data: { targetQueueId, expectedQueueIds } },
+		);
+	}
+
 	async steerQueuedMessage(
 		projectId: string,
 		agentId: string,
