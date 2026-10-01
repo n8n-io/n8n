@@ -19,29 +19,10 @@
 # Default catch-all (ensures every file gets at least one reviewer)
 *                                                       @n8n-io/catalysts
 
-# Catalysts
+# Core package exceptions
 
-packages/core/                                          @n8n-io/catalysts
-packages/workflow/                                      @n8n-io/catalysts
 packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
-packages/@n8n/config/                                   @n8n-io/catalysts
-packages/@n8n/backend-common/                           @n8n-io/catalysts
-packages/@n8n/backend-network/                          @n8n-io/catalysts
-packages/@n8n/backend-services/                         @n8n-io/catalysts
-packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
-packages/@n8n/di/                                       @n8n-io/catalysts
-packages/@n8n/errors/                                   @n8n-io/catalysts
-packages/@n8n/constants/                                @n8n-io/catalysts
-packages/@n8n/utils/                                    @n8n-io/catalysts
-packages/@n8n/api-types/                                @n8n-io/catalysts
 packages/@n8n/workflow-sdk/                             @n8n-io/ai-assistant
-packages/@n8n/task-runner/                              @n8n-io/catalysts
-packages/@n8n/task-runner-python/                       @n8n-io/catalysts
-packages/@n8n/expression-runtime/                       @n8n-io/catalysts
-packages/@n8n/db/                                       @n8n-io/catalysts
-packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
-packages/@n8n/crdt/                                     @n8n-io/catalysts
-packages/@n8n/extension-sdk/                            @n8n-io/catalysts
 packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
@@ -59,29 +40,12 @@ OWNERS                                                  @n8n-io/qa-dx required
 packages/@n8n/cli/                                      @n8n-io/adore
 packages/@n8n/cli/src/commands/credential/              @n8n-io/iam
 packages/@n8n/cli/src/commands/user/                    @n8n-io/iam
-packages/@n8n/cli/src/commands/data-table/              @n8n-io/adore
-packages/@n8n/cli/src/commands/tag/                     @n8n-io/adore
 packages/@n8n/cli/src/commands/project/                 @n8n-io/ligo
 packages/@n8n/cli/src/commands/source-control/          @n8n-io/ligo
 packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
 packages/@n8n/cli/src/commands/skill/                   @n8n-io/ai
 
 # packages/cli
-packages/cli/                                           @n8n-io/catalysts
-packages/cli/src/scaling/                               @n8n-io/catalysts
-packages/cli/src/concurrency/                           @n8n-io/catalysts
-packages/cli/src/execution-lifecycle/                   @n8n-io/catalysts
-packages/cli/src/executions/                            @n8n-io/catalysts
-packages/cli/src/task-runners/                          @n8n-io/catalysts
-packages/cli/src/webhooks/                              @n8n-io/catalysts
-packages/cli/src/push/                                  @n8n-io/catalysts
-packages/cli/src/commands/                              @n8n-io/catalysts
-packages/cli/src/config/                                @n8n-io/catalysts
-packages/cli/src/eventbus/                              @n8n-io/catalysts
-packages/cli/src/events/                                @n8n-io/catalysts
-packages/cli/src/security-audit/                        @n8n-io/catalysts
-packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
-packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
 packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
 packages/cli/src/modules/otel/                          @n8n-io/ligo
 
@@ -109,8 +73,6 @@ packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/cli/src/modules/insights/                      @n8n-io/ligo
 
-packages/cli/src/collaboration/                         @n8n-io/catalysts
-packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/adore
 packages/cli/src/modules/data-table/                    @n8n-io/adore
 
@@ -214,7 +176,6 @@ packages/@n8n/codemirror-lang/                          @n8n-io/nodes
 packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
 packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
-packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/create-node/                              @n8n-io/nodes
 packages/@n8n/node-cli/                                 @n8n-io/nodes
