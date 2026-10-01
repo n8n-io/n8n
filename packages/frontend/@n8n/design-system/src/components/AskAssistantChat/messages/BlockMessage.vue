@@ -61,7 +61,7 @@ const { renderMarkdown } = useMarkdown();
 .blockTitle {
 	border-bottom: var(--border);
 	padding: var(--spacing--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .blockBody {
@@ -77,7 +77,7 @@ const { renderMarkdown } = useMarkdown();
 	h1,
 	h2,
 	h3 {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--xs);
 		margin: var(--spacing--xs) 0 var(--spacing--4xs);
 	}
@@ -85,7 +85,7 @@ const { renderMarkdown } = useMarkdown();
 	h4,
 	h5,
 	h6 {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
 

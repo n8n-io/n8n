@@ -71,7 +71,7 @@ const i18n = useI18n();
 
 	&__title {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		line-height: 1.45;
 	}
 

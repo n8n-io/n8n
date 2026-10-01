@@ -232,9 +232,9 @@
 	--spacing--4xl: 8rem; /** 128px **/
 	--spacing--5xl: 16rem; /** 256px **/
 
-	--font-family: InterVariable, sans-serif;
+	--font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--font-family--monospace:
-		CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+		'Geist Mono', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--font-size--4xs: 0.5rem;
 	--font-size--3xs: 0.625rem;
@@ -246,7 +246,7 @@
 	--font-size--xl: 1.25rem;
 	--font-size--2xl: 1.75rem;
 
-	--font-weight--regular: 400;
+	--font-weight--regular: 450;
 	--font-weight--medium: 500;
 	--font-weight--bold: 600;
 
@@ -256,9 +256,9 @@
 	--line-height--lg: 1.35;
 	--line-height--xl: 1.5;
 
-	--letter-spacing--tightest: -0.05em;
-	--letter-spacing--tighter: -0.025em;
-	--letter-spacing--tight: -0.01em;
+	--letter-spacing--tightest: -0.025em;
+	--letter-spacing--tighter: -0.015em;
+	--letter-spacing--tight: -0.007em;
 	--letter-spacing--normal: 0;
 	--letter-spacing--wide: 0.025em;
 	--letter-spacing--wider: 0.05em;
