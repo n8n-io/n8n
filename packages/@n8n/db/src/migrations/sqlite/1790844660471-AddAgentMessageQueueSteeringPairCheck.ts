@@ -1,7 +1,7 @@
-import { AddAgentMessageQueueSteeringPairCheck1790686544127 as BaseMigration } from '../common/1790686544127-AddAgentMessageQueueSteeringPairCheck';
+import { AddAgentMessageQueueSteeringPairCheck1790844660471 as BaseMigration } from '../common/1790844660471-AddAgentMessageQueueSteeringPairCheck';
 import type { MigrationContext } from '../migration-types';
 
-export class AddAgentMessageQueueSteeringPairCheck1790686544127 extends BaseMigration {
+export class AddAgentMessageQueueSteeringPairCheck1790844660471 extends BaseMigration {
 	async up(context: MigrationContext) {
 		await this.preserveQueueSequence(context, async () => await super.up(context));
 	}
