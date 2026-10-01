@@ -69,14 +69,14 @@ describe('CommunityPackages Handler', () => {
 			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
 
 			expect(mockLifecycle.install).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: true },
+				{ name: 'n8n-nodes-test', version: undefined },
 				mockUser,
 				'publicApi',
 			);
 			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(mockInstalledPackage));
 		});
 
-		it('should forward verify:false to lifecycle when explicitly provided', async () => {
+		it('should ignore verify when explicitly provided', async () => {
 			const req = {
 				body: { name: 'n8n-nodes-test', verify: false },
 				user: mockUser,
@@ -87,7 +87,7 @@ describe('CommunityPackages Handler', () => {
 			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
 
 			expect(mockLifecycle.install).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: false },
+				{ name: 'n8n-nodes-test', version: undefined },
 				mockUser,
 				'publicApi',
 			);
@@ -190,7 +190,7 @@ describe('CommunityPackages Handler', () => {
 			await handler.updatePackage[handler.updatePackage.length - 1](req, mockResponse);
 
 			expect(mockLifecycle.update).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: true },
+				{ name: 'n8n-nodes-test', version: undefined },
 				mockUser,
 				'notFound',
 			);
