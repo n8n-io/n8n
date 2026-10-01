@@ -3,11 +3,13 @@ import { ExpressionError } from '../../errors/expression.error';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	NUMBER_METHODS,
 	STRING_METHODS,
 	hasOwn,
 	isArray,
+	isObj,
 	toNum,
 	toStr,
 	type BinaryOp,
@@ -229,6 +231,41 @@ function assertPrimitiveElements(receiver: unknown[], method: string): void {
 	}
 }
 
+/**
+ * Content size of a JSON value: string lengths plus one per element and
+ * key, stopping early past the budget. Deeper than the grammar's own depth
+ * cap hands off: the engine owns data that deep.
+ */
+function contentWeight(value: unknown, budget: number, depth = 0): number {
+	if (depth > MAX_DEPTH) throw new EngineFallbackError();
+	if (typeof value === 'string') return value.length;
+	if (!isObj(value)) return 1;
+
+	let weight = 1;
+	const entries = isArray(value) ? value : Object.entries(value).flat();
+	for (const entry of entries) {
+		weight += contentWeight(entry, budget - weight, depth + 1);
+		if (weight > budget) break;
+	}
+	return weight;
+}
+
+/**
+ * concat() is the one method that can hold more content than the payload
+ * delivered: N arguments that reference one large string become N copies
+ * when the result is cloned (copyResult) and N operands for every method
+ * downstream (join, toSorted, includes). Element count does not see that,
+ * so concat is bounded by the content size of receiver plus arguments.
+ */
+function assertConcatWeight(receiver: unknown[], args: unknown[]): void {
+	let weight = contentWeight(receiver, MAX_RESULT_LENGTH);
+	for (const arg of args) {
+		if (weight > MAX_RESULT_LENGTH) break;
+		weight += contentWeight(arg, MAX_RESULT_LENGTH - weight);
+	}
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+}
+
 function evalCall(
 	node: Extract<SimpleNode, { kind: 'call' }>,
 	data: IWorkflowDataProxyData,
@@ -257,7 +294,10 @@ function evalCall(
 		throw new EngineFallbackError();
 	}
 
-	if (isArray(receiver)) assertPrimitiveElements(receiver, node.method);
+	if (isArray(receiver)) {
+		assertPrimitiveElements(receiver, node.method);
+		if (node.method === 'concat') assertConcatWeight(receiver, args);
+	}
 	assertPreflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args));

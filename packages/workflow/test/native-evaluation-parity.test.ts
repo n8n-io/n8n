@@ -308,6 +308,34 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 
+		// concat can reference one payload string many times; the clone of the
+		// result and every downstream method then pay for each reference, so it
+		// is bounded by content size, not element count.
+		test('concat is bounded by the content it references', () => {
+			const a = ['p'.repeat(300_000), 'q'.repeat(300_000)];
+			expect(nativeOn('{{ $json.a.concat($json.a).length }}', { $json: { a } })).toEqual({
+				handled: false,
+			});
+			expect(
+				nativeOn('{{ $json.a.concat($json.one).length }}', { $json: { a, one: [1] } }),
+			).toEqual({
+				handled: true,
+				value: 3,
+			});
+			const n = [{ k: 'r'.repeat(400_000) }];
+			expect(nativeOn('{{ $json.n.concat($json.n, $json.n).length }}', { $json: { n } })).toEqual({
+				handled: false,
+			});
+			// Fan-out of one payload string into hundreds of references bails
+			// before anything is cloned.
+			const fanOut = `{{ $json.big.concat(${'$json.big, '.repeat(499)}$json.big).length }}`;
+			const start = performance.now();
+			expect(nativeOn(fanOut, { $json: { big: ['x'.repeat(MAX_RESULT_LENGTH)] } })).toEqual({
+				handled: false,
+			});
+			expect(performance.now() - start).toBeLessThan(200);
+		});
+
 		test('nesting deeper than the cap is declined', () => {
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(20)}$json.item.active }}`)).toBe(true);
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(100)}$json.item.active }}`)).toBe(false);
