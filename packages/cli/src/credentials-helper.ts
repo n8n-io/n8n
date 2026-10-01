@@ -7,7 +7,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Credentials, getAdditionalKeys } from 'n8n-core';
+import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -30,6 +30,7 @@ import type {
 import {
 	ICredentialsHelper,
 	NodeHelpers,
+	OPEN_AI_API_CREDENTIAL_TYPE,
 	Workflow,
 	UnexpectedError,
 	UserError,
@@ -584,6 +585,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		// Managed OpenAI credentials are unavailable to nodes that can request undeclared types.
+		if (
+			credentialsEntity.isManaged &&
+			type === OPEN_AI_API_CREDENTIAL_TYPE &&
+			consumerNode &&
+			FULL_ACCESS_NODE_TYPES.has(consumerNode.type)
+		) {
+			throw new UserError('Managed credentials are not supported by this node');
+		}
 
 		// Validate against the executing project's policy before any decryption happens.
 		await this.policyEnforcementService.enforceCredentialDecrypt(
