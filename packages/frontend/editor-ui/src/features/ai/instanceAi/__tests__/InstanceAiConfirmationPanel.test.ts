@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -7,6 +8,7 @@ import type {
 	InstanceAiConfirmation,
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
+	PushMessage,
 } from '@n8n/api-types';
 import InstanceAiConfirmationPanel from '../components/InstanceAiConfirmationPanel.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -42,6 +44,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.build-workflow.imperativeWithResource': 'edit',
 				'instanceAi.tools.data-tables.add-column.imperative': 'add column',
 				'instanceAi.tools.data-tables.add-column.imperativeWithResource': 'add a column to',
+				'instanceAi.tools.nodes.execute.imperativeWithResource': 'execute the',
 			};
 			if (key === 'agents.chat.approval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
@@ -69,6 +72,17 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('../toolLabels', () => ({
 	useToolLabel: () => ({ getToolLabel: (name: string) => name }),
+}));
+
+let capturedPushListener: ((event: PushMessage) => void) | undefined;
+const mockRemovePushListener = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		addEventListener: (handler: (event: PushMessage) => void) => {
+			capturedPushListener = handler;
+			return mockRemovePushListener;
+		},
+	}),
 }));
 
 // Stub heavy child components
@@ -216,9 +230,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 
 				expect(getByText(message)).toBeVisible();
 				await userEvent.click(
-					getByTestId(
-						approved ? 'instance-ai-panel-confirm-approve' : 'instance-ai-panel-confirm-deny',
-					),
+					getByTestId(approved ? 'approval-card-allow-once' : 'approval-card-deny'),
 				);
 				expect(confirmSpy).toHaveBeenCalledWith('saved-request', { kind: 'approval', approved });
 			},
@@ -299,7 +311,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(description.textContent).toBe(message);
 			await userEvent.tab();
 			expect(description).toHaveFocus();
-			expect(getByTestId('instance-ai-panel-confirm-approve')).toBeVisible();
+			expect(getByTestId('approval-card-allow-once')).toBeVisible();
 		});
 
 		it.each([
@@ -356,6 +368,24 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(getByText('Allow n8n Assistant to edit workflow?')).toBeVisible();
 		});
 
+		it('names the node in the title when the assistant executes one', () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'execute-node',
+					severity: 'warning',
+					message: 'Document > Create',
+					resourceName: 'Google Sheets node',
+				},
+				{ action: 'execute', type: 'n8n-nodes-base.googleSheets' },
+				'nodes',
+			);
+			const { getByText } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByText('Assistant wants to execute the Google Sheets node')).toBeVisible();
+			expect(getByText('Document > Create')).toBeVisible();
+		});
+
 		it('preserves the saved description after a question mark', () => {
 			const message =
 				'Save changes to workflow "Paid?": Add a Slack notification after the payment check and update the daily report';
@@ -376,8 +406,8 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				message: '',
 			});
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			expect(getByTestId('instance-ai-panel-confirm-approve')).toBeVisible();
-			expect(getByTestId('instance-ai-panel-confirm-deny')).toBeVisible();
+			expect(getByTestId('approval-card-allow-once')).toBeVisible();
+			expect(getByTestId('approval-card-deny')).toBeVisible();
 		});
 
 		it.each(['approved', 'denied'] as const)(
@@ -390,7 +420,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				});
 				toolCall.confirmationStatus = confirmationStatus;
 				const { queryByTestId } = renderComponent({ props: { kind: 'floating' } });
-				expect(queryByTestId('instance-ai-panel-confirm-approve')).not.toBeInTheDocument();
+				expect(queryByTestId('approval-card-allow-once')).not.toBeInTheDocument();
 			},
 		);
 
@@ -422,9 +452,9 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			).toBeVisible();
 			expect(getByText('Use destination')).toBeVisible();
 			expect(getByText("Don't use destination")).toBeVisible();
-			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
+			expect(queryByTestId('approval-card-always-allow')).toBeNull();
 
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-destination', {
 				kind: 'credentialDestination',
@@ -455,7 +485,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
@@ -485,7 +515,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-explicit-approval', {
 				kind: 'approval',
@@ -502,7 +532,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-deny'));
+			await userEvent.click(getByTestId('approval-card-deny'));
 
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
@@ -533,7 +563,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
+			await userEvent.click(getByTestId('approval-card-always-allow'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-always', {
 				kind: 'approval',
@@ -571,7 +601,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
+			await userEvent.click(getByTestId('approval-card-always-allow'));
 
 			expect(addKeySpy).not.toHaveBeenCalled();
 			expect(resolveSpy).not.toHaveBeenCalled();
@@ -594,7 +624,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
+			await userEvent.click(getByTestId('approval-card-always-allow'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-build-always', {
 				kind: 'approval',
@@ -622,9 +652,9 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'floating' } });
 
-			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
-			expect(getByTestId('instance-ai-panel-confirm-approve')).toBeVisible();
-			expect(getByTestId('instance-ai-panel-confirm-deny')).toBeVisible();
+			expect(queryByTestId('approval-card-always-allow')).toBeNull();
+			expect(getByTestId('approval-card-allow-once')).toBeVisible();
+			expect(getByTestId('approval-card-deny')).toBeVisible();
 		});
 
 		it('does not record a session key on allow-once for workflow edits', async () => {
@@ -643,7 +673,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-build-once', {
 				kind: 'approval',
@@ -662,7 +692,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(resolveSpy).not.toHaveBeenCalled();
 			expect(mockTelemetryTrack).not.toHaveBeenCalled();
@@ -682,7 +712,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
-			const approveButton = getByTestId('instance-ai-panel-confirm-approve');
+			const approveButton = getByTestId('approval-card-allow-once');
 			await userEvent.click(approveButton);
 			await userEvent.click(approveButton);
 			await userEvent.click(approveButton);
@@ -702,9 +732,9 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'floating' } });
 
-			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
+			expect(queryByTestId('approval-card-always-allow')).toBeNull();
 
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
@@ -739,10 +769,11 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 
 			expect(getByText('The agent wants to run the Delete record tool.')).toBeVisible();
-			expect(getByTestId('instance-ai-target-approval-args')).toHaveTextContent('"id": "record-1"');
-			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
+			expect(getByTestId('approval-card-args')).toBeVisible();
+			expect(getByTestId('approval-card-args')).toHaveTextContent('"id": "record-1"');
+			expect(queryByTestId('approval-card-always-allow')).toBeNull();
 
-			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+			await userEvent.click(getByTestId('approval-card-allow-once'));
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-target', {
 				kind: 'approval',
@@ -770,7 +801,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 
 			const { queryByTestId } = renderComponent({ props: { kind: 'inline' } });
-			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
+			expect(queryByTestId('approval-card-allow-once')).toBeNull();
 			expect(queryByTestId('instance-ai-confirmation-panel')).toBeNull();
 		});
 	});
@@ -931,8 +962,8 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'inline' } });
 
-			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
-			expect(queryByTestId('instance-ai-panel-confirm-deny')).toBeNull();
+			expect(queryByTestId('approval-card-allow-once')).toBeNull();
+			expect(queryByTestId('approval-card-deny')).toBeNull();
 
 			await userEvent.click(getByTestId('instance-ai-panel-continue'));
 
@@ -954,6 +985,134 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					skipped_inputs: [],
 				}),
 			);
+		});
+	});
+
+	describe('test listener confirmation', () => {
+		const listenerConfirmation: InstanceAiConfirmation = {
+			requestId: 'req-listen',
+			severity: 'info',
+			message: 'Waiting for a test request to Intake',
+			testListener: {
+				workflowId: 'wf-1',
+				triggers: [
+					{
+						nodeName: 'Webhook',
+						url: 'http://localhost:5678/webhook-test/abc/intake',
+						method: 'POST',
+					},
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		};
+
+		it('shows the exact test URL and method with no generic approve/deny buttons', () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+
+			const { getByTestId, getByText, queryByTestId } = renderComponent({
+				props: { kind: 'inline' },
+			});
+
+			expect(getByTestId('instance-ai-test-listener-url').textContent).toContain(
+				'http://localhost:5678/webhook-test/abc/intake',
+			);
+			expect(getByText('POST')).toBeTruthy();
+			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
+			expect(queryByTestId('instance-ai-panel-confirm-deny')).toBeNull();
+		});
+
+		it('resumes the tool as approved when the user says the request was sent', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-sent'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: true });
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'test-listener',
+					provided_inputs: [
+						{
+							label: 'Waiting for a test request to Intake',
+							options: ['sent', 'cancel'],
+							option_chosen: 'sent',
+						},
+					],
+				}),
+			);
+		});
+
+		it('resumes the tool as denied when the user cancels the listener', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-cancel'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: false });
+		});
+
+		it('settles the card with the execution id when the test webhook push event arrives', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			renderComponent({ props: { kind: 'inline' } });
+
+			capturedPushListener?.({
+				type: 'testWebhookReceived',
+				data: { workflowId: 'wf-other', executionId: 'exec-other' },
+			});
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			capturedPushListener?.({
+				type: 'testWebhookReceived',
+				data: { workflowId: 'wf-1', executionId: 'exec-9' },
+			});
+			capturedPushListener?.({
+				type: 'testWebhookReceived',
+				data: { workflowId: 'wf-1', executionId: 'exec-10' },
+			});
+
+			expect(confirmSpy).toHaveBeenCalledTimes(1);
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', {
+				kind: 'approval',
+				approved: true,
+				userInput: 'exec-9',
+			});
+			// Telemetry and resolution run after the awaited POST, so flush it first.
+			await flushPromises();
+			expect(resolveSpy).toHaveBeenCalledWith('req-listen', 'approved');
+			// The user made no choice, so no input telemetry is recorded.
+			expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.anything(),
+			);
+		});
+
+		it('settles the card as not cancelled when the test webhook is deleted', () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			renderComponent({ props: { kind: 'inline' } });
+
+			capturedPushListener?.({ type: 'testWebhookDeleted', data: { workflowId: 'wf-1' } });
+
+			// No execution id: the tool reads received vs timed out from durable state.
+			expect(confirmSpy).toHaveBeenCalledWith('req-listen', { kind: 'approval', approved: true });
+		});
+
+		it('keeps the card and records no input when confirmAction fails', async () => {
+			injectPendingConfirmation(thread, listenerConfirmation);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('instance-ai-test-listener-sent'));
+
+			expect(resolveSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-test-listener')).toBeVisible();
 		});
 	});
 

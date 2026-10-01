@@ -5,12 +5,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { AgentChannelStatusValue } from '../entities/agent-channel-status.entity';
 import { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 
-/** Identifies one channel of one agent, across all processes running it. */
-export interface AgentChannelRef {
-	agentId: string;
-	integrationType: string;
-	credentialId: string;
-}
+import type { AgentChannelRef } from '../utils/agent-channel';
 
 /** What one process observed, as its own row records it. */
 export interface AgentChannelObservation {

@@ -1,27 +1,48 @@
+import { CacheService, EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { ScheduledJobOwnerType, Time } from '@n8n/constants';
+import { ScheduledJobRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service';
-import type { SystemTaskMode } from '@/events/maps/system-task-metrics.event-map';
+import {
+	SYSTEM_TASK_SKIP_REASONS,
+	type SystemTaskMode,
+} from '@/events/maps/system-task-metrics.event-map';
 
 import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 
+const DURABLE_JOBS_CACHE_KEY = 'metrics:system-tasks:durable-jobs:v1';
+
+/** The stored schedule of one durable system task, as JSON so the cache can hold it. */
+type DurableJobState = {
+	task: string;
+	/** Enabled and not quarantined, so the scheduler will claim it. */
+	runnable: boolean;
+	nextRunAtSeconds: number | null;
+};
+
 /**
- * Collects Prometheus metrics for system tasks, on both of their paths: the
- * in-memory timers of the leader and the durable scheduler, told apart by the
- * `mode` label. Opt-in via `includeSystemTaskMetrics` and only active on a main
- * instance. Every value comes from `EventService`, so this is the only place
- * that touches `prom-client` for system tasks.
+ * Collects Prometheus metrics for system tasks, on all of their paths: the
+ * in-memory timers of the leader, the durable scheduler and the per-instance
+ * timers, told apart by the `mode` label. Opt-in via
+ * `includeSystemTaskMetrics`. Every value comes from `EventService`, so this is
+ * the only place that touches `prom-client` for system tasks.
  *
- * The per-task gauges of a durable task are seeded when it is routed, so the
- * series exist before the first run and a restart shows as a reset rather than
- * a gap. Those of an in-memory task exist only while this instance leads:
- * seeded when the timers start, removed when they stop, so a former leader
- * does not export frozen series for runs it no longer makes.
+ * The per-task gauges of a durable or per-instance task are seeded when it is
+ * routed, so the series exist before the first run and a restart shows as a
+ * reset rather than a gap. Those of a leader_timer task exist only while this
+ * instance leads: seeded when the timers start, removed when they stop, so a
+ * former leader does not export frozen series for runs it no longer makes.
+ *
+ * The run outcome and skip series start at zero when a task is seeded, so
+ * `increase()` counts the first failure after a restart.
+ *
+ * The scheduled and next-run series of a durable task come from its stored job,
+ * read on scrape: the job is shared by every main, so another main can remove it
+ * without this instance seeing an event.
  *
  * Labels are bounded (task name, mode, result, reason): no instance label,
  * Prometheus adds one per scrape target.
@@ -30,12 +51,13 @@ import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 export class PrometheusSystemTaskMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly cacheService: CacheService,
+		private readonly scheduledJobRepository: ScheduledJobRepository,
 	) {}
 
 	get enabled(): boolean {
-		return this.config.includeSystemTaskMetrics && this.instanceSettings.instanceType === 'main';
+		return this.config.includeSystemTaskMetrics;
 	}
 
 	init() {
@@ -43,14 +65,14 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const runDuration = new promClient.Histogram({
 			name: `${prefix}system_task_run_duration_seconds`,
-			help: 'Duration in seconds of a system task run, by task, mode (in_memory, durable) and result (success, failure, aborted).',
+			help: 'Duration in seconds of a system task run, by task, mode (leader_timer, instance_timer, durable) and result (success, failure, aborted).',
 			labelNames: ['task', 'mode', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
 		const runsSkipped = new promClient.Counter({
 			name: `${prefix}system_task_runs_skipped_total`,
-			help: 'Total number of in-memory system task occurrences that did not run, by task and reason (overlap, provisioned_elsewhere, aborted, coalesced).',
+			help: 'Total number of timer-driven system task occurrences that did not run on this instance, by task and reason (overlap, provisioned_elsewhere, aborted, coalesced).',
 			labelNames: ['task', 'reason'],
 		});
 
@@ -68,7 +90,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const info = new promClient.Gauge({
 			name: `${prefix}system_task_info`,
-			help: 'Always 1 for every system task this instance can run, by task and mode: durable tasks on every main, in-memory tasks on the leader.',
+			help: 'Always 1 for every system task this instance can run, by task and mode: leader_timer tasks on the leader, instance_timer tasks in every instance that runs them, durable tasks on every main.',
 			labelNames: ['task', 'mode'],
 		});
 
@@ -78,39 +100,69 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			labelNames: ['task'],
 		});
 
+		const durableTasks = new Set<string>();
+		const durableJobs = new CachedMetricQuery<DurableJobState[]>({
+			cacheService: this.cacheService,
+			cacheKey: DURABLE_JOBS_CACHE_KEY,
+			ttlMs: this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds,
+			query: async () => await this.findDurableJobStates(),
+		});
+		const collectDurableJobs = async () => {
+			if (durableTasks.size > 0) {
+				await this.applyDurableJobStates(durableJobs, durableTasks, scheduled, nextRun);
+			}
+		};
+
 		const nextRun = new promClient.Gauge({
 			name: `${prefix}system_task_next_run_timestamp_seconds`,
-			help: 'Unix timestamp in seconds of the next occurrence an in-memory system task is armed for on this instance, by task.',
+			help: 'Unix timestamp in seconds of the next occurrence of a system task, by task: the occurrence a timer is armed for on this instance, or the first occurrence not yet planned for a durable task, identical on every main. Planned occurrences of a durable task can fire before this timestamp.',
 			labelNames: ['task'],
+			collect: collectDurableJobs,
 		});
 
 		const scheduled = new promClient.Gauge({
 			name: `${prefix}system_task_scheduled`,
-			help: '1 while a system task is scheduled to run on this instance, 0 once it stopped being scheduled, by task and mode: its in-memory schedule could not be planned, or its durable job could not be provisioned.',
+			help: '1 while a system task is scheduled to run, 0 once it stopped being scheduled, by task and mode: the schedule of a leader_timer or instance_timer task could not be planned on this instance, or no runnable job is stored for a durable task.',
 			labelNames: ['task', 'mode'],
+			collect: collectDurableJobs,
 		});
 
 		const provisionCheckFailures = new promClient.Counter({
 			name: `${prefix}system_task_provision_check_failures_total`,
-			help: 'Total number of times the check for the durable job of a system task failed, so the task ran in memory anyway, by task.',
+			help: 'Total number of times the check for the durable job of a system task failed, so the task ran on the leader timer anyway, by task.',
 			labelNames: ['task'],
 		});
 
 		const retries = new promClient.Counter({
 			name: `${prefix}system_task_retries_total`,
-			help: 'Total number of in-memory system task retries scheduled after a failed run, by task.',
+			help: 'Total number of timer-driven system task retries scheduled on this instance after a failed run, by task.',
 			labelNames: ['task'],
 		});
 
 		const fireLag = new promClient.Histogram({
 			name: `${prefix}system_task_fire_lag_seconds`,
-			help: 'Delay in seconds between an in-memory system task occurrence being due and its timer firing, by task.',
+			help: 'Delay in seconds between a timer-driven system task occurrence being due and its timer firing on this instance, by task.',
 			labelNames: ['task'],
 			buckets: LAG_BUCKETS_SECONDS,
 		});
 
-		const inMemoryTasks = new Set<string>();
+		const leaderTimerTasks = new Set<string>();
+		const zeroedRunOutcomes = new Set<string>();
 		let timersRunning = false;
+
+		const zeroCounts = (task: string, mode: SystemTaskMode) => {
+			// `zero()` resets a histogram, so a later takeover must not zero it again.
+			const key = `${task}:${mode}`;
+			if (!zeroedRunOutcomes.has(key)) {
+				zeroedRunOutcomes.add(key);
+				runDuration.zero({ task, mode, result: 'success' });
+				runDuration.zero({ task, mode, result: 'failure' });
+			}
+			if (mode !== 'durable') {
+				retries.inc({ task }, 0);
+				SYSTEM_TASK_SKIP_REASONS.forEach((reason) => runsSkipped.inc({ task, reason }, 0));
+			}
+		};
 
 		const seed = (task: string, mode: SystemTaskMode) => {
 			info.set({ task, mode }, 1);
@@ -119,11 +171,12 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			// a takeover has its own decrement to come, and an absolute 0 here would
 			// turn that decrement into a permanent -1.
 			runsInFlight.inc({ task, mode }, 0);
+			zeroCounts(task, mode);
 		};
 
-		const inMemoryGauges = [info, scheduled, runsInFlight, lastSuccess];
-		const removeInMemorySeries = (task: string) => {
-			inMemoryGauges.forEach((gauge) => gauge.remove({ task, mode: 'in_memory' }));
+		const leaderTimerGauges = [info, scheduled, runsInFlight, lastSuccess];
+		const removeLeaderTimerSeries = (task: string) => {
+			leaderTimerGauges.forEach((gauge) => gauge.remove({ task, mode: 'leader_timer' }));
 			nextRun.remove({ task });
 		};
 
@@ -131,22 +184,25 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			if (intervalSeconds !== undefined) {
 				interval.set({ task: name }, intervalSeconds);
 			}
-			if (mode === 'in_memory') {
-				inMemoryTasks.add(name);
+			if (mode === 'leader_timer') {
+				leaderTimerTasks.add(name);
 			}
-			if (mode === 'durable' || timersRunning) {
+			if (mode === 'durable') {
+				durableTasks.add(name);
+			}
+			if (mode !== 'leader_timer' || timersRunning) {
 				seed(name, mode);
 			}
 		});
 
 		this.eventService.on('system-task-timers-started', () => {
 			timersRunning = true;
-			inMemoryTasks.forEach((task) => seed(task, 'in_memory'));
+			leaderTimerTasks.forEach((task) => seed(task, 'leader_timer'));
 		});
 
 		this.eventService.on('system-task-timers-stopped', () => {
 			timersRunning = false;
-			inMemoryTasks.forEach(removeInMemorySeries);
+			leaderTimerTasks.forEach(removeLeaderTimerSeries);
 		});
 
 		this.eventService.on('system-task-run-started', ({ name, mode }) => {
@@ -186,5 +242,46 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		this.eventService.on('system-task-fired', ({ name, lagMs }) => {
 			fireLag.observe({ task: name }, lagMs / Time.seconds.toMilliseconds);
 		});
+	}
+
+	private async findDurableJobStates(): Promise<DurableJobState[]> {
+		const jobs = await this.scheduledJobRepository.findScheduleStatesByOwnerType(
+			ScheduledJobOwnerType.SystemTask,
+		);
+		return jobs.map(({ ownerId, runnable, nextRunAt }) => ({
+			task: ownerId,
+			runnable,
+			nextRunAtSeconds:
+				nextRunAt === null ? null : nextRunAt.getTime() / Time.seconds.toMilliseconds,
+		}));
+	}
+
+	/**
+	 * Set the scheduled and next-run series of every durable task from its stored
+	 * job. A failed read keeps the last values, so one database error does not
+	 * fail the whole scrape.
+	 */
+	private async applyDurableJobStates(
+		durableJobs: CachedMetricQuery<DurableJobState[]>,
+		durableTasks: Set<string>,
+		scheduled: promClient.Gauge<'task' | 'mode'>,
+		nextRun: promClient.Gauge<'task'>,
+	): Promise<void> {
+		let states: DurableJobState[];
+		try {
+			states = await durableJobs.get();
+		} catch {
+			return;
+		}
+		const stateByTask = new Map(states.map((state) => [state.task, state]));
+		for (const task of durableTasks) {
+			const state = stateByTask.get(task);
+			scheduled.set({ task, mode: 'durable' }, state?.runnable ? 1 : 0);
+			if (state?.runnable && state.nextRunAtSeconds !== null) {
+				nextRun.set({ task }, state.nextRunAtSeconds);
+			} else {
+				nextRun.remove({ task });
+			}
+		}
 	}
 }

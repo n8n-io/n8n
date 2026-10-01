@@ -12,6 +12,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -43,6 +44,7 @@ import {
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
+	resolveInstanceAiPermissions,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
 	type InstanceAiConfirmationInputType,
@@ -65,7 +67,7 @@ describe('Instance AI prompt version requests', () => {
 		}
 	});
 
-	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+	it('accepts a thread artifact index, including an empty one, and rejects an oversized list', () => {
 		const base = { message: 'Change this', timeZone: 'UTC' };
 		expect(
 			InstanceAiSendMessageRequest.safeParse({
@@ -81,7 +83,7 @@ describe('Instance AI prompt version requests', () => {
 				...base,
 				threadArtifacts: { artifacts: [] },
 			}).success,
-		).toBe(false);
+		).toBe(true);
 		expect(
 			InstanceAiSendMessageRequest.safeParse({
 				...base,
@@ -389,6 +391,8 @@ describe('applyBranchReadOnlyOverrides', () => {
 		// These should remain unchanged (safe for read-only instances)
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
+		expect(result.mcpRead).toBe('always_allow');
+		expect(result.mcpWrite).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
 		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
@@ -408,6 +412,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.executeNode).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -427,11 +432,78 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('always_allow');
 	});
 
+	it('blocks createPreference on a read-only branch like every other write', () => {
+		const result = applyBranchReadOnlyOverrides(DEFAULT_INSTANCE_AI_PERMISSIONS);
+		expect(result.createPreference).toBe('blocked');
+	});
+
 	it('should not mutate the original permissions object', () => {
 		const original = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 		applyBranchReadOnlyOverrides(original);
 
 		expect(original.createWorkflow).toBe('require_approval');
+	});
+});
+
+describe('resolveInstanceAiPermissions', () => {
+	it('should fill missing keys from the defaults', () => {
+		const result = resolveInstanceAiPermissions({ createWorkflow: 'always_allow' });
+
+		expect(result.createWorkflow).toBe('always_allow');
+		expect(result.deleteWorkflow).toBe('require_approval');
+		expect(result.executeNode).toBe('require_approval');
+		expect(result.mcpRead).toBe('always_allow');
+		expect(result.mcpWrite).toBe('require_approval');
+	});
+
+	it('should carry a blocked runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'blocked' });
+
+		expect(result.executeNode).toBe('blocked');
+	});
+
+	it('should not carry an always_allow runWorkflow over to executeNode', () => {
+		const result = resolveInstanceAiPermissions({ runWorkflow: 'always_allow' });
+
+		expect(result.executeNode).toBe('require_approval');
+	});
+
+	it('should prefer an explicit executeNode over the runWorkflow fallback', () => {
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'blocked', executeNode: 'always_allow' })
+				.executeNode,
+		).toBe('always_allow');
+		expect(
+			resolveInstanceAiPermissions({ runWorkflow: 'always_allow', executeNode: 'blocked' })
+				.executeNode,
+		).toBe('blocked');
+	});
+
+	it('should not mutate the persisted permissions object', () => {
+		const persisted: Partial<InstanceAiPermissions> = { runWorkflow: 'blocked' };
+		resolveInstanceAiPermissions(persisted);
+
+		expect(persisted.executeNode).toBeUndefined();
+	});
+});
+
+describe('createPreference permission', () => {
+	it('defaults to always_allow, because the tool never pauses for approval', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.createPreference).toBe('always_allow');
+	});
+
+	it.each(['always_allow', 'blocked'] as const)('accepts %s from the settings API', (mode) => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: mode },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('refuses require_approval from the settings API', () => {
+		const parsed = InstanceAiAdminSettingsUpdateRequest.safeParse({
+			permissions: { createPreference: 'require_approval' },
+		});
+		expect(parsed.success).toBe(false);
 	});
 });
 
@@ -584,6 +656,24 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					testListener: {
+						workflowId: 'wf-1',
+						triggers: [
+							{
+								nodeName: 'Webhook',
+								url: 'http://localhost:5678/webhook-test/abc',
+								method: 'POST',
+							},
+						],
+						deadlineAt: '2026-01-01T00:10:00.000Z',
+					},
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -705,6 +795,45 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+});
+
+describe('node execution session grant keys', () => {
+	it('scopes the key by resource and operation', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.slack', {
+				resource: 'message',
+				operation: 'post',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.slack:message:post');
+	});
+
+	it('falls back to the first scoping parameter a node without resource/operation declares', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.httpRequest', {
+				method: 'POST',
+				url: 'https://example.com/v4/sheets',
+			}),
+		).toBe('nodes:execute:n8n-nodes-base.httpRequest:https://example.com/v4/sheets');
+		// `mode` precedes `url` in the fallback order, so a node declaring both is scoped by mode.
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.set', { mode: 'manual', url: 'https://x' }),
+		).toBe('nodes:execute:n8n-nodes-base.set:manual');
+	});
+
+	it('refuses a key a fallback parameter would push past the column width', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.graphql', { query: 'q'.repeat(600) }),
+		).toBeNull();
+	});
+
+	it('keeps the key at the node type when nothing scopes the call', () => {
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter', { conditions: {} })).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
+		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter')).toBe(
+			'nodes:execute:n8n-nodes-base.filter',
+		);
 	});
 });
 
@@ -1077,6 +1206,20 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('accepts a single set with one loose node and no optional fields', () => {
 		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+
+	it('accepts optional parent workflow display metadata', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'Orders' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects parent workflow display metadata over 255 characters', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({ workflowName: 'a'.repeat(256) }),
+		);
+		expect(result.success).toBe(false);
 	});
 
 	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {

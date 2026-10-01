@@ -27,6 +27,9 @@ packages/workflow/stryker.config.mjs                    @n8n-io/qa-dx
 packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts
+packages/@n8n/backend-services/                         @n8n-io/catalysts
+packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
+packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
 packages/@n8n/errors/                                   @n8n-io/catalysts
@@ -41,7 +44,7 @@ packages/@n8n/db/                                       @n8n-io/catalysts
 packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
 packages/@n8n/crdt/                                     @n8n-io/catalysts
 packages/@n8n/extension-sdk/                            @n8n-io/catalysts
-packages/@n8n/eslint-config/                            @n8n-io/qa-dx
+packages/@n8n/eslint-config/                            @n8n-io/qa-dx required
 packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
 packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review required
@@ -154,8 +157,6 @@ packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
 # CLI services
 packages/cli/src/services/jwt.service.ts                @n8n-io/iam
 packages/cli/src/services/user.service.ts               @n8n-io/iam
-packages/cli/src/services/role.service.ts               @n8n-io/iam
-packages/cli/src/services/role-cache.service.ts         @n8n-io/iam
 packages/cli/src/services/password.utility.ts           @n8n-io/iam
 packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
 packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
@@ -230,6 +231,7 @@ packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
 packages/@n8n/permissions/                              @n8n-io/iam
 packages/@n8n/client-oauth2/                            @n8n-io/iam
+packages/@n8n/inbound-auth/                             @n8n-io/iam
 
 # LiGo
 
@@ -252,8 +254,7 @@ docker/get-n8n.sh                                       @n8n-io/qa-dx required
 
 # QA
 
-packages/testing/                                       @n8n-io/qa-dx
-packages/@n8n/benchmark/                                @n8n-io/qa-dx
+packages/quality/                                       @n8n-io/qa-dx
 packages/@n8n/vitest-config/                            @n8n-io/qa-dx
 
 # Encryption boundary (IAM) — the encryption area and its guardrail rules.
@@ -265,7 +266,4 @@ packages/cli/src/modules/encryption-key-manager/        @n8n-io/iam required
 packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
 packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required

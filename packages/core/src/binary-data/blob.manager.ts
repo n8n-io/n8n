@@ -195,7 +195,20 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		const prefixes = [
 			...new Set(locations.map((location) => `${this.toRelativePath(location)}/binary_data`)),
 		];
-		await Promise.all(prefixes.map(async (prefix) => await deletePrefix(prefix)));
+		const results = await Promise.allSettled(
+			prefixes.map(async (prefix) => await deletePrefix(prefix)),
+		);
+
+		// Report an unremovable dir instead of throwing: callers delete in batches, and
+		// a throw would abandon every later batch.
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				const reason: unknown = result.reason;
+				this.errorReporter.warn(reason instanceof Error ? reason : new Error(String(reason)), {
+					extra: { prefix: prefixes[index] },
+				});
+			}
+		});
 	}
 
 	private metadataKey(fileId: string) {

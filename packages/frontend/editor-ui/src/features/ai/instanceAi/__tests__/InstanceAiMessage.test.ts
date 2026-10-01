@@ -39,7 +39,8 @@ const renderComponent = createThreadComponentRenderer(InstanceAiMessageComponent
 	global: {
 		stubs: {
 			AgentActivityTree: {
-				template: '<div data-test-id="agent-activity-tree" />',
+				template:
+					'<div data-test-id="agent-activity-tree" :data-entries="agentNode.timeline.length" />',
 				props: ['agentNode', 'isRoot'],
 			},
 		},
@@ -379,5 +380,79 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(queryByTestId('instance-ai-run-cancelled')).not.toBeInTheDocument();
+	});
+
+	describe('answered questions', () => {
+		const answeredCall = {
+			toolCallId: 'tc-1',
+			toolName: 'ask-user',
+			args: {},
+			isLoading: false,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: '',
+				inputType: 'questions',
+				questions: [{ id: 'apps', question: 'Which apps?', type: 'multi' }],
+			},
+			result: { answered: true, answers: [{ questionId: 'apps', selectedOptions: ['HubSpot'] }] },
+		} as InstanceAiAgentNode['toolCalls'][number];
+		const greeting = { type: 'text', content: 'Hi' } as const;
+		const answer = { type: 'tool-call', toolCallId: 'tc-1' } as const;
+
+		it('should render answers that end the timeline below the message actions', () => {
+			const { getByRole, getByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({ toolCalls: [answeredCall], timeline: [greeting, answer] }),
+					}),
+				},
+			});
+
+			const copy = getByRole('button', { name: 'Copy' });
+			const bubble = getByTestId('instance-ai-answered-questions');
+			expect(bubble).toHaveTextContent('HubSpot');
+			expect(copy.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '1');
+		});
+
+		it('should leave answers in the timeline when text follows them', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({
+							toolCalls: [answeredCall],
+							timeline: [greeting, answer, { type: 'text', content: 'Thanks' }],
+						}),
+					}),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '3');
+		});
+
+		it.each([
+			{ name: 'a pending card', status: 'completed', isLoading: true },
+			{ name: 'an answer while the run is active', status: 'active', isLoading: false },
+		] as const)('should leave $name in the timeline', ({ status, isLoading }) => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({
+							status,
+							toolCalls: [{ ...answeredCall, isLoading }],
+							timeline: [greeting, answer],
+						}),
+					}),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '2');
+		});
 	});
 });

@@ -1,4 +1,5 @@
 import {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	CreatePromotionConnectionDto,
@@ -8,6 +9,7 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionRequestDto,
 	PromotionApplyConfigPublicDto,
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
@@ -48,7 +50,6 @@ import {
 	Licensed,
 	Param,
 	Post,
-	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -56,10 +57,12 @@ import {
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	ServiceUnavailableError,
+} from '@n8n/errors';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -532,7 +535,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Checks the full package at the configured branch tip. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+		'Checks the full package at the configured branch tip. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -546,8 +549,13 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
 		promotionConnectionId: string,
+		@Body input: ApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
-		return await (await this.promotionsService()).apply(promotionConnectionId, req.user);
+		return await (await this.promotionsService()).apply(
+			promotionConnectionId,
+			req.user,
+			input.expectedSource,
+		);
 	}
 
 	@Post('/connections/:promotionConnectionId/apply/continue')
@@ -583,7 +591,6 @@ export class PromotionsPublicController {
 	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
-	@ProjectScope('project:export')
 	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
 		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
@@ -614,6 +621,34 @@ export class PromotionsPublicController {
 			parsedDirection,
 			query,
 		);
+	}
+
+	// -- Selective promote ---------------------------------------------------
+
+	@Post('/projects/:projectId/promote')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:push')
+	@GlobalScope('gitConnection:push')
+	@ApiSummary("Promote a selection of a project's workflows")
+	@ApiDescription(
+		"Promotes a chosen set of a team project's workflows to the Promote branch of the project's promotion configuration. Send workflow ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id the project no longer owns (its workflow is gone, or moved to another project) leaves the branch, matching the project's change list. A deletion the branch does not hold under this project rejects the whole request before any write. Requires the Promote direction to be cloned first, and a promotion connection to resolve for the project (its own connection, otherwise the instance connection). The API key also needs variable:list when the workflows reference variables.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotePackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async promoteProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: PromoteSelectionRequestDto,
+	): Promise<PromotePackageResultDto> {
+		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
+			...input,
+			// Variable values only travel when the key may list them.
+			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
+		});
 	}
 
 	// -- Module access -------------------------------------------------------

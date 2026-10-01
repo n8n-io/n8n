@@ -24,6 +24,17 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		return await this.delete({ createdAt: LessThan(date) });
 	}
 
+	async findVersionSummaries(
+		workflowId: string,
+		versionIds: string[],
+	): Promise<Array<{ versionId: string; name: string | null; createdAt: Date }>> {
+		return await this.find({
+			where: { workflowId, versionId: In(versionIds) },
+			select: ['versionId', 'name', 'createdAt'],
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	/**
 	 * Name and optionally describe a single version. Scoped by `workflowId` too
 	 * so a version of another workflow can never be touched, and returns the
@@ -167,7 +178,9 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			metaData,
 		);
 
-		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
-		return { seen: workflows.length, deleted: grouped.removed.length };
+		const { affected } = await this.delete({
+			versionId: In(grouped.removed.map((x) => x.versionId)),
+		});
+		return { seen: workflows.length, deleted: affected ?? grouped.removed.length };
 	}
 }

@@ -33,6 +33,7 @@ import {
 	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
+	WorkflowOperationError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -44,6 +45,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
@@ -55,6 +57,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
+import type { Job } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
@@ -63,12 +66,18 @@ import { WorkflowRunner } from '@/workflow-runner';
 // class isn't initialised when the hoisted factory first resolves.
 const setupQueue = vi.fn();
 const addJob = vi.fn();
+const waitForJob = vi.fn();
+const popJobResult = vi.fn();
 
 @Service()
 class MockScalingService {
 	setupQueue = setupQueue;
 
 	addJob = addJob;
+
+	waitForJob = waitForJob;
+
+	popJobResult = popJobResult;
 }
 
 vi.mock('@/scaling/scaling.service', () => ({
@@ -479,9 +488,73 @@ describe('processError', () => {
 		expect(findSingleExecution.mock.calls.length).toBeLessThan(10);
 		expect(finalizeExecution).toHaveBeenCalledWith(
 			execution.id,
-			expect.objectContaining({ status: 'error' }),
+			expect.objectContaining({ status: 'crashed' }),
 		);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
+	test('processError runs the after hook with a crashed run when a stalled-count error claims the execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+		await Container.get(ActiveExecutions).add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'new' },
+		);
+		const claim = vi
+			.spyOn(Container.get(ExecutionCrashService), 'markAsCrashedWithoutCounting')
+			.mockResolvedValue([
+				{
+					id: execution.id,
+					workflowId: workflow.id,
+					mode: 'webhook',
+					startedAt: null,
+					stoppedAt: new Date(),
+				},
+			]);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(claim).toHaveBeenCalledExactlyOnceWith(execution.id, 'stall');
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'crashed',
+				data: expect.objectContaining({
+					resultData: expect.objectContaining({
+						error: expect.objectContaining({ name: 'MaxStalledCountError' }),
+					}),
+				}),
+			}),
+		);
+	});
+
+	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		vi.spyOn(
+			Container.get(ExecutionCrashService),
+			'markAsCrashedWithoutCounting',
+		).mockResolvedValue([]);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
 	});
 
 	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
@@ -597,7 +670,7 @@ describe('processError', () => {
 			expect(findSingleExecution).toHaveBeenCalledTimes(1);
 			expect(finalizeExecution).toHaveBeenCalledWith(
 				execution.id,
-				expect.objectContaining({ status: 'error' }),
+				expect.objectContaining({ status: 'crashed' }),
 			);
 			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		},
@@ -777,7 +850,7 @@ describe('run', () => {
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
-	describe('engine 2.0 dispatch', () => {
+	describe('engine v2 dispatch', () => {
 		it('hands the run to the dispatcher without registering a control-plane execution', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);
@@ -796,7 +869,7 @@ describe('run', () => {
 			expect(addSpy).not.toHaveBeenCalled();
 		});
 
-		it('leaves the v1 path alone when the run does not route to engine 2.0', async () => {
+		it('leaves the v1 path alone when the run does not route to engine v2', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);
 			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);
@@ -976,7 +1049,6 @@ describe('run', () => {
 				{},
 			);
 			const { data } = arrangeFailingRunDeps(error);
-			// @ts-expect-error Private method
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 
@@ -989,7 +1061,6 @@ describe('run', () => {
 		it('still rejects on other startup errors', async () => {
 			const error = new Error('boom');
 			const { data } = arrangeFailingRunDeps(error);
-			// @ts-expect-error Private method
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 
@@ -1022,6 +1093,70 @@ describe('enqueueExecution', () => {
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 
+	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		const readError = new Error('db unavailable');
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(undefined);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValueOnce(
+			readError,
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		await expect(workflowExecution).rejects.toThrowError(readError);
+		// A failed run makes the webhook answer with an error instead of a success without data
+		expect(processError).toHaveBeenCalledWith(
+			readError,
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
+	});
+
+	it('should fail the execution when its record is gone after the job ended', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(undefined);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
+			undefined,
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		// An unsaved execution is deleted by the worker, so a missing record is not a bug
+		await expect(workflowExecution).rejects.toThrowError('Could not find execution with id "1"');
+		expect(processError).toHaveBeenCalledWith(
+			expect.any(WorkflowOperationError),
+			expect.any(Date),
+			data.executionMode,
+			'1',
+			expect.anything(),
+		);
+	});
 	it('should finalize the execution when pool resolution fails', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
@@ -1104,6 +1239,25 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
+	});
+
+	it('excludes the execution from getRunningExecutionIds once enqueued', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const activeExecutions = Container.get(ActiveExecutions);
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'trigger',
+			workflowData: workflow,
+		};
+		const executionId = await activeExecutions.add(data);
+
+		const job = mock<Job>({ id: '1', data: { executionId, workflowId: workflow.id } });
+		addJob.mockResolvedValueOnce(job);
+		waitForJob.mockReturnValueOnce(new Promise(() => {}));
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution(executionId, workflow.id, data);
+
+		expect(activeExecutions.getRunningExecutionIds()).not.toContain(executionId);
 	});
 });
 
@@ -1485,7 +1639,6 @@ describe('pre-persist context establishment', () => {
 
 		addSpy.mockReset();
 		addSpy.mockResolvedValue('exec-1');
-		// @ts-expect-error Private method
 		const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 
 		const workflowPreExecute = Container.get(WorkflowPreExecute);

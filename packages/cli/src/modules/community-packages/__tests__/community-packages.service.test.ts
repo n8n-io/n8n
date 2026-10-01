@@ -61,6 +61,8 @@ describe('CommunityPackagesService', () => {
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
 		authToken: '',
+		aiNodeSdkVersion: 1,
+		nodesApiVersion: N8N_NODES_API_VERSION,
 	};
 	const config = mock<CommunityPackagesConfig>({ ...configDefaults });
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
@@ -129,6 +131,20 @@ describe('CommunityPackagesService', () => {
 				).toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		test.each([
+			['n8n-nodes-test', 'n8n-nodes-test', undefined, undefined],
+			['n8n-nodes-test@1.2.3', 'n8n-nodes-test', undefined, '1.2.3'],
+			['@scope/n8n-nodes-test', '@scope/n8n-nodes-test', '@scope', undefined],
+			['@scope/n8n-nodes-test@1.2.3', '@scope/n8n-nodes-test', '@scope', '1.2.3'],
+		])('should parse "%s"', (rawString, packageName, scope, version) => {
+			expect(communityPackagesService.parseNpmPackageName(rawString)).toEqual({
+				rawString,
+				packageName,
+				scope,
+				version,
+			});
+		});
 
 		test.each(['n8n-nodes-base', '@n8n/n8n-nodes-langchain'])(
 			'should reject reserved package name %s',
@@ -1678,6 +1694,7 @@ describe('CommunityPackagesService', () => {
 					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 				},
 				config.aiNodeSdkVersion,
+				config.nodesApiVersion,
 			);
 		});
 
@@ -1703,6 +1720,7 @@ describe('CommunityPackagesService', () => {
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
 					config.aiNodeSdkVersion,
+					config.nodesApiVersion,
 				);
 			} finally {
 				// Restore original environment

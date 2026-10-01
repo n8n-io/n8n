@@ -32,7 +32,8 @@ import {
 	describeSavedPublishState,
 	type SavedWorkflowState,
 } from './workflows/saved-workflow-state';
-import { isSetupPanelEnabled } from './workflows/setup-items';
+import { filterSatisfiedSetupCredentialTypes } from './workflows/setup-credential-selections';
+import { isSetupPanelEnabled, requestsCredentialReplacement } from './workflows/setup-items';
 import {
 	describeSetupItem,
 	rememberWorkflowSetupState,
@@ -347,7 +348,12 @@ const listVersionsAction = z.object({
 });
 
 const restoreVersionAction = z.object({
-	action: z.literal('restore-version').describe('Restore a workflow to a previous version'),
+	action: z
+		.literal('restore-version')
+		.describe(
+			'Restore a previous version into the current draft. This does not publish it. ' +
+				'For a production rollback, publish the restored draft through the normal approval flow.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
 });
@@ -1273,6 +1279,13 @@ async function handleSetupApply(
 			resumeData.nodeParameters,
 		);
 
+		// Nothing was saved, so there is nothing to re-analyze. A failed result shows
+		// the reason to the user and the agent; a "partial" success would hide it
+		// (e.g. a credential the workflow's project cannot use).
+		if (applyResult.saveError) {
+			return { success: false, error: applyResult.saveError };
+		}
+
 		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
 
 		// Fetch updated workflow to include in response so the frontend can refresh the canvas
@@ -1581,8 +1594,13 @@ async function handleSetup(
 		// The setup panel lists bound slots too (rendered as done), so its snapshot
 		// needs the settled requests the card logic below must not see.
 		const setupPanelEnabled = isSetupPanelEnabled(context);
+		const preferNewCredentialTypes = await filterSatisfiedSetupCredentialTypes(
+			context,
+			input.workflowId,
+			input.preferNewCredentials,
+		);
 		const analyzedRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			...preferNewCredentialOptions(input),
+			...(preferNewCredentialTypes?.length ? { preferNewCredentialTypes } : {}),
 			...(setupPanelEnabled ? { includeSettled: true } : {}),
 		});
 		const allSetupRequests = setupPanelEnabled
@@ -1730,8 +1748,11 @@ async function handleSetup(
 
 		// Setup panel v2: announce the final checklist and return. The user
 		// completes it in the panel; the turn ends with the agent's summary.
-		// Replacement needs an explicit selection. A saved binding already appears done in the panel.
-		if (isSetupPanelEnabled(context) && !input.preferNewCredentials?.length) {
+		// Only a bound account needs the explicit replacement card.
+		if (
+			isSetupPanelEnabled(context) &&
+			!requestsCredentialReplacement(analyzedRequests, preferNewCredentialTypes)
+		) {
 			return await announceWorkflowSetup(context, input.workflowId, analyzedRequests);
 		}
 
@@ -2143,9 +2164,27 @@ async function handleRestoreVersion(
 	}
 
 	try {
-		await context.workflowService.restoreVersion!(input.workflowId, input.versionId);
-		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
-		return { success: true };
+		const restored = await context.workflowService.restoreVersion!(
+			input.workflowId,
+			input.versionId,
+		);
+		await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, restored);
+		const { versionId, activeVersionId } = restored;
+		const isPublished = activeVersionId === versionId;
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			publishState: {
+				live: activeVersionId === null ? 'unpublished' : isPublished ? 'current' : 'stale',
+				activeVersionId,
+				savedVersionId: versionId,
+			},
+			publishStateNote: isPublished
+				? 'The restored draft matches the published version.'
+				: 'Restored the draft only. Production has not changed. ' +
+					'For a production rollback, publish the restored draft through the normal approval flow. ' +
+					'Do not report the rollback as live until it is published.',
+		};
 	} catch (error) {
 		return {
 			success: false,

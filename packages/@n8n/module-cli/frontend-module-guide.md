@@ -399,6 +399,49 @@ export const useMyFeatureStore = defineStore('myFeature', () => {
 Export the store from `src/index.ts` if a file outside the module reads it. `instance-registry`
 does this, because `AboutModal` and `useDebugInfo` read its cluster-info store.
 
+## Capabilities
+
+A capability is a shell action that a module calls but cannot import. The shell provides an
+implementation at boot. The module reads it through a typed token.
+
+Declare one only when all three rows hold. If one row fails, use the surface named in it.
+
+| Check | Otherwise |
+|---|---|
+| The module needs a runtime action or a reactive read, not a component | Use `componentRegistry` |
+| The target is shell-core state with no path down to an L2 package | Import the L2 package |
+| No contribution surface fits (components, modals, commands, resources, push handlers, parameter inputs) | Use the contribution surface that fits |
+
+Four files hold one capability:
+
+```ts
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/myThing.ts
+export const myThing = declareCapability<(id: string) => void>('my-thing');
+
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+export { myThing } from './myThing';
+
+// packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+capabilityRegistry.provide(capabilities.myThing, (id) => useMyShellStore().touch(id));
+
+// your module, in a handler or a route guard
+capabilityRegistry.use(capabilities.myThing)(id);
+```
+
+Give the type parameter of `declareCapability` explicitly. It is the contract both sides get
+checked against.
+
+**Caution:** `use()` throws when the capability has no provider and no `fallback`. That is
+intended: a missing provider is a bootstrap bug, and a silent no-op hides it. Never call `use()`
+at module scope, because the shell provides after your module file is evaluated. Use `tryUse()`
+for a presence check; it returns `undefined` and ignores the `fallback`.
+
+In a module test there is no shell, so provide a stub in `beforeEach` and call
+`capabilityRegistry.clear()` in `afterEach`.
+
+The shell's full list is `editor-ui/src/app/capabilities.manifest.ts`. The other registries are
+contribution surfaces and not capabilities. They stay as they are.
+
 ## Module settings and the timing problem
 
 There are two levels of gating. They come from **different endpoints at different times**:

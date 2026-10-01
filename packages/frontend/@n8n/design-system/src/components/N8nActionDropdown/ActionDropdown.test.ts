@@ -64,7 +64,7 @@ describe('components', () => {
 							id: 'item1',
 							label: 'Action 1',
 							badge: 'Pro',
-							badgeProps: { theme: 'warning', bold: true },
+							badgeProps: { variant: 'warning' },
 							disabled: true,
 						},
 						{
@@ -79,6 +79,34 @@ describe('components', () => {
 			});
 
 			expect(wrapper.html()).toContain('action-dropdown-container');
+		});
+
+		it('forwards badge variants over the default variant', async function testBadgeVariants() {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'default', label: 'Default', badge: 'Pro' },
+						{
+							id: 'custom',
+							label: 'Custom',
+							badge: 'Warning',
+							badgeProps: { variant: 'warning' },
+						},
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(function assertBadgeVariants() {
+				const defaultBadge = wrapper.getByText('Pro').closest('.n8n-badge');
+				const customBadge = wrapper.getByText('Warning').closest('.n8n-badge');
+				expect(defaultBadge).toHaveClass('primary');
+				expect(customBadge).toHaveClass('warning');
+				expect(customBadge).not.toHaveClass('primary');
+				expect(customBadge).not.toHaveAttribute('theme');
+				expect(customBadge).not.toHaveAttribute('bold');
+			});
 		});
 
 		it('should support badge-click event for disabled items with badges', () => {

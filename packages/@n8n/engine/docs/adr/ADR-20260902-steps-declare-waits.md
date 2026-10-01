@@ -1,0 +1,217 @@
+# Steps declare waits
+
+Date: 2026-09-02
+
+Status: Active
+
+Decision Owner: Catalysts
+
+## Context
+
+Workflows can pause and then resume. Two things end a pause. A deadline ends a
+time-based wait. An incoming request ends a webhook wait, a form wait, or a
+human-in-the-loop approval. An approval differs by sending a message first, not
+by how it resumes. Engine v2 must support both.
+
+A third kind of pause ends by neither. A parent execution that waits for a
+sub-workflow parks on a sentinel date that the poller never fires, and the
+child's completion resumes it. That pause is out of scope here, because a
+sub-workflow is its own step type.
+
+In engine v1, the node starts the pause. The node calls `putExecutionToWait`.
+The engine then writes the full execution to the database. A poller or a
+waiting-webhook route reads the execution again later. Approximately fifteen
+node types call `putExecutionToWait`. They include the Wait node and all
+send-and-wait nodes. Their wait parameters are frequently expressions. The node
+resolves those expressions at run time.
+
+Send-and-wait nodes need credentials to send their message. A webhook wait can
+need them too: the Wait node accepts basic or header authentication on the
+resume request. A time wait needs none.
+
+In engine v2, an execution is a set of step rows. Events move each row from one
+status to the next. A step is one call that returns output
+(ADR-20260828-obtain-trigger-output-before-creating-the-execution). Therefore a
+step executor cannot stay blocked for the length of a wait that reaches the
+engine. A pause must be a status of the step row. It must not be a state of a
+process. In engine v1, `putExecutionToWait` itself sleeps in the process for a
+time wait under 65 seconds that only its deadline can end. Such a wait never
+reaches the poller. Every other wait persists.
+
+## Decision
+
+The engine owns suspension and resume. A step execution can return a **wait
+declaration** in place of outputs. The declaration tells the engine when to
+resume the step. A declaration can name a deadline, or accept a resume request,
+or do both. When it does both, the first of the two ends the wait.
+
+1. **The shim produces the declaration.** The shim's execution context receives
+   the node's `putExecutionToWait` call. The node states what can end the wait:
+   a deadline, a request, or both. The shim translates the call into a wait
+   declaration and returns it as the step result. How a wait is implemented is
+   the engine's decision and not the node's. Engine v1 sleeps in the process for
+   a short time wait. Engine v2 declares every wait, including a wait with no
+   deadline. A wait for a sub-execution is no declaration: the shim fails that
+   step until a sub-workflow step exists. The converter does not rewrite wait
+   nodes. This one mechanism covers the Wait node, all send-and-wait nodes, and
+   expression-valued wait parameters.
+2. **The engine suspends the step.** A step that returns a declaration moves to
+   the new `waiting` status. `waiting` is not a settled status. Therefore the
+   existing settlement rules stop the engine from planning the steps behind it.
+   The steps in other branches continue to run.
+3. **A resume re-dispatches the step.** A resume moves the step back to
+   `queued`. The engine records what ended the wait on the row, with the payload
+   when a request ended it. The step then takes the normal worker path. For a
+   deadline resume, the engine emits what the declaration captured in
+   `outputsAtDeadline`. The Wait node returns its input unchanged, so those
+   outputs are the step's input passed through, as in v1. Engine v1 also
+   continues past an expired wait limit, and the node offers no setting that
+   fails instead. For a request resume, the control plane runs the node's resume
+   method, because that method reads the request and writes the response, and it
+   must answer inside the request. A re-dispatch through the queue answers too
+   late. The control plane sends what the method produced to the data plane,
+   which records it as the resume payload and moves the step to `queued`. The
+   worker that takes the step emits that payload as the step's outputs. The
+   engine never runs the node's execute method again. Nothing moves a step from
+   `waiting` to `completed` in one step. Every resume passes through `queued`
+   and the worker path.
+4. **The engine fires the time waits.** A wait fires at its deadline and not
+   before it. A step suspended after the engine planned its next check fires at
+   its deadline too. A wait fires once, however many replicas run. The step row
+   holds the deadline, so the engine can change how it fires a wait without a
+   change to the row.
+5. **A waiting step is discoverable from its own row.** The control plane keeps
+   no copy of the wait state, and it needs no endpoint to register a pause
+   with. A resume request therefore reaches a data-plane endpoint that always
+   accepts it, and the data plane validates the request against the waiting
+   step. How a request authorizes itself is a separate decision.
+6. **The execution stores a `waiting` status.** An execution reports `waiting`
+   when every step it still owes is suspended. It reports `running` when one of
+   its steps can still run. The step rows decide the status, and the execution
+   row records it. After a step suspends or settles, the engine calculates the
+   status from the steps again. A new `step:waiting` lifecycle event shows the
+   paused step in the UI.
+7. **The executor request carries the workflow settings.** A node resolves its
+   parameters with them. The `specificTime` mode of the Wait node resolves its
+   target time in the timezone of the workflow. The node converts the time and
+   hands over an absolute instant, so nothing in the data plane converts a time,
+   and durations are not affected. The execution row holds a workflow snapshot
+   (ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution), but
+   the execution path does not read that document, so the settings travel as
+   their own field.
+
+## Alternatives Considered
+
+- **Translate the v1 Wait node into a declarative wait step at conversion
+  time.** Conversion runs before execution. Therefore the converter cannot
+  resolve expression-valued parameters. It also cannot translate send-and-wait
+  nodes at all, because the node code sends the message. This option stays
+  available for static configurations and for native wait nodes. It needs the
+  mechanism in this ADR in either case.
+- **Complete the waiting step directly from the resolver.** This option does
+  not run the node's resume code. That code does the approval parsing, the form
+  handling, and the response validation. Only a pure time wait would be
+  correct.
+- **Fire the time waits through `@n8n/scheduler`.** `OneOffSchedule` is the
+  correct primitive. It needs a task store in the data plane. We defer that
+  adapter until the sweep shows that we need it. The change stays inside the
+  firing mechanism.
+- **Delegate the time waits to the control plane.** Standalone mode has no
+  control plane, so a timer that lives there leaves an engine that cannot fire
+  a time wait at all. This package's own integration tests run that way. The
+  option also adds cross-plane requests for a timer that the data plane can
+  fire against its own database.
+- **Derive the `waiting` status on read.** This option stores nothing, so the
+  stored status cannot go stale. We rejected it for two reasons. `queued` and
+  `running` are stored, and a status that only a reader computes breaks that
+  pattern. Every list query would also join the step rows to learn the status of
+  each execution. Storing `waiting` costs one write per step transition and no
+  reads.
+- **Register the wait channels with the control plane at suspension.** This
+  option adds a cross-plane API. It also adds a deregistration step to every
+  cancel path and every timeout path. It keeps a second copy of the wait state.
+  It widens the window in which a resume request arrives too early: the window
+  closes when the registration call returns rather than when the step row is
+  written, and a control plane that does not hold the channel yet has to refuse
+  the request. A route that always accepts requests keeps the wait state in the
+  data plane only, and leaves that window to the resolve path.
+- **Keep the in-process sleep in the shim for a short time wait.** This option
+  keeps engine v1's latency for a short wait and keeps its two code paths. It
+  leaves such a wait invisible to the engine: not durable, not cancellable, not
+  reported. A sweep that re-arms on suspension gives the same latency with one
+  path, so this option buys nothing that the re-arm does not.
+
+## Consequences
+
+- The engine core holds no v1 concepts. Wait knowledge enters through the step
+  result contract at the executor seam.
+- The wait declaration is a contract between the engine and the shim. It is not
+  a contract for node authors. A later and separate decision can make it one.
+- The graph does not mark a step as a wait. The engine learns about a wait only
+  when the step runs. Therefore the engine cannot make start-time checks that
+  need this knowledge. For example, it cannot refuse a wait in a mode that
+  cannot hold one, such as a lightweight mode that keeps the step state in
+  memory. To refuse one, the converter must mark the step, and what that mark
+  looks like is a later decision. Nothing needs it until a mode that cannot
+  hold a wait exists.
+- The graph's step types include `wait`, and nothing builds one. A wait enters
+  through the step result contract instead, so the converter never turns a node
+  into a different step type.
+- The node's resume method runs on the control plane, so its credentials
+  resolve there. A Wait node that authenticates a resume request needs nothing
+  from credential support in the data plane.
+- A waiting step does not settle. The completion count must treat the step as
+  expected but not yet settled, or the execution finishes while a step still
+  owes an outcome. The planning rules read the same status, so a waiting step
+  counted as settled would also let the steps behind it run.
+- The step row holds the resume payload. The payload gets the same size
+  handling as the step outputs.
+- A resolve request can arrive before the engine records the suspension. The
+  resolve path must handle this window. It must not refuse the request.
+- Every wait reaches the engine, including a time wait under 65 seconds that
+  engine v1 sleeps through in the process. Such a wait costs a row write and a
+  re-dispatch that engine v1 avoids. In exchange it survives a worker restart,
+  and the engine can cancel it and report it.
+- A wait fires within a second of its deadline on the replica that suspended it.
+  The engine re-arms the sweep when it suspends a step whose deadline is earlier
+  than the sweep's next pass, so a short time wait does not wait for that pass.
+  Another replica cannot fire it twice: the sweep flips `waiting` to `queued` in
+  one statement, so a row already resumed is not due. If the suspending replica
+  dies before its timer fires, another replica finds the row when it next arms
+  or sweeps, so the bound is one sweep interval. Engine v1 fires a short time
+  wait on time and loses it if the worker dies, so engine v2 matches v1 on time
+  and improves on it after a failure.
+- A v1 node that waits for a sub-execution fails on engine v2. The step does not
+  complete at once, because a step that completed would report a child that
+  never ran. A sub-workflow step will carry that wait; the Context puts it out
+  of scope here.
+- Because the execution row records a status that the step rows decide, one
+  statement must calculate the status and write it. Two statements are not
+  enough. A step could change between the read and the write. The write would
+  then store the older status.
+- `running` and `waiting` are both live statuses. Only an execution that ended
+  stops a step transition. A waiting execution continues when one of its steps
+  runs again, so the engine must let that step run. The execution keeps the
+  `waiting` status until the resumed step settles.
+- The executions list and its filters continue to work, because the new status
+  has a v1 counterpart to map onto. An execution with one waiting branch and
+  one running branch reports `running`.
+- A wait can outlive the control-plane state that it started with. A user can
+  move the workflow, unshare a credential, or remove access. The unshared
+  credential matters once a resumed step can use one. The resume path reads no
+  control-plane state, so it cannot detect these changes. Whether a resume must
+  fail for these reasons is a product decision. To apply that decision, the
+  engine needs a cross-plane check. This design has no such check.
+- The control plane keeps the editor's live view of a waiting execution in
+  memory, keyed by the execution id. That memory does not survive a restart, and
+  the wait does. This is not a copy of the wait state (decision 5). It is the
+  state of a UI session. A lost one costs the canvas its live view of the
+  resumed run and nothing else.
+
+## Links
+
+RFC: -
+
+Documentation: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
+
+Related ADRs: ADR-20260828-obtain-trigger-output-before-creating-the-execution, ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution

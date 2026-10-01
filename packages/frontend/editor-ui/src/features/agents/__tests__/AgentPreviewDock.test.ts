@@ -7,14 +7,6 @@ import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
 enableAutoUnmount(afterEach);
 
-const { useKeybindingsMock } = vi.hoisted(function createMocks() {
-	return { useKeybindingsMock: vi.fn() };
-});
-
-vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
-	return { useKeybindings: useKeybindingsMock };
-});
-
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
 		isEnabled: false,
@@ -87,12 +79,13 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
-	props: ['beforeSend', 'visible'],
-	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
+	props: ['beforeSend', 'initialPrompt', 'visible'],
+	emits: ['continue-loaded', 'open-build', 'send-to-assistant', 'initial-consumed'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({ focusInput: vi.fn(), getConversationMarkdown: () => '**User:**\n\nHello' });
 	},
-	template: '<div data-testid="agent-preview-chat-page-stub" />',
+	template:
+		'<div data-testid="agent-preview-chat-page-stub"><textarea class="ignore-key-press-canvas" /></div>',
 };
 
 const AgentPreviewMoreMenuStub = {
@@ -119,6 +112,7 @@ function mountDock(
 		isOpen: boolean;
 		isDeletingSession: boolean;
 		canDeleteSession: boolean;
+		initialPrompt?: string;
 		sessionOptions: Array<{
 			id: string;
 			title: string;
@@ -324,17 +318,20 @@ describe('AgentPreviewDock', () => {
 				},
 			],
 		};
-		const wrapper = mountDock({ beforeSend });
+		const wrapper = mountDock({ beforeSend, initialPrompt: 'Test these instructions' });
 		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
+		expect(chatPage.props('initialPrompt')).toBe('Test these instructions');
 		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
 		chatPage.vm.$emit('send-to-assistant', fixEvent);
+		chatPage.vm.$emit('initial-consumed');
 
 		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
 		expect(wrapper.emitted('open-build')).toEqual([[]]);
 		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 	});
 
 	it('shows the new-session shortcut tooltip', () => {
@@ -371,44 +368,103 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('delete-session')).toEqual([['thread-1']]);
 	});
 
-	it('creates a new session from the registered keyboard shortcut', () => {
+	it('creates a new session from the keyboard shortcut', async function () {
 		const wrapper = mountDock();
-		const newSessionShortcut = useKeybindingsMock.mock.calls[0]?.[0]?.[
-			'ctrl+shift+;'
-		] as () => void;
-
-		newSessionShortcut();
+		await wrapper.vm.$nextTick();
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: ';',
+				code: 'Semicolon',
+				ctrlKey: true,
+				metaKey: true,
+				shiftKey: true,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
 
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 	});
 
-	it('only enables Escape when the dock is open and contains focus', async function checksEscapeScope() {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
-		const host = document.createElement('div');
-		const outsideButton = document.createElement('button');
-		document.body.append(host, outsideButton);
-		const wrapper = mountDock({}, host);
-		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
-			disabled: () => boolean;
-			run: () => void;
-		};
+	describe('Escape key events', function () {
+		let host: HTMLDivElement;
 
-		outsideButton.focus();
-		expect(escapeBinding.disabled()).toBe(true);
+		beforeEach(function attachHost() {
+			host = document.createElement('div');
+			document.body.append(host);
+		});
 
-		(
-			wrapper.get('[data-testid="agent-preview-new-chat-btn"]').element as HTMLButtonElement
-		).focus();
-		expect(escapeBinding.disabled()).toBe(false);
-		escapeBinding.run();
-		expect(wrapper.emitted('close')).toEqual([[]]);
+		afterEach(function removeHost() {
+			host.remove();
+		});
 
-		await wrapper.setProps({ isOpen: false });
-		expect(escapeBinding.disabled()).toBe(true);
+		it.each(['[data-testid="agent-preview-new-chat-btn"]', 'textarea'])(
+			'closes from focused %s',
+			async function (selector) {
+				const wrapper = mountDock({}, host);
+				const element = wrapper.get<HTMLElement>(selector).element;
+				element.focus();
+				await wrapper.vm.$nextTick();
+				expect(document.activeElement).toBe(element);
 
-		wrapper.unmount();
-		host.remove();
-		outsideButton.remove();
+				const event = new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+					cancelable: true,
+				});
+				element.dispatchEvent(event);
+
+				expect(wrapper.emitted('close')).toEqual([[]]);
+				expect(event.defaultPrevented).toBe(true);
+			},
+		);
+
+		it('does not close from outside focus or after the dock closes', async function () {
+			const wrapper = mountDock({}, host);
+			const outside = document.createElement('button');
+			host.append(outside);
+			outside.focus();
+			await wrapper.vm.$nextTick();
+			outside.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+				}),
+			);
+			expect(wrapper.emitted('close')).toBeUndefined();
+
+			const input = wrapper.get<HTMLTextAreaElement>('textarea').element;
+			input.focus();
+			await wrapper.setProps({ isOpen: false });
+			input.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+				}),
+			);
+			expect(wrapper.emitted('close')).toBeUndefined();
+		});
+
+		it('leaves Escape to a nested dialog', async function () {
+			const wrapper = mountDock({}, host);
+			wrapper
+				.get('[data-testid="agent-preview-chat-page-stub"]')
+				.element.setAttribute('role', 'dialog');
+			const input = wrapper.get<HTMLTextAreaElement>('textarea').element;
+			input.focus();
+			await wrapper.vm.$nextTick();
+			input.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+				}),
+			);
+			expect(wrapper.emitted('close')).toBeUndefined();
+		});
 	});
 
 	it('docks the preview before opening the session view', async () => {
@@ -464,6 +520,43 @@ describe('AgentPreviewChatPage', () => {
 		const wrapper = mountChatPage(beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
+	});
+
+	it('sends the initial prompt once when the chat panel is ready', async () => {
+		const sendMessageFromOutside = vi.fn();
+		const wrapper = shallowMount(AgentPreviewChatPage, {
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+				initialPrompt: 'Test these instructions',
+			},
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div />',
+						emits: ['initial-consumed'],
+						methods: { sendMessageFromOutside },
+					},
+				},
+			},
+		});
+
+		await wrapper.vm.$nextTick();
+
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+
+		await wrapper.setProps({ visible: false });
+		expect(sendMessageFromOutside).toHaveBeenCalledTimes(1);
 	});
 
 	it('forwards the session-aware history event from the chat panel', () => {

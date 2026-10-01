@@ -236,7 +236,7 @@ export class ExecutionRecoveryService {
 
 		if (!exists) return null;
 
-		await this.executionCrashService.markAsCrashedWithoutCounting(executionId);
+		await this.executionCrashService.markAsCrashedWithoutCounting(executionId, 'startup-recovery');
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,

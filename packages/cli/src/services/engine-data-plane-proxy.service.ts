@@ -6,18 +6,37 @@ import type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 
+/** The engine refused the workflow before it saved an execution for it. */
+export class EngineRejectedWorkflowError extends UserError {}
+
+/** The engine did not admit the run, and saved no execution for it. */
+export class EngineDidNotAdmitError extends OperationalError {}
+
 /**
- * Starts and reads executions on the engine 2.0 data plane.
+ * Whether a failed start guarantees that the engine saved no execution. Any
+ * other failure, such as a server error or a lost response, can come after the
+ * save, so a run can exist under the requested id.
+ */
+export const isStartRefusedBeforeSave = (error: unknown): boolean =>
+	error instanceof EngineRejectedWorkflowError || error instanceof EngineDidNotAdmitError;
+
+/**
+ * Starts and reads executions on the engine v2 data plane.
  *
  * The control plane always reaches the engine over HTTP, even when the engine
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
 	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
+
+	/**
+	 * Throws {@link EngineRejectedWorkflowError} or {@link EngineDidNotAdmitError}
+	 * only when the engine saved no execution.
+	 */
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
 	/**
@@ -59,7 +78,7 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
 			throw new UserError(
-				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
 

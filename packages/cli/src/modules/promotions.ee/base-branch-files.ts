@@ -1,6 +1,5 @@
 import {
 	PACKAGE_ENTITY_LAYOUT,
-	WORKFLOW_METADATA_FILE_NAME,
 	type ManifestEntityCollection,
 } from '../n8n-packages/io/manifest-entry';
 
@@ -18,9 +17,7 @@ export type PackageFile = Readonly<{
 	entityId: string;
 	slug: string;
 	projectId: string | null;
-	fileName:
-		| (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName']
-		| typeof WORKFLOW_METADATA_FILE_NAME;
+	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName'];
 	path: string;
 	blobSha: string;
 	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
@@ -80,9 +77,8 @@ export function parsePackageFiles(
 				? folders
 				: ENTITIES_BY_DIRECTORY.get(segments[segments.length - 3]);
 		if (!entity) continue;
-		const isWorkflowMetadata =
-			entity.type === 'workflow' && fileName === WORKFLOW_METADATA_FILE_NAME;
-		if (fileName !== entity.fileName && !isWorkflowMetadata) continue;
+		// Only entity files count. `workflow-metadata.json` holds state, not content.
+		if (fileName !== entity.fileName) continue;
 		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];
@@ -90,7 +86,7 @@ export function parsePackageFiles(
 			entityId: entityIdOfSegment(entitySegment),
 			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
 			projectId: segments[0] === projects.directory ? projectId : null,
-			fileName: isWorkflowMetadata ? WORKFLOW_METADATA_FILE_NAME : entity.fileName,
+			fileName: entity.fileName,
 			path,
 			blobSha,
 			type,

@@ -34,7 +34,7 @@ interface SessionOption {
 	updatedAt?: string;
 }
 
-enum PreviewLayout {
+const enum PreviewLayout {
 	Docked = 'docked',
 	Fullpage = 'fullpage',
 }
@@ -52,13 +52,20 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		isOpen: boolean;
 		effectiveSessionId?: string;
+		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
 	}>(),
-	{ canDeleteSession: false, isDeletingSession: false },
+	{
+		newSession: false,
+		canDeleteSession: false,
+		isDeletingSession: false,
+		dismissedFixToolCallIds: () => [],
+	},
 );
 
 const emit = defineEmits<{
@@ -68,8 +75,10 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	'initial-consumed': [];
 }>();
 
 const i18n = useI18n();
@@ -142,16 +151,31 @@ watch(
 	{ flush: 'post' },
 );
 
-function isEscapeDisabled() {
-	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+/** Handle the escape shortcut locally instead of useKeybindings so it also works while inputs have focus. */
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.defaultPrevented || event.isComposing || event.key !== 'Escape') {
+		return;
+	}
+
+	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+		return;
+	}
+
+	if (
+		!props.isOpen ||
+		dock.value?.contains(event.target as Node) !== true ||
+		(event.target instanceof Element && event.target.closest('[role="dialog"]') !== null)
+	) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	close();
 }
 
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
-	Escape: {
-		disabled: isEscapeDisabled,
-		run: close,
-	},
 });
 </script>
 
@@ -162,6 +186,7 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
+		@keydown="handleEscapeKey"
 		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
@@ -272,12 +297,16 @@ useKeybindings({
 				:local-config="props.localConfig"
 				:connected-triggers="props.connectedTriggers"
 				:effective-session-id="props.effectiveSessionId"
+				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
+				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
+				@initial-consumed="emit('initial-consumed')"
 			/>
 		</div>
 	</aside>

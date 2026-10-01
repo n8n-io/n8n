@@ -29,6 +29,7 @@ import {
 } from '../constants';
 import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
@@ -100,6 +101,7 @@ export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
+	responseStartedAtEpochMs?: number;
 	/**
 	 * Required so a new hand-off cannot stash an opener that reports as
 	 * user-typed. Optional on the read path only, for stashes a previous
@@ -398,13 +400,17 @@ export async function provisionLaunchedThread(
 	payload: PendingFirstMessage,
 	launch: InstanceAiThreadLaunch,
 ): Promise<string | null> {
+	const pendingMessage = {
+		...payload,
+		responseStartedAtEpochMs: payload.responseStartedAtEpochMs ?? instanceAiResponseNow(),
+	};
 	const threadId = uuidv4();
 	try {
 		await useInstanceAiStore().syncThread(threadId, projectId, launch);
 	} catch {
 		return null;
 	}
-	stashPendingFirstMessage(threadId, payload);
+	stashPendingFirstMessage(threadId, pendingMessage);
 	return threadId;
 }
 
@@ -427,6 +433,39 @@ export async function provisionWorkflowThread(
 	stashPendingWorkflowAttachment(threadId, attachment);
 	if (launch.source === 'workflow_list_auto') {
 		stashPendingRedirectLanding(threadId);
+	}
+	return threadId;
+}
+
+/** The n8n Cloud signup survey answers the onboarding thread reads, keyed like the cloud stores them. */
+export interface InstanceAiOnboardingSurvey {
+	what_team_are_you_on?: string;
+}
+
+/** The survey and where it came from, so telemetry can tell a `?team=` test run from a signup. */
+export type InstanceAiOnboardingLaunch = {
+	survey: InstanceAiOnboardingSurvey;
+	surveySource: 'cloud' | 'url';
+};
+
+/**
+ * Provision the agent-first onboarding thread for the `/assistant?source=onboarding` router
+ * guard. The backend seeds the greeting and the first question card, so nothing is stashed for
+ * the destination view to send. Returns the thread id, or null if persistence failed.
+ */
+export async function provisionOnboardingThread(
+	projectId: string,
+	launch: InstanceAiOnboardingLaunch | undefined,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, {
+			source: 'onboarding',
+			origin: 'external',
+			sourceContext: launch,
+		});
+	} catch {
+		return null;
 	}
 	return threadId;
 }
@@ -592,6 +631,7 @@ export function useInstanceAiHandoff() {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;
+		const responseStartedAtEpochMs = instanceAiResponseNow();
 		try {
 			if (options?.newTab) {
 				// Open the tab now, inside the click gesture, so it isn't popup-blocked.
@@ -600,7 +640,7 @@ export function useInstanceAiHandoff() {
 				const tab = window.open('', '_blank');
 				const threadId = await provisionLaunchedThread(
 					projectId,
-					{ message, attachments, context: options?.context, authorship },
+					{ message, attachments, context: options?.context, authorship, responseStartedAtEpochMs },
 					launch,
 				);
 				if (!threadId) {
@@ -628,6 +668,7 @@ export function useInstanceAiHandoff() {
 				attachments,
 				pushRef: rootStore.pushRef,
 				handoffContext: options?.context,
+				responseStartedAtEpochMs,
 			});
 			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {

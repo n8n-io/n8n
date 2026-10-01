@@ -14,13 +14,41 @@ rather than taking fresh numbers — the cumulative total's day-to-day diff is
 only meaningful while every sample sits a fixed 24 hours apart.
 
 A report that follows downtime carries one `daily` point for each day the
-instance missed, up to 30 days, and one `cumulative` point as always. Across a
-gap the `daily` series is the authoritative one: the two cumulative samples
-around the gap sit more than 24 hours apart, so their difference covers the
-whole outage. A missed day with no executions is reported as `0`, so a gap in
-the series always means "not reported", never "nothing ran". A gap longer than
-30 days is unrecoverable, since `insights` buckets a longer range by week; the
-oldest days are dropped and logged.
+instance missed, and one `cumulative` point as always. Across a gap the `daily`
+series is the authoritative one: the two cumulative samples around the gap sit
+more than 24 hours apart, so their difference covers the whole outage. A missed
+day with no executions is reported as `0`, so a gap in the series always means
+"not reported", never "nothing ran". The one exception: missed days before the
+first `insights` data are not reported at all.
+
+The first report works the same way: it carries a `daily` point for every day
+from the first `insights` data to yesterday. It carries no past `cumulative`
+values, since those are unknown. Days before the first `insights` data are not
+sent. A report reads only hourly `insights` data, because only hourly rows
+split exactly into UTC days. `insights` folds hours older than 90 days (by
+default) into daily rows, so a report never carries a day older than 89 days.
+Inside the sent range, a day without data is `0`.
+[RETRIES.md](./RETRIES.md#type-2-missed-day-backfill) gives the exact rules.
+
+Known limits:
+
+- If `insights` was disabled for a time between its first data and the first
+  report, those days are sent as `0`.
+- After this instance's database is restored from a backup, the days since the
+  backup are sent again, as `0` or as a lower value. Consumers of the receiver's
+  export must use the highest value for each instance, metric and day.
+  `insights` stores no row for a day without executions, so a day lost in the
+  restore looks the same as a day when nothing ran. If `insights` stored an
+  explicit `0` for each day it ran, the lost days could be left out, and only
+  the backup day would be sent again.
+- On Postgres, `insights` compacts in the session's time zone. When that time
+  zone is not UTC, two cases put executions on the wrong UTC day:
+  - Daily rows inside the sent range. They occur only if
+    `N8N_INSIGHTS_COMPACTION_HOURLY_TO_DAILY_THRESHOLD_DAYS` was lower before.
+    Each daily row holds a local day, and the report puts it on one UTC day.
+  - A time zone with a half-hour offset, such as `Asia/Kolkata`. Hourly rows
+    then start at 30 minutes past the UTC hour, so the row that holds UTC
+    midnight counts on one day only.
 
 **A day is reported once, and 201 is what decides it.** The receiver answers 201
 only once it has saved the report, so anything else means nothing was saved and
@@ -36,8 +64,9 @@ without reading this document:
 | `status` | Meaning |
 |---|---|
 | `pending` | Not delivered yet, and attempts remain |
+| `sending` | One main holds the report while it sends a request |
 | `delivered` | The receiver answered 201 |
-| `skipped_after_max_retries` | Three attempts failed, so the instance stopped for that day |
+| `skipped_after_max_retries` | The instance stopped delivering that day: after three failed attempts, because the report's own slot passed before it landed, or because the receiver rejected the payload (`400` or `413`) |
 
 A skipped report is **not** lost data. Only a delivered report crosses a day
 off, so the days a skipped report covered are measured again and sent by the
@@ -47,27 +76,46 @@ next one.
 scheduler holding them in memory. A restart therefore resumes the same report's
 three attempts instead of granting three more, and waits out the rest of the
 five minutes since the last attempt before trying again — otherwise a crash loop
-would spend the whole budget in seconds. `InstanceReportingScheduler` keeps no
+would spend the whole budget in seconds. `InstanceReportingTask` keeps no
 attempt state of its own.
+
+The delivery retry above and the missed-day backfill are two separate
+mechanisms. [RETRIES.md](./RETRIES.md) explains each one, how they connect,
+and where the logic lives.
 
 ## Scheduling
 
-The daily fire is driven by `InstanceReportingScheduler`, a leader-gated
-in-process timer (the same pattern as execution pruning and workflow history
-compaction) rather than the durable scheduler: that framework has no
-first-class support yet for system-owned jobs like this one, only for
-workflow-triggered jobs, and this module is meant to move onto it once it does.
+`InstanceReportingTask` checks the stored report time every 15 minutes. Changes
+to that time apply on the next pass without a restart or a schedule update. A
+report can start up to 15 minutes after its UTC slot. A pass sends a new report
+for the latest slot at or before its time, unless the day of that slot is
+settled. Yesterday's slot stays due for one hour, so a slot late in the UTC day
+is sent after midnight. That report is still dated by its slot and ends on the
+day before it.
 
-In multi-main, only the leader holds the timer, so a cluster reports once
-rather than once per main; leadership handover moves the timer along with it.
-In place of the durability a scheduler-backed job would give:
+With `N8N_SCHEDULER_ENABLED` and `N8N_SCHEDULER_SYSTEM_TASKS_ENABLED` enabled,
+any main can claim the durable task. With either flag disabled, the shared
+system task runner uses the leader's in-memory timer. It also runs a catch-up
+pass at startup and on leader takeover. The runner starts after the server.
 
-- **Catch-up.** Every tick asks the database whether today's report was
-  delivered, rather than trusting a timer fired at the right moment — so a
-  restart, or a leadership handover, that straddles the report time still
-  reports that day.
-- **Bounded retry.** A failed delivery is retried a few times, a few minutes
-  apart, before the day is left to the next slot.
+The report row owns retries in both modes. Each scheduler occurrence has one
+attempt. A delivery failure is recorded as a failed occurrence. Later passes
+read the report row and wait at least five minutes before retrying. During normal
+operation, retries run on the next 15-minute pass. After three
+failed deliveries, the row is skipped. At the pending row's next daily slot,
+a new report replaces it even if the retry delay has not elapsed. A `sending`
+row stays active until its request finishes. A stopped main's claim expires
+after two minutes.
+
+The unique `reportDate` key allows one report row per UTC day. Concurrent
+creators cannot send different measurements for that day. Retries use the
+persisted data and `batchId`. If delivery succeeds before a main stops, a repeat
+uses that same batch. The receiver answers `409`, which counts as delivery.
+A database claim lets only one main send a pending row at a time. Claim age
+uses the database clock. A failure write must match the active claim timestamp.
+A late `201` or `409` marks any undelivered row as delivered, even if another
+main reclaimed or skipped it. Further results leave a delivered row and its
+attempt count unchanged.
 
 ## Enabling
 
@@ -81,13 +129,47 @@ N8N_INSTANCE_REPORTING_BASE_URL=https://monitoring.example.com
 The `insights` module must stay enabled, since the daily figure comes from
 there.
 
+The instance must hold a license certificate, unless
+`N8N_INSTANCE_REPORTING_AUTH_TOKEN` is set. Reporting is for licensed
+instances, and the certificate is how the receiver knows that, see
+[Authentication](#authentication). Without a credential the module loads but
+warns and never sends, exactly as without a receiver.
+
+## Authentication
+
+There are two credentials. The token wins when it is set.
+
+**License certificate (default).** Every report carries the instance's license
+certificate, the string `License.loadCertStr()` returns (`N8N_LICENSE_CERT`,
+or the persisted certificate of an activated license), as the `licenseCert`
+field of the body. The receiver verifies that the certificate was issued by
+n8n and then discards it; nothing from it is stored. There is no token to
+configure or distribute.
+
+The certificate is read fresh for every report, so a renewed license is sent
+as soon as it is stored. An expired certificate is still sent and still
+accepted: the receiver checks the issuer, not the validity period.
+
+It travels in the body, not in an `Authorization` header, because a
+certificate is several KB and grows with the license, which is more than
+common reverse proxies allow per header.
+
+**Bearer token.** When `N8N_INSTANCE_REPORTING_AUTH_TOKEN` is set, every
+report carries it as `Authorization: Bearer …` and the body has no
+`licenseCert` field. The certificate is not read at all, so an unlicensed
+instance can report with a token.
+
+Redirects are never followed, so either credential reaches only the configured
+host.
+
 ## Configuration
 
 | Env var | Default | Notes |
 |---|---|---|
-| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it starts no scheduler and claims no report time. |
+| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it registers no reporting task and claims no report time. |
 | `N8N_INSTANCE_REPORTING_LABEL` | `''` | Sent as `label` in the payload, when set. |
-| `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. |
+| `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. Replaces the license certificate as the credential; `licenseCert` is then omitted from the body. |
+| `N8N_LICENSE_CERT` | `''` | Not owned by this module. Its value, or the persisted certificate of an activated license, is sent as `licenseCert` and is the credential the receiver checks, unless a token is set. |
 
 ## Report time
 
@@ -113,9 +195,11 @@ is enabled on this instance:
 }
 ```
 
-`enabled` says whether a receiver is configured. Without one the key reads
-`{ "enabled": false }` and carries no `reportTime`, since no time is claimed. A
-missing key means the module is not enabled at all.
+`enabled` says whether a receiver is configured and a credential (an auth
+token or a license certificate) is present. Without either the key reads
+`{ "enabled": false }` and carries no
+`reportTime`, since no time is claimed. A missing key means the module is not
+enabled at all.
 
 These settings are built once, during module init, and served from a cache
 afterwards, so they carry only values that stay the same for the lifetime of
@@ -131,6 +215,3 @@ last accepted a report, or `null` when it never did:
 ```
 
 The route exists whenever the module is loaded, including without a receiver — the client decides whether to ask by reading `enabled` from the client settings.
-
-See [.agents/specs/central-instance-monitoring.md](../../../../../.agents/specs/central-instance-monitoring.md)
-for the full design.

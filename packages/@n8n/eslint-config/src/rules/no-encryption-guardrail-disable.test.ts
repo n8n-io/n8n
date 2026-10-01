@@ -1,8 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
-import { NoDeploymentKeyDeleteRule } from './no-deployment-key-delete.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
-import { NoLegacyCipherMethodsRule } from './no-legacy-cipher-methods.js';
-import { NoMisplacedCipherPrimitivesRule } from './no-misplaced-cipher-primitives.js';
 
 // Register the guarded rules so ESLint can resolve the disable directives under
 // test (an unknown rule name in a directive would emit an extra "rule not found"
@@ -14,9 +11,6 @@ const ruleTester = new RuleTester({
 	plugins: {
 		'n8n-local-rules': {
 			rules: {
-				'no-legacy-cipher-methods': NoLegacyCipherMethodsRule,
-				'no-misplaced-cipher-primitives': NoMisplacedCipherPrimitivesRule,
-				'no-deployment-key-delete': NoDeploymentKeyDeleteRule,
 				'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 			},
 		},
@@ -27,7 +21,7 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 	valid: [
 		// A plain comment mentioning a rule name is not a disable directive
 		{
-			code: '// enforced by n8n-local-rules/no-legacy-cipher-methods\nconst a = 1;',
+			code: '// enforced by n8n-local-rules/no-encryption-guardrail-disable\nconst a = 1;',
 		},
 		// Disabling unrelated rules is fine
 		{
@@ -35,22 +29,10 @@ ruleTester.run('no-encryption-guardrail-disable', NoEncryptionGuardrailDisableRu
 		},
 		// A guarded rule mentioned only in the `--` explanation is not disabled
 		{
-			code: '// eslint-disable-next-line no-console -- keep parity with no-legacy-cipher-methods docs\nconsole.log("x");',
+			code: '// eslint-disable-next-line no-console -- keep parity with encryption guardrail docs\nconsole.log("x");',
 		},
 	],
 	invalid: [
-		{
-			code: '// eslint-disable-next-line n8n-local-rules/no-legacy-cipher-methods\nconst a = 1;',
-			errors: [{ messageId: 'noDisable', data: { rule: 'no-legacy-cipher-methods' } }],
-		},
-		{
-			code: '/* eslint-disable n8n-local-rules/no-deployment-key-delete */\nconst a = 1;',
-			errors: [{ messageId: 'noDisable', data: { rule: 'no-deployment-key-delete' } }],
-		},
-		{
-			code: '// eslint-disable-line n8n-local-rules/no-misplaced-cipher-primitives',
-			errors: [{ messageId: 'noDisable', data: { rule: 'no-misplaced-cipher-primitives' } }],
-		},
 		// Blanket line-form disables silence every rule on the target line
 		{
 			code: '// eslint-disable-next-line\nconst a = 1;',

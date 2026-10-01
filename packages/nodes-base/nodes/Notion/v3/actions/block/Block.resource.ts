@@ -137,6 +137,10 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		displayOptions: { show: { resource: ['block'], operation: ['getAll'] } },
+		builderHint: {
+			propertyHint:
+				'When true, adds root_id and removes created_time, last_edited_time, and created_by. Child page and child database titles become content. A block-type text array becomes content by joining its plain_text values. A rich_text-only block keeps its nested data, so content is not guaranteed. When false, keeps the native block fields. Match downstream expressions and verification output fixtures to the block type and output mode.',
+		},
 	},
 ];
 

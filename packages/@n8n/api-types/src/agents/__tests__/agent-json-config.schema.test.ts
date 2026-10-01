@@ -716,3 +716,61 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 		}
 	});
 });
+
+describe('AgentJsonConfigSchema — config.guardrails.budget', () => {
+	it('keeps the saved amounts when the guardrail is off', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: {
+				guardrails: {
+					budget: {
+						enabled: false,
+						monthlyBudgetUsd: 20,
+						alertThresholdPercent: 80,
+						sessionCostCapUsd: 2,
+					},
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.config?.guardrails?.budget).toEqual({
+			enabled: false,
+			monthlyBudgetUsd: 20,
+			alertThresholdPercent: 80,
+			sessionCostCapUsd: 2,
+		});
+	});
+
+	it('rejects a negative amount', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: -1 } } },
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a percent outside 1–100', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: {
+				guardrails: {
+					budget: { enabled: true, monthlyBudgetUsd: 10, alertThresholdPercent: 0 },
+				},
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a percent without a monthly budget', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, alertThresholdPercent: 80 } } },
+		});
+
+		expect(result.success).toBe(false);
+	});
+});

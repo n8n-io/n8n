@@ -18,7 +18,7 @@ import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builde
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
@@ -867,6 +867,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 			mock(),
 		);
+		loadNodesAndCredentials.excludeNodes = [];
 
 		// Real LazyPackageDirectoryLoader reading from the mocked filesystem
 		const loader = new LazyPackageDirectoryLoader(packageDir);
