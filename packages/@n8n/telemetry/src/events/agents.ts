@@ -657,4 +657,32 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			session_id: sessionId,
 		}),
 	},
+	USER_SELECTED_N8N_CHAT_AGENT: {
+		name: 'User selected n8n chat agent',
+		description:
+			'The user picked a published agent to chat with over n8n Chat, from a card or the agents library.',
+		properties: z.object({
+			agent_id: z.string(),
+			source: z.enum(['card', 'library']),
+			variant: z
+				.string()
+				.nullable()
+				.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value'),
+			session_id: sessionId,
+		}),
+	},
+	USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT: {
+		name: 'User sent message to n8n chat agent',
+		description: 'The user sent a chat message to a published agent over n8n Chat.',
+		properties: z.object({
+			agent_id: z.string(),
+			thread_id: z.string(),
+			is_new_thread: z.boolean(),
+			variant: z
+				.string()
+				.nullable()
+				.describe('The 125_agents_n8n_chat PostHog variant; null when the user has no flag value'),
+			session_id: sessionId,
+		}),
+	},
 });

@@ -6,6 +6,7 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_N8N_CHAT_VIEW,
+	AGENT_N8N_CHAT_LIBRARY_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
@@ -27,6 +28,15 @@ const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 const AgentN8nChatView = async (): Promise<unknown> =>
 	await import('@/features/agents/n8nChatPage/AgentN8nChatView.vue');
+const N8nChatAgentLibraryView = async (): Promise<unknown> =>
+	await import('@/features/agents/n8nChatPage/N8nChatAgentLibraryView.vue');
+
+// Same availability gate as `/assistant` itself, then the PostHog flag — posthog
+// loads flags asynchronously, so the guard waits for them before deciding.
+const n8nChatRouteGuard = async () => {
+	if (!useInstanceAiAvailable().value) return { name: VIEWS.HOMEPAGE };
+	return (await isAgentsN8nChatFlagEnabledOnceEvaluated()) ? true : { name: INSTANCE_AI_VIEW };
+};
 
 export const AgentsModule = defineFrontendModule({
 	id: 'agents',
@@ -86,6 +96,17 @@ export const AgentsModule = defineFrontendModule({
 			],
 		},
 		{
+			name: AGENT_N8N_CHAT_LIBRARY_VIEW,
+			// A static path outranks `:agentId` and instanceAi's `/assistant/:threadId`, regardless of registration order.
+			path: '/assistant/agents',
+			component: N8nChatAgentLibraryView,
+			meta: {
+				layout: 'instanceAi',
+				middleware: ['authenticated'],
+			},
+			beforeEnter: n8nChatRouteGuard,
+		},
+		{
 			name: AGENT_N8N_CHAT_VIEW,
 			// `agentThreadId`, not `threadId`: the sibling instanceAi routes read
 			// `route.params.threadId` for an n8n Assistant thread id, and the two
@@ -97,14 +118,7 @@ export const AgentsModule = defineFrontendModule({
 				layout: 'instanceAi',
 				middleware: ['authenticated'],
 			},
-			// Same availability gate as `/assistant` itself, then the PostHog flag —
-			// posthog loads flags asynchronously, so the guard waits for them before deciding.
-			beforeEnter: async () => {
-				if (!useInstanceAiAvailable().value) return { name: VIEWS.HOMEPAGE };
-				return (await isAgentsN8nChatFlagEnabledOnceEvaluated())
-					? true
-					: { name: INSTANCE_AI_VIEW };
-			},
+			beforeEnter: n8nChatRouteGuard,
 		},
 	],
 	projectTabs: {

@@ -1,16 +1,25 @@
+import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+export type N8nChatAgentSource = 'card' | 'library';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 
 	const common = () => ({ session_id: rootStore.pushRef });
+
+	// Reports `null` when the user has no flag value for this experiment.
+	function currentN8nChatVariant(): string | null {
+		const variant = usePostHog().getVariant(AGENTS_N8N_CHAT_FLAG);
+		return typeof variant === 'string' ? variant : null;
+	}
 
 	// Telemetry is best-effort: every track call is wrapped so a RudderStack
 	// failure can never surface to a caller (and never takes down a critical
@@ -190,6 +199,29 @@ export function useAgentTelemetry() {
 		}
 	}
 
+	function trackSelectedN8nChatAgent(params: { agentId: string; source: N8nChatAgentSource }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SELECTED_N8N_CHAT_AGENT, {
+			agent_id: params.agentId,
+			source: params.source,
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackSentMessageToN8nChatAgent(params: {
+		agentId: string;
+		threadId: string;
+		isNewThread: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT, {
+			agent_id: params.agentId,
+			thread_id: params.threadId,
+			is_new_thread: params.isNewThread,
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -205,5 +237,7 @@ export function useAgentTelemetry() {
 		trackCheckedTeamsCredential,
 		trackClickedDeployToAzure,
 		trackDownloadedTeamsAppPackage,
+		trackSelectedN8nChatAgent,
+		trackSentMessageToN8nChatAgent,
 	};
 }

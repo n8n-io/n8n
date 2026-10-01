@@ -15,6 +15,7 @@ import {
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
+	listN8nChatAgents,
 	duplicateAgent,
 } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -199,6 +200,51 @@ describe('useAgentApi', () => {
 				'/agents/v2/n8n-chat/agents/agent%2F1',
 			);
 			expect(result).toBe(item);
+		});
+	});
+
+	describe('listN8nChatAgents', () => {
+		it('always filters by availableInChat, forwards paging and sort, and trims the query', async () => {
+			const response = {
+				count: 1,
+				data: [{ id: 'agent-1', name: 'Support', project: { id: 'p1', name: 'Team' } }],
+			};
+			vi.mocked(getFullApiResponse).mockResolvedValueOnce(response);
+
+			const result = await listN8nChatAgents(restApiContext, {
+				query: '  support  ',
+				skip: 10,
+				take: 50,
+				sortBy: 'usage:desc',
+			});
+
+			expect(getFullApiResponse).toHaveBeenCalledWith(restApiContext, 'GET', '/agents/v2', {
+				filter: { availableInChat: true, query: 'support' },
+				skip: 10,
+				take: 50,
+				sortBy: 'usage:desc',
+			});
+			expect(result).toBe(response);
+		});
+
+		it('omits the query from the filter when blank — not given, empty, or whitespace-only', async () => {
+			vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
+
+			await listN8nChatAgents(restApiContext, { skip: 0, take: 50 });
+			await listN8nChatAgents(restApiContext, { query: '   ', skip: 0, take: 50 });
+
+			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
+				filter: { availableInChat: true },
+				skip: 0,
+				take: 50,
+				sortBy: undefined,
+			});
+			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
+				filter: { availableInChat: true },
+				skip: 0,
+				take: 50,
+				sortBy: undefined,
+			});
 		});
 	});
 

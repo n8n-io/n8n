@@ -1,11 +1,12 @@
 import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
 import { computed } from 'vue';
 
+import { AGENTS_N8N_CHAT_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 
 function isAgentsN8nChatFlagEnabled(): boolean {
 	const variant = usePostHog().getVariant(AGENTS_N8N_CHAT_FLAG);
-	return typeof variant === 'string' && variant !== 'control';
+	return typeof variant === 'string' && variant !== AGENTS_N8N_CHAT_EXPERIMENT.control;
 }
 
 /**
