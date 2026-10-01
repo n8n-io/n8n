@@ -420,7 +420,7 @@ export class ActiveExecutions {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new' || (isWorker && isQueueJob)) {
-				// Remove waiting and new executions to not block shutdown
+				// Remove waiting, new and, on a worker, enqueued executions, which run as Bull jobs this draining worker never picks up
 				delete this.activeExecutions[executionId];
 			}
 		}
