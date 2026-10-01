@@ -216,16 +216,19 @@ function flatSize(array: unknown[], depth: number): number {
 }
 
 /**
- * join() stringifies every element and toSorted()'s default comparator
- * stringifies both operands per comparison. On nested arrays that work is
- * proportional to the nested size, which no element count bounds, so those
- * two methods only run natively over primitive elements. Scanning is O(n)
- * over a receiver the size cap already limits, and happens before anything
- * is stringified.
+ * Array methods that call toString on their elements: join() on every
+ * element, toSorted()'s default comparator on both operands per comparison.
+ * On nested arrays that work is proportional to the nested size, which no
+ * element count bounds, so these run natively over primitive elements only.
  */
-function assertPrimitiveElements(receiver: unknown[], method: string): void {
-	if (method !== 'join' && method !== 'toSorted') return;
+const STRINGIFIES_ELEMENTS = new Set(['join', 'toSorted']);
 
+/**
+ * Hands off to the engine unless every element is a primitive. O(n) over a
+ * receiver the size cap already limits, and runs before anything is
+ * stringified.
+ */
+function assertPrimitiveElements(receiver: unknown[]): void {
 	// The receiver cap applies before the scan, so the scan never walks more
 	// than the cap either.
 	if (receiver.length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
@@ -309,7 +312,7 @@ function evalCall(
 	}
 
 	if (isArray(receiver)) {
-		assertPrimitiveElements(receiver, node.method);
+		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
 		if (node.method === 'concat') assertConcatWeight(receiver, args);
 	}
 	assertPreflightSize(receiver, node.method, args);
