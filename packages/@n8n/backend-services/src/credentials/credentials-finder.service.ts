@@ -9,7 +9,7 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService } from '../services/role.service';
 
 /**
  * The credential scopes an instance role can hold without being allowed to use a

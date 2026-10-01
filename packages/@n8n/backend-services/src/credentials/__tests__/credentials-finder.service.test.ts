@@ -13,8 +13,8 @@ import {
 } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 
-import type { RoleService } from '@n8n/backend-services';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { RoleService } from '../../services/role.service';
+import { CredentialsFinderService } from '../credentials-finder.service';
 
 const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });

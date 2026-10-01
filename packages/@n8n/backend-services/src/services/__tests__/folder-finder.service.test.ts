@@ -10,7 +10,7 @@ import type {
 } from '@n8n/db';
 
 import { FolderFinderService } from '../folder-finder.service';
-import type { RoleService } from '@n8n/backend-services';
+import type { RoleService } from '../role.service';
 
 const member = mock<User>({
 	id: 'user-1',
