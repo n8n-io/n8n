@@ -1,0 +1,22 @@
+packages/quality/testing/playwright/services/agent-api-helper.ts
+  s_a65a5a88327681::t_27b19172bbdbd8 5,30-66
+  s_a65a5a88327681::t_fdcc8401e2a50d 67-69
+packages/quality/testing/playwright/tests/infrastructure/agents/capability-activation.spec.ts
+  s_a65a5a88327681::t_27b19172bbdbd8 171,177,194,196-197,200,215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7eb2337d222983157d53be8cab1f301b461e8b61",
+  "prompts": {},
+  "sessions": {
+    "s_a65a5a88327681": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f799-dd8b-7be3-bdcc-3de578ddb55f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
