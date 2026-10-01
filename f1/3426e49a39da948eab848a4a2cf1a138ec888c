@@ -1,0 +1,19 @@
+packages/cli/src/public-api/types.ts
+  s_aaa596f5a4b613::t_655512b1bf00f4 168,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f13426e49a39da948eab848a4a2cf1a138ec888c",
+  "prompts": {},
+  "sessions": {
+    "s_aaa596f5a4b613": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1a15da90-db1a-41b9-8206-a0a9b69b4891",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
