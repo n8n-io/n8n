@@ -322,7 +322,7 @@ describe('buildRequiredReviewsSection', () => {
 		assert.equal(buildRequiredReviewsSection(new Map()), null);
 	});
 
-	it('lists each required team with its file count', () => {
+	it('lists each required team with its file count and owned files', () => {
 		const section = buildRequiredReviewsSection(
 			new Map([
 				['@n8n-io/qa-dx', ['a.yml', 'b.yml']],
@@ -331,8 +331,30 @@ describe('buildRequiredReviewsSection', () => {
 		);
 
 		assert.match(section, /### Required reviews/);
-		assert.match(section, /\| @n8n-io\/qa-dx \| 2 \|/);
-		assert.match(section, /\| @n8n-io\/migrations-review \| 1 \|/);
+		assert.match(
+			section,
+			/\| @n8n-io\/qa-dx \| 2 \| <code>a\.yml<\/code><br><code>b\.yml<\/code> \|/,
+		);
+		assert.match(section, /\| @n8n-io\/migrations-review \| 1 \| <code>m\.ts<\/code> \|/);
+	});
+
+	it('shows no more than five files for each team', () => {
+		const section = buildRequiredReviewsSection(
+			new Map([['@n8n-io/qa-dx', ['a.yml', 'b.yml', 'c.yml', 'd.yml', 'e.yml', 'f.yml', 'g.yml']]]),
+		);
+
+		assert.match(section, /<code>a\.yml<\/code>/);
+		assert.match(section, /<code>e\.yml<\/code>/);
+		assert.doesNotMatch(section, /<code>f\.yml<\/code>/);
+		assert.match(section, /<em>2 more files<\/em>/);
+	});
+
+	it('escapes file paths before adding them to the table', () => {
+		const section = buildRequiredReviewsSection(
+			new Map([['@n8n-io/qa-dx', ['packages/a|b/<script>.ts']]]),
+		);
+
+		assert.match(section, /<code>packages\/a&#124;b\/&lt;script&gt;\.ts<\/code>/);
 	});
 
 	it('prompts to request review from the team, plural when several teams are required', () => {
@@ -447,7 +469,7 @@ describe('run', () => {
 
 		const body = postOrUpdateComment.mock.calls[0].arguments[1];
 		assert.match(body, /### Required reviews/);
-		assert.match(body, /\| @n8n-io\/qa-dx \| 1 \|/);
+		assert.match(body, /\| @n8n-io\/qa-dx \| 1 \| <code>\.github\/workflows\/ci\.yml<\/code> \|/);
 		assert.match(body, /Request a review from the team —/);
 	});
 });

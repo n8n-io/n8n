@@ -1,4 +1,9 @@
-import { CreateTagPublicDto, TagPublicDto } from '../tag-public.dto';
+import {
+	CreateTagPublicDto,
+	TagPublicDto,
+	UpdatedTagPublicDto,
+	UpdateTagPublicDto,
+} from '../tag-public.dto';
 
 describe('CreateTagPublicDto', () => {
 	test('should accept a name on its own', () => {
@@ -36,6 +41,39 @@ describe('CreateTagPublicDto', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].code).toBe('unrecognized_keys');
+	});
+});
+
+describe('UpdateTagPublicDto', () => {
+	test('should accept a name', () => {
+		const result = UpdateTagPublicDto.safeParse({ name: 'Production' });
+
+		expect(result.success).toBe(true);
+	});
+
+	test.each(['id', 'createdAt', 'updatedAt'])('should reject the read-only %s', (key) => {
+		const result = UpdateTagPublicDto.safeParse({ name: 'Production', [key]: 'anything' });
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0].message).toBe('is read-only');
+	});
+});
+
+describe('UpdatedTagPublicDto', () => {
+	test('should accept a response without createdAt', () => {
+		const result = UpdatedTagPublicDto.safeParse({
+			id: '2tUt1wbLX592XDdX',
+			name: 'Production',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('should accept a response without updatedAt', () => {
+		const result = UpdatedTagPublicDto.safeParse({ id: '2tUt1wbLX592XDdX', name: 'Production' });
+
+		expect(result.success).toBe(true);
 	});
 });
 

@@ -8,6 +8,8 @@ describe('validateRedirectUrl', () => {
 		['/path?query=1', '/path?query=1'],
 		['/path#fragment', '/path#fragment'],
 		['  /trimmed  ', '/trimmed'],
+		['/workflow/abc?tab=1&x=2', '/workflow/abc?tab=1&x=2'],
+		['/%5Cexample.com', '/%5Cexample.com'],
 	])('allows valid relative path %s → %s', (input, expected) => {
 		expect(validateRedirectUrl(input)).toBe(expected);
 	});
@@ -21,6 +23,12 @@ describe('validateRedirectUrl', () => {
 		['%2F%2Fevil.com/phishing', '/'],
 		['workflows/123', '/'],
 		['data:text/html,<h1>hi</h1>', '/'],
+		['/\\example.com/path', '/'],
+		['/\\\\example.com', '/'],
+		['/\t/example.com', '/'],
+		['/\r\n/example.com', '/'],
+		['/\n\\example.com', '/'],
+		['/\\/example.com', '/'],
 	])('rejects unsafe redirect %s → %s', (input, expected) => {
 		expect(validateRedirectUrl(input)).toBe(expected);
 	});

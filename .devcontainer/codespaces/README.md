@@ -2,7 +2,7 @@
 
 Run long-lived, human-steered agent sessions (Claude Code / OpenCode) on a
 GitHub Codespace instead of your laptop: start a task, close the lid, steer it
-from anywhere with a terminal, resume tomorrow.
+from anywhere, resume tomorrow.
 
 This is a separate devcontainer config from the laptop one in
 `.devcontainer/` — it ships both agent CLIs, `tmux` for session persistence,
@@ -11,26 +11,73 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 
 ## One-time setup (~5 min)
 
-1. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces).
-   Add `ANTHROPIC_API_KEY` for Claude Code. Add `OPENROUTER_API_KEY` for OpenCode.
-   Give both secrets access to `n8n-io/n8n`.
-   (Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`.)
-2. Give the GitHub CLI the codespace scope:
+1. Give the GitHub CLI the codespace scope:
 
    ```bash
    gh auth refresh -h github.com -s codespace
    ```
 
-## Daily flow
+2. Add provider keys at [github.com/settings/codespaces](https://github.com/settings/codespaces)
+   if your client needs them. Give each secret access to `n8n-io/n8n`.
+   - `ANTHROPIC_API_KEY` for Claude Code in the terminal (`pnpm session`).
+     Alternative for Max subscriptions: `CLAUDE_CODE_OAUTH_TOKEN` from
+     `claude setup-token`. The desktop app does not need either secret.
+   - `OPENROUTER_API_KEY` for OpenCode.
+
+## Choose a client
+
+All clients run the agent, its tools, and builds in the Codespace. Your laptop
+shows the conversation only.
+
+| Client | Command | Use it when |
+|---|---|---|
+| Claude Code desktop app | `pnpm session ssh-config` once | You want the full desktop experience. |
+| Claude Code in VS Code | Open the codespace in VS Code or the browser | You already work in VS Code. |
+| Claude Code in a terminal | `pnpm session` | You want a plain terminal, or you are on a remote machine. |
+| OpenCode | `pnpm session:opencode` | You use OpenCode. See [Local OpenCode clients](#local-opencode-clients). |
+
+### Claude Code desktop app
+
+1. From a local checkout, add an SSH host for your codespace:
+
+   ```bash
+   pnpm session ssh-config
+   ```
+
+   The command creates or starts the codespace. It writes the host
+   `n8n-codespace` to `~/.ssh/n8n-codespace.conf` and includes that file from
+   `~/.ssh/config`.
+2. In the desktop app, add an SSH connection to the host `n8n-codespace`.
+3. Open the folder `/workspaces/n8n`, or a worktree under `/workspaces`.
+
+The desktop app installs its own Claude Code on the codespace and signs in
+with your desktop account. Sessions continue when you close the app. They stop
+when the codespace stops.
+
+- **Run `pnpm session ssh-config` again after you recreate the codespace.**
+- **If the connection times out**, the codespace is probably starting. Run
+  `pnpm session ssh-config`, then connect again.
+- **Test the connection** with `ssh n8n-codespace`.
+
+### Claude Code in VS Code
+
+The dev container installs the Claude Code extension. Open the codespace in
+VS Code or the browser, then open the Claude Code panel. Sign in from the
+extension if you did not add `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`.
+
+### Claude Code in a terminal
 
 ```bash
 pnpm session                       # attach Claude Code (creates everything on first run)
 pnpm session:shell                 # open a shell in the default checkout
-pnpm session:opencode              # attach OpenCode in auto mode
-pnpm session:opencode fix-flaky    # OpenCode in a separate worktree
+pnpm session:opencode              # connect the local OpenCode TUI
+pnpm session:opencode fix-flaky    # use a separate remote worktree
+pnpm session:opencode --web        # open OpenCode in the local browser
+pnpm session:opencode --legacy     # use the remote TUI in tmux
 pnpm session fix-flaky             # Claude Code in a separate worktree
 pnpm session ls                    # what's running
 pnpm session tunnel                # forward n8n ports (default 5678, 8080); Ctrl-C to stop
+pnpm session ssh-config            # add the n8n-codespace SSH host for the desktop app
 pnpm session stop                  # end of day: billing stops, disk survives
 pnpm session rm                    # delete the codespace
 ```
@@ -38,15 +85,18 @@ pnpm session rm                    # delete the codespace
 The dev container supports Codespaces with 2, 4, or 8 cores. The session commands
 create an 8-core Codespace by default.
 
-- **Detach** with `Ctrl-b d` — the agent keeps working without you.
-- **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
+- **Detach from tmux** with `Ctrl-b d` — the agent keeps working without you.
+  Local OpenCode connections use the exit controls described below.
+- **Scroll in tmux** with the mouse wheel (tmux mouse mode is on). To use the
   terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
-  `session/<name>`), so parallel agents never touch each other's tree. Builds
+  `session/<name>`), so parallel agents never touch each other's tree. A new
+  branch starts from the latest `origin/master`. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
-  that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+  that, sessions attach instantly; new worktrees cost a `pnpm install` (~10 s: the
+  store lives on `/workspaces`, so `node_modules` is hardlinked, not copied).
 
 ## Configure the local OpenCode harness
 
@@ -60,6 +110,111 @@ The command verifies the release checksum. It caches the bundle under
 `~/.cache/n8n-agent-harness`. It then links the bundle plugin into
 `~/.config/opencode/plugins`. Run the command again after the lock changes.
 Restart OpenCode after the command completes.
+
+## Local OpenCode clients
+
+Run these commands from a local checkout. The TUI runs on your laptop. The
+OpenCode server, repository, tools, and builds run in the Codespace. Browser
+mode opens the remote web interface through a local connection.
+
+```bash
+pnpm session:opencode fix-flaky              # resume that workspace's latest conversation
+pnpm session:opencode fix-flaky --web        # open it in a browser
+pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
+pnpm session:opencode --web --port 4100      # override the default browser port
+pnpm session:opencode --help
+```
+
+For the TUI, install the same OpenCode version as the remote server. The
+`OPENCODE_VERSION` argument in the [Dockerfile](Dockerfile) pins the version
+for new images:
+
+```bash
+npm install -g opencode-ai@<version>
+```
+
+Use npm, not pnpm. The package gets its binary from a `postinstall` script.
+pnpm does not run that script by default.
+
+The launcher checks both versions. It reports a mismatch with both version
+numbers before it opens the TUI. An existing Codespace can have a different
+version. Install that version locally, or use `--web`. Browser mode does not
+need a local OpenCode install.
+The launcher sends its bootstrap code over SSH, so an existing Codespace does
+not need a rebuild to use this connection method.
+The remote server loads the shared OpenCode harness that the Codespace
+post-start command installs. The local harness setup above is not required for
+these commands.
+
+The command prepares the worktree, starts or reuses one server, opens an SSH
+tunnel, and connects the client. Each workspace opens its own conversation: the
+most recently updated one in that worktree. A conversation moves to the front
+when it receives a message. Switching to a conversation without sending a
+message does not move it. Switching to another workspace's conversation does
+not change what this workspace opens next. `--new` starts a new conversation
+instead. It preserves the worktree and the old conversation.
+
+- **Exit the TUI** with `/exit` or its quit shortcut. The launcher closes its
+  tunnel. The remote server stays running.
+- **Disconnect browser mode** with `Ctrl-C` in the launcher terminal. Closing
+  the browser tab does not close the tunnel. Keep the launcher running while
+  you use the browser.
+- **Reconnect** with the same command after a network interruption. After a
+  Codespace stop, the command restarts the server and opens the workspace's
+  most recently updated conversation.
+  A stop terminates running tools. It does not resume interrupted commands.
+- **Browser mode uses local port 4096 by default.** Use `--port` to override it.
+  TUI mode selects an available port unless you specify one.
+  A fixed browser port preserves the browser origin across runs.
+  An occupied fixed port causes an error. It does not stop the existing listener.
+- **Use model and permission controls in the client.** The new connection uses
+  the remote OpenCode configuration. It does not force the legacy `--auto` mode.
+  For the old CLI flags, use `pnpm session:opencode fix-flaky --legacy --model <model>`.
+
+Both server and tunnel bind to `127.0.0.1`. The server uses a generated password.
+The TUI receives it through its environment. Browser mode uses a local proxy
+that adds authentication and rejects requests from other browser origins. The
+proxy supports streamed responses, attachments, and terminal WebSockets. The
+password does not appear in the URL or terminal output. Other processes on
+your laptop can access the local browser proxy while it runs. Do not forward
+this proxy or the OpenCode server port to other machines.
+
+The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
+It enables OpenCode code mode by default to reduce the initial tool context.
+Browser mode opens the workspace's most recently updated conversation directly.
+The web UI stores opened projects in browser storage. If a new-session page
+shows **New project**, open `/workspaces/n8n` there once. Keep the same browser
+port when you reconnect to preserve this selection.
+
+The server runs in the detached tmux session `n8n-opencode-server`. Its log is
+`/workspaces/.n8n-opencode/server.log`. That directory also holds the server
+credentials. It is readable only by its owner.
+An unhealthy server produces an error without stopping active work. Inspect
+the log through `pnpm session:shell`. To restart it after checking active work,
+run `tmux kill-session -t '=n8n-opencode-server'` in that shell. Then reconnect.
+Restart the server after changing provider secrets, server configuration, or
+the pinned harness release.
+
+### Limits
+
+- The launcher supports macOS and Linux. On Windows, run it in WSL. If the
+  browser does not open automatically, open the printed URL yourself.
+- Local clipboard and attachment controls depend on the client, terminal,
+  file type, and model. A laptop file path does not copy a file to the Codespace.
+  Use a supported attachment control or copy the file with `gh codespace cp`.
+- Tools and local MCP processes run on the Codespace. Laptop configuration,
+  browser sessions, and files do not sync automatically.
+- Workspace names identify worktrees. Two agents that use the same name share
+  files. Separate conversations alone do not isolate edits.
+- The server survives a client disconnect while the Codespace stays running.
+  Codespaces idle timeouts still apply. An open tunnel is not a guarantee that
+  the Codespace will stay awake. Use `pnpm session stop` to stop compute billing.
+- Existing tmux OpenCode conversations are not migrated automatically. Use
+  `--legacy` to return to them.
+
+For upstream behavior, see the [OpenCode CLI](https://opencode.ai/docs/cli/),
+[server](https://opencode.ai/docs/server/), and [web](https://opencode.ai/docs/web/)
+documentation.
 
 ## PR previews (a running instance of someone else's PR)
 
@@ -79,6 +234,10 @@ the Actions tab: give it a PR number and `up`, `refresh` or `down`.
 `pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
 needs `gh` with the codespace scope, the same as `pnpm session`.
 
+- **Watch it come up on the PR.** The comment appears before the box work starts
+  and updates about once a minute with a checklist of the phases, so you can see
+  which step a slow preview is on. `pnpm preview up <pr>` prints the same phases as
+  plain progress — the markers the comment reads are `--json` only.
 - **Sign in with one click** at `<url>/preview-signin`. It logs you in as the
   seeded owner and sends you to the editor. The credentials are
   `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is
@@ -89,7 +248,13 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   present. `preview:debug` sets `N8N_LOG_LEVEL=debug`. Adding or removing one
   re-serves the box; it never creates or deletes one. From a laptop the labels
   apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
-  toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
+  toggles are defined in `scripts/codespace-preview/preview-labels.mjs`; add new ones there.
+- **Configure the instance from a webhook.** A preview also reads extra
+  environment from an n8n webhook, so a value can change without a commit. It
+  needs the `CODESPACE_ENV_URL`, `CODESPACE_ENV_USER` and `CODESPACE_ENV_PASSWORD`
+  codespace secrets. Every key the webhook returns becomes an environment
+  variable, so editing that workflow runs code in the box. Without the secrets
+  the preview serves as usual. See [WORKFLOWS.md](../../.github/WORKFLOWS.md).
 - **A preview sleeps after 2 hours** of no use and GitHub deletes it after 24
   hours. A box that slept serves nothing and its port is private again, so wake
   it with `pnpm preview up <pr>` or a manual run of
@@ -98,7 +263,7 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   builds a new one.
 - **A PR from a fork gets no preview.** A codespace's token is scoped to
   `n8n-io/n8n`, so it cannot check out a fork head.
-- **A PR that predates this tooling has no `scripts/preview-serve.mjs`.** The
+- **A PR that predates this tooling has no `scripts/codespace-preview/preview-serve.mjs`.** The
   serve step says so and stops; rebase the PR on master and retry.
 
 ## Agent worker (drive a session from n8n)
@@ -212,10 +377,14 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 Claude sessions and the headless OpenCode worker get the `flaky` MCP server automatically: Currents
 flaky/quarantine data, the `qa_*` BigQuery dataset, Sentry RCA, live Linear,
 and repo investigation. The worker keeps the token in its environment and puts
-only an environment reference in the OpenCode config. Claude login registers
-the same server without writing the token to disk. Forks have no secrets and
+only an environment reference in the OpenCode config. Forks have no secrets and
 skip it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
+
+`post-start.mjs` registers the server for Claude Code on each container start.
+Its `headersHelper` reads the token from the secrets file on each connect, so
+the server works in every client. The token is not copied into the Claude Code
+MCP configuration.
 
 ## Quality and security skills (Claude plugins)
 
@@ -278,7 +447,8 @@ to pull the skills into context.
 
 ## Viewing the dev UI locally
 
-Two terminal windows:
+`pnpm session tunnel` works with every client. With the terminal client, use
+two terminal windows:
 
 ```bash
 pnpm session          # window 1: attach the agent session
@@ -308,7 +478,7 @@ partial mapping breaks it.
 | Event | Running processes | Disk (checkout, worktrees, chat history) |
 |---|---|---|
 | Detach / close laptop / network drop | ✅ keep running | ✅ |
-| Stop, or idle timeout (default 30 min, max 4 h) | ❌ killed | ✅ |
+| Stop, or idle timeout (2 h for a codespace that `pnpm session` creates, max 4 h) | ❌ killed | ✅ |
 | Delete (`pnpm session rm`) | ❌ | ❌ (push your branches first) |
 
 After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
@@ -328,10 +498,10 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   agent injects them into VS Code sessions only; they're delivered
   base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image
   sources `/usr/local/lib/codespaces-env.sh` in login shells (profile.d), in
-  interactive shells (bashrc), and in the `pnpm session` prelude. If Claude
-  Code shows `Missing environment variables: FLAKY_MCP_TOKEN`, the shell that
-  started Claude did not source the file. Run
-  `. /usr/local/lib/codespaces-env.sh` and start Claude again.
+  interactive shells (bashrc), and in the `pnpm session` prelude. Desktop app
+  sessions do not source it. `git`, `gh`, `scripts/codespace-env.mjs`, and the
+  `flaky` MCP entry read the file when they run, so they work everywhere. New
+  code that needs a secret must do the same.
 - **Do not read `CODESPACE_NAME` or `GITHUB_USER` from the process env** — use
   `scripts/codespace-env.mjs`. Codespaces gives these variables to VS Code
   sessions only. Other processes read them from `codespaces-env.sh`, and a
@@ -340,7 +510,7 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   polled correctly as its owner while `dev:up` in the same session saw an empty
   box name, printed the localhost URL, and did not share the port. The helper
   reads `/workspaces/.codespaces/shared`, which is always correct.
-- **You cannot paste images into a remote Claude session.** Image paste reads
+- **You cannot paste images into a terminal Claude session.** Image paste reads
   the clipboard of the machine where `claude` runs — the codespace, not your
   laptop. Drag the file into the VS Code explorer (or
   `gh codespace cp shot.png remote:/workspaces/n8n/`) and give Claude the

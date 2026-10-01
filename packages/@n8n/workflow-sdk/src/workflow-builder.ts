@@ -823,7 +823,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						code,
 						issue.message,
 						issue.nodeName,
-						undefined,
+						issue.parameterPath,
 						issue.violationLevel,
 					),
 				);

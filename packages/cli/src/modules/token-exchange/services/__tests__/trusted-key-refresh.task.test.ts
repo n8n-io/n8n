@@ -7,11 +7,11 @@ describe('TrustedKeyRefreshTask', () => {
 	const trustedKeyService = mock<TrustedKeyService>();
 	const task = new TrustedKeyRefreshTask(trustedKeyService);
 
-	it('should declare a 30-second poll cadence', () => {
+	it('should declare a durable 60-second poll cadence', () => {
 		expect(task.name).toBe('trusted-key-refresh');
-		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
+		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 	});
 
 	it('should refresh the due sources on run', async () => {

@@ -74,13 +74,13 @@ export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	supportsSessionApproval?: boolean;
 	args: unknown;
-	/** Sanitized full tool configuration, included only by preview chat. */
-	details?: unknown;
 }
 
 export interface ApprovalResume {
 	approved: boolean;
+	scope?: 'once' | 'session';
 }
 
 /**
@@ -143,6 +143,8 @@ export interface AgentsChatMessage {
 	attachments?: ChatMessageAttachment[];
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
+	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
+	createdAt?: number;
 }
 
 export type ChatMessage = AgentsChatMessage;

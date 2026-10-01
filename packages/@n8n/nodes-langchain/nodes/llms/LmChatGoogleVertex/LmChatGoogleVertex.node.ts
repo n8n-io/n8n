@@ -20,6 +20,8 @@ import {
 	validateNodeParameters,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 import { extractGoogleErrorMessage, makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import {
@@ -107,7 +109,8 @@ export class LmChatGoogleVertex implements INodeType {
 				default: 'gemini-2.5-flash',
 				builderHint: {
 					propertyHint:
-						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+						'Choose a stable Gemini model from the Vertex model list for the configured project and location. Do not copy Gemini API model IDs into Vertex without checking the list. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			vertexLocationField,

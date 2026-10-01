@@ -6,5 +6,5 @@ export type { MockedStore } from './store';
 
 export { defaultSettings } from './defaults';
 
-export { retry, waitAllPromises, useEmitters } from './utils';
+export { retry, waitAllPromises, useEmitters, getTooltip } from './utils';
 export type { Emitter, Emitters } from './utils';

@@ -32,7 +32,7 @@ import {
 	isTerminalExecutionStatus,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	WAIT_INDEFINITELY,
+	isIndefiniteWait,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -167,6 +167,7 @@ export interface WorkflowToolContext {
 	integrationType?: string;
 	/** The in-app preview chat started this run — see `RelatedAgentRun.previewChat`. */
 	previewChat?: boolean;
+	publishedN8nChat?: boolean;
 	userId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
@@ -643,6 +644,7 @@ function agentRunOf(
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
+		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
 	};
 }
 
@@ -656,7 +658,7 @@ function extractWaitState(data: IRun['data'] | undefined): WorkflowWaitState | u
 	// An indefinite wait is a sentinel far-future date, not an absent one — drop it
 	// rather than report it as a deadline.
 	const waitTill = data.waitTill ? new Date(data.waitTill) : undefined;
-	const bounded = waitTill !== undefined && waitTill.getTime() < WAIT_INDEFINITELY.getTime();
+	const bounded = waitTill !== undefined && !isIndefiniteWait(waitTill);
 
 	return bounded ? { waitTill } : {};
 }

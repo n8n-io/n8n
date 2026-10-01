@@ -20,6 +20,10 @@
       "types": "./dist/configs/nodes.d.js",
       "default": "./dist/configs/nodes.js"
     },
+    "./functional-guardrails": {
+      "types": "./dist/configs/functional-guardrails.d.js",
+      "default": "./dist/configs/functional-guardrails.js"
+    },
     "./plugin": {
       "types": "./dist/plugin.d.ts",
       "default": "./dist/plugin.js"

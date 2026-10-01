@@ -1,4 +1,4 @@
-import type { BrowserContext } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../fixtures/base';
@@ -28,6 +28,12 @@ const FIELD_LABEL = 'What is your first name?';
 const BANNER =
 	'Not all required accounts are connected. Open this form in a new tab to connect them, then come back here and submit again.';
 
+/**
+ * How long to wait for the popup the editor opens when the run starts. It
+ * normally lands well before the run button reads "Waiting for trigger event".
+ */
+const EDITOR_POPUP_TIMEOUT_MS = 10_000;
+
 const GATE_BODY = {
 	status: 'credential_connections_required',
 	readyToExecute: false,
@@ -53,8 +59,18 @@ const GATE_BODY = {
  * A form-trigger workflow. With a second Form node attached the trigger is
  * forced into `responseMode: 'responseNode'`, the config whose response handling
  * used to paint the raw gate JSON over the whole page.
+ *
+ * Returns the trigger's webhookId too: with no `path` set, the trigger serves
+ * its test form at `/form-test/<webhookId>`.
  */
-function formWorkflow(options: { withNextPage: boolean }): Partial<IWorkflowBase> {
+function formWorkflow(options: { withNextPage: boolean }): {
+	definition: Partial<IWorkflowBase>;
+	webhookId: string;
+} {
+	// Unique per test: the test-webhook registry is keyed by webhookId across the
+	// whole instance, and specs run in parallel.
+	const webhookId = crypto.randomUUID();
+
 	const nodes: IWorkflowBase['nodes'] = [
 		{
 			parameters: {
@@ -71,14 +87,12 @@ function formWorkflow(options: { withNextPage: boolean }): Partial<IWorkflowBase
 			position: [0, 0],
 			id: crypto.randomUUID(),
 			name: 'On form submission',
-			// Unique per test: the test-webhook registry is keyed by webhookId across the
-			// whole instance, and specs run in parallel.
-			webhookId: crypto.randomUUID(),
+			webhookId,
 		},
 	];
 
 	if (!options.withNextPage) {
-		return { nodes, connections: {} };
+		return { definition: { nodes, connections: {} }, webhookId };
 	}
 
 	nodes.push({
@@ -92,10 +106,13 @@ function formWorkflow(options: { withNextPage: boolean }): Partial<IWorkflowBase
 	});
 
 	return {
-		nodes,
-		connections: {
-			'On form submission': { main: [[{ node: 'Form', type: 'main', index: 0 }]] },
+		definition: {
+			nodes,
+			connections: {
+				'On form submission': { main: [[{ node: 'Form', type: 'main', index: 0 }]] },
+			},
 		},
+		webhookId,
 	};
 }
 
@@ -124,24 +141,50 @@ async function interceptSubmit(
 	);
 }
 
-/** Open the form of a freshly created workflow that is waiting for a trigger event. */
+/**
+ * Close the popup the editor opens with the test form as soon as the run starts
+ * (`displayForm` in editor-ui's executions.utils.ts). This spec drives its own
+ * tab instead: two tabs walking the same first-party OAuth flow share one
+ * session cookie. No popup within the timeout means there is nothing to close.
+ */
+async function closeEditorFormPopup(popup: Promise<Page>) {
+	let page: Page;
+	try {
+		page = await popup;
+	} catch {
+		return;
+	}
+	await page.close();
+}
+
+/**
+ * Open the form of a freshly created workflow that is waiting for a trigger event.
+ *
+ * The URL is built from the trigger's webhookId rather than read back from the
+ * NDV: reading it through `openNode` + `getTestFormUrl` right after the run
+ * started was the step that flaked in CI (the URL text was not found while the
+ * canvas re-rendered into its waiting state).
+ */
 async function openForm(
 	api: ApiHelpers,
 	n8n: n8nPage,
+	baseURL: string,
 	options: { withNextPage: boolean },
 ): Promise<PublicFormPage> {
-	const { workflowId } = await api.workflows.createWorkflowFromDefinition(formWorkflow(options), {
+	const { definition, webhookId } = formWorkflow(options);
+	const { workflowId } = await api.workflows.createWorkflowFromDefinition(definition, {
 		makeUnique: true,
 	});
 
 	await n8n.start.fromExistingWorkflow(workflowId);
+
+	// Armed before the click so the popup cannot slip past the listener.
+	const editorPopup = n8n.page.waitForEvent('popup', { timeout: EDITOR_POPUP_TIMEOUT_MS });
 	await n8n.canvas.clickExecuteWorkflowButton();
 	await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText('Waiting for trigger event');
+	await closeEditorFormPopup(editorPopup);
 
-	await n8n.canvas.openNode('On form submission');
-	const formUrl = await n8n.canvas.getTestFormUrl();
-
-	return await PublicFormPage.fromNewTab(n8n.page.context(), formUrl);
+	return await PublicFormPage.fromNewTab(n8n.page.context(), `${baseURL}/form-test/${webhookId}`);
 }
 
 /** Everything the submitter must still have after a rejected submission. */
@@ -161,10 +204,11 @@ test.describe(
 		test('should keep the form and explain what to do when the gate rejects the submission', async ({
 			api,
 			n8n,
+			baseURL,
 		}) => {
 			await interceptSubmit(n8n.page.context(), { status: 428, json: GATE_BODY });
 
-			const formPage = await openForm(api, n8n, { withNextPage: false });
+			const formPage = await openForm(api, n8n, baseURL, { withNextPage: false });
 			await expect(formPage.usesResponseData).toHaveValue('false');
 
 			const answer = 'Ada';
@@ -178,10 +222,11 @@ test.describe(
 		test('should not paint the raw gate response over the page when responding with a response node', async ({
 			api,
 			n8n,
+			baseURL,
 		}) => {
 			await interceptSubmit(n8n.page.context(), { status: 428, json: GATE_BODY });
 
-			const formPage = await openForm(api, n8n, { withNextPage: true });
+			const formPage = await openForm(api, n8n, baseURL, { withNextPage: true });
 			// Guards the test itself: without this the assertions below pass trivially on a
 			// form that never takes the response-consuming branch.
 			await expect(formPage.usesResponseData).toHaveValue('true');

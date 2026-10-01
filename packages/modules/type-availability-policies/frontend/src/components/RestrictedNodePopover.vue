@@ -1,0 +1,136 @@
+<script setup lang="ts">
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
+import { computed, ref } from 'vue';
+
+import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
+import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+
+const props = defineProps<{
+	nodeTypeName: string;
+	scope?: NodeTypeAvailabilityScope;
+	/** The list row the popover explains. It opens beside this element, not beside the lock. */
+	anchor?: MaybeElement;
+	/** Keyboard-active without DOM focus, such as a virtual list selection. */
+	active?: boolean;
+}>();
+
+/** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
+const HOVER_GRACE_MS = 200;
+
+const i18n = useI18n();
+
+const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
+const contentRef = ref<HTMLElement | null>(null);
+const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
+const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
+const isContactAdminOpen = ref(false);
+// Content is teleported, so focus in it is outside the anchor.
+// Close for the contact-admin dialog, which this would otherwise cover.
+const { focused: anchorFocused } = useFocusWithin(anchorElement);
+const { focused: contentFocused } = useFocusWithin(contentRef);
+const open = computed(
+	() =>
+		!isContactAdminOpen.value &&
+		(anchorHovered.value ||
+			contentHovered.value ||
+			anchorFocused.value ||
+			contentFocused.value ||
+			props.active),
+);
+
+const scopeKey = computed<BaseTextKey>(
+	() =>
+		(props.scope && SCOPE_LABEL_KEY[props.scope]) ??
+		'typeAvailabilityPolicies.restrictedNode.title',
+);
+</script>
+
+<template>
+	<span :class="$style.root">
+		<!-- The tool pickers render this inside a modal. -->
+		<N8nPopover
+			:open="open"
+			side="left"
+			align="center"
+			:side-offset="24"
+			:reference="anchorElement"
+			:suppress-auto-focus="true"
+			:content-class="$style.card"
+			width="254px"
+			z-index="var(--floating-ui--z)"
+		>
+			<template #trigger>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="node-restricted-icon" />
+				</span>
+			</template>
+			<template #content>
+				<div ref="contentRef" :class="$style.popover" data-test-id="node-restricted-popover">
+					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
+					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>
+					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
+						{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.popover.description') }}
+					</N8nText>
+					<N8nButton
+						variant="outline"
+						size="small"
+						:class="$style.action"
+						data-test-id="node-restricted-contact-admin"
+						@click="isContactAdminOpen = true"
+					>
+						{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+						<N8nIcon icon="arrow-up-right" size="xsmall" />
+					</N8nButton>
+				</div>
+			</template>
+		</N8nPopover>
+		<!-- A sibling of the popover: its content unmounts on close and must not take the dialog with it. -->
+		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
+	</span>
+</template>
+
+<style lang="scss" module>
+// Two teleported children and one visible trigger: the wrapper must not affect the slot's layout.
+.root {
+	display: contents;
+}
+
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
+}
+
+// The design system defaults popovers to --radius--xs (8px); the design uses the editor's 4px.
+.card {
+	border-radius: var(--radius);
+}
+
+.popover {
+	padding: var(--spacing--xs);
+	text-align: left;
+}
+
+.description {
+	margin-top: var(--spacing--3xs);
+}
+
+.action {
+	margin-top: var(--spacing--sm);
+}
+</style>

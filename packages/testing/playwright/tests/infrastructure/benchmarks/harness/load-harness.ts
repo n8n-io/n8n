@@ -13,6 +13,7 @@ import {
 	reportPgSaturation,
 	setupBenchmarkRun,
 } from './orchestration';
+import type { SetupContext } from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	attachLoadTestResults,
@@ -49,6 +50,10 @@ export interface LoadTestOptions {
 	trigger: TriggerType;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
+	/** Direct completion reader for single-instance comparisons. */
+	counterReader?: SetupContext['counterReader'];
+	/** Additional dimensions attached to every metric and the run report. */
+	dimensions?: BenchmarkDimensions;
 	/** When provided, the result log includes a resource breakdown (mode/main/workers/total). */
 	resourceSummary?: ResourceSummary;
 	/**
@@ -58,6 +63,16 @@ export interface LoadTestOptions {
 	 * iteration so each shows as its own reporter row.
 	 */
 	variant?: string;
+	/** Minimum share of a finite load that must reach the completion counter. */
+	minimumCompletionRatio?: number;
+	/** Work that must complete before the benchmark captures its metric baselines. */
+	warmUp?: SetupContext['warmUp'];
+	/** Minimum tail completion/input ratio for a steady load. */
+	minTailRateEfficiency?: number;
+	/** Fail unless one stage keeps up with at least 95% of its requested rate. */
+	requireKeptUpStage?: boolean;
+	/** Fail unless the sampler produces a covered tail-rate measurement. */
+	requireTailMeasurement?: boolean;
 }
 
 /**
@@ -71,10 +86,13 @@ export interface LoadTestOptions {
 export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMetrics> {
 	const { handle, api, services, testInfo, load, timeoutMs, trigger, resourceSummary, variant } =
 		options;
-	testInfo.setTimeout(timeoutMs + 120_000);
+	testInfo.setTimeout(testInfo.timeout + timeoutMs + 120_000);
 
 	const { nodeCount, nodeOutputSize } = handle.scenario;
-	const dimensions = buildLoadDimensions({ trigger, nodeCount, nodeOutputSize, load });
+	const dimensions = {
+		...options.dimensions,
+		...buildLoadDimensions({ trigger, nodeCount, nodeOutputSize, load }),
+	};
 	if (variant !== undefined) dimensions.variant = variant;
 
 	const setup = await setupBenchmarkRun({
@@ -83,6 +101,8 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		testInfo,
 		handle,
 		metricQuery: options.metricQuery,
+		counterReader: options.counterReader,
+		warmUp: options.warmUp,
 	});
 
 	const exec = await executeLoad(load, {
@@ -90,6 +110,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		metrics: services.observability.metrics,
 		baselineCounter: setup.baselineCounter,
 		metricQuery: setup.metricQuery,
+		counterReader: setup.counterReader,
 		timeoutMs,
 		nodeCount,
 	});
@@ -102,8 +123,8 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		);
 	}
 
-	// Duration sampling — empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
-	// Completion count comes from VictoriaMetrics regardless.
+	// Duration sampling is empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
+	// Completion count comes from the configured counter reader.
 	const durations = await sampleExecutionDurations(api.workflows, setup.workflowId);
 	const metrics = buildMetrics(exec.throughputResult.totalCompleted, 0, totalDurationMs, durations);
 
@@ -115,17 +136,26 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		await attachStagedResults(testInfo, dimensions, exec.throughputResult, stagedLoad);
 	} else {
 		await attachLoadTestResults(testInfo, dimensions, metrics);
+		await attachMetric(
+			testInfo,
+			'completion-pct',
+			(exec.throughputResult.totalCompleted / exec.expectedExecutions) * 100,
+			'%',
+			dimensions,
+		);
 		await attachPhaseMetrics(testInfo, dimensions, exec.throughputResult);
 		// Tail rate (last 60s) — closest to the architectural ceiling. Reporter
 		// surfaces this as the `tail/s` column. Skipped for staged runs where the
 		// per-stage rates already convey the same information.
-		await attachMetric(
-			testInfo,
-			'tail-exec-per-sec',
-			exec.throughputResult.tailExecPerSec,
-			'exec/s',
-			dimensions,
-		);
+		if (exec.throughputResult.tailExecPerSec !== undefined) {
+			await attachMetric(
+				testInfo,
+				'tail-exec-per-sec',
+				exec.throughputResult.tailExecPerSec,
+				'exec/s',
+				dimensions,
+			);
+		}
 	}
 	// Diagnostics are whole-run aggregates; tag with variant `whole run` for staged
 	// tests so they don't render as an unlabeled row alongside per-stage rows.
@@ -170,7 +200,36 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);
 
-	expect(metrics.totalCompleted).toBeGreaterThan(0);
+	if (options.minimumCompletionRatio !== undefined) {
+		const completionRatio = metrics.totalCompleted / exec.expectedExecutions;
+		expect(completionRatio).toBeGreaterThanOrEqual(options.minimumCompletionRatio);
+	} else {
+		expect(metrics.totalCompleted).toBeGreaterThan(0);
+	}
+	if (options.minTailRateEfficiency !== undefined) {
+		if (load.type !== 'steady' || exec.throughputResult.inputPhaseTailExecPerSec === undefined) {
+			throw new Error('minTailRateEfficiency requires a steady load with input tail metrics');
+		}
+		const efficiency = exec.throughputResult.inputPhaseTailExecPerSec / load.ratePerSecond;
+		expect(efficiency).toBeGreaterThanOrEqual(options.minTailRateEfficiency);
+	}
+	if (options.requireKeptUpStage) {
+		if (load.type !== 'staged' || !exec.throughputResult.perStage) {
+			throw new Error('requireKeptUpStage requires a staged load with per-stage metrics');
+		}
+		const keptUp = exec.throughputResult.perStage.some((stage, index) => {
+			const requestedRate = load.stages[index]?.ratePerSecond;
+			return (
+				requestedRate !== undefined &&
+				stage.tailExecPerSec !== undefined &&
+				stage.tailExecPerSec / requestedRate >= 0.95
+			);
+		});
+		expect(keptUp).toBe(true);
+	}
+	if (options.requireTailMeasurement) {
+		expect(exec.throughputResult.tailExecPerSec).toBeGreaterThan(0);
+	}
 
 	return metrics;
 }
@@ -191,7 +250,11 @@ async function attachStagedResults(
 		const stage = load.stages[i];
 		const measured = tp.perStage[i];
 		if (!stage) continue;
-		const efficiency = (measured.execPerSec / stage.ratePerSecond) * 100;
+		if (measured.tailExecPerSec === undefined) {
+			console.warn(`[LOAD] Stage ${i + 1} has insufficient tail samples; metric omitted`);
+			continue;
+		}
+		const efficiency = (measured.tailExecPerSec / stage.ratePerSecond) * 100;
 		const dimensions: BenchmarkDimensions = {
 			...baseDimensions,
 			variant: `${stage.ratePerSecond} msg/s`,
@@ -199,7 +262,7 @@ async function attachStagedResults(
 			rate: stage.ratePerSecond,
 			efficiency_pct: Math.round(efficiency),
 		};
-		await attachMetric(testInfo, 'exec-per-sec', measured.execPerSec, 'exec/s', dimensions);
+		await attachMetric(testInfo, 'exec-per-sec', measured.tailExecPerSec, 'exec/s', dimensions);
 		await attachMetric(
 			testInfo,
 			'total-completed',
@@ -319,12 +382,16 @@ function formatStagedSummary(
 		const stage = load.stages[i];
 		const measured = tp.perStage[i];
 		if (!stage) continue;
-		const efficiency = (measured.execPerSec / stage.ratePerSecond) * 100;
+		if (measured.tailExecPerSec === undefined) {
+			out += `\n    Stage ${i + 1} (${stage.ratePerSecond}/sec × ${stage.durationSeconds}s): insufficient measurement`;
+			continue;
+		}
+		const efficiency = (measured.tailExecPerSec / stage.ratePerSecond) * 100;
 		const verdict = verdictFor(efficiency);
 		const symbol = efficiency >= 95 ? '✓' : '✗';
 		out +=
 			`\n    Stage ${i + 1} (${stage.ratePerSecond}/sec × ${stage.durationSeconds}s):` +
-			` ${measured.execPerSec.toFixed(1)} exec/s (${efficiency.toFixed(0)}% — ${symbol} ${verdict})`;
+			` ${measured.tailExecPerSec.toFixed(1)} exec/s (${efficiency.toFixed(0)}% — ${symbol} ${verdict})`;
 
 		if (efficiency >= 95) lastKeptUp = stage.ratePerSecond;
 		else firstFell ??= stage.ratePerSecond;
@@ -344,6 +411,8 @@ function formatPhaseSummary(tp: ThroughputResult, load: LoadProfile): string {
 
 	const observed = tp.inputPhaseExecPerSec;
 	const efficiency = (observed / load.ratePerSecond) * 100;
+	const tail = tp.inputPhaseTailExecPerSec;
+	const tailEfficiency = tail === undefined ? undefined : (tail / load.ratePerSecond) * 100;
 	const inputCompleted = tp.inputPhaseCompleted ?? 0;
 	const expectedDuringInput = load.ratePerSecond * load.durationSeconds;
 	const backlogAtPublishEnd = Math.max(0, expectedDuringInput - inputCompleted);
@@ -356,6 +425,9 @@ function formatPhaseSummary(tp: ThroughputResult, load: LoadProfile): string {
 		`\n  Input phase (${load.ratePerSecond}/sec × ${load.durationSeconds}s):\n` +
 		`    Sustained:     ${observed.toFixed(1)} exec/s (${efficiency.toFixed(0)}% of input — ${verdict})\n` +
 		`    Backlog at end: ${backlogAtPublishEnd.toFixed(0)} messages`;
+	if (tail !== undefined && tailEfficiency !== undefined) {
+		out += `\n    Final 60s:     ${tail.toFixed(1)} exec/s (${tailEfficiency.toFixed(0)}% of input)`;
+	}
 
 	if (tp.drainPhaseExecPerSec !== undefined) {
 		const drainDurMs = tp.drainPhaseDurationMs ?? 0;

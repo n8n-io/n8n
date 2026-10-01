@@ -70,6 +70,10 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 
 		if (node.type !== this.platformNodeType) return { ok: false, status: 404 };
 
+		// The resume routes on the node id as the webhook suffix. Execution snapshots are frozen
+		// copies that can predate id enforcement, and an id-less node resolves to an empty suffix.
+		if (!node.id) return { ok: false, status: 404 };
+
 		return {
 			ok: true,
 			value: { execution, executionId: parsed.executionId, lastNodeExecuted, nodeId: node.id },

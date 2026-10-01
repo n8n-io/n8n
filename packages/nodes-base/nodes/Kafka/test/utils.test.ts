@@ -1041,6 +1041,7 @@ describe('Kafka Utils', () => {
 			const filter: NodeEgressFilter = {
 				validateUrl,
 				validateRedirectSync: vi.fn(),
+				validateConnectionHost: () => createResultOk(undefined),
 				createSecureLookup: () => lookup,
 			};
 			return { filter, lookup, validateUrl };

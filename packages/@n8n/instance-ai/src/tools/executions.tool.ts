@@ -2,18 +2,23 @@
  * Consolidated executions tool — list, get, run, listen, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
-import { Tool } from '@n8n/agents';
 import {
+	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	testListenerCardSchema,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -62,6 +67,7 @@ const getAction = z.object({
 
 const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
+	approvalSummary: approvalSummarySchema,
 	workflowId: z.string().describe('Workflow ID'),
 	inputData: z
 		.record(z.unknown())
@@ -95,6 +101,69 @@ const runAction = z.object({
 		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
 });
 
+const runStepAction = z.object({
+	action: z
+		.literal('run-step')
+		.describe(
+			'Run ONE node of a saved workflow and return its real output — the canvas ' +
+				'"Execute step". The node runs inside the real workflow, so expressions ' +
+				'that reference other nodes resolve, sub-nodes (model, memory, tools) come ' +
+				"along, and the run lands in the workflow's execution history. " +
+				"This is a REAL run with the user's real credentials against their real " +
+				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
+				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
+				'performs the effect again. Read the failed execution with action="debug" ' +
+				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
+				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
+				"mockInput and reuseExecutionId feed that node and the tool's own " +
+				'arguments come from toolArguments. No other sub-node kind can run.',
+		),
+	workflowId: z.string().describe('Workflow ID'),
+	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
+	reuseExecutionId: z
+		.string()
+		.optional()
+		.describe(
+			"Replay this past execution's data for the nodes above the target, then run " +
+				'only the target. Use when debugging a node that already failed a real run: ' +
+				'it is the fastest option and the input is real. The execution must belong ' +
+				'to the same workflow.',
+		),
+	mockInput: z
+		.array(z.record(z.unknown()))
+		.optional()
+		.describe(
+			'Items to feed the target node, skipping every node above it. Good for ' +
+				'studying one node on its own: probing an edge case, or holding the input ' +
+				'still while upstream data changes between runs. The result shows the node ' +
+				'handles THIS input; it shows nothing about what the workflow really ' +
+				'produces, so use reuseExecutionId or a chain run when that is the ' +
+				'question. This does not make a write node safe: the node still runs for ' +
+				'real, only its input is invented.',
+		),
+	toolArguments: z
+		.union([z.string(), z.record(z.unknown())])
+		.optional()
+		.describe(
+			'Only for a tool node: the arguments an agent would pass it. Keys are the ' +
+				"tool's $fromAI argument names. Pass a plain string for a tool that takes " +
+				'one free-text input (Wikipedia, Code Tool, a vector store used as a ' +
+				'tool). Required when the node declares $fromAI arguments, because the ' +
+				'tool runs with empty arguments otherwise.',
+		),
+	versionId: z
+		.string()
+		.optional()
+		.describe('Run a past version of the workflow instead of the current draft'),
+	timeout: z
+		.number()
+		.int()
+		.min(1000)
+		.max(MAX_TIMEOUT_MS)
+		.optional()
+		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
+});
+
 const debugAction = z.object({
 	action: z
 		.literal('debug')
@@ -113,7 +182,7 @@ const getNodeOutputAction = z.object({
 			"Retrieve raw output of a specific node from an execution, grouped per output (e.g. a Filter's Kept and Discarded). All outputs are listed, including outputs with no downstream connection; only items on a connected output continue through the workflow.",
 		),
 	executionId: z.string().describe('Execution ID'),
-	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
+	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
 	maxItems: z
 		.number()
@@ -135,7 +204,7 @@ const getResolvedNodeParametersAction = z.object({
 				'unexpected value — more precise than guessing from raw expressions or input data.',
 		),
 	executionId: z.string().describe('Execution ID'),
-	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
+	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
 	itemIndex: z
 		.number()
 		.int()
@@ -171,6 +240,7 @@ const inputSchema = sanitizeInputSchema(
 		getAction,
 		runAction,
 		listenAction,
+		runStepAction,
 		debugAction,
 		getNodeOutputAction,
 		getResolvedNodeParametersAction,
@@ -185,6 +255,8 @@ type Input = z.infer<typeof inputSchema>;
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	/** Renders the "waiting for a test request" card instead of an approval. */
 	testListener: testListenerCardSchema.optional(),
@@ -388,15 +460,126 @@ async function handleRun(
 	if (gate.kind === 'needs-approval') {
 		return await suspend({
 			requestId: nanoid(),
-			message: `Execute ${gate.workflowName} (ID: ${input.workflowId})`,
+			message: formatApprovalMessage(
+				`Run this workflow live${input.triggerNodeName ? ` from "${input.triggerNodeName}"` : ''}`,
+				input.approvalSummary,
+			),
+			resourceName: gate.workflowName,
+			approvalDetails: {
+				action: 'run-workflow',
+				summary: input.approvalSummary,
+				trigger: input.triggerNodeName,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(gate.workflowId, input.inputData, {
+	const result = await context.executionService.run(gate.workflowId, input.inputData, {
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
+		abortSignal,
+	});
+	// A live test is the evidence verification cannot produce itself. Record it
+	// so the publish gate stops disclosing simulations that this run replaced.
+	const verificationClaim = await recordLiveRunVerification({
+		context,
+		workflowId: gate.workflowId,
+		triggerNodeName: input.triggerNodeName,
+		result,
+	});
+	return verificationClaim ? { ...result, verificationClaim } : result;
+}
+
+/**
+ * Runs one node of a saved workflow.
+ *
+ * Gated exactly like `action="run"`: the admin `runWorkflow` policy, the
+ * pre-authorized workflow list, and session grants. Running one node of a
+ * workflow is not safer than running the workflow — the node holds the same
+ * credentials and reaches the same systems — so it gets the same gate rather
+ * than a weaker one.
+ */
+async function handleRunStep(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'run-step' }>,
+	resumeData: z.infer<typeof resumeSchema> | undefined,
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
+) {
+	if (!context.executionService.runStep) {
+		return {
+			executionId: '',
+			status: 'error' as const,
+			denied: true,
+			reason: 'Running a single node is not available on this instance',
+		};
+	}
+
+	if (context.permissions?.runWorkflow === 'blocked') {
+		return {
+			executionId: '',
+			status: 'error' as const,
+			denied: true,
+			reason: 'Action blocked by admin',
+		};
+	}
+
+	// Same pre-authorization the full run uses: the checkpoint's allow-list when
+	// there is one, otherwise the workflows this plan cycle created.
+	const allowList = context.allowedRunWorkflowIds;
+	const allowedByList =
+		allowList !== undefined
+			? allowList.has(input.workflowId)
+			: (context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
+	const allowedByScope =
+		context.requireRunWorkflowApproval !== true &&
+		context.permissions?.runWorkflow === 'always_allow' &&
+		allowedByList;
+
+	// A per-node grant keeps a debug loop from re-prompting on every attempt. A
+	// whole-workflow run grant also covers a single node of that workflow.
+	const stepGrantKey = buildRunStepSessionGrantKey(input.workflowId, input.nodeName);
+	const allowedBySessionGrant =
+		context.requireRunWorkflowApproval !== true &&
+		(context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
+			context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
+				true);
+
+	const needsApproval = !allowedByScope && !allowedBySessionGrant;
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName =
+			(await context.workflowService
+				.get(input.workflowId)
+				.then((wf) => wf.name)
+				.catch(() => undefined)) ?? input.workflowId;
+		return await suspend({
+			requestId: nanoid(),
+			message: `Run the node "${input.nodeName}" in ${workflowName}`,
+			severity: 'warning' as const,
+		});
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return {
+			executionId: '',
+			status: 'error' as const,
+			denied: true,
+			reason: 'User denied the action',
+		};
+	}
+
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(stepGrantKey);
+	}
+
+	return await context.executionService.runStep(input.workflowId, input.nodeName, {
+		reuseExecutionId: input.reuseExecutionId,
+		mockInput: input.mockInput,
+		toolArguments: input.toolArguments,
+		versionId: input.versionId,
+		timeout: input.timeout,
 		abortSignal,
 	});
 }
@@ -538,13 +721,18 @@ export function createExecutionsTool(context: InstanceAiContext) {
 	const listeners: ArmedListeners = new Map();
 	return new Tool('executions')
 		.description(
-			'Manage workflow executions — list, inspect, run, listen, debug, get node output, ' +
-				'get resolved node parameters for a past run, and stop. ' +
+			'Manage workflow executions — list, inspect, run, run one node, listen, debug, ' +
+				'get node output, get resolved node parameters for a past run, and stop. ' +
 				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
 				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
 				'do not treat such a request as a request to build something. ' +
 				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
+				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
+				'"Execute step" button. Use it to see what one node really returns — when ' +
+				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
+				'the node re-runs on the data it actually received. It runs for real, so do ' +
+				'not point it at a node that writes. ' +
 				'action="listen" arms the test URL of a Webhook or Form Trigger and waits for one real request ' +
 				'(curl, a browser form, a third-party callback), then returns the execution it started. ' +
 				'Use it instead of action="run" when the trigger\'s auth, query parameters, response mode, or form must be exercised for real; ' +
@@ -564,6 +752,9 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				}
 				case 'listen':
 					return await handleListen(context, input, ctx.resumeData, ctx.suspend, listeners);
+				case 'run-step': {
+					return await handleRunStep(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
+				}
 				case 'debug':
 					return await handleDebug(context, input);
 				case 'get-node-output':

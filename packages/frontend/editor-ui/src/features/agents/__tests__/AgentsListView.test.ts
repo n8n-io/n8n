@@ -4,8 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentResource } from '../types';
 
 import AgentsListView from '../views/AgentsListView.vue';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_DUPLICATE_MODAL_KEY,
+	NEW_SESSION_PARAM,
+	PENDING_AGENT_ID_STATE,
+} from '../constants';
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -423,7 +427,7 @@ describe('AgentsListView — create agent', () => {
 		mocks.routeProjectId = 'project-1';
 	});
 
-	it('routes create-agent clicks to Instance AI with the project context', async () => {
+	it('opens the builder for a new pending agent in the current project', async () => {
 		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
 		const wrapper = await mountView();
 
@@ -434,8 +438,10 @@ describe('AgentsListView — create agent', () => {
 		// so the "clicked" and "created" events can be joined on it.
 		const [, mintedAgentId] = mocks.trackClickedNewAgent.mock.calls[0] as [string, string];
 		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('button', expect.any(String));
-		expect(mocks.routerPush).toHaveBeenCalledWith(
-			instanceAiCreateAgentRoute('project-1', mintedAgentId),
-		);
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'project-1', agentId: mintedAgentId },
+			state: { [PENDING_AGENT_ID_STATE]: mintedAgentId },
+		});
 	});
 });

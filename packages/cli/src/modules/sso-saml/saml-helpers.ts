@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@n8n/errors';
 import { PasswordUtility } from '@/services/password.utility';
 import {
 	assertAuthenticationMethodCanBeEnabled,
@@ -139,6 +139,12 @@ export function getMappedSamlAttributesFromFlowResult(
 			lastName,
 			userPrincipalName,
 		};
+		if (attributeMapping.emailVerified) {
+			const emailVerified = attributes[attributeMapping.emailVerified];
+			result.attributes.emailVerified = Array.isArray(emailVerified)
+				? emailVerified[0]
+				: emailVerified;
+		}
 		if (jitClaimNames.instanceRole && typeof attributes[jitClaimNames.instanceRole] === 'string') {
 			result.attributes.n8nInstanceRole = attributes[jitClaimNames.instanceRole] as string;
 		}

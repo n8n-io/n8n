@@ -1,5 +1,6 @@
 import {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	type RuntimeSkillContent,
 	type RuntimeSkillDependenciesContract,
 	type RuntimeSkillInterfaceContract,
@@ -91,7 +92,6 @@ const LINKED_FILE_GROUPS = [
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 const N8N_SKILLS_DIR_TEMPLATE = '$' + '{N8N_SKILLS_DIR}';
 const N8N_WORKSPACE_DIR_TEMPLATE = '$' + '{N8N_WORKSPACE_DIR}';
-const LOAD_SKILL_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
 function isNonEmptyRecord(value: Record<string, unknown>): boolean {
 	return Object.keys(value).length > 0;
@@ -410,13 +410,13 @@ function warnIfExceedsLoadSkillLimit(
 	content: string,
 ): void {
 	const bytes = Buffer.byteLength(content, 'utf8');
-	if (bytes <= LOAD_SKILL_OUTPUT_LIMIT_BYTES) return;
+	if (bytes <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return;
 
 	logger.warn('Runtime skill file exceeds load_skill output limit', {
 		skill: entry.name,
 		path: filePath,
 		bytes,
-		maxBytes: LOAD_SKILL_OUTPUT_LIMIT_BYTES,
+		maxBytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	});
 }
 

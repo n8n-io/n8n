@@ -53,9 +53,11 @@ export { encodingForModel, getEncoding } from './utils/tokenizer/tiktoken';
 export { makeN8nLlmFailedAttemptHandler } from './utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 export {
 	getProxyAgent,
+	aiClientFetch,
 	getNodeProxyAgent,
 	proxyFetch,
 	type AgentTimeoutOptions,
+	type EgressFilter,
 	type ProxyFetchOptions,
 } from './utils/http-proxy-agent';
 export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';

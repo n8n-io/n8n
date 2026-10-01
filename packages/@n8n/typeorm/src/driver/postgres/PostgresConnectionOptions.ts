@@ -110,7 +110,7 @@ export interface PostgresConnectionOptions
 	 * Enabling parseInt8 will cause node-postgres to parse int8 results as numbers.
 	 * Note: the maximum safe integer in js is: Number.MAX_SAFE_INTEGER (`+2^53`)
 	 *
-	 * @see [JavaScript Number objects](http://ecma262-5.com/ELS5_HTML.htm#Section_8.5)
+	 * @see [JavaScript Number objects](https://262.ecma-international.org/5.1/#sec-8.5)
 	 * @see [node-postgres int8 explanation](https://github.com/brianc/node-pg-types#:~:text=on%20projects%3A%20return-,64%2Dbit%20integers,-(int8)%20as)
 	 * @see [node-postgres defaults.parseInt8 implementation](https://github.com/brianc/node-postgres/blob/pg%408.8.0/packages/pg/lib/defaults.js#L80)
 	 */

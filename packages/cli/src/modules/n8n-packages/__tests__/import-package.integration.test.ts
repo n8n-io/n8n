@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -21,9 +22,7 @@ import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	affixRoleToSaveCredential,
@@ -53,9 +52,9 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
 	WIRE_VERSION_ID,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
 	Partial<ImportPackageRequest>;
@@ -71,7 +70,7 @@ async function importPackage(params: ImportPackageParams) {
  * by `connections` does not exist in `nodes`. `validateWorkflowStructure`
  * rejects this during the pipeline's pre-pass.
  */
-const brokenWorkflow = (id: string, name: string): SerializedWorkflow =>
+const brokenWorkflow = (id: string, name: string): PackageWorkflow =>
 	serializedWorkflow({
 		id,
 		name,

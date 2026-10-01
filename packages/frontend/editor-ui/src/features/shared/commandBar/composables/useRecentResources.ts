@@ -11,16 +11,11 @@ import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 
 const MAX_RECENT_ITEMS = 5;
 const MAX_RECENT_WORKFLOWS_TO_DISPLAY = 3;
-const RECENT_WORKFLOWS_STORAGE_KEY = 'n8n-recent-workflows';
 const RECENT_NODES_STORAGE_KEY = 'n8n-recent-nodes';
-
-interface RecentWorkflow {
-	id: string;
-	openedAt: number;
-}
 
 interface RecentNode {
 	nodeId: string;
@@ -35,9 +30,9 @@ export function useRecentResources() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const recentWorkflowsStore = useRecentWorkflowsStore();
 	const { setNodeActive } = useCanvasOperations();
 
-	const recentWorkflows = useLocalStorage<RecentWorkflow[]>(RECENT_WORKFLOWS_STORAGE_KEY, []);
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
 
 	function trackResourceOpened(to: RouteLocationNormalized): void {
@@ -56,15 +51,9 @@ export function useRecentResources() {
 	}
 
 	function registerWorkflowOpen(workflowId: string): void {
-		const filtered = recentWorkflows.value.filter((w) => w.id !== workflowId);
-
-		recentWorkflows.value = [
-			{
-				id: workflowId,
-				openedAt: Date.now(),
-			},
-			...filtered,
-		].slice(0, MAX_RECENT_ITEMS);
+		// Workflow routes have no authoritative project ID. Keep the entry unscoped
+		// until a project-scoped workflow query validates it.
+		recentWorkflowsStore.registerWorkflowOpen(workflowId);
 	}
 
 	function registerNodeOpen(workflowId: string, nodeId: string): void {
@@ -129,10 +118,10 @@ export function useRecentResources() {
 			}
 		}
 
-		if (recentWorkflows.value.length > 0) {
+		if (recentWorkflowsStore.globalRecentWorkflowOpens.length > 0) {
 			let workflowsAdded = 0;
 
-			for (const recentWorkflow of recentWorkflows.value) {
+			for (const recentWorkflow of recentWorkflowsStore.globalRecentWorkflowOpens) {
 				// Stop if we've reached the display limit
 				if (workflowsAdded >= MAX_RECENT_WORKFLOWS_TO_DISPLAY) {
 					break;
@@ -175,7 +164,10 @@ export function useRecentResources() {
 	});
 
 	async function initialize() {
-		const workflowsToFetch = recentWorkflows.value.slice(0, MAX_RECENT_WORKFLOWS_TO_DISPLAY);
+		const workflowsToFetch = recentWorkflowsStore.globalRecentWorkflowOpens.slice(
+			0,
+			MAX_RECENT_WORKFLOWS_TO_DISPLAY,
+		);
 
 		await Promise.all(
 			workflowsToFetch.map(async (recentWorkflow) => {

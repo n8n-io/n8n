@@ -50,7 +50,7 @@ import type {
 	BuilderTurnStream,
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
-	LocalGatewayStatus,
+	ComputerUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
@@ -241,22 +241,27 @@ function applyInstanceState(
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const localGateway: LocalGatewayStatus | undefined = state.localGateway;
-	const isConnected = localGateway?.status === 'connected';
-	const capabilities = isConnected ? localGateway.capabilities : [];
+	const computerUse: ComputerUseState | undefined = state.computerUse;
+	// Both channels can serve tools, so the stub server gets the union.
+	const liveToolCategories = computerUse
+		? Object.values(computerUse).flatMap((channel) =>
+				channel.status === 'connected' ? channel.toolCategories : [],
+			)
+		: [];
 
-	const localMcpServer = isConnected
-		? createStubLocalMcpServer({
-				capabilities: capabilities.filter(
-					(c): c is 'browser' | 'filesystem' | 'shell' =>
-						c === 'browser' || c === 'filesystem' || c === 'shell',
-				),
-			})
-		: base.localMcpServer;
+	const localMcpServer =
+		liveToolCategories.length > 0
+			? createStubLocalMcpServer({
+					capabilities: liveToolCategories.filter(
+						(c): c is 'browser' | 'filesystem' | 'shell' =>
+							c === 'browser' || c === 'filesystem' || c === 'shell',
+					),
+				})
+			: base.localMcpServer;
 
 	return {
 		...base,
-		...(localGateway ? { localGatewayStatus: localGateway } : {}),
+		...(computerUse ? { computerUseState: computerUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined
@@ -297,17 +302,6 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
 		findOpenSuspensions: async () => await Promise.resolve([]),
 		cancelOpenSuspension: async () => await Promise.resolve(),
-		listAgents: async () => await Promise.resolve([]),
-		listAgentCapabilities: async () =>
-			await Promise.resolve({
-				channels: [],
-				agentCapabilities: [
-					'Use tools',
-					'Run scheduled tasks',
-					'Keep memory across sessions and runs',
-				],
-				limitations: [],
-			}),
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }

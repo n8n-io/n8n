@@ -11,6 +11,9 @@ vi.mock('../tracing/langsmith-tracing', () => ({
 	continueInstanceAiTraceContext: () => 'continueInstanceAiTraceContext',
 	releaseTraceClient: () => 'releaseTraceClient',
 	submitLangsmithUserFeedback: () => 'submitLangsmithUserFeedback',
+	setTracePromptVersion: () => 'setTracePromptVersion',
+	setTraceModelId: () => 'setTraceModelId',
+	modelIdTraceMetadata: () => 'modelIdTraceMetadata',
 }));
 
 vi.mock('../tracing/trace-replay', () => {

@@ -31,11 +31,16 @@ export class LogsPanel {
 		return this.root.getByTestId('logs-overview-status');
 	}
 
+	getOverviewHeader(): Locator {
+		return this.root.getByTestId('logs-overview-header');
+	}
+
+	getChatHeader(): Locator {
+		return this.root.getByTestId('chat-header');
+	}
+
 	getClearExecutionButton(): Locator {
-		return this.root
-			.getByTestId('logs-overview-header')
-			.locator('button')
-			.filter({ hasText: 'Clear execution' });
+		return this.getOverviewHeader().locator('button').filter({ hasText: 'Clear execution' });
 	}
 
 	getLogEntries(): Locator {
@@ -79,7 +84,7 @@ export class LogsPanel {
 	 */
 
 	async open(): Promise<void> {
-		await this.root.getByTestId('logs-overview-header').click();
+		await this.getOverviewHeader().click();
 	}
 
 	async openActions(): Promise<void> {

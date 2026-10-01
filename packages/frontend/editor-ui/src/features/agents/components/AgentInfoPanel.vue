@@ -65,7 +65,10 @@ const props = withDefaults(
 		immediateUpdates: false,
 	},
 );
-const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
+const emit = defineEmits<{
+	'update:config': [changes: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
+}>();
 
 const i18n = useI18n();
 const instructionsEditorId = useId();
@@ -218,6 +221,7 @@ function scheduleDeploymentNameEmit(value: string) {
 
 function onDeploymentNameInput(value: string) {
 	deploymentName.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		cancelDeploymentNameEmit();
 		emit('update:config', { modelDeploymentName: value });
@@ -278,14 +282,20 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	if (deploymentNameChange.modelDeploymentName !== undefined) {
 		deploymentName.value = deploymentNameChange.modelDeploymentName;
 	}
-	emit('update:config', {
-		model,
-		credential: credentialId,
-		...webSearchChanges,
-		...promptCachingChanges,
-		...reasoningChanges,
-		...deploymentNameChange,
-	});
+	emit(
+		'update:config',
+		{
+			model,
+			credential: credentialId,
+			...webSearchChanges,
+			...promptCachingChanges,
+			...reasoningChanges,
+			...deploymentNameChange,
+		},
+		// A pending agent must not be persisted just because a default model was
+		// auto-applied — let the host apply it to the draft without autosaving.
+		source === 'auto' ? { source: 'auto' } : undefined,
+	);
 }
 
 watch(
@@ -359,6 +369,7 @@ const emitInstructionsDebounced = useDebounceFn(() => {
 
 function onInstructionsInput(value: string) {
 	instructions.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		emit('update:config', { instructions: value });
 		return;
@@ -372,7 +383,6 @@ function onInstructionsInput(value: string) {
 		:header="i18n.baseText('agents.builder.agent.title')"
 		header-visibility="visually-hidden"
 		data-testid="agent-info-panel"
-		:container-class="$style.containerClass"
 	>
 		<div :class="$style.panels">
 			<div v-if="props.showModel" data-testid="agent-model-panel">
@@ -474,9 +484,10 @@ function onInstructionsInput(value: string) {
 					:model-value="instructions"
 					:disabled="props.disabled"
 					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
-					is-collapsible
 					show-toolbar="floating"
-					variant="ghost"
+					expandedViewToolbarMode="always"
+					variant="contained"
+					allowExpandedView
 					data-testid="agent-instructions-document"
 					@update:model-value="onInstructionsInput"
 				/>
@@ -502,11 +513,11 @@ function onInstructionsInput(value: string) {
 .instructionsDocument {
 	display: block;
 	width: 100%;
-	margin-inline: calc(var(--spacing--xs) * -1);
 }
 
 .instructionsDocument:disabled {
 	opacity: 0.5;
+	pointer-events: none;
 }
 
 .field {
@@ -543,9 +554,5 @@ function onInstructionsInput(value: string) {
 	height: 1px;
 	background-color: var(--border-color--subtle);
 	margin-inline: calc(var(--spacing--sm) * -1);
-}
-
-.containerClass {
-	padding-bottom: 0;
 }
 </style>

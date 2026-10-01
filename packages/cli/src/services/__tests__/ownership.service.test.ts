@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -18,13 +19,12 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
 
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -84,6 +84,7 @@ describe('OwnershipService', () => {
 			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
 			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.projectId = 'some-project-id';
 			projectRelation.project = project;
 			projectRelation.user = owner;
 
@@ -128,6 +129,39 @@ describe('OwnershipService', () => {
 			expect(projectRelationRepository.getPersonalProjectOwners).not.toHaveBeenCalled();
 			expect(foundOwner).toEqual(owner);
 		});
+
+		test('should fetch owners for uncached projects in one repository call', async () => {
+			const firstOwner = Object.assign(new User(), { role: GLOBAL_OWNER_ROLE });
+			const secondOwner = Object.assign(new User(), { role: GLOBAL_OWNER_ROLE });
+			const ownerRelations = [
+				Object.assign(new ProjectRelation(), {
+					projectId: 'project-1',
+					user: firstOwner,
+				}),
+				Object.assign(new ProjectRelation(), {
+					projectId: 'project-2',
+					user: secondOwner,
+				}),
+			];
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce(ownerRelations);
+
+			const owners = await ownershipService.getPersonalProjectOwnersCached([
+				'project-1',
+				'project-2',
+			]);
+
+			expect(projectRelationRepository.getPersonalProjectOwners).toHaveBeenCalledTimes(1);
+			expect(projectRelationRepository.getPersonalProjectOwners).toHaveBeenCalledWith([
+				'project-1',
+				'project-2',
+			]);
+			expect(owners).toEqual(
+				new Map([
+					['project-1', firstOwner],
+					['project-2', secondOwner],
+				]),
+			);
+		});
 	});
 
 	describe('getProjectOwnerCached()', () => {
@@ -138,6 +172,7 @@ describe('OwnershipService', () => {
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
 				role: PROJECT_OWNER_ROLE_SLUG,
+				projectId: 'some-project-id',
 				project: mockProject,
 				user: mockOwner,
 			});

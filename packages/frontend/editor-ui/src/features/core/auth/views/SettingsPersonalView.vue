@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { ROLE, type Role } from '@n8n/api-types';
+import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -43,14 +43,6 @@ type UserBasicDetailsForm = {
 	firstName: string;
 	lastName: string;
 	email: string;
-	/**
-	 * Required when changing the user email and no MFA enabled
-	 */
-	currentPassword?: string;
-};
-
-type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
-	mfaCode?: string;
 };
 
 type RoleContent = {
@@ -62,6 +54,7 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
 
+const isActive = ref<boolean>(true);
 const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
@@ -186,9 +179,8 @@ const currentUserRole = computed<RoleContent>(() => {
 	};
 });
 
-onMounted(() => {
-	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
-	formInputs.value = [
+function buildFormInputs(): IFormInputs {
+	return [
 		{
 			name: 'firstName',
 			initialValue: currentUser.value?.firstName,
@@ -227,6 +219,11 @@ onMounted(() => {
 			},
 		},
 	];
+}
+
+onMounted(() => {
+	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	formInputs.value = buildFormInputs();
 });
 
 function onInput() {
@@ -237,12 +234,38 @@ function onReadyToSubmit(ready: boolean) {
 	readyToSubmit.value = ready;
 }
 
-/** Saves users basic info and personalization settings */
-async function saveUserSettings(params: UserBasicDetailsWithMfa) {
+async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
+	const form = data as UserBasicDetailsForm;
+	const emailChanged = usersStore.currentUser?.email !== form.email;
+
+	// Name and theme save immediately - they need no re-authentication.
+	await saveNameAndPersonalisation(form);
+
+	// Email changes go through the confirmation flow, gated by password or MFA.
+	// Skip if the view unmounted during the awaited save, so the modal never
+	// opens on a departed page.
+	if (emailChanged && isActive.value) {
+		startEmailChange(form.email);
+	}
+}
+
+/** Saves name and personalization settings, only when they changed. */
+async function saveNameAndPersonalisation(form: UserBasicDetailsForm) {
+	const current = usersStore.currentUser;
+	const nameChanged = current?.firstName !== form.firstName || current?.lastName !== form.lastName;
+
+	if (!nameChanged && !hasAnyPersonalisationChanges.value) {
+		return;
+	}
+
 	try {
-		// The MFA code might be invalid so we update the user's basic info first
-		await updateUserBasicInfo(params);
-		await updatePersonalisationSettings();
+		if (nameChanged && usersStore.currentUserId) {
+			await usersStore.updateUserName({ firstName: form.firstName, lastName: form.lastName });
+		}
+		if (hasAnyPersonalisationChanges.value) {
+			uiStore.setTheme(currentSelectedTheme.value);
+		}
+		hasAnyBasicInfoChanges.value = false;
 
 		showToast({
 			title: i18n.baseText('settings.personal.personalSettingsUpdated'),
@@ -254,11 +277,8 @@ async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 	}
 }
 
-async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
-	const form = data as UserBasicDetailsForm;
-	const emailChanged = usersStore.currentUser?.email !== form.email;
-
-	if (usersStore.currentUser?.mfaEnabled && emailChanged) {
+function startEmailChange(newEmail: string) {
+	if (usersStore.currentUser?.mfaEnabled) {
 		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
 		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
@@ -267,51 +287,51 @@ async function onSubmit(data: Record<string, string | number | boolean | null | 
 				return;
 			}
 
-			await saveUserSettings({
-				...form,
-				mfaCode: payload.mfaCode,
-			});
+			await submitEmailChange({ email: newEmail, mfaCode: payload.mfaCode });
 		});
-	} else if (emailChanged) {
+	} else {
 		uiStore.openModal(CONFIRM_PASSWORD_MODAL_KEY);
+
 		confirmPasswordEventBus.once('close', async (payload: ConfirmPasswordModalEvents['close']) => {
 			if (!payload) {
 				// User closed the modal without submitting the form
 				return;
 			}
 
-			await saveUserSettings({
-				...form,
-				currentPassword: payload.currentPassword,
-			});
+			await submitEmailChange({ email: newEmail, currentPassword: payload.currentPassword });
 			uiStore.closeModal(CONFIRM_PASSWORD_MODAL_KEY);
 		});
-	} else {
-		await saveUserSettings(form);
 	}
 }
 
-async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
-	if (!hasAnyBasicInfoChanges.value || !usersStore.currentUserId) {
-		return;
-	}
+async function submitEmailChange(params: ChangeEmailRequestDto) {
+	try {
+		const result = await usersStore.requestEmailChange(params);
 
-	await usersStore.updateUser({
-		firstName: userBasicInfo.firstName,
-		lastName: userBasicInfo.lastName,
-		email: userBasicInfo.email,
-		mfaCode: userBasicInfo.mfaCode,
-		currentPassword: userBasicInfo.currentPassword,
-	});
+		if (result.status === 'confirmation-sent') {
+			// The change is not applied yet, so put the field back to the current email.
+			revertEmailField();
+			showToast({
+				title: i18n.baseText('settings.personal.emailChange.confirmationSent.title'),
+				message: i18n.baseText('settings.personal.emailChange.confirmationSent.message'),
+				type: 'success',
+			});
+		} else {
+			// status 'changed': no email delivery is configured, so it applied at once.
+			showToast({
+				title: i18n.baseText('settings.personal.personalSettingsUpdated'),
+				message: '',
+				type: 'success',
+			});
+		}
+	} catch (e) {
+		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
+	}
+}
+
+function revertEmailField() {
+	formInputs.value = buildFormInputs();
 	hasAnyBasicInfoChanges.value = false;
-}
-
-async function updatePersonalisationSettings() {
-	if (!hasAnyPersonalisationChanges.value) {
-		return;
-	}
-
-	uiStore.setTheme(currentSelectedTheme.value);
 }
 
 function onSaveClick() {
@@ -368,6 +388,7 @@ async function onMfaDisableClick() {
 }
 
 onBeforeUnmount(() => {
+	isActive.value = false;
 	promptMfaCodeBus.off('closed', disableMfa);
 });
 </script>

@@ -56,6 +56,7 @@ export class CanvasComposer {
 		// Wait for the editor's loading overlay to clear before subsequent header
 		// interactions; nodes can report visible while the overlay still blocks clicks.
 		await this.n8n.canvas.waitForCanvasReady();
+		await expect(this.n8n.workflowMenu.getTrigger()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -79,24 +80,20 @@ export class CanvasComposer {
 	async zoomInAndCheckNodes(): Promise<void> {
 		await this.n8n.canvas.getCanvasNodes().first().waitFor();
 
-		// After a route change the editor runs an animated fit-to-view. Wait for the
-		// viewport transform to stop moving before capturing the baseline zoom, so we
-		// don't measure against a pre-animation value.
+		// Reset the saved viewport before each check so earlier zooms do not hit the zoom limit.
+		await this.n8n.canvas.clickZoomToFitButton();
 		await this.n8n.canvas.waitForCanvasZoomSettled();
 		const initialZoom = await this.n8n.canvas.getCanvasZoomLevel();
 
-		for (let i = 0; i < 4; i++) {
-			await this.n8n.canvas.clickZoomInButton();
-		}
+		await this.n8n.canvas.clickZoomInButton();
 
-		// Poll the zoom scale until the animated zoom-in transition settles.
 		await expect
 			.poll(async () => await this.n8n.canvas.getCanvasZoomLevel(), {
 				message:
 					"Zoom functionality not working: canvas didn't scale in. " +
 					`Initial zoom: ${initialZoom.toFixed(3)}`,
 			})
-			.toBeGreaterThan(initialZoom * 1.5);
+			.toBeGreaterThan(initialZoom * 1.1);
 	}
 
 	/**

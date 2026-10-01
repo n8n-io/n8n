@@ -26,8 +26,9 @@ const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
-const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
-	useInstalledCommunityPackage(packageName);
+const nodeTypeName = computed(() => communityNodeDetails?.key);
+const { installedPackage, initInstalledPackage, canUpdatePackage, hasUpdateAvailable } =
+	useInstalledCommunityPackage(nodeTypeName);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => {
 	const pkg = packageName.value;
@@ -118,7 +119,7 @@ onMounted(async () => {
 			{{ communityNodeDetails?.description }}
 		</N8nText>
 		<CommunityNodeUpdateInfo
-			v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+			v-if="canUpdatePackage && hasUpdateAvailable"
 			data-test-id="update-available"
 			:package-name="communityNodeDetails?.packageName"
 			source="node creator panel"

@@ -4,19 +4,30 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig, GlobalConfig } from '@n8n/config';
 import type { ExecutionSummaries, User } from '@n8n/db';
 import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import { COMPLETED_STATUSES, ExecutionListV1Service } from '@/executions/execution-list-v1.service';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
 
+/** A status-less query, narrowed the way the list router narrows it when the two blocks combine. */
+const completedPageQuery = (
+	query: ExecutionSummaries.RangeQuery,
+): ExecutionSummaries.RangeQuery => ({
+	...query,
+	order: { startedAt: 'DESC' },
+	status: COMPLETED_STATUSES,
+});
+
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
+	let executionListService: ExecutionListV1Service;
 	let executionRepository: ExecutionRepository;
 	let member: User;
 	let owner: User;
@@ -26,6 +37,11 @@ describe('ExecutionService', () => {
 		await testDb.init();
 
 		executionRepository = Container.get(ExecutionRepository);
+
+		executionListService = new ExecutionListV1Service(
+			Container.get(DatabaseConfig),
+			executionRepository,
+		);
 
 		executionService = new ExecutionService(
 			globalConfig,
@@ -37,8 +53,6 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			Container.get(WorkflowRepository),
-			mock(),
-			mock(),
 			mock(),
 			mock(),
 			mock(),
@@ -68,7 +82,7 @@ describe('ExecutionService', () => {
 		await testDb.terminate();
 	});
 
-	describe('findRangeWithCount', () => {
+	describe('findPageWithCount', () => {
 		test('should return execution summaries', async () => {
 			const workflow = await createWorkflow({}, owner);
 
@@ -84,7 +98,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			const summaryShape = {
 				id: expect.any(String),
@@ -129,69 +143,43 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(3);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toHaveLength(2);
 		});
 
-		test('should retrieve executions before `lastId`, excluding it', async () => {
+		test('should retrieve executions before the cursor position, excluding it', async () => {
 			const workflow = await createWorkflow({}, owner);
 
-			await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-			]);
+			const startedAt = (minute: number) => new Date(`2024-06-01T10:0${minute}:00.000Z`);
 
-			const [firstId, secondId] = await executionRepository.getAllIds();
+			// Created in ascending `startedAt` order, so the last one is the newest.
+			const executions = [];
+			for (const minute of [1, 2, 3, 4]) {
+				executions.push(
+					await createExecution({ status: 'success', startedAt: startedAt(minute) }, workflow),
+				);
+			}
+
+			const [oldest, secondOldest, thirdOldest] = executions;
 
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
-				range: { limit: 20, lastId: secondId },
+				range: {
+					limit: 20,
+					beforeId: thirdOldest.id,
+				},
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
+			// The count covers all matching rows, not just the page.
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual(
-				expect.arrayContaining([expect.objectContaining({ id: firstId })]),
-			);
-		});
-
-		test('should retrieve executions after `firstId`, excluding it', async () => {
-			const workflow = await createWorkflow({}, owner);
-
-			await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-			]);
-
-			const [firstId, secondId, thirdId, fourthId] = await executionRepository.getAllIds();
-
-			const query: ExecutionSummaries.RangeQuery = {
-				kind: 'range',
-				range: { limit: 20, firstId },
-				user: owner,
-			};
-
-			const output = await executionService.findRangeWithCount(query);
-
-			expect(output.count).toBe(4);
-			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ id: fourthId }),
-					expect.objectContaining({ id: thirdId }),
-					expect.objectContaining({ id: secondId }),
-				]),
-			);
+			expect(output.results.map(({ id }) => id)).toEqual([secondOldest.id, oldest.id]);
 		});
 
 		test('should filter executions by `status`', async () => {
@@ -211,7 +199,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(2);
 			expect(output.estimated).toBe(false);
@@ -239,7 +227,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -263,7 +251,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -287,7 +275,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -314,11 +302,12 @@ describe('ExecutionService', () => {
 				metadata: [{ key, value, exactMatch: true }],
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output).toEqual({
 				count: 1,
 				estimated: false,
+				nextCursor: null,
 				results: [expect.objectContaining({ status: 'success' })],
 			});
 		});
@@ -341,11 +330,12 @@ describe('ExecutionService', () => {
 				metadata: [{ key, value: 'val', exactMatch: false }],
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output).toEqual({
 				count: 2,
 				estimated: false,
+				nextCursor: null,
 				results: [
 					expect.objectContaining({ status: 'success' }),
 					expect.objectContaining({ status: 'success' }),
@@ -371,11 +361,12 @@ describe('ExecutionService', () => {
 				projectId: firstProject.id,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output).toEqual({
 				count: 2,
 				estimated: false,
+				nextCursor: null,
 				results: expect.arrayContaining([
 					expect.objectContaining({ workflowId: firstWorkflow.id }),
 					expect.objectContaining({ workflowId: firstWorkflow.id }),
@@ -403,11 +394,12 @@ describe('ExecutionService', () => {
 				status: ['error'],
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output).toEqual({
 				count: 1,
 				estimated: false,
+				nextCursor: null,
 				results: expect.arrayContaining([
 					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
 				]),
@@ -415,12 +407,6 @@ describe('ExecutionService', () => {
 		});
 
 		test.each([
-			{
-				name: 'waitTill',
-				filter: { waitTill: true },
-				matchingParams: { waitTill: new Date() },
-				nonMatchingParams: { waitTill: undefined },
-			},
 			{
 				name: 'metadata',
 				filter: { metadata: [{ key: 'testKey', value: 'testValue' }] },
@@ -461,11 +447,12 @@ describe('ExecutionService', () => {
 					...filter,
 				};
 
-				const output = await executionService.findRangeWithCount(query);
+				const output = await executionListService.findPageWithCount(query);
 
 				expect(output).toEqual({
 					count: 1,
 					estimated: false,
+					nextCursor: null,
 					results: expect.arrayContaining([
 						expect.objectContaining({ workflowId: firstWorkflow.id }),
 					]),
@@ -495,7 +482,7 @@ describe('ExecutionService', () => {
 				},
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(0);
 			expect(output.estimated).toBe(false);
@@ -530,7 +517,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -538,7 +525,7 @@ describe('ExecutionService', () => {
 		});
 	});
 
-	describe('findRangeWithCount — subquery approach', () => {
+	describe('findPageWithCount — subquery approach', () => {
 		test('should scope results to user accessible workflows', async () => {
 			const workflow1 = await createWorkflow({}, member);
 			const workflow2 = await createWorkflow({}, member);
@@ -561,7 +548,7 @@ describe('ExecutionService', () => {
 				},
 			};
 
-			const result = await executionService.findRangeWithCount(query);
+			const result = await executionListService.findPageWithCount(query);
 
 			// member owns workflow1 and workflow2 → sees 3 executions, not the inaccessible one
 			expect(result.count).toBe(3);
@@ -599,8 +586,8 @@ describe('ExecutionService', () => {
 			};
 
 			const [arrayResult, subqueryResult] = await Promise.all([
-				executionService.findRangeWithCount(arrayQuery),
-				executionService.findRangeWithCount(subqueryQuery),
+				executionListService.findPageWithCount(arrayQuery),
+				executionListService.findPageWithCount(subqueryQuery),
 			]);
 
 			expect(arrayResult.count).toBe(2);
@@ -637,8 +624,8 @@ describe('ExecutionService', () => {
 			};
 
 			const [arrayResult, subqueryResult] = await Promise.all([
-				executionService.findRangeWithCount(arrayQuery),
-				executionService.findRangeWithCount(subqueryQuery),
+				executionListService.findPageWithCount(arrayQuery),
+				executionListService.findPageWithCount(subqueryQuery),
 			]);
 
 			expect(arrayResult.count).toBe(1);
@@ -662,7 +649,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const arrayResult = await executionService.findRangeWithCount(arrayQuery);
+			const arrayResult = await executionListService.findPageWithCount(arrayQuery);
 			expect(arrayResult.count).toBe(2);
 		});
 
@@ -691,7 +678,7 @@ describe('ExecutionService', () => {
 				},
 			};
 
-			const result = await executionService.findRangeWithCount(sharingEnabledQuery);
+			const result = await executionListService.findPageWithCount(sharingEnabledQuery);
 
 			// member owns personalWorkflow and is admin of teamProject → sees 3 executions
 			expect(result.count).toBe(3);
@@ -725,7 +712,7 @@ describe('ExecutionService', () => {
 				},
 			};
 
-			const result = await executionService.findRangeWithCount(sharingEnabledQuery);
+			const result = await executionListService.findPageWithCount(sharingEnabledQuery);
 
 			// member owns personalWorkflow and is editor in teamProject → sees 2 executions
 			expect(result.count).toBe(2);
@@ -736,7 +723,7 @@ describe('ExecutionService', () => {
 		});
 	});
 
-	describe('findLatestCurrentAndCompleted — subquery approach', () => {
+	describe('findCurrentAndCompleted — subquery approach', () => {
 		test('should return same results as array approach', async () => {
 			const workflow = await createWorkflow({}, member);
 
@@ -764,8 +751,8 @@ describe('ExecutionService', () => {
 			};
 
 			const [arrayResult, subqueryResult] = await Promise.all([
-				executionService.findLatestCurrentAndCompleted(arrayQuery),
-				executionService.findLatestCurrentAndCompleted(subqueryQuery),
+				executionListService.findCurrentAndCompleted(completedPageQuery(arrayQuery)),
+				executionListService.findCurrentAndCompleted(completedPageQuery(subqueryQuery)),
 			]);
 
 			expect(arrayResult.count).toBe(subqueryResult.count);
@@ -838,7 +825,7 @@ describe('ExecutionService', () => {
 		});
 	});
 
-	describe('findLatestCurrentAndCompleted', () => {
+	describe('findCurrentAndCompleted', () => {
 		test('should return latest current and completed executions', async () => {
 			const workflow = await createWorkflow({}, owner);
 
@@ -859,7 +846,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findLatestCurrentAndCompleted(query);
+			const output = await executionListService.findCurrentAndCompleted(completedPageQuery(query));
 
 			expect(output.results).toHaveLength(23); // 3 current + 20 completed (excludes 21st)
 			expect(output.count).toBe(totalCompleted); // 21 finished, excludes current
@@ -883,7 +870,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findLatestCurrentAndCompleted(query);
+			const output = await executionListService.findCurrentAndCompleted(completedPageQuery(query));
 
 			expect(output.results).toHaveLength(totalFinished); // 5 finished
 			expect(output.count).toBe(totalFinished); // 5 finished, excludes active
@@ -905,7 +892,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findLatestCurrentAndCompleted(query);
+			const output = await executionListService.findCurrentAndCompleted(completedPageQuery(query));
 
 			expect(output.results).toHaveLength(3); // 3 finished
 			expect(output.count).toBe(0); // 0 finished, excludes active
@@ -919,7 +906,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findLatestCurrentAndCompleted(query);
+			const output = await executionListService.findCurrentAndCompleted(completedPageQuery(query));
 
 			expect(output.results).toHaveLength(0);
 			expect(output.count).toBe(0);
@@ -944,7 +931,9 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const { results } = await executionService.findLatestCurrentAndCompleted(query);
+			const { results } = await executionListService.findCurrentAndCompleted(
+				completedPageQuery(query),
+			);
 
 			expect(results).toHaveLength(2);
 			expect(results[0].status).toBe('running');
@@ -999,7 +988,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(2);
 			expect(output.estimated).toBe(false);
@@ -1048,7 +1037,7 @@ describe('ExecutionService', () => {
 				user: owner,
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -1090,7 +1079,7 @@ describe('ExecutionService', () => {
 				annotationTags: [annotationTags[0].id],
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -1135,7 +1124,7 @@ describe('ExecutionService', () => {
 				vote: 'up',
 			};
 
-			const output = await executionService.findRangeWithCount(query);
+			const output = await executionListService.findPageWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);

@@ -1,6 +1,6 @@
 import { type IDataObject, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 
-import { odataStringLiteral } from '@utils/microsoft/odata';
+import { escapeODataValue } from '@utils/query-escaping';
 
 import { meetingRequest, meetingsPath } from './shared';
 
@@ -34,9 +34,7 @@ export async function fetchMeetingByJoinUrl(
 		'GET',
 		await meetingsPath.call(this, i),
 		{},
-		{
-			$filter: `JoinWebUrl eq ${odataStringLiteral(joinWebUrl)}`,
-		},
+		{ $filter: `JoinWebUrl eq '${escapeODataValue(joinWebUrl)}'` },
 	);
 	const meeting = response?.value?.[0];
 	if (!meeting) {

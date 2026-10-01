@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## Purpose
+
+Playwright is n8n's general-purpose test orchestrator. Do not assume that every
+Playwright test drives the editor UI. This package also owns API tests, container
+topologies, process lifecycle tests, infrastructure validation, performance
+benchmarks, evaluation suites, and browser-backed harness contracts.
+
+Choose the suite by the behavior under test:
+
+| Behavior | Location | Runner |
+|----------|----------|--------|
+| Product UI or API journey | `tests/e2e/` | `test:local` or a container project |
+| Database, queue, multi-main, encryption, or process lifecycle | `tests/infrastructure/` | `test:infrastructure` or the named project |
+| Infrastructure throughput and resource use | `tests/infrastructure/benchmarks/` | `test:benchmark` |
+| Browser and canvas performance | `tests/performance/` | `test:performance` |
+| Fixture or harness contract | `tests/framework/` | `test:unit` or `test:harness` |
+| Evaluation scenario | Existing evaluation directory | Its named evaluation project |
+
+Use Playwright when the test needs its worker lifecycle, fixtures, retries,
+artifacts, project matrix, browser context, or managed container stack. Use
+Vitest for browser-free unit and integration tests that need none of these.
+
 ## Commands
 
 ```bash
@@ -9,6 +31,9 @@ pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
 # Run with container capabilities (requires pnpm build:docker first)
 pnpm --filter=n8n-playwright test:container:sqlite tests/e2e/auth/password-reset.spec.ts
+
+# Run one infrastructure benchmark
+pnpm --filter=n8n-playwright test:benchmark tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts
 
 # Lint and typecheck
 pnpm --filter=n8n-playwright lint
@@ -177,9 +202,11 @@ pnpm janitor --file=tests/my-new-test.spec.ts --verbose
 
 See `packages/testing/janitor/README.md` for full documentation.
 
-## Entry Points
+## UI Entry Points
 
-All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
+UI journey tests should start with `n8n.start.*` methods. API, infrastructure,
+benchmark, lifecycle, and framework tests use their own fixtures and harnesses.
+See `composables/TestEntryComposer.ts` for UI entry points.
 
 | Method | Use Case |
 |--------|----------|
@@ -215,6 +242,34 @@ A + AA rules; override per call with `a11y.check('modal', { tags, disableRules }
 When a journey acts as another user, `n8n.start.withUser()` returns a new
 `n8nPage`. Point the checker at it with `a11y.for(otherN8n)` - the derived
 checker reports into the same scan list.
+
+### Main landmark structure
+
+`utils/a11y-landmark-check.ts` checks the one structural rule axe cannot see on a
+composed layout: the page must have exactly one `<main>` element, that `<main>`
+must not sit inside another landmark, and `id="content"` must be unique. It walks
+the composed DOM - the document plus every open shadow tree, and slotted content
+from where it renders, not from where it is written - runs no axe rules, and
+leaves the default WCAG 2.1 A + AA tag selection alone.
+
+A `<section>` or `<form>` is a landmark only once it has an accessible name, so the
+check computes one: `aria-label`, an `aria-labelledby` reference resolved in the
+element's own root, or `title`. A reference resolves through the same routine, so
+the referenced element can name through its own reference, a naming attribute such
+as `img[alt]`, or its text. A reference to a missing or empty element names
+nothing, and a `<section>` full of text stays unnamed, because `region` does not
+take its name from content.
+
+```typescript
+import { assertMainLandmarkStructure } from '../../../utils/a11y-landmark-check';
+
+await assertMainLandmarkStructure(n8n.page);
+```
+
+`assertMainLandmarkStructure(page)` throws with each problem it found.
+`checkMainLandmarkStructure(page)` returns `{ ok, problems }` instead, for a
+caller that wants to report rather than fail. Regression cover for both lives in
+`tests/e2e/a11y/a11y-landmark-structure.spec.ts`, against synthetic markup.
 
 ### Report and failure budget
 

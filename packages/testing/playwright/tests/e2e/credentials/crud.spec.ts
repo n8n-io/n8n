@@ -8,10 +8,6 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.goHome();
-		});
-
 		test('should create a new credential using empty state', async ({ n8n }) => {
 			const projectId = await n8n.start.fromNewProject();
 			const credentialName = `My awesome Notion account ${nanoid()}`;

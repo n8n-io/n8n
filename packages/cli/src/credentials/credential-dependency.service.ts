@@ -1,12 +1,16 @@
 import type { CredentialDependencyType } from '@n8n/db';
-import { CredentialDependencyRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import {
+	CredentialDependencyRepository,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+	SecretsProviderConnectionRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { extractProviderKeysFromCredentialData } from './external-secrets.utils';
 
-export const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
+export { EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE } from '@n8n/db';
 
 export type CredentialDependencyFilter = {
 	dependencyType: CredentialDependencyType;
@@ -35,7 +39,7 @@ export class CredentialDependencyService {
 		};
 	}
 
-	private async resolveProviderIdsFromCredentialData(
+	async resolveProviderIdsFromCredentialData(
 		decryptedCredentialData: ICredentialDataDecryptedObject,
 	): Promise<string[]> {
 		const providerKeys = [...extractProviderKeysFromCredentialData(decryptedCredentialData)];

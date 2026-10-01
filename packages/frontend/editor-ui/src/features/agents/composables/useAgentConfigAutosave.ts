@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved';
-export type AutosaveResult = 'skipped' | 'stale' | undefined;
+export type AutosaveResult = 'skipped' | 'stale' | 'outdated' | undefined;
 
 export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	/**
@@ -16,7 +16,9 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	 * write-lock is active) rather than performed — this suppresses `onSaved`
 	 * and keeps `saveStatus` at `'idle'` instead of flashing `'saved'` for an
 	 * edit that was never persisted. Return `'stale'` after reloading the
-	 * server state to drop snapshots queued from the same stale state.
+	 * server state to drop snapshots queued from the same stale state. Return
+	 * `'outdated'` when a newer local edit exists, so the old save does not
+	 * display `Saved`.
 	 */
 	save: (snapshot: TSnapshot) => Promise<AutosaveResult>;
 	/** Called after a successful save so the caller can fire telemetry. */
@@ -43,6 +45,10 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosaveParams<TSnapshot>) {
 	const saveStatus = ref<SaveStatus>('idle');
 	const hasPendingSave = ref(false);
+	/** A debounced snapshot is queued but hasn't fired yet — distinct from `hasPendingSave`,
+	 * which is also true once that snapshot moves in flight. Lets a caller detect "there's
+	 * a queued edit I can still merge into" before it's sent. */
+	const hasQueuedSnapshot = ref(false);
 	const debounceMs = params.debounceMs ?? 500;
 	const savedHoldMs = params.savedHoldMs ?? 2000;
 
@@ -70,6 +76,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 
 	function syncPendingState() {
 		hasPendingSave.value = pendingSnapshot !== null || autosaveInFlight !== null;
+		hasQueuedSnapshot.value = pendingSnapshot !== null;
 	}
 
 	async function runSave(
@@ -118,7 +125,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				if (!detached) saveStatus.value = 'idle';
 				return;
 			}
-			if (result === 'skipped') {
+			if (result === 'skipped' || result === 'outdated') {
 				if (!detached) saveStatus.value = 'idle';
 				return;
 			}
@@ -188,6 +195,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			pendingSnapshot = null;
 			pendingSnapshotRevision = 0;
 			pendingSnapshotGeneration = 0;
+			syncPendingState();
 			void chainSave(target, targetRevision, targetGeneration, false);
 		}, getDebounceTime(debounceMs));
 	}
@@ -212,6 +220,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		pendingSnapshot = null;
 		pendingSnapshotRevision = 0;
 		pendingSnapshotGeneration = 0;
+		syncPendingState();
 
 		if (target !== null) {
 			try {
@@ -276,6 +285,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 	return {
 		saveStatus,
 		hasPendingSave,
+		hasQueuedSnapshot,
 		scheduleAutosave,
 		settleAutosave,
 		flushAutosave,

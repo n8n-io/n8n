@@ -65,7 +65,8 @@ export interface VerificationSimulationPlan {
 	simulationFixtures?: SimulationFixtures;
 }
 
-const DECLARED_OUTPUT_SIMULATION_REASON = 'Source declares verification output for this node';
+export const DECLARED_OUTPUT_SIMULATION_REASON =
+	'Source declares verification output for this node';
 
 const TRIGGER_SIMULATION_REASON = 'Trigger event is simulated during verification';
 
@@ -177,7 +178,7 @@ export function findCredentiallessAiRoots(
  * credentials get their `execute` verdict overridden to `simulate`: the real
  * run would die at the root with a credential error ("Node does not have any
  * credentials set"), leaving every downstream simulated node unreached. The
- * classifier marks AI roots safe by type and never visits `ai_*` sub-nodes,
+ * classifier marks AI roots and Agent Tool containers safe by type,
  * so — like the trigger pass above — this is the single injection point.
  * Roots already `simulate` (declared fixtures, mocked credentials) keep
  * their verdict and reason.

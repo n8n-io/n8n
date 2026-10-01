@@ -112,8 +112,8 @@ describe('SourceControlImportService', () => {
 		// The repository verifies the token, so it has to be a real one. With no backend
 		// registered the real service clears everything, which is what a default pull does.
 		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
-			async (context) =>
-				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+			async (context, actor) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
 		service = new SourceControlImportService(
 			mock(),
@@ -711,6 +711,23 @@ describe('SourceControlImportService', () => {
 			expect(new Set(versions.map((v) => v.id))).toEqual(
 				new Set([...teamACredentials.map((w) => w.id), ...teamBCredentials.map((w) => w.id)]),
 			);
+		});
+
+		it('should leave out credentials whose authorization is still pending', async () => {
+			const pending = await createCredentials(
+				{ name: 'pending', data: '', type: 'test' },
+				teamProjectA,
+			);
+			await credentialsRepository.update(pending.id, {
+				pendingAuthorizationExpiresAt: new Date(Date.now() + 60_000),
+			});
+
+			const versions = await service.getLocalCredentialsFromDb(
+				await sourceControlContextFactory.createContext(instanceOwner),
+			);
+
+			expect(versions.map((v) => v.id)).not.toContain(pending.id);
+			expect(versions).toHaveLength(teamACredentials.length + teamBCredentials.length);
 		});
 
 		it('should only get all available credentials from the team project, for a project admin', async () => {
@@ -2080,11 +2097,14 @@ describe('SourceControlImportService', () => {
 				);
 
 				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
-				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
-					projectId: importingUserProject.id,
-					transport: 'source-control',
-				});
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+					{
+						workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+						projectId: importingUserProject.id,
+						transport: 'source-control',
+					},
+					{ kind: 'user', user: { id: importingUser.id } },
+				);
 			});
 
 			it('skips a blocked workflow, attaches the reason, and persists nothing', async () => {

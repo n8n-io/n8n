@@ -98,7 +98,7 @@ describe('SourceControlExportService', () => {
 			id: 'cred1',
 			name: 'Test Credential',
 			type: 'oauth2',
-			data: cipher.encrypt(credentialData),
+			data: cipher.encryptWithInstanceKey(credentialData),
 		});
 
 		it('should export credentials to work folder', async () => {
@@ -208,7 +208,7 @@ describe('SourceControlExportService', () => {
 				id: 'global-cred1',
 				name: 'Global Test Credential',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: true,
 				isResolvable: false,
 				resolvableAllowFallback: false,
@@ -267,7 +267,7 @@ describe('SourceControlExportService', () => {
 				id: 'non-global-cred1',
 				name: 'Non-Global Test Credential',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: false,
 				isResolvable: false,
 				resolvableAllowFallback: false,
@@ -329,7 +329,7 @@ describe('SourceControlExportService', () => {
 				id: 'resolvable-cred1',
 				name: 'Resolvable Credential',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: false,
 				isResolvable: true,
 				resolvableAllowFallback: true,
@@ -367,7 +367,7 @@ describe('SourceControlExportService', () => {
 				id: 'cred-no-flag',
 				name: 'Credential Without Flag',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: undefined, // explicitly undefined to test the default
 			});
 
@@ -412,7 +412,7 @@ describe('SourceControlExportService', () => {
 					id: credentialsId,
 					name: `Credential ${credentialsId}`,
 					type: 'httpBasicAuth',
-					data: cipher.encrypt({ user: 'u', password: 'p' }),
+					data: cipher.encryptWithInstanceKey({ user: 'u', password: 'p' }),
 				}),
 			} as never) as SharedCredentials;
 

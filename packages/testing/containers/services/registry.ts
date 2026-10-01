@@ -1,5 +1,6 @@
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
+import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
 import { kent, createKentHelper } from './kent';
@@ -9,6 +10,7 @@ import { localstack, createLocalStackHelper } from './localstack';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
+import { createNpmRegistryHelper, npmRegistry } from './npm-registry';
 import { createObservabilityHelper } from './observability';
 import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
@@ -25,6 +27,7 @@ import { victoriaMetrics } from './victoria-metrics';
 /** Service registry - must include all ServiceName entries */
 export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgres,
+	enginePostgres,
 	redis,
 	mailpit,
 	gitea,
@@ -45,10 +48,12 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgresExporter,
 	cadvisor,
 	sandbox,
+	npmRegistry,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
 	postgres: createPostgresHelper,
+	enginePostgres: createEnginePostgresHelper,
 	mailpit: createMailpitHelper,
 	gitea: createGiteaHelper,
 	keycloak: createKeycloakHelper,
@@ -58,4 +63,5 @@ export const helperFactories: Partial<HelperFactories> = {
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
 	kent: createKentHelper,
+	npmRegistry: createNpmRegistryHelper,
 };

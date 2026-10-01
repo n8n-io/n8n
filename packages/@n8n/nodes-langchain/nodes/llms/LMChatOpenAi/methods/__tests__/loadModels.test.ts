@@ -35,6 +35,10 @@ describe('searchModels', () => {
 	let mockContext: Mocked<ILoadOptionsFunctions>;
 	let fetchSpy: ReturnType<typeof vi.fn>;
 	const secureLookup = vi.fn();
+	const egressFilter = {
+		validateUrl: vi.fn(),
+		createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+	};
 
 	beforeEach(() => {
 		mockContext = {
@@ -51,10 +55,7 @@ describe('searchModels', () => {
 				parameters: {},
 			} as INode),
 			helpers: {
-				getSecureEgressFilter: vi.fn().mockReturnValue({
-					validateUrl: vi.fn(),
-					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
-				}),
+				getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter),
 			},
 		} as unknown as Mocked<ILoadOptionsFunctions>;
 
@@ -82,7 +83,7 @@ describe('searchModels', () => {
 			init: expect.objectContaining({
 				headers: expect.objectContaining({ Authorization: 'Bearer test-api-key' }),
 			}),
-			lookup: secureLookup,
+			egressFilter,
 		});
 		expect(result.results).toEqual(OFFICIAL_API_RESULTS);
 	});

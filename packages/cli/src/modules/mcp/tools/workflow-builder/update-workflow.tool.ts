@@ -1,27 +1,33 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
+	removeDefaultValues,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
+import {
+	isExpressionErrorWorkflowId,
+	staticErrorWorkflowId,
+	type ErrorWorkflowValidationService,
+} from '@/workflows/error-workflow-validation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
@@ -33,8 +39,13 @@ import {
 	type AutoAssignResult,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
+import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
@@ -53,10 +64,15 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
-const baseOperationTypes = [
+
+// JSON round-trip intentionally: we want the shape the DB would have stored,
+// which drops `undefined` properties. `deepCopy` preserves them, breaking recovery.
+// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
+const normalize = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
+const operationTypes = [
 	'updateNodeParameters',
 	'setNodeParameter',
 	'addNode',
@@ -73,25 +89,31 @@ const baseOperationTypes = [
 	'addTags',
 	'removeTags',
 	'setNodeGroups',
-] as const satisfies ReadonlyArray<PartialUpdateOperation['type']>;
-// Granular group ops roll out behind the `102_mcp_canvas_groups` flag;
-// `setNodeGroups` predates the flag and stays ungated.
-const gatedGroupOperationTypes = [
 	'addNodeGroup',
 	'removeNodeGroup',
 	'updateNodeGroup',
 ] as const satisfies ReadonlyArray<PartialUpdateOperation['type']>;
-// The `satisfies` on both tuples above is what catches a renamed operation type
-// in workflow-operations.ts at compile time, instead of silently leaving the gate
-// unmatched or an implemented operation unreachable. The set element type is
-// narrowed to match so `.has()` only accepts a real operation type.
-const GATED_GROUP_OP_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set(
-	gatedGroupOperationTypes,
-);
-const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
-	canvasGroupsEnabled
-		? z.enum([...baseOperationTypes, ...gatedGroupOperationTypes])
-		: z.enum(baseOperationTypes);
+// The `satisfies` above is what catches a renamed operation type in
+// workflow-operations.ts at compile time, instead of silently leaving an
+// implemented operation unreachable.
+const operationTypeSchema = z.enum(operationTypes);
+const GRAPH_OPERATION_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set([
+	'addNode',
+	'removeNode',
+	'renameNode',
+	'updateNodeParameters',
+	'setNodeParameter',
+	'addConnection',
+	'removeConnection',
+	'setNodeCredential',
+	'setNodePosition',
+	'setNodeDisabled',
+	'setNodeGroups',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeSettings',
+]);
 // A factory, not a shared instance: reusing one Zod instance across two
 // properties makes the JSON Schema generator dedupe the second occurrence into
 // a `$ref` to a `#/properties/...` path, which strict MCP clients cannot
@@ -138,102 +160,83 @@ const combinedSettingsInputSchema = z
 	.describe(
 		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
 	);
-const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
-	z
-		.object({
-			type: buildOperationTypeSchema(canvasGroupsEnabled).describe('Operation type.'),
-			nodeName: z.string().optional().describe('For node-targeted ops.'),
-			node: nodeInputSchema.optional().describe('For addNode.'),
-			parameters: z
-				.record(z.string(), z.unknown())
-				.optional()
-				.describe('For updateNodeParameters.'),
-			replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
-			path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
-			value: z.unknown().optional().describe('For setNodeParameter.'),
-			oldName: z.string().optional().describe('For renameNode.'),
-			newName: z
-				.string()
-				.optional()
-				.describe(canvasGroupsEnabled ? 'For renameNode or updateNodeGroup.' : 'For renameNode.'),
-			source: z.string().optional().describe('For connection ops.'),
-			target: z.string().optional().describe('For connection ops.'),
-			sourceIndex: z
-				.number()
-				.int()
-				.nonnegative()
-				.optional()
-				.describe(
-					'For connection ops; which output of the source node the connection starts from. Default 0, the first output. Use it to wire a branch: on an If node the false branch is index 1, and onError "continueErrorOutput" appends an error output after the regular ones (index 1 on a single-output node such as HTTP Request, index 2 on an If node). This is the only field that selects an output.',
-				),
-			targetIndex: z
-				.number()
-				.int()
-				.nonnegative()
-				.optional()
-				.describe(
-					'For connection ops; which input of the target node the connection ends at. Default 0.',
-				),
-			connectionType: z.string().optional().describe('For connection ops; default "main".'),
-			credentialKey: z.string().optional().describe('For setNodeCredential.'),
-			credentialId: z.string().optional().describe('For setNodeCredential.'),
-			credentialName: z.string().optional().describe('For setNodeCredential.'),
-			position: positionInputSchema().optional().describe('For setNodePosition.'),
-			disabled: z.boolean().optional().describe('For setNodeDisabled.'),
-			settings: combinedSettingsInputSchema
-				.optional()
-				.describe('For setNodeSettings or setWorkflowSettings.'),
-			name: z
-				.string()
-				.max(128)
-				.optional()
-				.describe(
-					canvasGroupsEnabled
-						? 'For setWorkflowMetadata (workflow name) or addNodeGroup (group name).'
-						: 'Only used for setWorkflowMetadata.',
-				),
-			description: z
-				.string()
-				.max(255)
-				.optional()
-				.describe(
-					canvasGroupsEnabled
-						? 'For setWorkflowMetadata, addNodeGroup, or updateNodeGroup.'
-						: 'Only used for setWorkflowMetadata.',
-				),
-			names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
-			nodeGroups: z
-				.array(
-					z.object({
-						id: z.string().optional(),
-						name: z.string(),
-						nodeNames: z.array(z.string()),
-						description: z.string().optional(),
-					}),
-				)
-				.optional()
-				.describe(
-					'For setNodeGroups. Replaces all node groups; pass [] to clear. Group members are node names, not ids.',
-				),
-			...(canvasGroupsEnabled
-				? {
-						groupName: z.string().optional().describe('For removeNodeGroup / updateNodeGroup.'),
-						nodeNames: z
-							.array(z.string())
-							.optional()
-							.describe('For addNodeGroup / updateNodeGroup; group member node names.'),
-						id: z.string().optional().describe('For addNodeGroup; group id, generated if omitted.'),
-					}
-				: {}),
-		})
-		// Strict, so a field this schema does not declare fails the call instead of
-		// being stripped. Stripping made the tool report success for an operation it
-		// never ran: a guessed output-index field (e.g. sourceOutput) vanished and
-		// the connection was wired from output 0.
-		.strict()
-		.describe('Workflow update operation. Provide fields matching type.');
+const operationInputSchema = z
+	.object({
+		type: operationTypeSchema.describe('Operation type.'),
+		nodeName: z.string().optional().describe('For node-targeted ops.'),
+		node: nodeInputSchema.optional().describe('For addNode.'),
+		parameters: z.record(z.string(), z.unknown()).optional().describe('For updateNodeParameters.'),
+		replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
+		path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
+		value: z.unknown().optional().describe('For setNodeParameter.'),
+		oldName: z.string().optional().describe('For renameNode.'),
+		newName: z.string().optional().describe('For renameNode or updateNodeGroup.'),
+		source: z.string().optional().describe('For connection ops.'),
+		target: z.string().optional().describe('For connection ops.'),
+		sourceIndex: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.describe(
+				'For connection ops; which output of the source node the connection starts from. Default 0, the first output. Use it to wire a branch: on an If node the false branch is index 1, and onError "continueErrorOutput" appends an error output after the regular ones (index 1 on a single-output node such as HTTP Request, index 2 on an If node). This is the only field that selects an output.',
+			),
+		targetIndex: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.describe(
+				'For connection ops; which input of the target node the connection ends at. Default 0.',
+			),
+		connectionType: z.string().optional().describe('For connection ops; default "main".'),
+		credentialKey: z.string().optional().describe('For setNodeCredential.'),
+		credentialId: z.string().optional().describe('For setNodeCredential.'),
+		credentialName: z.string().optional().describe('For setNodeCredential.'),
+		position: positionInputSchema().optional().describe('For setNodePosition.'),
+		disabled: z.boolean().optional().describe('For setNodeDisabled.'),
+		settings: combinedSettingsInputSchema
+			.optional()
+			.describe('For setNodeSettings or setWorkflowSettings.'),
+		name: z
+			.string()
+			.max(128)
+			.optional()
+			.describe('For setWorkflowMetadata (workflow name) or addNodeGroup (group name).'),
+		description: z
+			.string()
+			.max(255)
+			.optional()
+			.describe('For setWorkflowMetadata, addNodeGroup, or updateNodeGroup.'),
+		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
+		nodeGroups: z
+			.array(
+				z.object({
+					id: z.string().optional(),
+					name: z.string(),
+					nodeNames: z.array(z.string()),
+					description: z.string().optional(),
+				}),
+			)
+			.optional()
+			.describe(
+				'For setNodeGroups. Replaces all node groups; pass [] to clear. Group members are node names, not ids.',
+			),
+		groupName: z.string().optional().describe('For removeNodeGroup / updateNodeGroup.'),
+		nodeNames: z
+			.array(z.string())
+			.optional()
+			.describe('For addNodeGroup / updateNodeGroup; group member node names.'),
+		id: z.string().optional().describe('For addNodeGroup; group id, generated if omitted.'),
+	})
+	// Strict, so a field this schema does not declare fails the call instead of
+	// being stripped. Stripping made the tool report success for an operation it
+	// never ran: a guessed output-index field (e.g. sourceOutput) vanished and
+	// the connection was wired from output 0.
+	.strict()
+	.describe('Workflow update operation. Provide fields matching type.');
 type OperationInput = {
-	type: (typeof baseOperationTypes)[number] | (typeof gatedGroupOperationTypes)[number];
+	type: (typeof operationTypes)[number];
 	[key: string]: unknown;
 };
 const strictOperationsSchema = z.array(partialUpdateOperationSchema);
@@ -255,36 +258,24 @@ function parseStrictOperations(operations: OperationInput[]): PartialUpdateOpera
 }
 
 const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ');
-const buildToolDescription = (canvasGroupsEnabled: boolean) => {
-	const base =
-		'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.';
-	return canvasGroupsEnabled
-		? `${base} Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups.`
-		: base;
-};
-// The concrete return type (not a widened z.ZodRawShape) keeps the tool's
-// generic coupled to the real schema shape, so the handler's argument
-// annotation is compile-checked against it via ToolHandler's parameter types.
-const buildInputSchema = (canvasGroupsEnabled: boolean) =>
-	({
-		workflowId: z.string().describe('The ID of the workflow to update.'),
-		skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
-		operations: z
-			.array(buildOperationInputSchema(canvasGroupsEnabled))
-			.min(1)
-			.max(MAX_OPERATIONS_PER_CALL)
-			.describe(
-				canvasGroupsEnabled
-					? `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves. An existing group that these ops leave invalid is removed and reported in removedGroups.`
-					: `Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
-			),
-		versionName: versionNameInputSchema.describe(
-			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+const TOOL_DESCRIPTION = `Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used. Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups.`;
+const inputSchema = {
+	workflowId: z.string().describe('The ID of the workflow to update.'),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
+	operations: z
+		.array(operationInputSchema)
+		.min(1)
+		.max(MAX_OPERATIONS_PER_CALL)
+		.describe(
+			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved — except node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}): an invalid one is skipped and reported in skippedOperations, while the rest of the batch still saves. An existing group that these ops leave invalid is removed and reported in removedGroups.`,
 		),
-		versionDescription: versionDescriptionInputSchema.describe(
-			'Longer description of what changed and why, shown in the version history alongside the version name.',
-		),
-	}) satisfies z.ZodRawShape;
+	versionName: versionNameInputSchema.describe(
+		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what changed and why, shown in the version history alongside the version name.',
+	),
+} satisfies z.ZodRawShape;
 // The MCP SDK publishes this schema with `additionalProperties: false` and
 // validates `structuredContent` against it on every response. Success returns
 // the full payload below; the error path returns only `{ error }`. To keep
@@ -331,7 +322,6 @@ const outputSchema = {
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Warnings marked preExisting (also tagged [pre-existing] in the message) were already present before this update; only self-correct the rest on the next call.',
 		),
-	note: z.string().optional(),
 	skippedOperations: z
 		.array(
 			z.object({
@@ -365,6 +355,8 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe('Error message explaining why the update failed. Present only on failure.'),
+	errorCode: z.string().optional().describe('Machine-readable error code.'),
+	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 /**
  * The success payload, derived from `outputSchema` so the handler cannot build a
@@ -376,116 +368,67 @@ type UpdateWorkflowOutput = z.infer<z.ZodObject<typeof outputSchema>>;
 
 /**
  * Validates a freshly-set `errorWorkflow` reference. Throws a teaching-oriented
- * error when the target does not exist / is inaccessible, has no active Error
- * Trigger node, or cannot be called by this workflow due to its sub-workflow
- * caller policy — each of which would otherwise silently prevent the error
- * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
+ * error when the value is an expression, or when the target does not exist / is
+ * inaccessible, has no active Error Trigger node, or cannot be called by this
+ * workflow due to its sub-workflow caller policy — each of which would otherwise
+ * silently prevent the error workflow from running on failure. A 'DEFAULT' /
+ * cleared value skips the check.
  */
 async function assertErrorWorkflowIsUsable({
 	errorWorkflowId,
 	parentWorkflowId,
 	user,
 	workflowFinderService,
-	workflowPublishedDataService,
-	useWorkflowPublicationService,
-	nodeTypes,
-	subworkflowPolicyChecker,
-	errorTriggerType,
+	errorWorkflowValidationService,
 }: {
 	errorWorkflowId: string | undefined;
 	parentWorkflowId: string;
 	user: User;
 	workflowFinderService: WorkflowFinderService;
-	workflowPublishedDataService: WorkflowPublishedDataService;
-	useWorkflowPublicationService: boolean;
-	nodeTypes: NodeTypes;
-	subworkflowPolicyChecker: SubworkflowPolicyChecker;
-	errorTriggerType: string;
+	errorWorkflowValidationService: ErrorWorkflowValidationService;
 }): Promise<void> {
-	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
-		return;
+	// The setting is never evaluated — an expression is used as a literal workflow
+	// id, so the handler would never run. Caught before `staticErrorWorkflowId`,
+	// which reports "no id to validate" for an expression and a cleared value alike.
+	if (isExpressionErrorWorkflowId(errorWorkflowId)) {
+		throw new Error(
+			`errorWorkflow does not accept expressions, and '${errorWorkflowId}' would be stored as a literal workflow ID that never matches, so the error workflow would never run. Pass a plain workflow ID (find one with search_workflows), or "DEFAULT" to clear it.`,
+		);
 	}
 
-	// Read access is required intentionally, mirroring the editor UI (the error
-	// workflow picker only lists workflows the user can read). Resolving the
-	// target without an access check would let callers probe arbitrary workflow
-	// IDs and learn their name / published / trigger / policy state from the
-	// validation errors below. Runtime not requiring read access is separate: it
-	// runs the error workflow under the owner project's context, gated by caller
-	// policy, which is about execution — not about who may configure the link.
-	const errorWorkflow = await workflowFinderService.findWorkflowForUser(
-		errorWorkflowId,
+	const staticId = staticErrorWorkflowId(errorWorkflowId);
+	if (!staticId) return;
+
+	const errorWorkflow = await workflowFinderService.findWorkflowForUser(staticId, user, [
+		'workflow:read',
+	]);
+	if (errorWorkflow) validateMcpWorkflow(errorWorkflow);
+
+	const problem = await errorWorkflowValidationService.findProblem({
+		errorWorkflowId: staticId,
+		parentWorkflowId,
 		user,
-		['workflow:read'],
-		// activeVersion is only the published source of truth when the publication
-		// service is off; otherwise we read it from the service below.
-		{ includeActiveVersion: !useWorkflowPublicationService },
-	);
-
-	if (!errorWorkflow) {
-		throw new Error(
-			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
-		);
-	}
-
-	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
-	// resolves it differently depending on the publication service flag — mirror
-	// WorkflowExecutionService.loadErrorWorkflowData exactly so we neither reject a
-	// workflow runtime would run nor accept a version runtime will not use.
-	let publishedNodes: INode[] | undefined;
-
-	if (useWorkflowPublicationService) {
-		const published = await workflowPublishedDataService.getPublishedWorkflowData(errorWorkflowId);
-		publishedNodes = published?.publishedVersion.nodes;
-	} else if (errorWorkflow.activeVersionId && errorWorkflow.activeVersion) {
-		publishedNodes = errorWorkflow.activeVersion.nodes ?? [];
-	}
-
-	if (!publishedNodes) {
-		throw new Error(
-			`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
-		);
-	}
-
-	const hasErrorTrigger = publishedNodes.some(
-		(node) => node.type === errorTriggerType && node.disabled !== true,
-	);
-
-	if (!hasErrorTrigger) {
-		throw new Error(
-			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
-		);
-	}
-
-	// Runtime blocks the error workflow if this workflow may not call it as a
-	// sub-workflow (see WorkflowExecutionService.executeErrorWorkflow). The
-	// policy checker only reads the target's id + settings, so an empty-node
-	// Workflow instance is sufficient.
-	const errorWorkflowInstance = new Workflow({
-		id: errorWorkflow.id,
-		name: errorWorkflow.name,
-		nodeTypes,
-		nodes: [],
-		connections: {},
-		active: false,
-		settings: errorWorkflow.settings ?? {},
 	});
 
-	try {
-		await subworkflowPolicyChecker.check(
-			errorWorkflowInstance,
-			parentWorkflowId,
-			undefined,
-			user.id,
-		);
-	} catch (error) {
-		if (error instanceof SubworkflowPolicyDenialError) {
-			throw new Error(
-				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
-			);
-		}
+	if (!problem) return;
 
-		throw error;
+	switch (problem.reason) {
+		case 'not-found':
+			throw new Error(
+				`Error workflow '${staticId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
+			);
+		case 'not-published':
+			throw new Error(
+				`Error workflow '${problem.name}' (${staticId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
+			);
+		case 'no-error-trigger':
+			throw new Error(
+				`The published version of workflow '${problem.name}' (${staticId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${problem.errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
+			);
+		case 'caller-policy':
+			throw new Error(
+				`Error workflow '${problem.name}' (${staticId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
+			);
 	}
 }
 
@@ -543,11 +486,9 @@ function assertExecutionTimeoutWithinMax(
  */
 type WorkflowSettingsGuardDependencies = {
 	user: User;
-	nodeTypes: NodeTypes;
 	globalConfig: GlobalConfig;
 	workflowFinderService: WorkflowFinderService;
-	workflowPublishedDataService: WorkflowPublishedDataService;
-	subworkflowPolicyChecker: SubworkflowPolicyChecker;
+	errorWorkflowValidationService: ErrorWorkflowValidationService;
 };
 
 /**
@@ -572,11 +513,9 @@ async function assertWorkflowSettingsValid(
 	},
 	{
 		user,
-		nodeTypes,
 		globalConfig,
 		workflowFinderService,
-		workflowPublishedDataService,
-		subworkflowPolicyChecker,
+		errorWorkflowValidationService,
 	}: WorkflowSettingsGuardDependencies,
 ): Promise<void> {
 	// Validate a freshly-set error workflow so the agent can self-correct in
@@ -592,11 +531,7 @@ async function assertWorkflowSettingsValid(
 			parentWorkflowId: workflowId,
 			user,
 			workflowFinderService,
-			workflowPublishedDataService,
-			useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
-			nodeTypes,
-			subworkflowPolicyChecker,
-			errorTriggerType: globalConfig.nodes.errorTriggerType,
+			errorWorkflowValidationService,
 		});
 	}
 
@@ -700,6 +635,25 @@ function dedupeNamesPreservingCase(names: string[]): string[] {
 	return result;
 }
 
+function haveSameTagNames(
+	actualTags: Array<{ name: string }> | undefined,
+	expectedTagNames: string[] | undefined,
+): boolean {
+	if (!actualTags || !expectedTagNames) {
+		return false;
+	}
+
+	// expectedTagNames still carries the raw LLM-supplied names (with possible
+	// surrounding whitespace and case-duplicates). The tag service normalizes
+	// them via `dedupeNamesPreservingCase` before persisting, so comparing the
+	// raw input against canonical persisted names would always report a mismatch
+	// after a successful save — false negative in the recovery check.
+	return isEqual(
+		actualTags.map((tag) => tag.name).sort(),
+		dedupeNamesPreservingCase(expectedTagNames).sort(),
+	);
+}
+
 // Renames are followed so the key matches the node's name in the post-apply
 // workflow.
 function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, number> {
@@ -777,23 +731,12 @@ const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWork
 
 /**
  * Rejects operations this instance cannot serve, before anything is loaded or
- * applied. Throw order is part of the contract: gated group ops first, then
- * tag ops.
+ * applied.
  */
 function assertOperationsSupported(
 	strictOperations: PartialUpdateOperation[],
-	{ canvasGroupsEnabled, tagsDisabled }: { canvasGroupsEnabled: boolean; tagsDisabled: boolean },
+	{ tagsDisabled }: { tagsDisabled: boolean },
 ): void {
-	// Defense in depth: with the flag off, the published schema already
-	// rejects these op types at the enum level; this guards against the
-	// loose and strict schemas drifting apart. Flag first so the scan only
-	// runs on instances where it can actually reject something.
-	if (!canvasGroupsEnabled && strictOperations.some((op) => GATED_GROUP_OP_TYPES.has(op.type))) {
-		throw new Error(
-			'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
-		);
-	}
-
 	if (tagsDisabled && strictOperations.some(isTagOperation)) {
 		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
 	}
@@ -811,7 +754,6 @@ function assertOperationsSupported(
  */
 function resolveNodeGroupViolations(
 	result: ApplyOperationsSuccess,
-	canvasGroupsEnabled: boolean,
 	nodeTypes: NodeTypes,
 ): {
 	skippedOperations: SkippedOperation[];
@@ -830,16 +772,14 @@ function resolveNodeGroupViolations(
 	// groups this batch touched, not which one caused a given violation — two group
 	// ops that collide take each other down.
 	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
-	const violations = canvasGroupsEnabled
-		? [
-				...dropInvalidWorkflowGroups(
-					result.workflow,
-					getNodeType,
-					(violation) => result.groupOperations[violation.groupId] !== undefined,
-				),
-				...dropInvalidWorkflowGroups(result.workflow, getNodeType),
-			]
-		: [];
+	const violations = [
+		...dropInvalidWorkflowGroups(
+			result.workflow,
+			getNodeType,
+			(violation) => result.groupOperations[violation.groupId] !== undefined,
+		),
+		...dropInvalidWorkflowGroups(result.workflow, getNodeType),
+	];
 
 	for (const violation of violations) {
 		const requestedBy = result.groupOperations[violation.groupId];
@@ -1118,37 +1058,35 @@ export const createUpdateWorkflowTool = (
 	dataTableOps: DataTableUserOperations,
 	tagService: TagService,
 	globalConfig: GlobalConfig,
-	subworkflowPolicyChecker: SubworkflowPolicyChecker,
-	workflowPublishedDataService: WorkflowPublishedDataService,
+	errorWorkflowValidationService: ErrorWorkflowValidationService,
 	aiGatewayService: AiGatewayService,
 	options: {
 		/**
-		 * `102_mcp_canvas_groups` rollout flag: when true, the granular node-group
-		 * operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are published
-		 * in the tool schema and accepted by the handler. `setNodeGroups` predates
-		 * the flag and is always available.
+		 * Reports which node types are verified community nodes not installed
+		 * here, so an update that adds one can warn that it will not run. Supplied
+		 * only on surfaces that offer community-node discovery.
 		 */
-		canvasGroupsEnabled?: boolean;
+		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+		/** Whether this session can call the install tool; steers the warning text. */
+		installToolAvailable?: boolean;
 	} = {},
-): ToolDefinition<ReturnType<typeof buildInputSchema>> => {
-	const canvasGroupsEnabled = options.canvasGroupsEnabled === true;
-
+	logger: Logger,
+	postSaveMetrics: McpPostSaveMetricsService,
+): ToolDefinition<typeof inputSchema> => {
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
 	const settingsGuardDependencies: WorkflowSettingsGuardDependencies = {
 		user,
-		nodeTypes,
 		globalConfig,
 		workflowFinderService,
-		workflowPublishedDataService,
-		subworkflowPolicyChecker,
+		errorWorkflowValidationService,
 	};
 
 	return {
 		name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 		config: {
-			description: buildToolDescription(canvasGroupsEnabled),
-			inputSchema: buildInputSchema(canvasGroupsEnabled),
+			description: TOOL_DESCRIPTION,
+			inputSchema,
 			outputSchema,
 			annotations: {
 				title: MCP_UPDATE_WORKFLOW_TOOL.displayTitle,
@@ -1181,18 +1119,29 @@ export const createUpdateWorkflowTool = (
 				versionDescription,
 			});
 
+			let updateAttempted = false;
+			let hasGraphOps = false;
+			let hasTagOperations = false;
+			let expectedWorkflow: { nodes: unknown; connections: unknown; nodeGroups?: unknown } | null =
+				null;
+			let expectedSettings: IWorkflowSettings | undefined;
+			let expectedTagNames: string[] | undefined;
+			let existingWorkflow: Awaited<
+				ReturnType<WorkflowFinderService['findWorkflowForUser']>
+			> | null = null;
+
 			try {
 				const strictOperations = parseStrictOperations(operations);
-				const hasTagOperations = strictOperations.some(isTagOperation);
+				hasTagOperations = strictOperations.some(isTagOperation);
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
+				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
 
 				assertOperationsSupported(strictOperations, {
-					canvasGroupsEnabled,
 					tagsDisabled: globalConfig.tags.disabled,
 				});
 
-				const existingWorkflow = await getMcpWorkflow(
+				existingWorkflow = await getMcpWorkflow(
 					workflowId,
 					user,
 					['workflow:update'],
@@ -1205,7 +1154,6 @@ export const createUpdateWorkflowTool = (
 				const result = applyOperations(
 					toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
 					strictOperations,
-					{ canvasGroupsEnabled },
 				);
 
 				if (!result.success) {
@@ -1213,7 +1161,7 @@ export const createUpdateWorkflowTool = (
 				}
 
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
-					resolveNodeGroupViolations(result, canvasGroupsEnabled, nodeTypes);
+					resolveNodeGroupViolations(result, nodeTypes);
 
 				const credentialCheck = await validateCredentialReferences(
 					strictOperations,
@@ -1231,7 +1179,7 @@ export const createUpdateWorkflowTool = (
 				const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 					{ nodes: result.workflow.nodes, connections: result.workflow.connections },
 					nodeTypes,
-					(errorMessage) => ({ error: errorMessage }),
+					(errorMessage) => ({ error: errorMessage, errorCode: 'INVALID_AI_TOOL_SOURCE' }),
 					telemetryPayload,
 					telemetry,
 				);
@@ -1300,6 +1248,14 @@ export const createUpdateWorkflowTool = (
 					nodeTypes,
 				);
 
+				validationWarnings.push(
+					...(await buildUninstalledNodeWarnings(
+						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						options.findUninstalledNodeTypes,
+						options.installToolAvailable,
+					)),
+				);
+
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
 
 				// Fallback is diff-based; it only ends up persisted when the update
@@ -1312,6 +1268,22 @@ export const createUpdateWorkflowTool = (
 					),
 				);
 
+				expectedWorkflow = {
+					nodes: workflowUpdateData.nodes,
+					connections: workflowUpdateData.connections,
+					...(workflowUpdateData.nodeGroups !== undefined
+						? { nodeGroups: workflowUpdateData.nodeGroups }
+						: {}),
+				};
+				expectedSettings =
+					hasSettingsOperations && workflowUpdateData.settings
+						? removeDefaultValues(
+								{ ...(existingWorkflow.settings ?? {}), ...workflowUpdateData.settings },
+								globalConfig.executions.timeout,
+							)
+						: undefined;
+				expectedTagNames = result.tagNames;
+				updateAttempted = true;
 				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 					aiBuilderAssisted: hasNonTagOperations,
 					source: 'n8n-mcp',
@@ -1320,44 +1292,17 @@ export const createUpdateWorkflowTool = (
 					...(tagIds !== undefined ? { tagIds } : {}),
 				});
 
-				if (autoAssignOutcomes.length > 0) {
-					const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
-					trackAutoassignOutcomes(
-						telemetry,
-						user.id,
-						'update_workflow',
-						autoAssignOutcomes,
-						nodeTypesByName,
-						workflowId,
-					);
-				}
-
-				void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
-
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;
-
-				telemetryPayload.results = {
-					success: true,
-					data: {
-						workflowId: updatedWorkflow.id,
-						nodeCount: updatedWorkflow.nodes.length,
-					},
-				};
-
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 				const notAppliedCount = countOperationsWithNoEffect(
 					skippedOperations,
 					result.groupOperations,
 				);
 
-				// Groups are dropped on save when the flag is off, so only warn when they can be kept.
 				// A canvas that was already this wide before the update is marked pre-existing,
 				// so the agent does not rework a layout it did not make.
-				const ceilingWarning = canvasGroupsEnabled
-					? topLevelItemsWarning(updatedWorkflow)
-					: undefined;
+				const ceilingWarning = topLevelItemsWarning(updatedWorkflow);
 
 				if (ceilingWarning) {
 					const preExistingUngroupedNodeNames = new Set(
@@ -1402,20 +1347,160 @@ export const createUpdateWorkflowTool = (
 						: undefined,
 				};
 
+				try {
+					if (autoAssignOutcomes.length > 0) {
+						const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
+						trackAutoassignOutcomes(
+							telemetry,
+							user.id,
+							'update_workflow',
+							autoAssignOutcomes,
+							nodeTypesByName,
+							workflowId,
+						);
+					}
+
+					void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
+
+					telemetryPayload.results = {
+						success: true,
+						data: {
+							workflowId: updatedWorkflow.id,
+							nodeCount: updatedWorkflow.nodes.length,
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				} catch (sideEffectError) {
+					logger.error('Post-save side effect failed for update_workflow', {
+						workflowId: updatedWorkflow.id,
+						error: sideEffectError,
+					});
+					postSaveMetrics.incrementPostSaveFailure('update', sideEffectError);
+				}
+
 				return {
 					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
 					structuredContent: output,
 				};
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
+				const errorCode = getErrorCode(error);
 
-				telemetryPayload.results = {
-					success: false,
+				if (updateAttempted && existingWorkflow) {
+					let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+						null;
+					try {
+						persisted = await workflowFinderService.findWorkflowForUser(
+							workflowId,
+							user,
+							['workflow:read'],
+							{ includeTags: hasTagOperations },
+						);
+					} catch (lookupError) {
+						logger.warn('Post-update verification lookup failed', {
+							workflowId,
+							error: lookupError,
+						});
+					}
+
+					const matchesExpected =
+						persisted &&
+						expectedWorkflow &&
+						isEqual(normalize(persisted.nodes), normalize(expectedWorkflow.nodes)) &&
+						isEqual(normalize(persisted.connections), normalize(expectedWorkflow.connections)) &&
+						(expectedWorkflow.nodeGroups === undefined ||
+							isEqual(normalize(persisted.nodeGroups), normalize(expectedWorkflow.nodeGroups)));
+					const contentChanged =
+						!isEqual(normalize(existingWorkflow.nodes), normalize(expectedWorkflow?.nodes)) ||
+						!isEqual(
+							normalize(existingWorkflow.connections),
+							normalize(expectedWorkflow?.connections),
+						) ||
+						(expectedWorkflow?.nodeGroups !== undefined &&
+							!isEqual(
+								normalize(existingWorkflow.nodeGroups),
+								normalize(expectedWorkflow.nodeGroups),
+							));
+
+					const existingUpdatedAt = existingWorkflow.updatedAt
+						? new Date(existingWorkflow.updatedAt).getTime()
+						: undefined;
+					const persistedUpdatedAt = persisted?.updatedAt
+						? new Date(persisted.updatedAt).getTime()
+						: undefined;
+					const hasNewerTimestamp =
+						existingUpdatedAt !== undefined &&
+						persistedUpdatedAt !== undefined &&
+						persistedUpdatedAt > existingUpdatedAt;
+					const hasPersistedExpectedSettings =
+						expectedSettings !== undefined &&
+						persisted &&
+						isEqual(normalize(persisted.settings), normalize(expectedSettings)) &&
+						!isEqual(normalize(existingWorkflow.settings), normalize(expectedSettings));
+					const wasTouched = Boolean(hasNewerTimestamp || hasPersistedExpectedSettings);
+					const tagsMatchExpected =
+						!hasTagOperations || haveSameTagNames(persisted?.tags, expectedTagNames);
+
+					const recovered =
+						tagsMatchExpected &&
+						(hasGraphOps
+							? Boolean(matchesExpected) && (contentChanged || hasNewerTimestamp)
+							: wasTouched);
+					if (persisted && recovered) {
+						const baseUrl = urlService.getInstanceBaseUrl();
+						const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+						try {
+							telemetryPayload.results = {
+								success: true,
+								data: {
+									workflowId: persisted.id,
+									nodeCount: persisted.nodes.length,
+									postSaveError: errorMessage,
+								},
+							};
+							telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+						} catch (telemetryError) {
+							logger.error('Post-save telemetry failed for update_workflow (recovery path)', {
+								workflowId: persisted.id,
+								error: telemetryError,
+							});
+							postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
+						}
+
+						const output: UpdateWorkflowOutput = {
+							workflowId: persisted.id,
+							name: persisted.name,
+							nodeCount: persisted.nodes.length,
+							url: workflowUrl,
+							note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
+						};
+
+						postSaveMetrics.incrementPostSaveFailure('update', error);
+
+						return {
+							content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+							structuredContent: output,
+						};
+					}
+				}
+
+				try {
+					telemetryPayload.results = {
+						success: false,
+						error: errorMessage,
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				} catch (telemetryError) {
+					logger.error('Telemetry failed for update_workflow (error path)', {
+						error: telemetryError,
+					});
+				}
+
+				const output: UpdateWorkflowOutput = {
 					error: errorMessage,
+					errorCode,
 				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-				const output = { error: errorMessage };
 
 				return {
 					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type {
 	ContentImportContext,
+	CredentialDecryptContext,
 	PolicedWorkflow,
 	PolicyCheckResult,
 	PolicyViolation,
@@ -100,25 +101,50 @@ export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 	 * never vetted, so an import is judged on its whole content. `transport` is not read: an
 	 * unattended sync and a hand-run import are held to the same policy, and each host already
 	 * picks its own fail posture.
+	 *
+	 * A credential import has no node types to check — this point has nothing to say about it.
 	 */
-	async onContentImport({ workflow, projectId }: ContentImportContext): Promise<PolicyCheckResult> {
-		return await this.check(workflow, projectId, NOTHING_GRANDFATHERED);
+	async onContentImport(context: ContentImportContext): Promise<PolicyCheckResult> {
+		if (!('workflow' in context)) return NO_VIOLATIONS;
+
+		return await this.check(context.workflow, context.projectId, NOTHING_GRANDFATHERED);
+	}
+
+	/**
+	 * Locks on the node asking, never on the credential's type: the same credential is refused
+	 * to a blocked Slack node and handed to an allowed HTTP Request. This catches what a run
+	 * cannot — a dropdown loading its options, a node inside an inline workflow definition.
+	 */
+	async onCredentialDecrypt({
+		consumer,
+		projectId,
+	}: CredentialDecryptContext): Promise<PolicyCheckResult> {
+		// No node is asking — an OAuth flow, a credential test — so there is no consumer to
+		// police. Deriving a verdict from the credential's type instead is what the RFC rejects.
+		if (consumer === null) return NO_VIOLATIONS;
+
+		return await this.checkTypes([consumer.nodeType], projectId);
+	}
+
+	private async check(
+		workflow: PolicedWorkflow,
+		projectId: string | null,
+		grandfathered: ReadonlySet<string>,
+	): Promise<PolicyCheckResult> {
+		const types = distinctTypes(workflow.nodes).filter((type) => !grandfathered.has(type));
+
+		return await this.checkTypes(types, projectId);
 	}
 
 	/**
 	 * No `signal` is threaded: nothing below accepts one (TypeORM does not), and the deadline
 	 * race in the decision service already turns an overrun into a check failure.
 	 */
-	private async check(
-		workflow: PolicedWorkflow,
-		projectId: string | null,
-		grandfathered: ReadonlySet<string>,
-	): Promise<PolicyCheckResult> {
+	private async checkTypes(types: string[], projectId: string | null): Promise<PolicyCheckResult> {
 		// An expired license stops enforcing, matching the `@Licensed` routes that author the
 		// policy: a customer who cannot edit the policy must not keep being blocked by it.
-		if (!this.licenseState.isLicensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)) return NO_VIOLATIONS;
-
-		const types = distinctTypes(workflow.nodes).filter((type) => !grandfathered.has(type));
+		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES))
+			return NO_VIOLATIONS;
 
 		if (types.length === 0) return NO_VIOLATIONS;
 

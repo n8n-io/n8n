@@ -566,4 +566,61 @@ describe('ExpressionOutput.vue', () => {
 			expect(output).toBeInTheDocument();
 		});
 	});
+
+	describe('redacted preview', () => {
+		const redactedSegments: Segment[] = [
+			{
+				kind: 'resolvable',
+				from: 0,
+				to: 16,
+				resolvable: '{{ $json.code }}',
+				resolved: 'Reveal data first to see value',
+				state: 'redacted',
+				error: null,
+			},
+		];
+
+		it('renders the redaction hint styled as redacted', async () => {
+			const { container } = renderComponent(ExpressionOutput, {
+				pinia: createTestingPinia(),
+				props: {
+					segments: redactedSegments,
+					render: 'text',
+				},
+			});
+
+			const output = container.querySelector('[data-test-id="expression-output"]');
+			expect(output?.textContent).toBe('Reveal data first to see value');
+
+			await waitFor(() => {
+				expect(container.querySelector('.cm-redacted-resolvable')).toBeInTheDocument();
+			});
+		});
+
+		it('replaces a mixed expression fully with the redaction hint', () => {
+			const mixedSegments: Segment[] = [
+				{ kind: 'plaintext', from: 0, to: 6, plaintext: 'Hello ' },
+				{
+					kind: 'resolvable',
+					from: 6,
+					to: 22,
+					resolvable: '{{ $json.code }}',
+					resolved: 'Reveal data first to see value',
+					state: 'redacted',
+					error: null,
+				},
+			];
+
+			const { container } = renderComponent(ExpressionOutput, {
+				pinia: createTestingPinia(),
+				props: {
+					segments: mixedSegments,
+					render: 'text',
+				},
+			});
+
+			const output = container.querySelector('[data-test-id="expression-output"]');
+			expect(output?.textContent).toBe('Reveal data first to see value');
+		});
+	});
 });

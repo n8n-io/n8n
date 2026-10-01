@@ -19,9 +19,9 @@ import {
 	hasGlobalScope,
 } from '@n8n/permissions';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { resolveDecisionCapability } from './workflow-review-decision-policy';

@@ -10,6 +10,7 @@ import { OtelModule } from '@n8n/frontend-module-otel';
 import { InsightsModule } from '@n8n/frontend-module-insights/insights.module';
 import { PromotionsModule } from '@/features/integrations/promotions.ee/module.descriptor';
 import { ContextModule } from '@/features/settings/context/module.descriptor';
+import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';
 
 /**
  * The static list is the design, not a placeholder (design §9). n8n self-hosted
@@ -39,4 +40,5 @@ export const modules: FrontendModuleDescription[] = [
 	InsightsModule,
 	PromotionsModule,
 	ContextModule,
+	TypeAvailabilityPoliciesModule,
 ];
