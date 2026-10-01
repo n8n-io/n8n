@@ -1,0 +1,21 @@
+packages/modules/mcp/frontend/package.json
+  s_b89df8726e6157::t_813cc70276328d 39,41,59,61
+pnpm-lock.yaml
+  s_b89df8726e6157::t_1693ee933fed4a 7159,7169-7171,7175-7177,7196,7224-7226,7230-7232,7250,7253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4a40ca3cc900d0dc79abe3984f1fe0e2229580c0",
+  "prompts": {},
+  "sessions": {
+    "s_b89df8726e6157": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f99148-8762-454d-ae91-17c35bca1663",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

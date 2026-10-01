@@ -1,0 +1,32 @@
+scripts/lint-parity/config-blocks.mjs
+  s_4d4515bb8fac55::t_6fdd859cdd514d 10-11
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_6fdd859cdd514d 8-9
+packages/testing/code-health/src/rules/encryption-boundary.rule.ts
+  s_4d4515bb8fac55::t_9d589c6ca9aa16 24-25,32-33,38,92,138-139,153-154,167-168,226,257
+packages/testing/code-health/src/rules/encryption-boundary.rule.test.ts
+  s_4d4515bb8fac55::t_71f4fcd59e9c61 27-38,64,70,92-115,133,140
+scripts/lint-parity/majority.mjs
+  s_4d4515bb8fac55::t_6fdd859cdd514d 14,52-53,57-62,112-115
+  s_4d4515bb8fac55::t_6eefe004ebf743 116
+packages/@n8n/oxlint-config/package.json
+  s_4d4515bb8fac55::t_6fdd859cdd514d 36-37
+turbo.json
+  s_4d4515bb8fac55::t_53d094d06ed2bc 134-139,158-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c98b7b6a00b838f85dbe1919f85e406364a6d1a",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
