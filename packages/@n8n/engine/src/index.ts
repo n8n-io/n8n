@@ -15,7 +15,12 @@ export {
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
-export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
+export type {
+	CancelExecutionResponse,
+	EngineErrorResponse,
+	ExecutionSnapshot,
+	StepDetail,
+} from './server';
 export type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
@@ -43,6 +48,7 @@ export {
 	responseExpectationSchema,
 } from './response-channel';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
 	ExecutionResponseSender,
@@ -68,6 +74,8 @@ export type {
 } from './graph';
 
 export type {
+	ExecutionFilesDeleter,
+	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
 	StepExecutionContext,

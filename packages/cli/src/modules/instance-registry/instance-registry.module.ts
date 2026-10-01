@@ -34,14 +34,19 @@ export class InstanceRegistryModule implements ModuleInterface {
 			'./checks/instance-registry-reconciliation.task.js'
 		);
 
-		// The in-memory storage never holds a stale member.
+		// The in-memory storage never holds a stale member and never expires an entry.
 		const { InstanceRegistryService } = await import('./instance-registry.service.js');
 		if (Container.get(InstanceRegistryService).storageBackend !== 'redis') {
 			return [InstanceRegistryReconciliationTask];
 		}
 
+		const { InstanceRegistryHeartbeatTask } = await import('./instance-registry-heartbeat.task.js');
 		const { StaleMemberCleanupTask } = await import('./stale-member-cleanup.task.js');
-		return [StaleMemberCleanupTask, InstanceRegistryReconciliationTask];
+		return [
+			InstanceRegistryHeartbeatTask,
+			StaleMemberCleanupTask,
+			InstanceRegistryReconciliationTask,
+		];
 	}
 
 	@OnShutdown()

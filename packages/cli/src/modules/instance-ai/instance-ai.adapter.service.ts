@@ -26,7 +26,7 @@ import {
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { EventService } from '@n8n/backend-services';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -192,7 +192,7 @@ import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
@@ -1670,11 +1670,14 @@ export class InstanceAiAdapterService {
 
 				// The shell has no nodes, so the real content check is the `update()` below.
 				// This call is still needed: `createContent` refuses to write without a clearance.
-				const cleared = await policyEnforcementService.enforceWorkflowSave({
-					workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-					storedWorkflow: null,
-					projectId,
-				});
+				const cleared = await policyEnforcementService.enforceWorkflowSave(
+					{
+						workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+						storedWorkflow: null,
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
 
 				const saved = await workflowRepository.runInTransaction(
 					{ policyCleared: cleared },

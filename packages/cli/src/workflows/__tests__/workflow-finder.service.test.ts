@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
 import type {
 	FolderRepository,
+	RoleRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
 
@@ -22,16 +24,43 @@ function makeService(rows?: FolderRow[]) {
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const roleService = mock<RoleService>();
+	const roleRepository = mock<RoleRepository>();
 	const service = new WorkflowFinderService(
 		sharedWorkflowRepository,
 		folderRepository,
 		roleService,
 		workflowRepository,
+		roleRepository,
 	);
-	return { service, sharedWorkflowRepository, workflowRepository, folderRepository, roleService };
+	return {
+		service,
+		sharedWorkflowRepository,
+		workflowRepository,
+		folderRepository,
+		roleService,
+		roleRepository,
+	};
 }
 
 describe('WorkflowFinderService', () => {
+	it('loads roles through the supplied transaction manager', async () => {
+		const { service, roleService, roleRepository } = makeService();
+		const em = mock<EntityManager>();
+		roleService.rolesWithScope.mockResolvedValue([]);
+		roleRepository.findAll.mockResolvedValue([]);
+
+		await service.findWorkflowForUser(
+			'workflow-1',
+			{ id: 'user-1', role: { slug: 'global:member', scopes: [] } } as never,
+			['workflow:read'],
+			{ em },
+		);
+
+		const loadRoles = roleService.rolesWithScope.mock.calls[0][2];
+		await loadRoles?.();
+		expect(roleRepository.findAll).toHaveBeenCalledWith(em);
+	});
+
 	describe('findWorkflowIdsByFolder', () => {
 		it('returns an empty map without querying when no folder ids are given', async () => {
 			const { service, sharedWorkflowRepository } = makeService();

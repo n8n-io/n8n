@@ -383,7 +383,7 @@ describe('AgentConfigService', () => {
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
-					description: 'Legacy description',
+					description: 'Stored description',
 					credential: 'stored-cred',
 					memory: { enabled: true, storage: 'n8n' },
 					tools: [{ type: 'custom', id: 'tool-1' }],
@@ -404,12 +404,12 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
 					instructions: 'Updated instructions',
+					description: 'Stored description',
 					credential: 'stored-cred',
 					memory: { enabled: true, storage: 'n8n' },
 					tools: [{ type: 'custom', id: 'tool-1' }],
 				}),
 			);
-			expect(saved.schema).not.toHaveProperty('description');
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'slack-cred' }]);
 
 			await service.updateConfig(
@@ -445,6 +445,25 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0];
 			expect(saved?.integrations).toEqual(agent.integrations);
 			expect(composeJsonConfig(agent)?.integrations).toEqual(agent.integrations);
+		});
+
+		it('persists a trimmed description, retains it when omitted, and clears it when empty', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const save = async (config: AgentJsonConfig) => {
+				await service.updateConfig(agentId, projectId, config, user, fencedOn(agent));
+				return agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			};
+
+			let saved = await save({ ...baseConfig, description: '  Answers support tickets  ' });
+			expect(saved.schema?.description).toBe('Answers support tickets');
+
+			saved = await save({ ...baseConfig });
+			expect(saved.schema?.description).toBe('Answers support tickets');
+
+			saved = await save({ ...baseConfig, description: '' });
+			expect(saved.schema).not.toHaveProperty('description');
 		});
 
 		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {

@@ -253,7 +253,7 @@ export class AgentWorkflowToolResumeService {
 		// The draft version gates node and workflow tools by the user's access, so
 		// without the user those tools drop and the pending tool call fails to resume.
 		const user = agentRun.userId
-			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			? await this.userRepository.findByIdWithRole(agentRun.userId)
 			: null;
 		if (!user) {
 			this.logger.warn('Cannot resume preview chat run without its user', {

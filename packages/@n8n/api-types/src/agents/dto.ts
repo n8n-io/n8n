@@ -55,6 +55,7 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		availableInMCP: z.boolean().optional(),
+		availableInChat: z.boolean().optional(),
 	})
 	.strict();
 
@@ -270,6 +271,10 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+export class AgentChatQueueSteerDto extends Z.class({
+	executionId: z.string().min(1).max(36),
 }) {}
 
 export class AgentChatResumeDto extends Z.class({

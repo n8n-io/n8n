@@ -27,7 +27,11 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	ChatHubToolContextKey,
+	EditorEnabledFeaturesKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -1718,6 +1722,53 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('credential auto-select', () => {
+		// ADO-5791: Preview canvases open the NDV in read-only mode.
+		it.each([
+			{ source: 'the readonly prop', readonly: true, editorReadOnly: false },
+			{ source: 'the editor context', readonly: false, editorReadOnly: true },
+		])(
+			'does not assign a credential on a read-only canvas set by $source',
+			({ readonly, editorReadOnly }) => {
+				const nodeWithoutCredentials: INodeUi = { ...openAiNodeNoCreds, credentials: {} };
+				mockedStore(useNodeTypesStore).setNodeTypes([
+					{
+						name: nodeWithoutCredentials.type,
+						displayName: 'OpenAI',
+						version: nodeWithoutCredentials.typeVersion,
+						group: ['transform'],
+						description: '',
+						defaults: { name: 'OpenAI' },
+						inputs: [NodeConnectionTypes.Main],
+						outputs: [NodeConnectionTypes.Main],
+						credentials: [{ name: 'openAiApi', required: true }],
+						properties: [],
+					},
+				]);
+				ndvStore.activeNode = nodeWithoutCredentials;
+				credentialsStore.state.credentials = {
+					c8vqdPpPClh4TgIO: createCredential(),
+				};
+
+				const { emitted } = renderComponent({
+					props: {
+						node: nodeWithoutCredentials,
+						overrideCredType: '',
+						readonly,
+						showAll: true,
+						hideIssues: false,
+					},
+					global: {
+						provide: {
+							[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+							[EditorEnabledFeaturesKey as symbol]: ref({ readOnly: editorReadOnly }),
+						},
+					},
+				});
+
+				expect(emitted('credentialSelected')).toBeFalsy();
+			},
+		);
+
 		it('should auto-select a credential of the overridden type on mount', () => {
 			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
 			ndvStore.activeNode = httpNodeNoCreds;

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
@@ -13,6 +14,11 @@ const mockCopy = vi.fn();
 const mockShowMessage = vi.fn();
 const mockSearchWorkflows = vi.hoisted(() => vi.fn());
 const mockFetchDataTablesApi = vi.hoisted(() => vi.fn());
+const mockListAgentsPage = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPage: mockListAgentsPage,
+}));
 
 vi.mock('@/features/core/dataTable/dataTable.api', () => ({
 	fetchDataTablesApi: mockFetchDataTablesApi,
@@ -70,8 +76,9 @@ const Wrapper = defineComponent({
 		isExpanded: { type: Boolean, default: false },
 		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
+		projectId: { type: String, default: undefined },
 	},
-	emits: ['togglePreview', 'toggleExpanded'],
+	emits: ['togglePreview', 'toggleExpanded', 'closeTab', 'openTab'],
 	setup(props, { emit }) {
 		return () =>
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
@@ -81,7 +88,10 @@ const Wrapper = defineComponent({
 					isExpanded: props.isExpanded,
 					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
+					projectId: props.projectId,
 					onTogglePreview: () => emit('togglePreview'),
+					onCloseTab: (tabId: string) => emit('closeTab', tabId),
+					onOpenTab: (tab: ArtifactTab) => emit('openTab', tab),
 					onToggleExpanded: () => emit('toggleExpanded'),
 				}),
 			);
@@ -118,6 +128,8 @@ describe('InstanceAiPreviewTabBar', () => {
 		mockSearchWorkflows.mockResolvedValue([]);
 		mockFetchDataTablesApi.mockReset();
 		mockFetchDataTablesApi.mockResolvedValue({ count: 0, data: [] });
+		mockListAgentsPage.mockReset();
+		mockListAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
@@ -186,6 +198,97 @@ describe('InstanceAiPreviewTabBar', () => {
 		await fireEvent.click(expandButton!);
 
 		expect(emitted().toggleExpanded).toBeTruthy();
+	});
+
+	describe('closing tabs', () => {
+		it('emits closeTab when the close button of a tab is clicked', async () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			});
+
+			const item = container.querySelector('[data-tab-item-id="dt-1"]');
+			const closeButton = item?.querySelector<HTMLElement>(
+				'[data-test-id="instance-ai-tab-close"]',
+			);
+			expect(closeButton).toHaveAttribute('aria-label', 'Close My Table');
+			await fireEvent.click(closeButton!);
+
+			expect(emitted().closeTab).toEqual([['dt-1']]);
+		});
+
+		it('emits closeTab when a tab is clicked with the middle mouse button', async () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			});
+
+			const item = container.querySelector<HTMLElement>('[data-tab-item-id="wf-1"]');
+			await fireEvent(item!, new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+
+			expect(emitted().closeTab).toEqual([['wf-1']]);
+		});
+
+		it('emits closeTab when Delete is pressed on a focused tab', async () => {
+			const { container, emitted } = renderComponent({
+				props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+			});
+
+			const trigger = container.querySelector<HTMLElement>('[data-tab-id="wf-1"]');
+			await fireEvent.keyDown(trigger!, { key: 'Delete' });
+
+			expect(emitted().closeTab).toEqual([['wf-1']]);
+		});
+	});
+
+	describe('new tab picker', () => {
+		it('hides the new tab button when the thread has no project', () => {
+			const { queryByTestId } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			expect(queryByTestId('instance-ai-new-tab-button')).toBeNull();
+		});
+
+		it('lists the resources of the project that are not open, and opens the picked one', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{ id: 'wf-1', name: 'My Workflow', updatedAt: '2026-09-24T10:00:00.000Z' },
+				{ id: 'wf-2', name: 'Other Workflow', updatedAt: '2026-09-23T10:00:00.000Z' },
+			]);
+			mockListAgentsPage.mockResolvedValue({
+				count: 1,
+				data: [{ id: 'agent-9', name: 'Picked Agent', updatedAt: '2026-09-22T10:00:00.000Z' }],
+			});
+			const { getByTestId, emitted } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1', projectId: 'proj-1' },
+			});
+
+			await userEvent.click(getByTestId('instance-ai-new-tab-button'));
+
+			let items: HTMLElement[] = [];
+			await waitFor(() => {
+				items = [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+				expect(items.map((item) => item.textContent?.trim())).toEqual([
+					'Other Workflow',
+					'Picked Agent',
+				]);
+			});
+			expect(mockSearchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'proj-1' }),
+			);
+
+			await userEvent.click(items[1]);
+
+			expect(emitted().openTab).toEqual([
+				[
+					{
+						type: 'agent',
+						id: 'agent-9',
+						name: 'Picked Agent',
+						icon: 'robot',
+						projectId: 'proj-1',
+					},
+				],
+			]);
+		});
 	});
 
 	it('emits togglePreview when the preview toggle is clicked', async () => {
@@ -295,14 +398,15 @@ describe('InstanceAiPreviewTabBar', () => {
 			);
 		}
 
-		function getTabTrigger(container: Element, tabId: string) {
-			const trigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
-			expect(trigger).not.toBeNull();
-			return trigger!;
+		// The hover handlers sit on the tab item that wraps the trigger and the close button.
+		function getTabItem(container: Element, tabId: string) {
+			const item = container.querySelector<HTMLElement>(`[data-tab-item-id="${tabId}"]`);
+			expect(item).not.toBeNull();
+			return item!;
 		}
 
 		async function hoverTab(container: Element, tabId: string) {
-			await fireEvent.mouseEnter(getTabTrigger(container, tabId));
+			await fireEvent.mouseEnter(getTabItem(container, tabId));
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
 		}
 
@@ -319,7 +423,7 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
-			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseEnter(getTabItem(container, 'wf-1'));
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW - 1);
 			expect(getHoverCard()).toBeNull();
 
@@ -332,12 +436,55 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
-			const trigger = getTabTrigger(container, 'wf-1');
+			const trigger = getTabItem(container, 'wf-1');
 			await fireEvent.mouseEnter(trigger);
 			await fireEvent.mouseLeave(trigger);
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
 
 			expect(getHoverCard()).toBeNull();
+		});
+
+		it('shows a new tab name at once when the tab is renamed during the session', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'My Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+				},
+			]);
+			const { container, rerender } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalled());
+
+			await rerender({ tabs: [{ ...workflowTab, name: 'Renamed Workflow' }], activeTabId: 'wf-1' });
+			// The refresh after the rename still returns the old name from the server.
+			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalledTimes(2));
+
+			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
+		});
+
+		it('shows the current name from the tab details instead of a stale tab name', async () => {
+			mockSearchWorkflows.mockResolvedValue([
+				{
+					id: 'wf-1',
+					name: 'Renamed Workflow',
+					updatedAt: new Date().toISOString(),
+					activeVersionId: null,
+				},
+			]);
+			const { container } = renderComponent({
+				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
+			});
+
+			await vi.waitFor(() => {
+				expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent(
+					'Renamed Workflow',
+				);
+			});
+			await hoverTab(container, 'wf-1');
+			expect(getHoverCard()).toHaveTextContent('Renamed Workflow');
 		});
 
 		it('shows the edited time and published status of a workflow', async () => {
@@ -479,8 +626,8 @@ describe('InstanceAiPreviewTabBar', () => {
 			});
 
 			await hoverTab(container, 'wf-1');
-			await fireEvent.mouseLeave(getTabTrigger(container, 'wf-1'));
-			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-2'));
+			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
+			await fireEvent.mouseEnter(getTabItem(container, 'wf-2'));
 
 			expect(getHoverCard()).toHaveTextContent('Second Workflow');
 		});
@@ -512,7 +659,7 @@ describe('InstanceAiPreviewTabBar', () => {
 				props: { tabs: [workflowTab, workflowTab2], activeTabId: 'wf-2' },
 			});
 
-			await fireEvent.mouseEnter(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseEnter(getTabItem(container, 'wf-1'));
 			await rerender({ tabs: [workflowTab2], activeTabId: 'wf-2' });
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.SHOW);
 
@@ -525,28 +672,21 @@ describe('InstanceAiPreviewTabBar', () => {
 			});
 
 			await hoverTab(container, 'wf-1');
-			await fireEvent.mouseLeave(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE);
 
 			expect(getHoverCard()).toBeNull();
 		});
 
-		it('stays open while the pointer is on the card and closes after it leaves', async () => {
+		it('closes after the pointer leaves the tab, even when it moves onto the card', async () => {
 			const { container } = renderComponent({
 				props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 			});
 
 			await hoverTab(container, 'wf-1');
 			const cardContent = getHoverCard()!.parentElement!;
-			await fireEvent.mouseLeave(getTabTrigger(container, 'wf-1'));
+			await fireEvent.mouseLeave(getTabItem(container, 'wf-1'));
 			await fireEvent.pointerEnter(cardContent, { pointerType: 'mouse' });
-			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE * 2);
-
-			expect(getHoverCard()).not.toBeNull();
-
-			await fireEvent.pointerLeave(cardContent, { pointerType: 'mouse' });
-			// The card closes once the pointer moves out of its grace area.
-			await fireEvent.pointerMove(document.body, { clientX: 500, clientY: 500 });
 			await vi.advanceTimersByTimeAsync(HOVER_DELAY.LEAVE);
 
 			expect(getHoverCard()).toBeNull();
