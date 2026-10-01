@@ -1,5 +1,6 @@
 import type {
 	AgentIntegrationDisconnectWarning,
+	AgentJsonConfig,
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
@@ -59,6 +60,8 @@ export interface AgentChannelViewProps {
 	agentName: string;
 	projectId: string;
 	agentId: string;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
+	ensureAgentPersisted?: () => Promise<void>;
 	forceNewCredential: boolean;
 	simpleSetup: boolean;
 	runtime: AgentChannelRuntime;

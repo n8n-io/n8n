@@ -174,6 +174,7 @@ const i18n = useI18n();
 							:agent-unsaved="agentUnsaved"
 							:ensure-agent-persisted="ensureAgentPersisted"
 							:task-refs="localConfig?.tasks ?? []"
+							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
