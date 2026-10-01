@@ -532,6 +532,8 @@ configuration row.
 
 ## SDK Patterns Reference
 
+{{SDK_FUNCTIONS_PLACEHOLDER}}
+
 Define nodes first, then compose the workflow:
 
 ```ts

@@ -440,6 +440,8 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Never fake a value');
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('## Early service connections');
+		expect(loaded?.instructions).toContain('`@n8n/workflow-sdk` exports only these functions');
+		expect(loaded?.instructions).not.toContain('SDK_FUNCTIONS_PLACEHOLDER');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain(
