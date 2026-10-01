@@ -142,7 +142,10 @@ describe('createStubServices nodeService.getNodeTypeDefinition', () => {
 });
 
 describe('createStubServices executionService.armTestListener', () => {
-	it('reports every method of a Webhook that accepts several', async () => {
+	async function armWebhook(
+		webhookId: string | undefined,
+		parameters: { path: string; httpMethod?: string | string[]; multipleMethods?: boolean },
+	) {
 		const file = await writeNodesJson([
 			{
 				name: 'n8n-nodes-base.webhook',
@@ -166,17 +169,49 @@ describe('createStubServices executionService.armTestListener', () => {
 					type: 'n8n-nodes-base.webhook',
 					typeVersion: 2.1,
 					position: [0, 0],
-					parameters: { path: 'intake', multipleMethods: true, httpMethod: ['GET', 'POST'] },
+					webhookId,
+					parameters,
 				},
 			],
 			connections: {},
 		});
+		return await context.executionService.armTestListener!('wf-1');
+	}
 
-		const armed = await context.executionService.armTestListener!('wf-1');
+	it('reports every method of a Webhook that accepts several', async () => {
+		const armed = await armWebhook('hook-1', {
+			path: 'intake',
+			multipleMethods: true,
+			httpMethod: ['GET', 'POST'],
+		});
 
 		expect(armed.triggers).toEqual([
 			{ nodeName: 'Webhook', method: 'GET', url: 'http://localhost:5678/webhook-test/intake' },
 			{ nodeName: 'Webhook', method: 'POST', url: 'http://localhost:5678/webhook-test/intake' },
+		]);
+	});
+
+	it('prefixes a dynamic path with the webhookId, as the host registers it', async () => {
+		const armed = await armWebhook('hook-1', { path: 'orders/:id', httpMethod: 'POST' });
+
+		expect(armed.triggers).toEqual([
+			{
+				nodeName: 'Webhook',
+				method: 'POST',
+				url: 'http://localhost:5678/webhook-test/hook-1/orders/:id',
+			},
+		]);
+	});
+
+	it('scopes a node without webhookId under the workflow ID and node name', async () => {
+		const armed = await armWebhook(undefined, { path: 'intake' });
+
+		expect(armed.triggers).toEqual([
+			{
+				nodeName: 'Webhook',
+				method: 'GET',
+				url: 'http://localhost:5678/webhook-test/wf-1/webhook/intake',
+			},
 		]);
 	});
 });

@@ -12,6 +12,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import type { ToolSuspendOptions } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -263,15 +264,31 @@ const suspendSchema = z.object({
 });
 
 type SuspendPayload = z.infer<typeof suspendSchema>;
-type Suspend = (payload: SuspendPayload) => Promise<never>;
+type Suspend = (payload: SuspendPayload, options?: ToolSuspendOptions) => Promise<never>;
 
-/** Listeners this tool instance armed, keyed by the workflow ID the agent passed. */
-type ArmedListeners = Map<string, { armedAt: string; card: SuspendPayload; earlyAnswers?: number }>;
+/**
+ * Private state of a suspended `listen` call. It travels as the suspension's continuation,
+ * which the runtime checkpoints with the card, so the wait resumes on any main process from
+ * durable state (checkpoint, cache-backed registration, executions), never from memory.
+ */
+const listenerContinuationSchema = z.object({
+	workflowId: z.string(),
+	armedAt: z.string(),
+	earlyAnswers: z.number().int().nonnegative(),
+});
 /** Premature "I sent the request" answers tolerated before the tool hands the turn back. */
 const MAX_EARLY_LISTENER_ANSWERS = 2;
 
 /** Includes `scope` for "always allow" session grants (see handler). */
 const resumeSchema = instanceAiApprovalResumeSchema;
+
+/** The slice of the handler context `listen` reads; card and continuation come from the checkpoint. */
+type ListenCtx = {
+	resumeData: z.infer<typeof resumeSchema> | undefined;
+	suspend: Suspend;
+	suspendPayload?: SuspendPayload;
+	continuation?: unknown;
+};
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -593,9 +610,7 @@ async function handleRunStep(
 async function handleListen(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'listen' }>,
-	resumeData: z.infer<typeof resumeSchema> | undefined,
-	suspend: Suspend,
-	listeners: ArmedListeners,
+	{ resumeData, suspend, suspendPayload, continuation }: ListenCtx,
 ) {
 	const { executionService } = context;
 	if (!executionService.armTestListener || !executionService.resolveTestListener) {
@@ -606,39 +621,46 @@ async function handleListen(
 		};
 	}
 
-	// Phase 2: the listener card was answered.
-	const armed = listeners.get(input.workflowId);
-	if (armed && resumeData) {
+	// Phase 2: the listener card was answered. The arm time comes from the checkpointed
+	// continuation, so a different main process than the one that armed can finish the wait.
+	const armed = listenerContinuationSchema.safeParse(continuation);
+	if (armed.success && resumeData) {
+		const { workflowId, armedAt, earlyAnswers } = armed.data;
+		const deadlineAt = suspendPayload?.testListener?.deadlineAt ?? 'the deadline';
 		const executionId =
 			typeof resumeData.userInput === 'string' && resumeData.userInput.length > 0
 				? resumeData.userInput
 				: undefined;
-		const outcome = await executionService.resolveTestListener(
-			armed.card.testListener?.workflowId ?? input.workflowId,
-			{
-				armedAt: armed.armedAt,
-				executionId,
-				cancel: !resumeData.approved,
-			},
-		);
+		const outcome = await executionService.resolveTestListener(workflowId, {
+			armedAt,
+			executionId,
+			cancel: !resumeData.approved,
+		});
 		if (outcome.state === 'armed') {
 			// "I sent the request" before anything arrived: keep waiting on a fresh card, but not
 			// forever — a client that answers every card at once would otherwise loop here.
-			armed.earlyAnswers = (armed.earlyAnswers ?? 0) + 1;
-			if (armed.earlyAnswers <= MAX_EARLY_LISTENER_ANSWERS) {
-				armed.card = { ...armed.card, requestId: nanoid() };
-				return await suspend(armed.card);
+			if (suspendPayload && earlyAnswers < MAX_EARLY_LISTENER_ANSWERS) {
+				return await suspend(
+					{ ...suspendPayload, requestId: nanoid() },
+					{ continuation: { workflowId, armedAt, earlyAnswers: earlyAnswers + 1 } },
+				);
 			}
-			listeners.delete(input.workflowId);
 			return {
 				state: 'armed' as const,
 				listenerCleared: false,
-				reason: `No request has reached the test URL yet. The listener stays armed until ${armed.card.testListener?.deadlineAt ?? 'the deadline'}; call action="listen" again to keep waiting.`,
+				reason: `No request has reached the test URL yet. The listener stays armed until ${deadlineAt}. Call action="listen" again to re-arm the same test URL with a fresh deadline.`,
 			};
 		}
-		listeners.delete(input.workflowId);
 		if (outcome.state === 'received') {
-			return { state: 'received' as const, ...outcome.result };
+			// A request that reached the test URL is live evidence, the same as a `run`.
+			const verificationClaim = await recordLiveRunVerification({
+				context,
+				workflowId,
+				triggerNodeName: input.triggerNodeName,
+				result: outcome.result,
+			});
+			const received = { state: 'received' as const, ...outcome.result };
+			return verificationClaim ? { ...received, verificationClaim } : received;
 		}
 		return {
 			state: outcome.state,
@@ -646,7 +668,7 @@ async function handleListen(
 			reason:
 				outcome.state === 'cancelled'
 					? 'The user cancelled the test listener.'
-					: `No request reached the test URL before ${armed.card.testListener?.deadlineAt ?? 'the deadline'}. Call action="listen" again to re-arm.`,
+					: `No request reached the test URL before ${deadlineAt}. Call action="listen" again to re-arm.`,
 		};
 	}
 
@@ -679,8 +701,9 @@ async function handleListen(
 			deadlineAt: listener.deadlineAt,
 		},
 	};
-	listeners.set(input.workflowId, { armedAt: listener.armedAt, card });
-	return await suspend(card);
+	return await suspend(card, {
+		continuation: { workflowId: gate.workflowId, armedAt: listener.armedAt, earlyAnswers: 0 },
+	});
 }
 
 async function handleDebug(context: InstanceAiContext, input: Extract<Input, { action: 'debug' }>) {
@@ -718,7 +741,6 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createExecutionsTool(context: InstanceAiContext) {
-	const listeners: ArmedListeners = new Map();
 	return new Tool('executions')
 		.description(
 			'Manage workflow executions — list, inspect, run, run one node, listen, debug, ' +
@@ -751,7 +773,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'listen':
-					return await handleListen(context, input, ctx.resumeData, ctx.suspend, listeners);
+					return await handleListen(context, input, ctx);
 				case 'run-step': {
 					return await handleRunStep(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
