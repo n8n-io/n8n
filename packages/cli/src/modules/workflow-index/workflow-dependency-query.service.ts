@@ -5,6 +5,7 @@ import type {
 	ResolvedDependency,
 } from '@n8n/api-types';
 import {
+	chunkIds,
 	CredentialsRepository,
 	ProjectRelationRepository,
 	WorkflowDependencyRepository,
@@ -265,6 +266,36 @@ export class WorkflowDependencyQueryService {
 			},
 			{ existingAgentIds, existingWfIds, existingCredIds, existingDtIds },
 		);
+	}
+
+	/**
+	 * Resolved dependencies for every workflow in a folder, deduplicated. The folder filter is
+	 * recursive, so a subfolder's workflows count as the folder's own.
+	 */
+	async getFolderDependencies(
+		projectId: string,
+		folderId: string,
+		user: User,
+	): Promise<ResolvedDependency[]> {
+		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(
+			user,
+			['workflow:read'],
+			folderId,
+			projectId,
+		);
+
+		const dependencies = new Map<string, ResolvedDependency>();
+		// A folder hierarchy has no size limit, so keep each query under the driver's bind ceiling.
+		for (const chunk of chunkIds(workflowIds)) {
+			const byWorkflow = await this.getResourceDependencies(chunk, 'workflow', user);
+			for (const result of Object.values(byWorkflow)) {
+				for (const dependency of result.dependencies) {
+					dependencies.set(`${dependency.type}:${dependency.id}`, dependency);
+				}
+			}
+		}
+
+		return [...dependencies.values()];
 	}
 
 	private async loadDepsForResources(
