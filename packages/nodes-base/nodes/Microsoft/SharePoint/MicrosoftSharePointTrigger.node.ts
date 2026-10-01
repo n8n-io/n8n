@@ -8,10 +8,16 @@ import {
 } from 'n8n-workflow';
 
 import { DRIVE_ID_HINT, DRIVE_ID_REGEX, getDrives, resolveDriveId } from './drive';
+import { getLists, resolveListId } from './list';
 import { getSites, resolveSiteId, SITE_ID_REGEX } from './site';
 import { getSharePointCredentialType, SERVICE_PRINCIPAL_AUTH } from './transport';
 import { isTargetMissing, microsoftApiRequestDelta } from './transport/delta';
-import { selectChanges, TRIGGER_EVENTS, type SharePointEvent } from './trigger/changes';
+import {
+	selectChanges,
+	TRIGGER_EVENTS,
+	type DeltaFeed,
+	type SharePointEvent,
+} from './trigger/changes';
 import {
 	clearError,
 	cursorFor,
@@ -137,13 +143,33 @@ export class MicrosoftSharePointTrigger implements INodeType {
 				],
 			},
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Document Library',
+						value: 'documentLibrary',
+						description: 'Watch the files in a document library',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Watch the items in a list',
+					},
+				],
+				default: 'documentLibrary',
+				displayOptions: { hide: { site: [''] } },
+			},
+			{
 				displayName: 'Document Library',
 				name: 'drive',
 				type: 'resourceLocator',
 				required: true,
 				default: { mode: 'list', value: '' },
 				description: 'The document library to watch for changes',
-				displayOptions: { hide: { site: [''] } },
+				displayOptions: { show: { resource: ['documentLibrary'] }, hide: { site: [''] } },
 				typeOptions: { loadOptionsDependsOn: ['site.value'] },
 				modes: [
 					{
@@ -166,6 +192,30 @@ export class MicrosoftSharePointTrigger implements INodeType {
 								},
 							},
 						],
+					},
+				],
+			},
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'resourceLocator',
+				required: true,
+				default: { mode: 'list', value: '' },
+				description: 'The list to watch for changes',
+				displayOptions: { show: { resource: ['list'] }, hide: { site: [''] } },
+				typeOptions: { loadOptionsDependsOn: ['site.value'] },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: { searchListMethod: 'getLists', searchable: true },
+					},
+					{
+						displayName: 'By ID or Title',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. 58a279af-1f06-4392-a5ed-2b37fa1d6c1d or My List',
 					},
 				],
 			},
@@ -195,7 +245,7 @@ export class MicrosoftSharePointTrigger implements INodeType {
 	};
 
 	methods = {
-		listSearch: { getSites, getDrives },
+		listSearch: { getSites, getDrives, getLists },
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
@@ -203,23 +253,42 @@ export class MicrosoftSharePointTrigger implements INodeType {
 		// A manual run must not consume real events, so it neither reads nor writes
 		// the cursor. It enumerates from the start instead, to produce sample data.
 		const manual = this.getMode() === 'manual';
+		const resource = this.getNodeParameter('resource', 'documentLibrary') as string;
+		const watchingList = resource === 'list';
+		const feed: DeltaFeed = watchingList ? 'listItem' : 'driveItem';
 		let siteId = '';
-		let driveId = '';
+		let targetId = '';
 
 		try {
 			siteId = await resolveSiteId.call(this, 0);
-			driveId = await resolveDriveId.call(this, 0);
+			targetId = watchingList
+				? await resolveListId.call(this, 0)
+				: await resolveDriveId.call(this, 0);
 			const events = this.getNodeParameter('events', [...TRIGGER_EVENTS]) as SharePointEvent[];
-			const scope = scopeOf(getSharePointCredentialType.call(this), siteId, driveId);
+			const scope = scopeOf(getSharePointCredentialType.call(this), resource, siteId, targetId);
 
-			const page = await microsoftApiRequestDelta.call(this, {
-				feed: 'driveItem',
-				driveId,
-				excludeParents: true,
-				cursor: manual ? undefined : cursorFor(state, scope),
+			// Switching between the two resources changes the scope, so the stored
+			// cursor is dropped rather than replayed against the other feed.
+			const startCursor = manual ? undefined : cursorFor(state, scope);
+			const budget = {
 				deadlineEpochMs: manual ? undefined : Date.now() + this.getPollBudgetMs(),
 				maxPages: manual ? 1 : undefined,
-			});
+			};
+
+			const page = await microsoftApiRequestDelta.call(
+				this,
+				watchingList
+					? { feed: 'listItem', siteId, listId: targetId, cursor: startCursor, ...budget }
+					: // `deltaExcludeParent` has no listItem equivalent, so the list feed's
+						// ancestors are dropped by content type instead.
+						{
+							feed: 'driveItem',
+							driveId: targetId,
+							excludeParents: true,
+							cursor: startCursor,
+							...budget,
+						},
+			);
 
 			if (page.resync) {
 				// The 410 carries a Location that restarts a full enumeration. This
@@ -239,15 +308,16 @@ export class MicrosoftSharePointTrigger implements INodeType {
 			if (!manual && cursor !== undefined) saveCursor(state, scope, cursor);
 			clearError(state);
 
-			const items = selectChanges(page.items, events);
+			const items = selectChanges(page.items, events, feed);
 			return items.length > 0 ? [this.helpers.returnJsonArray(items)] : null;
 		} catch (error) {
+			const label = watchingList ? 'list' : 'document library';
 			const reported = isTargetMissing(error)
 				? new NodeOperationError(
 						this.getNode(),
-						'The document library being watched is no longer reachable',
+						`The ${label} being watched is no longer reachable`,
 						{
-							description: `Microsoft Graph returned 404 for library ${driveId} on site ${siteId}. It may have been deleted or renamed, or the credential may have lost access to it. The saved position is kept, so polling resumes if it comes back.`,
+							description: `Microsoft Graph returned 404 for ${label} ${targetId} on site ${siteId}. It may have been deleted or renamed, or the credential may have lost access to it. The saved position is kept, so polling resumes if it comes back.`,
 						},
 					)
 				: error;

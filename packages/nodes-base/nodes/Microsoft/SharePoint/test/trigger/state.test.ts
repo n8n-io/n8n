@@ -11,7 +11,7 @@ import {
 } from '../../trigger/state';
 
 describe('SharePoint trigger: poll state', () => {
-	const scope = scopeOf('microsoftOAuth2Api', 'site-1', 'drive-1');
+	const scope = scopeOf('microsoftOAuth2Api', 'documentLibrary', 'site-1', 'drive-1');
 
 	describe('cursorFor', () => {
 		it('reuses a stored link while the scope is unchanged', () => {
@@ -23,11 +23,28 @@ describe('SharePoint trigger: poll state', () => {
 
 		it.each([
 			['nothing is stored yet', {}],
-			['the site differs', { scope: scopeOf('microsoftOAuth2Api', 'site-2', 'drive-1') }],
-			['the library differs', { scope: scopeOf('microsoftOAuth2Api', 'site-1', 'drive-2') }],
+			[
+				'the site differs',
+				{ scope: scopeOf('microsoftOAuth2Api', 'documentLibrary', 'site-2', 'drive-1') },
+			],
+			[
+				'the library differs',
+				{ scope: scopeOf('microsoftOAuth2Api', 'documentLibrary', 'site-1', 'drive-2') },
+			],
 			[
 				'the credential differs',
-				{ scope: scopeOf('microsoftEntraServicePrincipalApi', 'site-1', 'drive-1') },
+				{
+					scope: scopeOf(
+						'microsoftEntraServicePrincipalApi',
+						'documentLibrary',
+						'site-1',
+						'drive-1',
+					),
+				},
+			],
+			[
+				'the watched resource differs',
+				{ scope: scopeOf('microsoftOAuth2Api', 'list', 'site-1', 'drive-1') },
 			],
 			['the stored link is blank', { scope, cursor: '' }],
 		] as Array<[string, PollState]>)('starts from now when %s', (_name, stored) => {

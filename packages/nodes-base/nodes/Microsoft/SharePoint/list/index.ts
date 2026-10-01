@@ -1,8 +1,14 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	INodeParameterResourceLocator,
+	INodeProperties,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { type GraphSearchReply } from '../helpers/utils';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest, type SharePointContext } from '../transport';
 
 /** Hide gate copied from v1: the list field stays hidden until a site is chosen. */
 export const untilSiteSelected = { site: [''] };
@@ -91,4 +97,20 @@ export async function getLists(
 		.map((list) => ({ name: list.displayName ?? String(list.id), value: String(list.id) }));
 
 	return { results, paginationToken: response['@odata.nextLink'] };
+}
+
+/**
+ * Resolves the `list` field to a list ID or title. Graph accepts either, so
+ * unlike the drive field there is no shape worth asserting beyond non-empty.
+ */
+export async function resolveListId(this: SharePointContext, itemIndex: number): Promise<string> {
+	const list = this.getNodeParameter('list', itemIndex) as INodeParameterResourceLocator;
+	const value = String(list.value ?? '').trim();
+
+	if (value === '') {
+		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
+			description: 'Choose a list and try again.',
+		});
+	}
+	return value;
 }
