@@ -7,6 +7,7 @@
  * (see the route guard in router.ts). Delete freely.
  */
 import { onBeforeUnmount, ref } from 'vue';
+import type { AgentEvalResultStatus } from '@n8n/api-types';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import AgentAvatar, {
 	type AgentAvatarKind,
@@ -36,6 +37,7 @@ const realActions = {
 	fetchCases: store.fetchCases,
 	updateCase: store.updateCase,
 	createCase: store.createCase,
+	deleteCase: store.deleteCase,
 };
 onBeforeUnmount(() => Object.assign(store, realActions));
 
@@ -57,19 +59,91 @@ function wait(ms: number) {
 
 let rowCounter = 0;
 
+/** One row of the playground's fake dataset: its text plus its last (fake) run result. */
+type DevRow = {
+	rowId: number;
+	input: string;
+	whatToCheck: string;
+	scenario: string;
+	output: string;
+	status: AgentEvalResultStatus;
+};
+
+// Covers the other two post-run avatar states (the first row always uses the
+// live sample question/answer below), so the default "Check your agent" click
+// (slider defaults to 2) already lands on a "needs work"/"couldn't finish"
+// row without any manual setup — that's the content the "Needs work"
+// correction UI (Save check / Actually fine) needs to show.
+const EXTRA_ROW_TEMPLATES: Array<Pick<DevRow, 'input' | 'output' | 'scenario' | 'status'>> = [
+	{
+		input: 'Third time asking. Why is SSO STILL broken?!',
+		output:
+			'SSO issues are usually caused by a misconfigured identity provider. Check your SAML settings.',
+		scenario: 'Upset',
+		status: 'error',
+	},
+	{
+		input: 'Can you also cancel my subscription while you are at it?',
+		output: 'I was not able to find a way to cancel your subscription from here.',
+		scenario: 'Off topic',
+		status: 'cancelled',
+	},
+];
+
+let rows: DevRow[] = [];
+
+function seedRows(count: number) {
+	rows = Array.from({ length: count }, (_, i) => {
+		if (i === 0) {
+			return {
+				rowId: ++rowCounter,
+				input: sampleInput.value,
+				whatToCheck: 'mentions the key detail',
+				scenario: 'Happy path',
+				output: sampleOutput.value,
+				status: 'success' as const,
+			};
+		}
+		const template = EXTRA_ROW_TEMPLATES[(i - 1) % EXTRA_ROW_TEMPLATES.length];
+		return { rowId: ++rowCounter, whatToCheck: 'mentions the key detail', ...template };
+	});
+}
+
 function stubStore() {
 	rowCounter = 0;
+	rows = [];
 
 	store.generateDraftCases = async (_projectId, _agentId, options) => {
 		await wait(delayMs.value);
 		const count = options?.count ?? 1;
-		const cases = Array.from({ length: count }, (_, i) => ({
-			input: count === 1 ? sampleInput.value : `Sample question ${i + 1} about something else`,
-			whatToCheck: 'mentions the key detail',
-			scenario: count === 1 ? 'Happy path' : `Scenario ${i + 1}`,
-		}));
-		logLine(`generateDraftCases(count=${count}) → ${cases.length} case(s)`);
-		return { datasetId: 'dev-dataset', dataTableId: 'dev-table', cases };
+		// A revision request (suggestion + the case it's replacing) asks for one
+		// replacement case — echo the suggestion back so the round-trip is
+		// visible without a real model call.
+		if (options?.suggestion) {
+			logLine(`generateDraftCases(revision) → 1 case`);
+			return {
+				datasetId: 'dev-dataset',
+				dataTableId: 'dev-table',
+				cases: [
+					{
+						input: `${options.previousInput} (revised: ${options.suggestion})`,
+						whatToCheck: 'mentions the key detail',
+						scenario: 'Revised',
+					},
+				],
+			};
+		}
+		seedRows(count);
+		logLine(`generateDraftCases(count=${count}) → ${rows.length} case(s)`);
+		return {
+			datasetId: 'dev-dataset',
+			dataTableId: 'dev-table',
+			cases: rows.map((r) => ({
+				input: r.input,
+				whatToCheck: r.whatToCheck,
+				scenario: r.scenario,
+			})),
+		};
 	};
 
 	store.startRun = async () => {
@@ -87,14 +161,13 @@ function stubStore() {
 	store.getReview = () =>
 		({
 			run: { status: 'completed' },
-			results: [
-				{
-					status: 'success',
-					input: { input: sampleInput.value },
-					output: { finalText: sampleOutput.value },
-				},
-			],
-			resultsCount: 1,
+			results: rows.map((r) => ({
+				sourceRowId: String(r.rowId),
+				status: r.status,
+				input: { input: r.input },
+				output: { finalText: r.output },
+			})),
+			resultsCount: rows.length,
 			ratingsByResultId: {},
 			pendingByResultId: {},
 			draftsByResultId: {},
@@ -120,20 +193,42 @@ function stubStore() {
 		] as never;
 
 	store.fetchCases = async () =>
-		[
-			{ rowId: ++rowCounter, input: sampleInput.value, whatToCheck: 'mentions the key detail' },
-		] as never;
+		rows.map((r) => ({ rowId: r.rowId, input: r.input, whatToCheck: r.whatToCheck })) as never;
 
 	store.updateCase = async (_projectId, _source, rowId, value) => {
 		logLine(`updateCase(rowId=${rowId}, input=${JSON.stringify(value.input)})`);
+		const row = rows.find((r) => r.rowId === rowId);
+		if (row) {
+			row.input = value.input;
+			row.whatToCheck = value.whatToCheck;
+			row.status = 'success';
+			row.output = 'Looks better now — thanks for the correction.';
+		}
 		return true;
 	};
 
 	store.createCase = async (_projectId, _source, value) => {
 		await wait(delayMs.value);
 		const rowId = ++rowCounter;
+		rows = [
+			...rows,
+			{
+				rowId,
+				input: value.input,
+				whatToCheck: value.whatToCheck,
+				scenario: '',
+				output: '',
+				status: 'new',
+			},
+		];
 		logLine(`createCase(rowId=${rowId}, input=${JSON.stringify(value.input)})`);
 		return { rowId, input: value.input, whatToCheck: value.whatToCheck } as never;
+	};
+
+	store.deleteCase = async (_projectId, _source, rowId) => {
+		logLine(`deleteCase(rowId=${rowId})`);
+		rows = rows.filter((r) => r.rowId !== rowId);
+		return true;
 	};
 }
 stubStore();

@@ -69,4 +69,71 @@ describe('AgentEvalTryRow', () => {
 
 		expect(queryByText('Not run')).not.toBeInTheDocument();
 	});
+
+	it.each(['work', 'fail'] as const)(
+		'shows the correction form once expanded for a %s case',
+		async (status) => {
+			const user = userEvent.setup();
+			const { getByTestId, findByText } = renderComponent({
+				props: { status, input: 'x', output: 'y', testId: 'row-1' },
+			});
+
+			await user.click(getByTestId('row-1-toggle'));
+
+			expect(await findByText('What should have happened?')).toBeInTheDocument();
+			expect(getByTestId('row-1-save-check')).toBeInTheDocument();
+			expect(getByTestId('row-1-actually-fine')).toBeInTheDocument();
+		},
+	);
+
+	it('never shows the correction form for a passed case, even expanded', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, queryByText } = renderComponent({
+			props: { status: 'pass', input: 'x', output: 'y', testId: 'row-1' },
+		});
+
+		await user.click(getByTestId('row-1-toggle'));
+
+		expect(queryByText('What should have happened?')).not.toBeInTheDocument();
+	});
+
+	it('"Save check" is disabled until a suggestion is typed, then emits it', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent({
+			props: { status: 'fail', input: 'x', output: 'y', testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+
+		expect(getByTestId('row-1-save-check')).toBeDisabled();
+
+		await user.type(getByTestId('row-1-suggestion'), 'Apologise and link the ticket.');
+		expect(getByTestId('row-1-save-check')).toBeEnabled();
+
+		await user.click(getByTestId('row-1-save-check'));
+
+		expect(emitted()['save-check']).toEqual([['Apologise and link the ticket.']]);
+	});
+
+	it('emits "actually-fine" on click', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent({
+			props: { status: 'work', input: 'x', output: 'y', testId: 'row-1' },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+
+		await user.click(getByTestId('row-1-actually-fine'));
+
+		expect(emitted()['actually-fine']).toEqual([[]]);
+	});
+
+	it('disables "Save check" and shows a loading state while savingCheck is true', async () => {
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({
+			props: { status: 'fail', input: 'x', output: 'y', testId: 'row-1', savingCheck: true },
+		});
+		await user.click(getByTestId('row-1-toggle'));
+
+		expect(getByTestId('row-1-save-check')).toBeDisabled();
+		expect(getByTestId('row-1-actually-fine')).toBeDisabled();
+	});
 });

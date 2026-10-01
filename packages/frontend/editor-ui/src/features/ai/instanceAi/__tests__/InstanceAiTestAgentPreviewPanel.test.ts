@@ -899,4 +899,163 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 		expect(stopPollingRun).toHaveBeenCalled();
 	});
+
+	it('"Save check" on a failed case regenerates it with the suggestion, updates it, and reruns the suite', async () => {
+		const store = useAgentEvalsStore();
+		const generateDraftCases = vi
+			.spyOn(store, 'generateDraftCases')
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				cases: [{ input: 'x', whatToCheck: 'y', scenario: 'Upset' }],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				cases: [
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
+				],
+			})
+			.mockResolvedValueOnce({
+				datasetId: 'dataset-3',
+				dataTableId: 'table-3',
+				cases: [{ input: 'c, revised', whatToCheck: 'd, revised', scenario: 'Sensitive data' }],
+			});
+		vi.spyOn(store, 'getDatasets').mockReturnValue([
+			{
+				id: 'dataset-2',
+				name: 'Draft cases',
+				description: null,
+				agentId: 'agent-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+				createdById: null,
+				createdAt: '',
+				updatedAt: '',
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'table-2' },
+			},
+		]);
+		vi.spyOn(store, 'deleteCase').mockResolvedValue(true);
+		vi.spyOn(store, 'fetchCases').mockResolvedValue([
+			{ rowId: 1, input: 'a', whatToCheck: 'b' },
+			{ rowId: 2, input: 'c', whatToCheck: 'd' },
+		]);
+		const updateCase = vi.spyOn(store, 'updateCase').mockResolvedValue(true);
+		const startRun = vi
+			.spyOn(store, 'startRun')
+			.mockResolvedValueOnce({ id: 'preview-run' } as never)
+			.mockResolvedValueOnce({ id: 'suite-run' } as never)
+			.mockResolvedValueOnce({ id: 'revised-run' } as never);
+		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+		vi.spyOn(store, 'getReview').mockImplementation((runId) => {
+			if (runId === 'revised-run') {
+				return {
+					run: { status: 'completed' } as never,
+					results: [
+						{
+							sourceRowId: '1',
+							status: 'success',
+							input: { input: 'a' },
+							output: { finalText: 'b answer' },
+						} as never,
+						{
+							sourceRowId: '2',
+							status: 'success',
+							input: { input: 'c, revised' },
+							output: { finalText: 'd, revised answer' },
+						} as never,
+					],
+					resultsCount: 2,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				};
+			}
+			if (runId === 'suite-run') {
+				return {
+					run: { status: 'completed' } as never,
+					results: [
+						{
+							sourceRowId: '1',
+							status: 'success',
+							input: { input: 'a' },
+							output: { finalText: 'b answer' },
+						} as never,
+						{
+							sourceRowId: '2',
+							status: 'error',
+							input: { input: 'c' },
+							output: { finalText: 'd answer' },
+						} as never,
+					],
+					resultsCount: 2,
+					ratingsByResultId: {},
+					pendingByResultId: {},
+					draftsByResultId: {},
+					counts: null,
+					loading: false,
+					loadingMore: false,
+				};
+			}
+			return {
+				run: { status: 'completed' } as never,
+				results: [
+					{ status: 'success', input: { input: 'x' }, output: { finalText: 'y' } } as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			};
+		});
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId, findByText } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		expect(await findByText('1 of 2 went well, 1 need work')).toBeInTheDocument();
+		await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
+			'Apologise and link the open ticket.',
+		);
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-save-check'));
+
+		expect(generateDraftCases).toHaveBeenNthCalledWith(3, 'project-1', 'agent-1', {
+			count: 1,
+			suggestion: 'Apologise and link the open ticket.',
+			previousInput: 'c',
+			previousOutput: 'd answer',
+		});
+		expect(updateCase).toHaveBeenCalledWith(
+			'project-1',
+			{
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				columns: { input: 'input', whatToCheck: 'criteria' },
+			},
+			2,
+			{ input: 'c, revised', whatToCheck: 'd, revised' },
+		);
+		expect(startRun).toHaveBeenNthCalledWith(3, 'project-1', 'agent-1', 'dataset-2');
+		expect(await findByText('2 of 2 went well, 0 need work')).toBeInTheDocument();
+		expect(
+			within(getByTestId('instance-ai-test-agent-examples-case-2')).getAllByText('c, revised'),
+		).not.toHaveLength(0);
+	});
 });

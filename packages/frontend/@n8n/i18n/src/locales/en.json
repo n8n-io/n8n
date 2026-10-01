@@ -7625,6 +7625,7 @@
 	"instanceAi.testAgentPreview.inputCorrectionPlaceholder": "Your suggestion",
 	"instanceAi.testAgentPreview.saveCorrection": "Save check",
 	"instanceAi.testAgentPreview.skip": "Skip",
+	"instanceAi.testAgentPreview.actuallyFine": "Actually fine",
 	"instanceAi.testAgentPreview.dontCreateEvals": "Don't create evals",
 	"instanceAi.testAgentPreview.generatingSuite": "Adding more cases to your eval suite…",
 	"instanceAi.testAgentPreview.yourTry": "Your try",

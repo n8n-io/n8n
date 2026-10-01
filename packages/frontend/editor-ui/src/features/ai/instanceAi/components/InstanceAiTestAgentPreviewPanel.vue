@@ -325,6 +325,56 @@ async function onStopSuiteRun() {
 	}
 }
 
+// "Save check" on a single suite case. There is no run primitive scoped to one
+// row, so the only way to pick up the regenerated case is to rerun the whole
+// dataset — every row briefly goes back to "waiting", not just the revised one.
+const revisingRowId = ref<number | null>(null);
+
+async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: string }) {
+	const source = resolveSuiteSource();
+	const row = suiteCaseRows.value?.find((c) => c.rowId === rowId);
+	if (!source || !suiteDatasetId.value || !row) return;
+	const { projectId, agentId } = props.target;
+	const previousOutput = suiteCaseRuns.value?.find((r) => r.rowId === rowId)?.output ?? '';
+
+	revisingRowId.value = rowId;
+	try {
+		const result = await store.generateDraftCases(projectId, agentId, {
+			count: 1,
+			suggestion,
+			previousInput: row.input,
+			previousOutput,
+		});
+		if (!isMounted) return;
+		const revised = result.cases[0];
+		if (!revised) return;
+
+		await store.updateCase(projectId, source, rowId, {
+			input: revised.input,
+			whatToCheck: revised.whatToCheck,
+		});
+		if (!isMounted) return;
+		suiteCaseRows.value =
+			suiteCaseRows.value?.map((c) =>
+				c.rowId === rowId ? { ...c, input: revised.input, whatToCheck: revised.whatToCheck } : c,
+			) ?? null;
+
+		const run = await store.startRun(projectId, agentId, suiteDatasetId.value);
+		if (!isMounted) return;
+		suiteRunId.value = run.id;
+		await store.openRun(projectId, agentId, run.id);
+		if (!isMounted) return;
+		if (store.isRunInFlight(run.id)) {
+			store.startPollingRun(projectId, agentId, run.id);
+		}
+	} catch (error) {
+		if (!isMounted) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
+	} finally {
+		if (isMounted) revisingRowId.value = null;
+	}
+}
+
 function onNeedsWork() {
 	if (phase.value !== 'awaiting-confirmation') return;
 	sampleInput.value = '';
@@ -459,9 +509,11 @@ function onDontCreateEvals() {
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"
+				:revising-row-id="revisingRowId"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
+				@revise-case="onReviseCase"
 			/>
 		</template>
 	</div>

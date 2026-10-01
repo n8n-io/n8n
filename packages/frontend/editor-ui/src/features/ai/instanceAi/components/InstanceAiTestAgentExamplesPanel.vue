@@ -4,7 +4,7 @@
  * slider-controlled batch of additional generated examples the user can trim,
  * extend with their own, and hand off to a real check via "Check your agent".
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
@@ -37,12 +37,16 @@ const props = defineProps<{
 	startingRun?: boolean;
 	/** True from the "Stop" click until the cancel request resolves. */
 	stoppingRun?: boolean;
+	/** The row currently mid "Save check" — regenerating and rerunning. Null otherwise. */
+	revisingRowId?: number | null;
 }>();
 
 const emit = defineEmits<{
 	'add-example': [input: string];
 	'check-agent': [count: number];
 	'stop-run': [];
+	/** "Save check" on a case: regenerate it from the user's note and rerun. */
+	'revise-case': [payload: { rowId: number; suggestion: string }];
 }>();
 
 const i18n = useI18n();
@@ -51,16 +55,54 @@ const i18n = useI18n();
 // is the user's own request, not something a partial success should force.
 const summaryExpanded = ref(false);
 
+// "Actually fine" is a local judgment call, not a data mutation — no request
+// backs it, so it only overrides how a row's own status renders. Cleared the
+// moment that row goes back to "waiting": a fresh run's real status should
+// always win over a stale override from a previous one.
+const manualStatusOverrides = ref<Record<number, AgentAvatarKind>>({});
+
+watch(
+	() => props.caseRuns,
+	(runs) => {
+		if (!runs) return;
+		for (const run of runs) {
+			if (run.status === 'waiting' && run.rowId in manualStatusOverrides.value) {
+				const { [run.rowId]: _removed, ...rest } = manualStatusOverrides.value;
+				manualStatusOverrides.value = rest;
+			}
+		}
+	},
+	{ deep: true },
+);
+
+function onActuallyFine(rowId: number) {
+	manualStatusOverrides.value = { ...manualStatusOverrides.value, [rowId]: 'pass' };
+}
+
+function onSaveCheck(rowId: number, suggestion: string) {
+	emit('revise-case', { rowId, suggestion });
+}
+
+// The list the template renders from — `caseRuns` with any "Actually fine"
+// overrides applied, so the summary counts and each row agree on what's shown.
+const effectiveCaseRuns = computed<SuiteCaseRun[] | null>(() => {
+	if (!props.caseRuns) return null;
+	return props.caseRuns.map((run) => {
+		const override = manualStatusOverrides.value[run.rowId];
+		return override ? { ...run, status: override } : run;
+	});
+});
+
 const waitingCount = computed(
-	() => props.caseRuns?.filter((run) => run.status === 'waiting').length ?? 0,
+	() => effectiveCaseRuns.value?.filter((run) => run.status === 'waiting').length ?? 0,
 );
 const passedCount = computed(
-	() => props.caseRuns?.filter((run) => run.status === 'pass').length ?? 0,
+	() => effectiveCaseRuns.value?.filter((run) => run.status === 'pass').length ?? 0,
 );
 const needsWorkCount = computed(
-	() => (props.caseRuns?.length ?? 0) - passedCount.value - waitingCount.value,
+	() => (effectiveCaseRuns.value?.length ?? 0) - passedCount.value - waitingCount.value,
 );
-const runSettled = computed(() => props.caseRuns !== null && waitingCount.value === 0);
+const runSettled = computed(() => effectiveCaseRuns.value !== null && waitingCount.value === 0);
 
 function toggleSummaryExpanded() {
 	summaryExpanded.value = !summaryExpanded.value;
@@ -220,7 +262,7 @@ function onCheckYourAgent() {
 					i18n.baseText('instanceAi.testAgentPreview.wentWellNeedWork', {
 						interpolate: {
 							passed: String(passedCount),
-							total: String(caseRuns.length),
+							total: String(effectiveCaseRuns?.length ?? 0),
 							needsWork: String(needsWorkCount),
 						},
 					})
@@ -236,7 +278,7 @@ function onCheckYourAgent() {
 			>
 				<div :class="$style.summaryAvatars">
 					<AgentAvatar
-						v-for="run in caseRuns"
+						v-for="run in effectiveCaseRuns"
 						:key="run.rowId"
 						:kind="run.status"
 						size="row"
@@ -246,8 +288,8 @@ function onCheckYourAgent() {
 				<N8nText size="small" color="text-dark">
 					{{
 						i18n.baseText('instanceAi.testAgentPreview.savedChecks', {
-							adjustToNumber: caseRuns.length,
-							interpolate: { count: String(caseRuns.length) },
+							adjustToNumber: effectiveCaseRuns?.length ?? 0,
+							interpolate: { count: String(effectiveCaseRuns?.length ?? 0) },
 						})
 					}}
 				</N8nText>
@@ -260,12 +302,15 @@ function onCheckYourAgent() {
 
 			<div v-if="!runSettled || summaryExpanded" :class="$style.exampleList">
 				<AgentEvalTryRow
-					v-for="run in caseRuns"
+					v-for="run in effectiveCaseRuns"
 					:key="run.rowId"
 					:status="run.status"
 					:input="run.input"
 					:output="run.output"
 					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
+					:saving-check="revisingRowId === run.rowId"
+					@save-check="onSaveCheck(run.rowId, $event)"
+					@actually-fine="onActuallyFine(run.rowId)"
 				/>
 			</div>
 

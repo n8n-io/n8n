@@ -167,5 +167,47 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
 		});
+
+		it('"Actually fine" marks that row as passed and updates the tally, without touching other rows', async () => {
+			const user = userEvent.setup();
+			const { getByText, getByTestId } = renderComponent({ props: { caseRuns } });
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-actually-fine'));
+
+			expect(getByText('2 of 3 went well, 1 need work')).toBeInTheDocument();
+		});
+
+		it('emits revise-case with the row id and typed suggestion on "Save check"', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns } });
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+
+			await user.type(
+				getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
+				'Apologise and link the open ticket.',
+			);
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-save-check'));
+
+			expect(emitted()['revise-case']).toEqual([
+				[{ rowId: 2, suggestion: 'Apologise and link the open ticket.' }],
+			]);
+		});
+
+		it('disables "Save check" for the row currently revising, even once a suggestion is typed', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({ props: { caseRuns, revisingRowId: 2 } });
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+
+			await user.type(
+				getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
+				'Apologise and link the open ticket.',
+			);
+
+			expect(getByTestId('instance-ai-test-agent-examples-case-2-save-check')).toBeDisabled();
+		});
 	});
 });
