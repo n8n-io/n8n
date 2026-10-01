@@ -20,10 +20,6 @@ import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const MAX_TIMEOUT_MS = 600_000;
-
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -73,13 +69,6 @@ const runAction = z.object({
 			'Trigger to start from. Required when the workflow has more than one trigger: run once per trigger. ' +
 				'Never edit the workflow to reach a branch.',
 		),
-	timeout: z
-		.number()
-		.int()
-		.min(1000)
-		.max(MAX_TIMEOUT_MS)
-		.optional()
-		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
 });
 
 const runStepAction = z.object({
@@ -109,17 +98,6 @@ const runStepAction = z.object({
 		.describe(
 			'Only for a tool node: its $fromAI arguments, or a plain string for a free-text tool. Required when it declares $fromAI arguments.',
 		),
-	versionId: z
-		.string()
-		.optional()
-		.describe('Run a past version of the workflow instead of the current draft'),
-	timeout: z
-		.number()
-		.int()
-		.min(1000)
-		.max(MAX_TIMEOUT_MS)
-		.optional()
-		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
 });
 
 const debugAction = z.object({
@@ -429,7 +407,6 @@ async function handleRun(
 
 	// Approved or always_allow — execute
 	const result = await context.executionService.run(workflowId, input.inputData, {
-		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
 	});
@@ -531,8 +508,6 @@ async function handleRunStep(
 		reuseExecutionId: input.reuseExecutionId,
 		mockInput: input.mockInput,
 		toolArguments: input.toolArguments,
-		versionId: input.versionId,
-		timeout: input.timeout,
 		abortSignal,
 	});
 }
