@@ -216,6 +216,7 @@ export interface AgentInputBoundary {
 	messages: AgentDbMessage[];
 	lastCreatedAt: number;
 	completing: boolean;
+	/** False when the run cannot accept more input: max iterations reached, or a terminal stop such as a guardrail refusal. */
 	canContinue: boolean;
 }
 

@@ -727,6 +727,10 @@ export class AgentRuntime {
 
 		for (; state.iterationCount < state.maxIterations; state.iterationCount++) {
 			const hasInput = await this.consumeAdditionalInput(prepared, sink, state);
+			// A guardrail stop is terminal. The boundary above fired with
+			// canContinue: false, so the consumer released queued input instead of
+			// consuming it. End the run even if a consumer still returned messages.
+			if (state.guardrailStop) break;
 			if (state.reachedStopCondition && !hasInput) break;
 			state.reachedStopCondition = false;
 			const settlement = await this.runLoopIteration(prepared, sink, state);
@@ -764,7 +768,9 @@ export class AgentRuntime {
 			messages: sanitizeOffloadedToolResultsForMemory(ctx.list.turnDelta()),
 			lastCreatedAt: ctx.list.messages().at(-1)?.createdAt.getTime() ?? 0,
 			completing: state.reachedStopCondition,
-			canContinue: state.iterationCount < state.maxIterations,
+			// A guardrail stop is terminal: queued input must be released for the
+			// next run, not consumed into a run that makes no more model calls.
+			canContinue: state.iterationCount < state.maxIterations && !state.guardrailStop,
 		});
 		// Only committed input enters the live list. Its IDs and timestamps stay stable.
 		ctx.list.addInput(messages);

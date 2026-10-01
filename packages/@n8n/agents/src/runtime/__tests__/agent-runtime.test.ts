@@ -1518,6 +1518,51 @@ describe('AgentRuntime — guardrails', () => {
 		expect(chunks.some((c) => c.type === 'text-delta')).toBe(false);
 	});
 
+	it('reports canContinue false at the completing boundary after a guardrail stop', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+		const boundaries: Array<{ completing: boolean; canContinue: boolean }> = [];
+
+		const result = await runtime.generate('hi', {
+			guardrails: guardrailsOption(hook),
+			onInputBoundary: async (boundary) => {
+				boundaries.push({ completing: boundary.completing, canContinue: boundary.canContinue });
+				return [];
+			},
+		});
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(generateText).not.toHaveBeenCalled();
+		// The run's first boundary, then one completing boundary after the stop.
+		// The loop ends there instead of draining queued input per iteration.
+		expect(boundaries).toEqual([
+			{ completing: false, canContinue: true },
+			{ completing: true, canContinue: false },
+		]);
+	});
+
+	it('ends the run even when a boundary returns input after a guardrail stop', async () => {
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		const { runtime } = createRuntime();
+		const steered: AgentDbMessage = {
+			id: 'steered-input',
+			createdAt: new Date(),
+			role: 'user',
+			content: [{ type: 'text', text: 'queued while stopping' }],
+		};
+		const onInputBoundary = vi.fn(async () => [structuredClone(steered)]);
+
+		const result = await runtime.generate('hi', {
+			guardrails: guardrailsOption(hook),
+			onInputBoundary,
+		});
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'test.stop' });
+		expect(generateText).not.toHaveBeenCalled();
+		expect(onInputBoundary).toHaveBeenCalledTimes(2);
+	});
+
 	it('calls before() and after() once with the same context when the call is allowed', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
 		const hook = makeGuardrail();
