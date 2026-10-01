@@ -1,0 +1,9 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
+	"compilerOptions": {
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true
+	},
+	"include": ["src/**/*.ts"],
+	"references": [{ "path": "../../../@n8n/decorators/tsconfig.build.json" }]
+}

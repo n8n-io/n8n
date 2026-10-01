@@ -1,0 +1,32 @@
+{
+  "name": "@n8n/backend-module-hello-world",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc -p tsconfig.build.json --watch"
+  },
+  "dependencies": {
+    "@n8n/decorators": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:typescript"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

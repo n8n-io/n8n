@@ -4675,6 +4675,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../@n8n/backend-common
+      '@n8n/backend-module-hello-world':
+        specifier: workspace:*
+        version: link:../modules/hello-world/backend
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
@@ -6919,6 +6922,25 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
+
+  packages/modules/hello-world/backend:
+    dependencies:
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/eslint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/modules/insights/frontend:
     dependencies:
