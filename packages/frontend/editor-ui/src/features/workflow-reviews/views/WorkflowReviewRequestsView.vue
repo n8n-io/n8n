@@ -436,13 +436,7 @@ onUnmounted(() => {
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .layout {
-	--review-page--padding-top: var(--spacing--lg);
-
 	padding-top: 0;
-
-	@include breakpoints.breakpoint('sm-and-down') {
-		--review-page--padding-top: var(--spacing--sm);
-	}
 }
 
 .content {
@@ -464,10 +458,6 @@ onUnmounted(() => {
 	flex: 0 0 auto;
 }
 
-.sidebar {
-	padding-top: var(--review-page--padding-top);
-}
-
 .main {
 	display: flex;
 	flex: 1;
@@ -475,7 +465,16 @@ onUnmounted(() => {
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
-	padding: var(--review-page--padding-top) 0 var(--spacing--md) var(--spacing--md);
+	padding: 0 0 var(--spacing--md) var(--spacing--md);
+}
+
+.sidebar,
+.main {
+	padding-top: var(--spacing--lg);
+
+	@include breakpoints.breakpoint('sm-and-down') {
+		padding-top: var(--spacing--sm);
+	}
 }
 
 .columnTitle {
