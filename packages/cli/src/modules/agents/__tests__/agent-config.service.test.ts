@@ -654,12 +654,14 @@ describe('AgentConfigService', () => {
 				{
 					...baseConfig,
 					tools: [
-						{ type: 'custom', id: 'tool_1' },
+						{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 						{ type: 'custom', id: 'missing_tool' },
+						{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 					],
 					skills: [
-						{ type: 'skill', id: 'skill-1' },
+						{ type: 'skill', id: 'skill-1', enabled: false },
 						{ type: 'skill', id: 'missing-skill' },
+						{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 					],
 					tasks: [
 						{ type: 'task', id: 'task-1', enabled: true },
@@ -671,13 +673,43 @@ describe('AgentConfigService', () => {
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
-			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
-			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
+			expect(saved.schema?.tools).toEqual([
+				{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
+				{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
+			]);
+			expect(saved.schema?.skills).toEqual([
+				{ type: 'skill', id: 'skill-1', enabled: false },
+				{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
+			]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('retains missing references when reactivating saved capabilities', async () => {
+			const { service, agentRepository } = makeService();
+			const config: AgentJsonConfig = {
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'missing_tool', enabled: false, requireApproval: true }],
+				skills: [{ type: 'skill', id: 'missing_skill', enabled: false }],
+				subAgents: { agents: [{ agentId: 'missing-agent', enabled: false, useWhen: 'Review' }] },
+			};
+			const agent = makeAgent({ schema: config });
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
+				id === agentId ? agent : null,
+			);
+			const activated: AgentJsonConfig = {
+				...config,
+				tools: [{ type: 'custom', id: 'missing_tool', enabled: true, requireApproval: true }],
+				skills: [{ type: 'skill', id: 'missing_skill', enabled: true }],
+				subAgents: { agents: [{ agentId: 'missing-agent', enabled: true, useWhen: 'Review' }] },
+			};
+
+			await service.updateConfig(agentId, projectId, activated, user, fencedOn(agent));
+
+			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema).toMatchObject(activated);
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
@@ -890,7 +922,8 @@ describe('AgentConfigService', () => {
 						maxChildren: 3,
 						agents: [
 							{ agentId: 'missing-agent', useWhen: 'Use for missing work.' },
-							{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+							{ agentId: 'disabled-agent', useWhen: 'Use for later work.', enabled: false },
+							{ agentId: 'agent-2', useWhen: 'Use for billing escalations.', enabled: true },
 							{ agentId: 'agent-2', useWhen: 'Use for duplicate work.' },
 						],
 					},
@@ -901,8 +934,15 @@ describe('AgentConfigService', () => {
 
 			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema?.subAgents).toEqual({
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+				agents: [
+					{ agentId: 'disabled-agent', useWhen: 'Use for later work.', enabled: false },
+					{ agentId: 'agent-2', useWhen: 'Use for billing escalations.', enabled: true },
+				],
 			});
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalledWith(
+				'disabled-agent',
+				projectId,
+			);
 			expect(
 				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
 			).toHaveLength(1);
