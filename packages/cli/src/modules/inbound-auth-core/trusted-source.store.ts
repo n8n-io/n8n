@@ -4,20 +4,20 @@ import { NotFoundError } from '@n8n/errors';
 import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
+	TrustedSourceStore,
 	type SurfaceId,
+	type TrustedSource,
 	type TrustedSourceConfigInput,
 	type TrustedSourceConfigLatest,
+	type TrustedSourceMetadata,
+	TrustedSourceMetadataSchema,
+	type TrustedSourceStatus,
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import type {
-	TrustedSourceEntity,
-	TrustedSourceManagedBy,
-	TrustedSourceStatus,
-	TrustedSourceType,
-} from './database/entities/trusted-source.entity';
+import type { TrustedSourceEntity } from './database/entities/trusted-source.entity';
 import { TrustedSourceIdentityRepository } from './database/repositories/trusted-source-identity.repository';
 import {
 	TrustedSourceRepository,
@@ -26,24 +26,6 @@ import {
 import { TransactionRunner } from '@n8n/db';
 import { Time } from '@n8n/constants';
 import { CacheService } from '@n8n/backend-services';
-
-/**
- * A trusted source as consumers see it: decrypted, validated and migrated to the latest config
- * version. Dates are ISO strings so the shape survives a Redis round-trip unchanged.
- */
-export type TrustedSource = {
-	id: string;
-	name: string;
-	type: TrustedSourceType;
-	issuer: string;
-	managedBy: TrustedSourceManagedBy;
-	status: TrustedSourceStatus;
-	lastError: string | null;
-	lastCheckedAt: string | null;
-	createdAt: string;
-	updatedAt: string;
-	config: TrustedSourceConfigLatest;
-};
 
 /** The store still validates `config`: the admin-vs-system rules depend on the row, not the type. */
 export type CreateTrustedSourceInput = {
@@ -65,9 +47,18 @@ const ALL_KEY = 'trusted-source:all';
 // Reads are look-aside, so a read that started before a concurrent write can re-cache the old
 // row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
 const CACHE_TTL = 5 * Time.minutes.toMilliseconds;
+// A run that dies mid-discovery leaves its lease behind; the next run takes it over after this.
+const DISCOVERY_LEASE_MS = 1 * Time.minutes.toMilliseconds;
+
+/** What one discovery run leaves behind. `metadata` omitted keeps the previous documents. */
+export type DiscoveryResult = {
+	metadata?: TrustedSourceMetadata;
+	status: TrustedSourceStatus;
+	lastError: string | null;
+};
 
 @Service()
-export class TrustedSourceStore {
+export class TrustedSourceDbStore extends TrustedSourceStore {
 	constructor(
 		private readonly logger: Logger,
 		private readonly trustedSourceRepository: TrustedSourceRepository,
@@ -75,7 +66,9 @@ export class TrustedSourceStore {
 		private readonly cacheService: CacheService,
 		private readonly trustedSourceIdentityRepository: TrustedSourceIdentityRepository,
 		private readonly transactionRunner: TransactionRunner,
-	) {}
+	) {
+		super();
+	}
 
 	async getById(id: string): Promise<TrustedSource | undefined> {
 		return await this.cacheService.get(idKey(id), {
@@ -92,13 +85,45 @@ export class TrustedSourceStore {
 		});
 	}
 
-	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
-		const allSources =
+	async listAll(): Promise<TrustedSource[]> {
+		return (
 			(await this.cacheService.get(ALL_KEY, {
 				ttl: CACHE_TTL,
 				refreshFn: async () => await this.loadAll(),
-			})) ?? [];
-		return allSources.filter((source) => source.config.surfaces[surface] !== undefined);
+			})) ?? []
+		);
+	}
+
+	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
+		return (await this.listAll()).filter((source) => source.config.surfaces[surface] !== undefined);
+	}
+
+	/** Takes the discovery lease on `source`; `false` when another run holds it. */
+	async claimDiscovery(source: TrustedSource, now: Date): Promise<boolean> {
+		const claimed = await this.trustedSourceRepository.claimForDiscovery(
+			source.id,
+			now,
+			new Date(now.getTime() - DISCOVERY_LEASE_MS),
+		);
+		if (claimed) await this.invalidateCache(source);
+		return claimed;
+	}
+
+	/** Writes the run's result and releases the lease; `false` when the lease was lost. */
+	async recordDiscovery(
+		source: TrustedSource,
+		claimedAt: Date,
+		result: DiscoveryResult,
+	): Promise<boolean> {
+		// Metadata is never cleared: an error keeps the last good documents readable.
+		const recorded = await this.trustedSourceRepository.recordDiscovery(source.id, claimedAt, {
+			status: result.status,
+			lastError: result.lastError,
+			lastCheckedAt: new Date(),
+			...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
+		});
+		if (recorded) await this.invalidateCache(source);
+		return recorded;
 	}
 
 	async create(input: CreateTrustedSourceInput): Promise<TrustedSource> {
@@ -115,6 +140,7 @@ export class TrustedSourceStore {
 			lastCheckedAt: null,
 			configVersion: config.version,
 			config: await this.cipher.encryptV2(config),
+			metadata: null,
 		});
 		await this.invalidateCache(row);
 		return this.toRuntime(row, config);
@@ -162,7 +188,10 @@ export class TrustedSourceStore {
 	}
 
 	/** `row` is the state before the write, so `row.issuer` is the old issuer. */
-	private async invalidateCache(row: TrustedSourceEntity, newIssuer = row.issuer) {
+	private async invalidateCache(
+		row: Pick<TrustedSourceEntity, 'id' | 'issuer'>,
+		newIssuer = row.issuer,
+	) {
 		await this.cacheService.deleteMany([
 			idKey(row.id),
 			issuerKey(row.issuer),
@@ -206,6 +235,21 @@ export class TrustedSourceStore {
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			config,
+			metadata: this.parseMetadata(row),
 		};
+	}
+
+	/** Discovery data is advisory: an unreadable column reads as "not discovered yet". */
+	private parseMetadata(row: TrustedSourceEntity): TrustedSourceMetadata | null {
+		if (row.metadata === null) return null;
+		const parsed = TrustedSourceMetadataSchema.safeParse(
+			jsonParse<unknown>(row.metadata, { fallbackValue: null }),
+		);
+		if (parsed.success) return parsed.data;
+		this.logger.warn('Ignoring unreadable trusted source metadata', {
+			id: row.id,
+			reason: parsed.error.message,
+		});
+		return null;
 	}
 }
