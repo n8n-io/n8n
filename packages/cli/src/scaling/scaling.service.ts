@@ -7,6 +7,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
 import type { IRun } from 'n8n-workflow';
@@ -14,11 +15,13 @@ import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
+import { JobHandedBackError } from '@/errors/job-handed-back.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
+import { handBackJob } from './job-handback';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
@@ -44,6 +47,8 @@ const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 /** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
+const HAND_BACK_SETTLE_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
+
 @Service()
 export class ScalingService {
 	/** Bull queues keyed by queue name. Pool queues are created lazily. */
@@ -54,6 +59,8 @@ export class ScalingService {
 	private createBullQueue?: (name: string) => JobQueue;
 
 	private stopping = false;
+
+	private readonly pendingHandBacks = new Map<string, IDeferredPromise<void>>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -171,7 +178,6 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
-			// The job still runs: the handler passes it to JobProcessor, which tracks it and holds the drain.
 			if (this.stopping) {
 				const { executionId } = job.data;
 				const jobId = job.id;
@@ -179,6 +185,8 @@ export class ScalingService {
 					`Worker received job ${jobId} for execution ${executionId} after it began to stop`,
 					{ executionId, jobId },
 				);
+				this.pendingHandBacks.set(jobId.toString(), createDeferredPromise());
+				handBackJob(job);
 			}
 
 			try {
@@ -294,6 +302,8 @@ export class ScalingService {
 			await sleep(sleepMs);
 		}
 
+		await this.waitForPendingHandBacks();
+
 		// Cancel the stragglers rather than leave them to run. The task runner stops
 		// next, so they cannot make progress.
 		if (drainTimeoutMs > 0 && hasInProcessExecutionsToDrain() && !isWithinDrainBudget()) {
@@ -321,6 +331,27 @@ export class ScalingService {
 					{ executionIds: cancelledExecutionIds },
 				);
 			}
+		}
+	}
+
+	private async waitForPendingHandBacks() {
+		if (this.pendingHandBacks.size === 0) return;
+
+		let timeout: NodeJS.Timeout | undefined;
+
+		const timedOut = new Promise<void>((resolve) => {
+			timeout = setTimeout(resolve, HAND_BACK_SETTLE_TIMEOUT_MS);
+			timeout.unref();
+		});
+
+		const settled = Promise.all(
+			[...this.pendingHandBacks.values()].map(async ({ promise }) => await promise),
+		);
+
+		try {
+			await Promise.race([settled, timedOut]);
+		} finally {
+			clearTimeout(timeout);
 		}
 	}
 
@@ -509,6 +540,14 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners(queue: JobQueue) {
+		queue.on('failed', (job: Job, error: Error) => {
+			if (!(error instanceof JobHandedBackError)) return;
+
+			const jobId = job.id.toString();
+			this.pendingHandBacks.get(jobId)?.resolve();
+			this.pendingHandBacks.delete(jobId);
+		});
+
 		queue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
