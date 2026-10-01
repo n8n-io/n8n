@@ -3,6 +3,7 @@ import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
 import {
+	createCancelExecutionHandler,
 	createGetExecutionHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
@@ -98,6 +99,7 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	});
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
+	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
 
 	return router;
 }
