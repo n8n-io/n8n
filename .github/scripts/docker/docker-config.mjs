@@ -7,7 +7,26 @@ class BuildContext {
 		this.githubOutput = process.env.GITHUB_OUTPUT || null;
 	}
 
-	determine({ event, pr, branch, version, releaseType, pushEnabled, includeArm64 }) {
+	determine({
+		event,
+		pr,
+		branch,
+		version,
+		releaseType,
+		pushEnabled,
+		includeArm64,
+		architecture = 'auto',
+		buildProfile = 'all',
+	}) {
+		if (!['auto', 'amd64', 'arm64', 'both'].includes(architecture)) {
+			throw new Error(`Unknown architecture: ${architecture}`);
+		}
+		if (!['all', 'cloud-test'].includes(buildProfile)) {
+			throw new Error(`Unknown build profile: ${buildProfile}`);
+		}
+		if (event !== 'workflow_dispatch' && (architecture !== 'auto' || buildProfile !== 'all')) {
+			throw new Error('Architecture and build profile overrides require workflow_dispatch');
+		}
 		let context = {
 			version: '',
 			release_type: '',
@@ -74,6 +93,18 @@ class BuildContext {
 			context.push_enabled = context.push_to_ghcr;
 		}
 
+		if (architecture !== 'auto') {
+			context.platforms =
+				architecture === 'both' ? ['linux/amd64', 'linux/arm64'] : [`linux/${architecture}`];
+		}
+		if (buildProfile === 'cloud-test' && context.push_to_docker) {
+			throw new Error('The cloud-test profile cannot publish release images');
+		}
+		context.targets =
+			buildProfile === 'cloud-test'
+				? ['n8n', 'runners-distroless']
+				: ['n8n', 'runners', 'runners-distroless', ...(context.push_enabled ? ['n8n-pc'] : [])];
+
 		return context;
 	}
 
@@ -124,6 +155,7 @@ class BuildContext {
 				`push_to_docker=${context.push_to_docker}`,
 				`push_enabled=${context.push_enabled}`,
 				`build_matrix=${JSON.stringify(buildMatrix)}`,
+				`targets=${JSON.stringify(context.targets)}`,
 			];
 			appendFileSync(this.githubOutput, outputs.join('\n') + '\n');
 		} else {
@@ -155,6 +187,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 			pushEnabled:
 				pushEnabledArg === 'true' ? true : pushEnabledArg === 'false' ? false : undefined,
 			includeArm64: getArg('include-arm64') === 'true',
+			architecture: getArg('architecture'),
+			buildProfile: getArg('build-profile'),
 		});
 
 		const matrix = context.buildMatrix(result.platforms);

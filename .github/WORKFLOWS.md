@@ -758,6 +758,17 @@ Workflows with `workflow_call` trigger:
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
+### Manual Docker build options
+
+`docker-build-push.yml` accepts these additional inputs for manual runs:
+
+| Input | Values | Default | Effect |
+|-------|--------|---------|--------|
+| `architecture` | `auto`, `amd64`, `arm64`, `both` | `auto` | `auto` uses `include_arm64`. Other values select the build platforms directly. |
+| `build_profile` | `all`, `cloud-test` | `all` | `cloud-test` publishes only `n8n` and distroless runners to GHCR. |
+
+Release and scheduled runs use both architectures and all image variants.
+
 ---
 
 ## Scripts

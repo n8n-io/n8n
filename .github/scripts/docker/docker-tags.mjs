@@ -86,8 +86,20 @@ class TagGenerator {
 		}
 	}
 
-	generateAll({ version, platform, includeDockerHub = false, sha = '', date = '' }) {
-		const images = ['n8n', 'n8n-pc', 'runners', 'runners-distroless'];
+	generateAll({
+		version,
+		platform,
+		includeDockerHub = false,
+		sha = '',
+		date = '',
+		images = ['n8n', 'n8n-pc', 'runners', 'runners-distroless'],
+	}) {
+		if (
+			images.length === 0 ||
+			images.some((image) => !['n8n', 'n8n-pc', 'runners', 'runners-distroless'].includes(image))
+		) {
+			throw new Error('Select at least one valid image target');
+		}
 		const results = {};
 
 		for (const image of images) {
@@ -128,6 +140,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				includeDockerHub: hasFlag('include-docker'),
 				sha: getArg('sha') || '',
 				date: getArg('date') || '',
+				images: getArg('images')?.split(','),
 			});
 			if (!generator.githubOutput) {
 				console.log(JSON.stringify(results, null, 2));

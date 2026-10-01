@@ -4,7 +4,7 @@
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
 name: 'Docker: Build and Push'
-run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build and Push {0} (push={1}, arm64={2})', github.ref_name, inputs.push_enabled, inputs.include_arm64) || '' }}"
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build and Push {0} (profile={1}, architecture={2}, push={3})', github.ref_name, inputs.build_profile, inputs.architecture, inputs.push_enabled) || '' }}"
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
@@ -80,6 +80,22 @@ on:
         required: false
         type: boolean
         default: false
+      architecture:
+        description: 'Architecture override. Auto keeps the include_arm64 setting.'
+        type: choice
+        default: auto
+        options:
+          - auto
+          - amd64
+          - arm64
+          - both
+      build_profile:
+        description: 'Cloud-test builds only n8n and distroless runners.'
+        type: choice
+        default: all
+        options:
+          - all
+          - cloud-test
       success_url:
         description: 'URL to call after the build is successful'
         required: false
@@ -95,6 +111,7 @@ jobs:
       push_enabled: ${{ steps.context.outputs.push_enabled }}
       push_to_docker: ${{ steps.context.outputs.push_to_docker }}
       build_matrix: ${{ steps.context.outputs.build_matrix }}
+      targets: ${{ steps.context.outputs.targets }}
       short_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout code
@@ -115,6 +132,8 @@ jobs:
           RELEASE_TYPE: ${{ inputs.release_type }}
           PUSH_ENABLED: ${{ inputs.push_enabled }}
           INCLUDE_ARM64: ${{ inputs.include_arm64 }}
+          ARCHITECTURE: ${{ inputs.architecture }}
+          BUILD_PROFILE: ${{ inputs.build_profile }}
           GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
@@ -124,7 +143,9 @@ jobs:
             --version "$N8N_VERSION" \
             --release-type "$RELEASE_TYPE" \
             --push-enabled "$PUSH_ENABLED" \
-            --include-arm64 "$INCLUDE_ARM64"
+            --include-arm64 "$INCLUDE_ARM64" \
+            --architecture "$ARCHITECTURE" \
+            --build-profile "$BUILD_PROFILE"
 
   build-app:
     name: Build application for Docker images
@@ -214,6 +235,7 @@ jobs:
         env:
           DATE_TAG: ${{ inputs.date_tag }}
           SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
+          BUILD_TARGETS: ${{ needs.determine-build-context.outputs.targets }}
         run: |
           # Build the optional --date flag in shell (not via a template expansion) so
           # the caller-supplied input never expands directly into the command line.
@@ -222,6 +244,7 @@ jobs:
 
           node .github/scripts/docker/docker-tags.mjs \
             --all \
+            --images "$(node -e 'process.stdout.write(JSON.parse(process.env.BUILD_TARGETS).join(","))')" \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
             --sha "$SHORT_SHA" \
@@ -252,11 +275,10 @@ jobs:
           RUNNERS_TAGS: ${{ steps.determine-tags.outputs.runners_tags }}
           RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
           PUSH_ENABLED: ${{ needs.determine-build-context.outputs.push_enabled }}
+          BUILD_TARGETS: ${{ needs.determine-build-context.outputs.targets }}
         run: |
-          TARGETS=(n8n runners runners-distroless)
-          if [ -n "$N8N_PC_TAGS" ] && [ "$PUSH_ENABLED" = 'true' ]; then
-            TARGETS+=(n8n-pc)
-          fi
+          set -euo pipefail
+          read -ra TARGETS <<< "$(node -e 'process.stdout.write(JSON.parse(process.env.BUILD_TARGETS).join(" "))')"
 
           # oci-mediatypes keeps the merged manifest an OCI image index. Older
           # containerd cannot pull a Docker manifest list that has attestation
@@ -324,7 +346,7 @@ jobs:
           RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
           set -euo pipefail
-          HAS_ARM64="$(node -e "const matrix = JSON.parse(process.env.BUILD_MATRIX); process.stdout.write(String(matrix.platform.includes('arm64')))")"
+          read -ra PLATFORMS <<< "$(node -e 'process.stdout.write(JSON.parse(process.env.BUILD_MATRIX).platform.join(" "))')"
 
           create_manifest() {
             local IMAGE_NAME="$1"
@@ -344,10 +366,11 @@ jobs:
               fi
             done
 
-            local -a SOURCES=("${SOURCE_TAG}-amd64")
-            if [[ "$HAS_ARM64" == "true" ]]; then
-              SOURCES+=("${SOURCE_TAG}-arm64")
-            fi
+            local -a SOURCES=()
+            local PLATFORM
+            for PLATFORM in "${PLATFORMS[@]}"; do
+              SOURCES+=("${SOURCE_TAG}-${PLATFORM}")
+            done
 
             echo "Creating GHCR manifests for $IMAGE_NAME"
             docker buildx imagetools create "${TAG_ARGS[@]}" "${SOURCES[@]}"
