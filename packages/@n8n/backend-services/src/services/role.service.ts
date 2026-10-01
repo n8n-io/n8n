@@ -5,7 +5,6 @@ import type {
 } from '@n8n/api-types';
 import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -19,16 +18,10 @@ import {
 	Scope as DBScope,
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
+	isUniqueConstraintError,
 } from '@n8n/db';
-import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type {
-	Scope,
-	Role as RoleDTO,
-	AssignableProjectRole,
-	AssignableGlobalRole,
-	RoleNamespace,
-} from '@n8n/permissions';
+import type { Scope, Role as RoleDTO, RoleNamespace } from '@n8n/permissions';
 import {
 	combineScopes,
 	CUSTOM_ROLE_SCOPE_WHITELIST,
@@ -43,10 +36,16 @@ import {
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { isUniqueConstraintError } from '@/response-helper';
-
-import { RoleCacheService } from './role-cache.service';
+import { RoleCacheService, type RoleLoader } from './role-cache.service';
 import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
+import { EventService } from '../events/event.service';
+
+declare module '../events/event.service' {
+	interface EventMap {
+		'custom-role-deleted': { userId: string; roleSlug: string };
+		'custom-role-updated': { userId: string; roleSlug: string; scopes: string[] };
+	}
+}
 
 @Service()
 export class RoleService {
@@ -458,16 +457,18 @@ export class RoleService {
 	async rolesWithScope(
 		namespace: RoleNamespace,
 		scopes: Scope | Scope[],
-		trx?: EntityManager,
+		loadRoles?: RoleLoader,
 	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
+		return loadRoles
+			? await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, loadRoles)
+			: await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
+	isRoleLicensed(role: string) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {

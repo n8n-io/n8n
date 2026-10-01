@@ -1813,6 +1813,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../decorators
@@ -1822,6 +1825,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
+      '@n8n/permissions':
+        specifier: workspace:*
+        version: link:../permissions
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils

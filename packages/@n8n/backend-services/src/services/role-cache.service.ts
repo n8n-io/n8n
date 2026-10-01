@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { RoleRepository } from '@n8n/db';
-import type { EntityManager } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { staticRolesWithScope, type Scope } from '@n8n/permissions';
 
-import { CacheService } from '@n8n/backend-services';
+import { CacheService } from './cache/cache.service';
 
 type RoleInfo = {
 	scopes: string[]; // array of scope slugs
@@ -29,6 +28,8 @@ interface RoleScopeMap {
 	};
 }
 
+export type RoleLoader = () => ReturnType<RoleRepository['findAll']>;
+
 @Service()
 export class RoleCacheService {
 	private static readonly CACHE_KEY = 'roles:scope-map';
@@ -37,15 +38,15 @@ export class RoleCacheService {
 	constructor(
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	/**
 	 * Get all roles from database and build scope map
 	 */
-	private async buildRoleScopeMap(trx?: EntityManager): Promise<RoleScopeMap> {
+	private async buildRoleScopeMap(loadRoles?: RoleLoader): Promise<RoleScopeMap> {
 		try {
-			const roleRepository = Container.get(RoleRepository);
-			const roles = await roleRepository.findAll(trx);
+			const roles = await (loadRoles?.() ?? this.roleRepository.findAll());
 
 			const roleScopeMap: RoleScopeMap = {};
 			for (const role of roles) {
@@ -68,13 +69,13 @@ export class RoleCacheService {
 	async getRolesWithAllScopes(
 		namespace: 'global' | 'project' | 'credential' | 'workflow' | 'secretsProviderConnection',
 		requiredScopes: Scope[],
-		em?: EntityManager,
+		loadRoles?: RoleLoader,
 	): Promise<string[]> {
 		if (requiredScopes.length === 0) return [];
 
 		// Get cached role map with refresh function
 		const roleScopeMap = await this.cacheService.get<RoleScopeMap>(RoleCacheService.CACHE_KEY, {
-			refreshFn: async () => await this.buildRoleScopeMap(em),
+			refreshFn: async () => await this.buildRoleScopeMap(loadRoles),
 			fallbackValue: undefined,
 		});
 
