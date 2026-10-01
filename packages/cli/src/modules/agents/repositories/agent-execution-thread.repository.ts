@@ -42,6 +42,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
+	async findThreadIdsForAgent(agentId: string): Promise<string[]> {
+		const threads = await this.find({ select: { id: true }, where: { agentId } });
+		return threads.map((thread) => thread.id);
+	}
+
 	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(AgentExecutionThread, {

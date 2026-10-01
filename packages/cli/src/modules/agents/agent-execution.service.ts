@@ -686,6 +686,14 @@ export class AgentExecutionService {
 		return true;
 	}
 
+	async deleteConversationMemoryForAgent(agentId: string): Promise<void> {
+		const threadIds = await this.agentExecutionThreadRepository.findThreadIdsForAgent(agentId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		for (const threadId of threadIds) {
+			await memory.deleteThread(threadId);
+		}
+	}
+
 	/**
 	 * Delete every blob-stored execution log across an agent's threads. Called
 	 * before the agent row is removed (the row cascade deletes the DB side).
