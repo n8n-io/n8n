@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
@@ -37,6 +38,8 @@ import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
+import { N8N_CHAT_PRODUCTION_SOURCE } from '../utils/agent-thread-access';
 
 function makeController() {
 	const agentsService =
@@ -164,9 +167,12 @@ describe('AgentChatController route access scopes', () => {
 		['productionChatResume', 'agent:execute'],
 		['cancelProductionChatExecution', 'agent:execute'],
 		['cancelProductionChatRun', 'agent:execute'],
-		['getProductionChatMessages', 'agent:read'],
-		['getProductionChatAttachment', 'agent:read'],
-		['getProductionQueuedMessages', 'agent:read'],
+		// The n8n Chat audience (`project:chatUser`) holds `agent:execute`, not
+		// `agent:read` — these three stay reachable to a chat-only member reading
+		// their own thread. See the ownership tests below `requireProductionThread`.
+		['getProductionChatMessages', 'agent:execute'],
+		['getProductionChatAttachment', 'agent:execute'],
+		['getProductionQueuedMessages', 'agent:execute'],
 		['updateProductionQueuedMessage', 'agent:execute'],
 		['removeProductionQueuedMessage', 'agent:execute'],
 		['chat', 'agent:execute'],
@@ -1204,5 +1210,145 @@ describe('AgentChatController production n8n Chat', () => {
 			controller.updateProductionQueuedMessage(req, makeSseResponse([]), { message: 'x' }),
 		).rejects.toThrow(NotFoundError);
 		await expect(controller.removeProductionQueuedMessage(req)).rejects.toThrow(NotFoundError);
+	});
+});
+
+// Scope was lowered from `agent:read` to `agent:execute` on these three routes
+// so a chat-only member (`project:chatUser`, which holds `agent:execute` but
+// not `agent:read`) can read their own n8n Chat history. Each route's own
+// ownership check (not the scope) is what keeps a chat-user out of someone
+// else's thread — these tests prove that check still runs.
+describe('AgentChatController n8n Chat read-route ownership', () => {
+	const projectId = 'project-1';
+	const agentId = 'agent-1';
+	const userId = 'user-1';
+
+	describe('getProductionChatMessages', () => {
+		it("serves the requesting user's own thread", async () => {
+			const { controller, agentsService, agentExecutionOrchestratorService, agentsBuilderService } =
+				makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionOrchestratorService.getConversationHistory.mockResolvedValue({
+				messages: [],
+				activeExecutionId: null,
+			} as never);
+			agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(null);
+
+			const req = { params: { projectId, agentId, threadId: 'thread-1' }, user: { id: userId } };
+
+			await expect(controller.getProductionChatMessages(req as never)).resolves.toMatchObject({
+				activeExecutionId: null,
+			});
+		});
+
+		it("404s another user's thread instead of serving it", async () => {
+			const { controller, agentsService, agentExecutionService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
+			const req = {
+				params: { projectId, agentId, threadId: 'foreign-thread' },
+				user: { id: userId },
+			};
+
+			await expect(controller.getProductionChatMessages(req as never)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('getProductionQueuedMessages', () => {
+		it("serves the requesting user's own queue", async () => {
+			const { controller, agentsService, messageQueue } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			messageQueue.listPending.mockResolvedValue({ items: [], steerableExecutionId: null });
+
+			const req = { params: { projectId, agentId, threadId: 'thread-1' }, user: { id: userId } };
+
+			await expect(controller.getProductionQueuedMessages(req as never)).resolves.toEqual({
+				items: [],
+				steerableExecutionId: null,
+			});
+		});
+
+		it("propagates the service's rejection of another user's thread instead of swallowing it", async () => {
+			const { controller, agentsService, messageQueue } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			messageQueue.listPending.mockRejectedValue(new NotFoundError('Session not found'));
+
+			const req = {
+				params: { projectId, agentId, threadId: 'foreign-thread' },
+				user: { id: userId },
+			};
+
+			await expect(controller.getProductionQueuedMessages(req as never)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('getProductionChatAttachment', () => {
+		function makeAttachment(overrides: Record<string, unknown> = {}) {
+			return {
+				id: 'att-1',
+				mimeType: 'text/plain',
+				fileName: 'notes.txt',
+				fileSizeBytes: 5,
+				threadId: 'thread-1',
+				source: N8N_CHAT_PRODUCTION_SOURCE,
+				resourceId: productionChatMemoryResourceId(userId),
+				...overrides,
+			};
+		}
+
+		it("streams the requesting user's own attachment", async () => {
+			const { controller, agentsService, agentChatAttachmentService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentChatAttachmentService.getForAgent.mockResolvedValue(makeAttachment() as never);
+			agentChatAttachmentService.getStream.mockResolvedValue(Readable.from(['hi']) as never);
+
+			const req = {
+				params: { projectId, agentId, attachmentId: 'att-1' },
+				user: { id: userId },
+			} as never;
+			const res = Object.assign(new PassThrough(), { setHeader: vi.fn() }) as never;
+
+			await controller.getProductionChatAttachment(req, res);
+			expect(agentChatAttachmentService.getStream).toHaveBeenCalled();
+		});
+
+		it("404s another user's attachment instead of streaming it", async () => {
+			const { controller, agentsService, agentChatAttachmentService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentChatAttachmentService.getForAgent.mockResolvedValue(
+				makeAttachment({ resourceId: productionChatMemoryResourceId('other-user') }) as never,
+			);
+
+			const req = {
+				params: { projectId, agentId, attachmentId: 'att-1' },
+				user: { id: userId },
+			} as never;
+			const res = { setHeader: vi.fn() } as never;
+
+			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
+			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
+		});
+
+		it("404s when the attachment belongs to the user's thread but that thread isn't theirs anymore", async () => {
+			const { controller, agentsService, agentChatAttachmentService, agentExecutionService } =
+				makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentChatAttachmentService.getForAgent.mockResolvedValue(makeAttachment() as never);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
+			const req = {
+				params: { projectId, agentId, attachmentId: 'att-1' },
+				user: { id: userId },
+			} as never;
+			const res = { setHeader: vi.fn() } as never;
+
+			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
+			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -544,8 +544,14 @@ export class AgentChatController {
 		};
 	}
 
+	// The n8n Chat audience (`project:chatUser`) holds `agent:execute`, not
+	// `agent:read` — this route must stay reachable to a chat-only member, so it
+	// is scoped to `agent:execute`. `requireProductionThread` below (via
+	// `canUseProductionChatThread` → `canUseTopLevelDraftThread`) still 404s a
+	// thread that isn't this user's own, so the lower scope alone doesn't open
+	// another user's history.
 	@Get('/:agentId/n8n-chat/:threadId/messages')
-	@ProjectScope('agent:read')
+	@ProjectScope('agent:execute')
 	async getProductionChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatMessagesResponse> {
@@ -575,8 +581,11 @@ export class AgentChatController {
 		};
 	}
 
+	// Same reasoning as `getProductionChatMessages`: the attachment's `resourceId`
+	// check and `requireProductionThread` below already restrict this to the
+	// requesting user's own thread, so `agent:execute` is safe for a chat-only member.
 	@Get('/:agentId/n8n-chat/attachments/:attachmentId')
-	@ProjectScope('agent:read')
+	@ProjectScope('agent:execute')
 	async getProductionChatAttachment(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; attachmentId: string }>,
 		res: Response,
@@ -599,8 +608,11 @@ export class AgentChatController {
 		await this.streamAttachment(attachment, res);
 	}
 
+	// Same reasoning as `getProductionChatMessages`: `messageQueue.listPending`
+	// calls `assertUserChatAccess`, which 404s a thread that isn't this user's
+	// own, so `agent:execute` is safe for a chat-only member.
 	@Get('/:agentId/n8n-chat/:threadId/queue')
-	@ProjectScope('agent:read')
+	@ProjectScope('agent:execute')
 	async getProductionQueuedMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatQueueResponse> {
