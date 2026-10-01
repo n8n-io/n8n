@@ -133,35 +133,14 @@ export default defineConfig(
 		},
 	},
 	{
-		// Ratchet allowlist: handlers/services still reaching a repository directly, pending
-		// migration to the `@PublicApiController` + service pattern (API-70). NEVER add to this
-		// list — a new violation must fail CI. Entries are removed as each file migrates.
-		files: [
-			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-		],
-		rules: {
-			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
-		},
-	},
-	{
 		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
 		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 		// must fail CI. Entries are removed as each handler becomes a controller.
 		files: [
-			'./src/public-api/v1/handlers/audit/audit.handler.ts',
-			'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
-			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
 			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-			'./src/public-api/v1/handlers/otel/otel.handler.ts',
-			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
-			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
 		rules: {
@@ -380,7 +359,6 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-			'./src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
 		],

@@ -16,6 +16,8 @@ const numericIdParamSchema = (description: string) =>
 
 const stringIdParamSchema = (description: string) => z.string().openapi({ param: { description } });
 
+const NANOID_REGEX = /^[A-Za-z0-9]{16}$/;
+
 export const executionIdParamSchema = numericIdParamSchema('The ID of the execution.');
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
@@ -52,6 +54,18 @@ export const credentialIdParamSchema = stringIdParamSchema('The ID of the creden
 export const credentialTypeNameParamSchema = stringIdParamSchema(
 	'The credential type name that you want to get the schema for',
 );
+export const communityPackageNameParamSchema = z
+	.string()
+	.openapi({ param: { description: 'npm package name' } });
+
+export const dataTableIdParamSchema = z
+	.string()
+	.regex(NANOID_REGEX, 'must match format "nanoid"')
+	.openapi({ format: 'nanoid', param: { description: 'The ID of the data table' } });
+export const columnIdParamSchema = z
+	.string()
+	.regex(NANOID_REGEX, 'must match format "nanoid"')
+	.openapi({ format: 'nanoid', param: { description: 'The ID of the column' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',

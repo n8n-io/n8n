@@ -33,7 +33,7 @@ flowchart LR
     end
 
     subgraph module["policy-infrastructure module (default, disable to opt out)"]
-        pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed<br/>one audit line per veto"]
+        pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed<br/>one audit line + one log streaming event per veto"]
         registry["PolicyCheckMetadata<br/>registry in @n8n/decorators"]
         checks["@PolicyCheck() classes<br/>onWorkflowSave · onWorkflowPublish · …"]
     end
@@ -102,6 +102,16 @@ request. A check can compare it with `workflow` to judge only what the save adds
 
 Deadlines are tight on the two points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
+
+A one-off CLI command registers no check unless it calls
+`BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,
+`execute` and `execute-batch` call it.
+
+Known gaps: `import:entities`, `publish:workflow` and `update:workflow` run no
+check. `import:entities` restores the policy tables in the same run, so a check
+against the stored rules would judge the content by the wrong policy. The
+`workflowStart` check still refuses to run a blocked workflow that one of these
+commands wrote.
 
 ## Contexts
 
@@ -189,6 +199,35 @@ Two logging facts to know before relying on this:
 Policy _mutation_ audit — who changed a policy — is a different surface, owned by the
 feature that has a policy to mutate, on the existing audit-event infrastructure.
 
+## The log streaming event
+
+The same emit site also sends `n8n.audit.policy.decision.blocked` to log streaming, so a
+SIEM sees every block but one kind (see below). The payload is the audit line plus the actor. It does not depend on
+the log format or on `N8N_LOG_SCOPES`.
+
+- **The host names the actor.** Every `enforce*` call takes a `PolicyActor` as its second
+  argument. Checks never see it. It is a user when the host is a request with an
+  authenticated user. Otherwise it is the system with a reason: `execution`, `cli-import`,
+  `activation`, `publication`, `integration` or `log-streaming`.
+- **A run never names a user.** Not every execution path knows reliably who started the
+  run, so a block inside a run is `execution` and carries the `executionId`. Use the
+  execution to find who started it. This includes manual runs and sub-workflows.
+- **The payload says which.** `actorType` is `user` or `system`. A system actor adds
+  `systemReason` and has `userId: null`.
+- **`userId` always means the accountable human.** A future agent actor adds its own
+  fields and fills `userId` with the user it acts for, so SIEM rules on `userId` keep
+  their meaning.
+- **The user fields are the same on every block.** A host that knows only the user id
+  passes `{ id }`, and the relay reads the rest of the user before it sends the event. The
+  fields are redactable, the same as on every other `n8n.audit.*` event.
+- **A block on a destination credential sends no event.** A webhook destination decrypts
+  its credential on every delivery. If a policy blocks it, the event would go to the same
+  destination and block again. So the relay drops `log-streaming` blocks. The audit line
+  still records them.
+- **Violations have fixed keys.** A field a check left out is `null`, not missing.
+- **Workers and webhook processes send it too.** The log streaming module runs on
+  every instance type, so an event from a worker goes straight to the destinations.
+
 ## The seal
 
 A cleared write needs a `PolicyCleared` token minted by the enforcement point.
@@ -240,7 +279,7 @@ registry is read on every decision, so load order cannot hide a check.
 | File                                         | Role                                                                                         |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `policy-infrastructure.module.ts`            | Registers `PolicyDecisionService` into the enforcement point and loads the lifecycle handler |
-| `policy-decision.service.ts`                 | Runs the checks with deadlines, combines their results, and emits the audit line             |
+| `policy-decision.service.ts`                 | Runs the checks with deadlines, combines their results, and emits the audit line and event   |
 | `policy-decision-audit.ts`                   | The audit line's shape and how it reads a target off each context                            |
 | `policy-lifecycle-handler.ts`                | The `workflowStart` host, one hook for every way an execution starts                         |
 | `policy-check-failed.error.ts`               | The 503 for a check that did not answer                                                      |

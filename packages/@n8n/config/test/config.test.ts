@@ -249,6 +249,8 @@ describe('GlobalConfig', () => {
 			publicationOutboxCleanupBatchSize: 1000,
 			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
+			groupsWithTriggersEnabled: false,
+			groupsWithManyBoundariesEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -362,6 +364,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			evalInstance: false,
 			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 60,
 			sandboxAutoDeleteMinutes: 10_080,
@@ -378,6 +381,7 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			canvasNodeContextEnabled: false,
+			promptVersion: '',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			activationCapped: false,
@@ -686,6 +690,7 @@ describe('GlobalConfig', () => {
 			allowWebhookIsolateSkip: true,
 			lazyAcquire: false,
 			compileCache: false,
+			nativeEvaluation: false,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,

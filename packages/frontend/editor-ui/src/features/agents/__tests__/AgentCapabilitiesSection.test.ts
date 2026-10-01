@@ -1,13 +1,16 @@
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { fireEvent, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { AgentJsonTaskConfig } from '@n8n/api-types';
 import { ref } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SimplifiedNodeType } from '@/Interface';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource, CustomToolEntry } from '../types';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
+
+enableAutoUnmount(afterEach);
 
 const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
 	() => null,
@@ -185,6 +188,242 @@ describe('AgentCapabilitiesSection', () => {
 		webSearchSection.vm.$emit('update:config', update);
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([update]);
+	});
+
+	it.each([
+		['node', 'agent-capabilities-tool-row', 0, 1],
+		['custom', 'agent-capabilities-tool-row', 1, 2],
+		['workflow', 'agent-capabilities-workflow-row', 0, 0],
+		['MCP server', 'agent-capabilities-tool-row', 2, 3],
+	])('removes only the selected %s reference', async (_type, testId, chipIndex, configIndex) => {
+		getNodeType.mockReturnValue(null);
+		const tools: AgentJsonToolRef[] = [
+			{ type: 'workflow', workflow: 'shared-workflow', name: 'Lookup' },
+			{
+				type: 'node',
+				name: 'fetch',
+				node: {
+					nodeType: 'n8n-nodes-base.httpRequestTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+			{ type: 'custom', id: 'custom-tool' },
+		];
+		const config = configWithMcpServers([
+			{
+				name: 'remote',
+				url: 'https://example.com/mcp',
+				authentication: 'none',
+				transport: 'streamableHttp',
+			},
+		]);
+		const wrapper = mountSection(tools, {}, config, [], [], {}, document.body);
+		await flushPromises();
+		const chip = wrapper.findAll(`[data-testid="${testId}"]`)[chipIndex];
+
+		await chip.trigger('contextmenu');
+		const remove = await screen.findByRole('menuitem', {
+			name: 'agents.builder.contextMenu.remove',
+		});
+		expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+		// Touch browsers can dispatch a click when the long press ends.
+		await fireEvent.click(chip.element);
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+		expect(remove).toBeVisible();
+		await userEvent.click(remove);
+
+		expect(wrapper.emitted('remove-tool')).toEqual([[configIndex]]);
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+	});
+
+	it('forwards skill removal and keeps the other sub-agent settings', async () => {
+		const config: AgentJsonConfig = {
+			...configWithMcpServers([]),
+			subAgents: { maxChildren: 7, agents: [{ agentId: 'agent-2' }, { agentId: 'agent-3' }] },
+		};
+		const wrapper = mountSection(
+			[],
+			{},
+			config,
+			[],
+			[makeAgent()],
+			{
+				skills: [{ id: 'skill-1', skill: { name: 'Triage', description: '', instructions: '' } }],
+			},
+			document.body,
+		);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-capabilities-skill-row"]').trigger('contextmenu');
+		await userEvent.click(
+			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' }),
+		);
+		expect(wrapper.emitted('remove-skill')).toEqual([['skill-1']]);
+		expect(wrapper.emitted('open-skill')).toBeUndefined();
+
+		await wrapper
+			.findAll('[data-testid="agent-capabilities-sub-agent-row"]')[0]
+			.trigger('contextmenu');
+		await userEvent.click(
+			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' }),
+		);
+		expect(wrapper.emitted('update:config')).toEqual([
+			[{ subAgents: { maxChildren: 7, agents: [{ agentId: 'agent-3' }] } }],
+		]);
+		expect(openModalWithDataSpy).not.toHaveBeenCalled();
+	});
+
+	it('blocks removal when an open menu becomes read-only', async () => {
+		const wrapper = mountSection(
+			[{ type: 'custom', id: 'helper' }],
+			{},
+			null,
+			[],
+			[],
+			{},
+			document.body,
+		);
+		await wrapper.get('[data-testid="agent-capabilities-tool-row"]').trigger('contextmenu');
+		const remove = await screen.findByRole('menuitem', {
+			name: 'agents.builder.contextMenu.remove',
+		});
+
+		await wrapper.setProps({ disabled: true });
+		expect(remove).toHaveAttribute('aria-disabled', 'true');
+		await fireEvent.click(remove);
+		expect(wrapper.emitted('remove-tool')).toBeUndefined();
+	});
+
+	it('removes a group in one update and preserves tools outside the group', async () => {
+		getNodeType.mockImplementation((type) => {
+			if (type === 'n8n-nodes-base.slackTool') return createNodeType(type, 'Slack Tool');
+			if (type === 'n8n-nodes-base.gmailTool') return createNodeType(type, 'Gmail Tool');
+			return null;
+		});
+		const nodeTool = (name: string, nodeType = 'n8n-nodes-base.slackTool'): AgentJsonToolRef => ({
+			type: 'node',
+			name,
+			node: { nodeType, nodeTypeVersion: 1, nodeParameters: {} },
+		});
+		const tools: AgentJsonToolRef[] = [
+			nodeTool('send_message'),
+			{ type: 'workflow', workflow: 'shared-workflow' },
+			nodeTool('read_email', 'n8n-nodes-base.gmailTool'),
+			nodeTool('read_messages'),
+			{ type: 'custom', id: 'helper' },
+		];
+		const config = configWithMcpServers([
+			{
+				name: 'remote',
+				url: 'https://example.com/mcp',
+				authentication: 'none',
+				transport: 'streamableHttp',
+			},
+		]);
+		const wrapper = mountSection(
+			tools,
+			{},
+			config,
+			[],
+			[],
+			{
+				disabled: true,
+				validationIssues: [
+					{
+						code: 'missing_credential',
+						path: 'tools.3.node.credentials',
+						capability: { kind: 'tool', index: 3, toolType: 'node' },
+					},
+				],
+			},
+			document.body,
+		);
+		const group = screen.getByRole('button', { name: /2 Slack/ });
+		await fireEvent.contextMenu(group);
+		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+		await wrapper.setProps({ disabled: false });
+		await fireEvent.contextMenu(group);
+		const remove = await screen.findByRole('menuitem', {
+			name: 'agents.builder.contextMenu.remove',
+		});
+		await fireEvent.click(group);
+		expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+
+		await wrapper.setProps({ disabled: true });
+		expect(remove).toHaveAttribute('aria-disabled', 'true');
+		await fireEvent.click(remove);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+		await wrapper.setProps({ disabled: false });
+		await userEvent.click(remove);
+
+		const remaining = [tools[1], tools[2], tools[4]];
+		expect(wrapper.emitted('update:config')).toEqual([[{ tools: remaining }]]);
+		expect(wrapper.emitted('remove-tool')).toBeUndefined();
+		await wrapper.setProps({ tools: remaining, validationIssues: [] });
+		expect(screen.queryByRole('button', { name: /2 Slack/ })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Read email' })).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Remote' })).toBeVisible();
+		expect(wrapper.find('[data-testid="agent-capabilities-workflow-row"]').exists()).toBe(true);
+	});
+
+	it('edits and removes individual grouped tools without removing their siblings', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const nodeTool = (name: string): AgentJsonToolRef => ({
+			type: 'node',
+			name,
+			node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+		});
+		const tools: AgentJsonToolRef[] = [
+			{ type: 'workflow', workflow: 'shared-workflow' },
+			nodeTool('send_message'),
+			nodeTool('read_messages'),
+		];
+		const wrapper = mountSection(
+			tools,
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [
+					{
+						code: 'missing_credential',
+						path: 'tools.2.node.credentials',
+						capability: { kind: 'tool', index: 2, toolType: 'node' },
+					},
+				],
+			},
+			document.body,
+		);
+		await flushPromises();
+		const group = wrapper.get('[data-testid="agent-capabilities-tool-row"]');
+
+		await userEvent.click(group.element);
+		await userEvent.click(await screen.findByRole('menuitem', { name: 'Send message' }));
+		expect(wrapper.emitted('open-tool')).toEqual([
+			[{ kind: 'tool', toolType: 'node', id: 'send_message' }],
+		]);
+		await vi.waitFor(() => expect(screen.queryByRole('menuitem')).not.toBeInTheDocument());
+
+		await userEvent.click(group.element);
+		const readMessages = await screen.findByRole('menuitem', { name: /Read messages/ });
+		await fireEvent.contextMenu(readMessages);
+		const remove = await screen.findByRole('menuitem', {
+			name: 'agents.builder.contextMenu.remove',
+		});
+		await fireEvent.click(readMessages);
+		expect(wrapper.emitted('open-tool')).toHaveLength(1);
+		expect(remove).toBeVisible();
+		await userEvent.click(remove);
+		expect(wrapper.emitted('remove-tool')).toEqual([[2]]);
+		expect(wrapper.emitted('open-tool')).toHaveLength(1);
+		await wrapper.setProps({ tools: tools.slice(0, 2), validationIssues: [] });
+		await vi.waitFor(() => expect(screen.queryByRole('menuitem')).not.toBeInTheDocument());
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
+		expect(wrapper.get('[data-testid="agent-capabilities-tool-row"]').text()).toBe('Send message');
+		expect(wrapper.find('[data-testid="agent-capabilities-workflow-row"]').exists()).toBe(true);
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -747,14 +986,12 @@ describe('AgentCapabilitiesSection', () => {
 			},
 		]);
 
-		// Reka's DropdownMenuTrigger — not the read-only chip inside it — is what
-		// actually gates opening the menu, so assert its own disabled state.
 		const trigger = wrapper.find('[aria-haspopup="menu"]');
-		expect(trigger.attributes('disabled')).toBe('false');
+		expect(trigger.element).toBeEnabled();
 
 		await wrapper.setProps({ disabled: true });
 
-		expect(wrapper.find('[aria-haspopup="menu"]').attributes('disabled')).toBe('true');
+		expect(wrapper.find('[aria-haspopup="menu"]').element).toBeDisabled();
 	});
 
 	describe('validation issues', () => {

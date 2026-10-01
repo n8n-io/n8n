@@ -11,15 +11,19 @@ import {
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
-	N8nIconButton,
+	N8nInput,
 	N8nLink,
-	N8nSendStopButton,
+	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
-import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
+import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
+	type AgentChatQueueItem,
+	type AgentBuilderOpenSuspension,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -31,7 +35,11 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	findTailOpenInteractive,
+	getMessageInteractives,
+	parseApprovalInput,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
@@ -44,6 +52,7 @@ import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils
 import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
+import ApprovalCard from './interactive/ApprovalCard.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -58,6 +67,7 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
@@ -69,6 +79,7 @@ const props = withDefaults(
 		newSession: false,
 		canEditAgent: true,
 		canSendToAssistant: false,
+		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
@@ -92,6 +103,15 @@ const toast = useToast();
 
 const {
 	messages,
+	queuedMessages,
+	removingQueueIds,
+	steeringQueueIds,
+	canSteer,
+	steerQueuedMessage,
+	removeQueuedMessage,
+	updateQueuedMessage,
+	isSubmitting,
+	isLoadingHistory,
 	isStreaming,
 	refresh,
 	isCancelling,
@@ -119,7 +139,72 @@ const {
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
 
-const { jobs: backgroundJobs } = useAgentBackgroundJobs({
+const queueEdit = ref<{
+	item: AgentChatQueueItem;
+	text: string;
+	unavailable: boolean;
+	saving: boolean;
+}>();
+const queueRows = computed(() => {
+	const edit = queueEdit.value;
+	if (edit && !queuedMessages.value.some((item) => item.id === edit.item.id)) {
+		return [...queuedMessages.value, edit.item];
+	}
+	return queuedMessages.value;
+});
+const [DefineQueueList, QueueList] = createReusableTemplate<{ items: AgentChatQueueItem[] }>({
+	inheritAttrs: false,
+});
+const canSaveQueueEdit = computed(() => {
+	const edit = queueEdit.value;
+	return (
+		edit &&
+		!edit.saving &&
+		!edit.unavailable &&
+		(edit.text.trim().length > 0 || !!edit.item.attachments?.length)
+	);
+});
+watch(queuedMessages, (items) => {
+	const edit = queueEdit.value;
+	if (!edit) return;
+	const current = items.find((item) => item.id === edit.item.id);
+	edit.unavailable = !current || !!current.steeringExecutionId;
+});
+function startQueueEdit(item: AgentChatQueueItem) {
+	if (item.steeringExecutionId) return;
+	queueEdit.value = { item, text: item.message, unavailable: false, saving: false };
+}
+function isQueueItemBusy(item: AgentChatQueueItem) {
+	return (
+		!!item.steeringExecutionId ||
+		steeringQueueIds.value.has(item.id) ||
+		removingQueueIds.value.has(item.id)
+	);
+}
+async function saveQueueEdit() {
+	const edit = queueEdit.value;
+	if (!edit || !canSaveQueueEdit.value) return;
+	edit.saving = true;
+	const result = await updateQueuedMessage(edit.item.id, edit.text);
+	if (queueEdit.value !== edit) return;
+	edit.saving = false;
+	if (result === 'updated') queueEdit.value = undefined;
+	else if (result === 'unavailable') edit.unavailable = true;
+}
+function onQueueEditKeydown(event: KeyboardEvent) {
+	if (event.isComposing) return;
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!queueEdit.value?.saving) queueEdit.value = undefined;
+	} else if (event.key === 'Enter' && !event.shiftKey) {
+		event.preventDefault();
+		event.stopPropagation();
+		void saveQueueEdit();
+	}
+}
+
+const { jobs: backgroundJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
@@ -130,6 +215,9 @@ const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
 const backgroundTitle = computed(() => {
+	if (backgroundJobs.value.some((job) => job.status === 'suspended')) {
+		return locale.baseText('agents.chat.backgroundTasks.status.suspended');
+	}
 	const count = backgroundRunningCount.value;
 	if (count === 0) {
 		return locale.baseText('agents.chat.backgroundTasks.finished', {
@@ -167,7 +255,68 @@ const backgroundJobStatuses = computed(() => ({
 		icon: 'circle',
 		label: locale.baseText('agents.chat.backgroundTasks.status.waiting'),
 	},
+	suspended: {
+		icon: 'circle-pause',
+		label: locale.baseText('agents.chat.backgroundTasks.status.suspended'),
+	},
 }));
+
+const backgroundApproval = computed(() => {
+	if (!props.backgroundJobsActive) return undefined;
+	for (const job of backgroundJobs.value) {
+		if (job.status !== 'suspended' || !job.approval) continue;
+		const input = parseApprovalInput(job.approval.suspendPayload);
+		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
+	}
+	return undefined;
+});
+const pendingApproval = computed(() => {
+	const tail = messages.value.at(-1);
+	if (!tail) return undefined;
+	for (const payload of getMessageInteractives(tail)) {
+		if (
+			payload.toolName !== APPROVAL_TOOL_NAME ||
+			payload.resolvedAt !== undefined ||
+			!payload.runId
+		) {
+			continue;
+		}
+		return { runId: payload.runId, toolCallId: payload.toolCallId, input: payload.input };
+	}
+	return undefined;
+});
+const hasPendingApprovals = computed(
+	() => pendingApproval.value !== undefined || backgroundApproval.value !== undefined,
+);
+const pendingBackgroundResponses = ref(new Set<string>());
+
+async function respondToBackgroundApproval(
+	approval: AgentBuilderOpenSuspension,
+	resumeData: { approved: boolean },
+) {
+	if (pendingBackgroundResponses.value.has(approval.toolCallId)) return;
+	pendingBackgroundResponses.value.add(approval.toolCallId);
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	try {
+		await respondToApproval({ runId: approval.runId, toolCallId: approval.toolCallId, resumeData });
+	} catch (error) {
+		if (
+			disposed ||
+			!props.visible ||
+			props.projectId !== target.projectId ||
+			props.agentId !== target.agentId ||
+			props.continueSessionId !== target.continueSessionId
+		)
+			return;
+		toast.showError(error, locale.baseText('agents.chat.backgroundTasks.approvalError'));
+	} finally {
+		pendingBackgroundResponses.value.delete(approval.toolCallId);
+	}
+}
 const backgroundJobRows = computed(() =>
 	backgroundJobs.value.map((job) => ({
 		...job,
@@ -222,6 +371,7 @@ const backgroundElapsed = computed(() => {
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
 	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
 );
@@ -233,18 +383,26 @@ function focusInput(options?: FocusOptions) {
 watch(
 	[
 		showBackgroundJobs,
+		hasPendingApprovals,
 		() => props.projectId,
 		() => props.agentId,
 		() => props.continueSessionId,
 		() => props.visible,
 	],
-	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+	async (
+		[shown, approvalsShown, ...target],
+		[wasShown, approvalsWereShown, ...previousTarget],
+		onCleanup,
+	) => {
+		const removedFocusedCard =
+			(!shown && wasShown && backgroundJobCard.value?.contains(document.activeElement)) ||
+			(!approvalsShown &&
+				approvalsWereShown &&
+				approvalCards.value?.contains(document.activeElement));
 		if (
-			shown ||
-			!wasShown ||
+			!removedFocusedCard ||
 			!props.visible ||
-			target.some((value, index) => value !== previousTarget[index]) ||
-			!backgroundJobCard.value?.contains(document.activeElement)
+			target.some((value, index) => value !== previousTarget[index])
 		) {
 			return;
 		}
@@ -259,7 +417,7 @@ watch(
 			cancelled ||
 			disposed ||
 			!props.visible ||
-			showBackgroundJobs.value ||
+			hasPendingApprovals.value ||
 			document.activeElement !== document.body
 		) {
 			return;
@@ -330,6 +488,9 @@ const inputText = computed<string>({
 		}
 	},
 });
+const hasDraft = computed(
+	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
+);
 const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
@@ -389,24 +550,8 @@ const hasOpenSuspension = computed(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		) ?? false,
 );
-/**
- * A parked run owns the conversation: sending now would start a second run
- * whose context has the pending tool call stripped out, so the model would
- * re-invoke the same tool. Only an open question is exempt — answering or
- * steering it resumes the same run. Stop stays available either way.
- */
-const inputBlockedBySuspension = computed(
-	() =>
-		hasOpenApproval.value ||
-		hasOpenWaitCard.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
-);
 const isSubmissionBlocked = computed(
-	() =>
-		isStreaming.value ||
-		isCancelling.value ||
-		isPreparingToSend.value ||
-		inputBlockedBySuspension.value,
+	() => isPreparingToSend.value || isSubmitting.value || isLoadingHistory.value,
 );
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
@@ -419,24 +564,18 @@ const hasInFlightToolCalls = computed(() =>
 		),
 	),
 );
-const showSuspensionStopAlongsideSend = computed(
-	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
-);
-const showStopAsPrimaryAction = computed(
+const showStop = computed(
 	() =>
-		isStreaming.value ||
-		isCancelling.value ||
-		inputBlockedBySuspension.value ||
-		(!isStreaming.value && hasInFlightToolCalls.value),
+		!hasDraft.value &&
+		!isLoadingHistory.value &&
+		(isStreaming.value ||
+			isCancelling.value ||
+			hasOpenInteraction.value ||
+			hasOpenSuspension.value ||
+			hasInFlightToolCalls.value),
 );
 
 const chatPlaceholder = computed(() => {
-	if (hasOpenApproval.value) {
-		return locale.baseText('agents.chat.approval.inputPlaceholder');
-	}
-	if (inputBlockedBySuspension.value) {
-		return locale.baseText('agents.chat.waiting.inputPlaceholder');
-	}
 	if (hasOpenInteractiveQuestion.value) {
 		return locale.baseText('agents.chat.answerQuestionPlaceholder');
 	}
@@ -457,6 +596,14 @@ watch(
 	() => props.visible,
 	(visible) => {
 		if (visible) refresh();
+	},
+);
+
+watch(
+	() => [props.projectId, props.agentId, props.continueSessionId],
+	() => {
+		queuedExternalMessage = undefined;
+		queueEdit.value = undefined;
 	},
 );
 
@@ -489,7 +636,6 @@ async function onSubmit(): Promise<SubmitResult> {
 			if (inputText.value.trim() === text) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 		});
-		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
 		return result === 'busy' ? 'busy' : 'sent';
 	}
 
@@ -507,24 +653,20 @@ async function onSubmit(): Promise<SubmitResult> {
 			props.connectedTriggers,
 		);
 		if (!isCurrentTarget()) return 'rejected';
-		// Keep the draft if a local resume or cancellation started during preparation.
-		if (isStreaming.value || isCancelling.value) return 'busy';
-
-		agentTelemetry.trackSubmittedMessage({
-			agentId: props.agentId,
-			status: props.agentStatus,
-			agentConfig: fingerprint,
-		});
 
 		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
 			if (!isCurrentTarget()) return;
+			agentTelemetry.trackSubmittedMessage({
+				agentId: props.agentId,
+				status: props.agentStatus,
+				agentConfig: fingerprint,
+			});
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			consumeQueuedExternalMessage(text);
 		});
 		isPreparingToSend.value = false;
 		const result = await sending;
-		if (isCurrentTarget()) consumeQueuedExternalMessage(text);
 		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {
@@ -533,7 +675,6 @@ async function onSubmit(): Promise<SubmitResult> {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (inputBlockedBySuspension.value) return;
 	queuedExternalMessage = message;
 	inputText.value = message;
 	void submitQueuedExternalMessage();
@@ -555,7 +696,7 @@ async function submitQueuedExternalMessage() {
 	if (result === 'rejected' && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
 	}
-	if (queuedExternalMessage && !isSubmissionBlocked.value) {
+	if (queuedExternalMessage && queuedExternalMessage !== message && !isSubmissionBlocked.value) {
 		await nextTick();
 		void submitQueuedExternalMessage();
 	}
@@ -595,14 +736,17 @@ onBeforeUnmount(() => {
 				</span>
 			</div>
 			<template #trailingContent>
-				<N8nIconButton
-					icon="x"
-					variant="ghost"
-					size="xsmall"
-					:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
-					:title="locale.baseText('agents.chat.misconfigured.dismiss')"
-					@click="dismissFatalError"
-				/>
+				<N8nTooltip :content="locale.baseText('agents.chat.misconfigured.dismiss')" placement="top">
+					<N8nButton
+						icon-only
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
+						@click="dismissFatalError"
+					>
+						<template #icon><N8nIcon icon="x" size="xsmall" aria-hidden="true" /></template>
+					</N8nButton>
+				</N8nTooltip>
 			</template>
 		</N8nCallout>
 
@@ -625,14 +769,17 @@ onBeforeUnmount(() => {
 					}}</span>
 				</div>
 				<template #trailingContent>
-					<N8nIconButton
-						icon="x"
-						variant="ghost"
-						size="xsmall"
-						:aria-label="locale.baseText('agents.chat.warning.dismiss')"
-						:title="locale.baseText('agents.chat.warning.dismiss')"
-						@click="dismissWarning(index)"
-					/>
+					<N8nTooltip :content="locale.baseText('agents.chat.warning.dismiss')" placement="top">
+						<N8nButton
+							icon-only
+							variant="ghost"
+							size="xsmall"
+							:aria-label="locale.baseText('agents.chat.warning.dismiss')"
+							@click="dismissWarning(index)"
+						>
+							<template #icon><N8nIcon icon="x" size="xsmall" aria-hidden="true" /></template>
+						</N8nButton>
+					</N8nTooltip>
 				</template>
 			</N8nCallout>
 		</div>
@@ -646,98 +793,284 @@ onBeforeUnmount(() => {
 			:agent-id="agentId"
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
+			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 		/>
 
 		<div :class="$style.inputArea">
+			<div
+				v-if="showBackgroundJobs"
+				ref="backgroundJobCard"
+				:class="$style.backgroundJobs"
+				data-testid="agent-background-jobs"
+			>
+				<N8nAiActivityStepGroup
+					:key="continueSessionId"
+					:label="backgroundTitle"
+					full-width
+					content-position="above"
+				>
+					<template #prefix>
+						<N8nIcon
+							:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
+							:spin="backgroundRunningCount > 0"
+							size="small"
+							:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
+							aria-hidden="true"
+						/>
+					</template>
+					<template #header-trailing>
+						<span
+							:class="$style.jobTimer"
+							aria-live="off"
+							data-testid="agent-background-jobs-timer"
+							>{{ backgroundElapsed }}</span
+						>
+					</template>
+					<div :class="$style.backgroundJobDetails">
+						<ul :class="$style.backgroundJobList">
+							<li v-for="job in backgroundJobRows" :key="job.id">
+								<span
+									role="img"
+									:aria-label="job.indicator.label"
+									:title="job.indicator.label"
+									:class="[
+										$style.jobStatus,
+										{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
+									]"
+									:data-status="job.status"
+								>
+									<N8nIcon
+										:icon="job.indicator.icon"
+										:spin="job.indicator.icon === 'loader-circle'"
+										size="small"
+										:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
+									/>
+								</span>
+								<span>{{ job.label }}</span>
+							</li>
+						</ul>
+						<N8nLink
+							v-if="continueSessionId"
+							:to="backgroundTraceRoute"
+							theme="text"
+							size="small"
+							underline
+							data-testid="agent-background-jobs-trace"
+						>
+							<span :class="$style.jobTraceLabel">
+								<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+								{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+							</span>
+						</N8nLink>
+					</div>
+				</N8nAiActivityStepGroup>
+			</div>
+			<div v-if="hasPendingApprovals" ref="approvalCards" data-testid="agent-chat-approvals">
+				<ApprovalCard
+					v-if="pendingApproval"
+					:key="pendingApproval.toolCallId"
+					:input="pendingApproval.input"
+					@submit="
+						resume({
+							runId: pendingApproval.runId,
+							toolCallId: pendingApproval.toolCallId,
+							resumeData: $event,
+						})
+					"
+				/>
+				<div
+					v-else-if="backgroundApproval"
+					:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
+					:class="$style.backgroundApproval"
+				>
+					<N8nText bold size="small">{{
+						locale.baseText('agents.chat.backgroundTasks.approvalFor', {
+							interpolate: { title: backgroundApproval.title },
+						})
+					}}</N8nText>
+					<ApprovalCard
+						:input="backgroundApproval.input"
+						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
+						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
+					/>
+				</div>
+			</div>
 			<ChatInputBase
+				v-else
 				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="showStopAsPrimaryAction"
+				:is-streaming="false"
+				:show-stop-button="showStop"
 				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
-				:can-submit="
-					!inputBlockedBySuspension &&
-					!isStreaming &&
-					!isCancelling &&
-					!isPreparingToSend &&
-					(inputText.trim().length > 0 || attachedFiles.length > 0)
-				"
-				:disabled="inputBlockedBySuspension || isPreparingToSend"
+				:can-submit="!isSubmissionBlocked && hasDraft"
+				:disabled="isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="showBackgroundJobs" #header>
-					<div
-						ref="backgroundJobCard"
-						:class="$style.backgroundJobs"
-						data-testid="agent-background-jobs"
-					>
+				<template v-if="queueRows.length" #header>
+					<div :class="$style.messageQueue" data-testid="agent-message-queue">
+						<DefineQueueList v-slot="{ items }">
+							<ul :class="[$style.backgroundJobList, $style.queueList]">
+								<li v-for="item in items" :key="item.id" data-testid="agent-queued-message">
+									<div :class="$style.queuePreview" :title="item.message">
+										<N8nInput
+											v-if="queueEdit?.item.id === item.id"
+											v-model="queueEdit.text"
+											type="textarea"
+											size="small"
+											:autosize="{ minRows: 1, maxRows: 6 }"
+											:readonly="queueEdit.unavailable || queueEdit.saving"
+											:aria-label="locale.baseText('agents.chat.queue.edit')"
+											autofocus
+											@keydown="onQueueEditKeydown"
+										/>
+										<span v-else-if="item.message">{{ item.message }}</span>
+										<p
+											v-if="queueEdit?.item.id === item.id && queueEdit.unavailable"
+											:class="$style.queueEditNotice"
+											role="status"
+										>
+											{{
+												locale.baseText(
+													item.steeringExecutionId && queuedMessages.includes(item)
+														? 'agents.chat.queue.editSteeringUnavailable'
+														: 'agents.chat.queue.editUnavailable',
+												)
+											}}
+										</p>
+										<span
+											v-else-if="item.steeringExecutionId"
+											:class="$style.queueEditNotice"
+											role="status"
+										>
+											{{ locale.baseText('agents.chat.queue.steering') }}
+										</span>
+										<span v-for="attachment in item.attachments" :key="attachment.id">{{
+											attachment.fileName
+										}}</span>
+									</div>
+									<div :class="$style.queueActions">
+										<template v-if="queueEdit?.item.id === item.id">
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.save')"
+												:disabled="!canSaveQueueEdit"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="!canSaveQueueEdit"
+													:aria-label="locale.baseText('agents.chat.queue.save')"
+													@click="saveQueueEdit"
+												>
+													<template #icon
+														><N8nIcon icon="check" size="large" aria-hidden="true"
+													/></template>
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.cancelEdit')"
+												:disabled="queueEdit.saving"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="queueEdit.saving"
+													:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
+													@click="queueEdit = undefined"
+												>
+													<template #icon
+														><N8nIcon icon="x" size="large" aria-hidden="true"
+													/></template>
+												</N8nButton>
+											</N8nTooltip>
+										</template>
+										<template v-else>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.steerTooltip')"
+												:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+												placement="top"
+											>
+												<N8nButton
+													variant="ghost"
+													size="xsmall"
+													:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+													:aria-label="locale.baseText('agents.chat.queue.steer')"
+													@click="steerQueuedMessage(item.id)"
+												>
+													<template #icon
+														><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
+													/></template>
+													{{ locale.baseText('agents.chat.queue.steer') }}
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.edit')"
+												:disabled="!!queueEdit || isQueueItemBusy(item)"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="!!queueEdit || isQueueItemBusy(item)"
+													:aria-label="locale.baseText('agents.chat.queue.edit')"
+													@click="startQueueEdit(item)"
+												>
+													<template #icon
+														><N8nIcon icon="pencil" size="large" aria-hidden="true"
+													/></template>
+												</N8nButton>
+											</N8nTooltip>
+											<N8nTooltip
+												:content="locale.baseText('agents.chat.queue.remove')"
+												:disabled="isQueueItemBusy(item)"
+												placement="top"
+											>
+												<N8nButton
+													icon-only
+													variant="ghost"
+													size="xsmall"
+													:disabled="isQueueItemBusy(item)"
+													:aria-label="locale.baseText('agents.chat.queue.remove')"
+													@click="removeQueuedMessage(item.id)"
+												>
+													<template #icon>
+														<N8nIcon icon="trash-2" size="large" aria-hidden="true" />
+													</template>
+												</N8nButton>
+											</N8nTooltip>
+										</template>
+									</div>
+								</li>
+							</ul>
+						</DefineQueueList>
+						<QueueList :items="queueRows.slice(0, 2)" />
 						<N8nAiActivityStepGroup
+							v-if="queueRows.length > 2"
 							:key="continueSessionId"
-							:label="backgroundTitle"
+							:label="
+								queuedMessages.length > 2
+									? locale.baseText('agents.chat.queue.title', {
+											adjustToNumber: queuedMessages.length - 2,
+											interpolate: { count: queuedMessages.length - 2 },
+										})
+									: locale.baseText('agents.chat.queue.edit')
+							"
 							full-width
 							content-position="above"
 						>
-							<template #prefix>
-								<N8nIcon
-									:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
-									:spin="backgroundRunningCount > 0"
-									size="small"
-									:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
-									aria-hidden="true"
-								/>
-							</template>
-							<template #header-trailing>
-								<span
-									:class="$style.jobTimer"
-									aria-live="off"
-									data-testid="agent-background-jobs-timer"
-									>{{ backgroundElapsed }}</span
-								>
-							</template>
-							<div :class="$style.backgroundJobDetails">
-								<ul :class="$style.backgroundJobList">
-									<li v-for="job in backgroundJobRows" :key="job.id">
-										<span
-											role="img"
-											:aria-label="job.indicator.label"
-											:title="job.indicator.label"
-											:class="[
-												$style.jobStatus,
-												{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
-											]"
-											:data-status="job.status"
-										>
-											<N8nIcon
-												:icon="job.indicator.icon"
-												:spin="job.indicator.icon === 'loader-circle'"
-												size="small"
-												:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
-											/>
-										</span>
-										<span>{{ job.label }}</span>
-									</li>
-								</ul>
-								<N8nLink
-									v-if="continueSessionId"
-									:to="backgroundTraceRoute"
-									theme="text"
-									size="small"
-									underline
-									data-testid="agent-background-jobs-trace"
-								>
-									<span :class="$style.jobTraceLabel">
-										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
-										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
-									</span>
-								</N8nLink>
-							</div>
+							<QueueList :items="queueRows.slice(2)" />
 						</N8nAiActivityStepGroup>
 					</div>
 				</template>
@@ -754,12 +1087,6 @@ onBeforeUnmount(() => {
 				</template>
 				<template #footer-start>
 					<slot name="footer-start" />
-					<N8nSendStopButton
-						v-if="showSuspensionStopAlongsideSend"
-						streaming
-						stop-button-test-id="agent-chat-suspended-stop-button"
-						@stop="stopGenerating"
-					/>
 				</template>
 			</ChatInputBase>
 		</div>
@@ -798,15 +1125,33 @@ onBeforeUnmount(() => {
 	margin: 0 auto;
 }
 
-.backgroundJobs {
-	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
-	border-bottom: var(--border);
+.backgroundJobs,
+.messageQueue {
 	min-width: 0;
 
 	--ai-activity-step--height: auto;
 	--ai-activity-step--min-height: var(--height--xl);
 	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
 	--ai-activity-step--color: var(--text-color);
+}
+
+.backgroundJobs {
+	background: var(--background--surface);
+	box-shadow: var(--shadow--outline), var(--shadow--xs);
+	border-radius: var(--radius--xs);
+}
+
+.messageQueue {
+	--text-color: var(--text-color--subtle);
+
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	background: var(--background--subtle);
+	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
+	border-bottom: var(--border);
+}
+
+.messageQueue :global(.n8n-icon) {
+	color: light-dark(var(--color--neutral-600), var(--color--neutral-400));
 }
 
 .backgroundJobDetails {
@@ -817,6 +1162,12 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--sm);
 	border-bottom: var(--border);
 	border-bottom-style: dashed;
+}
+
+.backgroundApproval {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .backgroundJobList {
@@ -836,6 +1187,55 @@ onBeforeUnmount(() => {
 		color: var(--text-color--subtle);
 		overflow-wrap: anywhere;
 		line-height: var(--line-height--lg);
+	}
+}
+
+.messageQueue :global(button[aria-expanded]),
+.queueList > li {
+	font-size: var(--font-size--2xs);
+}
+
+.queueList > li {
+	align-items: center;
+	padding-inline: var(--spacing--sm);
+	color: var(--text-color);
+	border-bottom: var(--border);
+	line-height: var(--line-height--md);
+}
+
+.messageQueue > .queueList {
+	padding-block: var(--spacing--2xs);
+
+	&:last-child > li:last-child {
+		border-bottom: 0;
+	}
+}
+
+.messageQueue > .queueList:not(:last-child) {
+	padding-bottom: 0;
+}
+
+.queueActions {
+	display: flex;
+	align-self: center;
+	flex-shrink: 0;
+}
+
+.queueEditNotice {
+	margin: var(--spacing--3xs) 0;
+	font-size: var(--font-size--2xs);
+}
+
+.queuePreview {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+
+	span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 }
 

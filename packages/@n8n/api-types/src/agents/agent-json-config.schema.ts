@@ -427,13 +427,37 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
+const NonNegativeUsdSchema = z.number().min(0);
+
+/** Opt-in session cap and monthly budget. `enabled: false` keeps the saved amounts. */
+export const BudgetGuardrailConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		monthlyBudgetUsd: NonNegativeUsdSchema.optional(),
+		alertThresholdPercent: z.number().int().min(1).max(100).optional(),
+		sessionCostCapUsd: NonNegativeUsdSchema.optional(),
+	})
+	.superRefine((budget, ctx) => {
+		if (budget.alertThresholdPercent !== undefined && budget.monthlyBudgetUsd === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['alertThresholdPercent'],
+				message: 'Set a monthly budget to use an alert threshold',
+			});
+		}
+	});
+
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
+
 export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
+	/** An empty string is a deliberate clear of a previously stored value. */
+	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	/**
@@ -482,7 +506,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationConfigSchema).optional(),
+	integrations: z
+		.array(AgentIntegrationConfigSchema)
+		.refine(
+			(integrations) => integrations.filter((entry) => entry.type === 'n8n_chat').length <= 1,
+			{
+				message: 'Only one n8n Chat channel is allowed',
+			},
+		)
+		.optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -515,6 +547,11 @@ export const AgentJsonConfigBaseSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
+			guardrails: z
+				.object({
+					budget: BudgetGuardrailConfigSchema.optional(),
+				})
+				.optional(),
 		})
 		.optional(),
 });
@@ -537,6 +574,7 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;

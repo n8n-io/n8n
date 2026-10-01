@@ -25,7 +25,9 @@ exhaustive field reference; this skill is the opinionated *how*.
 > approach.** Author the file locally (uncommitted), calibrate it against a real
 > build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
 > (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
-> `--suite baseline` for the consolidated corpus n8n CI runs, or a dedicated
+> the suite the driver chose (see
+> [Ask for the target suite first](#ask-for-the-target-suite-first)) —
+> `baseline` for the consolidated corpus n8n CI runs, or a dedicated
 > capability suite like `agents`.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
@@ -37,6 +39,34 @@ exhaustive field reference; this skill is the opinionated *how*.
 > reconstructed from a LangSmith trace at run time, so it dies when that trace is
 > pruned and has no durable home. Don't commit a replay case either — derive a
 > synthetic case from it. See [`case-shapes.md`](case-shapes.md).
+
+## Ask for the target suite first
+
+**Before you source, draft, or run anything, ask the driver which LangTracer
+suite receives every eval you create in this session.** Ask this in both
+autonomy levels, including autonomous mode. Never pick the suite yourself and
+never default silently. A case pushed to the wrong suite runs in the wrong CI
+lane and alerts the wrong team.
+
+Ask the suite question and the autonomy question together, in one message.
+Recommend `baseline`:
+
+- `baseline` (recommended): the general corpus. The Instance AI (INS) team
+  monitors it, and it runs nightly.
+- Any other suite, such as `agents` or `node-gauntlet`: call `list_suites` and
+  offer the live list. Do not use a hardcoded list, because suites are added
+  and retired.
+
+Rules:
+
+- The driver's answer applies to all cases in the session. Do not ask again per
+  case.
+- If the driver already named a suite in the request, state it back in one line
+  and continue. Do not ask again.
+- Check that the suite kind matches the case. Push a case with a wrong build
+  (`capability_gap`) only into a suite that allows that kind. If the suite does
+  not allow it, tell the driver and ask again.
+- Put the chosen suite slug in the final decision log, as a link.
 
 ## Set the autonomy level first
 
@@ -468,6 +498,16 @@ read the run assumes someone already owns it. So once a red is classified as a
 real gap (and the driver has confirmed it, per the autonomy level), **propose a
 Linear ticket for it.**
 
+**Reproduce first. This is a default, not a hard rule.** Propose a ticket only
+after a case has reproduced the gap. That means the case is red on a real build,
+the precondition was confirmed to fire, and you re-read the raw thread (see
+[First reproduce, then reclassify](#first-reproduce-then-reclassify)). A gap that
+comes from trace analysis alone is a hypothesis. A ticket for it costs the owning
+team time. The driver may approve an exception, for example when the harness
+cannot reach the mechanism after about three attempts. In that case the ticket
+must say that the eval did not reproduce the gap. Never file an unreproduced gap
+without the driver's approval.
+
 **Propose, don't create.** Per [AGENTS.md](../../../AGENTS.md), never open a
 Linear ticket unasked. Put the draft in front of the driver — interactively in
 checkpoint mode, in the decision log in autonomous mode — with a title, a team,
@@ -712,8 +752,9 @@ Both are natural-language assertions graded by the same Sonnet judge, and each
   They run everywhere, including prebuilt/MCP runs (no transcript needed).
 - **`processExpectations`** — **how the agent behaved during the build**, judged
   from the transcript. Assert clarifying questions asked (or not re-asked),
-  tool-call behaviour, plan/approval handling, batching, honouring a correction,
-  ordering. They need a transcript, so they're **skipped in prebuilt/MCP runs**.
+  user-visible behaviour, plan/approval handling, batching, honouring a
+  correction, ordering. Do not assert internal mechanics such as sub-agents or
+  tool names (see "Keep expectations free of internal mechanics"). They need a transcript, so they're **skipped in prebuilt/MCP runs**.
 
 Rule of thumb: an assertion about *the artifact* is an outcome expectation; an
 assertion about *the conversation or the agent's choices along the way* is a
@@ -750,6 +791,54 @@ case, where the source and channel were **left unspecified**):
 
 Put intent the conversation only *implied* (a preferred but unstated channel) in
 `processExpectations`, not `outcomeExpectations`.
+
+## Keep expectations free of internal mechanics
+
+An expectation describes what the user or the artifact sees. It does not
+describe how Instance AI is built inside. The internal architecture changes:
+sub-agents, tool names, delegation, planning steps, and run ordering all move.
+An expectation that names them goes red when the design changes, although the
+behavior is still correct. It also stops proving the behavior: a build that
+solves the problem by another route fails it.
+
+**Do not name these in an expectation:**
+
+- Sub-agents, delegation, or hand-off ("the sub-agent runs ...", "the
+  orchestrator delegates ...").
+- Internal tool names or call counts ("calls `build-agent`", "calls
+  `search-nodes` twice").
+- Internal stages, task lists, or step order that the user cannot see.
+- Which component produced a result.
+
+**Do name these:**
+
+- What the user sees in the conversation: the question asked, the plan shown
+  for approval, the claim in the final response.
+- What the artifact contains: the workflow or Agent, its configuration, and
+  how it behaves.
+- A user-visible sequence, only when the user asked for it ("asks before it
+  builds").
+
+Rewrite test. Delete the internal term. State the result the term produced.
+
+| ❌ mechanical | ✅ intent |
+|---|---|
+| "The sub-agent runs the workflow before it reports success" | "The final response reports only results that the build verified; it does not claim an untested step works" |
+| "The orchestrator calls `ask-user` before delegating" | "The agent asks for the missing Slack channel before it builds, and does not guess one" |
+| "The builder calls `search-nodes` for the trigger" | "The workflow starts from a trigger that matches the requested schedule" |
+
+Second test. Imagine the internals are replaced by one agent with different
+tools. A correct build must still pass. If the expectation would fail or become
+meaningless, rewrite it.
+
+Some mechanics are a legitimate subject: a case whose purpose is to guard a
+specific tool contract (for example, a regression in how a tool reports an
+error). Keep these rare. State the reason in `description`. Do not mix them with
+intent expectations in the same case.
+
+**Calibration steps are not expectations.** Reading the transcript to confirm
+that a build ran, or that a sub-agent was reached, is a good calibration check.
+Keep it in your own run notes. Do not copy it into the case JSON.
 
 ## Robust design vs harness flakiness
 
@@ -837,16 +926,24 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
+# <suite> is the slug the driver chose (e.g. baseline)
 # preview first — no writes:
-pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite <suite> --dry-run --changed
 # then push (drop --dry-run):
-pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite <suite> --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
   `<slugs...>` (exact file slugs), `--changed` (new/untracked + staged + modified
   `data/{workflows,agents}/*.json`, ideal right after authoring an uncommitted case),
   `--filter`/`--tier` (with `--exclude` as a modifier).
+- **Validation is selective.** Exact slugs and `--changed` read only the named
+  files, so an unrelated invalid file in `data/workflows` (a case authored on a
+  newer branch, a half-written draft) never blocks your push. `--filter` parses
+  only the files whose slug matches; `--tier` reads the tier from inside each
+  file, so it parses them all. An invalid file either one parses prints
+  `⚠ skipped invalid case file …` and the push continues without it. A file you
+  named still fails the push when it is invalid.
 - **Multiple positional slugs? Skip pnpm — call the script directly.** `pnpm
   eval:langtracer-push … slugA slugB` forwards the slugs as one joined argument
   (`"slugA slugB"`), so no case file matches and nothing is pushed. Either use a

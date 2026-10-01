@@ -1,7 +1,11 @@
-import { BaseError } from '../../../src/errors/base/base.error';
-import { UnexpectedError } from '../../../src/errors/base/unexpected.error';
+import { BaseError, UnexpectedError as SharedUnexpectedError } from '@n8n/errors';
+import { UnexpectedError } from '../../../src/errors';
 
 describe('UnexpectedError', () => {
+	it('should re-export the shared class', () => {
+		expect(UnexpectedError).toBe(SharedUnexpectedError);
+	});
+
 	it('should be an instance of UnexpectedError', () => {
 		const error = new UnexpectedError('test');
 		expect(error).toBeInstanceOf(UnexpectedError);

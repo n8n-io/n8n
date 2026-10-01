@@ -11,7 +11,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsConfigController {

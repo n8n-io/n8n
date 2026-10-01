@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -6,10 +7,10 @@ import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { EventService } from '@/events/event.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 /**
@@ -25,6 +26,7 @@ export class EnqueuedExecutionRecoveryService {
 		private readonly executionService: ExecutionService,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly eventService: EventService,
 	) {
@@ -76,6 +78,9 @@ export class EnqueuedExecutionRecoveryService {
 					executionData: execution.data,
 					workflowData: execution.workflowData,
 					projectId: project.id,
+					// Same as a wait resume: the acting user is not stored, so it has to be
+					// derived again or the recovered run starts without an identity.
+					userId: await this.workflowPublisherService.findActingUserIdForRestart(execution),
 				};
 
 				this.eventService.emit('execution-started-during-bootup', { executionId });
