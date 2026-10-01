@@ -1,12 +1,13 @@
 import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
+import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
@@ -242,7 +243,20 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			)
 			.getRawMany<{ threadId: string; source: string }>();
 
-		return new Map(rows.map((r) => [r.threadId, r.source]));
+		const sources = new Map(rows.map((r) => [r.threadId, r.source]));
+		const queuedOnly = threadIds.filter((id) => !sources.has(id));
+		if (queuedOnly.length === 0) return sources;
+		// A thread whose first message is still queued has no execution yet. Its input names the surface.
+		const queued = await this.managerFor(ctx).find(AgentMessageQueue, {
+			where: { threadId: In(queuedOnly) },
+			relations: { message: true },
+			order: { id: 'ASC' },
+		});
+		for (const item of queued) {
+			const source = item.message.origin?.source;
+			if (source && !sources.has(item.threadId)) sources.set(item.threadId, source);
+		}
+		return sources;
 	}
 
 	async findLatestStatusesByThreadIds(

@@ -724,11 +724,13 @@ export class AgentExecutionOrchestratorService {
 						access: { accessScope: 'user', ownerId: user.id },
 						sessionMode,
 						abortSignal,
+						admittedExecution: config.admittedExecution,
 					},
 				),
 			async (runtime) => {
 				const messageContext = this.createN8nChatMessageContext(memory, user.id);
 				return this.streamChatResponse({
+					admittedExecution: config.admittedExecution,
 					access: { accessScope: 'user', ownerId: user.id },
 					messageContext,
 					onAdmitted: async () =>

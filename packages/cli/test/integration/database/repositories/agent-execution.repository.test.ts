@@ -1621,7 +1621,7 @@ describe('AgentExecutionRepository', () => {
 				const initialInputs = await services.messageRepository.findExecutionInputs([
 					predecessor.id,
 				]);
-				const target = { projectId, agentId, threadId, userId: owner.id };
+				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 				const b = await enqueue(services, input(threadId, 'B'));
 				const c = await enqueue(services, input(threadId, 'C'));
 				const runtime = fixture.makeAgent(services.checkpointStorage.getStorage(agentId));
@@ -1701,7 +1701,7 @@ describe('AgentExecutionRepository', () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id };
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 			await enqueue(local, input(threadId, 'A', 'new'));
 			const active = await claim(local, threadId);
 			const executionId = active.admission.executionId;
@@ -1836,7 +1836,7 @@ describe('AgentExecutionRepository', () => {
 		it('rolls back messages and timeline markers if consumption fails', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id };
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 			await enqueue(services, input(threadId, 'A', 'new'));
 			const active = await claim(services, threadId);
 			const executionId = active.admission.executionId;
@@ -1890,7 +1890,7 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				const target = { projectId, agentId, threadId, userId: owner.id };
+				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
@@ -1987,6 +1987,7 @@ describe('AgentExecutionRepository', () => {
 					agentId,
 					threadId,
 					userId: owner.id,
+					kind: 'preview' as const,
 					queueId: c.id,
 					executionId,
 				};
@@ -2181,10 +2182,59 @@ describe('AgentExecutionRepository', () => {
 			},
 		);
 
+		it('identifies a session from its queued first message before any execution exists', async () => {
+			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
+			const threadId = uuid();
+			const pending = await enqueue(services, {
+				...input(threadId, 'hello', 'new'),
+				source: 'n8n_chat_production',
+				payload: {
+					kind: 'n8n_chat',
+					message: 'hello',
+					userId: owner.id,
+					resourceId: `n8n-chat-production:${owner.id}`,
+				},
+			});
+			expect((await repository.findFirstSourceByThreadIds([threadId])).get(threadId)).toBe(
+				'n8n_chat_production',
+			);
+			const target = { projectId, agentId, threadId, userId: owner.id };
+			expect(
+				(await services.queue.listPending({ ...target, kind: 'n8n_chat' })).items.map(
+					({ id }) => id,
+				),
+			).toEqual([pending.id]);
+			await expect(services.queue.listPending({ ...target, kind: 'preview' })).rejects.toThrow(
+				'Session not found',
+			);
+
+			// Removing the only input leaves a session without a source. Its owner keeps access.
+			await services.queue.removePending({ ...target, kind: 'n8n_chat', queueId: pending.id });
+			expect(
+				await services.executionService.canUseProductionChatThread(
+					threadId,
+					projectId,
+					agentId,
+					owner.id,
+					'existing',
+				),
+			).toBe(true);
+			expect(await services.queue.listPending({ ...target, kind: 'n8n_chat' })).toEqual({
+				items: [],
+				steerableExecutionId: null,
+			});
+			expect(
+				await services.executionService.canUseDraftThread(threadId, projectId, agentId, owner.id, {
+					previewChat: true,
+					sessionMode: 'existing',
+				}),
+			).toBe(false);
+		});
+
 		it('lists only pending Preview input and removes its attachments without affecting the active run', async () => {
 			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id };
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 			await enqueue(services, input(threadId, 'active', 'new'));
 			const active = await claim(services, threadId);
 			const pendingInput = input(threadId, 'pending', 'existing', uuid());
@@ -2256,6 +2306,7 @@ describe('AgentExecutionRepository', () => {
 				agentId,
 				threadId,
 				userId: owner.id,
+				kind: 'preview' as const,
 				queueId: first.id,
 				message: 'updated',
 			};
@@ -2322,7 +2373,14 @@ describe('AgentExecutionRepository', () => {
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
 				const item = await enqueue(local, input(threadId, 'first', 'new'));
-				const target = { projectId, agentId, threadId, userId: owner.id, queueId: item.id };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					queueId: item.id,
+					kind: 'preview' as const,
+				};
 				const acquired = createDeferredPromise();
 				const release = createDeferredPromise();
 				const lock = local.threads.lockById.bind(local.threads);

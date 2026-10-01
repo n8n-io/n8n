@@ -1684,6 +1684,41 @@ describe('AgentExecutionService', () => {
 			).toBe(allowed);
 		});
 
+		it('rejects a new session ID that another memory scope already uses', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			memoryBackend.getThread.mockResolvedValue(mock({ resourceId: 'draft-chat:user-1' }));
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'new',
+				),
+			).toBe(false);
+		});
+
+		it('uses the memory scope when the session has no recorded source', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
+			checkpointStorage.hasNoConflictingThreadResource.mockResolvedValue(true);
+			memoryBackend.getThread.mockResolvedValue(mock({ resourceId: 'n8n-chat-production:user-1' }));
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'existing',
+				),
+			).toBe(true);
+			expect(
+				await service.canUseDraftThread('thread-1', 'project-1', 'agent-1', 'user-1', {
+					previewChat: true,
+				}),
+			).toBe(false);
+		});
+
 		it('rejects another owner and an unknown existing session', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
 				makeThread({ ownerId: 'other-user' }),
