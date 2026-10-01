@@ -267,6 +267,8 @@ export class ScalingService {
 	private async stopWorker() {
 		this.stopping = true;
 
+		const start = Date.now();
+
 		await this.pauseAllQueues();
 
 		const shutdownWindowMs =
@@ -275,8 +277,6 @@ export class ScalingService {
 		// The budget bounds only the in-process wait. The queued-job wait stays
 		// unbounded, so a long queued execution still runs to completion.
 		const drainTimeoutMs = shutdownWindowMs * 0.8;
-
-		const start = Date.now();
 
 		const hasQueuedJobsToDrain = () => this.getRunningJobsCount() !== 0;
 		const hasInProcessExecutionsToDrain = () =>
