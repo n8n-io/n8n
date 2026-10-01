@@ -383,7 +383,7 @@ async function onUpgradeClick() {
 		<template #footer>
 			<div v-if="step === 1" :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					data-test-id="trial-intro-start-building-button"
 					@click="onStartBuilding"
 				>

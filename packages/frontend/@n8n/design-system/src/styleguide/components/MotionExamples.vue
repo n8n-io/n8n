@@ -97,7 +97,7 @@ function refreshExample(example: ExampleKey) {
 					width="180px"
 				>
 					<template #trigger>
-						<N8nButton size="small" variant="subtle">Open popover</N8nButton>
+						<N8nButton size="small" variant="outline">Open popover</N8nButton>
 					</template>
 					<template #content>
 						<div class="motion-demo-popover-content">Animated popover surface</div>

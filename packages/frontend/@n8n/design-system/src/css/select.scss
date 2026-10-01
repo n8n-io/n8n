@@ -1,5 +1,6 @@
 @use 'mixins/mixins';
 @use 'mixins/utils';
+@use 'mixins/focus';
 @use './common/var';
 @use 'select-dropdown';
 @use 'input';
@@ -39,7 +40,7 @@
 		padding-right: 35px;
 
 		&:focus {
-			border-color: var.$select-input-focus-border-color;
+			@include focus.focus-ring-with-border;
 		}
 	}
 
@@ -78,7 +79,7 @@
 		}
 
 		&.is-focus .el-input__inner {
-			border-color: var.$select-input-focus-border-color;
+			@include focus.focus-ring-with-border;
 		}
 
 		&__prefix {
@@ -136,10 +137,6 @@
 		flex-wrap: wrap;
 	}
 
-	.el-tag__close {
-		margin-top: -2px;
-	}
-
 	.el-tag {
 		box-sizing: border-box;
 		margin: 2px 0 2px 6px;
@@ -162,7 +159,6 @@
 
 			&::before {
 				display: block;
-				transform: translate(0, 0.5px);
 			}
 		}
 	}

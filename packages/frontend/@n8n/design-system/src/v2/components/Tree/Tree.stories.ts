@@ -314,7 +314,7 @@ export const Controlled: Story = {
 		template: `
 			<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing--md);">
 				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--medium);">
 						Controlled
 					</h3>
 					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
@@ -352,7 +352,7 @@ export const Controlled: Story = {
 				</section>
 
 				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--medium);">
 						Uncontrolled
 					</h3>
 					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
