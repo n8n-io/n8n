@@ -7,7 +7,8 @@ import { MigrationFindingSyncService } from './migration-finding-sync.service';
 
 /**
  * Keeps the `migration_finding` table current between full scans: each time a
- * workflow is created, saved, or published, its findings are re-checked.
+ * workflow is created, saved, published, or pulled from source control, its
+ * findings are re-checked.
  * The module registers it only when there is a report target version.
  */
 @Service()
@@ -29,6 +30,9 @@ export class MigrationFindingSyncListener {
 			await this.syncWorkflow(workflow.id);
 		});
 		this.eventService.on('workflow-activated', async ({ workflowId }) => {
+			await this.syncWorkflow(workflowId);
+		});
+		this.eventService.on('workflow-imported', async ({ workflowId }) => {
 			await this.syncWorkflow(workflowId);
 		});
 	}

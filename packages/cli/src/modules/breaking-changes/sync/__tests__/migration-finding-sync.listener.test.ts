@@ -13,7 +13,12 @@ describe('MigrationFindingSyncListener', () => {
 
 	new MigrationFindingSyncListener(eventService, syncService, mockLogger(), errorReporter).init();
 
-	const workflowEvents = ['workflow-created', 'workflow-saved', 'workflow-activated'] as const;
+	const workflowEvents = [
+		'workflow-created',
+		'workflow-saved',
+		'workflow-activated',
+		'workflow-imported',
+	] as const;
 
 	const emitWorkflowEvent = (eventName: (typeof workflowEvents)[number]) => {
 		// The listener reads only the workflow id; the rest of each payload is irrelevant here.
