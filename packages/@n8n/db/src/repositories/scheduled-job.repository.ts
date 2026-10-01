@@ -156,14 +156,22 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await this.find({ where: { ownerType }, select: ['id', 'ownerId', 'payload'] });
 	}
 
-	/** The owner id and schedule state of every job owners of one kind hold. */
+	/**
+	 * The owner id and schedule state of every job owners of one kind hold.
+	 * A job is runnable when the scheduler will claim it: enabled and not quarantined.
+	 */
 	async findScheduleStatesByOwnerType(
 		ownerType: string,
-	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'enabled' | 'nextRunAt' | 'orphanedAt'>>> {
-		return await this.find({
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>> {
+		const rows = await this.find({
 			where: { ownerType },
 			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
 		});
+		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt }) => ({
+			ownerId,
+			nextRunAt,
+			runnable: enabled && orphanedAt === null,
+		}));
 	}
 
 	/**

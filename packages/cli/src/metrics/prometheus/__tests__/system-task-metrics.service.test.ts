@@ -372,14 +372,14 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	});
 
 	describe('durable job state', () => {
-		const job = (overrides: Partial<ScheduledJob>) =>
-			({
-				ownerId: 'prune',
-				enabled: true,
-				nextRunAt: new Date(NOW.getTime() + 60_000),
-				orphanedAt: null,
-				...overrides,
-			}) as ScheduledJob;
+		const job = (
+			overrides: Partial<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>,
+		) => ({
+			ownerId: 'prune',
+			runnable: true,
+			nextRunAt: new Date(NOW.getTime() + 60_000),
+			...overrides,
+		});
 
 		async function scrape() {
 			await metric('system_task_scheduled').collect!();
@@ -413,8 +413,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 		it.each([
 			['is missing', []],
-			['is disabled', [job({ enabled: false })]],
-			['is quarantined', [job({ orphanedAt: NOW })]],
+			['is not runnable', [job({ runnable: false })]],
 		])('marks a durable task unscheduled when its job %s', async (_, jobs) => {
 			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue(jobs);
 			service.init();

@@ -248,9 +248,9 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		const jobs = await this.scheduledJobRepository.findScheduleStatesByOwnerType(
 			ScheduledJobOwnerType.SystemTask,
 		);
-		return jobs.map(({ ownerId, enabled, nextRunAt, orphanedAt }) => ({
+		return jobs.map(({ ownerId, runnable, nextRunAt }) => ({
 			task: ownerId,
-			runnable: enabled && orphanedAt === null,
+			runnable,
 			nextRunAtSeconds:
 				nextRunAt === null ? null : nextRunAt.getTime() / Time.seconds.toMilliseconds,
 		}));
