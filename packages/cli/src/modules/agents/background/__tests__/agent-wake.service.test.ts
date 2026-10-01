@@ -1,3 +1,4 @@
+import type { SerializableAgentState } from '@n8n/agents';
 import type { LockService, Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
@@ -23,7 +24,11 @@ import {
 	WAKE_DEBOUNCE_MS,
 } from '../agent-wake.service';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
-import { formatWakeMessage, WAKE_RESULT_TEXT_MAX_CHARS } from '../background-job-messages';
+import {
+	formatPauseHandoff,
+	formatWakeMessage,
+	WAKE_RESULT_TEXT_MAX_CHARS,
+} from '../background-job-messages';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
@@ -125,10 +130,23 @@ describe('AgentWakeService', () => {
 		const { service, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();
 		const started = createDeferredPromise();
-		const jobs = [
-			makeJob({ status: 'paused', pauseRequestId: 'stop-1' }),
-			makeJob({ id: 'job-2', status: 'completed', pauseRequestId: 'stop-1' }),
-		];
+		const handoffs = Array.from({ length: 5 }, (_, index) => ({
+			pendingApprovals: [`approve-task-${index + 1}`],
+			latestProgress: Array.from({ length: 4 }, (_, step) =>
+				JSON.stringify(
+					`Task ${index + 1}, step ${4 - step}: ${'x'.repeat(1_400)} Remaining: verify results.`,
+				),
+			),
+			task: [JSON.stringify(`Complete task ${index + 1}.`)],
+		}));
+		const jobs = handoffs.map((handoff, index) =>
+			makeJob({
+				id: `job-${index + 1}`,
+				status: 'paused',
+				pauseRequestId: 'stop-1',
+				result: JSON.stringify(handoff),
+			}),
+		);
 		jobRepository.findWakeableUnconsumed
 			.mockResolvedValueOnce([...jobs, makeJob({ id: 'later' })])
 			.mockResolvedValue([]);
@@ -141,16 +159,28 @@ describe('AgentWakeService', () => {
 		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
 			expect.objectContaining({
 				pauseReport: true,
-				message: formatWakeMessage(jobs),
 				backgroundJobSignal: { tasks: [] },
 			}),
 		);
+		const message = orchestrator.executeForWake.mock.calls[0]?.[0].message ?? '';
+		const payload = JSON.parse(
+			message.slice(
+				'<background-jobs-settled>'.length,
+				message.indexOf('</background-jobs-settled>'),
+			),
+		) as Array<{ jobId: string; result: string; truncated?: boolean }>;
+		expect(payload).toHaveLength(5);
+		for (const [index, job] of payload.entries()) {
+			expect(job.jobId).toBe(`job-${index + 1}`);
+			expect(job.truncated).toBeUndefined();
+			expect(JSON.parse(job.result)).toEqual(handoffs[index]);
+		}
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		report.resolve();
 		await wake;
 		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith(
 			'thread-1',
-			['job-1', 'job-2'],
+			['job-1', 'job-2', 'job-3', 'job-4', 'job-5'],
 			true,
 		);
 		await service.attemptWake('thread-1');
@@ -771,6 +801,60 @@ describe('AgentWakeService', () => {
 			[completed.id],
 			false,
 		);
+	});
+});
+
+describe('formatPauseHandoff', () => {
+	it('selects the task, approvals, and four latest responses with clipped content', () => {
+		const checkpoint = {
+			pendingToolCalls: {
+				first: { toolName: 'send_email' },
+				second: { toolName: 'write_record' },
+			},
+			messageList: {
+				historyIds: ['old-task', 'old-progress'],
+				inputIds: ['task'],
+				responseIds: ['progress-1', 'progress-2', 'progress-3', 'progress-4', 'progress-5'],
+				messages: [
+					{ id: 'old-task', role: 'user', content: [{ type: 'text', text: 'Unrelated task' }] },
+					{
+						id: 'task',
+						role: 'user',
+						content: [{ type: 'text', text: `Current task: ${'t'.repeat(2_000)}` }],
+					},
+					...[1, 2, 3, 4, 5].map((step) => ({
+						id: `progress-${step}`,
+						role: 'assistant' as const,
+						content: [{ type: 'text' as const, text: `Progress ${step}: ${'p'.repeat(2_000)}` }],
+					})),
+					{
+						id: 'old-progress',
+						role: 'assistant',
+						content: [{ type: 'text', text: 'Unrelated progress' }],
+					},
+				],
+			},
+		} as SerializableAgentState;
+
+		const handoff = JSON.parse(formatPauseHandoff(checkpoint)) as {
+			pendingApprovals: string[];
+			latestProgress: string[];
+			task: string[];
+		};
+
+		expect(handoff).toEqual({
+			pendingApprovals: ['send_email', 'write_record'],
+			latestProgress: [
+				expect.stringContaining('Progress 5: '),
+				expect.stringContaining('Progress 4: '),
+				expect.stringContaining('Progress 3: '),
+				expect.stringContaining('Progress 2: '),
+			],
+			task: [expect.stringContaining('Current task: ')],
+		});
+		for (const content of [...handoff.task, ...handoff.latestProgress]) {
+			expect(content).toHaveLength(1_500);
+		}
 	});
 });
 

@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
@@ -63,6 +63,7 @@ function makeController() {
 	const agentValidationService = mock<AgentValidationService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
+	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: true });
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
@@ -100,11 +101,12 @@ function makeController() {
 		chatExecutionService,
 		messageQueue,
 		previewStreams,
-		mock<AgentsConfig>({ backgroundTasksEnabled: true }),
+		agentsConfig,
 	);
 
 	return {
 		controller,
+		agentsConfig,
 		messageQueue,
 		previewStreams,
 		chatExecutionService,
@@ -241,12 +243,16 @@ describe('AgentChatController background tasks', () => {
 	};
 
 	it('stops only an owned Preview conversation', async () => {
-		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+		const { controller, agentsConfig, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentExecutionService.canUseDraftThread.mockResolvedValueOnce(false);
 		await expect(controller.stopBackgroundJobs(request as never)).rejects.toThrow(NotFoundError);
 		expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
+		agentsConfig.backgroundTasksEnabled = false;
+		await expect(controller.stopBackgroundJobs(request as never)).rejects.toThrow(BadRequestError);
+		expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
+		agentsConfig.backgroundTasksEnabled = true;
 		await expect(controller.stopBackgroundJobs(request as never)).resolves.toEqual({ tasks: [] });
 		expect(backgroundJobService.requestPause).toHaveBeenCalledExactlyOnceWith(
 			'agent-1',

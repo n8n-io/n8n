@@ -745,6 +745,65 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('resumes a paused child from its pinned runtime and reports another pause', async () => {
+		const pinnedRuntimeSource = {
+			...runtimeSource,
+			source: { ...source, versionId: 'version-7' },
+		};
+		const runtimeSnapshot = JSON.stringify(pinnedRuntimeSource);
+		const shouldPause = vi.fn().mockResolvedValue(true);
+		sourceResolver.resolveForRuntime.mockResolvedValueOnce(pinnedRuntimeSource);
+		childAgent.resumePaused.mockImplementation(async (options) => {
+			await options.onResumeClaimed?.();
+			return makeStreamResult([{ type: 'finish', finishReason: 'paused' }]);
+		});
+
+		const result = await runner.resumePaused(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childThreadId: 'child-thread-1',
+				parentThreadId,
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			},
+			{
+				projectId,
+				parentAgentId,
+				credentialProvider,
+				runType: 'test',
+				runtimeSnapshot,
+				shouldPause,
+			},
+		);
+
+		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
+			{ agentId: 'agent-1', versionId: 'version-7' },
+			{ projectId, usePublishedVersion: false, runtimeSnapshot },
+		);
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				config: runnableConfig,
+				memoryOwnerAgentId: 'agent-1',
+				toolDescriptors: runtimeSource.toolDescriptors,
+				toolCodeByName: runtimeSource.toolCodeByName,
+				skills: runtimeSource.skills,
+				runtimeProfile: 'sub-agent',
+			}),
+		);
+		expect(childAgent.resumePaused).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runId: 'child-run-1',
+				hostMetadata: { n8nExecutionId: 'agent-execution-1' },
+				shouldPause,
+			}),
+		);
+		expect(result).toMatchObject({
+			threadId: 'child-thread-1',
+			status: 'paused',
+			result: { finishReason: 'paused' },
+		});
+	});
+
 	it('resumes a draft child in the same thread', async () => {
 		const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
 		toolApprovalService.createContext.mockResolvedValueOnce(approvalContext);

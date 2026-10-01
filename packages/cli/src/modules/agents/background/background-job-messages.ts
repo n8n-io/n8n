@@ -45,7 +45,8 @@ export function formatWakeMessage(jobs: AgentBackgroundJob[]): string {
 			if (text.length < value.length) truncated = true;
 			return text;
 		};
-		const result = take(job.result);
+		// Paused handoffs are already summarized. Report turns cannot fetch omitted text.
+		const result = job.status === 'paused' ? (job.result ?? undefined) : take(job.result);
 		const error = take(job.error);
 		return {
 			jobId: job.id,

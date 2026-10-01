@@ -2294,7 +2294,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual(expect.any(Array));
 	});
 
-	it('blocks child actions during a pause report and leaves an interrupted report undelivered', async () => {
+	it('blocks tools and rejects a pause report interrupted by its guardrail', async () => {
 		const { service, runtimeCacheService } = makeService();
 		const runtime = makeRuntime([
 			{
@@ -2315,7 +2315,11 @@ describe('AgentExecutionOrchestratorService', () => {
 				identity: { type: 'draft', user, principalHash: userPrincipalHash },
 				abortSignal: new AbortController().signal,
 			}),
-		).rejects.toThrow();
+		).rejects.toMatchObject({
+			constructor: OperationalError,
+			message: 'Background job wake failed',
+			cause: { guardrail: { code: 'background-pause-report' } },
+		});
 		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
 		expect(options.toolsEnabled).toBe(false);
 		const hook = options.guardrails?.hooks?.find((candidate) => candidate.beforeTool);

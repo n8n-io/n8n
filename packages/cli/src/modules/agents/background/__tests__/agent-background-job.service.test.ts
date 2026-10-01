@@ -150,16 +150,52 @@ describe('markMailConsumed', () => {
 });
 
 describe('user pause', () => {
-	it.each([
-		{ status: 'running', notifiedAt: null, receivedAt: 3000, expected: 'stopping' },
-		{ status: 'paused', notifiedAt: null, receivedAt: 3000, expected: 'stopping' },
-		{ status: 'paused', notifiedAt: new Date(2000), receivedAt: 1000, expected: 'stopping' },
-		{ status: 'paused', notifiedAt: new Date(2000), receivedAt: 3000, expected: 'ready' },
-	] as const)(
-		'uses the original input receipt time for $status jobs ($receivedAt)',
-		async ({ status, notifiedAt, receivedAt, expected }) => {
+	it.each<{
+		name: string;
+		job?: Partial<AgentBackgroundJob>;
+		receivedAt?: number;
+		execution?: Partial<AgentExecution>;
+		input?: Partial<AgentMessageEntity>;
+		expected: 'stopping' | 'ready' | 'unavailable';
+	}>([
+		{
+			name: 'a running job',
+			job: { status: 'running', notifiedAt: null },
+			expected: 'stopping',
+		},
+		{ name: 'an unreported pause', job: { notifiedAt: null }, expected: 'stopping' },
+		{ name: 'input received before the report', receivedAt: 1000, expected: 'stopping' },
+		{ name: 'input received after the report', expected: 'ready' },
+		{
+			name: 'a finished parent execution',
+			execution: { status: 'success' },
+			expected: 'unavailable',
+		},
+		{
+			name: 'a parent execution in another thread',
+			execution: { threadId: 'other-thread' },
+			expected: 'unavailable',
+		},
+		{
+			name: 'only hidden input',
+			input: { origin: { source: null, hidden: true } },
+			expected: 'unavailable',
+		},
+		{
+			name: 'input from another resource',
+			input: { resourceId: 'draft-chat:other' },
+			expected: 'unavailable',
+		},
+	])(
+		'returns $expected for $name',
+		async ({ job: jobOverrides, receivedAt = 3000, execution, input, expected }) => {
 			const { service, jobRepository, executionRepository, messageRepository } = setup();
-			const job = makeJob({ status, pauseRequestId: 'stop-1', notifiedAt });
+			const job = makeJob({
+				status: 'paused',
+				pauseRequestId: 'stop-1',
+				notifiedAt: new Date(2000),
+				...jobOverrides,
+			});
 			jobRepository.findByParentThread.mockResolvedValue([
 				job,
 				makeJob({
@@ -169,7 +205,7 @@ describe('user pause', () => {
 				}),
 			]);
 			executionRepository.findExecution.mockResolvedValue(
-				mock<AgentExecution>({ threadId: 'thread-1', status: 'running' }),
+				mock<AgentExecution>({ threadId: 'thread-1', status: 'running', ...execution }),
 			);
 			messageRepository.findExecutionInputs.mockResolvedValue(
 				new Map([
@@ -182,6 +218,7 @@ describe('user pause', () => {
 								threadId: 'thread-1',
 								resourceId: 'draft-chat:user-1',
 								createdAt: new Date(receivedAt),
+								...input,
 							}),
 						],
 					],
@@ -193,8 +230,7 @@ describe('user pause', () => {
 				'draft-chat:user-1',
 				'execution-1',
 			);
-			expect(result.status).toBe(expected);
-			expect(result.jobs).toEqual(expected === 'ready' ? [job] : []);
+			expect(result).toEqual({ status: expected, jobs: expected === 'ready' ? [job] : [] });
 		},
 	);
 
