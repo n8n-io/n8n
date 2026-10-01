@@ -880,10 +880,13 @@ describe('ActiveExecutions', () => {
 			workerActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
 				isQueueJob: true,
 			});
+			const cancel = vi.spyOn(workflowExecution, 'cancel');
 
 			const outcome = await raceShutdownAgainstTimeout(workerActiveExecutions);
 
 			expect(outcome).toBe('shutdown');
+			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(cancel).not.toHaveBeenCalled();
 		});
 
 		test('keeps waiting on a main instance', async () => {
