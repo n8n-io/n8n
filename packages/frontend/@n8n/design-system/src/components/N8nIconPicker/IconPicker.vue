@@ -396,13 +396,17 @@ function handlePickerKeydown(event: KeyboardEvent) {
 	const coordinates = getPickerCoordinates(activeRows.value);
 	if (coordinates.length === 0) return;
 
-	/** Rows are progressively rendered, so we must start on first item regardless of arrow direction */
-	event.preventDefault();
 	if (!activeCoordinate.value) {
+		if (event.key === 'ArrowUp') return;
+
+		/** Rows are progressively rendered, so start on the first item before moving. */
+		event.preventDefault();
 		const coordinate = coordinates[0];
 		if (coordinate) activatePickerItem(coordinate, target);
 		return;
 	}
+
+	event.preventDefault();
 
 	const direction = getPickerDirection(event.key);
 	if (!direction) return;

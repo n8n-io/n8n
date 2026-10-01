@@ -31,7 +31,12 @@ export function useProgressiveRender<T>(
 
 		renderedRowCount.value = Math.min(renderedRowCount.value + ROW_BATCH_SIZE, rows.value.length);
 
-		if (renderedRowCount.value >= rows.value.length) stop();
+		if (renderedRowCount.value >= rows.value.length) {
+			stop();
+		} else {
+			/** Check again because the marker can stay inside the load area after a batch. */
+			void nextTick(observe);
+		}
 	}
 
 	function observe() {
@@ -47,6 +52,8 @@ export function useProgressiveRender<T>(
 
 		observer = new IntersectionObserver(loadNextBatch, {
 			root: scrollAreaRef.value,
+			/** Load rows before keyboard scrolling reaches the last rendered item. */
+			rootMargin: `0px 0px ${scrollAreaRef.value.clientHeight}px 0px`,
 		});
 		observer.observe(loadMoreRef.value);
 	}

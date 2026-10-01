@@ -7,6 +7,7 @@ class MockIntersectionObserver {
 	static instances: MockIntersectionObserver[] = [];
 
 	readonly root: Element | Document | null;
+	readonly rootMargin: string;
 	observedElement: Element | undefined;
 	disconnected = false;
 
@@ -15,6 +16,7 @@ class MockIntersectionObserver {
 		options?: IntersectionObserverInit,
 	) {
 		this.root = options?.root ?? null;
+		this.rootMargin = options?.rootMargin ?? '0px';
 		MockIntersectionObserver.instances.push(this);
 	}
 
@@ -87,6 +89,32 @@ describe('useProgressiveRender', function () {
 		expect(view.getAllByTestId('row')).toHaveLength(20);
 		expect(view.queryByTestId('load-more')).not.toBeInTheDocument();
 		expect(observer?.disconnected).toBe(true);
+	});
+
+	it('observes one viewport ahead so keyboard scrolling can load more rows', async function () {
+		const items = Array.from({ length: 30 }, function createItem(_, index) {
+			return index;
+		});
+		const view = render(createTestComponent(items));
+		Object.defineProperty(view.getByTestId('scroll-area'), 'clientHeight', { value: 400 });
+		await nextTick();
+
+		const observer = MockIntersectionObserver.instances[0];
+		expect(observer?.rootMargin).toBe('0px 0px 400px 0px');
+
+		observer?.trigger(true);
+		await nextTick();
+		expect(view.getAllByTestId('row')).toHaveLength(20);
+
+		expect(observer?.disconnected).toBe(true);
+		const nextObserver = MockIntersectionObserver.instances[1];
+		expect(nextObserver?.observedElement).toBe(view.getByTestId('load-more'));
+		expect(nextObserver?.rootMargin).toBe('0px 0px 400px 0px');
+
+		nextObserver?.trigger(true);
+		await nextTick();
+		expect(view.getAllByTestId('row')).toHaveLength(30);
+		expect(nextObserver?.disconnected).toBe(true);
 	});
 
 	it('does not show or observe the sentinel when all items are visible', async function () {
