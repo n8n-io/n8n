@@ -1,7 +1,8 @@
 import { N8nAiActivityStepGroup, N8nIcon } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
 import { planTask, planView } from './fixtures/agent-plan';
 
@@ -16,6 +17,124 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+describe('AgentChatPlan timer', () => {
+	const startedAt = '2026-10-01T10:00:00.000Z';
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(startedAt));
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	it('starts only with stored timing and keeps counting while the parent reviews completed work', async () => {
+		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt: null }) } });
+		try {
+			expect(wrapper.find('[data-testid="agent-chat-plan-timer"]').exists()).toBe(false);
+			await wrapper.setProps({ plan: planView({ startedAt, revision: 2 }) });
+			const timer = () => wrapper.get('[data-testid="agent-chat-plan-timer"]');
+			expect(timer().text()).toBe('0:00');
+			expect(timer().attributes('aria-live')).toBe('off');
+			await vi.advanceTimersByTimeAsync(31_000);
+			expect(timer().text()).toBe('0:31');
+			await wrapper.setProps({
+				plan: planView({
+					startedAt,
+					revision: 3,
+					document: { title: 'Plan', items: [planTask(1, 'done')] },
+				}),
+			});
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(timer().text()).toBe('0:36');
+			await wrapper.setProps({
+				plan: planView({
+					startedAt,
+					closed: true,
+					closedAt: '2026-10-01T10:00:35.000Z',
+					revision: 4,
+				}),
+			});
+			expect(timer().text()).toBe('0:35');
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(timer().text()).toBe('0:35');
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('restores elapsed time on remount and rolls over into hours', async () => {
+		vi.setSystemTime(new Date('2026-10-01T10:59:59.000Z'));
+		const plan = planView({ startedAt });
+		const wrapper = mount(AgentChatPlan, { props: { plan } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('59:59');
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:00:00');
+		wrapper.unmount();
+		expect(vi.getTimerCount()).toBe(0);
+		await vi.advanceTimersByTimeAsync(5_000);
+		const restored = mount(AgentChatPlan, { props: { plan } });
+		try {
+			expect(restored.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:00:05');
+			const clearInterval = vi.spyOn(globalThis, 'clearInterval');
+			await restored.setProps({ plan: planView({ startedAt: null, planId: planTask(99).id }) });
+			expect(restored.find('[data-testid="agent-chat-plan-timer"]').exists()).toBe(false);
+			expect(clearInterval).toHaveBeenCalled();
+		} finally {
+			restored.unmount();
+		}
+	});
+
+	it('restores a closed plan with a fixed duration', async () => {
+		vi.setSystemTime(new Date('2026-10-02T10:00:00.000Z'));
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				plan: planView({
+					startedAt,
+					closed: true,
+					closedAt: '2026-10-01T11:02:03.000Z',
+				}),
+			},
+		});
+		try {
+			expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:02:03');
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:02:03');
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('pauses timer updates in a hidden tab and catches up when visible', async () => {
+		const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt }) } });
+		try {
+			await nextTick();
+			visibility.mockReturnValue('hidden');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:00');
+			visibility.mockReturnValue('visible');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await nextTick();
+			expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:10');
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it.each([planView(), planView({ startedAt, closed: true }), planView({ startedAt: 'invalid' })])(
+		'does not invent elapsed time for incomplete timing metadata',
+		(plan) => {
+			const wrapper = mount(AgentChatPlan, { props: { plan } });
+			expect(wrapper.find('[data-testid="agent-chat-plan-timer"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
+});
+
 describe('AgentChatPlan', () => {
 	it('starts collapsed and supports keyboard expansion without changing focus', async () => {
 		const user = userEvent.setup();
@@ -24,16 +143,19 @@ describe('AgentChatPlan', () => {
 			const trigger = wrapper.get('button');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
 			expect(trigger.text()).toContain('Plan: Compare support platforms');
-			expect(wrapper.getComponent(N8nAiActivityStepGroup).props('contentPosition')).toBe('above');
-			expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(
-				'1 of 3 tasks done',
-			);
+			expect(wrapper.getComponent(N8nAiActivityStepGroup).props('contentPosition')).toBe('below');
+			expect(trigger.text()).not.toContain('1 of 3 tasks done');
 			trigger.element.focus();
 			await user.keyboard('{Enter}');
 			expect(trigger.attributes('aria-expanded')).toBe('true');
+			expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(
+				'1 of 3 tasks done',
+			);
 			expect(wrapper.get('[data-testid="agent-chat-plan-items"]').text()).toContain('Research');
-			expect(wrapper.get('[data-testid="agent-chat-plan-items"]').attributes('tabindex')).toBe('0');
-			expect(wrapper.get('[data-testid="agent-chat-plan-items"]').attributes('aria-label')).toBe(
+			expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('tabindex')).toBe(
+				'0',
+			);
+			expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('aria-label')).toBe(
 				'Compare support platforms',
 			);
 			expect(wrapper.findAll('[data-status]').map((row) => row.attributes('aria-label'))).toEqual([
@@ -43,7 +165,8 @@ describe('AgentChatPlan', () => {
 				'agents.chat.plan.status.pending',
 			]);
 			await wrapper.setProps({ plan: planView({ revision: 2, closed: true }) });
-			expect(wrapper.text()).toContain('agents.chat.plan.closed');
+			expect(trigger.text()).toContain('Compare support platforms');
+			expect(wrapper.text()).not.toContain('Closed');
 			expect(trigger.attributes('aria-expanded')).toBe('true');
 			await user.keyboard(' ');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
@@ -51,6 +174,133 @@ describe('AgentChatPlan', () => {
 		} finally {
 			wrapper.unmount();
 		}
+	});
+
+	it('shows Agent-written activity and details, then closes without implying success', async () => {
+		const plan = planView({
+			document: {
+				title: 'Research options',
+				presentation: { label: 'Checking sources', detail: 'Reviewed two of three sources.' },
+				items: [planTask(1, 'in_progress'), planTask(2, 'failed'), planTask(3)],
+			},
+		});
+		const wrapper = mount(AgentChatPlan, { props: { plan } });
+		const trigger = wrapper.get('button');
+		const indicator = () => wrapper.findAllComponents(N8nIcon)[0];
+		expect(trigger.text()).toContain('Checking sources');
+		expect(indicator().props()).toMatchObject({ icon: 'loader-circle', spin: true });
+		await trigger.trigger('click');
+		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('aria-label')).toBe(
+			'Research options',
+		);
+		expect(wrapper.text()).toContain('Reviewed two of three sources.');
+		await wrapper.setProps({
+			plan: {
+				...plan,
+				revision: 2,
+				document: {
+					...plan.document,
+					presentation: { label: 'Stopped checking', detail: 'One source remains unchecked.' },
+				},
+			},
+		});
+		expect(trigger.text()).toContain('Stopped checking');
+		await wrapper.setProps({ plan: { ...wrapper.props('plan'), revision: 3, closed: true } });
+		expect(trigger.text()).toContain('One source remains unchecked.');
+		expect(wrapper.getComponent(N8nAiActivityStepGroup).attributes('title')).toBe(
+			'One source remains unchecked.',
+		);
+		expect(wrapper.text()).not.toContain('Plan closed');
+		expect(trigger.text()).not.toContain('Stopped checking');
+		expect(indicator().props()).toMatchObject({ icon: 'list-checks', spin: false });
+		expect(wrapper.text()).toContain('One source remains unchecked.');
+		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
+			'in_progress',
+			'failed',
+			'pending',
+		]);
+		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('0 of 3 tasks done');
+		expect(trigger.attributes('aria-expanded')).toBe('true');
+		wrapper.unmount();
+	});
+
+	it('uses the plan title when a closed plan has no final summary', () => {
+		const plan = planView({
+			closed: true,
+			document: { ...planView().document, presentation: { label: 'Checking sources' } },
+		});
+		const wrapper = mount(AgentChatPlan, { props: { plan } });
+		expect(wrapper.get('button').text()).toContain(plan.document.title);
+		expect(wrapper.text()).not.toContain('Checking sources');
+		expect(wrapper.text()).not.toContain('Plan closed');
+		wrapper.unmount();
+	});
+
+	it.each(['pending', 'in_progress', 'done', 'failed', 'cancelled'] as const)(
+		'shows a header spinner only for In progress work, not %s text',
+		async (status) => {
+			const wrapper = mount(AgentChatPlan, {
+				props: {
+					plan: planView({
+						document: {
+							title: 'Plan',
+							presentation: { label: 'Working' },
+							items: [{ ...planTask(10), kind: 'group', tasks: [planTask(1, status)] }],
+						},
+					}),
+				},
+			});
+			expect(wrapper.findAllComponents(N8nIcon)[0].props('spin')).toBe(status === 'in_progress');
+			wrapper.unmount();
+		},
+	);
+
+	it('shows compact titles and an Agent-written note without task descriptions or results', async () => {
+		const detail = '<img src=x onerror=alert(1)>\nSecond line';
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				plan: planView({
+					document: {
+						title: 'Plan',
+						presentation: { label: '<b>Checking sources</b>', detail },
+						items: [
+							{ ...planTask(1), description: 'Check sources' },
+							{
+								...planTask(2, 'done'),
+								description: 'Hidden description',
+								resultSummary: 'Found two sources',
+							},
+							{ ...planTask(3), description: '   ', resultSummary: '\n' },
+							{
+								...planTask(10),
+								kind: 'group',
+								description: 'Hidden group description',
+								resultSummary: 'Group summary',
+								tasks: [{ ...planTask(4), description: 'Child description', resultSummary: '  ' }],
+							},
+						],
+					},
+				}),
+			},
+		});
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(wrapper.find('b').exists()).toBe(false);
+		expect(wrapper.text()).toContain(detail);
+		expect(wrapper.text()).not.toContain('Check sources');
+		expect(wrapper.text()).not.toContain('Found two sources');
+		expect(wrapper.text()).not.toContain('Group summary');
+		expect(wrapper.text()).not.toContain('Child description');
+		expect(wrapper.text()).not.toContain('Hidden');
+		expect(wrapper.findAll('li')[2].find('p').exists()).toBe(false);
+		expect(wrapper.findAll('[data-status] + span').map((row) => row.text())).toEqual([
+			'Task 1',
+			'Task 2',
+			'Task 3',
+			'Task 10',
+			'Task 4',
+		]);
+		wrapper.unmount();
 	});
 
 	it('renders each status distinctly without inferring group completion', async () => {
@@ -105,8 +355,8 @@ describe('AgentChatPlan', () => {
 			}),
 		});
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
-		expect(wrapper.text()).toContain('0 of 0 tasks done');
 		await wrapper.get('button').trigger('click');
+		expect(wrapper.text()).toContain('0 of 0 tasks done');
 		expect(wrapper.findAll('li')).toHaveLength(0);
 		wrapper.unmount();
 	});

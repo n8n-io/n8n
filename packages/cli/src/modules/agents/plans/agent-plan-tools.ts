@@ -100,6 +100,13 @@ function prepareDocument(
 function presentPlan(plan: AgentPlanSnapshot | null) {
 	if (!plan) return null;
 
+	const startedAt =
+		plan.data.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.map((item) => item.startedAt)
+			.filter((timestamp): timestamp is string => timestamp !== null)
+			.sort()[0] ?? null;
+
 	const withoutTiming = <Item extends AgentPlanItem>(item: Item) => {
 		const { startedAt, endedAt, ...visible } = item;
 		return visible;
@@ -109,6 +116,8 @@ function presentPlan(plan: AgentPlanSnapshot | null) {
 		planId: plan.id,
 		revision: plan.revision,
 		closed: plan.closedAt !== null,
+		startedAt,
+		closedAt: plan.closedAt?.toISOString() ?? null,
 		document: {
 			...plan.data,
 			items: plan.data.items.map((item) =>

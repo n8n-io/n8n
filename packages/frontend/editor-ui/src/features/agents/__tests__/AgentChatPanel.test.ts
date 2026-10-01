@@ -740,6 +740,24 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
 			wrapper.unmount();
 		});
+
+		it('links a plan to the current session trace only when the session is available', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel();
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+			await wrapper.setProps({ continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t1',
+			);
+			await wrapper.setProps({ continueSessionId: 't2' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t2',
+			);
+			wrapper.unmount();
+		});
 	});
 
 	describe('background task panel', () => {

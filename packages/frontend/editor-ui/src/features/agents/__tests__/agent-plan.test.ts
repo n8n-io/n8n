@@ -1,7 +1,192 @@
 import { describe, expect, it } from 'vitest';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
-import { selectLatestAgentPlan } from '../utils/agent-plan';
+import { buildAgentPlanDisplayGroups, selectLatestAgentPlan } from '../utils/agent-plan';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
+
+describe('buildAgentPlanDisplayGroups', () => {
+	const initial = {
+		...planView(),
+		document: {
+			title: 'Compare platforms',
+			description: 'Choose a support platform',
+			items: [
+				{ ...planTask(1), description: 'Find candidates', dependsOn: [] },
+				{ ...planTask(2), description: 'Compare candidates', dependsOn: [planTask(1).id] },
+			],
+		},
+	};
+	const update = (document: unknown, overrides: Partial<ToolCall> = {}) =>
+		planMessage(
+			{ ...initial, revision: 2, document },
+			{ tool: 'update_plan', toolCallId: 'update', ...overrides },
+		);
+	function visibleCalls(messages: ChatMessage[]) {
+		return buildAgentPlanDisplayGroups(messages).flatMap((group) =>
+			group.kind === 'toolRun'
+				? group.toolCalls.map((call) => call.toolCallId)
+				: group.kind === 'message'
+					? (group.message.toolCalls ?? []).map((call) => call.toolCallId)
+					: [],
+		);
+	}
+	const progress = {
+		...initial.document,
+		presentation: { label: 'Compare candidates', detail: 'Found three candidates' },
+		items: initial.document.items.map((item) => ({
+			...item,
+			title: `Completed ${item.title}`,
+			status: 'done',
+			resultSummary: 'Found candidates',
+			startedAt: '2026-10-01T10:00:00Z',
+			endedAt: '2026-10-01T10:01:00Z',
+		})),
+	};
+
+	it('hides progress without changing the stored messages or current card', () => {
+		const messages = [planMessage(initial), update(progress)];
+		const before = structuredClone(messages);
+		expect(visibleCalls(messages)).toEqual(['plan-call']);
+		expect(messages).toEqual(before);
+		expect(selectLatestAgentPlan(messages)?.revision).toBe(2);
+	});
+
+	it.each([
+		['plan title', { ...progress, title: 'New goal' }],
+		['plan description', { ...progress, description: 'New requirements' }],
+		['added task', { ...progress, items: [...progress.items, planTask(3)] }],
+		['removed task', { ...progress, items: progress.items.slice(1) }],
+		['task order', { ...progress, items: [...progress.items].reverse() }],
+		[
+			'task description',
+			{
+				...progress,
+				items: [{ ...progress.items[0], description: 'New scope' }, progress.items[1]],
+			},
+		],
+		[
+			'dependencies',
+			{ ...progress, items: [progress.items[0], { ...progress.items[1], dependsOn: [] }] },
+		],
+		[
+			'fallback',
+			{
+				...progress,
+				items: [progress.items[0], { ...progress.items[1], fallbackFor: planTask(1).id }],
+			},
+		],
+		['unknown document field', { ...progress, futureRule: true }],
+		[
+			'unknown task field',
+			{ ...progress, items: [{ ...progress.items[0], futureRule: true }, progress.items[1]] },
+		],
+	])('keeps a change to %s visible', (_name, document) => {
+		expect(visibleCalls([planMessage(initial), update(document)])).toEqual(['plan-call', 'update']);
+	});
+
+	it('ignores group progress but keeps group membership and order changes visible', () => {
+		const group = { ...planTask(10), kind: 'group' as const, tasks: initial.document.items };
+		const document = { ...initial.document, items: [group, planTask(3)] };
+		const previous = planMessage({ ...initial, document });
+		const changedGroup = {
+			...group,
+			title: 'Compared',
+			status: 'done',
+			resultSummary: 'Done',
+			tasks: progress.items,
+		};
+		expect(
+			visibleCalls([previous, update({ ...document, items: [changedGroup, planTask(3)] })]),
+		).toEqual(['plan-call']);
+		for (const items of [
+			[planTask(3), changedGroup],
+			[{ ...changedGroup, tasks: progress.items.slice(1) }, progress.items[0], planTask(3)],
+			[{ ...changedGroup, tasks: [...progress.items].reverse() }, planTask(3)],
+		]) {
+			expect(visibleCalls([previous, update({ ...document, items })])).toEqual([
+				'plan-call',
+				'update',
+			]);
+		}
+	});
+
+	it.each(['pending', 'running'] as const)(
+		'hides a known progress-only %s call before its result arrives',
+		(state) => {
+			const call = update(progress, {
+				state,
+				output: undefined,
+				input: { planId: initial.planId, expectedRevision: 1, document: progress },
+			});
+			expect(visibleCalls([planMessage(initial), call])).toEqual(['plan-call']);
+		},
+	);
+
+	it.each([
+		{ state: 'error' as const },
+		{ state: 'suspended' as const },
+		{ state: 'cancelled' as const },
+		{ canceled: true },
+		{ output: { error: 'conflict', message: 'Read the current plan' } },
+		{ output: { error: 'invalid_plan' } },
+		{ output: 'malformed' },
+		{
+			state: 'running' as const,
+			input: { planId: initial.planId, expectedRevision: 99, document: progress },
+		},
+	])('keeps errors and uncertain calls visible: %j', (overrides) => {
+		expect(visibleCalls([planMessage(initial), update(progress, overrides)])).toEqual([
+			'plan-call',
+			'update',
+		]);
+	});
+
+	it('requires the preceding revision of the same plan', () => {
+		expect(visibleCalls([update(progress)])).toEqual(['update']);
+		expect(visibleCalls([planMessage({ ...initial, revision: 4 }), update(progress)])).toEqual([
+			'plan-call',
+			'update',
+		]);
+		expect(
+			visibleCalls([planMessage({ ...initial, planId: planTask(99).id }), update(progress)]),
+		).toEqual(['plan-call', 'update']);
+	});
+
+	it('keeps create, read, and close calls visible', () => {
+		for (const tool of ['create_plan', 'read_plan', 'close_plan']) {
+			expect(visibleCalls([planMessage(initial), update(progress, { tool })])).toEqual([
+				'plan-call',
+				'update',
+			]);
+		}
+	});
+
+	it('restores filtering from persisted results without tool inputs', () => {
+		const history = convertDbMessages([
+			{
+				id: 'assistant',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'create',
+						toolName: 'create_plan',
+						state: 'resolved',
+						output: initial,
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'update',
+						toolName: 'update_plan',
+						state: 'resolved',
+						output: { ...initial, revision: 2, document: progress },
+					},
+				],
+			},
+		]);
+		expect(visibleCalls(history)).toEqual(['create']);
+	});
+});
 
 describe('selectLatestAgentPlan', () => {
 	it('returns no card without a successful plan result', () => {
@@ -63,6 +248,10 @@ describe('selectLatestAgentPlan', () => {
 		{ ...planView(), revision: 0 },
 		{ ...planView(), planId: 'invalid' },
 		{ ...planView(), closed: 'true' },
+		{
+			...planView(),
+			document: { ...planView().document, presentation: { label: ' ' } },
+		},
 		{ ...planView(), document: { title: 'Plan', items: [{ ...planTask(1), status: 'unknown' }] } },
 		{
 			...planView(),
@@ -111,7 +300,18 @@ describe('selectLatestAgentPlan', () => {
 	});
 
 	it('restores the same card from persisted tool results', () => {
-		const latest = planView({ revision: 2 });
+		const latest = planView({
+			revision: 2,
+			startedAt: '2026-10-01T10:00:00.000Z',
+			closedAt: null,
+			document: {
+				...planView().document,
+				presentation: { label: 'Reviewing sources', detail: 'Checked two of three sources.' },
+				items: [
+					{ ...planTask(1, 'done'), description: 'Research', resultSummary: 'Found sources' },
+				],
+			},
+		});
 		const history = convertDbMessages([
 			{
 				id: 'assistant',
