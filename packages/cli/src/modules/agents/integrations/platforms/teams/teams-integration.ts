@@ -10,16 +10,23 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import { startTypingIndicator } from '../typing-indicator';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
+/** Interval picked to match Discord's; Teams does not document the expiry. */
+const TEAMS_TYPING_REFRESH_MS = 8000;
 
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
@@ -39,9 +46,18 @@ const TENANT_ID_DOMAIN =
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
- * This first slice targets 1:1 direct messages. Group chats and channels are not
- * blocked, but they are untested: without RSC permissions Teams only delivers an
- * @-mention there, so nothing arrives ambiently.
+ * Direct messages, team channels and group chats are all supported. Outside a
+ * DM the bot must be @-mentioned once; the mention subscribes the conversation,
+ * so later messages reach the agent without a mention. In a channel that
+ * subscription covers the one thread, because the thread id carries the root
+ * message id. In a group chat it covers the whole chat.
+ *
+ * Whether a later message arrives at all is a setup choice. The manifest
+ * carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only when
+ * `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants them
+ * when the app is added to a team or a chat, and they also make Teams deliver
+ * every message instead of mentions alone. Without them Teams delivers only the
+ * mention, and the subscription stays inert.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
@@ -58,13 +74,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly builderGuidance = {
 		capabilities: [
-			'Receive Microsoft Teams direct messages as agent triggers.',
-			'Respond in the same Microsoft Teams conversation.',
+			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
+			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
+			'Stay in the conversation after an @-mention, so later messages need no mention.',
 			'Render Adaptive Cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Microsoft Teams or act as a Teams bot.',
 			'The agent needs to reply to Teams users in the same conversation context.',
+			'The agent should take part in a Microsoft Teams channel or group chat.',
 		],
 		useNodeToolWhen: [
 			'Microsoft Teams is only a backend API step and the agent does not need to be connected as a Teams chat surface.',
@@ -98,7 +116,18 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 
-	readonly disableStreaming = true;
+	/**
+	 * A direct message renders progressively; every other conversation posts one
+	 * message. The choice is made for each conversation in
+	 * `createBridgeExecutionContext` rather than here.
+	 */
+	readonly disableStreaming = false;
+
+	/**
+	 * Text that follows a card is posted on its own rather than folded back into
+	 * the message being edited above it.
+	 */
+	readonly singleStreamedRunPerTurn = true;
 
 	constructor(
 		private readonly logger: Logger,
@@ -143,6 +172,52 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
+	}
+
+	/**
+	 * Only a direct message renders progressively. Post-and-edit would work in a
+	 * channel too, but a message that visibly rewrites itself is far more
+	 * disruptive there, so that stays a separate decision.
+	 */
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		const streamable = params.thread.isDM;
+		return {
+			platformAgentContext: {},
+			forceBuffered: !streamable,
+			// A queued message is only captured here; the turn that would clear the
+			// indicator runs later, so starting one now leaves it refreshing alone.
+			statusHandle:
+				params.startStatus === false
+					? undefined
+					: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	/** A card action arrives as an invoke activity, which carries no streamer. */
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return {
+			forceBuffered: true,
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	private startTyping(
+		thread: BridgeMessageContextParams['thread'],
+		logger: BridgeMessageContextParams['logger'],
+		agentId: string,
+	) {
+		return startTypingIndicator(thread, {
+			logger,
+			agentId,
+			platform: 'Microsoft Teams',
+			refreshMs: TEAMS_TYPING_REFRESH_MS,
+		});
 	}
 
 	/**

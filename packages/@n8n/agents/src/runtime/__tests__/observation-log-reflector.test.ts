@@ -229,12 +229,18 @@ describe('observation-log reflector defaults', () => {
 		});
 		await vi.waitFor(() => expect(mockGenerateText).toHaveBeenCalledTimes(2));
 		secondResponse.resolve({ text: '{"drop":["1"],"merge":[]}' });
-		expect(parseObservationLogReflectionJson(await secondCall)).toEqual({
+		// The default reflect fn returns { text, usage, model }; extract the text
+		// before parsing the reflection JSON.
+		const secondResult = await secondCall;
+		const secondText = typeof secondResult === 'string' ? secondResult : secondResult.text;
+		expect(parseObservationLogReflectionJson(secondText)).toEqual({
 			drop: [second.id],
 			merge: [],
 		});
 		firstResponse.resolve({ text: '{"drop":["1"],"merge":[]}' });
-		expect(parseObservationLogReflectionJson(await firstCall)).toEqual({
+		const firstResult = await firstCall;
+		const firstText = typeof firstResult === 'string' ? firstResult : firstResult.text;
+		expect(parseObservationLogReflectionJson(firstText)).toEqual({
 			drop: [first.id],
 			merge: [],
 		});
@@ -279,7 +285,10 @@ describe('observation-log reflector defaults', () => {
 			executionCounter: counter,
 		});
 
-		expect(result).toBe('{"drop":[],"merge":[]}');
+		// The default reflect fn returns { text, usage, model }; bare-string returns
+		// stay supported for custom reflect fns.
+		const reflectText = typeof result === 'string' ? result : result.text;
+		expect(reflectText).toBe('{"drop":[],"merge":[]}');
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(19);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
@@ -606,6 +615,39 @@ describe('runObservationLogReflector', () => {
 		await expect(
 			store.getObservationLog({ observationScopeId: 'thread-1', status: 'active' }),
 		).resolves.toMatchObject([{ tokenCount: 6 }]);
+	});
+
+	it('never fails reflection when onUsage throws synchronously or rejects', async () => {
+		// Pricing is best-effort: a misbehaving onUsage callback must not abort
+		// the reflector or surface an unhandled rejection. Reflection still
+		// applies its drop instruction.
+		const syncThrow = vi.fn(() => {
+			throw new Error('pricing sync boom');
+		});
+		const rejecting = vi.fn(async () => {
+			throw new Error('pricing async boom');
+		});
+
+		for (const onUsage of [syncThrow, rejecting]) {
+			const store = new InMemoryMemory();
+			const [stale] = await store.appendObservationLogEntries([
+				{
+					observationScopeId: 'thread-1',
+					marker: 'info',
+					text: 'Tiny aside',
+					tokenCount: 12,
+				},
+			]);
+			const result = await runObservationLogReflector({
+				memory: store,
+				observationScopeId: 'thread-1',
+				reflectorThresholdTokens: 10,
+				reflect: async () => await Promise.resolve(JSON.stringify({ drop: [stale.id], merge: [] })),
+				onUsage,
+			});
+			expect(result).toMatchObject({ status: 'ran' });
+			expect(onUsage).toHaveBeenCalledTimes(1);
+		}
 	});
 
 	it('warns but still applies reflection output that remains over budget', async () => {

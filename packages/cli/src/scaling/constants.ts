@@ -47,6 +47,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'relay-agent-execution-update',
 	'relay-agent-queued-chat',
 	'cancel-agent-chat-execution',
+	'relay-agent-message-queue-update',
 	'relay-agent-background-tasks-update',
 	'relay-agent-update',
 	'resume-agent-workflow-tool',
@@ -68,3 +69,6 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
 ]);
+
+/** How often a main rechecks the DB for a queued job whose completion event it may have missed. */
+export const JOB_WAIT_RECHECK_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;

@@ -15,6 +15,7 @@ type EndpointGroup =
 	| 'auth'
 	| 'oauth1'
 	| 'oauth2'
+	| 'jwks'
 	| 'owner'
 	| 'passwordReset'
 	| 'changeEmail'

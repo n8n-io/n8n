@@ -7,10 +7,6 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},
 	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-		});
-
 		test.describe('Schema View', () => {
 			const schemaKeys = [
 				'id',
@@ -201,6 +197,7 @@ test.describe(
 
 		test.describe('Schema & Data Views', () => {
 			test('should show data from the correct output in schema view', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow('Test_workflow_multiple_outputs.json', 'Multiple outputs');
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
@@ -228,6 +225,7 @@ test.describe(
 
 		test.describe('Search Functionality - Advanced', () => {
 			test('should not show items count when searching in schema view', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
 				await n8n.canvas.openNode('Edit Fields');
 				await expect(n8n.ndv.outputPanel.get()).toBeVisible();
@@ -242,6 +240,7 @@ test.describe(
 			test('should show additional tooltip when searching in schema view if no matches', async ({
 				n8n,
 			}) => {
+				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
 
 				await n8n.canvas.openNode('Edit Fields');

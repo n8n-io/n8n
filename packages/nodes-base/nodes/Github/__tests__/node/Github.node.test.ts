@@ -6,6 +6,11 @@ import * as utilities from '../../../../utils/utilities';
 import { Github } from '../../Github.node';
 import type * as _importType0 from '../../../../utils/utilities';
 
+vi.mock('../../../../utils/utilities', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
+	getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
+}));
+
 describe('Test Github Node', () => {
 	describe('Workflow Dispatch', () => {
 		const now = 1683028800000;
@@ -88,10 +93,6 @@ describe('Test Github Node', () => {
 				};
 
 				vi.spyOn(utilities, 'removeTrailingSlash');
-				vi.mock('../../../../utils/utilities', async () => ({
-					...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
-					getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
-				}));
 			});
 
 			it('should call remove trailing slash', async () => {

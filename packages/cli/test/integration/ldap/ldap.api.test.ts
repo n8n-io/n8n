@@ -63,8 +63,6 @@ beforeEach(async () => {
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
 
-	vi.mock('@/telemetry');
-
 	await setCurrentAuthenticationMethod('email');
 });
 

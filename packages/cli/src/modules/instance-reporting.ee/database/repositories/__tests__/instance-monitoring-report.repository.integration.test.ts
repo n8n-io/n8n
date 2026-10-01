@@ -28,9 +28,16 @@ describe('InstanceMonitoringReportRepository', () => {
 		await testDb.terminate();
 	});
 
+	async function createOn(date: string | Date, dataPoints = DATA_POINTS) {
+		const report = await repository.createPending(dataPoints, new Date(date));
+		if (!report) throw new Error(`A report was already created on the day of ${String(date)}`);
+
+		return report;
+	}
+
 	describe('createPending', () => {
 		test('records the measurement with a generated id, undelivered', async () => {
-			const report = await repository.createPending(DATA_POINTS);
+			const report = await createOn(new Date());
 
 			expect(report.id).toEqual(expect.any(String));
 			expect(report.deliveredAt).toBeNull();
@@ -40,11 +47,39 @@ describe('InstanceMonitoringReportRepository', () => {
 				dataPoints: DATA_POINTS,
 			});
 		});
+
+		test.each([
+			['2026-03-25T00:00:00.000Z', '2026-03-25'],
+			['2026-03-25T23:59:59.999Z', '2026-03-25'],
+			['2026-03-26T01:30:00.000+02:00', '2026-03-25'],
+			['2026-03-25T20:30:00.000-05:00', '2026-03-26'],
+		])('stores the UTC day of %s as the report date %s', async (now, reportDate) => {
+			const { id } = await createOn(now);
+
+			await expect(repository.findOneByOrFail({ id })).resolves.toMatchObject({ reportDate });
+		});
+
+		test('returns null for a second report on the same UTC day and keeps the first', async () => {
+			const first = await createOn('2026-03-25T07:42:00.000Z');
+
+			await expect(
+				repository.createPending(DATA_POINTS, new Date('2026-03-25T23:59:00.000Z')),
+			).resolves.toBeNull();
+			await expect(repository.find()).resolves.toEqual([expect.objectContaining({ id: first.id })]);
+		});
+
+		test('creates a report on the next UTC day', async () => {
+			await createOn('2026-03-25T23:59:00.000Z');
+
+			await createOn('2026-03-26T00:00:00.000Z');
+
+			await expect(repository.count()).resolves.toBe(2);
+		});
 	});
 
 	describe('findPending', () => {
 		async function createdOn(date: string) {
-			const report = await repository.createPending(DATA_POINTS);
+			const report = await createOn(date);
 			await repository.update({ id: report.id }, { createdAt: new Date(date) });
 
 			return report;
@@ -55,7 +90,7 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 
 		test('returns the pending report with the numbers it measured', async () => {
-			const created = await repository.createPending(DATA_POINTS);
+			const created = await createOn(new Date());
 
 			const pending = await repository.findPending();
 
@@ -65,7 +100,7 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 
 		test('returns nothing once the newest report is delivered', async () => {
-			const created = await repository.createPending(DATA_POINTS);
+			const created = await createOn(new Date());
 			await repository.markDelivered(created.id, new Date());
 
 			await expect(repository.findPending()).resolves.toBeNull();
@@ -91,7 +126,7 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 
 		test('carries the last attempt time, so the wait between attempts survives a restart', async () => {
-			const created = await repository.createPending(DATA_POINTS);
+			const created = await createOn(new Date());
 			const failedAt = new Date('2026-03-26T07:42:00.000Z');
 			await repository.recordFailure(created.id, 'Network error', failedAt);
 
@@ -107,13 +142,13 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 
 		test("is false while today's report is still pending", async () => {
-			await repository.createPending(DATA_POINTS);
+			await createOn(new Date());
 
 			await expect(repository.hasSettledToday(new Date())).resolves.toBe(false);
 		});
 
 		test("is true once today's report was delivered", async () => {
-			const created = await repository.createPending(DATA_POINTS);
+			const created = await createOn(new Date());
 			await repository.markDelivered(created.id, new Date());
 
 			await expect(repository.hasSettledToday(new Date())).resolves.toBe(true);
@@ -121,19 +156,31 @@ describe('InstanceMonitoringReportRepository', () => {
 
 		test("is true once today's report ran out of attempts", async () => {
 			// Otherwise the day would get a second report with a second budget.
-			const created = await repository.createPending(DATA_POINTS);
+			const created = await createOn(new Date());
 			await repository.markSkipped(created.id);
 
 			await expect(repository.hasSettledToday(new Date())).resolves.toBe(true);
 		});
 
 		test("ignores an earlier day's delivered report", async () => {
-			const delivered = await repository.createPending(DATA_POINTS);
+			const delivered = await createOn(new Date());
 			await repository.markDelivered(delivered.id, new Date());
 
 			const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
 			await expect(repository.hasSettledToday(tomorrow)).resolves.toBe(false);
+		});
+
+		test('reads the UTC day the report was created on', async () => {
+			const delivered = await createOn('2026-03-25T23:59:00.000Z');
+			await repository.markDelivered(delivered.id, new Date());
+
+			await expect(repository.hasSettledToday(new Date('2026-03-25T00:00:00.000Z'))).resolves.toBe(
+				true,
+			);
+			await expect(repository.hasSettledToday(new Date('2026-03-26T00:01:00.000Z'))).resolves.toBe(
+				false,
+			);
 		});
 	});
 
@@ -143,13 +190,13 @@ describe('InstanceMonitoringReportRepository', () => {
 		}
 
 		test('is null when nothing was ever delivered', async () => {
-			await repository.createPending(DATA_POINTS);
+			await createOn(new Date());
 
 			await expect(repository.findLastCoveredDay()).resolves.toBeNull();
 		});
 
 		test('returns the latest daily date a delivered report carried', async () => {
-			const delivered = await repository.createPending([
+			const delivered = await createOn(new Date(), [
 				{ kind: 'daily', name: 'billableExecutions', value: 1, date: '2026-03-24' },
 				{ kind: 'daily', name: 'billableExecutions', value: 2, date: REPORT_DATE },
 			]);
@@ -162,12 +209,12 @@ describe('InstanceMonitoringReportRepository', () => {
 			// The receiver answers 201 only once it saved the report, so a failure means
 			// nothing was saved and the day is still owed. Reports pile up because the
 			// scheduler creates a fresh one each day.
-			const delivered = await repository.createPending(daily('2026-03-22', 1));
+			const delivered = await createOn('2026-03-23T07:42:00.000Z', daily('2026-03-22', 1));
 			await repository.markDelivered(delivered.id, new Date());
 
-			const failed = await repository.createPending(daily('2026-03-23', 2));
+			const failed = await createOn('2026-03-24T07:42:00.000Z', daily('2026-03-23', 2));
 			await repository.recordFailure(failed.id, 'Network error', new Date());
-			await repository.createPending(daily('2026-03-24', 3));
+			await createOn('2026-03-25T07:42:00.000Z', daily('2026-03-24', 3));
 
 			await expect(repository.findLastCoveredDay()).resolves.toBe('2026-03-22');
 		});
@@ -175,16 +222,16 @@ describe('InstanceMonitoringReportRepository', () => {
 
 	describe('findLastDeliveryTime', () => {
 		test('is null when nothing was ever delivered', async () => {
-			await repository.createPending(DATA_POINTS);
+			await createOn(new Date());
 
 			await expect(repository.findLastDeliveryTime()).resolves.toBeNull();
 		});
 
 		test('returns the latest delivery time across delivered reports', async () => {
-			const earlier = await repository.createPending(DATA_POINTS);
+			const earlier = await createOn('2026-03-24T07:41:00.000Z');
 			await repository.markDelivered(earlier.id, new Date('2026-03-24T07:42:00.000Z'));
 
-			const latest = await repository.createPending(DATA_POINTS);
+			const latest = await createOn('2026-03-25T07:42:00.000Z');
 			const latestDeliveredAt = new Date('2026-03-25T07:42:13.000Z');
 			await repository.markDelivered(latest.id, latestDeliveredAt);
 
@@ -194,15 +241,15 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 
 		test('ignores reports that never reached the receiver', async () => {
-			const delivered = await repository.createPending(DATA_POINTS);
+			const delivered = await createOn('2026-03-24T07:41:00.000Z');
 			const deliveredAt = new Date('2026-03-24T07:42:00.000Z');
 			await repository.markDelivered(delivered.id, deliveredAt);
 
-			const failed = await repository.createPending(DATA_POINTS);
+			const failed = await createOn('2026-03-25T07:42:00.000Z');
 			await repository.recordFailure(failed.id, 'Network error', new Date());
-			const skipped = await repository.createPending(DATA_POINTS);
+			const skipped = await createOn('2026-03-26T07:42:00.000Z');
 			await repository.markSkipped(skipped.id);
-			await repository.createPending(DATA_POINTS);
+			await createOn('2026-03-27T07:42:00.000Z');
 
 			const lastDelivery = await repository.findLastDeliveryTime();
 
@@ -210,9 +257,32 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 	});
 
+	describe('markSkipped', () => {
+		test('settles a pending report as skipped', async () => {
+			const { id } = await createOn(new Date());
+
+			await repository.markSkipped(id);
+
+			await expect(repository.findOneByOrFail({ id })).resolves.toMatchObject({
+				status: 'skipped_after_max_retries',
+			});
+		});
+
+		test('leaves a report delivered when another process delivered it first', async () => {
+			const { id } = await createOn(new Date());
+			await repository.markDelivered(id, new Date());
+
+			await repository.markSkipped(id);
+
+			await expect(repository.findOneByOrFail({ id })).resolves.toMatchObject({
+				status: 'delivered',
+			});
+		});
+	});
+
 	describe('markDelivered', () => {
 		test('stamps the delivery time, counts the attempt and clears any earlier error', async () => {
-			const { id } = await repository.createPending(DATA_POINTS);
+			const { id } = await createOn(new Date());
 			await repository.recordFailure(id, 'Network error', new Date());
 			const deliveredAt = new Date('2026-03-26T07:42:00.000Z');
 
@@ -227,7 +297,7 @@ describe('InstanceMonitoringReportRepository', () => {
 
 	describe('recordFailure', () => {
 		test('counts the attempt and keeps the report undelivered', async () => {
-			const { id } = await repository.createPending(DATA_POINTS);
+			const { id } = await createOn(new Date());
 
 			await repository.recordFailure(id, 'Network error', new Date());
 			await repository.recordFailure(id, 'Still down', new Date());

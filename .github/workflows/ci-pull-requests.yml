@@ -11,7 +11,7 @@ concurrency:
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -31,12 +31,16 @@ jobs:
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       engine_e2e: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
+      # The main E2E suite runs. Read by e2e-matrix and e2e.
+      run_e2e: >-
+        ${{ github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group' &&
+        (fromJSON(steps.ci-filter.outputs.results).runtime == true
+          || fromJSON(steps.ci-filter.outputs.results).e2e == true
+          || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
-      matrix: ${{ steps.generate-matrix.outputs.matrix }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
-      skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
@@ -227,20 +231,6 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Generate shard matrix
-        id: generate-matrix
-        if: github.event_name != 'merge_group' && (fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e)
-        env:
-          CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
-          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
-          PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
-          PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
-        run: |
-          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
-
       # Generated here because a reusable workflow cannot resolve its own matrix.
       # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
       # full Postgres range, so every merge still gates on the older majors.
@@ -347,7 +337,7 @@ jobs:
   # (each of which invokes prepare-docker internally) short-circuit to a
   # cache hit instead of racing to rebuild.
   prepare-docker:
-    name: Prepare Docker
+    name: Prepare E2E
     needs: [install-and-build, format-check]
     if: >-
       github.repository == 'n8n-io/n8n' &&
@@ -364,25 +354,66 @@ jobs:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  # Runs next to prepare-docker, so the matrix is off the path of the jobs that
+  # wait for install-and-build. Only the e2e job reads it.
+  e2e-matrix:
+    name: Prepare E2E / Shard matrix
+    needs: install-and-build
+    if: needs.install-and-build.outputs.run_e2e == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+          fetch-depth: 1
+
+      # Impact selection reads package.json at the merge base.
+      - name: Fetch merge base
+        env:
+          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+        run: |
+          if [ -n "$MERGE_BASE" ] && ! git cat-file -e "$MERGE_BASE^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$MERGE_BASE"
+          fi
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
+
+      - name: Generate shard matrix
+        id: generate-matrix
+        env:
+          CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
+          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
+          PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
+        run: |
+          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
+
   # Full e2e run. Internal PRs run multi-main (postgres + redis + caddy + 2 mains + 1 worker).
   # Fork PRs run sqlite-only and skip @licensed tests (no enterprise license secrets on forks).
   e2e:
     name: E2E
-    needs: [install-and-build, prepare-docker]
+    needs: [install-and-build, prepare-docker, e2e-matrix]
     if: >-
       needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.runtime == 'true'
-        || needs.install-and-build.outputs.e2e == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
-      needs.install-and-build.outputs.skip_tests != 'true' &&
-      github.event_name != 'merge_group'
+      needs.e2e-matrix.result == 'success' &&
+      needs.install-and-build.outputs.run_e2e == 'true' &&
+      needs.e2e-matrix.outputs.skip_tests != 'true'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       test-mode: docker-artifact
       test-command: ${{ github.event.pull_request.head.repo.fork == true && 'pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert=@licensed' || 'pnpm --filter=n8n-playwright test:container:multi-main:e2e' }}
       workers: '1'
-      pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
+      pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
     secrets: inherit
@@ -444,6 +475,7 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
+      changed-files: ${{ needs.install-and-build.outputs.changed_files }}
 
   e2e-performance:
     name: E2E Performance
@@ -509,6 +541,7 @@ jobs:
         typecheck,
         lint,
         check-packaging,
+        e2e-matrix,
         e2e,
         e2e-engine,
         dev-server-smoke,

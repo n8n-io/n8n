@@ -12,6 +12,11 @@ export const POSTGRES_VERSIONS_PATH = 'packages/testing/containers/postgres-vers
 /** The matrix wall is bounded by its slowest leg, so a larger runner buys nothing. */
 const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
 
+// Each leg runs one suite on its own runner, so use every CPU. The CI default
+// (half the CPUs) is for jobs that run many suites at once. Every test file
+// gets its own database, so more workers do not share state.
+const MAX_WORKERS = '--maxWorkers=100%';
+
 /**
  * @typedef {Object} PostgresVersions
  * @property {string} primary
@@ -86,7 +91,7 @@ export function buildMatrix(versions, scope = 'full') {
 		{
 			name: 'SQLite Pooled',
 			runner: RUNNER,
-			'test-cmd': 'pnpm test:sqlite',
+			'test-cmd': `pnpm test:sqlite ${MAX_WORKERS}`,
 			'migration-cmd': 'pnpm test:sqlite:migrations',
 			'schema-check-cmd': 'pnpm --filter=@n8n/db schema:check:sqlite',
 			TEST_IMAGE_POSTGRES: undefined,
@@ -95,8 +100,8 @@ export function buildMatrix(versions, scope = 'full') {
 		...postgresLegs.map(({ major, image }) => ({
 			name: `Postgres ${major}`,
 			runner: RUNNER,
-			'test-cmd': 'pnpm test:postgres:integration:tc',
-			'migration-cmd': 'pnpm test:postgres:migrations:tc',
+			'test-cmd': `pnpm test:postgres:integration:tc ${MAX_WORKERS}`,
+			'migration-cmd': `pnpm test:postgres:migrations:tc ${MAX_WORKERS}`,
 			'schema-check-cmd': image === primary ? 'pnpm --filter=@n8n/db schema:check:postgres' : '',
 			TEST_IMAGE_POSTGRES: image,
 			collectCoverage: scope === 'pr' && image === primary ? 'true' : 'false',
