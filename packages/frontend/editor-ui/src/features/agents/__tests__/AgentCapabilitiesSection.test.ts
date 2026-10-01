@@ -380,19 +380,15 @@ describe('AgentCapabilitiesSection', () => {
 		await userEvent.click(
 			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
 		);
-		expect(wrapper.emitted('update:config')).toEqual([
-			[
-				{
-					subAgents: {
-						maxChildren: 7,
-						agents: [
-							{ agentId: 'agent-2', useWhen: 'Review notes', enabled: true },
-							{ agentId: 'agent-3' },
-						],
-					},
-				},
+		const activatedSubAgents = {
+			maxChildren: 7,
+			agents: [
+				{ agentId: 'agent-2', useWhen: 'Review notes', enabled: true },
+				{ agentId: 'agent-3' },
 			],
-		]);
+		};
+		expect(wrapper.emitted('update:config')).toEqual([[{ subAgents: activatedSubAgents }]]);
+		await wrapper.setProps({ config: { ...config, subAgents: activatedSubAgents } });
 		await subAgent.trigger('click');
 		const modalData = openModalWithDataSpy.mock.calls.at(-1)![0].data;
 		modalData.onConfirm({ agentId: 'agent-2', useWhen: 'Review updated notes' });
@@ -401,7 +397,7 @@ describe('AgentCapabilitiesSection', () => {
 				subAgents: {
 					maxChildren: 7,
 					agents: [
-						{ agentId: 'agent-2', useWhen: 'Review updated notes', enabled: false },
+						{ agentId: 'agent-2', useWhen: 'Review updated notes', enabled: true },
 						{ agentId: 'agent-3' },
 					],
 				},

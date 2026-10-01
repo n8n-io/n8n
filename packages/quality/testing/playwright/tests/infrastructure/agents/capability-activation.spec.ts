@@ -118,114 +118,123 @@ test.describe(
 			const clients = [await createApiForMain(0), await createApiForMain(1)];
 			const ingress = clients[0];
 			const project = await ingress.projects.getMyPersonalProject();
+			const streams: Array<Awaited<ReturnType<typeof ingress.agents.openChat>>> = [];
 			const credential = await ingress.credentials.createCredential({
 				name: `e2e-agent-782-${randomUUID()}`,
 				type: 'anthropicApi',
 				data: { apiKey: 'activation-test-key' },
 			});
-			const agent = await ingress.agents.create(project.id, {
-				name: `e2e-agent-782-${randomUUID()}`,
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: credential.id,
-				instructions: 'Reply briefly.',
-				integrations: [{ type: 'n8n_chat', credentialId: '' }],
-				tools: [
-					{
-						type: 'node',
-						name: 'activation_probe',
-						node: {
-							nodeType: 'n8n-nodes-base.httpRequestTool',
-							nodeTypeVersion: 4.2,
-							nodeParameters: { url: 'https://example.com/agent-782-probe', options: {} },
-						},
-					},
-				],
-			});
-			const endpoint = `/rest/projects/${project.id}/agents/v2/${agent.id}`;
-			await mockModel(n8nContainer);
-			const streams: Array<Awaited<ReturnType<typeof ingress.agents.openChat>>> = [];
-			const preview = async (main: number, marker: string) => {
-				const stream = await clients[main].agents.openChat(mainUrls[main], project.id, agent.id, {
-					message: marker,
-					messageId: randomUUID(),
-					sessionId: randomUUID(),
-					newSession: true,
-				});
-				streams.push(stream);
-				return stream;
-			};
-			const publish = async () => {
-				const response = await ingress.request.post(`${endpoint}/publish`, { data: {} });
-				expect(response.ok(), await response.text()).toBe(true);
-			};
-			const runPreview = async (main: number, marker: string, enabled: boolean) => {
-				const stream = await preview(main, marker);
-				expect(await stream.done).toBeUndefined();
-				expect(stream.events.filter((event) => event.type === 'error')).toEqual([]);
-				expect(stream.events).toContainEqual(expect.objectContaining({ type: 'done' }));
-				await expectToolAvailability(n8nContainer, marker, enabled);
-			};
-			const runProduction = async (main: number, marker: string, enabled: boolean) => {
-				const response = await clients[main].request.post(`${endpoint}/n8n-chat`, {
-					data: { message: marker },
-				});
-				const body = await response.text();
-				expect(response.ok(), body).toBe(true);
-				expect(body).not.toContain('"type":"error"');
-				expect(body).toContain('"type":"done"');
-				await expectToolAvailability(n8nContainer, marker, enabled);
-			};
 
 			try {
-				await publish();
-				for (const main of [0, 1]) {
-					await runPreview(main, `warm-preview-${main}`, true);
-					await runProduction(main, `warm-production-${main}`, true);
-				}
-				const running = await preview(1, 'activation-running');
-				await expect
-					.poll(
-						async () =>
-							await n8nContainer.services.proxy.wasRequestMade({
-								method: 'POST',
-								path: '/v1/messages',
-								body: { type: 'REGEX', regex: '(?s).*activation-running.*' },
-							}),
-					)
-					.toBe(true);
-
-				const current: { data: { config: AgentJsonConfig; configHash: string } } = await (
-					await ingress.request.get(`${endpoint}/config`)
-				).json();
-				const config = {
-					...current.data.config,
-					tools: current.data.config.tools?.map((tool) => ({ ...tool, enabled: false })),
-				};
-				expect(running.events).not.toContainEqual(expect.objectContaining({ type: 'done' }));
-				const saved = await ingress.request.put(`${endpoint}/config`, {
-					data: { config, baseConfigHash: current.data.configHash },
+				const agent = await ingress.agents.create(project.id, {
+					name: `e2e-agent-782-${randomUUID()}`,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: credential.id,
+					instructions: 'Reply briefly.',
+					integrations: [{ type: 'n8n_chat', credentialId: '' }],
+					tools: [
+						{
+							type: 'node',
+							name: 'activation_probe',
+							node: {
+								nodeType: 'n8n-nodes-base.httpRequestTool',
+								nodeTypeVersion: 4.2,
+								nodeParameters: { url: 'https://example.com/agent-782-probe', options: {} },
+							},
+						},
+					],
 				});
-				expect(saved.ok(), await saved.text()).toBe(true);
-				for (const main of [0, 1]) {
-					await runPreview(main, `disabled-preview-${main}`, false);
-					await runProduction(main, `draft-production-${main}`, true);
-				}
-				expect(await running.done).toBeUndefined();
-				expect(running.events.filter((event) => event.type === 'error')).toEqual([]);
-				expect(running.events).toContainEqual(expect.objectContaining({ type: 'done' }));
-				expect(
-					await n8nContainer.services.proxy.wasRequestMade({
-						method: 'GET',
-						path: '/agent-782-probe',
-					}),
-				).toBe(true);
+				try {
+					const endpoint = `/rest/projects/${project.id}/agents/v2/${agent.id}`;
+					await mockModel(n8nContainer);
+					const preview = async (main: number, marker: string) => {
+						const stream = await clients[main].agents.openChat(
+							mainUrls[main],
+							project.id,
+							agent.id,
+							{
+								message: marker,
+								messageId: randomUUID(),
+								sessionId: randomUUID(),
+								newSession: true,
+							},
+						);
+						streams.push(stream);
+						return stream;
+					};
+					const publish = async () => {
+						const response = await ingress.request.post(`${endpoint}/publish`, { data: {} });
+						expect(response.ok(), await response.text()).toBe(true);
+					};
+					const runPreview = async (main: number, marker: string, enabled: boolean) => {
+						const stream = await preview(main, marker);
+						expect(await stream.done).toBeUndefined();
+						expect(stream.events.filter((event) => event.type === 'error')).toEqual([]);
+						expect(stream.events).toContainEqual(expect.objectContaining({ type: 'done' }));
+						await expectToolAvailability(n8nContainer, marker, enabled);
+					};
+					const runProduction = async (main: number, marker: string, enabled: boolean) => {
+						const response = await clients[main].request.post(`${endpoint}/n8n-chat`, {
+							data: { message: marker },
+						});
+						const body = await response.text();
+						expect(response.ok(), body).toBe(true);
+						expect(body).not.toContain('"type":"error"');
+						expect(body).toContain('"type":"done"');
+						await expectToolAvailability(n8nContainer, marker, enabled);
+					};
 
-				await publish();
-				for (const main of [0, 1]) await runProduction(main, `published-disabled-${main}`, false);
+					await publish();
+					for (const main of [0, 1]) {
+						await runPreview(main, `warm-preview-${main}`, true);
+						await runProduction(main, `warm-production-${main}`, true);
+					}
+					const running = await preview(1, 'activation-running');
+					await expect
+						.poll(
+							async () =>
+								await n8nContainer.services.proxy.wasRequestMade({
+									method: 'POST',
+									path: '/v1/messages',
+									body: { type: 'REGEX', regex: '(?s).*activation-running.*' },
+								}),
+						)
+						.toBe(true);
+
+					const current: { data: { config: AgentJsonConfig; configHash: string } } = await (
+						await ingress.request.get(`${endpoint}/config`)
+					).json();
+					const config = {
+						...current.data.config,
+						tools: current.data.config.tools?.map((tool) => ({ ...tool, enabled: false })),
+					};
+					expect(running.events).not.toContainEqual(expect.objectContaining({ type: 'done' }));
+					const saved = await ingress.request.put(`${endpoint}/config`, {
+						data: { config, baseConfigHash: current.data.configHash },
+					});
+					expect(saved.ok(), await saved.text()).toBe(true);
+					for (const main of [0, 1]) {
+						await runPreview(main, `disabled-preview-${main}`, false);
+						await runProduction(main, `draft-production-${main}`, true);
+					}
+					expect(await running.done).toBeUndefined();
+					expect(running.events.filter((event) => event.type === 'error')).toEqual([]);
+					expect(running.events).toContainEqual(expect.objectContaining({ type: 'done' }));
+					expect(
+						await n8nContainer.services.proxy.wasRequestMade({
+							method: 'GET',
+							path: '/agent-782-probe',
+						}),
+					).toBe(true);
+
+					await publish();
+					for (const main of [0, 1]) await runProduction(main, `published-disabled-${main}`, false);
+				} finally {
+					for (const stream of streams) stream.disconnect();
+					await ingress.agents.delete(project.id, agent.id);
+				}
 			} finally {
-				for (const stream of streams) stream.disconnect();
-				await ingress.agents.delete(project.id, agent.id);
-				await ingress.request.delete(`/rest/credentials/${credential.id}`);
+				await ingress.credentials.deleteCredential(credential.id);
 			}
 		});
 	},

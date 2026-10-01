@@ -120,7 +120,7 @@ describe('useAgentCapabilitiesActions', () => {
 		const { actions, scheduleConfigUpdate, scheduleSkillSave } = makeActions({
 			skills: [
 				{ type: 'skill', id: 'skill-1' },
-				{ type: 'skill', id: 'skill-2', enabled: false },
+				{ type: 'skill', id: 'skill-2', enabled: true },
 			],
 		});
 
@@ -129,7 +129,7 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
 			skills: [
 				{ type: 'skill', id: 'skill-1', enabled: false },
-				{ type: 'skill', id: 'skill-2', enabled: false },
+				{ type: 'skill', id: 'skill-2', enabled: true },
 			],
 		});
 		expect(scheduleSkillSave).not.toHaveBeenCalled();

@@ -490,10 +490,7 @@ export class AgentConfigService {
 				agentRepository: this.agentRepository,
 			});
 			config.subAgents.agents = resolvedSubAgents
-				.filter(
-					({ agentId, agent, enabled }) =>
-						enabled === false || existingAgentIds.has(agentId) || agent !== null,
-				)
+				.filter(({ agentId, agent }) => existingAgentIds.has(agentId) || agent !== null)
 				.map(({ agent: _agent, ...ref }) => ref);
 			return resolvedSubAgents;
 		}
@@ -502,8 +499,7 @@ export class AgentConfigService {
 	}
 
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
-		for (const { agentId, agent } of resolvedSubAgents) {
-			if (!agent) continue;
+		for (const { agentId } of resolvedSubAgents) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}

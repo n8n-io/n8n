@@ -20,8 +20,7 @@ export async function resolveUniqueSubAgents({
 		const { agentId } = ref;
 		if (seen.has(agentId)) continue;
 		seen.add(agentId);
-		const agent =
-			ref.enabled === false ? null : await agentRepository.findByIdAndProjectId(agentId, projectId);
+		const agent = await agentRepository.findByIdAndProjectId(agentId, projectId);
 		resolved.push({ ...ref, agent });
 	}
 	return resolved;
