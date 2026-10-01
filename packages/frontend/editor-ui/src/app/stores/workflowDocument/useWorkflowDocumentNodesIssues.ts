@@ -2,7 +2,8 @@ import { computed, effectScope, shallowReactive, type ComputedRef, type ShallowR
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import isEqual from 'lodash/isEqual';
 import type { INodeUi, WorkflowValidationIssue } from '@/Interface';
-import type { INodeConnections, INodeIssues, INode } from 'n8n-workflow';
+import type { IConnections, INodeConnections, INodeIssues, INode } from 'n8n-workflow';
+import { getReachableNodeNames, onlySuppliesDisabledNodes } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
 import type {
 	NodeAddedPayload,
@@ -15,6 +16,12 @@ export type WorkflowDocumentNodesIssuesDeps = {
 	allNodes: ComputedRef<INodeUi[]>;
 	outgoingConnectionsByNodeName: (nodeName: string) => INodeConnections;
 	incomingConnectionsByNodeName: (nodeName: string) => INodeConnections;
+	connectionsBySourceNode: ComputedRef<IConnections>;
+	connectionsByDestinationNode: ComputedRef<IConnections>;
+	/** Whether this node starts a run. */
+	isTriggerLike: (node: INodeUi) => boolean;
+	/** Whether this node can produce a `main` output. Answers `true` when unsure. */
+	canOutputMain: (node: INodeUi) => boolean;
 	nodesById: ShallowRef<Map<string, INodeUi>>;
 	onNodesChange: (cb: (event: NodesChangeEvent) => void) => void;
 	nodeIssuesToString: (issues: INodeIssues, node?: INode) => string[];
@@ -45,24 +52,60 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 		}),
 	);
 
+	/**
+	 * Nodes that stop the workflow being published, which is also what the
+	 * blocked-publish message counts, so the button and its reason always agree.
+	 *
+	 * Mirrors the server (`workflow-validation.service.ts`): a node only blocks if
+	 * a trigger can reach it, and an unmet input only blocks if something that
+	 * runs will ask for it. A node no run can reach cannot break one, so it must
+	 * not stop publishing. It keeps its own warning on the canvas either way,
+	 * which is what tells the user it is still unfinished.
+	 */
+	const publishBlockingNodes = computed<INodeUi[]>(() => {
+		const nodes = deps.allNodes.value;
+		const reachable = getReachableNodeNames(
+			nodes,
+			deps.connectionsBySourceNode.value,
+			deps.connectionsByDestinationNode.value,
+			deps.isTriggerLike,
+		);
+
+		return nodes.filter((node) => {
+			if (node.disabled) return false;
+
+			// Execution issues are runtime errors, not configuration problems.
+			const { execution: _, ...configIssues } = node.issues ?? {};
+			const issueKinds = Object.keys(configIssues);
+			if (issueKinds.length === 0) return false;
+
+			if (!reachable.has(node.name)) return false;
+
+			// An unmet input only matters once something asks for it. Credential and
+			// parameter issues belong to the node itself, so those block as soon as a
+			// run can reach it.
+			if (
+				issueKinds.every((kind) => kind === 'input') &&
+				!deps.isTriggerLike(node) &&
+				onlySuppliesDisabledNodes(
+					node,
+					deps.connectionsBySourceNode.value,
+					nodes,
+					deps.canOutputMain,
+				)
+			) {
+				return false;
+			}
+
+			return true;
+		});
+	});
+
 	const nodesWithValidationIssuesCount = computed(() => nodesWithValidationIssues.value.length);
 
 	const hasNodeValidationIssues = computed(() => nodesWithValidationIssuesCount.value > 0);
 
-	/** Whether any connected node has issues that should block publishing.
-	 *  Execution issues are excluded — they are runtime errors, not configuration problems. */
-	const hasPublishBlockingIssues = computed(() =>
-		deps.allNodes.value.some((node) => {
-			const { execution: _, ...configIssues } = node.issues ?? {};
-			if (Object.keys(configIssues).length === 0) return false;
-
-			const isConnected =
-				hasAnyConnection(deps.outgoingConnectionsByNodeName(node.name)) ||
-				hasAnyConnection(deps.incomingConnectionsByNodeName(node.name));
-
-			return !node.disabled && isConnected;
-		}),
-	);
+	const hasPublishBlockingIssues = computed(() => publishBlockingNodes.value.length > 0);
 
 	const nodeValidationIssues = computed(() => {
 		const issues: WorkflowValidationIssue[] = [];
@@ -180,6 +223,7 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 		nodesWithValidationIssues,
 		nodesWithValidationIssuesCount,
 		hasNodeValidationIssues,
+		publishBlockingNodes,
 		hasPublishBlockingIssues,
 		nodeValidationIssues,
 		validationErrorsByNodeId,

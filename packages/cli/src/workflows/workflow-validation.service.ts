@@ -11,7 +11,8 @@ import {
 	mapConnectionsByDestination,
 	validateNodeCredentials,
 	getUnconnectedRequiredInputs,
-	getExecutableNodeNames,
+	getReachableNodeNames,
+	onlySuppliesDisabledNodes,
 	isTriggerLikeNode,
 	isTriggerNode,
 	classifyTriggerIdentity,
@@ -57,73 +58,6 @@ function formatCredentialNames(credentials: Array<{ name: string }>): string {
 	return credentials.map((c) => `"${c.name}"`).join(', ');
 }
 
-/** Nodes a node feeds directly, by name, in graph order. */
-function consumerNames(nodeName: string, connections: IConnections): string[] {
-	const names: string[] = [];
-
-	for (const targetsByOutput of Object.values(connections[nodeName] ?? {})) {
-		for (const targets of targetsByOutput ?? []) {
-			for (const target of targets ?? []) {
-				names.push(target.node);
-			}
-		}
-	}
-
-	return names;
-}
-
-/**
- * Whether nothing will ever ask this node for its inputs, because every chain
- * of consumers out of it is disabled. Only ever true for supply-type nodes (LLM
- * models, parsers, memory, tools): anything that can produce a `main` output
- * belongs to the flow and runs regardless of what its consumers do.
- *
- * Consumers are followed transitively. A model feeding a parser feeding a
- * disabled agent is as inert as one feeding the disabled agent directly, and
- * stopping at the first hop would refuse to publish over it.
- *
- * `canOutputMain` reads the type's declared outputs rather than the
- * connections, since an unwired `main` output is still a main-path node. It
- * answers `true` for a node of unknown type, so a half-built graph does not
- * silently opt out of the check.
- */
-function onlySuppliesDisabledNodes(
-	node: INode,
-	connections: IConnections,
-	nodes: INode[],
-	canOutputMain: (node: INode) => boolean,
-): boolean {
-	if (canOutputMain(node)) return false;
-
-	const nodeByName = new Map(nodes.map((n) => [n.name, n]));
-	// Doubles as cycle protection and keeps this linear over the sub-graph.
-	const visited = new Set<string>();
-
-	/** Whether anything that actually runs asks `nodeName` for its output. */
-	function isAsked(nodeName: string): boolean {
-		if (visited.has(nodeName)) return false;
-		visited.add(nodeName);
-
-		for (const consumerName of consumerNames(nodeName, connections)) {
-			const consumer = nodeByName.get(consumerName);
-			// An unknown target is treated as live.
-			if (!consumer) return true;
-			if (consumer.disabled) continue;
-			// A consumer on the main path runs, so it will ask. A supply consumer is
-			// itself only asked by its own consumers.
-			if (canOutputMain(consumer) || isAsked(consumer.name)) return true;
-		}
-
-		return false;
-	}
-
-	// A supply node wired to nothing is left to the reachability check, which
-	// skips it anyway, rather than exempted here.
-	if (consumerNames(node.name, connections).length === 0) return false;
-
-	return !isAsked(node.name);
-}
-
 @Service()
 export class WorkflowValidationService {
 	constructor(
@@ -147,21 +81,15 @@ export class WorkflowValidationService {
 		connections: IConnections,
 		nodeTypes: NodeTypes,
 	): Set<string> {
-		const connectionsByDestination = mapConnectionsByDestination(connections);
-		const reachable = new Set<string>();
-
-		for (const node of nodes) {
-			if (node.disabled) continue;
-
-			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (!nodeType || !isTriggerLikeNode(nodeType)) continue;
-
-			for (const name of getExecutableNodeNames(connections, connectionsByDestination, node.name)) {
-				reachable.add(name);
-			}
-		}
-
-		return reachable;
+		return getReachableNodeNames(
+			nodes,
+			connections,
+			mapConnectionsByDestination(connections),
+			(node) => {
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return !!nodeType && isTriggerLikeNode(nodeType);
+			},
+		);
 	}
 
 	/**
