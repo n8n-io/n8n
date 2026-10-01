@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateAgentThreadGrantTable1790698149517 implements ReversibleMigration {
+export class CreateAgentThreadGrantTable1790837340960 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agent_thread_grants')
 			.withColumns(
