@@ -146,7 +146,12 @@ const tooltipPlacement = computed(() => {
 							:class="$style.menuItemEmoji"
 							>{{ item.icon.value }}</N8nText
 						>
-						<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
+						<N8nIcon
+							v-else-if="icon"
+							:color="iconColor"
+							:icon="icon"
+							:size="props.compact ? 'medium' : undefined"
+						/>
 					</slot>
 				</div>
 				<div :class="$style.menuItemLabel">
@@ -194,6 +199,7 @@ const tooltipPlacement = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/_focus.scss';
 @use '../../css/mixins/mixins' as scroll-mask;
 @use '../../css/mixins/motion' as motion;
 
@@ -210,13 +216,12 @@ const tooltipPlacement = computed(() => {
 	justify-content: center;
 	// Match the height of items with icons (24px icon + 2 * 4px padding), so
 	// icon-less items (e.g. modal sidebar tabs) don't render shorter.
-	min-height: var(--spacing--xl);
+	height: var(--spacing--xl);
 	padding: var(--spacing--4xs);
 	gap: var(--spacing--4xs);
-	cursor: pointer;
-	color: var(--color--text);
-	border-radius: var(--spacing--4xs);
-	cursor: pointer;
+	color: var(--text-color);
+	border-radius: var(--radius);
+	border: 1px solid transparent;
 	min-width: 0;
 	width: 100%;
 	position: relative;
@@ -237,11 +242,14 @@ const tooltipPlacement = computed(() => {
 
 	&.compact {
 		gap: 0;
+		border-radius: var(--radius--full);
+		height: var(--height--sm);
+		width: var(--height--sm);
 	}
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color--secondary);
+	@include focus.focus-ring-with-border;
 	outline-offset: -1px;
 }
 

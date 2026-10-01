@@ -1,10 +1,18 @@
 <script lang="ts" setup>
-import type { FormFieldValue, IFormInput, FormFieldValueUpdate, FormValues } from '../../types';
+import type {
+	FormFieldValue,
+	IFormInput,
+	FormFieldValueUpdate,
+	FormValues,
+	ButtonProps,
+} from '../../types';
 import { createFormEventBus } from '../../utils';
 import N8nButton from '../N8nButton';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
+
+type ButtonVariant = Pick<ButtonProps, 'variant'>;
 
 interface FormBoxProps {
 	title?: string;
@@ -12,6 +20,7 @@ interface FormBoxProps {
 	buttonText?: string;
 	buttonLoading?: boolean;
 	secondaryButtonText?: string;
+	submitButtonVariant?: 'solid' | 'brand';
 	redirectText?: string;
 	redirectLink?: string;
 }
@@ -23,6 +32,7 @@ withDefaults(defineProps<FormBoxProps>(), {
 	buttonLoading: false,
 	redirectText: '',
 	redirectLink: '',
+	submitButtonVariant: 'solid',
 });
 
 const formBus = createFormEventBus();
@@ -66,6 +76,7 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 				:loading="buttonLoading"
 				data-test-id="form-submit-button"
 				size="large"
+				:variant="submitButtonVariant"
 				@click="onButtonClick"
 			/>
 		</div>

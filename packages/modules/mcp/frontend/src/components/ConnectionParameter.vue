@@ -72,7 +72,7 @@ const handleCopy = async (value: string) => {
 				>
 					<N8nButton
 						v-if="props.allowCopy && isSupported"
-						variant="subtle"
+						variant="outline"
 						icon-only
 						:icon="copied ? 'check' : 'copy'"
 						:class="$style['copy-button']"
