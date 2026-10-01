@@ -2294,6 +2294,37 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual(expect.any(Array));
 	});
 
+	it('blocks child actions during a pause report and leaves an interrupted report undelivered', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([
+			{
+				type: 'finish',
+				finishReason: 'guardrail',
+				guardrail: { code: 'background-pause-report' },
+			},
+		]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal: { tasks: [] },
+				pauseReport: true,
+				agentId,
+				projectId,
+				message: 'Report the stopped tasks.',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toThrow();
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		expect(options.toolsEnabled).toBe(false);
+		const hook = options.guardrails?.hooks?.find((candidate) => candidate.beforeTool);
+		expect(await hook?.beforeTool?.(mock())).toMatchObject({
+			action: 'stop',
+			code: 'background-pause-report',
+		});
+	});
+
 	it('records the background signal before the model produces any output', async () => {
 		const { service, runtimeCacheService, executionService } = makeService();
 		const runtime = makeRuntime();

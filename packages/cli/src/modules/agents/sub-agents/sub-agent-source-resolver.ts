@@ -5,7 +5,7 @@ import {
 	type SubAgentSource,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@n8n/errors';
 
@@ -22,6 +22,8 @@ export interface ResolveSubAgentSourceContext {
 	 * resolve referenced entities.
 	 */
 	usePublishedVersion?: boolean;
+	/** Saved background configuration, including draft tool and skill bodies. */
+	runtimeSnapshot?: string;
 }
 
 export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
@@ -45,6 +47,16 @@ export class SubAgentSourceResolver {
 		context: ResolveSubAgentSourceContext,
 	): Promise<ResolvedSubAgentRuntimeSource> {
 		const agent = await getAgentOrThrow(this.agentRepository, source.agentId, context.projectId);
+		if (context.runtimeSnapshot) {
+			const saved = jsonParse<ResolvedSubAgentRuntimeSource>(context.runtimeSnapshot);
+			if (saved.source.sourceId !== source.agentId) {
+				throw new UserError('Saved background task configuration does not match this agent');
+			}
+			return {
+				...saved,
+				source: { ...saved.source, config: this.toRunnableConfig(saved.source.config) },
+			};
+		}
 
 		if (source.versionId) {
 			const version = await this.agentHistoryRepository.findByVersionAndAgentId(

@@ -1177,6 +1177,7 @@ export class AgentRuntimeReconstructionService {
 			createSpawnBackgroundSubAgentTool,
 			createCheckBackgroundJobsTool,
 			createCancelBackgroundJobTool,
+			createResumeBackgroundJobsTool,
 		} = await import('./background/background-job-tools.js');
 		const { AgentBackgroundJobService } = await import(
 			'./background/agent-background-job.service.js'
@@ -1188,6 +1189,15 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createCheckBackgroundJobsTool(jobService));
 		agent.tool(createCancelBackgroundJobTool(jobService));
+		agent.tool(
+			createResumeBackgroundJobsTool({
+				jobService,
+				backgroundRunner: Container.get(SubAgentBackgroundRunner),
+				projectId,
+				parentAgentId,
+				runContext,
+			}),
+		);
 
 		// Attached even with no configured sub-agents: inline self-delegation is
 		// always available.

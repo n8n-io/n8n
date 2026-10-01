@@ -1,10 +1,15 @@
-import type { CredentialProvider } from '@n8n/agents';
+import {
+	assertSubAgentTaskPath,
+	type CredentialProvider,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import type { AgentWorkspaceService } from '../../agent-workspace.service';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { SubAgentRunner, SubAgentRunResult } from '../../sub-agents/sub-agent-runner';
@@ -81,6 +86,109 @@ async function flushDetachedRun() {
 	// microtask chain (nextTick would leave later reactions queued behind us).
 	await new Promise((resolve) => setImmediate(resolve));
 }
+
+describe('resumePaused', () => {
+	const job = mock<AgentBackgroundJob>({
+		id: 'job-1',
+		status: 'paused',
+		pauseRequestId: 'stop-1',
+		notifiedAt: new Date(),
+		parentAgentId: 'agent-1',
+		parentThreadId: 'thread-1',
+		childThreadId: 'child-thread-1',
+	});
+	function prepare(approval = false) {
+		const setupResult = setup();
+		const taskPath = '/root/research_0';
+		assertSubAgentTaskPath(taskPath);
+		const suspension: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getCheckpoint']>>> = {
+			runId: 'run-1',
+			serializedState: 'saved-state',
+			updatedAt: new Date(),
+			expiresAt: new Date(Date.now() + 96 * 3600_000),
+			checkpoint: mock<SerializableAgentState>({
+				finishReason: 'paused',
+				pendingToolCalls: approval
+					? { gate: mock<SerializableAgentState['pendingToolCalls'][string]>() }
+					: {},
+			}),
+			metadata: {
+				jobId: job.id,
+				taskPath,
+				resumeContext: { agentId: 'sub-1' },
+				sharedWorkspace: false,
+				messageContext: null,
+				runtimeSnapshot: 'saved-configuration',
+			},
+			scope: {
+				projectId: 'project-1',
+				principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+			},
+		};
+		setupResult.jobService.getCheckpoint.mockResolvedValue(suspension);
+		setupResult.jobRepository.findById.mockResolvedValue(job);
+		setupResult.jobRepository.resumeIfPaused.mockResolvedValue(true);
+		return { ...setupResult, suspension };
+	}
+
+	it('restores the same run and configuration with a new running deadline', async () => {
+		const { backgroundRunner, runner, jobService, jobRepository, context } = prepare();
+		runner.resumePaused.mockImplementation(async (_request, runContext) => {
+			await runContext.beforeResume?.();
+			await runContext.onResumeClaimed?.();
+			return completedRunResult();
+		});
+		await backgroundRunner.resumePaused(job, context);
+		await flushDetachedRun();
+		expect(runner.resumePaused).toHaveBeenCalledWith(
+			expect.objectContaining({ childThreadId: job.childThreadId, childRunId: 'run-1' }),
+			expect.objectContaining({ runtimeSnapshot: 'saved-configuration' }),
+		);
+		expect(jobRepository.resumeIfPaused).toHaveBeenCalledWith(
+			job.id,
+			'stop-1',
+			'running',
+			expect.any(Date),
+		);
+		expect(jobRepository.resumeIfPaused.mock.calls[0][3].getTime()).toBeGreaterThan(
+			Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS - 1000,
+		);
+		expect(jobService.settle).toHaveBeenCalledWith(
+			job.id,
+			{ status: 'completed', result: 'the answer' },
+			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
+	});
+
+	it('restores a pending approval without running or approving the child', async () => {
+		const { backgroundRunner, runner, jobService, jobRepository, context } = prepare(true);
+		jobService.getApproval.mockResolvedValue(
+			mock<NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>>(),
+		);
+		await backgroundRunner.resumePaused(job, context);
+		expect(jobRepository.resumeIfPaused).toHaveBeenCalledWith(
+			job.id,
+			'stop-1',
+			'suspended',
+			expect.any(Date),
+		);
+		expect(jobService.notifyResumed).toHaveBeenCalledWith(job.id);
+		expect(runner.resumeForeground).not.toHaveBeenCalled();
+		expect(runner.resumePaused).not.toHaveBeenCalled();
+		jobRepository.resumeIfPaused.mockResolvedValue(false);
+		await expect(backgroundRunner.resumePaused(job, context)).rejects.toThrow('already resumed');
+	});
+
+	it('rejects an expired checkpoint without starting replacement work', async () => {
+		const { backgroundRunner, runner, jobService, context } = prepare();
+		jobService.getCheckpoint.mockResolvedValue(undefined);
+		await expect(backgroundRunner.resumePaused(job, context)).rejects.toThrow(
+			'checkpoint has expired',
+		);
+		expect(runner.resumePaused).not.toHaveBeenCalled();
+		expect(runner.run).not.toHaveBeenCalled();
+	});
+});
 
 describe('spawn', () => {
 	it('returns before the run finishes and releases its controller when settlement loses', async () => {

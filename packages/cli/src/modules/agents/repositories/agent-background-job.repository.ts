@@ -48,7 +48,7 @@ export type ExpectedBackgroundJobState = {
 
 export type BackgroundJobGroupItem = Pick<
 	AgentBackgroundJob,
-	'id' | 'kind' | 'title' | 'status' | 'createdAt' | 'settledAt' | 'notifiedAt'
+	'id' | 'kind' | 'title' | 'status' | 'createdAt' | 'settledAt' | 'notifiedAt' | 'pauseRequestId'
 >;
 
 @Service()
@@ -119,7 +119,16 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<BackgroundJobGroupItem[]> {
 		return await this.find({
 			where: { parentAgentId, parentThreadId },
-			select: ['id', 'kind', 'title', 'status', 'createdAt', 'settledAt', 'notifiedAt'],
+			select: [
+				'id',
+				'kind',
+				'title',
+				'status',
+				'createdAt',
+				'settledAt',
+				'notifiedAt',
+				'pauseRequestId',
+			],
 			order: { createdAt: 'ASC' },
 		});
 	}

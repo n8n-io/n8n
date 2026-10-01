@@ -137,6 +137,7 @@ export class SubAgentBackgroundRunner {
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
 					backgroundJobId: jobId,
+					shouldPause: async () => await this.jobService.shouldPause(jobId),
 					parentMessageContext: request.parentMessageContext,
 					// The parent thread is the root session: the child debits it, not
 					// its own thread id, and its descendants keep the same bucket.
@@ -163,7 +164,8 @@ export class SubAgentBackgroundRunner {
 		response: { token: string; resumeData: unknown },
 		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
 	): Promise<void> {
-		const approval = job.status === 'suspended' && (await this.jobService.getApproval(job));
+		const approval =
+			job.status === 'suspended' && !job.pauseRequestId && (await this.jobService.getApproval(job));
 		if (
 			!approval ||
 			approval.token !== response.token ||
@@ -204,14 +206,17 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						shouldPause: async () => await this.jobService.shouldPause(job.id),
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
+						runtimeSnapshot: metadata.runtimeSnapshot,
 						parentWorkspaceHandle: workspace?.handle,
 						beforeResume: async () => {
 							// The child thread is reserved here. Recheck the gate after admission.
 							const currentJob = await this.jobRepository.findById(job.id);
 							const currentApproval =
 								currentJob?.status === 'suspended' &&
+								!currentJob.pauseRequestId &&
 								(await this.jobService.getApproval(currentJob));
 							if (!currentApproval || currentApproval.token !== response.token) {
 								throw new UserError('This background approval is no longer available');
@@ -244,6 +249,112 @@ export class SubAgentBackgroundRunner {
 			.catch((error: unknown) => {
 				started.reject(ensureError(error));
 				this.logger.warn('Failed to resume background sub-agent', { jobId: job.id, error });
+			});
+		await started.promise;
+	}
+
+	async resumePaused(
+		job: AgentBackgroundJob,
+		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
+	): Promise<void> {
+		if (job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt) {
+			throw new UserError('Wait for the combined status report, then ask to continue again');
+		}
+		const suspension = await this.jobService.getCheckpoint(job);
+		if (!suspension)
+			throw new UserError('This background task checkpoint has expired and cannot be resumed');
+		const { metadata, scope, checkpoint } = suspension;
+		if (scope.projectId !== context.projectId || job.parentAgentId !== context.parentAgentId) {
+			throw new UserError('This background task is not available');
+		}
+		if (Object.keys(checkpoint.pendingToolCalls).length > 0) {
+			if (!(await this.jobService.getApproval(job)))
+				throw new UserError('This background task cannot be resumed');
+			if (
+				!(await this.jobRepository.resumeIfPaused(
+					job.id,
+					job.pauseRequestId,
+					'suspended',
+					suspension.expiresAt,
+				))
+			) {
+				throw new UserError('This background task has already resumed');
+			}
+			await this.jobService.notifyResumed(job.id);
+			return;
+		}
+		const workspace = metadata.sharedWorkspace
+			? await this.workspaceService.getAgentWorkspace(
+					context.projectId,
+					job.parentAgentId,
+					scope.principalHash,
+				)
+			: undefined;
+		const controller = new AbortController();
+		const started = createDeferredPromise();
+		const expected: ExpectedBackgroundJobState = { status: 'running' };
+		const pauseRequestId = job.pauseRequestId;
+		let claimed = false;
+		let admitted = false;
+		void this.dispatch(
+			job.id,
+			controller,
+			expected,
+			async () => {
+				return await this.runner.resumePaused(
+					{
+						subAgentId: metadata.resumeContext.agentId,
+						childThreadId: job.childThreadId ?? undefined,
+						parentThreadId: job.parentThreadId,
+						childRunId: suspension.runId,
+						taskPath: metadata.taskPath,
+						resumeContext: metadata.resumeContext,
+					},
+					{
+						...context,
+						abortSignal: controller.signal,
+						selfDelegationDifficulty: metadata.difficulty,
+						runtimeSnapshot: metadata.runtimeSnapshot,
+						parentWorkspaceHandle: workspace?.handle,
+						rootSessionId: job.parentThreadId,
+						budgetForwarded: true,
+						shouldPause: async () => await this.jobService.shouldPause(job.id),
+						beforeResume: async () => {
+							const current = await this.jobRepository.findById(job.id);
+							if (current?.status !== 'paused' || current.pauseRequestId !== pauseRequestId) {
+								throw new UserError('This background task has already resumed');
+							}
+						},
+						onResumeClaimed: async () => {
+							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+							if (
+								!(await this.jobRepository.resumeIfPaused(
+									job.id,
+									pauseRequestId,
+									'running',
+									timeoutAt,
+								))
+							) {
+								throw new UserError('This background task has already ended');
+							}
+							claimed = true;
+							expected.timeoutAt = timeoutAt;
+							this.jobService.registerAbortController(job.id, controller);
+							await this.jobService.notifyResumed(job.id);
+							admitted = true;
+							started.resolve();
+						},
+					},
+				);
+			},
+			() => claimed,
+		)
+			.then(() => {
+				if (!admitted) started.reject(new UserError('This background task could not be resumed'));
+			})
+			.catch((error: unknown) => {
+				started.reject(ensureError(error));
+				this.logger.warn('Failed to resume paused background task', { jobId: job.id, error });
 			});
 		await started.promise;
 	}
@@ -289,7 +400,11 @@ export class SubAgentBackgroundRunner {
 				return;
 			}
 			clearTimeout(timeout);
-			if (result.status === 'suspended' && (await this.jobService.suspend(jobId))) return;
+			if (
+				(result.status === 'suspended' || result.status === 'paused') &&
+				(await this.jobService.suspend(jobId))
+			)
+				return;
 			await this.jobService.settle(jobId, settlementFor(result), expected);
 		} finally {
 			clearTimeout(timeout);

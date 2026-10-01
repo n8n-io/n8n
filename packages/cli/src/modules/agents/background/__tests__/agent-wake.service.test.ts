@@ -79,6 +79,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob()]);
+	jobRepository.findRequestedPauses.mockResolvedValue([]);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
@@ -120,6 +121,42 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('delivers a stopped group once and marks it only after the report finishes', async () => {
+		const { service, jobRepository, orchestrator } = setup();
+		const report = createDeferredPromise();
+		const started = createDeferredPromise();
+		const jobs = [
+			makeJob({ status: 'paused', pauseRequestId: 'stop-1' }),
+			makeJob({ id: 'job-2', status: 'completed', pauseRequestId: 'stop-1' }),
+		];
+		jobRepository.findWakeableUnconsumed
+			.mockResolvedValueOnce([...jobs, makeJob({ id: 'later' })])
+			.mockResolvedValue([]);
+		orchestrator.executeForWake.mockImplementation(async () => {
+			started.resolve();
+			await report.promise;
+		});
+		const wake = service.attemptWake('thread-1');
+		await started.promise;
+		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+			expect.objectContaining({
+				pauseReport: true,
+				message: formatWakeMessage(jobs),
+				backgroundJobSignal: { tasks: [] },
+			}),
+		);
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		report.resolve();
+		await wake;
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith(
+			'thread-1',
+			['job-1', 'job-2'],
+			true,
+		);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).toHaveBeenCalledOnce();
+	});
+
 	it('passes only the delivered jobs and their display fields to the signal', async () => {
 		const { service, jobRepository, orchestrator } = setup();
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
@@ -319,7 +356,7 @@ describe('AgentWakeService', () => {
 				identity: expect.objectContaining({ type: 'draft', principalHash }),
 			}),
 		);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 	});
 
 	it('delivers results that arrive during a wake and stops after the queue is empty', async () => {
@@ -346,8 +383,18 @@ describe('AgentWakeService', () => {
 			expect(orchestrator.executeForWake).toHaveBeenLastCalledWith(
 				expect.objectContaining({ message: expect.stringContaining('Later result') }),
 			);
-			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(1, 'thread-1', ['job-1']);
-			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(2, 'thread-1', ['job-2']);
+			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(
+				1,
+				'thread-1',
+				['job-1'],
+				false,
+			);
+			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(
+				2,
+				'thread-1',
+				['job-2'],
+				false,
+			);
 
 			jobRepository.findWakeableUnconsumed.mockResolvedValue([]);
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS * 3);
@@ -377,7 +424,7 @@ describe('AgentWakeService', () => {
 					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 				}),
 			);
-			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 			expect(lockService.withLease).toHaveBeenCalledTimes(2);
@@ -466,9 +513,11 @@ describe('AgentWakeService', () => {
 				},
 			}),
 		);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', [
-			completed.id,
-		]);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			[completed.id],
+			false,
+		);
 	});
 
 	it('allows a wake after the suspension ends', async () => {
@@ -641,7 +690,11 @@ describe('AgentWakeService', () => {
 
 		expect(service.isWakeActive('thread-1')).toBe(false);
 		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(2);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			['job-1'],
+			false,
+		);
 	});
 
 	it('stops after three failed wakes for the same pending jobs', async () => {
@@ -713,9 +766,11 @@ describe('AgentWakeService', () => {
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 
 		await service.attemptWake('thread-1');
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', [
-			completed.id,
-		]);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			[completed.id],
+			false,
+		);
 	});
 });
 

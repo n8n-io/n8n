@@ -22,6 +22,7 @@ import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoi
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import type { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -199,6 +200,7 @@ describe('AgentBackgroundJobRepository', () => {
 			createdAt,
 			settledAt,
 			notifiedAt: null,
+			pauseRequestId: null,
 		});
 	});
 
@@ -556,6 +558,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				mock<AgentExecutionUpdateBroadcaster>(),
 				checkpointStorage,
+				mock<AgentMessageRepository>(),
 			);
 			const wakeService = new AgentWakeService(
 				repository,

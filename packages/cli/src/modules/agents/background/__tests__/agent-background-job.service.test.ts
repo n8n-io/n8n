@@ -14,6 +14,9 @@ import type { AgentBackgroundJob } from '../../entities/agent-background-job.ent
 import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
+import type { AgentMessageEntity } from '../../entities/agent-message.entity';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import {
 	AgentBackgroundJobService,
 	MAX_RUNNING_JOBS_PER_THREAD,
@@ -67,6 +70,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionRepository = mock<AgentExecutionRepository>();
+	const messageRepository = mock<AgentMessageRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
@@ -84,6 +88,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.findRunningJobs.mockResolvedValue([]);
 	jobRepository.findActivePastTimeout.mockResolvedValue([]);
 	jobRepository.findSettledSubAgentsWithCheckpoints.mockResolvedValue([]);
+	jobRepository.findRequestedPauses.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
 	const service = new AgentBackgroundJobService(
@@ -95,12 +100,14 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		agentsConfig,
 		updateBroadcaster,
 		checkpointStorage,
+		messageRepository,
 	);
 	return {
 		service,
 		checkpointStorage,
 		jobRepository,
 		executionRepository,
+		messageRepository,
 		executionPersistence,
 		publisher,
 		logger,
@@ -136,9 +143,102 @@ describe('markMailConsumed', () => {
 			expect(wakeService.isWakeActive).toHaveBeenCalledWith('thread-1');
 			expect(count).toBe(active ? 0 : 1);
 			if (active) expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
-			else expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+			else
+				expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 		},
 	);
+});
+
+describe('user pause', () => {
+	it.each([
+		{ status: 'running', notifiedAt: null, receivedAt: 3000, expected: 'stopping' },
+		{ status: 'paused', notifiedAt: null, receivedAt: 3000, expected: 'stopping' },
+		{ status: 'paused', notifiedAt: new Date(2000), receivedAt: 1000, expected: 'stopping' },
+		{ status: 'paused', notifiedAt: new Date(2000), receivedAt: 3000, expected: 'ready' },
+	] as const)(
+		'uses the original input receipt time for $status jobs ($receivedAt)',
+		async ({ status, notifiedAt, receivedAt, expected }) => {
+			const { service, jobRepository, executionRepository, messageRepository } = setup();
+			const job = makeJob({ status, pauseRequestId: 'stop-1', notifiedAt });
+			jobRepository.findByParentThread.mockResolvedValue([
+				job,
+				makeJob({
+					id: 'other-job',
+					parentResourceId: 'draft-chat:other',
+					pauseRequestId: 'stop-2',
+				}),
+			]);
+			executionRepository.findExecution.mockResolvedValue(
+				mock<AgentExecution>({ threadId: 'thread-1', status: 'running' }),
+			);
+			messageRepository.findExecutionInputs.mockResolvedValue(
+				new Map([
+					[
+						'execution-1',
+						[
+							mock<AgentMessageEntity>({
+								role: 'user',
+								origin: null,
+								threadId: 'thread-1',
+								resourceId: 'draft-chat:user-1',
+								createdAt: new Date(receivedAt),
+							}),
+						],
+					],
+				]),
+			);
+			const result = await service.getResumeCandidates(
+				'agent-1',
+				'thread-1',
+				'draft-chat:user-1',
+				'execution-1',
+			);
+			expect(result.status).toBe(expected);
+			expect(result.jobs).toEqual(expected === 'ready' ? [job] : []);
+		},
+	);
+
+	it('keeps stopped children visible until their stop group settles and retains other tasks', async () => {
+		const { service, jobRepository } = setup();
+		const stopping = makeJob({ pauseRequestId: 'stop-1', createdAt: new Date(1000) });
+		const last = makeJob({
+			id: 'job-2',
+			status: 'suspended',
+			pauseRequestId: 'stop-1',
+			createdAt: new Date(2000),
+		});
+		const workflow = makeWorkflowJob({ createdAt: new Date(3000) });
+		jobRepository.findGroupCandidates.mockResolvedValue([stopping, last, workflow]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+			stopping,
+			last,
+			workflow,
+		]);
+		const paused = { ...stopping, status: 'paused' as const, settledAt: new Date(4000) };
+		jobRepository.findGroupCandidates.mockResolvedValue([paused, last, workflow]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+			paused,
+			last,
+			workflow,
+		]);
+		const later = makeJob({ id: 'later', createdAt: new Date(5000) });
+		for (const status of ['paused', 'completed', 'failed', 'cancelled'] as const) {
+			jobRepository.findGroupCandidates.mockResolvedValue([
+				paused,
+				{ ...last, status },
+				workflow,
+				later,
+			]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+				workflow,
+				later,
+			]);
+		}
+		jobRepository.findGroupCandidates.mockResolvedValue([paused]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
+		jobRepository.findGroupCandidates.mockResolvedValue([{ ...stopping, pauseRequestId: null }]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toHaveLength(1);
+	});
 });
 
 describe('background task notifications', () => {
@@ -484,7 +584,7 @@ describe('cancel', () => {
 
 		expect(outcome).toBe('cancelled');
 		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 		expect(controller.signal.aborted).toBe(true);
 		expect(resumedController.signal.aborted).toBe(true);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({

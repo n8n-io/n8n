@@ -11,6 +11,7 @@ import type { IntegrationMessageContext } from '../integrations/integration-tool
 
 export const BACKGROUND_SUB_AGENT_METADATA_KEY = 'n8nBackgroundSubAgent';
 export const BACKGROUND_APPROVAL_RUN_PREFIX = 'background-job-';
+export const BACKGROUND_PAUSE_USER_TURN_KEY = 'n8nBackgroundPauseUserTurn';
 export const PARENT_TASK_CANCELLED_REASON = new DOMException('Parent task cancelled', 'AbortError');
 
 export function parseBackgroundApprovalAction(actionId: string) {
@@ -30,6 +31,7 @@ const backgroundStateSchema = z.object({
 	jobId: z.string().min(1),
 	taskPath: z.string(),
 	resumeContext: z.object({ agentId: z.string().min(1), versionId: z.string().min(1).optional() }),
+	runtimeSnapshot: z.string().optional(),
 	difficulty: z.enum(SUB_AGENT_TASK_DIFFICULTIES).optional(),
 	sharedWorkspace: z.boolean(),
 	messageContext: z.custom<IntegrationMessageContext>(isIntegrationMessageContext).nullable(),

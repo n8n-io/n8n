@@ -112,6 +112,32 @@ describe('SubAgentSourceResolver', () => {
 		});
 	});
 
+	it('retains background configuration and tool bodies after a draft edit', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				tools: {
+					lookup: { descriptor: customToolDescriptor, code: 'original tool body' },
+				},
+			}),
+		);
+		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ schema: { name: 'Incomplete draft', model: '', instructions: '' }, tools: {} }),
+		);
+		const resumed = await resolver.resolveForRuntime(
+			{ agentId },
+			{ projectId, runtimeSnapshot: JSON.stringify(original) },
+		);
+		expect(resumed).toEqual(original);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		await expect(
+			resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			),
+		).rejects.toThrow();
+	});
+
 	it('pins a resumed version over the currently published one in production runs', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({ activeVersion: makeAgentHistory({ versionId: 'version-newer' }) }),
