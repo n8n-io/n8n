@@ -32,6 +32,16 @@ describe('CredentialsFinderService', () => {
 	const accessRepository = mock<CredentialAccessRepository>();
 	const roleService = mock<RoleService>();
 	const service = new CredentialsFinderService(accessRepository, roleService);
+	const useRepositoryRoleLoader = () => {
+		accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
+		roleService.rolesWithScope.mockImplementation(async (namespace, _scopes, loadRoles) => {
+			await loadRoles?.();
+			return namespace === 'project' ? ['project:admin'] : ['credential:user'];
+		});
+	};
+	const expectRepositoryRoleLoader = () => {
+		expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledTimes(2);
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -393,6 +403,14 @@ describe('CredentialsFinderService', () => {
 	});
 
 	describe('findCredentialsForUser', () => {
+		it('loads access roles through the repository callback', async () => {
+			useRepositoryRoleLoader();
+
+			await service.findCredentialsForUser(member, ['credential:read']);
+
+			expectRepositoryRoleLoader();
+		});
+
 		it('does not include global credentials for a write scope', async () => {
 			await service.findCredentialsForUser(member, ['credential:update']);
 
@@ -536,21 +554,30 @@ describe('CredentialsFinderService', () => {
 			).resolves.toEqual([]);
 			expect(accessRepository.findCredentialNames).not.toHaveBeenCalled();
 		});
+
+		it('does not grant universal use to a view-only global role', async () => {
+			const viewOnlyUser = makeCustomUser('view-only-user', ['credential:read']);
+			accessRepository.findProjectCredentialIdsForUser.mockResolvedValue(new Set());
+
+			await service.findUnusableCredentialsForUser(viewOnlyUser, ['credential-1']);
+
+			expect(accessRepository.findExistingCredentialIds).not.toHaveBeenCalled();
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				expect.objectContaining({ userId: viewOnlyUser.id }),
+			);
+		});
 	});
 
 	describe('getCredentialIdsByUserAndRole', () => {
 		it('loads roles through the repository callback', async () => {
-			accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
-			roleService.rolesWithScope.mockImplementation(async (namespace, _scopes, loadRoles) => {
-				await loadRoles?.();
-				return namespace === 'project' ? ['project:admin'] : ['credential:user'];
-			});
+			useRepositoryRoleLoader();
 
 			await service.getCredentialIdsByUserAndRole(['user-1'], {
 				scopes: ['credential:read'],
 			});
 
-			expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledTimes(2);
+			expectRepositoryRoleLoader();
 		});
 
 		it('resolves roles when scopes are provided', async () => {
@@ -588,18 +615,6 @@ describe('CredentialsFinderService', () => {
 				}),
 			).rejects.toThrow('role lookup failed');
 		});
-	});
-
-	it('loads access roles through the repository callback', async () => {
-		accessRepository.findRolesForAccessCheck.mockResolvedValue([]);
-		roleService.rolesWithScope.mockImplementation(async (namespace, _scopes, loadRoles) => {
-			await loadRoles?.();
-			return namespace === 'project' ? ['project:admin'] : ['credential:user'];
-		});
-
-		await service.findCredentialsForUser(member, ['credential:read']);
-
-		expect(accessRepository.findRolesForAccessCheck).toHaveBeenCalledTimes(2);
 	});
 
 	describe('findGlobalCredentialById', () => {

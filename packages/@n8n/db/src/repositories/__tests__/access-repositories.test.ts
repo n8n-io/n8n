@@ -1,5 +1,5 @@
 import { mock } from 'vitest-mock-extended';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { In, IsNull, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { CredentialsEntity, Folder, Role, SharedCredentials } from '../../entities';
 import type { TransactionRunner } from '../../services/transaction';
@@ -90,7 +90,7 @@ describe('access repositories', () => {
 				where: {
 					isGlobal: true,
 					usageScope: 'project',
-					pendingAuthorizationExpiresAt: expect.any(Object),
+					pendingAuthorizationExpiresAt: IsNull(),
 				},
 				relations: { shared: true },
 			});
@@ -134,7 +134,7 @@ describe('access repositories', () => {
 				expect.objectContaining({
 					where: expect.objectContaining({
 						id: 'credential-1',
-						usageScope: expect.any(Object),
+						usageScope: In(['project', 'instance']),
 					}),
 					relations: { shared: { project: true } },
 				}),
@@ -190,9 +190,12 @@ describe('access repositories', () => {
 			const options = manager.findOne.mock.calls[0]?.[1];
 			expect(options?.where).toEqual(
 				expect.objectContaining({
-					role: expect.any(Object),
+					role: In(['credential:user']),
 					project: expect.objectContaining({
-						projectRelations: expect.objectContaining({ userId: 'user-1' }),
+						projectRelations: expect.objectContaining({
+							role: In(['project:editor']),
+							userId: 'user-1',
+						}),
 					}),
 				}),
 			);
@@ -210,9 +213,12 @@ describe('access repositories', () => {
 			const options = manager.find.mock.calls[0]?.[1];
 			expect(options?.where).toEqual(
 				expect.objectContaining({
-					role: expect.any(Object),
+					role: In(['credential:user']),
 					project: expect.objectContaining({
-						projectRelations: expect.objectContaining({ userId: 'user-1' }),
+						projectRelations: expect.objectContaining({
+							role: In(['project:editor']),
+							userId: 'user-1',
+						}),
 					}),
 				}),
 			);
@@ -277,7 +283,7 @@ describe('access repositories', () => {
 			]);
 			expect(manager.find).toHaveBeenCalledWith(CredentialsEntity, {
 				select: { id: true, name: true },
-				where: { id: expect.any(Object) },
+				where: { id: In(['credential-1']) },
 			});
 		});
 
@@ -296,7 +302,7 @@ describe('access repositories', () => {
 			]);
 			expect(manager.find).toHaveBeenCalledWith(CredentialsEntity, {
 				select: { id: true },
-				where: { id: expect.any(Object) },
+				where: { id: In(['credential-1']) },
 			});
 		});
 
@@ -336,10 +342,11 @@ describe('access repositories', () => {
 			const options = manager.find.mock.calls[0]?.[1];
 			expect(options?.where).toEqual(
 				expect.objectContaining({
+					role: In(['credential:user']),
 					project: expect.objectContaining({
 						projectRelations: expect.objectContaining({
-							userId: expect.any(Object),
-							role: { slug: expect.any(Object) },
+							userId: In(['user-1']),
+							role: { slug: In(['project:editor']) },
 						}),
 					}),
 				}),
@@ -371,7 +378,9 @@ describe('access repositories', () => {
 
 			expect(transactionManager.find).toHaveBeenCalledWith(
 				Folder,
-				expect.objectContaining({ where: expect.objectContaining({ id: expect.any(Object) }) }),
+				expect.objectContaining({
+					where: expect.objectContaining({ id: In(['folder-1']) }),
+				}),
 			);
 			expect(manager.find).not.toHaveBeenCalled();
 		});
