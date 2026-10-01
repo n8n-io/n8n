@@ -1,0 +1,29 @@
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.service.ts
+  s_5b85161403cb3c::t_a821f3618cdc6b 102-108,112
+packages/@n8n/db/src/migrations/sqlite/1790795921000-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_fd58709ece4e15 1-11
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_5b85161403cb3c::t_f280574945ffaa 311-342
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.task.test.ts
+  s_5b85161403cb3c::t_f280574945ffaa 1-25
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_5b85161403cb3c::t_75e98c9027c5fb 165-171
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.service.test.ts
+  s_5b85161403cb3c::t_f280574945ffaa 261-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe767d780af703a9b72bd23571d71604ee90e9f1",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
